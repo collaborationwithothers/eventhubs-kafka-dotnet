@@ -112,7 +112,7 @@ public sealed class B10AbruptProducerTests
         var release = new TaskCompletionSource<long>(TaskCreationOptions.RunContinuationsAsynchronously);
         fixture.Send = (kind, _) => kind == "prepared" ? release.Task : Task.FromResult(2L);
         fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
-        Task<B10AbruptProducer.ProbeAttempt> operation = fixture.Runner.InvokeProbe("same_instance", [1, 2], null, TestContext.Current.CancellationToken);
+        Task<B10AbruptProducer.ProbeAttempt> operation = fixture.Runner.InvokeProbe("same_instance", [1, 2], null, 0, TestContext.Current.CancellationToken);
         Assert.Empty(fixture.Native.Calls);
         Assert.False(operation.IsCompleted);
         release.SetResult(1);
@@ -127,7 +127,7 @@ public sealed class B10AbruptProducerTests
         var release = new TaskCompletionSource<long>(TaskCreationOptions.RunContinuationsAsynchronously);
         fixture.Send = (kind, _) => kind == "accepted" ? release.Task : Task.FromResult(1L);
         fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
-        Task<B10AbruptProducer.ProbeAttempt> operation = fixture.Runner.InvokeProbe("same_instance", [1], null, TestContext.Current.CancellationToken);
+        Task<B10AbruptProducer.ProbeAttempt> operation = fixture.Runner.InvokeProbe("same_instance", [1], null, 0, TestContext.Current.CancellationToken);
         await fixture.Accepted.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         Assert.False(operation.IsCompleted);
         Assert.Equal(0, fixture.Releases);
@@ -141,7 +141,7 @@ public sealed class B10AbruptProducerTests
         await using var fixture = new Fixture();
         fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
         fixture.Native.OnProduce = (_, callback) => callback(Report());
-        var attempt = await fixture.Runner.InvokeProbe("same_instance", [1], null, TestContext.Current.CancellationToken);
+        var attempt = await fixture.Runner.InvokeProbe("same_instance", [1], null, 0, TestContext.Current.CancellationToken);
         Assert.NotNull(attempt.Terminal);
         Assert.Equal(["prepared", "terminal", "accepted"], fixture.Events.Select(item => item.Kind));
         Assert.Equal(2, attempt.Terminal.Value.GetProperty("persistence_status").GetInt32());
@@ -152,7 +152,7 @@ public sealed class B10AbruptProducerTests
     {
         await using var fixture = new Fixture();
         fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
-        var attempt = await fixture.Runner.InvokeProbe("same_instance", [1], null, TestContext.Current.CancellationToken);
+        var attempt = await fixture.Runner.InvokeProbe("same_instance", [1], null, 0, TestContext.Current.CancellationToken);
         Assert.Null(attempt.Terminal);
         Assert.DoesNotContain(fixture.Events, item => item.Kind == "terminal");
     }
@@ -170,7 +170,7 @@ public sealed class B10AbruptProducerTests
             finally { writer.InCallback = false; }
         };
 
-        var attempt = await fixture.Runner.InvokeProbe("same_instance", [1], null, TestContext.Current.CancellationToken);
+        var attempt = await fixture.Runner.InvokeProbe("same_instance", [1], null, 0, TestContext.Current.CancellationToken);
 
         Assert.Equal(0, writer.CallbackWrites);
         Assert.Empty(writer.CallbackOutput.ToString());
@@ -179,6 +179,13 @@ public sealed class B10AbruptProducerTests
         Assert.True(attempt.CallbackTimestamp >= attempt.InvokedTimestamp);
         fixture.Runner.MarkTerminals();
         fixture.Runner.MarkTerminals();
+        Assert.Equal(-1, attempt.TerminalWrittenTimestamp);
+        long beforeWritten = TimeProvider.System.GetTimestamp();
+        fixture.Runner.MarkTerminals(attempt.AttemptId);
+        long written = attempt.TerminalWrittenTimestamp;
+        Assert.InRange(written, beforeWritten, TimeProvider.System.GetTimestamp());
+        fixture.Runner.MarkTerminals();
+        Assert.Equal(written, attempt.TerminalWrittenTimestamp);
         JsonElement terminal = Assert.Single(writer.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
             .Select(line => JsonSerializer.Deserialize<JsonElement>(line["b10_abrupt_stage ".Length..])),
             entry => entry.GetProperty("stage").GetString() == "probe_terminal");
@@ -235,7 +242,7 @@ public sealed class B10AbruptProducerTests
         fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
         Action<DeliveryReport<byte[], byte[]>>? callback = null;
         fixture.Native.OnProduce = (_, captured) => callback = captured;
-        var attempt = await fixture.Runner.InvokeProbe("same_instance", [1], null, TestContext.Current.CancellationToken);
+        var attempt = await fixture.Runner.InvokeProbe("same_instance", [1], null, 0, TestContext.Current.CancellationToken);
         Assert.NotNull(callback);
         TextWriter previousOutput = Console.Out;
         TextWriter previousErrors = Console.Error;
@@ -274,7 +281,7 @@ public sealed class B10AbruptProducerTests
         clock.Advance(TimeSpan.FromMilliseconds(1));
         fixture.Observe();
         clock.Advance(TimeSpan.FromMilliseconds(1));
-        Task operation = fixture.Runner.InvokeProbe("same_instance", [1], null, TestContext.Current.CancellationToken);
+        Task operation = fixture.Runner.InvokeProbe("same_instance", [1], null, 0, TestContext.Current.CancellationToken);
         try
         {
             await reportSent.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
@@ -303,8 +310,8 @@ public sealed class B10AbruptProducerTests
         using var writer = new BlockingTerminalWriter();
         await using var fixture = new Fixture(timeline: new B10AbruptTimeline(TimeProvider.System, "child", writer));
         fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
-        var original = await fixture.Runner.InvokeProbe("same_instance", [1], null, TestContext.Current.CancellationToken);
-        var resend = await fixture.Runner.InvokeProbe("same_instance", [1], original.AttemptId, TestContext.Current.CancellationToken);
+        var original = await fixture.Runner.InvokeProbe("same_instance", [1], null, 0, TestContext.Current.CancellationToken);
+        var resend = await fixture.Runner.InvokeProbe("same_instance", [1], original.AttemptId, original.Sequence, TestContext.Current.CancellationToken);
         fixture.Runner.RecordTerminal(original, Report());
         Task mark = Task.Run(() => fixture.Runner.MarkTerminals(), TestContext.Current.CancellationToken);
         Task? callback = null;
@@ -367,6 +374,8 @@ public sealed class B10AbruptProducerTests
             producer.RecordTerminal(resend, Report());
             Assert.NotNull(original.Terminal);
             Assert.NotNull(resend.Terminal);
+            Assert.Equal(-1, original.TerminalWrittenTimestamp);
+            Assert.Equal(-1, resend.TerminalWrittenTimestamp);
             Assert.Empty(StageLines(errors));
 
             events.ReleaseFirst.TrySetResult();
@@ -374,6 +383,8 @@ public sealed class B10AbruptProducerTests
             JsonElement first = Assert.Single(StageLines(errors));
             Assert.Equal("probe_terminal", StageName(first));
             Assert.Equal(1, first.GetProperty("facts").GetProperty("is_original").GetInt32());
+            Assert.True(original.TerminalWrittenTimestamp > 0);
+            Assert.Equal(-1, resend.TerminalWrittenTimestamp);
             Assert.Null(channel.Gap);
         }
         finally
@@ -402,7 +413,7 @@ public sealed class B10AbruptProducerTests
         await using var fixture = new Fixture();
         fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
         fixture.Native.OnProduce = (_, _) => throw new ProduceException<byte[], byte[]>(new Error(ErrorCode.Local_QueueFull), new DeliveryResult<byte[], byte[]>());
-        var exception = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Runner.InvokeProbe("same_instance", [1], null, TestContext.Current.CancellationToken));
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Runner.InvokeProbe("same_instance", [1], null, 0, TestContext.Current.CancellationToken));
         Assert.Equal("b10_abrupt_guard_failed", exception.Message);
         Assert.Equal(["prepared", "synchronous_rejection"], fixture.Events.Select(item => item.Kind));
     }
@@ -414,7 +425,7 @@ public sealed class B10AbruptProducerTests
         fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
         KafkaStatisticsReport report = fixture.Observe();
         await Task.Delay(2, TestContext.Current.CancellationToken);
-        await fixture.Runner.InvokeProbe("same_instance", [1], null, TestContext.Current.CancellationToken);
+        await fixture.Runner.InvokeProbe("same_instance", [1], null, 0, TestContext.Current.CancellationToken);
         JsonElement handoff = Assert.Single(fixture.Events, item => item.Kind == "pre_acceptance_report").Data;
         Assert.Equal("B10", handoff.GetProperty("report_identity").GetProperty("scenario_id").GetString());
         Assert.Equal("run-1", handoff.GetProperty("report_identity").GetProperty("run_id").GetString());
@@ -436,7 +447,7 @@ public sealed class B10AbruptProducerTests
         fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
         fixture.Observe();
         fixture.Observe();
-        await fixture.Runner.InvokeProbe("same_instance", [1], null, TestContext.Current.CancellationToken);
+        await fixture.Runner.InvokeProbe("same_instance", [1], null, 0, TestContext.Current.CancellationToken);
         Assert.DoesNotContain(fixture.Events, item => item.Kind == "pre_acceptance_report");
         Assert.Contains(fixture.Events, item => item.Kind == "accepted");
     }
@@ -677,11 +688,11 @@ public sealed class B10AbruptProducerTests
         await using var fixture = new Fixture();
         fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
         fixture.Native.OnProduce = (_, callback) => callback(Report(error, status));
-        var original = await fixture.Runner.InvokeProbe("same_instance", [1], null, TestContext.Current.CancellationToken);
+        var original = await fixture.Runner.InvokeProbe("same_instance", [1], null, 0, TestContext.Current.CancellationToken);
         Assert.NotNull(original.Terminal);
         Assert.Equal((int)status, original.Terminal.Value.GetProperty("persistence_status").GetInt32());
         Assert.Equal((int)error, original.Terminal.Value.GetProperty("error_code").GetInt32());
-        Task resend = fixture.Runner.InvokeProbe("same_instance", [1], original.AttemptId, TestContext.Current.CancellationToken);
+        Task resend = fixture.Runner.InvokeProbe("same_instance", [1], original.AttemptId, original.Sequence, TestContext.Current.CancellationToken);
         if (permitted)
         {
             await resend;
@@ -712,7 +723,7 @@ public sealed class B10AbruptProducerTests
         {
             Assert.NotNull(originalCallback);
             originalCallback(Report());
-            Assert.Equal(2, fixture.Native.Calls.Count);
+            Assert.Equal(1 + B10AbruptOptions.ProbeBurstSize, fixture.Native.Calls.Count);
             return Task.FromResult(fixture.Clock.FreezeUtc());
         };
         fixture.Send = (kind, data) =>
@@ -722,12 +733,112 @@ public sealed class B10AbruptProducerTests
         };
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => fixture.Runner.RunFirstAsync(Profile(), fixture.Identity, fixture.Options, finished.Token));
         Assert.Equal(1, fixture.Constructions);
-        Assert.Equal(4, fixture.Native.Calls.Count);
-        Assert.Equal(fixture.Native.Calls[1].Key, fixture.Native.Calls[2].Key);
-        Assert.Equal(fixture.Native.Calls[1].Value, fixture.Native.Calls[2].Value);
+        Assert.Equal(8, fixture.Native.Calls.Count);
+        Assert.Equal(fixture.Native.Calls[1].Key, fixture.Native.Calls[1 + B10AbruptOptions.ProbeBurstSize].Key);
+        Assert.Equal(fixture.Native.Calls[1].Value, fixture.Native.Calls[1 + B10AbruptOptions.ProbeBurstSize].Value);
         Assert.Equal(2, fixture.Seals.Count);
         Assert.Equal(0, fixture.Native.FlushAfterKill);
         Assert.Equal(0, fixture.Native.Disposals);
+    }
+
+    [Fact]
+    public async Task Given_ControlArm_When_Sealed_Then_InventoryHasSixEntriesWithMemberSequences()
+    {
+        await using var fixture = new Fixture();
+        fixture.StartReports();
+        fixture.Native.OnProduce = (_, callback) => callback(Report());
+        fixture.Selected = _ => "pod-1-same_instance-3";
+        fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
+        await fixture.Runner.RunTimeoutCohortAsync(TestContext.Current.CancellationToken);
+
+        await fixture.Runner.RunControlAsync(TestContext.Current.CancellationToken);
+
+        using var manifest = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(fixture.Root, "control", "manifest.json"), TestContext.Current.CancellationToken));
+        JsonElement inventory = manifest.RootElement.GetProperty("data");
+        Assert.Equal(6, inventory.GetProperty("inventory_count").GetInt32());
+        Assert.Equal([0L, 1L, 2L, 3L, 4L, 3L], inventory.GetProperty("inventory").EnumerateArray()
+            .Select(entry => entry.GetProperty("sequence").GetInt64()));
+        Assert.Equal(6, fixture.Seals[1].GetProperty("count").GetInt32());
+    }
+
+    [Fact]
+    public async Task Given_ControlArm_When_Run_Then_FiveSequentialOriginals()
+    {
+        await using var fixture = new Fixture();
+        fixture.StartReports();
+        fixture.Native.OnProduce = (_, callback) => callback(Report());
+        fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
+        await fixture.Runner.RunTimeoutCohortAsync(TestContext.Current.CancellationToken);
+        fixture.Selected = _ => "pod-1-same_instance-3";
+        var accepted = Channel.CreateUnbounded<int>();
+        TaskCompletionSource<long>[] acknowledgements = Enumerable.Range(0, B10AbruptOptions.ProbeBurstSize)
+            .Select(_ => new TaskCompletionSource<long>(TaskCreationOptions.RunContinuationsAsynchronously)).ToArray();
+        fixture.Send = (kind, data) =>
+        {
+            if (kind != "accepted") return Task.FromResult(1L);
+            string attemptId = data.GetProperty("attempt_id").GetString()!;
+            JsonElement prepared = fixture.Events.Last(item => item.Kind == "prepared" &&
+                item.Data.GetProperty("attempt_id").GetString() == attemptId).Data;
+            if (prepared.GetProperty("predecessor_attempt_id").ValueKind != JsonValueKind.Null) return Task.FromResult(1L);
+            int index = prepared.GetProperty("sequence").GetInt32();
+            Assert.True(accepted.Writer.TryWrite(index));
+            return acknowledgements[index].Task;
+        };
+
+        Task operation = fixture.Runner.RunControlAsync(TestContext.Current.CancellationToken);
+        for (int i = 0; i < B10AbruptOptions.ProbeBurstSize; i++)
+        {
+            Assert.Equal(i, await accepted.Reader.ReadAsync(TestContext.Current.CancellationToken));
+            Assert.False(operation.IsCompleted);
+            Assert.Equal(i + 1, fixture.Events.Count(item => item.Kind == "prepared"));
+            Assert.Equal(1 + i + 1, fixture.Native.Calls.Count);
+            acknowledgements[i].SetResult(i + 1);
+        }
+        await operation;
+
+        JsonElement[] originals = fixture.Events.Where(item => item.Kind == "prepared" &&
+            item.Data.GetProperty("predecessor_attempt_id").ValueKind == JsonValueKind.Null).Select(item => item.Data).ToArray();
+        Assert.Equal([0L, 1L, 2L, 3L, 4L], originals.Select(entry => entry.GetProperty("sequence").GetInt64()));
+        JsonElement report = Assert.Single(fixture.Events, item => item.Kind == "pre_acceptance_report").Data;
+        Assert.Equal(originals[0].GetProperty("attempt_id").GetString(), report.GetProperty("attempt_id").GetString());
+        JsonElement resend = Assert.Single(fixture.Events, item => item.Kind == "prepared" &&
+            item.Data.GetProperty("predecessor_attempt_id").ValueKind != JsonValueKind.Null).Data;
+        Assert.Equal(originals[3].GetProperty("attempt_id").GetString(), resend.GetProperty("predecessor_attempt_id").GetString());
+        Assert.Equal(3, resend.GetProperty("sequence").GetInt32());
+        Assert.Equal("3", Encoding.UTF8.GetString(fixture.Native.Calls[^1].Headers.GetLastBytes("sequence")));
+    }
+
+    [Theory]
+    [InlineData(4)]
+    [InlineData(5)]
+    public async Task Given_SuccessorEntrySequence_When_Bound_Then_InBurstOnly(long sequence)
+    {
+        var release = new DateTimeOffset(2026, 11, 7, 0, 0, 0, TimeSpan.Zero);
+        await using var fixture = new Fixture(clock: new ReleaseBoundaryClock(release));
+        fixture.StartReports();
+        fixture.Native.OnProduce = (_, callback) => callback(Report());
+        byte[] payload = [1, 2, 3];
+        JsonElement selection = JsonSerializer.SerializeToElement(new[] { new
+        {
+            attempt_id = "predecessor-cross_restart-4", key = "B10/run-1/C1/1/cross_restart", sequence,
+            payload_length = payload.Length, payload_sha256 = Convert.ToHexStringLower(SHA256.HashData(payload)),
+            payload_base64 = Convert.ToBase64String(payload)
+        } });
+
+        Task<B10AbruptProducer.SuccessorArtifacts> operation = fixture.Runner.RunSuccessorAsync(Profile(), fixture.Identity,
+            fixture.Options, selection, release, TestContext.Current.CancellationToken);
+
+        if (sequence == 5)
+        {
+            Assert.Equal("b10_abrupt_successor_binding_invalid", (await Assert.ThrowsAsync<InvalidDataException>(() => operation)).Message);
+            Assert.Empty(fixture.Native.Calls);
+            return;
+        }
+        B10AbruptProducer.SuccessorArtifacts artifacts = await operation;
+        Assert.Equal("4", Encoding.UTF8.GetString(Assert.Single(fixture.Native.Calls).Headers.GetLastBytes("sequence")));
+        Assert.Equal(sequence, artifacts.Invocations[0].GetProperty("sequence").GetInt64());
+        using var manifest = JsonDocument.Parse(await File.ReadAllBytesAsync(artifacts.Paths["manifest.json"], TestContext.Current.CancellationToken));
+        Assert.Equal(sequence, manifest.RootElement.GetProperty("data").GetProperty("inventory")[0].GetProperty("sequence").GetInt64());
     }
 
     [Fact]
@@ -746,9 +857,9 @@ public sealed class B10AbruptProducerTests
         JsonElement facts = Detail(exception, "SealProbeCohortAsync").GetProperty("facts");
         Assert.Equal(["arm", "entry_count", "expected_count", "no_terminal_count"], facts.EnumerateObject().Select(property => property.Name));
         Assert.Equal(1, facts.GetProperty("arm").GetInt32());
-        Assert.Equal(2, facts.GetProperty("entry_count").GetInt32());
-        Assert.Equal(2, facts.GetProperty("expected_count").GetInt32());
-        Assert.Equal(2, facts.GetProperty("no_terminal_count").GetInt32());
+        Assert.Equal(B10AbruptOptions.ProbeBurstSize + 1, facts.GetProperty("entry_count").GetInt32());
+        Assert.Equal(B10AbruptOptions.ProbeBurstSize + 1, facts.GetProperty("expected_count").GetInt32());
+        Assert.Equal(B10AbruptOptions.ProbeBurstSize + 1, facts.GetProperty("no_terminal_count").GetInt32());
     }
 
     [Fact]
@@ -944,7 +1055,7 @@ public sealed class B10AbruptProducerTests
         fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
         Action<DeliveryReport<byte[], byte[]>>? callback = null;
         fixture.Native.OnProduce = (_, captured) => callback = captured;
-        var attempt = await fixture.Runner.InvokeProbe("cross_restart", [1], null, TestContext.Current.CancellationToken);
+        var attempt = await fixture.Runner.InvokeProbe("cross_restart", [1], null, 0, TestContext.Current.CancellationToken);
         Assert.Null(attempt.Terminal);
         Assert.NotNull(callback);
         callback(Report());
@@ -1055,6 +1166,7 @@ public sealed class B10AbruptProducerTests
         internal List<JsonElement> Seals { get; } = [];
         internal Func<string, JsonElement, Task<long>> Send { get; set; } = (_, _) => Task.FromResult(1L);
         internal Func<string, Task<DateTimeOffset>> Release { get; set; }
+        internal Func<string, string?> Selected { get; set; } = arm => "pod-1-" + arm + "-0";
         internal TaskCompletionSource Accepted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal int Constructions { get; private set; }
         internal int Releases { get; private set; }
@@ -1090,7 +1202,7 @@ public sealed class B10AbruptProducerTests
                     if (kind == "accepted") Accepted.TrySetResult();
                     return await Send(kind, data);
                 }, data => { Events.Add(("terminal", data)); return true; },
-                (arm, _) => { Releases++; return Release(arm); },
+                async (arm, _) => { Releases++; return new(await Release(arm), Selected(arm)); },
                 (_, seal, _) => { Seals.Add(seal); return Task.CompletedTask; }, evidence: Evidence, diagnosticIdentity: wireIdentity,
                 completeEvidence: Evidence is null ? null : async token =>
                 {

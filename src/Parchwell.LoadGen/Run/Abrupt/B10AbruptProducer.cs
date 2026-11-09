@@ -23,7 +23,7 @@ internal sealed class B10AbruptProducer
     private readonly Func<string, ILedgerStore> ledgerFactory;
     private readonly Func<string, JsonElement, CancellationToken, Task<long>> sendDurable;
     private readonly Func<JsonElement, bool> captureTerminal;
-    private readonly Func<string, CancellationToken, Task<DateTimeOffset>> waitForRelease;
+    private readonly Func<string, CancellationToken, Task<ReleaseInfo>> waitForRelease;
     private readonly Func<string, JsonElement, CancellationToken, Task> persistCohortSeal;
     private readonly RunEvidenceSession? evidence;
     private readonly B10AbruptWire.Identity? diagnosticIdentity;
@@ -48,7 +48,7 @@ internal sealed class B10AbruptProducer
         B10AbruptStatistics statistics, Func<string, ILedgerStore> ledgerFactory,
         Func<string, JsonElement, CancellationToken, Task<long>> sendDurable,
         Func<JsonElement, bool> captureTerminal,
-        Func<string, CancellationToken, Task<DateTimeOffset>> waitForRelease,
+        Func<string, CancellationToken, Task<ReleaseInfo>> waitForRelease,
         Func<string, JsonElement, CancellationToken, Task> persistCohortSeal, RunEvidenceSession? evidence = null,
         B10AbruptWire.Identity? diagnosticIdentity = null,
         Func<CancellationToken, Task<IReadOnlyDictionary<string, string>>>? completeEvidence = null,
@@ -253,21 +253,34 @@ internal sealed class B10AbruptProducer
         if (!timeoutSealed || controlSealed) throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"),
             [Fact(B10AbruptFact.TimeoutSealed, timeoutSealed), Fact(B10AbruptFact.ControlSealed, controlSealed)]);
         byte[] payload = ProbePayload();
-        ProbeAttempt original = await InvokeProbe("same_instance", payload, null, cancellationToken).ConfigureAwait(false);
-        DateTimeOffset release = await waitForRelease("same_instance", cancellationToken).ConfigureAwait(false);
+        for (int i = 0; i < B10AbruptOptions.ProbeBurstSize; i++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _ = await InvokeProbe("same_instance", payload, null, i, cancellationToken).ConfigureAwait(false);
+        }
+        ReleaseInfo info = await waitForRelease("same_instance", cancellationToken).ConfigureAwait(false);
+        ProbeAttempt? original;
+        lock (gate) original = probes.SingleOrDefault(attempt => attempt.AttemptId == info.SelectedAttemptId &&
+            attempt.PredecessorAttemptId is null && attempt.Key.EndsWith("/same_instance", StringComparison.Ordinal) && attempt.Accepted);
+        if (original is null) throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"));
+        DateTimeOffset release = info.Release;
         timeline.Mark(B10AbruptStage.ReleaseRead, Fact(B10AbruptFact.Arm, 1), Fact(B10AbruptFact.RemainingMilliseconds, release - clock.GetUtcNow()));
         await WaitForReleaseAsync(release, false, cancellationToken).ConfigureAwait(false);
         timeline.Mark(B10AbruptStage.ReleaseReached);
-        _ = await InvokeProbe("same_instance", payload, original.AttemptId, cancellationToken).ConfigureAwait(false);
+        _ = await InvokeProbe("same_instance", payload, original.AttemptId, original.Sequence, cancellationToken).ConfigureAwait(false);
         await DrainAsync(options.ProducerDrainTimeout, cancellationToken).ConfigureAwait(false);
         MarkTerminals();
+        timeline.WriteChildBurst(probes.Where(attempt => attempt.PredecessorAttemptId is null &&
+            attempt.Key.EndsWith("/same_instance", StringComparison.Ordinal)).Select(attempt =>
+                new B10AbruptChildBurstMember(attempt.Sequence, attempt.InvokedTimestamp,
+                    attempt.Terminal is null ? -1 : attempt.CallbackTimestamp, attempt.TerminalWrittenTimestamp)).ToArray());
         timeline.Mark(B10AbruptStage.CohortDrained);
         DateTimeOffset drained = clock.GetUtcNow();
         await WaitForPostDrainAsync(1, drained, cancellationToken).ConfigureAwait(false);
         CheckGuards();
         JsonElement seal = await SealProbeCohortAsync("same_instance", "control", drained, cancellationToken).ConfigureAwait(false);
         await persistCohortSeal("control", seal, cancellationToken).ConfigureAwait(false);
-        timeline.Mark(B10AbruptStage.CohortSealed, Fact(B10AbruptFact.Arm, 1), Fact(B10AbruptFact.EntryCount, 2));
+        timeline.Mark(B10AbruptStage.CohortSealed, Fact(B10AbruptFact.Arm, 1), Fact(B10AbruptFact.EntryCount, B10AbruptOptions.ProbeBurstSize + 1));
         controlSealed = true;
     }
 
@@ -276,11 +289,16 @@ internal sealed class B10AbruptProducer
         if (!timeoutSealed || !controlSealed || killAdmitted) throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"),
             [Fact(B10AbruptFact.TimeoutSealed, timeoutSealed), Fact(B10AbruptFact.ControlSealed, controlSealed),
              Fact(B10AbruptFact.KillAdmitted, killAdmitted)]);
-        _ = await InvokeProbe("cross_restart", ProbePayload(), null, cancellationToken).ConfigureAwait(false);
+        byte[] payload = ProbePayload();
+        for (int i = 0; i < B10AbruptOptions.ProbeBurstSize; i++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _ = await InvokeProbe("cross_restart", payload, null, i, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     internal async Task<ProbeAttempt> InvokeProbe(string arm, byte[] payload, string? predecessorAttemptId,
-        CancellationToken cancellationToken = default)
+        long sequence, CancellationToken cancellationToken = default)
     {
         CheckGuards();
         if (arm is not ("same_instance" or "cross_restart") || payload.Length > options.MaxPayloadBytes)
@@ -291,8 +309,11 @@ internal sealed class B10AbruptProducer
         lock (gate)
         {
             ProbeAttempt[] previous = probes.Where(entry => entry.Key.EndsWith("/" + arm, StringComparison.Ordinal)).ToArray();
-            if (predecessorAttemptId is null ? previous.Length != 0 :
-                arm != "same_instance" || previous.Length != 1 || previous[0].AttemptId != predecessorAttemptId || !previous[0].Accepted)
+            ProbeAttempt? predecessor = previous.SingleOrDefault(entry => entry.AttemptId == predecessorAttemptId && entry.PredecessorAttemptId is null);
+            if (predecessorAttemptId is null ? sequence < 0 || sequence >= B10AbruptOptions.ProbeBurstSize ||
+                previous.Count(entry => entry.PredecessorAttemptId is null) != sequence :
+                arm != "same_instance" || predecessor is null || !predecessor.Accepted || predecessor.Sequence != sequence ||
+                previous.Any(entry => entry.PredecessorAttemptId is not null))
                 throw Attach(new InvalidDataException("b10_abrupt_guard_failed"),
                     [Fact(B10AbruptFact.PreviousCount, previous.Length), Fact(B10AbruptFact.IsOriginal, predecessorAttemptId is null),
                      Fact(B10AbruptFact.PredecessorMatches, previous.Length == 1 && previous[0].AttemptId == predecessorAttemptId),
@@ -301,23 +322,24 @@ internal sealed class B10AbruptProducer
         }
         string key = $"B10/{identity.RunId}/{identity.ConfigurationId}/1/{arm}";
         string attemptId = identity.InstanceId + "-" + arm + "-" + ordinal.ToString(CultureInfo.InvariantCulture);
-        var attempt = new ProbeAttempt(attemptId, key, payload, predecessorAttemptId, ordinal);
+        var attempt = new ProbeAttempt(attemptId, key, payload, predecessorAttemptId, ordinal) { Sequence = sequence };
         var prepared = JsonSerializer.SerializeToElement(new
         {
-            attempt_id = attemptId, invocation_ordinal = ordinal, cohort = arm, probe_id = key, key, sequence = 0,
+            attempt_id = attemptId, invocation_ordinal = ordinal, cohort = arm, probe_id = key, key, sequence,
             payload_length = payload.Length, payload_sha256 = Hash(payload), predecessor_attempt_id = predecessorAttemptId
         });
         long preparedSequence = await sendDurable("prepared", prepared, cancellationToken).ConfigureAwait(false);
-        timeline.Mark(B10AbruptStage.ProbePrepared);
-        if (predecessorAttemptId is null)
+        bool recordStage = sequence == 0 || predecessorAttemptId is not null;
+        if (recordStage) timeline.Mark(B10AbruptStage.ProbePrepared);
+        if (predecessorAttemptId is null && sequence == 0)
             await WriteDurableAsync(Path.Combine(options.OutputRoot, "abrupt-child", arm + "-payload.bin"), payload, cancellationToken).ConfigureAwait(false);
         lock (gate) probes.Add(attempt);
         if (arm == "cross_restart") killAdmitted = true;
         try
         {
             attempt.InvokedTimestamp = clock.GetTimestamp();
-            producer!.Produce(options.Topic, Message(key, payload, attemptId, 0), report => RecordTerminal(attempt, report));
-            timeline.Hold(B10AbruptStage.ProbeProduced);
+            producer!.Produce(options.Topic, Message(key, payload, attemptId, sequence), report => RecordTerminal(attempt, report));
+            if (recordStage) timeline.Hold(B10AbruptStage.ProbeProduced);
         }
         catch (ProduceException<byte[], byte[]> exception)
         {
@@ -330,7 +352,7 @@ internal sealed class B10AbruptProducer
                 [Fact(B10AbruptFact.ErrorCode, (int)exception.Error.Code), Fact(B10AbruptFact.Arm, ArmCode(arm))]);
         }
         DateTimeOffset acceptance = clock.GetUtcNow();
-        if (predecessorAttemptId is null)
+        if (predecessorAttemptId is null && sequence == 0)
         {
             B10AbruptStatistics.NumberedReport? selected = statistics.SelectPreAcceptance(acceptance);
             timeline.Hold(B10AbruptStage.ProbeReportSelected, Fact(B10AbruptFact.Arm, ArmCode(arm)),
@@ -351,7 +373,7 @@ internal sealed class B10AbruptProducer
         {
             attempt_id = attemptId, prepared_sequence = preparedSequence
         }), cancellationToken).ConfigureAwait(false);
-        timeline.Mark(B10AbruptStage.ProbeAccepted, Fact(B10AbruptFact.Arm, ArmCode(arm)),
+        if (recordStage) timeline.Mark(B10AbruptStage.ProbeAccepted, Fact(B10AbruptFact.Arm, ArmCode(arm)),
             Fact(B10AbruptFact.IsOriginal, predecessorAttemptId is null),
             Fact(B10AbruptFact.ProduceToAcceptedMilliseconds, clock.GetElapsedTime(attempt.InvokedTimestamp)),
             Fact(B10AbruptFact.ProduceTicks, attempt.InvokedTimestamp));
@@ -390,10 +412,14 @@ internal sealed class B10AbruptProducer
             List<(ProbeAttempt Attempt, JsonElement Terminal)> ready = [];
             lock (gate)
                 foreach (ProbeAttempt attempt in probes)
-                    if ((writtenAttemptId is null || attempt.AttemptId == writtenAttemptId) &&
-                        attempt.Terminal is { } terminal && attempt.TryClaimTerminalMark()) ready.Add((attempt, terminal));
+                    if ((writtenAttemptId is null || attempt.AttemptId == writtenAttemptId) && attempt.Terminal is { } terminal)
+                    {
+                        if (writtenAttemptId is not null && attempt.TerminalWrittenTimestamp == -1)
+                            attempt.TerminalWrittenTimestamp = clock.GetTimestamp();
+                        if (attempt.TryClaimTerminalMark()) ready.Add((attempt, terminal));
+                    }
             foreach ((ProbeAttempt attempt, JsonElement terminal) in ready)
-                timeline.Mark(B10AbruptStage.ProbeTerminal,
+                if (attempt.Sequence == 0 || attempt.PredecessorAttemptId is not null) timeline.Mark(B10AbruptStage.ProbeTerminal,
                     Fact(B10AbruptFact.Arm, ArmCode(attempt.Key[(attempt.Key.LastIndexOf('/') + 1)..])),
                     Fact(B10AbruptFact.IsOriginal, attempt.PredecessorAttemptId is null),
                     Fact(B10AbruptFact.ErrorCode, NumberOrMinusOne(terminal, "error_code")),
@@ -427,9 +453,10 @@ internal sealed class B10AbruptProducer
         string key = selected.GetProperty("key").GetString()!;
         string originalId = selected.GetProperty("attempt_id").GetString()!;
         byte[] payload = Convert.FromBase64String(selected.GetProperty("payload_base64").GetString()!);
+        long sequence = selected.GetProperty("sequence").GetInt64();
         List<B10AbruptFactValue> facts = [];
         if (!Check(facts, B10AbruptFact.KeyMatches, key == $"B10/{runIdentity.RunId}/{runIdentity.ConfigurationId}/1/cross_restart") ||
-            !Check(facts, B10AbruptFact.SequenceZero, selected.GetProperty("sequence").GetInt64() == 0) ||
+            !Check(facts, B10AbruptFact.SequenceInBurst, sequence is >= 0 and < B10AbruptOptions.ProbeBurstSize) ||
             !Check(facts, B10AbruptFact.LengthMatches, selected.GetProperty("payload_length").GetInt32() == payload.Length) ||
             !Check(facts, B10AbruptFact.HashMatches, selected.GetProperty("payload_sha256").GetString() == Hash(payload)) ||
             !Check(facts, B10AbruptFact.PayloadWithinLimit, payload.Length <= executionOptions.MaxPayloadBytes) ||
@@ -443,12 +470,12 @@ internal sealed class B10AbruptProducer
             await WaitForReleaseAsync(releaseUtc, true, cancellationToken).ConfigureAwait(false);
             timeline.Mark(B10AbruptStage.ReleaseReached);
             string attemptId = identity.InstanceId + "-replay-0";
-            var attempt = new ProbeAttempt(attemptId, key, payload, originalId, 0);
+            var attempt = new ProbeAttempt(attemptId, key, payload, originalId, 0) { Sequence = sequence };
             probes.Add(attempt);
             DateTimeOffset invoked = clock.GetUtcNow();
             long invocationTimestamp = clock.GetTimestamp();
             attempt.InvokedTimestamp = invocationTimestamp;
-            producer!.Produce(options.Topic, Message(key, payload, attemptId, 0), report => RecordTerminal(attempt, report));
+            producer!.Produce(options.Topic, Message(key, payload, attemptId, sequence), report => RecordTerminal(attempt, report));
             await DrainAsync(options.ProducerDrainTimeout, cancellationToken).ConfigureAwait(false);
             MarkTerminals();
             timeline.Mark(B10AbruptStage.CohortDrained);
@@ -489,7 +516,7 @@ internal sealed class B10AbruptProducer
             }
             return new SuccessorArtifacts(SuccessorNames.ToDictionary(name => name, name => Path.Combine(directory, name), StringComparer.Ordinal),
                 JsonSerializer.SerializeToElement(new[] { new { attempt_id = attemptId, predecessor_attempt_id = originalId,
-                    key, sequence = 0, payload_sha256 = Hash(payload), invocation_utc = invoked.ToString("O", CultureInfo.InvariantCulture),
+                    key, sequence, payload_sha256 = Hash(payload), invocation_utc = invoked.ToString("O", CultureInfo.InvariantCulture),
                     monotonic_ticks = invocationTimestamp } }), ready, releaseUtc);
         }
         finally { await CleanupAsync().ConfigureAwait(false); }
@@ -499,15 +526,15 @@ internal sealed class B10AbruptProducer
     {
         ProbeAttempt[] entries;
         lock (gate) entries = probes.Where(probe => probe.Key.EndsWith("/" + arm, StringComparison.Ordinal)).ToArray();
-        if (entries.Length != (directoryName == "control" ? 2 : 1) || entries.Any(entry => entry.Terminal is null))
+        if (entries.Length != (directoryName == "control" ? B10AbruptOptions.ProbeBurstSize + 1 : 1) || entries.Any(entry => entry.Terminal is null))
             throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"),
                 [Fact(B10AbruptFact.Arm, ArmCode(arm)), Fact(B10AbruptFact.EntryCount, entries.Length),
-                 Fact(B10AbruptFact.ExpectedCount, directoryName == "control" ? 2 : 1),
+                 Fact(B10AbruptFact.ExpectedCount, directoryName == "control" ? B10AbruptOptions.ProbeBurstSize + 1 : 1),
                  Fact(B10AbruptFact.NoTerminalCount, entries.Count(entry => entry.Terminal is null))]);
         string directory = Path.Combine(options.OutputRoot, directoryName);
         Directory.CreateDirectory(directory);
         var inventory = entries.Select(entry => new { attempt_id = entry.AttemptId, invocation_ordinal = entry.Ordinal,
-            predecessor_attempt_id = entry.PredecessorAttemptId, key = entry.Key, sequence = 0,
+            predecessor_attempt_id = entry.PredecessorAttemptId, key = entry.Key, sequence = entry.Sequence,
             payload_length = entry.Payload.Length, payload_sha256 = Hash(entry.Payload) }).ToArray();
         byte[] ledgerBytes = Encoding.UTF8.GetBytes(string.Join('\n', entries.Select(entry => entry.Terminal!.Value.GetRawText())) + "\n");
         await WriteDurableAsync(Path.Combine(directory, "ledger.jsonl"), ledgerBytes, cancellationToken).ConfigureAwait(false);
@@ -662,15 +689,20 @@ internal sealed class B10AbruptProducer
         internal byte[] Payload { get; } = payload;
         internal string? PredecessorAttemptId { get; } = predecessorAttemptId;
         internal int Ordinal { get; } = ordinal;
+        internal long Sequence { get; init; }
         internal JsonElement? Terminal { get; set; }
         internal bool Accepted { get; set; }
         private long invokedTimestamp;
         private long callbackTimestamp;
+        private long terminalWrittenTimestamp = -1;
         private int terminalMarked;
         internal long InvokedTimestamp { get => Interlocked.Read(ref invokedTimestamp); set => Interlocked.Exchange(ref invokedTimestamp, value); }
         internal long CallbackTimestamp { get => Interlocked.Read(ref callbackTimestamp); set => Interlocked.Exchange(ref callbackTimestamp, value); }
+        internal long TerminalWrittenTimestamp { get => Interlocked.Read(ref terminalWrittenTimestamp); set => Interlocked.Exchange(ref terminalWrittenTimestamp, value); }
         internal bool TryClaimTerminalMark() => Interlocked.Exchange(ref terminalMarked, 1) == 0;
     }
+
+    internal sealed record ReleaseInfo(DateTimeOffset Release, string? SelectedAttemptId);
 
     internal sealed record SuccessorArtifacts(IReadOnlyDictionary<string, string> Paths, JsonElement Invocations,
         DateTimeOffset ReadyUtc, DateTimeOffset ReleaseUtc);

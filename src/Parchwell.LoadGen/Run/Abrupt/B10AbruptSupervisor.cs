@@ -58,6 +58,11 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
     private readonly Dictionary<string, long> _armStarts = new(StringComparer.Ordinal);
     private readonly B10AbruptTimeline _timeline = timeline ?? new B10AbruptTimeline(clock, "supervisor", null);
     private readonly Dictionary<string, Exception> _armFailureCauses = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, List<string>> _acceptedOriginals = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _preparedTicks = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _acceptedTicks = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _ackSentTicks = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _terminalTicks = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _acceptedAt = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _stopRequestedAt = new(StringComparer.Ordinal);
     private readonly Dictionary<string, bool> _terminalBeforeAccepted = new(StringComparer.Ordinal);
@@ -298,7 +303,8 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
                 }
                 if (message.Data.GetProperty("predecessor_attempt_id").ValueKind == JsonValueKind.Null) _armStarts.TryAdd(cohort, clock.GetTimestamp());
                 var prepared = await journal.AppendPreparedAndFlushAsync(message.Data, cancellationToken).ConfigureAwait(false);
-                _timeline.Hold(B10AbruptStage.FramePrepared, Fact(B10AbruptFact.Arm, ArmCode(cohort)), Fact(B10AbruptFact.IsOriginal, message.Data.GetProperty("predecessor_attempt_id").ValueKind == JsonValueKind.Null));
+                _preparedTicks[attempt] = clock.GetTimestamp();
+                if (RecordMemberStage(prepared)) _timeline.Hold(B10AbruptStage.FramePrepared, Fact(B10AbruptFact.Arm, ArmCode(cohort)), Fact(B10AbruptFact.IsOriginal, message.Data.GetProperty("predecessor_attempt_id").ValueKind == JsonValueKind.Null));
                 _prepared.Add(attempt, prepared);
                 if (!afterKill) await AckAsync(prepared.Sequence, cancellationToken).ConfigureAwait(false);
                 break;
@@ -316,21 +322,39 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
                     Check(acceptanceFacts, B10AbruptFact.Duplicate, !_accepted.Add(attempt!))) throw Failure("b10_abrupt_capture_gap", [.. acceptanceFacts]);
                 string arm = original!.Data.GetProperty("cohort").GetString()!;
                 bool isOriginal = original!.Data.GetProperty("predecessor_attempt_id").ValueKind == JsonValueKind.Null;
-                if (isOriginal) { _acceptedAt[arm] = clock.GetTimestamp(); _terminalBeforeAccepted[arm] = _terminals.ContainsKey(attempt!); }
-                if (isOriginal && !_reports.ContainsKey(arm)) _armFailures.TryAdd(arm, "b10_abrupt_sample_missing");
+                long sequence = original.Data.GetProperty("sequence").GetInt64();
+                bool lastOriginal = false;
+                if (isOriginal)
+                {
+                    if (!_acceptedOriginals.TryGetValue(arm, out var originals)) _acceptedOriginals.Add(arm, originals = []);
+                    if (sequence != originals.Count || sequence >= B10AbruptOptions.ProbeBurstSize ||
+                        (originals.Count != 0 && original.Data.GetProperty("invocation_ordinal").GetInt64() <= _prepared[originals[^1]].Data.GetProperty("invocation_ordinal").GetInt64()))
+                        throw Failure("b10_abrupt_capture_gap");
+                    originals.Add(attempt!);
+                    _acceptedTicks[attempt!] = clock.GetTimestamp();
+                    lastOriginal = sequence == B10AbruptOptions.ProbeBurstSize - 1;
+                    if (lastOriginal) { _acceptedAt[arm] = _acceptedTicks[attempt!]; _terminalBeforeAccepted[arm] = _terminals.ContainsKey(attempt!); }
+                    if (sequence == 0 && !_reports.ContainsKey(arm)) _armFailures.TryAdd(arm, "b10_abrupt_sample_missing");
+                }
                 var accepted = await journal.AppendAcceptedAndFlushAsync(message.Data, cancellationToken).ConfigureAwait(false);
-                _timeline.Hold(B10AbruptStage.FrameAccepted, Fact(B10AbruptFact.Arm, ArmCode(arm)), Fact(B10AbruptFact.IsOriginal, isOriginal), Fact(B10AbruptFact.TerminalBeforeAccepted, _terminals.ContainsKey(attempt!)));
-                if (!afterKill) { await AckAsync(accepted.Sequence, cancellationToken).ConfigureAwait(false); if (isOriginal) _timeline.Hold(B10AbruptStage.AckSent, Fact(B10AbruptFact.Arm, ArmCode(arm))); }
+                if (RecordMemberStage(original)) _timeline.Hold(B10AbruptStage.FrameAccepted, Fact(B10AbruptFact.Arm, ArmCode(arm)), Fact(B10AbruptFact.IsOriginal, isOriginal), Fact(B10AbruptFact.TerminalBeforeAccepted, _terminals.ContainsKey(attempt!)));
+                if (!afterKill)
+                {
+                    await AckAsync(accepted.Sequence, cancellationToken).ConfigureAwait(false);
+                    if (isOriginal) _ackSentTicks[attempt!] = clock.GetTimestamp();
+                    if (RecordMemberStage(original)) _timeline.Hold(B10AbruptStage.AckSent, Fact(B10AbruptFact.Arm, ArmCode(arm)));
+                }
                 if (isOriginal && _armFailures.TryGetValue(arm, out string? failure)) throw Failure(failure, [Fact(B10AbruptFact.Arm, ArmCode(arm)), Fact(B10AbruptFact.ReportPresent, _reports.ContainsKey(arm))], _armFailureCauses.GetValueOrDefault(arm));
-                if (!afterKill && isOriginal)
+                if (!afterKill && lastOriginal)
                 {
                     if (arm == "same_instance") await CheckpointControlAsync(attempt!, cancellationToken).ConfigureAwait(false);
                     else await CheckpointKillAsync(attempt!, cancellationToken).ConfigureAwait(false);
                 }
                 break;
             case "terminal":
-                if (attempt is null || !_prepared.ContainsKey(attempt) || _terminals.ContainsKey(attempt)) throw Failure("b10_abrupt_capture_gap", [Fact(B10AbruptFact.AttemptPresent, attempt is not null), Fact(B10AbruptFact.PreparedKnown, attempt is not null && _prepared.ContainsKey(attempt)), Fact(B10AbruptFact.Duplicate, attempt is not null && _terminals.ContainsKey(attempt))]);
+                if (attempt is null || !_prepared.TryGetValue(attempt, out var terminalPrepared) || _terminals.ContainsKey(attempt)) throw Failure("b10_abrupt_capture_gap", [Fact(B10AbruptFact.AttemptPresent, attempt is not null), Fact(B10AbruptFact.PreparedKnown, attempt is not null && _prepared.ContainsKey(attempt)), Fact(B10AbruptFact.Duplicate, attempt is not null && _terminals.ContainsKey(attempt))]);
                 var terminal = await journal.AppendAsync("terminal", message.Data, cancellationToken).ConfigureAwait(false);
+                _terminalTicks[attempt] = clock.GetTimestamp();
                 _terminals.Add(attempt, terminal);
                 JsonElement persistence = message.Data.GetProperty("persistence_status");
                 if (persistence.ValueKind != JsonValueKind.Number || !persistence.TryGetInt32(out int status)) throw Failure("b10_abrupt_guard_failed", [Fact(B10AbruptFact.PersistenceStatus, -1)]);
@@ -338,7 +362,7 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
                 int errorCode = message.Data.GetProperty("error_code").GetInt32();
                 bool permitted = B10AbruptProducer.IsPermittedTerminal(errorCode, status);
                 if (delivered != (errorCode == 0) || !permitted) throw Failure("b10_abrupt_guard_failed", [Fact(B10AbruptFact.ErrorCode, errorCode), Fact(B10AbruptFact.PersistenceStatus, status), Fact(B10AbruptFact.Delivered, delivered), Fact(B10AbruptFact.Permitted, permitted)]);
-                _timeline.Hold(B10AbruptStage.FrameTerminal, Fact(B10AbruptFact.Arm, ArmCode(_prepared.GetValueOrDefault(attempt)?.Data.GetProperty("cohort").GetString())), Fact(B10AbruptFact.ErrorCode, errorCode), Fact(B10AbruptFact.PersistenceStatus, status), Fact(B10AbruptFact.Delivered, delivered), Fact(B10AbruptFact.AfterKill, afterKill));
+                if (RecordMemberStage(terminalPrepared)) _timeline.Hold(B10AbruptStage.FrameTerminal, Fact(B10AbruptFact.Arm, ArmCode(_prepared.GetValueOrDefault(attempt)?.Data.GetProperty("cohort").GetString())), Fact(B10AbruptFact.ErrorCode, errorCode), Fact(B10AbruptFact.PersistenceStatus, status), Fact(B10AbruptFact.Delivered, delivered), Fact(B10AbruptFact.AfterKill, afterKill));
                 break;
             case "synchronous_rejection":
                 var rejection = await journal.AppendAsync(message.Kind, message.Data, cancellationToken).ConfigureAwait(false);
@@ -361,7 +385,7 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
             if (arm is not ("same_instance" or "cross_restart") || _reports.ContainsKey(arm)) throw Failure("b10_abrupt_report_binding_invalid", [Fact(B10AbruptFact.Arm, ArmCode(arm)), Fact(B10AbruptFact.Duplicate, _reports.ContainsKey(arm))]);
             string attempt = data.GetProperty("attempt_id").GetString()!;
             if (!_prepared.TryGetValue(attempt, out var prepared) || prepared.Data.GetProperty("cohort").GetString() != arm || _accepted.Contains(attempt) ||
-                prepared.Data.GetProperty("predecessor_attempt_id").ValueKind != JsonValueKind.Null) throw Failure("b10_abrupt_report_binding_invalid", [Fact(B10AbruptFact.PreparedKnown, _prepared.ContainsKey(attempt)), Fact(B10AbruptFact.Duplicate, _accepted.Contains(attempt))]);
+                (prepared.Data.GetProperty("predecessor_attempt_id").ValueKind != JsonValueKind.Null || prepared.Data.GetProperty("sequence").GetInt64() != 0)) throw Failure("b10_abrupt_report_binding_invalid", [Fact(B10AbruptFact.PreparedKnown, _prepared.ContainsKey(attempt)), Fact(B10AbruptFact.Duplicate, _accepted.Contains(attempt))]);
             B10AbruptWire.ExactMembers(data, "arm", "attempt_id", "report_length", "report_sha256", "report_identity", "report_sequence", "report_capture_utc");
             long length = data.GetProperty("report_length").GetInt64();
             if (length is < 1 or > 1048576 || data.GetProperty("report_sequence").GetInt64() < 1) throw Failure("b10_abrupt_report_binding_invalid", [Fact(B10AbruptFact.ReportLength, length), Fact(B10AbruptFact.ReportSequence, NumberOrMinusOne(data, "report_sequence"))]);
@@ -386,7 +410,7 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
     internal async Task CheckpointControlAsync(string attempt, CancellationToken cancellationToken)
     {
         var checkpoint = await StopCheckpointAsync("same_instance", attempt, cancellationToken).ConfigureAwait(false);
-        if (checkpoint.Data.GetProperty("selected_attempt_ids").GetArrayLength() != 1) throw Failure("b10_abrupt_control_incomplete", [.. ExposureFacts("same_instance", attempt, checkpoint.Data)]);
+        if (checkpoint.Data.GetProperty("selected_attempt_ids").GetArrayLength() == 0) throw Failure("b10_abrupt_exposure_inconclusive", [.. ExposureFacts("same_instance", attempt, checkpoint.Data)]);
         var resumed = _child!.Resume();
         _timeline.Hold(B10AbruptStage.ResumeRequested);
         await RecordSignalAsync("same_instance", resumed, 0, cancellationToken).ConfigureAwait(false);
@@ -457,15 +481,19 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
                     if (clock.GetElapsedTime(begin) > budget) throw Failure("b10_abrupt_deadline_exhausted", Timing(Fact(B10AbruptFact.FramesDrainedAfterStop, _stopDrainedFrames[arm])));
                 }
             if (!_reports.TryGetValue(arm, out var report)) throw Failure(_armFailures.GetValueOrDefault(arm, "b10_abrupt_sample_missing"), [Fact(B10AbruptFact.Arm, ArmCode(arm)), Fact(B10AbruptFact.ReportPresent, false), Fact(B10AbruptFact.ArmFailed, _armFailures.ContainsKey(arm))], _armFailureCauses.GetValueOrDefault(arm));
+            string[] originals = _acceptedOriginals.TryGetValue(arm, out var acceptedOriginals) ? [.. acceptedOriginals] : [];
             DateTimeOffset utc = clock.GetUtcNow();
             var checkpoint = await journal.CheckpointAsync(B10AbruptWire.Element(new
             {
-                arm, accepted_attempt_ids = _accepted.Contains(attempt) ? new[] { attempt } : [],
-                selected_attempt_ids = _accepted.Contains(attempt) && !_terminals.ContainsKey(attempt) ? new[] { attempt } : [],
+                arm, accepted_attempt_ids = originals,
+                selected_attempt_ids = originals.Where(id => !_terminals.ContainsKey(id)).ToArray(),
                 last_complete_sequence = journal.Frames.Count == 0 ? 0 : journal.Frames[^1].Sequence, pre_acceptance_report = report,
                 process = _child.Identity, checkpoint_utc = B10AbruptPublisher.Utc(utc), checkpoint_monotonic_ticks = clock.GetTimestamp(),
                 release_utc = B10AbruptPublisher.Utc(utc.AddSeconds(120))
             }), linked.Token).WaitAsync(linked.Token).ConfigureAwait(false);
+            _timeline.HoldSupervisorBurst(ArmCode(arm), _stopRequestedAt[arm], originals.Select(id => new B10AbruptSupervisorBurstMember(
+                _prepared[id].Data.GetProperty("sequence").GetInt64(), _preparedTicks[id], _acceptedTicks[id],
+                _ackSentTicks.GetValueOrDefault(id, -1), _terminalTicks.GetValueOrDefault(id, -1))).ToArray());
             _timeline.Mark(B10AbruptStage.CheckpointWritten, [.. ExposureFacts(arm, attempt, checkpoint.Data)]);
             if (clock.GetElapsedTime(begin) > budget) throw Failure("b10_abrupt_deadline_exhausted", Timing(Fact(B10AbruptFact.FramesDrainedAfterStop, _stopDrainedFrames[arm])));
             return checkpoint;
@@ -552,7 +580,7 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
         if (_killCheckpoint is null) throw Failure("kill_too_early");
         string[] candidates = _killCheckpoint.Data.GetProperty("selected_attempt_ids").EnumerateArray().Select(item => item.GetString()!).ToArray();
         var entries = new List<JsonElement>();
-        foreach (string attempt in candidates.Where(attempt => !_terminals.ContainsKey(attempt)))
+        foreach (string attempt in candidates.Where(attempt => !_terminals.ContainsKey(attempt)).Take(1))
         {
             JsonElement prepared = _prepared[attempt].Data;
             byte[] payload = await B10AbruptPublisher.ReadFileAsync(Path.Combine(options.OutputRoot, "abrupt-child", "cross_restart-payload.bin"), 900000, cancellationToken).ConfigureAwait(false);
@@ -605,10 +633,14 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
             var entries = inventory.GetProperty("inventory").EnumerateArray().ToArray();
             string[] lines = Encoding.UTF8.GetString(artifacts["ledger.jsonl"]).Split('\n', StringSplitOptions.RemoveEmptyEntries);
             var controlFacts = new List<B10AbruptFactValue> { Fact(B10AbruptFact.Cohort, 1), Fact(B10AbruptFact.EntryCount, entries.Length), Fact(B10AbruptFact.LineCount, lines.Length), Fact(B10AbruptFact.InventoryCount, NumberOrMinusOne(inventory, "inventory_count")), Fact(B10AbruptFact.SealCount, NumberOrMinusOne(data, "count")) };
-            if (entries.Length != 2 || lines.Length != 2 || inventory.GetProperty("inventory_count").GetInt32() != 2 || data.GetProperty("count").GetInt32() != 2 ||
+            if (entries.Length != B10AbruptOptions.ProbeBurstSize + 1 || lines.Length != B10AbruptOptions.ProbeBurstSize + 1 || inventory.GetProperty("inventory_count").GetInt32() != B10AbruptOptions.ProbeBurstSize + 1 || data.GetProperty("count").GetInt32() != B10AbruptOptions.ProbeBurstSize + 1 ||
                 !Check(controlFacts, B10AbruptFact.BookkeepingComplete, inventory.GetProperty("bookkeeping_complete").GetBoolean())) throw Failure("b10_abrupt_control_incomplete", [.. controlFacts]);
             var ids = entries.Select(entry => entry.GetProperty("attempt_id").GetString()!).ToHashSet(StringComparer.Ordinal);
-            if (ids.Count != 2 || ids.Any(id => !_accepted.Contains(id) || !_terminals.ContainsKey(id))) throw Failure("b10_abrupt_control_incomplete", [Fact(B10AbruptFact.IdCount, ids.Count), Fact(B10AbruptFact.NotAcceptedCount, ids.Count(id => !_accepted.Contains(id))), Fact(B10AbruptFact.NoTerminalCount, ids.Count(id => !_terminals.ContainsKey(id)))]);
+            if (ids.Count != B10AbruptOptions.ProbeBurstSize + 1 || ids.Any(id => !_accepted.Contains(id) || !_terminals.ContainsKey(id))) throw Failure("b10_abrupt_control_incomplete", [Fact(B10AbruptFact.IdCount, ids.Count), Fact(B10AbruptFact.NotAcceptedCount, ids.Count(id => !_accepted.Contains(id))), Fact(B10AbruptFact.NoTerminalCount, ids.Count(id => !_terminals.ContainsKey(id)))]);
+            JsonElement resend = entries.Single(entry => entry.GetProperty("predecessor_attempt_id").ValueKind != JsonValueKind.Null);
+            JsonElement controlCheckpoint = journal.Frames.Last(frame => frame.Kind == "checkpoint" && frame.Data.GetProperty("arm").GetString() == "same_instance").Data;
+            if (resend.GetProperty("predecessor_attempt_id").GetString() != controlCheckpoint.GetProperty("selected_attempt_ids")[0].GetString())
+                throw Failure("b10_abrupt_control_incomplete");
             foreach (string line in lines)
             {
                 JsonElement row = B10AbruptWire.Parse(Encoding.UTF8.GetBytes(line));
@@ -700,11 +732,14 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
             "b10_abrupt_target_invalid" or "b10_abrupt_signal_failed" or "b10_abrupt_stop_unconfirmed" or
             "b10_abrupt_resume_unconfirmed" or "b10_abrupt_exit_unobserved" or "b10_abrupt_eof_incomplete" or
             "b10_abrupt_unexpected_exit" or "b10_abrupt_capture_gap" or "b10_abrupt_sample_missing" or
-            "b10_abrupt_report_binding_invalid" or "b10_abrupt_guard_failed" or "b10_abrupt_control_incomplete" or
+            "b10_abrupt_report_binding_invalid" or "b10_abrupt_guard_failed" or "b10_abrupt_control_incomplete" or "b10_abrupt_exposure_inconclusive" or
             "kill_too_early" or "kill_too_late" or "b10_abrupt_cgroup_unavailable" or "b10_abrupt_oom_conflict" or
             "b10_abrupt_publication_failed" or "b10_abrupt_publication_ambiguous" or "b10_abrupt_successor_binding_invalid" or
             "b10_abrupt_successor_late" or "b10_abrupt_deadline_exhausted" ? name : "b10_abrupt_capture_gap";
     }
+
+    private static bool RecordMemberStage(B10AbruptWire.Frame prepared) =>
+        prepared.Data.GetProperty("sequence").GetInt64() == 0 || prepared.Data.GetProperty("predecessor_attempt_id").ValueKind != JsonValueKind.Null;
 
     private long AcceptedToStop(string arm) => _acceptedAt.TryGetValue(arm, out long accepted) && _stopRequestedAt.TryGetValue(arm, out long stop)
         ? (long)clock.GetElapsedTime(accepted, stop).TotalMilliseconds : -1;

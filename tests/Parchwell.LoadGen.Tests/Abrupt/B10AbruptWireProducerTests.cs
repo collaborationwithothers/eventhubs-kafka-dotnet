@@ -68,7 +68,7 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
             DateTimeOffset release = DateTimeOffset.ParseExact(selection.GetProperty("data").GetProperty("checkpoint").GetProperty("data").GetProperty("release_utc").GetString()!, "O", CultureInfo.InvariantCulture);
             byte[] validBinding = Binding(first, files, release, TimeProvider.System);
             string bindingPath = Path.Combine(root, "input.json");
-            foreach (string fault in new[] { "missing_file", "missing_receipt", "changed_receipt", "job", "pod_uid", "source", "image", "predecessor", "same_pod", "same_uid", "stale_selection", "unselected_original", "changed_candidates", "terminal_exclusion", "legacy", "dialect", "purpose_removed", "schema_relabel" })
+            foreach (string fault in new[] { "missing_file", "missing_receipt", "changed_receipt", "job", "pod_uid", "source", "image", "predecessor", "same_pod", "same_uid", "stale_selection", "unselected_original", "changed_candidates", "terminal_exclusion", "excluded_first_candidate_valid", "entry_not_first_unexcluded", "legacy", "dialect", "purpose_removed", "schema_relabel" })
             {
                 JsonObject binding = JsonNode.Parse(validBinding)!.AsObject();
                 string detail = "receipt_changed";
@@ -92,6 +92,8 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
                     case "unselected_original":
                     case "changed_candidates":
                     case "terminal_exclusion":
+                    case "excluded_first_candidate_valid":
+                    case "entry_not_first_unexcluded":
                         var changedSelection = JsonNode.Parse(binding["files"]!["kill-selection.json"]!.GetValue<string>())!;
                         var selectionData = changedSelection["data"]!;
                         if (fault == "unselected_original") selectionData["entries"]![0]!["attempt_id"] = "synthetic-first-timeout-0";
@@ -101,6 +103,22 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
                             ["attempt_id"] = selectionData["entries"]![0]!["attempt_id"]!.GetValue<string>(),
                             ["terminal_sequence"] = 1
                         });
+                        if (fault is "excluded_first_candidate_valid" or "entry_not_first_unexcluded")
+                        {
+                            string candidate = selectionData["candidate_attempt_ids"]![1]!.GetValue<string>();
+                            var prepared = File.ReadLines(Path.Combine(root, "first", "journal.jsonl"))
+                                .Select(line => JsonNode.Parse(line)!)
+                                .Single(frame => frame["kind"]!.GetValue<string>() == "prepared" && frame["data"]!["attempt_id"]!.GetValue<string>() == candidate)["data"]!;
+                            var entry = new JsonObject { ["payload_base64"] = selectionData["entries"]![0]!["payload_base64"]!.DeepClone() };
+                            foreach (string field in new[] { "attempt_id", "key", "sequence", "payload_length", "payload_sha256" })
+                                entry[field] = prepared[field]!.DeepClone();
+                            selectionData["entries"]![0] = entry;
+                            if (fault == "excluded_first_candidate_valid") selectionData["terminal_exclusions"]!.AsArray().Add(new JsonObject
+                            {
+                                ["attempt_id"] = selectionData["candidate_attempt_ids"]![0]!.GetValue<string>(),
+                                ["terminal_sequence"] = 1
+                            });
+                        }
                         byte[] selectionBytes = Encoding.UTF8.GetBytes(changedSelection.ToJsonString());
                         binding["files"]!["kill-selection.json"] = Encoding.UTF8.GetString(selectionBytes);
                         var changedManifest = JsonNode.Parse(binding["files"]!["abrupt-manifest.json"]!.GetValue<string>())!;
@@ -126,6 +144,13 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
                 if (fault == "missing_file") File.Delete(bindingPath);
                 B10AbruptOptions options = TestOptions(root, "successor", bindingPath, configure);
                 int constructions = 0;
+                if (fault == "excluded_first_candidate_valid")
+                {
+                    Assert.Equal(0, await B10AbruptHost.RunValidatedSuccessorAsync(options,
+                        _ => { constructions++; return Task.FromResult(0); }, TestContext.Current.CancellationToken));
+                    Assert.Equal(1, constructions);
+                    continue;
+                }
                 var error = await Assert.ThrowsAsync<InvalidDataException>(() => B10AbruptHost.RunValidatedSuccessorAsync(options,
                     _ => { constructions++; return Task.FromResult(0); }, TestContext.Current.CancellationToken));
                 Assert.Equal("b10_abrupt_successor_binding_invalid:" + detail, error.Message);
@@ -210,19 +235,27 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
             var statistics = new B10AbruptStatistics(statisticsIdentity, ["broker"], new Dictionary<string, string>(), new Dictionary<string, string>(), captured);
             IProducer<byte[], byte[]> producer = DispatchProxy.Create<IProducer<byte[], byte[]>, B10AbruptProducerTests.NativeProducer>();
             var native = (B10AbruptProducerTests.NativeProducer)(object)producer;
-            Action<DeliveryReport<byte[], byte[]>>? controlOriginal = null;
-            Action<DeliveryReport<byte[], byte[]>>? killOriginal = null;
-            process.BeforeKill = () => { if (terminalAtKill) killOriginal?.Invoke(B10AbruptProducerTests.Report()); };
+            var controlOriginals = new List<Action<DeliveryReport<byte[], byte[]>>>();
+            var killOriginals = new List<Action<DeliveryReport<byte[], byte[]>>>();
+            process.BeforeKill = () =>
+            {
+                if (terminalAtKill)
+                    foreach (var callback in killOriginals) callback(B10AbruptProducerTests.Report());
+            };
             native.OnProduce = (message, callback) =>
             {
                 string key = Encoding.UTF8.GetString(message.Key);
                 if (key.EndsWith("same_instance", StringComparison.Ordinal))
                 {
-                    if (controlOriginal is null) controlOriginal = callback;
-                    else { controlOriginal(B10AbruptProducerTests.Report()); callback(B10AbruptProducerTests.Report()); }
+                    if (controlOriginals.Count < B10AbruptOptions.ProbeBurstSize) controlOriginals.Add(callback);
+                    else
+                    {
+                        foreach (var original in controlOriginals) original(B10AbruptProducerTests.Report());
+                        callback(B10AbruptProducerTests.Report());
+                    }
                 }
                 else if (!key.EndsWith("cross_restart", StringComparison.Ordinal)) callback(B10AbruptProducerTests.Report());
-                else killOriginal = callback;
+                else killOriginals.Add(callback);
             };
             object reportGate = new();
             void Report() { lock (reportGate) { clock.Tick(); statistics.WriteAsync(B10AbruptProducerTests.StatisticsReport(statisticsIdentity, clock), cancellationToken).AsTask().GetAwaiter().GetResult(); } }
@@ -238,9 +271,9 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
             var runner = new B10AbruptProducer(() => producer, clock, statistics, cohort => Ledger(work, cohort), process.SendAsync,
                 process.Terminal, async (arm, token) =>
                 {
-                    DateTimeOffset release = await B10AbruptHost.ReadReleaseAsync(options, arm, clock, token);
-                    clock.AdvanceTo(release);
-                    return release;
+                    B10AbruptProducer.ReleaseInfo info = await B10AbruptHost.ReadReleaseAsync(options, arm, clock, token);
+                    clock.AdvanceTo(info.Release);
+                    return info;
                 }, (cohort, data, token) => SaveSealAsync(work, firstIdentity, cohort, data, token), diagnosticIdentity: firstIdentity, timeline: timeline);
             using var childStop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             Task supervisorTask = supervisor.RunAsync(cancellationToken);
@@ -314,7 +347,7 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
             }, cancellationToken);
             long next = 0;
             var successor = new B10AbruptProducer(() => secondNative, clock, secondStatistics, cohort => Ledger(successorWork, cohort),
-                (_, _, _) => Task.FromResult(++next), _ => true, (_, _) => Task.FromResult(successorRelease),
+                (_, _, _) => Task.FromResult(++next), _ => true, (_, _) => Task.FromResult(new B10AbruptProducer.ReleaseInfo(successorRelease, null)),
                 (_, _, _) => Task.CompletedTask, diagnosticIdentity: successorIdentity);
             B10AbruptProducer.SuccessorArtifacts result = await successor.RunSuccessorAsync(B10AbruptProducerTests.Profile(), RunIdentity(successorIdentity),
                 Execution(successorWork), loaded.Selection.GetProperty("data").GetProperty("entries"), successorRelease, cancellationToken);

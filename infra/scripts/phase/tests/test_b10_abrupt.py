@@ -297,6 +297,20 @@ class ProducedBytesCases(Setup):
         with self.assertRaises(ValueError):
             self.trial.accept_diagnostic_publication(self.observation, missing)
 
+    def test_produced_second_candidate_without_first_exclusion_is_stale(self):
+        self.produced()
+        files = dict(self.first)
+        selection = abrupt.decode(files['kill-selection.json'])
+        candidate = selection['data']['candidate_attempt_ids'][1]
+        frames = [abrupt.decode(line) for line in files['journal.jsonl'].splitlines()]
+        prepared = next(frame['data'] for frame in frames if frame['kind'] == 'prepared' and frame['data']['attempt_id'] == candidate)
+        selection['data']['entries'][0].update({key: prepared[key] for key in
+            ('attempt_id', 'key', 'sequence', 'payload_length', 'payload_sha256')})
+        files['kill-selection.json'] = abrupt.encode(selection)
+        self.rebind_first_publication(files)
+        with self.assertRaisesRegex(ValueError, '^selection stale$'):
+            self.trial.accept_diagnostic_publication(self.observation, files)
+
     def test_produced_checkpoint_descriptor_binds_exact_frame_bytes(self):
         self.produced()
         for key, value in [('name', 'journal.jsonl'), ('length', 0), ('sha256', '0' * 64)]:
