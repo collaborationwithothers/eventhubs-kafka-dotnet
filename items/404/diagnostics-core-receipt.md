@@ -14,7 +14,7 @@ PR A implements diagnostic metadata for the supervisor and phase-script failures
 - Source: `ee36f1c65dce4df42ba61d87c5a70e2d25c3fc8e` (`origin/main`). Branch: `codex/404-diagnostics-pr-a`.
 - Predicate map: not applicable; no verifier logic changes. C5 not applicable: no configured mutation target changes.
 
-## Verification
+## Implementation verification (db409b57)
 
 Results measured in this session on 2026-11-09; program output stays outside Git under `/tmp/issue404`.
 
@@ -31,9 +31,9 @@ Results measured in this session on 2026-11-09; program output stays outside Git
 - Final diff whitespace and exact allowlist checks passed; `git diff --name-only origin/main...HEAD` identifies the same approved 16 paths. Program output is not committed.
 - Caller-information, TargetSite and ConditionalWeakTable documentation were read from the official .NET 10 pages cited in the contract; message.timeout.ms was checked at librdkafka v2.16.0 CONFIGURATION.md. No new Kafka or Azure behavior is asserted.
 
-Verification-failure root causes so far: 3 (one concurrent-build infrastructure cause, two new-test setup causes). Changed-file documentation-warning root causes: 0. Consolidated correction rounds: 1 of 2. Review-finding root causes: 0 in comprehensive round 1.
+Implementation verification-failure root causes: 3 (one concurrent-build infrastructure cause, two new-test setup causes). Changed-file documentation-warning root causes: 0. Consolidated correction rounds: 1 of 2. Review-finding root causes: 0 in comprehensive round 1.
 
-## Review record
+## Implementation review record
 
 Comprehensive round 1 reviewed `7c86cb3620e72315a528a3d6082cb984a8de7c92` against `ee36f1c65dce4df42ba61d87c5a70e2d25c3fc8e` through the fresh-context repo-review skill. Complete report:
 
@@ -93,6 +93,28 @@ Findings: none at P0 or P1
 
 Pre-existing (not blocking): None identified.
 
-Disposition: no correction required. This final acceptance/receipt update will receive focused coverage before publication; no production or test source changed after the comprehensive review. Cumulative comprehensive: 1; focused: 1 requested for the final receipt update; hosted requests: 0 at this local reviewed revision. The PR description records the last complete focused report, final-head CI and hosted requests without adding a review report to its own reviewed receipt. No prose-only P2 correction round or follow-up issue was needed.
+Disposition at the reviewed revision: no correction required. The final acceptance/receipt update received [focused round 1](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/410) on db409b57 before publication, with no P0/P1/reportable P2. No production or test source changed after the comprehensive review. Historical counters at that checkpoint: comprehensive 1; focused 1; hosted requests 0 before publication. The PR description records the last complete focused report, final-head CI and hosted requests without adding a review report to its own reviewed receipt. No prose-only P2 correction round or follow-up issue was needed.
 
 Models: Codex author and implementation subagents (model/effort not exposed by this interface); fresh-context cold reviewer at high effort. Hari performs the exact-head Claude review separately after ready-state PR creation, by his interactive instruction.
+
+## Claude-review correction execution card
+
+Hari's current task directly authorizes one commit changing only this receipt, state.md and B10AbruptSupervisorTests.cs to dispose [Claude comprehensive review 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/410#issuecomment-6736385602) of `db409b57f1b5638022029487b7dab9d8e4575c29`. This is prose and tests only; production code and existing assertions stay unchanged. PR A scope and the PR B dependency remain in force.
+
+- P2-2: state now indexes Revision 3 check 6735392763; approval 6735505476 at `2026-11-09T08:22:57Z`, exact-body SHA-256 `2034b7d3f1db94d440394338777a2d7491b53635a21c39510fe17282b59d3741`; and decision 6733448366 item 4 as the current tool assignment. Audit both item files: older decisions and the original review report remain historical evidence; the current next action, checkpoint labels and counters are updated here. No additional stale current authority source was found.
+- P2-1: three tests beyond the approved plan's list are authorized by Hari here. They pin the supervisor acknowledgement-time bound, the held EOF stage required by approval P2-H, and the measured grace duration. This prevents the diagnostic timing from misleading a later trial reader. Rule 10 would otherwise permit an Out of contract disposition; this explicit instruction authorizes the test-only addition.
+- P3-1: no action, as directed. The justified oversize-fixture deviation remains unchanged.
+- Verification: repeat the plan's acceptance command block and the three named scratch mutants, one each, with no production mutation in the repository. Record measured results below. C5/predicate map remain not applicable.
+- Publication checkpoint: one tested correction commit, focused coverage against db409b57, refreshed authority, then push and one Codex review request of the new head. No merge or trial.
+- Cumulative budget at entry: comprehensive 2/2 (local comprehensive 1 and Claude comprehensive 2), focused 1/2 complete. This correction uses focused round 2/2; no third comprehensive pass. Exhaustion/unsafe focus: save -wip and hand off to Hari under rule 8. The outage did not reset counters. Prior consolidated verification correction rounds: 1; this consolidated correction is round 2/2. Prior review-finding root causes: 0; this review adds the two named P2 root causes, within the 20-root-cause cap.
+
+Correction verification measured on 2026-11-09, based on `db409b57f1b5638022029487b7dab9d8e4575c29` plus this three-file correction delta:
+
+- Added exactly three Fact tests. Release test-project build: zero warnings/errors; targeted green: 3 total, all passed, no failures/skips.
+- Scratch-only named mutants, one each: ack held before AckAsync, EOF Hold changed to Mark, and graceBegin moved after the wait. Each built successfully; each named test ran once and failed on its intended ordering/output/duration assertion (3 mutants killed). The unmodified candidate passed all three. Scratch source was restored; repository production source is byte-unchanged.
+- Phase suite: 12 passed. Lifecycle discovery: 333 passed. Host/chart command: exit 0, including the production-byte bridge. npm ci and documentation tests passed (28 tests, zero failures).
+- Correction scope proof: exactly state.md, diagnostics-core-receipt.md and B10AbruptSupervisorTests.cs changed; exactly three added Fact tests, no removed existing assertion, no production diff. A metadata check initially assumed a cached remote-tracking ref; direct git ls-remote verified the actual branch still at db409b57. This adds one infrastructure verification root cause, so cumulative verification root causes are 4 of 20. Expected mutant failures are the red evidence, not unresolved failures. Correction documentation-warning root causes remain 0; review-finding root causes are 2 of 20.
+- `./scripts/verify-dotnet.sh`: exit 0 with SDK 10.0.402. Six XML reports parsed by script: 9930 total and passed, zero failures/skips. Architecture 17; Enrichment 56; Kafka 486; LoadGen 1642; Scenarios 340; Verifier 7389. Restore, Release build/analyzers, published apphost, report validation and warning-as-error controls passed. Evidence: `/tmp/parchwell-dotnet-verification.PAoXohEs` and `/tmp/issue404/review-fix/verify-dotnet.log`.
+- Correction test-file SHA-256: `a4c88ed1cc73c3caafd7632a3de62126a336e8a3eeaaf104c9043ae94137df42`. Production and existing assertion preservation were checked against db409b57. Both approved plan identities and the approval identity still matched the authority reads. Final whitespace/scope checks passed. npm run check:docs exited 0 on the completed candidate: eight advisory warnings, all in unchanged files; both changed item files reported no issues.
+
+Focused round 2 result: pending; no success claimed before the review finishes. The complete final focused report will be recorded in the PR self-review record, avoiding a report in its own reviewed receipt.

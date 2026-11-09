@@ -643,6 +643,75 @@ public sealed class B10AbruptSupervisorTests
         await AssertFailedRunAsync(fixture, "b10_abrupt_cgroup_unavailable");
     }
 
+    [Fact]
+    public async Task Given_AcknowledgementFlushAdvancesClock_When_AcceptedIsAcknowledged_Then_AckSentFollowsFlush()
+    {
+        await using var fixture = new DeadlineFixture();
+        var timeline = (B10AbruptTimeline)GetPrivate(fixture.Supervisor, "_timeline");
+        using var acknowledgements = new FlushObservedStream(() =>
+        {
+            var beforeFlush = B10AbruptWire.Element(timeline.Snapshot()).GetProperty("entries");
+            Assert.DoesNotContain(beforeFlush.EnumerateArray(), entry => entry.GetProperty("stage").GetString() == "ack_sent");
+            fixture.Clock.Advance(TimeSpan.FromMilliseconds(25));
+        });
+        fixture.Child.AcknowledgementOutput = acknowledgements;
+        await fixture.AddPreparedAsync("original", "same_instance");
+        var failure = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Supervisor.HandleAsync(new("accepted", 2,
+            B10AbruptWire.Element(new { attempt_id = "original", prepared_sequence = 1 })), TestContext.Current.CancellationToken));
+        Assert.Equal("b10_abrupt_sample_missing", failure.Message);
+        acknowledgements.Position = 0;
+        var acknowledgement = await B10AbruptWire.ReadMessageAsync(acknowledgements, 1, TestContext.Current.CancellationToken);
+        Assert.NotNull(acknowledgement);
+        Assert.Equal("ack", acknowledgement.Kind);
+        Assert.Equal(2, acknowledgement.Data.GetProperty("acknowledged_sequence").GetInt64());
+        var entries = B10AbruptWire.Element(timeline.Snapshot()).GetProperty("entries");
+        var sent = Assert.Single(entries.EnumerateArray(), entry => entry.GetProperty("stage").GetString() == "ack_sent");
+        Assert.Equal(TimeSpan.FromMilliseconds(25).Ticks, sent.GetProperty("ticks").GetInt64());
+        Assert.Equal("{\"arm\":1}", sent.GetProperty("facts").GetRawText());
+    }
+
+    [Fact]
+    public async Task Given_LiveChildAtCleanEof_When_GraceWaits_Then_EventStreamEndedRemainsUnwritten()
+    {
+        await using var fixture = new DeadlineFixture();
+        using var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var timeline = new B10AbruptTimeline(fixture.Clock, "supervisor", writer);
+        SetPrivate(fixture.Supervisor, "_timeline", timeline);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        Task run = fixture.Supervisor.RunAsync(cancellation.Token);
+        try
+        {
+            await fixture.Clock.WaitForTimerAsync(TimeSpan.FromMilliseconds(10));
+            var entries = B10AbruptWire.Element(timeline.Snapshot()).GetProperty("entries");
+            Assert.Single(entries.EnumerateArray(), entry => entry.GetProperty("stage").GetString() == "event_stream_ended");
+            Assert.DoesNotContain(entries.EnumerateArray(), entry => entry.GetProperty("stage").GetString() == "grace_ended");
+            Assert.False(fixture.Child.HasExited);
+            Assert.False(run.IsCompleted);
+            Assert.Equal(string.Empty, writer.ToString());
+        }
+        finally
+        {
+            await cancellation.CancelAsync();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+        }
+    }
+
+    [Fact]
+    public async Task Given_ChildExitsDuringGrace_When_UnexpectedExitIsReported_Then_ElapsedIncludesGraceWait()
+    {
+        await using var fixture = new DeadlineFixture();
+        Task run = fixture.Supervisor.RunAsync(TestContext.Current.CancellationToken);
+        await fixture.Clock.WaitForTimerAsync(TimeSpan.FromMilliseconds(10));
+        fixture.Child.Exited = true;
+        fixture.Clock.Advance(TimeSpan.FromMilliseconds(1234));
+        var failure = await Assert.ThrowsAsync<InvalidDataException>(() => run.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+        Assert.Equal("b10_abrupt_unexpected_exit", failure.Message);
+        using var report = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(fixture.Root, "abrupt", "failure.json"), TestContext.Current.CancellationToken));
+        var facts = report.RootElement.GetProperty("data").GetProperty("diagnostic").GetProperty("detail").GetProperty("facts");
+        Assert.Equal("{\"has_exited\":1,\"elapsed_milliseconds\":1234,\"budget_milliseconds\":10000}", facts.GetRawText());
+        Assert.Equal(0, fixture.Child.Kills);
+    }
+
     [Theory]
     [InlineData("start", false)] [InlineData("start", true)]
     [InlineData("preflight", false)] [InlineData("preflight", true)]
@@ -1061,13 +1130,23 @@ public sealed class B10AbruptSupervisorTests
         public async ValueTask DisposeAsync() { await Journal.DisposeAsync(); Directory.Delete(Root, true); }
     }
 
+    private sealed class FlushObservedStream(Action onFlush) : MemoryStream
+    {
+        public override Task FlushAsync(CancellationToken cancellationToken)
+        {
+            onFlush();
+            return base.FlushAsync(cancellationToken);
+        }
+    }
+
     private sealed class DeadlineChild(string marker) : IB10AbruptProcess
     {
         public OwnedProducerProcess.ProcessIdentity Identity { get; } = new(123, 122, marker, 1);
         internal Stream EventInput { get; set; } = Stream.Null;
         public Stream Events => EventInput;
         public bool EventsReady() => true;
-        public Stream Acknowledgements => Stream.Null;
+        internal Stream AcknowledgementOutput { get; set; } = Stream.Null;
+        public Stream Acknowledgements => AcknowledgementOutput;
         internal bool Exited { get; set; }
         internal Func<bool>? ReadHasExited { get; set; }
         public bool HasExited => ReadHasExited?.Invoke() ?? Exited;
