@@ -12,3 +12,6 @@ crash.log
 crash.*.log
 *.tfbackend
 *.tfbackend.json
+
+# Python bytecode from test runs
+__pycache__/
