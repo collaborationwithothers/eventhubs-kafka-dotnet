@@ -383,14 +383,15 @@ internal sealed class B10AbruptProducer
     }
 
     // Called from the child channel's writer loop after it writes a terminal frame, and after each probe cohort drain.
-    internal void MarkTerminals()
+    internal void MarkTerminals(string? writtenAttemptId = null)
     {
         try
         {
             List<(ProbeAttempt Attempt, JsonElement Terminal)> ready = [];
             lock (gate)
                 foreach (ProbeAttempt attempt in probes)
-                    if (attempt.Terminal is { } terminal && attempt.TryClaimTerminalMark()) ready.Add((attempt, terminal));
+                    if ((writtenAttemptId is null || attempt.AttemptId == writtenAttemptId) &&
+                        attempt.Terminal is { } terminal && attempt.TryClaimTerminalMark()) ready.Add((attempt, terminal));
             foreach ((ProbeAttempt attempt, JsonElement terminal) in ready)
                 timeline.Mark(B10AbruptStage.ProbeTerminal,
                     Fact(B10AbruptFact.Arm, ArmCode(attempt.Key[(attempt.Key.LastIndexOf('/') + 1)..])),

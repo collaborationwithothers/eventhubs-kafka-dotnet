@@ -38,3 +38,35 @@ Findings: none at P0 or P1
 Focused round 1 covers only this acceptance/receipt and state update against that reviewed source commit, with the full PR diff as context. It changes no production/test source. Cumulative counters on entry: comprehensive 1 of 2 complete, focused 0 of 2 complete. Its complete final report belongs in the PR self-review record, avoiding a report in its own reviewed receipt. No prose-only P2-correction round or P2 follow-up issue was needed. Hosted reviews and exact-head cold Claude review remain required merge gates; no merge is claimed.
 
 Models: Codex author and implementation subagents; model identity is not exposed by the interface. Repository skill requires high effort for implementation subagents and the fresh-context cold reviewer; that setting was requested. Exact-head Claude review is pending for the control session under decision 6733448366 item 4.
+
+## Review-correction execution card
+
+Hari's current task directly authorizes one correction commit on head `3d24ded6e53bda00d23f13fe37dfae756ba4f762`. It adopts [Codex P2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/411#discussion_r4511844560) and the four test additions in [Claude comprehensive review 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/411#issuecomment-6738236496). Under rule 10 these extra tests would otherwise be out of contract; Hari explicitly authorizes them because they pin properties the fifth trial depends on. P3 receives no action.
+
+- Production scope: only the written terminal attempt may be marked by the channel hook; explicit post-drain calls still scan remaining unmarked terminals. Callback writes stay forbidden. No other production behavior, protocol, C1, failure-name, project/package, workflow, Azure or trial change.
+- Validation: targeted new tests and abrupt classes, plan acceptance commands, and six scratch-only named mutants run once each: callback console write, host wiring removed, each of the two Hold calls changed to Mark, terminal writes under the producer gate, and hook marking all terminal attempts. Mutation sample is fixed at these six; record the gap and continue for any survivor, with no scope expansion.
+- Budget: comprehensive 2/2 used (local round 1 and Claude round 2), focused 1/2 used. This correction uses focused round 2/2. No third comprehensive pass; exhaustion or unsafe focus saves -wip and hands off to Hari under rule 8. This is consolidated source correction round 2/2, not a reset. Existing verification root causes 4/20; documentation root causes 0/20; review root causes now 2/20 (written-frame identity and the shared missing-test root cause). Caps and exhaustion actions above remain in force.
+- Publication: Hari subsequently directed this session to push the PR first and continue verification/review afterwards. This explicitly authorizes the early correction push before its final focused round and full acceptance finish. It does not claim those gates passed or relax merge gates. Keep one correction commit, refresh authority, reply to findings and request Codex review of the final head; then handoff.
+
+Correction evidence measured 2026-11-09 on base `3d24ded6e53bda00d23f13fe37dfae756ba4f762` plus this five-file correction:
+
+- Added four Fact tests; existing assertions remain unchanged. The existing hook test only changes delegate shape for the attempt ID. Producer tests now share the existing nonparallel environment collection so Console.Out/Error capture cannot race other tests.
+- Final strengthened producer-class green: 66 total, 66 passed, zero failures/skips/errors. Release build: zero warnings/errors. XML: `/tmp/411-correction/producer-tests.xml`. Producer test-file SHA-256: `475b02371f129c37ae90688a5d83857e747c313c43318ee69ce0042644593c0b`.
+- The real-host test calls CreateProducerAsync with local DI and a token provider that throws if used; no native producer is initialized and token calls stay zero. Its channel holds the first frame flush and the second frame's first write, proving only the written original is marked while the resend is still unwritten. The gate test then proves a post-drain-style full scan marks remaining unmarked terminals.
+- Phase: 12 passed. Lifecycle: 333 passed. Documentation tests: 28 passed. Host/chart acceptance passed, including the exact produced-byte bridge assertion. Full `./scripts/verify-dotnet.sh` is still running at the early push; its final results will be recorded in the PR self-review record. No full-run success is claimed here.
+- Scope proof: exactly five allowed correction paths; production changes only in child channel and producer. The production host method-group assignment now binds the attempt-carrying hook without a host source edit. Contract wording remains true and byte-unchanged. Production failure literals and all dependency/project/workflow/scenario/verifier files are unchanged; C5 remains not applicable. Whitespace check passed.
+
+Fixed mutation sample, one execution each in scratch copies. Each locked restore and Release build passed with zero warnings/errors. Each corresponding test XML contains one named failure, zero skips/errors; test exits were 2. Matching candidate baseline: 66 passed. No survivor, retry or extra mutant.
+
+| Mutant | Named assertion that failed |
+| --- | --- |
+| Callback Console.Error write | Console isolation Assert.Empty, captured mutant line |
+| Production host hook removed | Real-host stage Assert.Single, empty collection |
+| ProbeProduced Hold changed to Mark | Held-stage collection equality, premature output |
+| ProbeReportSelected Hold changed to Mark | Held-stage collection equality, premature output |
+| Terminal writes inside producer gate | Callback WaitAsync timed out while writer blocked; cleanup released it |
+| Written-attempt filter removed | Real-host stage Assert.Single, two stages after only the first written frame |
+
+All six mutants were killed. Scratch evidence: `/tmp/411-correction/mutants/results.json` and per-mutant XML/logs. Source/dependency hashes were compared against the frozen snapshot; each mutant changed exactly its intended source file, and no mutant entered the repository.
+
+Cumulative verification root causes remain 4/20; these expected mutant failures are red evidence, not verification failures. Review root causes 2/20; changed-file documentation roots 0/20 before the final scan; consolidated correction rounds 2/2. Comprehensive 2/2 and focused 1/2 are used; final focused round 2 is pending. The direct early-push instruction does not reset these counters or establish cold-review coverage for this correction. Complete final review and full-run evidence belong in the PR record; no merge is authorized by this receipt.

@@ -28,7 +28,7 @@ internal sealed class B10AbruptChildChannel : IAsyncDisposable
     internal string? Gap => Volatile.Read(ref gap);
 
     // Runs on the writer loop after a terminal frame is written, never on the delivery callback.
-    internal Action? TerminalWritten { get; set; }
+    internal Action<string>? TerminalWritten { get; set; }
 
     internal static B10AbruptChildChannel Connect(string eventsHandle, string ackHandle, string challenge)
     {
@@ -88,7 +88,7 @@ internal sealed class B10AbruptChildChannel : IAsyncDisposable
                         message.Completion?.TrySetResult(B10AbruptWire.Nonnegative(acknowledgement.Data.GetProperty("acknowledged_sequence")));
                     }
                     else message.Completion?.TrySetResult(0);
-                    if (message.Kind == "terminal") NotifyTerminalWritten();
+                    if (message.Kind == "terminal") NotifyTerminalWritten(message.Data);
                 }
                 catch (Exception exception)
                 {
@@ -105,7 +105,7 @@ internal sealed class B10AbruptChildChannel : IAsyncDisposable
         }
     }
 
-    private void NotifyTerminalWritten() { try { TerminalWritten?.Invoke(); } catch (Exception) { } }
+    private void NotifyTerminalWritten(JsonElement terminal) { try { TerminalWritten?.Invoke(terminal.GetProperty("attempt_id").GetString()!); } catch (Exception) { } }
 
     public async ValueTask DisposeAsync()
     {

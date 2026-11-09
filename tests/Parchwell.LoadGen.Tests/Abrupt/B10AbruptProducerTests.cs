@@ -6,13 +6,17 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Channels;
+using Azure.Core;
 using Confluent.Kafka;
+using Microsoft.Extensions.DependencyInjection;
+using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Statistics;
 using Parchwell.LoadGen.Run.Abrupt;
 using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.LoadGen.Run.Execution;
 using Parchwell.LoadGen.Run.Evidence;
+using Parchwell.LoadGen.Run.Input;
 using Parchwell.LoadGen.Run.Ledger;
 using Parchwell.Scenarios;
 using Xunit;
@@ -20,6 +24,7 @@ using Xunit;
 namespace Parchwell.LoadGen.Tests.Abrupt;
 
 #pragma warning disable CA1707
+[Collection("B10AbruptEnvironment")]
 public sealed class B10AbruptProducerTests
 {
     private static readonly string[] EventNames = ["uploaded", "ocr-started", "ocr-finished", "classified", "indexed"];
@@ -199,7 +204,7 @@ public sealed class B10AbruptProducerTests
             BindingFlags.Instance | BindingFlags.NonPublic, null, [events, Stream.Null, 1L], CultureInfo.InvariantCulture)!;
         var lengths = new List<long>();
         var hooksComplete = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        channel.TerminalWritten = () =>
+        channel.TerminalWritten = _ =>
         {
             lengths.Add(events.Length);
             if (lengths.Count == 2) hooksComplete.TrySetResult();
@@ -219,6 +224,176 @@ public sealed class B10AbruptProducerTests
         Assert.All(lengths, length => Assert.True(length > 0));
         Assert.True(lengths[1] > lengths[0]);
         Assert.Null(channel.Gap);
+    }
+
+    [Fact]
+    public async Task Given_ProbeCallback_When_Recorded_Then_WritesNeitherConsoleStream()
+    {
+        using var output = new StringWriter(CultureInfo.InvariantCulture);
+        using var errors = new StringWriter(CultureInfo.InvariantCulture);
+        await using var fixture = new Fixture();
+        fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
+        Action<DeliveryReport<byte[], byte[]>>? callback = null;
+        fixture.Native.OnProduce = (_, captured) => callback = captured;
+        var attempt = await fixture.Runner.InvokeProbe("same_instance", [1], null, TestContext.Current.CancellationToken);
+        Assert.NotNull(callback);
+        TextWriter previousOutput = Console.Out;
+        TextWriter previousErrors = Console.Error;
+        try
+        {
+            Console.SetOut(output);
+            Console.SetError(errors);
+            callback(Report());
+        }
+        finally
+        {
+            Console.SetError(previousErrors);
+            Console.SetOut(previousOutput);
+        }
+
+        Assert.NotNull(attempt.Terminal);
+        Assert.Empty(output.ToString());
+        Assert.Empty(errors.ToString());
+    }
+
+    [Fact]
+    public async Task Given_ReportAndAcceptanceAcknowledgementsHeld_When_Invoking_Then_ProducedAndSelectedStagesWaitForNextMark()
+    {
+        using var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var clock = new ReleaseBoundaryClock(new DateTimeOffset(2026, 11, 7, 0, 0, 0, TimeSpan.Zero));
+        await using var fixture = new Fixture(clock: clock, timeline: new B10AbruptTimeline(clock, "child", writer));
+        var reportSent = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reportRelease = new TaskCompletionSource<long>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var acceptedRelease = new TaskCompletionSource<long>(TaskCreationOptions.RunContinuationsAsynchronously);
+        fixture.Send = (kind, _) =>
+        {
+            if (kind == "pre_acceptance_report") { reportSent.TrySetResult(); return reportRelease.Task; }
+            return kind == "accepted" ? acceptedRelease.Task : Task.FromResult(1L);
+        };
+        fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
+        clock.Advance(TimeSpan.FromMilliseconds(1));
+        fixture.Observe();
+        clock.Advance(TimeSpan.FromMilliseconds(1));
+        Task operation = fixture.Runner.InvokeProbe("same_instance", [1], null, TestContext.Current.CancellationToken);
+        try
+        {
+            await reportSent.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            Assert.Equal(["producer_constructed", "probe_prepared"], StageLines(writer).Select(StageName));
+            reportRelease.SetResult(2);
+            await fixture.Accepted.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            Assert.False(operation.IsCompleted);
+            Assert.Equal(["producer_constructed", "probe_prepared"], StageLines(writer).Select(StageName));
+        }
+        finally
+        {
+            reportRelease.TrySetResult(2);
+            acceptedRelease.TrySetResult(3);
+            await operation.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        }
+
+        Assert.Equal(["producer_constructed", "probe_prepared", "probe_produced", "probe_report_selected", "probe_accepted"],
+            StageLines(writer).Select(StageName));
+        JsonElement selected = Assert.Single(StageLines(writer), entry => StageName(entry) == "probe_report_selected");
+        Assert.Equal(1, selected.GetProperty("facts").GetProperty("report_present").GetInt32());
+    }
+
+    [Fact]
+    public async Task Given_TerminalStageWriterBlocked_When_AnotherCallbackArrives_Then_CallbackRecordsWithoutWaitingForWriter()
+    {
+        using var writer = new BlockingTerminalWriter();
+        await using var fixture = new Fixture(timeline: new B10AbruptTimeline(TimeProvider.System, "child", writer));
+        fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
+        var original = await fixture.Runner.InvokeProbe("same_instance", [1], null, TestContext.Current.CancellationToken);
+        var resend = await fixture.Runner.InvokeProbe("same_instance", [1], original.AttemptId, TestContext.Current.CancellationToken);
+        fixture.Runner.RecordTerminal(original, Report());
+        Task mark = Task.Run(() => fixture.Runner.MarkTerminals(), TestContext.Current.CancellationToken);
+        Task? callback = null;
+        try
+        {
+            await writer.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            callback = Task.Run(() => fixture.Runner.RecordTerminal(resend, Report()), TestContext.Current.CancellationToken);
+            await callback.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            Assert.NotNull(resend.Terminal);
+            Assert.False(mark.IsCompleted);
+            Assert.Equal(2, fixture.Events.Count(entry => entry.Kind == "terminal"));
+        }
+        finally
+        {
+            writer.Release.Set();
+            await mark.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            if (callback is not null) await callback.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        }
+        fixture.Runner.MarkTerminals();
+        Assert.Equal(2, StageLines(writer).Count(entry => StageName(entry) == "probe_terminal"));
+    }
+
+    [Fact]
+    public async Task Given_ProductionHostAndQueuedTerminals_When_FirstFrameIsWritten_Then_OnlyItsTerminalStageIsMarked()
+    {
+        await using var fixture = new Fixture();
+        using var errors = new StringWriter(CultureInfo.InvariantCulture);
+        using var events = new TerminalFrameStream();
+        var channel = (B10AbruptChildChannel)Activator.CreateInstance(typeof(B10AbruptChildChannel),
+            BindingFlags.Instance | BindingFlags.NonPublic, null, [events, Stream.Null, 1L], CultureInfo.InvariantCulture)!;
+        var options = HostOptions(fixture.Root);
+        await File.WriteAllTextAsync(options.StartLineBindingPath, JsonSerializer.Serialize(new
+        {
+            start_line = "synthetic", broker_inventory = JsonSerializer.Serialize(new
+            {
+                schema_version = 1, identity = new { run_id = options.RunId, scenario_id = "B10", configuration_id = "C1" },
+                brokers = new[] { new { name = "broker" } }, source = "kafka_metadata", source_commit = options.SourceCommit
+            }), completion = "synthetic"
+        }), TestContext.Current.CancellationToken);
+        var tokenProvider = new UnusedTokenProvider();
+        await using ServiceProvider services = ProducerHostServices(options, tokenProvider);
+        object? runtime = null;
+        TextWriter previousErrors = Console.Error;
+        try
+        {
+            Console.SetError(errors);
+            var creation = (Task)typeof(B10AbruptHost).GetMethod("CreateProducerAsync", BindingFlags.Static | BindingFlags.NonPublic)!
+                .Invoke(null, [services, options, channel, null, TestContext.Current.CancellationToken])!;
+            await creation.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            runtime = creation.GetType().GetProperty("Result")!.GetValue(creation)!;
+            B10AbruptProducer producer = RuntimeMember<B10AbruptProducer>(runtime, "Producer");
+            var original = new B10AbruptProducer.ProbeAttempt("original", "B10/run-1/C1/1/same_instance", [1], null, 0);
+            var resend = new B10AbruptProducer.ProbeAttempt("resend", original.Key, [1], original.AttemptId, 1);
+            var probes = (List<B10AbruptProducer.ProbeAttempt>)typeof(B10AbruptProducer)
+                .GetField("probes", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(producer)!;
+            probes.AddRange([original, resend]);
+            // Do not initialize: the host's native producer factory must remain uncalled.
+            producer.RecordTerminal(original, Report());
+            await events.FirstFlush.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            producer.RecordTerminal(resend, Report());
+            Assert.NotNull(original.Terminal);
+            Assert.NotNull(resend.Terminal);
+            Assert.Empty(StageLines(errors));
+
+            events.ReleaseFirst.TrySetResult();
+            await events.SecondWrite.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            JsonElement first = Assert.Single(StageLines(errors));
+            Assert.Equal("probe_terminal", StageName(first));
+            Assert.Equal(1, first.GetProperty("facts").GetProperty("is_original").GetInt32());
+            Assert.Null(channel.Gap);
+        }
+        finally
+        {
+            events.ReleaseFirst.TrySetResult();
+            events.ReleaseSecond.TrySetResult();
+            try
+            {
+                await channel.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+                if (runtime is not null)
+                {
+                    await RuntimeMember<KafkaStatisticsSession>(runtime, "Statistics").DisposeAsync();
+                    await RuntimeMember<RunEvidenceSession>(runtime, "Evidence").DisposeAsync();
+                }
+            }
+            finally { Console.SetError(previousErrors); }
+        }
+
+        Assert.Equal([1, 0], StageLines(errors).Select(entry => entry.GetProperty("facts").GetProperty("is_original").GetInt32()));
+        Assert.Equal(0, tokenProvider.Calls);
     }
 
     [Fact]
@@ -777,6 +952,48 @@ public sealed class B10AbruptProducerTests
         Assert.Equal(["prepared", "accepted", "terminal"], fixture.Events.Select(item => item.Kind));
     }
 
+    private static IEnumerable<JsonElement> StageLines(StringWriter writer) => writer.ToString()
+        .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
+        .Select(line => JsonSerializer.Deserialize<JsonElement>(line["b10_abrupt_stage ".Length..]));
+
+    private static string? StageName(JsonElement entry) => entry.GetProperty("stage").GetString();
+
+    private static T RuntimeMember<T>(object runtime, string name) => (T)runtime.GetType().GetProperty(name)!.GetValue(runtime)!;
+
+    private static B10AbruptOptions HostOptions(string root)
+    {
+        var values = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["Enabled"] = "true", ["Purpose"] = "diagnostic_trial", ["Role"] = "child", ["RunId"] = "run-1",
+            ["ScenarioId"] = "B10", ["ConfigurationId"] = "C1", ["Phase"] = "C1", ["Repeat"] = "1",
+            ["SourceCommit"] = new('a', 40), ["ImageReference"] = "image@sha256:" + new string('b', 64),
+            ["JobName"] = "run-1-loadgen", ["PodName"] = "pod-1", ["PodUid"] = "uid-1", ["NamespaceName"] = "synthetic-ns",
+            ["BlobEndpoint"] = "https://storage.invalid/", ["ScenarioSourceRoot"] = AppContext.BaseDirectory,
+            ["OutputRoot"] = root, ["StartLineBindingPath"] = Path.Combine(root, "start-line.json"),
+            ["EventsPipeHandle"] = "4", ["AckPipeHandle"] = "5", ["IdentityChallenge"] = new('c', 64)
+        };
+        foreach (var policy in B10AbruptOptions.Policy) values[policy.Key] = policy.Value.ToString(CultureInfo.InvariantCulture);
+        return B10AbruptOptions.Read(values.ToDictionary(pair => B10AbruptOptions.Prefix + pair.Key, pair => pair.Value, StringComparer.Ordinal));
+    }
+
+    private static ServiceProvider ProducerHostServices(B10AbruptOptions options, UnusedTokenProvider tokenProvider)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(TimeProvider.System);
+        typeof(B10AbruptHost).GetMethod("AddB10KafkaRoles", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, [services, options]);
+        services.AddParchwellScenarios(value =>
+        { value.MaxDocumentCharacters = 1048576; value.MaxNestingDepth = 32; value.MaxScalarCharacters = 65536; value.MaxParserEvents = 100000; });
+        services.AddSingleton<IScenarioSource>(new FileSystemScenarioSource(options.ScenarioSourceRoot));
+        services.AddSingleton<RunEvidenceSinkRouter>();
+        services.AddSingleton<IKafkaStatisticsEvidenceSink>(provider => provider.GetRequiredService<RunEvidenceSinkRouter>());
+        services.AddSingleton<IKafkaTokenProvider>(tokenProvider);
+        services.AddParchwellKafkaAuthentication(value =>
+        { value.TenantId = "synthetic-tenant"; value.ClientId = "synthetic-client"; value.TokenFilePath = Path.Combine(options.OutputRoot, "missing-token"); });
+        services.AddParchwellKafkaStatistics(value =>
+        { value.MaxSnapshotCharacters = 1048576; value.QueueCapacity = 2048; value.MaxBrokerSeries = 64; value.CompletionTimeout = TimeSpan.FromSeconds(1); });
+        return services.BuildServiceProvider();
+    }
+
     private static JsonElement Detail(Exception exception, string member)
     {
         JsonElement detail = JsonSerializer.SerializeToElement(B10AbruptDiagnostics.Describe(exception)).GetProperty("detail");
@@ -910,6 +1127,60 @@ public sealed class B10AbruptProducerTests
             reportStop.Dispose();
             if (Evidence is not null) await Evidence.DisposeAsync();
             Directory.Delete(Root, true);
+        }
+    }
+
+    private sealed class UnusedTokenProvider : IKafkaTokenProvider
+    {
+        internal int Calls { get; private set; }
+        public AccessToken GetToken(string scope, CancellationToken cancellationToken)
+        {
+            Calls++;
+            throw new InvalidOperationException("synthetic_token_provider_must_not_run");
+        }
+    }
+
+    private sealed class TerminalFrameStream : MemoryStream
+    {
+        private int flushes;
+        private int writes;
+        internal TaskCompletionSource FirstFlush { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal TaskCompletionSource SecondWrite { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal TaskCompletionSource ReleaseFirst { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal TaskCompletionSource ReleaseSecond { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public override Task FlushAsync(CancellationToken cancellationToken)
+        {
+            if (Interlocked.Increment(ref flushes) == 1) { FirstFlush.TrySetResult(); return ReleaseFirst.Task; }
+            return base.FlushAsync(cancellationToken);
+        }
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            if (Interlocked.Increment(ref writes) == 3)
+            {
+                SecondWrite.TrySetResult();
+                await ReleaseSecond.Task.ConfigureAwait(false);
+            }
+            await base.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private sealed class BlockingTerminalWriter() : StringWriter(CultureInfo.InvariantCulture)
+    {
+        internal TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal ManualResetEventSlim Release { get; } = new();
+        public override void WriteLine(string? value)
+        {
+            if (value?.Contains("\"stage\":\"probe_terminal\"", StringComparison.Ordinal) == true)
+            {
+                Entered.TrySetResult();
+                Release.Wait();
+            }
+            base.WriteLine(value);
+        }
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) Release.Dispose();
+            base.Dispose(disposing);
         }
     }
 
