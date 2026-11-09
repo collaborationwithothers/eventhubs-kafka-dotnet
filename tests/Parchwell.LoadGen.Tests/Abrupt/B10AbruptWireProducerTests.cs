@@ -68,7 +68,7 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
             DateTimeOffset release = DateTimeOffset.ParseExact(selection.GetProperty("data").GetProperty("checkpoint").GetProperty("data").GetProperty("release_utc").GetString()!, "O", CultureInfo.InvariantCulture);
             byte[] validBinding = Binding(first, files, release, TimeProvider.System);
             string bindingPath = Path.Combine(root, "input.json");
-            foreach (string fault in new[] { "missing_file", "missing_receipt", "changed_receipt", "job", "pod_uid", "source", "image", "predecessor", "same_pod", "same_uid", "stale_selection", "unselected_original", "changed_candidates", "terminal_exclusion", "excluded_first_candidate_valid", "entry_not_first_unexcluded", "legacy", "dialect", "purpose_removed", "schema_relabel" })
+            foreach (string fault in new[] { "missing_file", "missing_receipt", "changed_receipt", "job", "pod_uid", "source", "image", "predecessor", "same_pod", "same_uid", "stale_selection", "unselected_original", "changed_candidates", "terminal_exclusion", "excluded_first_candidate_valid", "entry_not_first_unexcluded", "entry_sequence_at_burst_size", "selected_count_above_burst_size", "exclusion_not_candidate", "legacy", "dialect", "purpose_removed", "schema_relabel" })
             {
                 JsonObject binding = JsonNode.Parse(validBinding)!.AsObject();
                 string detail = "receipt_changed";
@@ -94,10 +94,32 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
                     case "terminal_exclusion":
                     case "excluded_first_candidate_valid":
                     case "entry_not_first_unexcluded":
+                    case "entry_sequence_at_burst_size":
+                    case "selected_count_above_burst_size":
+                    case "exclusion_not_candidate":
                         var changedSelection = JsonNode.Parse(binding["files"]!["kill-selection.json"]!.GetValue<string>())!;
                         var selectionData = changedSelection["data"]!;
                         if (fault == "unselected_original") selectionData["entries"]![0]!["attempt_id"] = "synthetic-first-timeout-0";
                         if (fault == "changed_candidates") selectionData["candidate_attempt_ids"]![0] = "synthetic-first-timeout-0";
+                        if (fault == "entry_sequence_at_burst_size") selectionData["entries"]![0]!["sequence"] = 5;
+                        if (fault == "selected_count_above_burst_size")
+                        {
+                            selectionData["checkpoint"]!["data"]!["selected_attempt_ids"]!.AsArray().Add("synthetic-extra-candidate-5");
+                            selectionData["candidate_attempt_ids"]!.AsArray().Add("synthetic-extra-candidate-5");
+                            byte[] checkpointBytes = Encoding.UTF8.GetBytes(selectionData["checkpoint"]!.ToJsonString());
+                            selectionData["checkpoint_descriptor"] = JsonSerializer.SerializeToNode(
+                                B10AbruptPublisher.Describe("cross_restart-checkpoint.json", checkpointBytes), B10AbruptWire.JsonOptions);
+                        }
+                        if (fault == "exclusion_not_candidate")
+                        {
+                            const string nonCandidate = "synthetic-non-candidate";
+                            Assert.DoesNotContain(nonCandidate, selectionData["candidate_attempt_ids"]!.AsArray().Select(candidate => candidate!.GetValue<string>()));
+                            selectionData["terminal_exclusions"]!.AsArray().Add(new JsonObject
+                            {
+                                ["attempt_id"] = nonCandidate,
+                                ["terminal_sequence"] = 1
+                            });
+                        }
                         if (fault == "terminal_exclusion") selectionData["terminal_exclusions"]!.AsArray().Add(new JsonObject
                         {
                             ["attempt_id"] = selectionData["entries"]![0]!["attempt_id"]!.GetValue<string>(),

@@ -1040,6 +1040,56 @@ public sealed class B10AbruptSupervisorTests
         Assert.Empty(checkpoint.Data.GetProperty("selected_attempt_ids").EnumerateArray());
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Given_DistinctBurstAcceptanceTimes_When_ControlExposureFails_Then_FactsDescribeLastMember(bool lastTerminalFirst)
+    {
+        await using var fixture = new DeadlineFixture();
+        using var acknowledgements = new OneShotWriteObservedStream(() => fixture.Clock.Advance(TimeSpan.FromMilliseconds(2)));
+        fixture.Child.AcknowledgementOutput = acknowledgements;
+        fixture.Child.OnConfirmStopped = () => fixture.Clock.Advance(TimeSpan.FromMilliseconds(1));
+        SetControlFiles(fixture);
+        for (int i = 0; i < 5; i++)
+        {
+            if (i != 0) fixture.Clock.Advance(TimeSpan.FromMilliseconds(10));
+            await fixture.Supervisor.HandleAsync(PreparedMember(i), TestContext.Current.CancellationToken);
+            if (i == 0) await fixture.Supervisor.HandleAsync(new("pre_acceptance_report", 2, ReportData("same_instance", "original-0")), TestContext.Current.CancellationToken);
+            bool terminalFirst = i == 0 ? !lastTerminalFirst : i == 4 && lastTerminalFirst;
+            if (terminalFirst) await fixture.Supervisor.HandleAsync(Terminal("original-" + i, 0, 2, true), TestContext.Current.CancellationToken);
+            if (i < 4)
+            {
+                await fixture.AcceptAsync("original-" + i, afterKill: false);
+                if (!terminalFirst) await fixture.Supervisor.HandleAsync(Terminal("original-" + i, 0, 2, true), TestContext.Current.CancellationToken);
+            }
+        }
+        if (!lastTerminalFirst)
+        {
+            var incoming = Channel.CreateUnbounded<B10AbruptWire.Message>();
+            Assert.True(incoming.Writer.TryWrite(Terminal("original-4", 0, 2, true)));
+            SetPrivate(fixture.Supervisor, "_incoming", incoming);
+        }
+        fixture.BeforeFlush = () => fixture.Clock.Advance(TimeSpan.FromMilliseconds(3));
+        fixture.DelayNextFlush = true;
+        acknowledgements.ObserveNextWrite = true;
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.AcceptAsync("original-4", afterKill: false));
+        Assert.Equal("b10_abrupt_exposure_inconclusive", error.Message);
+        JsonElement detail = B10AbruptWire.Element(B10AbruptDiagnostics.Describe(error)).GetProperty("detail");
+        Assert.Equal("CheckpointControlAsync", detail.GetProperty("member").GetString());
+        JsonElement facts = detail.GetProperty("facts");
+        Assert.Equal(5, facts.GetProperty("accepted_count").GetInt64());
+        Assert.Equal(0, facts.GetProperty("selected_count").GetInt64());
+        Assert.Equal(5, facts.GetProperty("accepted_to_stop_milliseconds").GetInt64());
+        Assert.Equal(lastTerminalFirst ? 1 : 0, facts.GetProperty("terminal_before_accepted").GetInt64());
+        var checkpoint = Assert.Single(fixture.Journal.Frames, frame => frame.Kind == "checkpoint");
+        var acceptances = fixture.Journal.Frames.Where(frame => frame.Kind == "accepted").ToArray();
+        Assert.Equal(Enumerable.Range(0, 5).Select(i => "original-" + i), acceptances.Select(frame => frame.Data.GetProperty("attempt_id").GetString()));
+        Assert.All(acceptances, frame => Assert.True(frame.Sequence < checkpoint.Sequence));
+        Assert.Equal(5, checkpoint.Data.GetProperty("accepted_attempt_ids").GetArrayLength());
+        Assert.Empty(checkpoint.Data.GetProperty("selected_attempt_ids").EnumerateArray());
+        Assert.Equal(0, fixture.Child.Resumes);
+    }
+
     [Fact]
     public async Task Given_FourAccepted_When_Handled_Then_NoStopSignal()
     {
@@ -1059,6 +1109,8 @@ public sealed class B10AbruptSupervisorTests
     public async Task Given_BurstWithLastTerminalAfterStop_When_ControlCheckpoints_Then_BurstLineSeparatesAppendFromGap()
     {
         await using var fixture = new DeadlineFixture();
+        using var acknowledgements = new OneShotWriteObservedStream(() => fixture.Clock.Advance(TimeSpan.FromMilliseconds(2)));
+        fixture.Child.AcknowledgementOutput = acknowledgements;
         using var writer = new StringWriter(CultureInfo.InvariantCulture);
         SetPrivate(fixture.Supervisor, "_timeline", new B10AbruptTimeline(fixture.Clock, "supervisor", writer));
         SetControlFiles(fixture);
@@ -1074,6 +1126,7 @@ public sealed class B10AbruptSupervisorTests
         }
         fixture.BeforeFlush = () => fixture.Clock.Advance(TimeSpan.FromMilliseconds(3));
         fixture.DelayNextFlush = true;
+        acknowledgements.ObserveNextWrite = true;
         fixture.Child.OnConfirmStopped = () => fixture.Clock.Advance(TimeSpan.FromMilliseconds(1));
         var incoming = Channel.CreateUnbounded<B10AbruptWire.Message>();
         Assert.True(incoming.Writer.TryWrite(Terminal("original-4", 0, 2, true)));
@@ -1085,7 +1138,8 @@ public sealed class B10AbruptSupervisorTests
         var members = burst.RootElement.GetProperty("members").EnumerateArray().ToArray();
         Assert.Equal(5, members.Length);
         long stop = burst.RootElement.GetProperty("stop_request_ticks").GetInt64();
-        Assert.Equal(30000, members[4].GetProperty("ack_sent_ticks").GetInt64() - members[4].GetProperty("accepted_ticks").GetInt64());
+        Assert.Equal(10000000, fixture.Clock.TimestampFrequency);
+        Assert.Equal(50000, members[4].GetProperty("ack_sent_ticks").GetInt64() - members[4].GetProperty("accepted_ticks").GetInt64());
         Assert.Equal(0, stop - members[4].GetProperty("ack_sent_ticks").GetInt64());
         Assert.Equal([1, 1, 1, 1, 0], members.Select(member => member.GetProperty("terminal_before_stop").GetInt32()));
         Assert.Equal(10000, members[4].GetProperty("terminal_ticks").GetInt64() - stop);
@@ -1099,6 +1153,26 @@ public sealed class B10AbruptSupervisorTests
         var error = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.AcceptAsync("original-1"));
         Assert.Equal("b10_abrupt_capture_gap", error.Message);
         Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind == "accepted");
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task Given_InOrderSequencesWithNonIncreasingOrdinals_When_Accepted_Then_CaptureGap(int secondOrdinal)
+    {
+        await using var fixture = new DeadlineFixture();
+        SetControlFiles(fixture);
+        await fixture.AddPreparedAsync("original-0", "same_instance", sequence: 0, ordinal: 2);
+        await fixture.Supervisor.AcceptReportAsync(ReportData("same_instance", "original-0"), TestContext.Current.CancellationToken);
+        await fixture.AcceptAsync("original-0");
+        await fixture.AddPreparedAsync("original-1", "same_instance", sequence: 1, ordinal: secondOrdinal);
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.AcceptAsync("original-1"));
+        Assert.Equal("b10_abrupt_capture_gap", error.Message);
+        var accepted = Assert.Single(fixture.Journal.Frames, frame => frame.Kind == "accepted");
+        Assert.Equal("original-0", accepted.Data.GetProperty("attempt_id").GetString());
+        Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind == "accepted" && frame.Data.GetProperty("attempt_id").GetString() == "original-1");
+        Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind == "signal");
+        Assert.Equal(0, fixture.Child.Stops);
     }
 
     [Fact]
@@ -1373,6 +1447,16 @@ public sealed class B10AbruptSupervisorTests
         {
             onFlush();
             return base.FlushAsync(cancellationToken);
+        }
+    }
+
+    private sealed class OneShotWriteObservedStream(Action onWrite) : MemoryStream
+    {
+        internal bool ObserveNextWrite { get; set; }
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            if (ObserveNextWrite) { ObserveNextWrite = false; onWrite(); }
+            return base.WriteAsync(buffer, cancellationToken);
         }
     }
 
