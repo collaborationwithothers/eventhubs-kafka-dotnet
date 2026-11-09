@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -475,8 +476,8 @@ internal static class B10AbruptWire
     internal static void Reconcile(Descriptor expected, ReadOnlySpan<byte> actual)
     {
         if (expected.Length != actual.Length || expected.Sha256 != Convert.ToHexStringLower(SHA256.HashData(actual)) ||
-            expected.Name.Contains("..", StringComparison.Ordinal) || System.IO.Path.IsPathRooted(expected.Name) || expected.Name.Contains('\\')) throw new InvalidDataException("b10_abrupt_publication_failed");
+            expected.Name.Contains("..", StringComparison.Ordinal) || System.IO.Path.IsPathRooted(expected.Name) || expected.Name.Contains('\\')) throw B10AbruptDiagnostics.Attach(new InvalidDataException("b10_abrupt_publication_failed"));
     }
 
-    internal static InvalidDataException Gap(string reason) => new("b10_abrupt_capture_gap:" + reason);
+    internal static InvalidDataException Gap(string reason, [CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0) => B10AbruptDiagnostics.Attach(new InvalidDataException("b10_abrupt_capture_gap:" + reason), [B10AbruptDiagnostics.Fact(B10AbruptFact.GapReason, B10AbruptDiagnostics.GapReasonCode(reason))], file, member, line);
 }

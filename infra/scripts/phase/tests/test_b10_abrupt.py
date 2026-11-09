@@ -15,6 +15,19 @@ phase = support.phase
 SPEC = importlib.util.spec_from_file_location('b10_abrupt', support.REPO / 'infra/scripts/phase/b10_abrupt.py')
 abrupt = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(abrupt)
+SOURCE = (support.REPO / 'infra/scripts/phase/b10_abrupt.py').read_text().splitlines()
+SITE_MEMBERS = {'file', 'function', 'line', 'origin_file', 'origin_function', 'origin_line'}
+
+
+def source_line(text, offset=0):
+    """Return the one source line that contains text, plus offset, so no test pins a literal line number."""
+    found = [number for number, line in enumerate(SOURCE, 1) if text in line]
+    assert len(found) == 1, (text, found)
+    return found[0] + offset
+
+
+def site(diagnostic):
+    return {key: diagnostic['site'][key] for key in ('file', 'function', 'line')}
 
 
 class Setup:
@@ -123,6 +136,11 @@ class ByteIndependentCases(Setup, unittest.TestCase):
                 self.assertEqual(1, self.trial.collect())
             self.assertEqual([expected], self.p.state()['b10_abrupt_gaps'])
             self.assertEqual('job_collection', self.p.state()['b10_abrupt_diagnostics'][0]['boundary'])
+            diagnostic = self.p.state()['b10_abrupt_diagnostics'][0]
+            self.assertEqual({'file': 'b10_abrupt.py', 'function': 'collect',
+                              'line': source_line("self.record_failure(ValueError(reason), reason, 'job_collection')")},
+                             site(diagnostic))
+            self.assertIsNone(diagnostic['site']['origin_line'])
         state.update(b10_abrupt_gaps=[], b10_abrupt_diagnostics=[])
         self.p.save_state(state)
         (self.p.artifacts / record['job']).mkdir()
@@ -131,6 +149,13 @@ class ByteIndependentCases(Setup, unittest.TestCase):
             self.assertEqual(1, self.trial.collect())
         self.assertEqual(['b10_abrupt_publication_failed'], self.p.state()['b10_abrupt_gaps'])
         self.assertEqual('synthetic copy failure', self.p.state()['b10_abrupt_diagnostics'][0]['validation_detail'])
+        diagnostic = self.p.state()['b10_abrupt_diagnostics'][0]
+        self.assertEqual({'file': 'b10_abrupt.py', 'function': 'collect',
+                          'line': source_line('shutil.copytree(source, self.directory')}, site(diagnostic))
+        self.assertEqual(SITE_MEMBERS, set(diagnostic['site']))
+        self.assertNotEqual('b10_abrupt.py', diagnostic['site']['origin_file'])
+        self.assertNotIn('synthetic copy failure', json.dumps(diagnostic['site']))
+        self.assertIsNone(diagnostic['cause_type'])
 
     def test_named_admission_failure_is_recorded_once(self):
         self.diagnostic()
@@ -138,6 +163,52 @@ class ByteIndependentCases(Setup, unittest.TestCase):
             self.trial.fail('b10_abrupt_successor_late')
         self.trial.record_failure(raised.exception, 'b10_abrupt_publication_failed', 'outer')
         self.assertEqual(['b10_abrupt_successor_late'], self.p.state()['b10_abrupt_gaps'])
+        self.assertEqual('test_named_admission_failure_is_recorded_once',
+                         self.p.state()['b10_abrupt_diagnostics'][0]['site']['function'])
+
+    def test_termination_failure_records_its_cause_site(self):
+        self.diagnostic()
+        record = {'job': self.run_id + '-c1-r1-loadgen', 'mode': 'loadgen'}
+        cases = [({'items': []}, "raise ValueError('pod count')", 'ValueError'),
+                 ({'items': [{'metadata': None, 'spec': {}}]},
+                  "owners = [owner for owner in metadata['ownerReferences']", 'TypeError')]
+        for payload, source, cause_type in cases:
+            state = self.p.state()
+            state.update(safety_stop=False, b10_abrupt_gaps=[], b10_abrupt_diagnostics=[])
+            self.p.save_state(state)
+            def run(_args, _seconds, output=None, **_kwargs):
+                output.write_text(json.dumps(payload))
+                return 0
+            with self.subTest(payload=payload), patch.object(self.p, 'run', side_effect=run):
+                with self.assertRaisesRegex(ValueError, 'b10_abrupt_first_termination_unknown'):
+                    self.trial.observe_first_termination(record)
+            diagnostic = self.p.state()['b10_abrupt_diagnostics'][0]
+            self.assertEqual('b10_abrupt_first_termination_unknown', diagnostic['reason'])
+            self.assertEqual({'file': 'b10_abrupt.py', 'function': 'observe_first_termination',
+                              'line': source_line(source)}, site(diagnostic))
+            self.assertEqual(cause_type, diagnostic['cause_type'])
+
+    def test_unfinished_first_job_names_its_site(self):
+        self.diagnostic()
+        record = {'job': self.run_id + '-c1-r1-loadgen', 'mode': 'loadgen', 'outcome': 'failed'}
+        with patch.object(self.p, 'b10_deadline', return_value=time.monotonic() + 18000), \
+             patch.object(self.p, 'run_mode', return_value={'outcome': 'complete'}), \
+             patch.object(self.trial, 'metadata', return_value=None), \
+             patch.object(self.trial, 'job', return_value=record), \
+             patch.object(self.trial, 'observe_first_termination', return_value={}), \
+             patch.object(self.trial, 'download') as download:
+            self.assertEqual(1, self.trial.run())
+            download.assert_not_called()
+        diagnostic = self.p.state()['b10_abrupt_diagnostics'][0]
+        self.assertEqual('b10_abrupt_publication_failed', diagnostic['reason'])
+        self.assertEqual('first_termination', diagnostic['boundary'])
+        self.assertEqual('ValueError', diagnostic['exception_type'])
+        expected = {'file': 'b10_abrupt.py', 'function': 'run',
+                    'line': source_line("if first['outcome'] != 'complete':", 1)}
+        self.assertEqual(expected, site(diagnostic))
+        self.assertEqual({'origin_' + key: value for key, value in expected.items()},
+                         {key: diagnostic['site'][key] for key in ('origin_file', 'origin_function', 'origin_line')})
+        self.assertIsNone(diagnostic['cause_type'])
 
     def test_late_release_never_creates_or_launches_successor(self):
         self.diagnostic()
@@ -301,12 +372,12 @@ class ProducedBytesCases(Setup):
         receipt = abrupt.decode(files['termination.json'])
         receipt['data']['manifest']['sha256'] = '0' * 64
         files['termination.json'] = abrupt.encode(receipt)
-        cases.append((files, 'b10_abrupt_publication_failed', 'diagnostic descriptor mismatch'))
+        cases.append((files, 'b10_abrupt_publication_failed', 'diagnostic descriptor mismatch', 'bound'))
         files = dict(self.first)
         receipt = abrupt.decode(files['termination.json'])
         receipt['identity']['source_commit'] = 'f' * 40
         files['termination.json'] = abrupt.encode(receipt)
-        cases.append((files, 'b10_abrupt_successor_binding_invalid', 'diagnostic identity'))
+        cases.append((files, 'b10_abrupt_successor_binding_invalid', 'diagnostic identity', 'envelope'))
         files = dict(self.first)
         selection = abrupt.decode(files['kill-selection.json'])
         frames = [abrupt.decode(line) for line in files['journal.jsonl'].splitlines()]
@@ -316,8 +387,8 @@ class ProducedBytesCases(Setup):
         selection['data']['checkpoint_descriptor'] = abrupt.descriptor('cross_restart-checkpoint.json', abrupt.encode(checkpoint))
         files['journal.jsonl'] = b''.join(abrupt.encode(frame) + b'\n' for frame in frames)
         files['kill-selection.json'] = abrupt.encode(selection)
-        cases.append((self.rebind_first_publication(files), 'b10_abrupt_successor_binding_invalid', 'release boundary'))
-        for files, expected, detail in cases:
+        cases.append((self.rebind_first_publication(files), 'b10_abrupt_successor_binding_invalid', 'release boundary', 'accept_diagnostic_publication'))
+        for files, expected, detail, function in cases:
             state = self.p.state()
             state.pop('b10_abrupt_started', None)
             state.update(b10_abrupt_gaps=[], b10_abrupt_diagnostics=[])
@@ -337,6 +408,8 @@ class ProducedBytesCases(Setup):
             self.assertEqual(expected, diagnostic['reason'])
             self.assertEqual(detail, diagnostic['validation_detail'])
             self.assertEqual('first_publication', diagnostic['boundary'])
+            self.assertEqual(function, diagnostic['site']['function'])
+            self.assertEqual(source_line("raise ValueError('" + detail + "')"), diagnostic['site']['line'])
 
     def test_unsuccessful_successor_records_named_trial_failure(self):
         self.produced()

@@ -67,7 +67,7 @@ internal static class B10AbruptHost
                         await B10AbruptStatistics.ValidateCapturedAsync(Path.Combine(options.OutputRoot, "capture", "statistics.jsonl"),
                             new KafkaStatisticsIdentity("B10", options.RunId, KafkaClientRole.LoadGenProducer, options.PodName),
                             await ReadExpectedBrokersAsync(options, token).ConfigureAwait(false), settings, settings, token).ConfigureAwait(false);
-                    });
+                    }, new B10AbruptTimeline(clock, "supervisor", Console.Error));
                 await supervisor.RunAsync(lifetime.Token).ConfigureAwait(false);
                 return 0;
             }
@@ -128,9 +128,11 @@ internal static class B10AbruptHost
             {
                 failure,
                 exception_type = exceptionType,
+                diagnostic = B10AbruptDiagnostics.Bounded(exception),
                 cleanup_failure = startupFailure.CleanupFailure is { } cleanupFailure ? B10AbruptSupervisor.FailureName(cleanupFailure) : null,
                 cleanup_exception_type = startupFailure.CleanupFailure is { } cleanupException
                     ? cleanupException.GetType().FullName ?? cleanupException.GetType().Name : null,
+                cleanup_diagnostic = startupFailure.CleanupFailure is { } cleanupCause ? B10AbruptDiagnostics.Bounded(cleanupCause) : null,
                 cleanup_signal_observation = (startupFailure.CleanupFailure as OwnedProducerProcess.SignalException)?.Observation
             }, B10AbruptWire.JsonOptions));
             return 1;
@@ -141,14 +143,15 @@ internal static class B10AbruptHost
             {
                 failure,
                 exception_type = exceptionType,
+                diagnostic = B10AbruptDiagnostics.Bounded(exception),
                 signal_observation = signalFailure.Observation
             }, B10AbruptWire.JsonOptions));
             return 1;
         }
         if (failure == "kill_too_late" && exception.Message == "kill_too_late:no_unconfirmed_attempt") failure = "kill_too_late:no_unconfirmed_attempt";
-        error.WriteLine(failure == "b10_abrupt_configuration_invalid"
+        error.WriteLine((failure == "b10_abrupt_configuration_invalid"
             ? failure + " validation_detail=" + B10AbruptOptions.ReadValidationDetail(exception) + " exception_type=" + exceptionType
-            : failure + " exception_type=" + exceptionType);
+            : failure + " exception_type=" + exceptionType) + B10AbruptDiagnostics.PlainSuffix(exception));
         return 1;
     }
 

@@ -1,5 +1,6 @@
 using Azure.Storage.Blobs;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -150,7 +151,7 @@ internal sealed class B10AbruptPublisher(IB10AbruptStorage storage, TimeProvider
     {
         ValidateIdentity(identity);
         string[] allowed = identity.PredecessorInstanceId is null ? FirstMembers : SuccessorMembers;
-        if (_published.ContainsKey(name)) throw new IOException("b10_abrupt_publication_ambiguous");
+        if (_published.ContainsKey(name)) throw B10AbruptDiagnostics.Attach(new IOException("b10_abrupt_publication_ambiguous"));
         if (!allowed.Contains(name, StringComparer.Ordinal) || bytes.Length > 268435456 ||
             _published.Values.Sum(value => (long)value.Length) + bytes.Length > 1073741824) throw PublicationFailed();
         string path = $"{identity.RunId}/C1/r1/b10-abrupt-diagnostic/{identity.PodName}/{name}";
@@ -161,11 +162,11 @@ internal sealed class B10AbruptPublisher(IB10AbruptStorage storage, TimeProvider
             await storage.CreateAsync(path, bytes, linked.Token).ConfigureAwait(false);
         }
         // Create exceptions do not establish whether any SDK attempt took effect.
-        catch (Exception exception) { throw new IOException("b10_abrupt_publication_ambiguous", exception); }
+        catch (Exception exception) { throw B10AbruptDiagnostics.Attach(new IOException("b10_abrupt_publication_ambiguous", exception)); }
         byte[] actual;
         try { actual = await storage.ReadAsync(path, bytes.Length, linked.Token).ConfigureAwait(false); }
         catch (InvalidDataException exception) when (exception.Message == "b10_abrupt_publication_failed") { throw; }
-        catch (Exception exception) { throw new IOException("b10_abrupt_publication_ambiguous", exception); }
+        catch (Exception exception) { throw B10AbruptDiagnostics.Attach(new IOException("b10_abrupt_publication_ambiguous", exception)); }
         if (!actual.AsSpan().SequenceEqual(bytes)) throw PublicationFailed();
         _published.Add(name, bytes);
     }
@@ -186,7 +187,7 @@ internal sealed class B10AbruptPublisher(IB10AbruptStorage storage, TimeProvider
         {
             int read = await stream.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, limit + 1 - checked((int)output.Length))), cancellationToken).ConfigureAwait(false);
             if (read == 0) return output.ToArray();
-            if (output.Length + read > limit) throw new InvalidDataException("b10_abrupt_publication_failed");
+            if (output.Length + read > limit) throw B10AbruptDiagnostics.Attach(new InvalidDataException("b10_abrupt_publication_failed"));
             output.Write(buffer, 0, read);
         }
     }
@@ -203,7 +204,7 @@ internal sealed class B10AbruptPublisher(IB10AbruptStorage storage, TimeProvider
     }
     private static void RequireSet(IReadOnlyDictionary<string, byte[]> files, IEnumerable<string> expected)
     { if (!files.Keys.Order(StringComparer.Ordinal).SequenceEqual(expected.Order(StringComparer.Ordinal), StringComparer.Ordinal)) throw PublicationFailed(); }
-    private static InvalidDataException PublicationFailed() => new("b10_abrupt_publication_failed");
-    private static InvalidDataException Binding(string detail, Exception? inner = null) => new("b10_abrupt_successor_binding_invalid:" + detail, inner);
+    private static InvalidDataException PublicationFailed([CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0) => B10AbruptDiagnostics.Attach(new InvalidDataException("b10_abrupt_publication_failed"), [], file, member, line);
+    private static InvalidDataException Binding(string detail, Exception? inner = null, [CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0) => B10AbruptDiagnostics.Attach(new InvalidDataException("b10_abrupt_successor_binding_invalid:" + detail, inner), [B10AbruptDiagnostics.Fact(B10AbruptFact.SuccessorDetail, B10AbruptDiagnostics.SuccessorDetailCode(detail))], file, member, line);
     internal sealed record SuccessorInput(B10AbruptWire.Identity FirstIdentity, JsonElement Termination, JsonElement Selection, DateTimeOffset ReleaseUtc);
 }

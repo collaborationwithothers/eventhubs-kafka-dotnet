@@ -476,6 +476,8 @@ public sealed class B10AbruptSupervisorTests
         JsonElement cleanup = data.GetProperty("cleanup");
         Assert.Equal("cleanup", cleanup.GetProperty("arm").GetString());
         Assert.Equal("b10_abrupt_signal_failed", cleanup.GetProperty("failure").GetString());
+        Assert.Equal("Parchwell.LoadGen.Run.Abrupt.OwnedProducerProcess+SignalException",
+            cleanup.GetProperty("failure_diagnostic").GetProperty("exception_chain").GetProperty("entries")[0].GetProperty("exception_type").GetString());
         Assert.Equal(observation, cleanup.GetProperty("signal_observation").Deserialize<OwnedProducerProcess.SignalObservation>(B10AbruptWire.JsonOptions));
         Assert.Equal(writerState == "healthy" ? null : "b10_abrupt_capture_gap", cleanup.GetProperty("capture_failure").GetString());
         if (writerState == "healthy")
@@ -641,6 +643,75 @@ public sealed class B10AbruptSupervisorTests
         await AssertFailedRunAsync(fixture, "b10_abrupt_cgroup_unavailable");
     }
 
+    [Fact]
+    public async Task Given_AcknowledgementFlushAdvancesClock_When_AcceptedIsAcknowledged_Then_AckSentFollowsFlush()
+    {
+        await using var fixture = new DeadlineFixture();
+        var timeline = (B10AbruptTimeline)GetPrivate(fixture.Supervisor, "_timeline");
+        using var acknowledgements = new FlushObservedStream(() =>
+        {
+            var beforeFlush = B10AbruptWire.Element(timeline.Snapshot()).GetProperty("entries");
+            Assert.DoesNotContain(beforeFlush.EnumerateArray(), entry => entry.GetProperty("stage").GetString() == "ack_sent");
+            fixture.Clock.Advance(TimeSpan.FromMilliseconds(25));
+        });
+        fixture.Child.AcknowledgementOutput = acknowledgements;
+        await fixture.AddPreparedAsync("original", "same_instance");
+        var failure = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Supervisor.HandleAsync(new("accepted", 2,
+            B10AbruptWire.Element(new { attempt_id = "original", prepared_sequence = 1 })), TestContext.Current.CancellationToken));
+        Assert.Equal("b10_abrupt_sample_missing", failure.Message);
+        acknowledgements.Position = 0;
+        var acknowledgement = await B10AbruptWire.ReadMessageAsync(acknowledgements, 1, TestContext.Current.CancellationToken);
+        Assert.NotNull(acknowledgement);
+        Assert.Equal("ack", acknowledgement.Kind);
+        Assert.Equal(2, acknowledgement.Data.GetProperty("acknowledged_sequence").GetInt64());
+        var entries = B10AbruptWire.Element(timeline.Snapshot()).GetProperty("entries");
+        var sent = Assert.Single(entries.EnumerateArray(), entry => entry.GetProperty("stage").GetString() == "ack_sent");
+        Assert.Equal(TimeSpan.FromMilliseconds(25).Ticks, sent.GetProperty("ticks").GetInt64());
+        Assert.Equal("{\"arm\":1}", sent.GetProperty("facts").GetRawText());
+    }
+
+    [Fact]
+    public async Task Given_LiveChildAtCleanEof_When_GraceWaits_Then_EventStreamEndedRemainsUnwritten()
+    {
+        await using var fixture = new DeadlineFixture();
+        using var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var timeline = new B10AbruptTimeline(fixture.Clock, "supervisor", writer);
+        SetPrivate(fixture.Supervisor, "_timeline", timeline);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        Task run = fixture.Supervisor.RunAsync(cancellation.Token);
+        try
+        {
+            await fixture.Clock.WaitForTimerAsync(TimeSpan.FromMilliseconds(10));
+            var entries = B10AbruptWire.Element(timeline.Snapshot()).GetProperty("entries");
+            Assert.Single(entries.EnumerateArray(), entry => entry.GetProperty("stage").GetString() == "event_stream_ended");
+            Assert.DoesNotContain(entries.EnumerateArray(), entry => entry.GetProperty("stage").GetString() == "grace_ended");
+            Assert.False(fixture.Child.HasExited);
+            Assert.False(run.IsCompleted);
+            Assert.Equal(string.Empty, writer.ToString());
+        }
+        finally
+        {
+            await cancellation.CancelAsync();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+        }
+    }
+
+    [Fact]
+    public async Task Given_ChildExitsDuringGrace_When_UnexpectedExitIsReported_Then_ElapsedIncludesGraceWait()
+    {
+        await using var fixture = new DeadlineFixture();
+        Task run = fixture.Supervisor.RunAsync(TestContext.Current.CancellationToken);
+        await fixture.Clock.WaitForTimerAsync(TimeSpan.FromMilliseconds(10));
+        fixture.Child.Exited = true;
+        fixture.Clock.Advance(TimeSpan.FromMilliseconds(1234));
+        var failure = await Assert.ThrowsAsync<InvalidDataException>(() => run.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+        Assert.Equal("b10_abrupt_unexpected_exit", failure.Message);
+        using var report = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(fixture.Root, "abrupt", "failure.json"), TestContext.Current.CancellationToken));
+        var facts = report.RootElement.GetProperty("data").GetProperty("diagnostic").GetProperty("detail").GetProperty("facts");
+        Assert.Equal("{\"has_exited\":1,\"elapsed_milliseconds\":1234,\"budget_milliseconds\":10000}", facts.GetRawText());
+        Assert.Equal(0, fixture.Child.Kills);
+    }
+
     [Theory]
     [InlineData("start", false)] [InlineData("start", true)]
     [InlineData("preflight", false)] [InlineData("preflight", true)]
@@ -687,8 +758,8 @@ public sealed class B10AbruptSupervisorTests
         JsonElement envelope = document.RootElement;
         Assert.Equal("failed_diagnostic", envelope.GetProperty("kind").GetString());
         JsonElement data = envelope.GetProperty("data");
-        B10AbruptWire.ExactMembers(data, "mechanical_status", "failure", "exception_type", "process", "kill_requested", "has_exited",
-            "capture_gaps", "arm_failures", "fatal_capture_status", "signal_observation", "cleanup", "startup_cleanup");
+        B10AbruptWire.ExactMembers(data, "mechanical_status", "failure", "exception_type", "diagnostic", "process", "kill_requested", "has_exited",
+            "capture_gaps", "arm_failures", "fatal_capture_status", "signal_observation", "cleanup", "startup_cleanup", "timeline");
         Assert.Equal("incomplete", data.GetProperty("mechanical_status").GetString());
         string expectedFailure = fault == "start" ? "b10_abrupt_child_start_failed" :
             fault == "preflight" ? "b10_abrupt_signal_preflight_failed" : "b10_abrupt_child_identity_mismatch";
@@ -704,7 +775,7 @@ public sealed class B10AbruptSupervisorTests
         JsonElement startup = data.GetProperty("startup_cleanup");
         if (failure is OwnedProducerProcess.StartupException)
         {
-            B10AbruptWire.ExactMembers(startup, "failure", "exception_type", "signal_observation");
+            B10AbruptWire.ExactMembers(startup, "failure", "exception_type", "diagnostic", "signal_observation");
             Assert.Equal(cleanupFailure is null ? null : fault == "cleanup_io" ? "b10_abrupt_capture_gap" : "b10_abrupt_signal_failed",
                 startup.GetProperty("failure").GetString());
             Assert.Equal(cleanupFailure?.GetType().FullName, startup.GetProperty("exception_type").GetString());
@@ -732,6 +803,244 @@ public sealed class B10AbruptSupervisorTests
         Assert.Equal(0, fixture.Child.Disposals);
         Assert.Empty(fixture.Journal.Frames);
         AssertNoSuccessfulArtifacts(fixture);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Given_ControlTerminalBeforeStop_When_SupervisorRuns_Then_DiagnosticNamesCheckpointAndFacts(bool terminalFirst)
+    {
+        await using var fixture = new DeadlineFixture();
+        using var writer = new StringWriter(CultureInfo.InvariantCulture);
+        using var events = await ControlEventsAsync(terminalFirst);
+        SetPrivate(fixture.Supervisor, "_timeline", new B10AbruptTimeline(fixture.Clock, "supervisor", writer));
+        ((Dictionary<string, byte[]>)GetPrivate(fixture.Supervisor, "_files"))["timeout-seal.json"] = [1];
+        File.WriteAllBytes(Path.Combine(fixture.Root, "abrupt-child", "same_instance-pre-acceptance-report.json"), [1]);
+        fixture.Child.EventInput = events;
+        fixture.Child.OnKill = () => fixture.Child.Exited = true;
+        var failure = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Supervisor.RunAsync(TestContext.Current.CancellationToken));
+        Assert.Equal("b10_abrupt_control_incomplete", failure.Message);
+        using var report = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(fixture.Root, "abrupt", "failure.json"), TestContext.Current.CancellationToken));
+        JsonElement data = report.RootElement.GetProperty("data");
+        Assert.Equal("failed_diagnostic", report.RootElement.GetProperty("kind").GetString());
+        Assert.Equal("incomplete", data.GetProperty("mechanical_status").GetString());
+        Assert.Equal("b10_abrupt_control_incomplete", data.GetProperty("failure").GetString());
+        Assert.Equal("System.IO.InvalidDataException", data.GetProperty("exception_type").GetString());
+        Assert.Equal("not_implemented_pr3", data.GetProperty("fatal_capture_status").GetString());
+        Assert.True(data.GetProperty("kill_requested").GetBoolean());
+        Assert.True(data.GetProperty("has_exited").GetBoolean());
+        Assert.Empty(data.GetProperty("capture_gaps").EnumerateArray());
+        Assert.Empty(data.GetProperty("arm_failures").EnumerateObject());
+        Assert.Equal(JsonValueKind.Null, data.GetProperty("signal_observation").ValueKind);
+        Assert.Equal(JsonValueKind.Null, data.GetProperty("startup_cleanup").ValueKind);
+        JsonElement cleanup = data.GetProperty("cleanup");
+        Assert.Equal("cleanup", cleanup.GetProperty("arm").GetString());
+        Assert.Equal(JsonValueKind.Null, cleanup.GetProperty("failure").ValueKind);
+        Assert.Equal(JsonValueKind.Null, cleanup.GetProperty("capture_failure").ValueKind);
+        var signal = cleanup.GetProperty("signal_observation");
+        Assert.Equal(9, signal.GetProperty("requested_signal").GetInt32());
+        Assert.Equal(0, signal.GetProperty("return_value").GetInt32());
+        Assert.Equal(JsonValueKind.Null, signal.GetProperty("errno").ValueKind);
+        Assert.Equal(JsonValueKind.Null, signal.GetProperty("native_exception").ValueKind);
+        JsonElement diagnostic = data.GetProperty("diagnostic");
+        var detail = diagnostic.GetProperty("detail");
+        Assert.Equal("B10AbruptSupervisor.cs", detail.GetProperty("file").GetString());
+        Assert.Equal("CheckpointControlAsync", detail.GetProperty("member").GetString());
+        Assert.True(detail.GetProperty("line").GetInt32() > 0);
+        Assert.Equal(terminalFirst ?
+            "{\"arm\":1,\"accepted_count\":1,\"selected_count\":0,\"terminal_before_accepted\":1,\"frames_drained_after_stop\":0,\"accepted_to_stop_milliseconds\":0,\"error_code\":0,\"persistence_status\":2,\"delivered\":1}" :
+            "{\"arm\":1,\"accepted_count\":1,\"selected_count\":0,\"terminal_before_accepted\":0,\"frames_drained_after_stop\":1,\"accepted_to_stop_milliseconds\":0,\"error_code\":0,\"persistence_status\":2,\"delivered\":1}", detail.GetProperty("facts").GetRawText());
+        Assert.Equal(JsonValueKind.Null, diagnostic.GetProperty("inner_detail").ValueKind);
+        var timeline = data.GetProperty("timeline");
+        var entries = timeline.GetProperty("entries").EnumerateArray().ToArray();
+        string[] expected = terminalFirst ?
+            ["supervisor_registered", "child_started", "frame_prepared", "frame_report", "frame_terminal", "frame_accepted", "ack_sent", "stop_requested", "stop_confirmed", "checkpoint_written", "failure_observed", "abort_complete"] :
+            ["supervisor_registered", "child_started", "frame_prepared", "frame_report", "frame_accepted", "ack_sent", "stop_requested", "stop_confirmed", "frame_terminal", "checkpoint_written", "failure_observed", "abort_complete"];
+        Assert.Equal(expected, entries.Select(entry => entry.GetProperty("stage").GetString()));
+        Assert.Equal("{\"arm\":1}", Assert.Single(entries, entry => entry.GetProperty("stage").GetString() == "ack_sent").GetProperty("facts").GetRawText());
+        Assert.Equal(0, timeline.GetProperty("dropped").GetInt32());
+        string[] lines = writer.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(entries.Length, lines.Length);
+        for (int index = 0; index < lines.Length; index++)
+        {
+            Assert.StartsWith("b10_abrupt_stage ", lines[index]);
+            using var line = JsonDocument.Parse(lines[index]["b10_abrupt_stage ".Length..]);
+            Assert.Equal(expected[index], line.RootElement.GetProperty("stage").GetString());
+            Assert.Equal(entries[index].GetProperty("ticks").GetInt64(), line.RootElement.GetProperty("ticks").GetInt64());
+        }
+        Assert.Equal(1, fixture.Child.Stops);
+        Assert.Equal(0, fixture.Child.Resumes);
+        Assert.Equal(1, fixture.Child.Kills);
+        var checkpoint = Assert.Single(fixture.Journal.Frames, frame => frame.Kind == "checkpoint");
+        Assert.Empty(checkpoint.Data.GetProperty("selected_attempt_ids").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Given_ControlWithoutTerminal_When_ResumeProgressIsMissing_Then_DiagnosticNamesDeadlineFacts()
+    {
+        await using var fixture = new DeadlineFixture();
+        using var events = await ControlEventsAsync(false, includeTerminal: false);
+        ((Dictionary<string, byte[]>)GetPrivate(fixture.Supervisor, "_files"))["timeout-seal.json"] = [1];
+        File.WriteAllBytes(Path.Combine(fixture.Root, "abrupt-child", "same_instance-pre-acceptance-report.json"), [1]);
+        fixture.Child.EventInput = events;
+        Task run = fixture.Supervisor.RunAsync(TestContext.Current.CancellationToken);
+        await fixture.Clock.WaitForTimerAsync(TimeSpan.FromMilliseconds(10));
+        fixture.Clock.Advance(TimeSpan.FromSeconds(30));
+        var failure = await Assert.ThrowsAsync<InvalidDataException>(() => run.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+        Assert.Equal("b10_abrupt_resume_unconfirmed", failure.Message);
+        using var report = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(fixture.Root, "abrupt", "failure.json"), TestContext.Current.CancellationToken));
+        var detail = report.RootElement.GetProperty("data").GetProperty("diagnostic").GetProperty("detail");
+        Assert.Equal("CheckpointControlAsync", detail.GetProperty("member").GetString());
+        Assert.Equal(0, detail.GetProperty("facts").GetProperty("progress_exists").GetInt32());
+        Assert.Equal(30000, detail.GetProperty("facts").GetProperty("budget_milliseconds").GetInt32());
+        var checkpoint = Assert.Single(fixture.Journal.Frames, frame => frame.Kind == "checkpoint");
+        Assert.Equal("original", Assert.Single(checkpoint.Data.GetProperty("selected_attempt_ids").EnumerateArray()).GetString());
+        Assert.Equal(1, fixture.Child.Stops);
+        Assert.Equal(1, fixture.Child.Resumes);
+        Assert.Equal(1, fixture.Child.Kills);
+    }
+
+    [Theory]
+    [InlineData("identity", "{\"cohort\":0,\"identity_matches\":0}")]
+    [InlineData("cohort", "{\"cohort\":0,\"identity_matches\":1,\"cohort_matches\":0}")]
+    [InlineData("drain_complete", "{\"cohort\":0,\"identity_matches\":1,\"cohort_matches\":1,\"drain_complete\":0}")]
+    [InlineData("guard_complete", "{\"cohort\":0,\"identity_matches\":1,\"cohort_matches\":1,\"drain_complete\":1,\"guard_complete\":0}")]
+    public async Task Given_InvalidTimeoutSeal_When_SupervisorLoads_Then_DiagnosticStopsAtDecisiveCheck(string fault, string expectedFacts)
+    {
+        await using var fixture = new DeadlineFixture();
+        using var events = await ControlEventsAsync(false);
+        fixture.Child.EventInput = events;
+        B10AbruptOptions options = B10AbruptWireProducerTests.TestOptions(fixture.Root);
+        var identity = options.Identity();
+        if (fault == "identity") identity = identity with { RunId = "other" };
+        var d = new { name = "x", length = 1, sha256 = B10AbruptPublisher.Hash([1]) };
+        byte[] seal = B10AbruptWire.SerializeEnvelope("cohort_seal", identity, new
+        {
+            cohort = fault == "cohort" ? "same_instance" : "timeout", inventory = d, count = 1, ledger = d,
+            drain_complete = fault != "drain_complete", post_drain_statistics = d, guard_complete = fault != "guard_complete",
+            fatal_capture_status = "not_implemented_pr3"
+        });
+        await File.WriteAllBytesAsync(Path.Combine(fixture.Root, "abrupt-child", "timeout-seal.json"), seal, TestContext.Current.CancellationToken);
+        Assert.Equal("b10_abrupt_control_incomplete", (await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Supervisor.RunAsync(TestContext.Current.CancellationToken))).Message);
+        using var report = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(fixture.Root, "abrupt", "failure.json"), TestContext.Current.CancellationToken));
+        var detail = report.RootElement.GetProperty("data").GetProperty("diagnostic").GetProperty("detail");
+        Assert.Equal("LoadSealAsync", detail.GetProperty("member").GetString());
+        Assert.Equal(expectedFacts, detail.GetProperty("facts").GetRawText());
+        Assert.Equal(0, fixture.Child.Stops);
+    }
+
+    [Fact]
+    public async Task Given_SignalAndWriterCleanupFailures_When_Reporting_Then_BothCauseDiagnosticsSurvive()
+    {
+        await using var fixture = new DeadlineFixture();
+        await fixture.AddPreparedAsync("original");
+        using var events = await CleanupFailureEventsAsync();
+        fixture.Child.EventInput = events;
+        fixture.BeforeFlush = () => throw new IOException("synthetic_writer_failure");
+        fixture.Child.OnKill = () =>
+        {
+            fixture.DelayNextFlush = true;
+            throw new OwnedProducerProcess.SignalException("b10_abrupt_signal_failed", new(9, -1, 13, null));
+        };
+        Assert.Equal("b10_abrupt_guard_failed", (await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Supervisor.RunAsync(TestContext.Current.CancellationToken))).Message);
+        using var report = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(fixture.Root, "abrupt", "failure.json"), TestContext.Current.CancellationToken));
+        JsonElement cleanup = report.RootElement.GetProperty("data").GetProperty("cleanup");
+        Assert.Equal("b10_abrupt_signal_failed", cleanup.GetProperty("failure").GetString());
+        Assert.Equal("b10_abrupt_capture_gap", cleanup.GetProperty("capture_failure").GetString());
+        Assert.Equal("Parchwell.LoadGen.Run.Abrupt.OwnedProducerProcess+SignalException", cleanup.GetProperty("failure_diagnostic").GetProperty("exception_chain").GetProperty("entries")[0].GetProperty("exception_type").GetString());
+        Assert.Equal("System.IO.InvalidDataException", cleanup.GetProperty("capture_diagnostic").GetProperty("exception_chain").GetProperty("entries")[0].GetProperty("exception_type").GetString());
+    }
+
+    [Fact]
+    public async Task Given_OversizeFailure_When_Reporting_Then_OriginalSurvivesAndDiagnosticReduces()
+    {
+        Exception failure = new InvalidOperationException("synthetic", B10AbruptDiagnosticsTests.HugeChain(7));
+        await using var fixture = new DeadlineFixture(() => throw failure);
+        var timeline = (B10AbruptTimeline)GetPrivate(fixture.Supervisor, "_timeline");
+        for (int index = 0; index < 48; index++)
+            timeline.Hold(B10AbruptStage.StopConfirmed, Enum.GetValues<B10AbruptFact>().Take(8).Select(key => B10AbruptDiagnostics.Fact(key, long.MinValue)).ToArray());
+        using var errors = new StringWriter(CultureInfo.InvariantCulture);
+        TextWriter previous = Console.Error;
+        Console.SetError(errors);
+        try { Assert.Same(failure, await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Supervisor.RunAsync(TestContext.Current.CancellationToken))); }
+        finally { Console.SetError(previous); }
+        byte[] bytes = await File.ReadAllBytesAsync(Path.Combine(fixture.Root, "abrupt", "failure.json"), TestContext.Current.CancellationToken);
+        Assert.Equal(Encoding.UTF8.GetString(bytes) + Environment.NewLine, errors.ToString());
+        using var report = JsonDocument.Parse(bytes);
+        var data = report.RootElement.GetProperty("data");
+        Assert.True(data.GetProperty("timeline").GetProperty("omitted_for_size").GetBoolean());
+        Assert.True(data.GetProperty("diagnostic").GetProperty("reduced").GetBoolean());
+        Assert.Equal(B10AbruptSupervisor.FailureName(failure), data.GetProperty("failure").GetString());
+    }
+
+    [Theory]
+    [InlineData("failure")]
+    [InlineData("capture")]
+    public async Task Given_OversizeCleanupCause_When_Reporting_Then_BuildReducesItAndWrites(string cause)
+    {
+        await using var fixture = new DeadlineFixture(unrelatedIdentity: true);
+        await fixture.AddPreparedAsync("original");
+        using var events = await CleanupFailureEventsAsync();
+        fixture.Child.EventInput = events;
+        Exception huge = B10AbruptDiagnosticsTests.HugeChain();
+        if (cause == "failure") fixture.Child.OnKill = () => throw huge;
+        else SetPrivate(fixture.Supervisor, "_cleanupCaptureCause", huge);
+        using var errors = new StringWriter(CultureInfo.InvariantCulture);
+        TextWriter previous = Console.Error;
+        Console.SetError(errors);
+        try { await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Supervisor.RunAsync(TestContext.Current.CancellationToken)); }
+        finally { Console.SetError(previous); }
+        byte[] bytes = await File.ReadAllBytesAsync(Path.Combine(fixture.Root, "abrupt", "failure.json"), TestContext.Current.CancellationToken);
+        string text = Encoding.UTF8.GetString(bytes);
+        Assert.Equal(text + Environment.NewLine, errors.ToString());
+        Assert.True(bytes.Length <= B10AbruptWire.MaximumBodyBytes);
+        Assert.DoesNotContain(":" + JsonSerializer.Serialize(huge.Message), text, StringComparison.Ordinal);
+        using var report = JsonDocument.Parse(bytes);
+        JsonElement data = report.RootElement.GetProperty("data");
+        B10AbruptWire.ExactMembers(data, "mechanical_status", "failure", "exception_type", "diagnostic", "process", "kill_requested", "has_exited", "capture_gaps", "arm_failures", "fatal_capture_status", "signal_observation", "cleanup", "startup_cleanup", "timeline");
+        JsonElement cleanup = data.GetProperty("cleanup");
+        B10AbruptWire.ExactMembers(cleanup, "arm", "failure", "signal_observation", "capture_failure", "failure_diagnostic", "capture_diagnostic");
+        JsonElement reduced = cleanup.GetProperty(cause == "failure" ? "failure_diagnostic" : "capture_diagnostic");
+        Assert.DoesNotContain(huge.Message, reduced.GetRawText(), StringComparison.Ordinal);
+        Assert.True(reduced.GetProperty("reduced").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, reduced.GetProperty("exception_chain").ValueKind);
+        Assert.Equal(JsonValueKind.Null, cleanup.GetProperty(cause == "failure" ? "capture_diagnostic" : "failure_diagnostic").ValueKind);
+        Assert.True(data.GetProperty("timeline").GetProperty("omitted_for_size").GetBoolean());
+        Assert.True(data.GetProperty("diagnostic").GetProperty("reduced").GetBoolean());
+    }
+
+    private static object GetPrivate(object owner, string name) =>
+        owner.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(owner)!;
+
+    private static async Task<MemoryStream> ControlEventsAsync(bool terminalFirst, bool includeTerminal = true)
+    {
+        var events = new MemoryStream();
+        var token = TestContext.Current.CancellationToken;
+        await B10AbruptWire.WriteMessageAsync(events, new("prepared", 2, B10AbruptWire.Element(new
+        {
+            attempt_id = "original", invocation_ordinal = 0, cohort = "same_instance", probe_id = "B10/synthetic/C1/1/same_instance", key = "B10/synthetic/C1/1/same_instance",
+            sequence = 0, payload_length = 1, payload_sha256 = B10AbruptPublisher.Hash([1]), predecessor_attempt_id = (string?)null
+        })), token);
+        await B10AbruptWire.WriteMessageAsync(events, new("pre_acceptance_report", 3, B10AbruptWire.Element(new
+        {
+            arm = "same_instance", attempt_id = "original", report_length = 1, report_sha256 = B10AbruptPublisher.Hash([1]),
+            report_identity = new { scenario_id = "B10", run_id = "synthetic", role = "LoadGenProducer", client_id = "synthetic-first" },
+            report_sequence = 1, report_capture_utc = "2026-11-07T00:00:00.0000000+00:00"
+        })), token);
+        var accepted = new B10AbruptWire.Message("accepted", 4, B10AbruptWire.Element(new { attempt_id = "original", prepared_sequence = 1 }));
+        var terminal = new B10AbruptWire.Message("terminal", 5, B10AbruptWire.Element(new { attempt_id = "original", completion_source = "callback", delivered = true, error_code = 0, persistence_status = 2 }));
+        if (terminalFirst)
+        {
+            if (includeTerminal) await B10AbruptWire.WriteMessageAsync(events, terminal with { Sequence = 4 }, token);
+            await B10AbruptWire.WriteMessageAsync(events, accepted with { Sequence = 5 }, token);
+        }
+        else
+        {
+            await B10AbruptWire.WriteMessageAsync(events, accepted, token);
+            if (includeTerminal) await B10AbruptWire.WriteMessageAsync(events, terminal, token);
+        }
+        events.Position = 0;
+        return events;
     }
 
     private static async Task AssertFailedRunAsync(DeadlineFixture fixture, string failure)
@@ -781,12 +1090,16 @@ public sealed class B10AbruptSupervisorTests
         internal Action BeforeFlush { get; set; } = () => { };
         internal bool DelayNextFlush { get; set; }
         internal int Starts { get; private set; }
-        internal DeadlineFixture(Func<IB10AbruptProcess>? start = null)
+        internal DeadlineFixture(Func<IB10AbruptProcess>? start = null, bool unrelatedIdentity = false)
         {
             Directory.CreateDirectory(Path.Combine(Root, "abrupt"));
             Directory.CreateDirectory(Path.Combine(Root, "abrupt-child"));
-            var options = B10AbruptWireProducerTests.TestOptions(Root);
-            Child = new DeadlineChild();
+            var options = B10AbruptWireProducerTests.TestOptions(Root, configure: values =>
+            {
+                if (unrelatedIdentity)
+                    foreach (string key in values.Keys.ToArray()) values[key] = values[key].Replace("synthetic", "fixture", StringComparison.Ordinal);
+            });
+            Child = new DeadlineChild(unrelatedIdentity ? "fixture" : "synthetic");
             Journal = new(Path.Combine(Root, "abrupt", "journal.jsonl"), options.Identity(), Clock,
                 _ => { if (DelayNextFlush) { DelayNextFlush = false; BeforeFlush(); } return Task.CompletedTask; });
             Supervisor = new(options, Clock, Journal, new(new B10AbruptWireProducerTests.FileStorage(Path.Combine(Root, "publication")), Clock),
@@ -817,13 +1130,23 @@ public sealed class B10AbruptSupervisorTests
         public async ValueTask DisposeAsync() { await Journal.DisposeAsync(); Directory.Delete(Root, true); }
     }
 
-    private sealed class DeadlineChild : IB10AbruptProcess
+    private sealed class FlushObservedStream(Action onFlush) : MemoryStream
     {
-        public OwnedProducerProcess.ProcessIdentity Identity { get; } = new(123, 122, "synthetic", 1);
+        public override Task FlushAsync(CancellationToken cancellationToken)
+        {
+            onFlush();
+            return base.FlushAsync(cancellationToken);
+        }
+    }
+
+    private sealed class DeadlineChild(string marker) : IB10AbruptProcess
+    {
+        public OwnedProducerProcess.ProcessIdentity Identity { get; } = new(123, 122, marker, 1);
         internal Stream EventInput { get; set; } = Stream.Null;
         public Stream Events => EventInput;
         public bool EventsReady() => true;
-        public Stream Acknowledgements => Stream.Null;
+        internal Stream AcknowledgementOutput { get; set; } = Stream.Null;
+        public Stream Acknowledgements => AcknowledgementOutput;
         internal bool Exited { get; set; }
         internal Func<bool>? ReadHasExited { get; set; }
         public bool HasExited => ReadHasExited?.Invoke() ?? Exited;

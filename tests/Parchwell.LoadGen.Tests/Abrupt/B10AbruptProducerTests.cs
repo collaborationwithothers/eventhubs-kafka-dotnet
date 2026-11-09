@@ -646,7 +646,7 @@ public sealed class B10AbruptProducerTests
     {
         using var errors = new StringWriter(CultureInfo.InvariantCulture);
         Assert.Equal(1, B10AbruptHost.ReportFailure(exception, errors));
-        Assert.Equal(expectedLine + Environment.NewLine, errors.ToString());
+        B10AbruptDiagnosticsTests.AssertPlainReport(errors.ToString(), expectedLine);
         Assert.DoesNotContain(privatePath, errors.ToString(), StringComparison.Ordinal);
         Assert.DoesNotContain(exception.Message, errors.ToString(), StringComparison.Ordinal);
     }

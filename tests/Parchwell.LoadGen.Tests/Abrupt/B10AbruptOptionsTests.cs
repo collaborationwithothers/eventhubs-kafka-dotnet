@@ -237,7 +237,7 @@ public sealed class B10AbruptOptionsTests
         try
         {
             Assert.Equal(1, await Program.RunAsync(["--validate-b10-abrupt-configuration"]));
-            Assert.Equal("b10_abrupt_configuration_invalid validation_detail=" + detail + " exception_type=System.IO.InvalidDataException" + Environment.NewLine, errors.ToString());
+            B10AbruptDiagnosticsTests.AssertPlainReport(errors.ToString(), "b10_abrupt_configuration_invalid validation_detail=" + detail + " exception_type=System.IO.InvalidDataException");
             Assert.DoesNotContain(value, errors.ToString(), StringComparison.Ordinal);
         }
         finally { Console.SetError(original); }
@@ -250,7 +250,7 @@ public sealed class B10AbruptOptionsTests
         exception.Data["validation_detail"] = "private-detail-value";
         using var errors = new StringWriter(CultureInfo.InvariantCulture);
         Assert.Equal(1, B10AbruptHost.ReportFailure(exception, errors));
-        Assert.Equal("b10_abrupt_capture_gap exception_type=System.InvalidOperationException" + Environment.NewLine, errors.ToString());
+        B10AbruptDiagnosticsTests.AssertPlainReport(errors.ToString(), "b10_abrupt_capture_gap exception_type=System.InvalidOperationException");
         Assert.DoesNotContain("private-exception-message", errors.ToString(), StringComparison.Ordinal);
         Assert.DoesNotContain("private-detail-value", errors.ToString(), StringComparison.Ordinal);
     }
@@ -275,7 +275,7 @@ public sealed class B10AbruptOptionsTests
             using var errors = new StringWriter(CultureInfo.InvariantCulture);
             Assert.Equal(1, B10AbruptHost.ReportFailure(exception, errors));
             string report = errors.ToString();
-            Assert.Equal(expectedFailure + " exception_type=System.InvalidOperationException" + Environment.NewLine, report);
+            B10AbruptDiagnosticsTests.AssertPlainReport(report, expectedFailure + " exception_type=System.InvalidOperationException");
             Assert.DoesNotContain(message, report, StringComparison.Ordinal);
             Assert.DoesNotContain("private-inner-message", report, StringComparison.Ordinal);
             Assert.DoesNotContain("/private/sentinel-path", report, StringComparison.Ordinal);
@@ -293,7 +293,7 @@ public sealed class B10AbruptOptionsTests
         exception.Data["validation_detail"] = "private-detail-value";
         using var errors = new StringWriter(CultureInfo.InvariantCulture);
         Assert.Equal(1, B10AbruptHost.ReportFailure(exception, errors));
-        Assert.Equal("b10_abrupt_configuration_invalid validation_detail=Unclassified exception_type=System.IO.InvalidDataException" + Environment.NewLine, errors.ToString());
+        B10AbruptDiagnosticsTests.AssertPlainReport(errors.ToString(), "b10_abrupt_configuration_invalid validation_detail=Unclassified exception_type=System.IO.InvalidDataException");
         Assert.DoesNotContain("private-detail-value", errors.ToString(), StringComparison.Ordinal);
     }
 
@@ -304,7 +304,7 @@ public sealed class B10AbruptOptionsTests
     {
         using var errors = new StringWriter(CultureInfo.InvariantCulture);
         Assert.Equal(1, B10AbruptHost.ReportFailure(new OperationCanceledException(message), errors));
-        Assert.Equal("b10_abrupt_deadline_exhausted exception_type=System.OperationCanceledException" + Environment.NewLine, errors.ToString());
+        B10AbruptDiagnosticsTests.AssertPlainReport(errors.ToString(), "b10_abrupt_deadline_exhausted exception_type=System.OperationCanceledException");
     }
 
     [Fact]
@@ -312,7 +312,7 @@ public sealed class B10AbruptOptionsTests
     {
         using var errors = new StringWriter(CultureInfo.InvariantCulture);
         Assert.Equal(1, B10AbruptHost.ReportFailure(new InvalidDataException("kill_too_late:no_unconfirmed_attempt"), errors));
-        Assert.Equal("kill_too_late:no_unconfirmed_attempt exception_type=System.IO.InvalidDataException" + Environment.NewLine, errors.ToString());
+        B10AbruptDiagnosticsTests.AssertPlainReport(errors.ToString(), "kill_too_late:no_unconfirmed_attempt exception_type=System.IO.InvalidDataException");
     }
 
     private static void Invalid(IEnumerable<KeyValuePair<string, string>> values) =>
