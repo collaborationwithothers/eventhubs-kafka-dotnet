@@ -16,7 +16,7 @@ This is the single authored receipt for the implementation pull request of [issu
 
 1. Plan check 6746325548 finding 1, P2 `apply in implementation`: T3's expectation is applied as "exactly four lines: `.agents/skills/repo-review/SKILL.md`, `docs/agents/pull-requests.md`, `items/414/state.md`, and the receipt path named in the receipt". The receipt path is `items/414/receipt.md`.
 2. Receipt file name: `items/414/receipt.md`, following `items/412/receipt.md`.
-3. Branch: the session was assigned `claude/great-allen-ivk7hz`. It starts with `claude/` but does not include the issue number, as CLAUDE.md "Identity" asks. The harness forbids pushing to another branch without permission, so the pull request uses it and says so.
+3. Branch: `claude/414-repo-review-scope`, as CLAUDE.md "Identity" requires. The session was assigned `claude/great-allen-ivk7hz`, and the harness forbids pushing to another branch without permission. Hari gave that permission in the interactive session on 2026-11-09, after round 1 flagged the assigned name.
 4. The C1 and C2 texts were extracted by script from the plan file at the approved commit and written in place, not retyped.
 
 ## Specification comparison sources
@@ -31,7 +31,7 @@ All run from the repository root on the working tree based on `origin/main` `04d
 |---|---|
 | T1 rubric block against C1 plus blank lines | empty diff, exit 0; 15 lines |
 | T2 pull-requests.md against `origin/main` | one hunk, `38a39,40`; added line 2 empty; added line 3 equals C2 byte for byte (`cmp`) |
-| T3 `git diff --name-only origin/main...HEAD` | recorded after commit, below |
+| T3 `git diff --name-only origin/main...HEAD` | exactly four lines: `.agents/skills/repo-review/SKILL.md`, `docs/agents/pull-requests.md`, `items/414/receipt.md`, `items/414/state.md`, run with `HEAD` at `c7ed0ecf512bbc4e7b944fa8bb234bb813e696f2` |
 | T4 SKILL.md outside "Rubric" | empty diff, exit 0 |
 | T5 `readlink .claude/skills/repo-review` | `../../.agents/skills/repo-review` |
 | T6 rubric first-column paths in `git ls-files` | 14 of 14 non-empty |
@@ -42,4 +42,19 @@ The 8 documentation warnings are all in files this pull request does not change:
 
 ## Review identification
 
-- Round 1: comprehensive cold review of the staged index, compared with `origin/main` `04d370c375363c29ea9defa013e6a374a819f215`.
+- Round 1: comprehensive cold review of the staged index, compared with `origin/main` `04d370c375363c29ea9defa013e6a374a819f215`. The content was committed as `c7ed0ecf512bbc4e7b944fa8bb234bb813e696f2`. Complete; run time 213 s as the harness reported it; 2 at P0 or P1, no P2.
+- Round 2: focused correction review of the staged index containing the round 1 corrections, compared with commit `c7ed0ecf512bbc4e7b944fa8bb234bb813e696f2`, with the full pull request diff as context.
+
+## Round 1 dispositions
+
+1. P1, T3 result missing from the receipt: fixed. The Results table records it.
+2. P1, branch name lacks the issue number: fixed. The work moves to `claude/414-repo-review-scope` with Hari's permission (implementer choice 3).
+
+Pre-existing noted: the plan branch name, the 8 documentation warnings in unchanged files, and plan check finding 2 for Hari. None is in this diff.
+- Round 2: complete; run time 102 s as the harness reported it; none at P0 or P1, 2 at P2.
+- Round 3: focused correction review of the staged index containing the round 2 corrections, compared with the round 2 staged content, with the full pull request diff as context. This is the last focused round in the budget.
+
+## Round 2 dispositions
+
+1. P2, T3 row did not name the revision it ran against: fixed. The row names `HEAD` at `c7ed0ec`.
+2. P2, "Pre-existing noted" rendered inside disposition 2: fixed with a blank line.
