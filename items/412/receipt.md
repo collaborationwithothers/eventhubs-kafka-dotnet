@@ -8,7 +8,7 @@ This is the single authored receipt for the governance pull request of [issue 41
   - docs/agents/factory.md "Authority reads" and "Item lifecycle" steps 1 and 3 amended for amendments 1 to 5;
   - the plan-pr, plan-check and implement-plan skills updated to match;
   - a new `plan-checker` agent definition;
-  - one sentence in docs/agents/pull-requests.md on the predicate map;
+  - two changes to docs/agents/pull-requests.md: one sentence on the predicate map, and the rule 8 scope sentence for plan-branch pushes;
   - `__pycache__/` in `.gitignore`;
   - the evidence folder docs/operations/evidence/issue-412/.
 - **Authorization:** the task brief is issue 412's body and [decision 6740819145](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/412#issuecomment-6740819145). Hari asked in the interactive session of 2026-11-09 for the draft pull request and the pilot to run alongside. No approved item plan exists, so none is claimed.
@@ -30,7 +30,8 @@ This is the single authored receipt for the governance pull request of [issue 41
 
 - Round 1: comprehensive cold review of the staged index, compared with origin/main 4163cd1afcfb4a3564c80f0eda9aff76cb0a9fe0. Complete; 5 at P0 or P1, 3 at P2.
 - Round 2: focused correction review of the staged index containing the round 1 corrections (committed as 0b08998), compared with commit ea978170 (the round 1 content), with the full pull request diff as context. Complete; 2 at P0 or P1, 4 at P2.
-- Round 3: focused correction review of the staged index containing the round 2 corrections, compared with commit 0b08998, with the full pull request diff as context. This is the last focused round in the budget.
+- Round 3: focused correction review of the staged index containing the round 2 corrections, compared with commit 0b08998, with the full pull request diff as context. This is the last focused round in the budget. Complete; `Findings: none at P0 or P1`, 2 P2.
+- Round 4: focused correction review beyond the budget, approved by [Hari's decision on #413](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/413#issuecomment-6741537285), of the staged index containing the fixes for the three P2s in the [handoff](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/413#issuecomment-6741434338), compared with commit 8b499544e255d0fbd998130aafb387055fcf79ef.
 
 ## Specification comparison sources
 
@@ -46,6 +47,12 @@ The issue 412 body, amendments 1 to 5 and "Also"; decision 6740819145, points 1 
 6. P2 receipt input revision unnamed: fixed in "Review identification".
 Pre-existing noted: plan-checker.md now cites the skill's step 2 instead of restating the dry-run limit. The factory.md step 1 first sentence is about item plans, which stay comments; unchanged.
 Departure from issue wording: amendment 3 says deployment assumptions may be marked "unverified, risk accepted by Hari". The rules instead list each under "Open questions for Hari" until Hari accepts it by name, which meets amendment 4 and is stricter.
+
+## Round 3 and Codex dispositions
+
+1. Codex P2, plan file and SHA required for every plan: fixed. The plan-check skill step 6 and the implement-plan skill step 2 apply the file and SHA only to contract-grade plan files.
+2. Round 3 P2, approval naming a revision also read on item plans: fixed. factory.md step 1 limits it to contract-grade plans and points item plans to step 2.
+3. Round 3 P2, execution card missing the second pull-requests.md change: fixed above.
 
 ## Results
 
