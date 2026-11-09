@@ -311,6 +311,27 @@ class ProducedBytesCases(Setup):
         with self.assertRaisesRegex(ValueError, '^selection stale$'):
             self.trial.accept_diagnostic_publication(self.observation, files)
 
+    def test_produced_exclusion_without_journaled_terminal_is_stale(self):
+        self.produced()
+        files = dict(self.first)
+        selection = abrupt.decode(files['kill-selection.json'])
+        first_candidate, second_candidate = selection['data']['candidate_attempt_ids'][:2]
+        frames = [abrupt.decode(line) for line in files['journal.jsonl'].splitlines()]
+        prepared = {frame['data']['attempt_id']: frame['data'] for frame in frames if frame['kind'] == 'prepared'}
+        accepted = {frame['data']['attempt_id'] for frame in frames if frame['kind'] == 'accepted'}
+        terminal = {frame['data']['attempt_id'] for frame in frames if frame['kind'] == 'terminal'}
+        for candidate in (first_candidate, second_candidate):
+            self.assertIn(candidate, prepared)
+            self.assertIn(candidate, accepted)
+            self.assertNotIn(candidate, terminal)
+        selection['data']['terminal_exclusions'] = [{'attempt_id': first_candidate, 'terminal_sequence': 1}]
+        selection['data']['entries'][0].update({key: prepared[second_candidate][key] for key in
+            ('attempt_id', 'key', 'sequence', 'payload_length', 'payload_sha256')})
+        files['kill-selection.json'] = abrupt.encode(selection)
+        self.rebind_first_publication(files)
+        with self.assertRaisesRegex(ValueError, '^selection stale$'):
+            self.trial.accept_diagnostic_publication(self.observation, files)
+
     def test_produced_checkpoint_descriptor_binds_exact_frame_bytes(self):
         self.produced()
         for key, value in [('name', 'journal.jsonl'), ('length', 0), ('sha256', '0' * 64)]:

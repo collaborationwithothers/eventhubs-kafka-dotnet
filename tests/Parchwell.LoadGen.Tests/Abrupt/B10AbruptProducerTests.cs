@@ -158,6 +158,75 @@ public sealed class B10AbruptProducerTests
     }
 
     [Fact]
+    public async Task Given_OriginalCount_When_InvokingProbe_Then_OnlyNextMemberIsAdmitted()
+    {
+        await using var fixture = new Fixture();
+        fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
+
+        async Task AssertRejectedAsync(long sequence, int nativeCount)
+        {
+            int eventCount = fixture.Events.Count;
+            var exception = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Runner.InvokeProbe(
+                "same_instance", [1], null, sequence, TestContext.Current.CancellationToken));
+            Assert.Equal("b10_abrupt_guard_failed", exception.Message);
+            Assert.Equal(nativeCount, fixture.Native.Calls.Count);
+            Assert.Equal(eventCount, fixture.Events.Count);
+        }
+
+        await AssertRejectedAsync(1, 0);
+        var first = await fixture.Runner.InvokeProbe("same_instance", [1], null, 0, TestContext.Current.CancellationToken);
+        Assert.True(first.Accepted);
+        await AssertRejectedAsync(2, 1);
+        for (int sequence = 1; sequence < B10AbruptOptions.ProbeBurstSize; sequence++)
+        {
+            var attempt = await fixture.Runner.InvokeProbe("same_instance", [1], null, sequence, TestContext.Current.CancellationToken);
+            Assert.True(attempt.Accepted);
+        }
+        await AssertRejectedAsync(4, 5);
+    }
+
+    [Fact]
+    public async Task Given_ExistingResend_When_InvokingAnother_Then_GuardRejectsBeforeDurableOrNativeWork()
+    {
+        await using var fixture = new Fixture();
+        fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
+        for (int sequence = 0; sequence < B10AbruptOptions.ProbeBurstSize; sequence++)
+            await fixture.Runner.InvokeProbe("same_instance", [1], null, sequence, TestContext.Current.CancellationToken);
+        var resend = await fixture.Runner.InvokeProbe("same_instance", [1], "pod-1-same_instance-3", 3, TestContext.Current.CancellationToken);
+        Assert.True(resend.Accepted);
+        Assert.Equal(6, fixture.Native.Calls.Count);
+        int eventCount = fixture.Events.Count;
+
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Runner.InvokeProbe(
+            "same_instance", [1], "pod-1-same_instance-3", 3, TestContext.Current.CancellationToken));
+
+        Assert.Equal("b10_abrupt_guard_failed", exception.Message);
+        Assert.Equal(6, fixture.Native.Calls.Count);
+        Assert.Equal(eventCount, fixture.Events.Count);
+    }
+
+    [Fact]
+    public async Task Given_PredecessorSequenceMismatch_When_InvokingResend_Then_GuardRejectsBeforeDurableOrNativeWork()
+    {
+        await using var fixture = new Fixture();
+        fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
+        for (int sequence = 0; sequence < B10AbruptOptions.ProbeBurstSize; sequence++)
+            await fixture.Runner.InvokeProbe("same_instance", [1], null, sequence, TestContext.Current.CancellationToken);
+        Assert.Equal(5, fixture.Native.Calls.Count);
+        int eventCount = fixture.Events.Count;
+
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Runner.InvokeProbe(
+            "same_instance", [1], "pod-1-same_instance-3", 2, TestContext.Current.CancellationToken));
+
+        Assert.Equal("b10_abrupt_guard_failed", exception.Message);
+        Assert.Equal(5, fixture.Native.Calls.Count);
+        Assert.Equal(eventCount, fixture.Events.Count);
+        var resend = await fixture.Runner.InvokeProbe("same_instance", [1], "pod-1-same_instance-3", 3, TestContext.Current.CancellationToken);
+        Assert.True(resend.Accepted);
+        Assert.Equal(6, fixture.Native.Calls.Count);
+    }
+
+    [Fact]
     public async Task Given_ProbeCallback_When_Recorded_Then_NoStageWriteUntilMarkTerminals()
     {
         using var writer = new CallbackStageWriter();
@@ -759,6 +828,19 @@ public sealed class B10AbruptProducerTests
         Assert.Equal([0L, 1L, 2L, 3L, 4L, 3L], inventory.GetProperty("inventory").EnumerateArray()
             .Select(entry => entry.GetProperty("sequence").GetInt64()));
         Assert.Equal(6, fixture.Seals[1].GetProperty("count").GetInt32());
+
+        int nativeCount = fixture.Native.Calls.Count;
+        int eventCount = fixture.Events.Count;
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Runner.InvokeProbe(
+            "same_instance", [1], "pod-1-same_instance-3", 3, TestContext.Current.CancellationToken));
+
+        Assert.Equal("b10_abrupt_guard_failed", exception.Message);
+        JsonElement facts = Detail(exception, "InvokeProbe").GetProperty("facts");
+        Assert.Equal(6, facts.GetProperty("previous_count").GetInt32());
+        Assert.Equal(0, facts.GetProperty("is_original").GetInt32());
+        Assert.Equal(1, facts.GetProperty("predecessor_matches").GetInt32());
+        Assert.Equal(nativeCount, fixture.Native.Calls.Count);
+        Assert.Equal(eventCount, fixture.Events.Count);
     }
 
     [Fact]

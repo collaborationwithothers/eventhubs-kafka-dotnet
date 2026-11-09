@@ -316,7 +316,7 @@ internal sealed class B10AbruptProducer
                 previous.Any(entry => entry.PredecessorAttemptId is not null))
                 throw Attach(new InvalidDataException("b10_abrupt_guard_failed"),
                     [Fact(B10AbruptFact.PreviousCount, previous.Length), Fact(B10AbruptFact.IsOriginal, predecessorAttemptId is null),
-                     Fact(B10AbruptFact.PredecessorMatches, previous.Length == 1 && previous[0].AttemptId == predecessorAttemptId),
+                     Fact(B10AbruptFact.PredecessorMatches, predecessor is not null),
                      Fact(B10AbruptFact.PreviousAccepted, previous.Length == 1 && previous[0].Accepted)]);
             ordinal = probes.Count;
         }
