@@ -137,7 +137,7 @@ None. The change is prose read by a reviewer agent; no deployed container, image
 
 3. Code without a row. The proposal's "Code" bullet adds ADRs to "those rows", and the current rubric has no row for `charts/`, `infra/scripts/` or `scripts/`. Under this plan, Helm charts, Python and shell scripts match only "anything" and any citing rule, so no ADR is applied to them. Is that intended, or should those paths join a code row?
 
-4. Process diffs and AGENTS.md "Skills". The issue's "Risk" section says process files "keep the full read" under the proposal, and that the three cross-file P1 findings of #413's first cold-review round involved process files. One of them, a skill restating a gating rule,. rested on AGENTS.md "Skills". The accepted process row applies docs/agents/factory.md and docs/agents/pull-requests.md, not AGENTS.md "Skills", CLAUDE.md or the blueprint ADRs. A reviewer reaches those only through step 5 or the last row. Should the process row also name AGENTS.md "Skills" (and CLAUDE.md), which departs from the accepted split, or does the split stand as written?
+4. Process diffs and AGENTS.md "Skills". The issue's "Risk" section says process files "keep the full read" under the proposal, and that the three cross-file P1 findings of #413's first cold-review round involved process files. One of them, a skill restating a gating rule, rested on AGENTS.md "Skills". The accepted process row applies docs/agents/factory.md and docs/agents/pull-requests.md, not AGENTS.md "Skills", CLAUDE.md or the blueprint ADRs. A reviewer reaches those only through step 5 or the last row. Should the process row also name AGENTS.md "Skills" (and CLAUDE.md), which departs from the accepted split, or does the split stand as written?
 
 ## Stop rule
 
