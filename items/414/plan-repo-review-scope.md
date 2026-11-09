@@ -1,74 +1,89 @@
 # repo-review-scope contract-grade plan (issue #414)
 
-Revision: r3
+Revision: r4
 
-This plan replaces the single "anything" row of the cold-review rubric in `.agents/skills/repo-review/SKILL.md` with rows keyed to what a diff touches, as issue #414 proposes and Hari's decision of 2026-11-09 accepts. The rubric text below follows the accepted split. Four points that the issue and the decision leave open are listed under "Open questions for Hari"; the plan decides none of them, and it is not approvable until they are answered.
-
-Revision r1 (commit 2a7797f1e287d2afdc59c4571871113efa19ef18) was pushed but never posted. It departed from the proposal in three places. Decision 6744694270, created one second before that push, accepts the proposal as written, so r2 follows the proposal and r1 is withdrawn.
+This plan replaces the single "anything" row of the cold-review rubric in `.agents/skills/repo-review/SKILL.md` with rows keyed to what a diff touches. It also adds one paragraph to docs/agents/pull-requests.md rule 8, so that the next three cold-reviewed pull requests measure the change. Both texts are pinned below, and the plan has no open questions.
 
 ## Goal and authority
 
-Goal: scope the rubric's reading load to the documents a diff's files depend on (issue #414, "Proposal").
+Goal: scope the rubric's reading load to the documents a diff's files depend on (issue #414, "Proposal"), and measure the result before Hari decides whether it stays.
 
 Authority, in creation order (docs/agents/factory.md "Item lifecycle" step 3):
 1. The body of issue #414, `updated_at` 2026-11-09T14:01:42Z: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/414
-2. `## Decision: answers to the two open questions`, comment 6744694270, created 2026-11-09T16:00:54Z: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/414#issuecomment-6744694270. Point 1: "The proposed rubric split is accepted." Point 2: "Measure it on the next three pull requests that get a cold review: run time per round and any P0 or P1 found later by Codex or Hari that the cold review missed. Hari then decides whether it stays."
+2. Decision comment 6744694270, created 2026-11-09T16:00:54Z: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/414#issuecomment-6744694270. It accepts the proposed split and orders a measurement on the next three cold-reviewed pull requests, after which Hari decides.
+3. Decision comment 6746218503, created 2026-11-09T17:03:26Z: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/414#issuecomment-6746218503. It answers this plan's four open questions of revision r3. Its points 1 and 4 change the accepted split, and it wins where it differs from comment 6744694270.
 
-There is no approved item plan and no parent issue. This is directly authorized governance work: the implementer records the task brief, the issue, the decision and the approval of this plan in the receipt (docs/agents/pull-requests.md, execution-card paragraph), and claims no item plan.
+There is no approved item plan and no parent issue. This is directly authorized governance work: the implementer records the task brief, the issue, both decisions and the approval of this plan in the receipt (docs/agents/pull-requests.md, execution-card paragraph), and claims no item plan.
 
 ## Scope
 
 Files allowed to change:
 - `.agents/skills/repo-review/SKILL.md`, only between the line `## Rubric` and the line `## Report`.
+- `docs/agents/pull-requests.md`, only by inserting the paragraph pinned below.
 - `items/414/state.md`, written under docs/agents/factory.md "Item state file".
 - One authored receipt under `items/414/`, with a file name the implementer chooses.
-- Any file that the answers to open questions 1 and 2 add. Until then, none.
 
-Paths that must not change: every other path, including AGENTS.md, CLAUDE.md, docs/agents/factory.md, docs/agents/pull-requests.md, `.claude/agents/repo-reviewer.md`, the symlink `.claude/skills/repo-review`, and the frontmatter and every section of `SKILL.md` other than "Rubric".
+Paths that must not change: every other path, including AGENTS.md, CLAUDE.md, docs/agents/factory.md, `.claude/agents/repo-reviewer.md`, the symlink `.claude/skills/repo-review`, the frontmatter and every section of `SKILL.md` other than "Rubric", and every existing line of docs/agents/pull-requests.md.
 
-`.agents/skills/repo-review/SKILL.md` is a protected path (`.github/CODEOWNERS`, line `/.*/`), so Hari merges (AGENTS.md GOVERNANCE "Merge rule"; AGENTS.md "Skills").
+Both changed rule files are protected paths (`.github/CODEOWNERS`, lines `/.*/` and `/docs/`), so Hari merges (AGENTS.md GOVERNANCE "Merge rule").
 
 ## External contracts
 
-The rubric is published wording that every later cold review reads. After the change, the text from the line after `## Rubric` up to the line before `## Report` is exactly the block below, byte for byte, with one blank line before and after the table.
+### C1. Rubric
+
+After the change, the text from the line after `## Rubric` up to the line before `## Report` is exactly the block below, byte for byte, with one blank line before and after the table.
 
 ```text
 | The diff touches | Apply |
 |---|---|
-| anything | AGENTS.md: all of GOVERNANCE (scope and deferred items included), "Code Review Rules", writing standards; the originating specification identified in the receipt |
-| `AGENTS.md`, `CLAUDE.md`, `docs/agents/`, `.agents/skills/`, `.claude/`, `.codex/`, `items/` | docs/agents/factory.md and docs/agents/pull-requests.md, in full |
+| anything | AGENTS.md: all of GOVERNANCE (scope and deferred items included), "Code Review Rules", writing standards; docs/agents/pull-requests.md in full; the originating specification identified in the receipt |
+| `AGENTS.md`, `CLAUDE.md`, `docs/agents/`, `.agents/skills/`, `.claude/`, `.codex/` | AGENTS.md in full; CLAUDE.md; docs/agents/factory.md in full |
+| `items/` | docs/agents/factory.md in full |
 | `docs/engineering/` | each changed document itself |
 | .NET code or tests | docs/engineering/dotnet.md; docs/blueprint.md ADRs |
 | Terraform | docs/engineering/terraform.md; ADR-011; docs/blueprint.md ADRs |
 | Kafka client settings | docs/blueprint.md "Workloads (.NET 10, Confluent.Kafka 2.16.0 pinned)": every setting traceable to an inventory item; docs/blueprint.md ADRs |
 | `scenarios/`, `results/` | AGENTS.md verdict integrity; docs/blueprint.md ADRs |
 | `.github/workflows/` | AGENTS.md safety rules 8 and 9; docs/blueprint.md ADRs |
+| `charts/`, `infra/scripts/`, `scripts/` | docs/blueprint.md ADRs |
 | a file that a rule elsewhere in the repository cites by name | the citing rule |
 ```
 
-Mapping to the proposal's four bullets:
-- "Always" is the "anything" row.
-- "Process files" is the second row, with the proposal's seven paths and its two documents.
-- "Code, Terraform, scenarios, workflows: the blueprint ADRs and the engineering documents those rows already name" adds `docs/blueprint.md ADRs` to the five existing code rows and keeps what each already names. The `docs/engineering/` row is not code and is unchanged.
-- "Any changed file that a rule elsewhere cites by name: the citing rule" is the last row.
+How the rows map to the authorities:
+- "anything": the proposal's "Always" bullet, plus docs/agents/pull-requests.md (decision 6746218503 point 1).
+- The two process rows: decision 6746218503 point 4. docs/agents/pull-requests.md, which that point names for both rows, applies through "anything" and is not repeated.
+- The five code rows from `.NET code or tests` to `.github/workflows/`: the proposal's "Code" bullet, which adds the blueprint ADRs to the rows that existed before.
+- The `charts/`, `infra/scripts/`, `scripts/` row: decision 6746218503 point 3.
+- The last row: the proposal's last bullet.
+- `docs/engineering/`: unchanged.
+
+### C2. Measurement paragraph
+
+In docs/agents/pull-requests.md, insert one blank line and then the line below directly after line 38 on `main` at 6b0194b (the paragraph that starts "Count the first five pull requests merged after the #184 pull request merged"), and before the line that starts "9. Fill in the pull request template". The line starts with three spaces, as the other paragraphs of rule 8 do.
+
+```text
+   Measure the cold-review rubric changed for [issue #414](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/414) on the first three pull requests that get a cold review after that change merges. For each one, record in its description every cold-review round with its mode and the run time its tool reports, or `not reported` when the tool reports none, and every P0 or P1 that Codex or Hari raised after a cold-review round on a line that round covered. After the third of them has merged, record that evidence per pull request, with links, on issue #414. Hari then decides whether the rubric stays. No result is set in advance that reverts it.
+```
 
 The rest of the skill, including step 2's rule that a changed rule document is applied at its `origin/main` version, is unchanged.
 
 ## Requirements
 
-R1. WHEN a cold reviewer applies the changed skill to any file in scope, THEN it applies the "anything" row.
+R1. WHEN a cold reviewer applies the changed skill to any file in scope, THEN it applies the "anything" row, including docs/agents/pull-requests.md in full.
 
-R2. WHEN the diff touches `AGENTS.md`, `CLAUDE.md`, or a path under `docs/agents/`, `.agents/skills/`, `.claude/`, `.codex/` or `items/`, THEN the reviewer applies docs/agents/factory.md and docs/agents/pull-requests.md in full.
+R2. WHEN the diff touches `AGENTS.md`, `CLAUDE.md`, or a path under `docs/agents/`, `.agents/skills/`, `.claude/` or `.codex/`, THEN the reviewer also applies AGENTS.md in full, CLAUDE.md and docs/agents/factory.md in full.
 
-R3. WHEN the diff touches .NET code or tests, Terraform, Kafka client settings, `scenarios/`, `results/` or `.github/workflows/`, THEN the reviewer applies docs/blueprint.md ADRs and the documents that row named before.
+R3. WHEN the diff touches a path under `items/` and no path of R2, THEN the reviewer also applies docs/agents/factory.md in full, and the rubric names neither CLAUDE.md nor AGENTS.md beyond the "anything" row for that file.
 
-R4. WHEN a rule elsewhere in the repository cites a changed file by name, THEN the reviewer applies that rule.
+R4. WHEN the diff touches .NET code or tests, Terraform, Kafka client settings, `scenarios/`, `results/`, `.github/workflows/`, `charts/`, `infra/scripts/` or `scripts/`, THEN the reviewer applies docs/blueprint.md ADRs, plus what that row names besides.
 
-R5 (failure path). WHEN a changed file matches no row but "anything", such as `docs/operations/` prose or `README.md`, THEN step 2 is still met, because "anything" matches every file.
+R5. WHEN a rule elsewhere in the repository cites a changed file by name, THEN the reviewer applies that rule.
 
-R6 (failure path). WHEN a pull request changes `SKILL.md` itself, THEN its cold review applies the `origin/main` version of the skill under unchanged step 2. The pull request that introduces this rubric is reviewed under the old one.
+R6 (failure path). WHEN a changed file matches no row but "anything", such as `docs/operations/` prose or `README.md`, THEN step 2 is still met, because "anything" matches every file.
 
-R7. WHEN the answer to open question 2 names where the measurement of decision 6744694270 point 2 is recorded, THEN that text is added in the file the answer names. This plan pins nothing for it until then.
+R7 (failure path). WHEN a pull request changes `SKILL.md` or docs/agents/pull-requests.md, THEN its cold review applies their `origin/main` versions under unchanged step 2. The pull request that makes this change is reviewed under the old rubric and is not one of the three measured pull requests.
+
+R8. WHEN the pull request for this plan has merged, THEN docs/agents/pull-requests.md rule 8 holds the C2 paragraph, which binds the next three pull requests that get a cold review.
 
 ## Invariants and safety rules
 
@@ -76,69 +91,64 @@ R7. WHEN the answer to open question 2 names where the measurement of decision 6
 - No severity in AGENTS.md "Code Review Rules" changes.
 - Step 2's `origin/main` rule is unchanged, so a diff still cannot weaken the rules it is reviewed against.
 - The rubric cites documents and sections and restates no rule (AGENTS.md "Skills").
+- AGENTS.md line 111 ("A cold reviewer reads it too, through the `repo-review` rubric") and docs/agents/pull-requests.md line 3 stay true, because the "anything" row names docs/agents/pull-requests.md.
 
-Consequences of decision 6744694270 point 1, recorded so that no one reads them as accidents. Under the accepted split:
-- CLAUDE.md, AGENTS.md "Before opening a pull request" (rules 11 to 13) and AGENTS.md "Skills" are in no row. The last row applies them when they cite a changed file by name. The skill's unchanged step 5 still requires checking every change against the rest of the repository, so a contradiction with any of them remains a finding. Step 2 no longer requires the reviewer to read them first. How much reading the change saves therefore depends on how reviewers carry out step 5, which the measurement in decision 6744694270 point 2 observes.
-- docs/blueprint.md ADRs do not apply to a diff that touches only process files or documentation. ADR-018 (reviewer and implementer tools) is one ADR a process diff can contradict.
-- Every implementation pull request touches `items/<issue>/state.md` (docs/agents/factory.md "Item state file"), so every implementation pull request still reads factory.md and pull-requests.md in full. For those pull requests the saving is CLAUDE.md and the two AGENTS.md sections above.
+Consequences, recorded so that no one reads them as accidents:
+- docs/blueprint.md ADRs no longer apply through the rubric to a diff that touches only process files, `items/` or documentation. The skill's unchanged step 5 still requires checking every change against the rest of the repository, so a contradiction with an ADR remains a finding.
+- A diff that touches code and `items/` reads AGENTS.md beyond the "anything" row and CLAUDE.md only through step 5 or the last row.
+- How much reading the change saves depends on how reviewers carry out step 5. The C2 measurement observes it.
 
 ## Test map
 
-This is the predicate map of docs/agents/pull-requests.md for this pull request. No verifier predicate changes. Each check is a script, run from the repository root on the pull request head.
+This is the predicate map of docs/agents/pull-requests.md for this pull request. No verifier predicate changes. Each check is a script, run from the repository root on the pull request head. In the table, `\|` is a Markdown escape; run it as `|`.
 
 | Req | Check | Input | Expected |
 |---|---|---|---|
-| R1 to R5 | T1: extract the rubric block from SKILL.md, `awk '/^## Rubric$/{f=1;next}/^## Report$/{f=0}f' .agents/skills/repo-review/SKILL.md`, and `diff` it with the fenced block above, taken from this file at its approved commit, with one blank line added before and after | both blocks | empty diff, exit 0; the SKILL.md block has 13 lines: blank, 11 table lines, blank |
-| Scope | T2: `git diff --name-only origin/main...HEAD` | pull request head | `.agents/skills/repo-review/SKILL.md`, paths under `items/414/`, and only the files the answers to open questions 1 and 2 add |
-| R6 | T3: `diff <(git show origin/main:.agents/skills/repo-review/SKILL.md \| sed '/^## Rubric$/,/^## Report$/d') <(sed '/^## Rubric$/,/^## Report$/d' .agents/skills/repo-review/SKILL.md)` | both versions | empty diff, exit 0 |
-| Invariant | T4: `readlink .claude/skills/repo-review` | symlink | `../../.agents/skills/repo-review` |
-| R2, R3 | T5: for each path in backticks in the first column of the rubric, `git ls-files -- <path> \| head -1` | the 11 paths | 11 of 11 non-empty |
-| Writing | T6: `LC_ALL=C grep -nP '[^\x00-\x7F]' .agents/skills/repo-review/SKILL.md` | changed file | no output, exit 1 |
-| Docs | T7: `npm run check:docs` | pull request head | warnings disposed under docs/agents/pull-requests.md rule 8 |
+| R1 to R6 | T1: extract the rubric block from SKILL.md, `awk '/^## Rubric$/{f=1;next}/^## Report$/{f=0}f' .agents/skills/repo-review/SKILL.md`, and `diff` it with the C1 block, taken from this file at its approved commit, with one blank line added before and after | both blocks | empty diff, exit 0; the SKILL.md block has 15 lines: blank, 13 table lines, blank |
+| R8 | T2: `diff <(git show origin/main:docs/agents/pull-requests.md) docs/agents/pull-requests.md` | pull request head | exactly one hunk, `38a39,40`, adding a blank line and the C2 line byte for byte |
+| Scope | T3: `git diff --name-only origin/main...HEAD`, on a branch started from `origin/main` | pull request head | `.agents/skills/repo-review/SKILL.md`, `docs/agents/pull-requests.md`, and paths under `items/414/` only |
+| R7 | T4: `diff <(git show origin/main:.agents/skills/repo-review/SKILL.md \| sed '/^## Rubric$/,/^## Report$/d') <(sed '/^## Rubric$/,/^## Report$/d' .agents/skills/repo-review/SKILL.md)` | both versions | empty diff, exit 0 |
+| Invariant | T5: `readlink .claude/skills/repo-review` | symlink | `../../.agents/skills/repo-review` |
+| R2 to R4 | T6: for each path in backticks in the first column of the rubric, `git ls-files -- <path> \| head -1` | the 14 paths | 14 of 14 non-empty |
+| Writing | T7: `LC_ALL=C grep -nP '[^\x00-\x7F]' .agents/skills/repo-review/SKILL.md docs/agents/pull-requests.md` | changed files | no output, exit 1 |
+| Docs | T8: `npm run check:docs` | pull request head | warnings disposed under docs/agents/pull-requests.md rule 8 |
 
-The counts 13 and 11 were computed by script from the block above and from `main` at 6b0194b; T1 and T5 recompute them.
+The counts 15, 13, 14 and the line number 38 were computed by script from the blocks above and from `main` at 6b0194b; T1, T2 and T6 recompute them.
 
-No offline test can show that the narrower rubric still catches what the old one caught. That is a behavioural claim about a model reviewer, and decision 6744694270 point 2 answers it by measurement after merge.
+No offline test can show that the narrower rubric still catches what the old one caught. That is a behavioural claim about a model reviewer; the C2 measurement answers it after merge, and Hari decides.
 
 ## Deployment assumptions
 
-None. The change is prose read by a reviewer agent; no deployed container, image, chart or runtime depends on it.
+None. The change is prose read by reviewer and implementing agents; no deployed container, image, chart or runtime depends on it.
 
 ## Acceptance commands
 
-1. T1 to T6, with their output recorded in the authored receipt.
-2. `npm run check:docs` (T7), with each warning fixed or explained.
-3. The cold review under AGENTS.md "Before opening a pull request" rule 8, which applies the `origin/main` skill (R6).
+1. T1 to T7, with their output recorded in the authored receipt.
+2. `npm run check:docs` (T8), with each warning fixed or explained.
+3. The cold review under AGENTS.md "Before opening a pull request" rule 8, which applies the `origin/main` versions of both changed rule files (R7).
 4. Codex review of the head commit under AGENTS.md GOVERNANCE "Merge rule". Hari merges.
 
 ## Sources
 
-- Issue #414 body, `updated_at` 2026-11-09T14:01:42Z, and decision comment 6744694270.
-- `.agents/skills/repo-review/SKILL.md` on `main` at 6b0194b, lines 6, 10, 11, 15 and 17 to 27.
-- AGENTS.md on `main` at 6b0194b, line 111: "A cold reviewer reads it too, through the `repo-review` rubric."
-- docs/agents/pull-requests.md on `main` at 6b0194b, line 3: "Read it in full before you start such work, and before you review such work cold."
-- docs/agents/pull-requests.md on `main` at 6b0194b, rule 8, last paragraph: the #184 precedent, which records a post-merge measurement as a rule in that file and its results on the issue.
+- Issue #414 body, `updated_at` 2026-11-09T14:01:42Z, and decision comments 6744694270 and 6746218503.
+- `.agents/skills/repo-review/SKILL.md` on `main` at 6b0194b, lines 11, 14 and 17 to 27.
+- docs/agents/pull-requests.md on `main` at 6b0194b: line 3, "Read it in full before you start such work, and before you review such work cold"; line 38, the #184 measurement paragraph that C2 follows.
+- AGENTS.md on `main` at 6b0194b, line 111.
 - docs/agents/factory.md on `main` at 6b0194b, "Item state file".
-- `.github/CODEOWNERS` on `main` at 6b0194b, line `/.*/`.
+- `.github/CODEOWNERS` on `main` at 6b0194b, lines `/docs/` and `/.*/`.
 
 ## Plan-check questions
 
-(a) Effort that scales with a number unknown at planning time: none in the implementation, which edits one table. At review time, the last row's citations are counted only at runtime. The proposal sets no cap, and this plan adds none.
+(a) Effort that scales with a number unknown at planning time: none in the implementation, which edits one table and inserts one paragraph. At review time, the last row's citations and step 5's cross-checks are counted only at runtime; no cap is set, and the C2 measurement observes the cost. The measurement itself is capped at three pull requests.
 
-(b) Stricter than its parent: there is no parent plan. Against the accepted proposal, the plan adds nothing. It pins the reading "those rows already name" as the five existing code rows, which open question 3 asks Hari to confirm.
+(b) Stricter than its parent: there is no parent plan. Against the proposal, the plan applies docs/agents/pull-requests.md to every file, AGENTS.md in full and CLAUDE.md to process files other than `items/`, and the ADRs to `charts/`, `infra/scripts/` and `scripts/`. Each comes from decision 6746218503.
 
-(c) Checks that depend on code, data or behaviour that is neither on `main` nor in the pull request: none. T1 to T7 read only the repository.
+(c) Checks that depend on code, data or behaviour that is neither on `main` nor in the pull request: none. T1 to T8 read only the repository.
 
 ## Open questions for Hari
 
-1. Conflict with two protected files. Under the accepted split, a code-only diff no longer gets docs/agents/pull-requests.md through the rubric. AGENTS.md line 111 says "A cold reviewer reads it too, through the `repo-review` rubric", and pull-requests.md line 3 says to read it in full "before you review such work cold". Its rules 1, 2 and 4 (claims checked at source, counts by script) also bind code pull requests. Should this pull request (a) amend those two sentences, which adds AGENTS.md and pull-requests.md to its scope, (b) leave them and accept the inconsistency, or (c) add pull-requests.md to the "anything" row, which departs from the accepted split?
-
-2. Where the measurement lives. Decision 6744694270 point 2 orders a measurement on the next three pull requests that get a cold review, but does not say where the instruction or the results are recorded. Without a written rule, a later session has no reason to measure. The #184 precedent put the instruction in pull-requests.md rule 8 and the results on the issue. Should this pull request add such a paragraph to pull-requests.md rule 8, with results on issue #414, or should the record go elsewhere? Also: is "run time per round" the harness-reported duration of each cold-review subagent, as the issue's evidence table used?
-
-3. Code without a row. The proposal's "Code" bullet adds ADRs to "those rows", and the current rubric has no row for `charts/`, `infra/scripts/` or `scripts/`. Under this plan, Helm charts, Python and shell scripts match only "anything" and any citing rule, so no ADR is applied to them. Is that intended, or should those paths join a code row?
-
-4. Process diffs and AGENTS.md "Skills". The issue's "Risk" section says process files "keep the full read" under the proposal, and that the three cross-file P1 findings of #413's first cold-review round involved process files. One of them, a skill restating a gating rule, rested on AGENTS.md "Skills". The accepted process row applies docs/agents/factory.md and docs/agents/pull-requests.md, not AGENTS.md "Skills", CLAUDE.md or the blueprint ADRs. A reviewer reaches those only through step 5 or the last row. Should the process row also name AGENTS.md "Skills" (and CLAUDE.md), which departs from the accepted split, or does the split stand as written?
+None.
 
 ## Stop rule
 
-The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it needs to change the rubric text above, a requirement, or the scope, including any edit to a file outside the scope list.
+The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it needs to change the C1 or C2 text, a requirement, or the scope, including any edit to a file outside the scope list.
