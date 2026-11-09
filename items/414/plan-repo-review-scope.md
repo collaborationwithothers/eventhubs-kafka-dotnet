@@ -1,8 +1,8 @@
 # repo-review-scope contract-grade plan (issue #414)
 
-Revision: r2
+Revision: r3
 
-This plan replaces the single "anything" row of the cold-review rubric in `.agents/skills/repo-review/SKILL.md` with rows keyed to what a diff touches, as issue #414 proposes and Hari's decision of 2026-11-09 accepts. The rubric text below follows the accepted split. Three points that the issue and the decision leave open are listed under "Open questions for Hari"; the plan decides none of them, and it is not approvable until they are answered.
+This plan replaces the single "anything" row of the cold-review rubric in `.agents/skills/repo-review/SKILL.md` with rows keyed to what a diff touches, as issue #414 proposes and Hari's decision of 2026-11-09 accepts. The rubric text below follows the accepted split. Four points that the issue and the decision leave open are listed under "Open questions for Hari"; the plan decides none of them, and it is not approvable until they are answered.
 
 Revision r1 (commit 2a7797f1e287d2afdc59c4571871113efa19ef18) was pushed but never posted. It departed from the proposal in three places. Decision 6744694270, created one second before that push, accepts the proposal as written, so r2 follows the proposal and r1 is withdrawn.
 
@@ -78,7 +78,7 @@ R7. WHEN the answer to open question 2 names where the measurement of decision 6
 - The rubric cites documents and sections and restates no rule (AGENTS.md "Skills").
 
 Consequences of decision 6744694270 point 1, recorded so that no one reads them as accidents. Under the accepted split:
-- CLAUDE.md, AGENTS.md "Before opening a pull request" (rules 11 to 13) and AGENTS.md "Skills" are in no row. They apply only through the last row, when they cite a changed file by name.
+- CLAUDE.md, AGENTS.md "Before opening a pull request" (rules 11 to 13) and AGENTS.md "Skills" are in no row. The last row applies them when they cite a changed file by name. The skill's unchanged step 5 still requires checking every change against the rest of the repository, so a contradiction with any of them remains a finding. Step 2 no longer requires the reviewer to read them first. How much reading the change saves therefore depends on how reviewers carry out step 5, which the measurement in decision 6744694270 point 2 observes.
 - docs/blueprint.md ADRs do not apply to a diff that touches only process files or documentation. ADR-018 (reviewer and implementer tools) is one ADR a process diff can contradict.
 - Every implementation pull request touches `items/<issue>/state.md` (docs/agents/factory.md "Item state file"), so every implementation pull request still reads factory.md and pull-requests.md in full. For those pull requests the saving is CLAUDE.md and the two AGENTS.md sections above.
 
@@ -136,6 +136,8 @@ None. The change is prose read by a reviewer agent; no deployed container, image
 2. Where the measurement lives. Decision 6744694270 point 2 orders a measurement on the next three pull requests that get a cold review, but does not say where the instruction or the results are recorded. Without a written rule, a later session has no reason to measure. The #184 precedent put the instruction in pull-requests.md rule 8 and the results on the issue. Should this pull request add such a paragraph to pull-requests.md rule 8, with results on issue #414, or should the record go elsewhere? Also: is "run time per round" the harness-reported duration of each cold-review subagent, as the issue's evidence table used?
 
 3. Code without a row. The proposal's "Code" bullet adds ADRs to "those rows", and the current rubric has no row for `charts/`, `infra/scripts/` or `scripts/`. Under this plan, Helm charts, Python and shell scripts match only "anything" and any citing rule, so no ADR is applied to them. Is that intended, or should those paths join a code row?
+
+4. Process diffs and AGENTS.md "Skills". The issue's "Risk" section says process files "keep the full read" under the proposal, and that the three cross-file P1 findings of #413's first cold-review round involved process files. One of them, a skill restating a gating rule,. rested on AGENTS.md "Skills". The accepted process row applies docs/agents/factory.md and docs/agents/pull-requests.md, not AGENTS.md "Skills", CLAUDE.md or the blueprint ADRs. A reviewer reaches those only through step 5 or the last row. Should the process row also name AGENTS.md "Skills" (and CLAUDE.md), which departs from the accepted split, or does the split stand as written?
 
 ## Stop rule
 
