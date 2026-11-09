@@ -32,11 +32,12 @@ This is the single authored receipt for the governance pull request of [issue 41
 - Round 2: focused correction review of the staged index containing the round 1 corrections (committed as 0b08998), compared with commit ea978170 (the round 1 content), with the full pull request diff as context. Complete; 2 at P0 or P1, 4 at P2.
 - Round 3: focused correction review of the staged index containing the round 2 corrections, compared with commit 0b08998, with the full pull request diff as context. This is the last focused round in the budget. Complete; `Findings: none at P0 or P1`, 2 P2.
 - Round 4: focused correction review beyond the budget, approved by [Hari's decision on #413](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/413#issuecomment-6741537285), of the staged index containing the fixes for the three P2s in the [handoff](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/413#issuecomment-6741434338), compared with commit 8b499544e255d0fbd998130aafb387055fcf79ef. Complete; `Findings: none at P0 or P1`.
-- Round 5: focused correction review beyond the budget, approved by [Hari's decision on #413](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/413#issuecomment-6741697163), of the staged index adding the Codex `plan_checker` agent and the rule text that names it, compared with commit e499688e400087c9bdc93ea0c76f74502a7a2ea3.
+- Round 5: focused correction review beyond the budget, approved by [Hari's decision on #413](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/413#issuecomment-6741697163), of the staged index adding the Codex `plan_checker` agent and the rule text that names it, compared with commit e499688e400087c9bdc93ea0c76f74502a7a2ea3. The content was committed as cd9e82f. Complete; `Findings: none at P0 or P1`, 2 P2.
+- Round 6: focused correction review beyond the budget, approved by decisions 6741776147 and 6741875986 on #413, of the working tree containing the `xhigh` change (commit 1b3631d) and the fixes for the two round 5 P2s, compared with commit cd9e82fbd4c2d8f781121939a1adfbd3fdec461d.
 
 ## Specification comparison sources
 
-The issue 412 body, amendments 1 to 5 and "Also"; decision 6740819145, points 1 to 4.
+The issue 412 body, amendments 1 to 5 and "Also"; decision 6740819145, points 1 to 4; and, on pull request 413, decisions 6741697163 (the Codex plan checker), 6741776147 (its `xhigh` effort) and 6741875986 (Codex checks and standing approval).
 
 ## Round 2 dispositions
 
