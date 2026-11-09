@@ -7,7 +7,7 @@ This is the single authored receipt for the governance pull request of [issue 41
 - **Deliverable:**
   - docs/agents/factory.md "Authority reads" and "Item lifecycle" steps 1 and 3 amended for amendments 1 to 5;
   - the plan-pr, plan-check and implement-plan skills updated to match;
-  - a new `plan-checker` agent definition;
+  - a new `plan-checker` agent definition for Claude Code, and its Codex counterpart `.codex/agents/plan-checker.toml` (Hari's decision on #413, comment 6741697163);
   - two changes to docs/agents/pull-requests.md: one sentence on the predicate map, and the rule 8 scope sentence for plan-branch pushes;
   - `__pycache__/` in `.gitignore`;
   - the evidence folder docs/operations/evidence/issue-412/.
@@ -31,7 +31,8 @@ This is the single authored receipt for the governance pull request of [issue 41
 - Round 1: comprehensive cold review of the staged index, compared with origin/main 4163cd1afcfb4a3564c80f0eda9aff76cb0a9fe0. Complete; 5 at P0 or P1, 3 at P2.
 - Round 2: focused correction review of the staged index containing the round 1 corrections (committed as 0b08998), compared with commit ea978170 (the round 1 content), with the full pull request diff as context. Complete; 2 at P0 or P1, 4 at P2.
 - Round 3: focused correction review of the staged index containing the round 2 corrections, compared with commit 0b08998, with the full pull request diff as context. This is the last focused round in the budget. Complete; `Findings: none at P0 or P1`, 2 P2.
-- Round 4: focused correction review beyond the budget, approved by [Hari's decision on #413](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/413#issuecomment-6741537285), of the staged index containing the fixes for the three P2s in the [handoff](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/413#issuecomment-6741434338), compared with commit 8b499544e255d0fbd998130aafb387055fcf79ef.
+- Round 4: focused correction review beyond the budget, approved by [Hari's decision on #413](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/413#issuecomment-6741537285), of the staged index containing the fixes for the three P2s in the [handoff](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/413#issuecomment-6741434338), compared with commit 8b499544e255d0fbd998130aafb387055fcf79ef. Complete; `Findings: none at P0 or P1`.
+- Round 5: focused correction review beyond the budget, approved by [Hari's decision on #413](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/413#issuecomment-6741697163), of the staged index adding the Codex `plan_checker` agent and the rule text that names it, compared with commit e499688e400087c9bdc93ea0c76f74502a7a2ea3.
 
 ## Specification comparison sources
 
