@@ -1,12 +1,23 @@
 # Successor fix contract-grade plan
 
-Revision 4. Issue #404. Implementing tool: Claude Code, under [standing decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614), point 3, replacing Codex for this pull request. Base: `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`, the source of diagnostic trial 7.
+Revision 5. Issue #404. Implementing tool: Claude Code, under [standing decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614), point 3, replacing Codex for this pull request. Base: `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`, the source of diagnostic trial 7.
 
 The successor producer in trial 7 disposed its native client before it asked the statistics session to complete. No statistics report could then arrive after the completion boundary, so the evidence guard failed. This pull request completes statistics while the client is still live, then disposes it, then completes evidence. It also gives the guard one fact per statistics diagnostic code the session can emit, which raises the per-site fact cap from 16 to 35 (decision 6751449502). It changes no protocol sequence, gate, timeout, interval, failure name or wire member, touches no protected path, and authorizes no trial.
 
 This plan states requirements and tests as observable behaviour. Code text, member names, private structure and line numbers are the implementer's. Line numbers below cite `main` only to locate today's behaviour. A technique named in a test is a permitted example unless the row says it is required.
 
-### Changes since Revision 3 (commit `ac5a29d9`)
+### Changes since Revision 4 (commit `5eaa3167`)
+
+From the fresh delta check of Revision 4 (no blocking finding), applied exactly:
+
+- m1: X2's killers are T2, T5 and T12.
+- m2: M3's killers drop T12.
+- m3: T8 and T13 are marked as regression guards that pass on `main`.
+- m4: the size wording is corrected.
+- m5: T12 and T13 state that a null successor input is permitted and that their helpers are copied into the new class.
+- m6: an observation point is added to R1 to R7 and R11.
+
+### Changes in Revision 4, from Revision 3 (commit `ac5a29d9`)
 
 - [decision 6753364128](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753364128), made by the control session under standing rule 1: D1 to D6 accepted; D7 not accepted, because a wrong broker set or handler from the host could give a misleading result rather than a named failure.
 - D7 is replaced by two tests on the producer that the host's successor creation path builds: T12 (broker inventory used by statistics completion) and T13 (handler order). R10 and S18 now cite them.
@@ -212,19 +223,19 @@ The rest of the line is byte-identical.
 
 Behaviour of the successor process on the runtime producer and statistics session that the host builds.
 
-R1. WHEN the successor has sealed its `cross_restart` cohort (`cohort_sealed` written), THEN it requests statistics completion exactly once. It passes the broker inventory from the predecessor binding, and the native producer has not yet been disposed.
+R1. WHEN the successor has sealed its `cross_restart` cohort (`cohort_sealed` written), THEN it requests statistics completion exactly once. It passes the broker inventory from the predecessor binding, and the native producer has not yet been disposed. Observed by T1 (dispose count and boundary observer).
 
-R2. WHEN that statistics completion returns, complete or not, THEN the successor disposes the native producer exactly once within the existing cleanup timeout. Only after disposal returns does it complete the evidence session exactly once with that completion. The evidence session's `capabilities.json` is therefore written in every case where statistics completion returned.
+R2. WHEN that statistics completion returns, complete or not, THEN the successor disposes the native producer exactly once within the existing cleanup timeout. Only after disposal returns does it complete the evidence session exactly once with that completion. The evidence session's `capabilities.json` is therefore written in every case where statistics completion returned. Observed by T1 (dispose count and boundary observer).
 
-R3. WHEN, after R2, the completion is incomplete or the evidence session is faulted, THEN the successor fails with E1 and exactly the E2 facts. It writes none of `statistics.jsonl`, `request-lifecycle.jsonl` or `capabilities.json` under `<OutputRoot>/successor/`.
+R3. WHEN, after R2, the completion is incomplete or the evidence session is faulted, THEN the successor fails with E1 and exactly the E2 facts. It writes none of `statistics.jsonl`, `request-lifecycle.jsonl` or `capabilities.json` under `<OutputRoot>/successor/`. Observed by T2, T5 and T12 (failure facts and successor directory).
 
-R4. WHEN, after R2, the completion is complete and evidence is not faulted, THEN the existing behaviour follows unchanged: the guard checks, the copy of the three evidence artifacts into `successor/` (read limit 134217728 bytes), the guard checks again, and the successor artifacts returned to the host.
+R4. WHEN, after R2, the completion is complete and evidence is not faulted, THEN the existing behaviour follows unchanged: the guard checks, the copy of the three evidence artifacts into `successor/` (read limit 134217728 bytes), the guard checks again, and the successor artifacts returned to the host. Observed by T1 and T7.
 
-R5. WHEN a native error callback arrives during disposal, THEN the evidence session captures it, with no `error_capture_unavailable`. For an error other than `NoError`, the successor then fails with E1 and `native_error_observed` 1.
+R5. WHEN a native error callback arrives during disposal, THEN the evidence session captures it, with no `error_capture_unavailable`. For an error other than `NoError`, the successor then fails with E1 and `native_error_observed` 1. Observed by T4.
 
-R6. WHEN a statistics callback arrives after statistics completion and before or during disposal, THEN the successor still succeeds. The completion is unchanged, evidence is not faulted, and the B10 statistics adapter raises no guard.
+R6. WHEN a statistics callback arrives after statistics completion and before or during disposal, THEN the successor still succeeds. The completion is unchanged, evidence is not faulted, and the B10 statistics adapter raises no guard. Observed by T1 (P3).
 
-R7. WHEN statistics completion throws, THEN the same exception propagates from the successor run. The producer is disposed exactly once, and the evidence session is not completed, so no `capabilities.json` exists in the capture directory.
+R7. WHEN statistics completion throws, THEN the same exception propagates from the successor run. The producer is disposed exactly once, and the evidence session is not completed, so no `capabilities.json` exists in the capture directory. Observed by T8.
 
 R8. WHEN the first instance runs, including its timeout and control cohorts, THEN it requests neither statistics completion nor evidence completion (docs/operations/b10-abrupt-contract.md line 51). Coverage: acceptance command 12 only. The existing tests `Given_TimeoutInDrain_When_RunningCohort_Then_RetriesOnceWithSeparateInventory`, `Given_CompletedControlOriginal_When_ReleaseArrives_Then_ResendsOnceAndAdmitsKillWithoutCleanup` and `Given_ControlArm_When_Sealed_Then_InventoryHasSixEntriesWithMemberSequences` show only that the cohorts still run.
 
@@ -234,7 +245,7 @@ R10. WHEN the native client that the host's successor creation path builds deliv
 
 R12. WHEN the host's successor creation path builds the successor producer, THEN the statistics completion that producer performs uses exactly the broker inventory the host read from the predecessor binding. Observed by T12 on that producer.
 
-R11. WHEN a failure site attaches up to 35 distinct facts, THEN all are kept in order, and a 36th distinct fact is dropped.
+R11. WHEN a failure site attaches up to 35 distinct facts, THEN all are kept in order, and a 36th distinct fact is dropped. Observed by T10 and T11.
 
 ## 5. Invariants and safety
 
@@ -399,7 +410,7 @@ T7. Existing exporter `Given_SyntheticProducer_When_SupervisorAndSuccessorRun_Th
   - exported `successor/statistics.jsonl`: 2 lines, members `diagnostics, identity, raw_json, receipt_time, received_at, schema_version, session_id, statistics_identity, typed_snapshot`;
   - exported `successor/capabilities.json`: `statistics_completion.is_complete` true.
 
-T8. `Given_StatisticsCompletionThrows_When_SuccessorCompletes_Then_ExceptionPropagatesAndProducerDisposedOnce`. Covers R7.
+T8. `Given_StatisticsCompletionThrows_When_SuccessorCompletes_Then_ExceptionPropagatesAndProducerDisposedOnce`. Covers R7. Regression guard: passes on `main`.
 - Input: P1; the boundary observer throws `new InvalidOperationException("synthetic_boundary_failure")`. `KafkaStatisticsSession.cs` lines 205-207 document that it fails closed through the caller.
 - Expected: the successor run throws `InvalidOperationException` with that message, not `b10_abrupt_guard_failed`; one dispose; `capture/capabilities.json` absent; `successor/statistics.jsonl` absent.
 
@@ -424,7 +435,7 @@ T11. Existing `Given_ExcessFactsAndFractionalMilliseconds_When_Attached_Then_Fir
 - The cap value follows decision 6751449502, and no other assertion is loosened.
 
 T12. `Given_HostBuiltSuccessor_When_StatisticsCompletionRunsWithoutReports_Then_MissingBrokersEqualHostInventory`. Covers R12 and S18.
-- Observation point (required): the producer returned by the host's successor creation path, with role `successor`, not a separately constructed completion object.
+- Observation point (required): the producer returned by the host's successor creation path, with role `successor`, not a separately constructed completion object. A null successor input is permitted. The host-service and options helpers are copied into the new class, so `B10AbruptProducerTests.cs` stays within its allowed changes.
 - Input:
   - predecessor binding whose broker inventory lists `broker-b`, then `broker-a`;
   - host services as on `main` test helpers, with statistics `CompletionTimeout` 1 s and `TimeProvider.System`;
@@ -433,8 +444,8 @@ T12. `Given_HostBuiltSuccessor_When_StatisticsCompletionRunsWithoutReports_Then_
   - `b10_abrupt_guard_failed`, with `missing_broker_count` 2 and `diagnostic_completion_timeout` 1;
   - `capture/capabilities.json` `statistics_completion.missing_brokers` equals `["broker-a","broker-b"]`. With production expectations, `statistics_completion` also carries `first_post_drain_timestamp_microseconds` null.
 
-T13. `Given_HostBuiltSuccessorClient_When_SessionCaptureFails_Then_NativeCaptureWasTrackedFirst`. Covers R10 and S18.
-- Observation point (required): the statistics handler installed in the native client that the host-built producer's factory creates. That client is real; it needs no broker, and the missing token only adds a non-fatal error.
+T13. `Given_HostBuiltSuccessorClient_When_SessionCaptureFails_Then_NativeCaptureWasTrackedFirst`. Covers R10 and S18. Regression guard: passes on `main` (3 of 3 runs in the fresh check).
+- Observation point (required): the statistics handler installed in the native client that the host-built producer's factory creates. That client is real; it needs no broker, and the missing token only adds a non-fatal error. A null successor input is permitted, and the helpers are copied into the new class, as in T12.
 - Input:
   - the same host successor creation path, with a test `TimeProvider` whose timestamp read throws `InvalidOperationException("synthetic_clock_failure")` while armed;
   - report 1, `client_id` `pod-2` (the successor pod name), brokers `broker-a` and `broker-b`, delivered through the installed handler while armed;
@@ -450,8 +461,9 @@ Observations, not bounds:
 
 - T9 in this prototype, 3 of 3 runs, and the fresh checks (port 1 refused, and with a listener on port 1): completion wait 92 to 106 ms, dispose 95 to 102 ms, 3 reports per run.
 - Failure-report size, computed by script on the Revision 3 prototype (decision 6751449502):
-  - all 35 facts at `long.MinValue`: facts object 1874 UTF-8 bytes; plain failure line with a one-entry chain 2244 bytes;
-  - all facts at 0 or 1: facts object 1210 bytes;
+  - all 35 facts at `long.MinValue`: facts object 1874 UTF-8 bytes;
+  - plain failure line with a one-entry chain: 2244 to 2262 bytes observed; the size depends on the thrower type and method names, and the margin to 65536 is unaffected;
+  - all facts at 0 or 1: facts object 1209 bytes, or 1210 when `diagnostic_count` is 10 or more;
   - the fresh check reported 1936 bytes for the Revision 2 layout of 36 facts.
   - All are under 65536, and no other site's size changes.
 
@@ -463,7 +475,7 @@ Each mutation is scratch only and never committed, and the receipt records the r
 |---|---|---|
 | M1 | Statistics completion moved after disposal | T1, T4 x2, T5 |
 | M2 | Evidence completion moved before disposal | T4 x2, T5 |
-| M3 | Producer disposed first; statistics completion performed at the start of evidence completion (the `main` shape) | T1, T4 x2, T5, T9, T12 |
+| M3 | Producer disposed first; statistics completion performed at the start of evidence completion (the `main` shape) | T1, T4 x2, T5, T9 |
 | M4 | The R3 guard removed: facts computed, no throw | T2, T5, T12 |
 | M5 | Guard condition ignores the evidence fault | T5 |
 | M6 | The fact members mapped to codes `late_capture` and `capture_contention` swapped, so the emitted names change order | T6 (all 34), T2, T5, T10 |
@@ -479,7 +491,7 @@ Each mutation is scratch only and never committed, and the receipt records the r
 | M14s | The code strings mapped to facts 31 and 32 swapped; names and order unchanged | T6 d27, d28 |
 | M15 | `missing_broker_count` fixed at 0 | T6 b, c, d1 to d31, T2, T12 |
 | X1 | Handler calls the session before native-capture tracking (reverses R10); identical to H2 | T13 |
-| X2 | The R3 guard evaluated before evidence completion, so evidence is never completed on the failure path | T1, T2, T4, T5, T9, T12 |
+| X2 | The R3 guard evaluated before evidence completion, so evidence is never completed on the failure path | T2, T5, T12. On the success paths of T1, T4 `NoError` and T9 the guard does not throw, and T4 `Local_Fail` fails from the post-completion guard checks |
 | H1 | The host passes an empty broker set to the successor's completion behaviour | T12 |
 | H2 | The host passes a handler with the order reversed (session first, then native-capture tracking) | T13 |
 | H3 | The host passes only the first inventory broker | T12 |
