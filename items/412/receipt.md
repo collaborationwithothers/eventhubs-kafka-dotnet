@@ -29,11 +29,23 @@ This is the single authored receipt for the governance pull request of [issue 41
 ## Review identification
 
 - Round 1: comprehensive cold review of the staged index, compared with origin/main 4163cd1afcfb4a3564c80f0eda9aff76cb0a9fe0. Complete; 5 at P0 or P1, 3 at P2.
-- Round 2: focused correction review of the corrections to round 1, compared with commit ea978170 (the round 1 content), with the full pull request diff as context.
+- Round 2: focused correction review of the staged index containing the round 1 corrections (committed as 0b08998), compared with commit ea978170 (the round 1 content), with the full pull request diff as context. Complete; 2 at P0 or P1, 4 at P2.
+- Round 3: focused correction review of the staged index containing the round 2 corrections, compared with commit 0b08998, with the full pull request diff as context. This is the last focused round in the budget.
 
 ## Specification comparison sources
 
 The issue 412 body, amendments 1 to 5 and "Also"; decision 6740819145, points 1 to 4.
+
+## Round 2 dispositions
+
+1. P1 plan-pr published before the authority refresh: fixed. Step 3 now requires a refresh before every push to the plan branch and every post or edit of the plan comment; the separate trailing refresh step is removed.
+2. P1 SHA approval applied to item plans: fixed. Step 1 limits the SHA to contract-grade plans and keeps "names the revision" for item plans.
+3. P2 transition rule left the approval check open: fixed. Old implementation-grade plans keep approval by posting time; a revision becomes a contract-grade file with a pointer comment.
+4. P2 rule 8 scope stated only in factory.md: fixed. The scope sentence is in pull-requests.md rule 8; factory.md cites it.
+5. P2 accepted deployment assumption had no place: fixed. After Hari accepts it, a non-design revision moves it back to the deployment-assumptions section with a link to his decision.
+6. P2 receipt input revision unnamed: fixed in "Review identification".
+Pre-existing noted: plan-checker.md now cites the skill's step 2 instead of restating the dry-run limit. The factory.md step 1 first sentence is about item plans, which stay comments; unchanged.
+Departure from issue wording: amendment 3 says deployment assumptions may be marked "unverified, risk accepted by Hari". The rules instead list each under "Open questions for Hari" until Hari accepts it by name, which meets amendment 4 and is stricter.
 
 ## Results
 
