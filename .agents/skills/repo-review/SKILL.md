@@ -18,13 +18,17 @@ Review the diff as a stranger to it. Read anything in the repository and any cit
 
 | The diff touches | Apply |
 |---|---|
-| anything | AGENTS.md: all of GOVERNANCE (scope and deferred items included), "Code Review Rules", "Before opening a pull request", "Skills", writing standards; docs/agents/pull-requests.md; CLAUDE.md; docs/agents/factory.md; docs/blueprint.md ADRs |
+| anything | AGENTS.md: all of GOVERNANCE (scope and deferred items included), "Code Review Rules", writing standards; docs/agents/pull-requests.md in full; the originating specification identified in the receipt |
+| `AGENTS.md`, `CLAUDE.md`, `docs/agents/`, `.agents/skills/`, `.claude/`, `.codex/` | AGENTS.md in full; CLAUDE.md; docs/agents/factory.md in full |
+| `items/` | docs/agents/factory.md in full |
 | `docs/engineering/` | each changed document itself |
-| .NET code or tests | docs/engineering/dotnet.md |
-| Terraform | docs/engineering/terraform.md; ADR-011 |
-| Kafka client settings | docs/blueprint.md "Workloads (.NET 10, Confluent.Kafka 2.16.0 pinned)": every setting traceable to an inventory item |
-| `scenarios/`, `results/` | AGENTS.md verdict integrity |
-| `.github/workflows/` | AGENTS.md safety rules 8 and 9 |
+| .NET code or tests | docs/engineering/dotnet.md; docs/blueprint.md ADRs |
+| Terraform | docs/engineering/terraform.md; ADR-011; docs/blueprint.md ADRs |
+| Kafka client settings | docs/blueprint.md "Workloads (.NET 10, Confluent.Kafka 2.16.0 pinned)": every setting traceable to an inventory item; docs/blueprint.md ADRs |
+| `scenarios/`, `results/` | AGENTS.md verdict integrity; docs/blueprint.md ADRs |
+| `.github/workflows/` | AGENTS.md safety rules 8 and 9; docs/blueprint.md ADRs |
+| `charts/`, `infra/scripts/`, `scripts/` | docs/blueprint.md ADRs |
+| a file that a rule elsewhere in the repository cites by name | the citing rule |
 
 ## Report
 
