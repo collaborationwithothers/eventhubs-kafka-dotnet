@@ -279,7 +279,7 @@ internal static class B10AbruptHost
         if (names.Any(string.IsNullOrWhiteSpace) || names.Distinct(StringComparer.Ordinal).Count() != names.Length) throw Attach(new InvalidDataException("b10_abrupt_guard_failed"), [Fact(B10AbruptFact.BrokerCount, names.Length), Fact(B10AbruptFact.BlankCount, names.Count(string.IsNullOrWhiteSpace)), Fact(B10AbruptFact.DistinctCount, names.Distinct(StringComparer.Ordinal).Count())]);
         return names;
     }
-    internal static async Task<DateTimeOffset> ReadReleaseAsync(B10AbruptOptions options, string arm, TimeProvider clock, CancellationToken cancellationToken)
+    internal static async Task<B10AbruptProducer.ReleaseInfo> ReadReleaseAsync(B10AbruptOptions options, string arm, TimeProvider clock, CancellationToken cancellationToken)
     {
         string path = Path.Combine(options.OutputRoot, "abrupt", arm + "-checkpoint.json");
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30), clock);
@@ -291,6 +291,13 @@ internal static class B10AbruptHost
             Check(facts, B10AbruptFact.IdentityMatches, frame.Identity == options.Identity()) &&
             Check(facts, B10AbruptFact.ArmMatches, frame.Data.GetProperty("arm").GetString() == arm)))
             throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"), [.. facts]);
+        string? selectedAttemptId = null;
+        if (arm == "same_instance")
+        {
+            JsonElement selected = frame.Data.GetProperty("selected_attempt_ids");
+            if (selected.GetArrayLength() == 0) throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"));
+            selectedAttemptId = selected[0].GetString();
+        }
         string progressPath = Path.Combine(options.OutputRoot, "abrupt-child", "same_instance-resumed.json");
         await using (var file = new FileStream(progressPath + ".pending", FileMode.CreateNew, FileAccess.Write, FileShare.None))
         {
@@ -299,7 +306,7 @@ internal static class B10AbruptHost
             file.Flush(true);
         }
         File.Move(progressPath + ".pending", progressPath, overwrite: false);
-        return DateTimeOffset.ParseExact(frame.Data.GetProperty("release_utc").GetString()!, "O", CultureInfo.InvariantCulture);
+        return new(DateTimeOffset.ParseExact(frame.Data.GetProperty("release_utc").GetString()!, "O", CultureInfo.InvariantCulture), selectedAttemptId);
     }
     private static async Task SaveSealAsync(B10AbruptOptions options, string cohort, JsonElement data, CancellationToken cancellationToken)
     {

@@ -170,14 +170,14 @@ public sealed class B10AbruptSupervisorTests
         fixture.Child.ArmCheckpointDelay = () => fixture.DelayNextFlush = true;
         if (relativeTicks > 0)
         {
-            var error = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Supervisor.CheckpointKillAsync("original", TestContext.Current.CancellationToken));
+            var error = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Supervisor.CheckpointKillAsync("original-4", TestContext.Current.CancellationToken));
             Assert.Equal("b10_abrupt_deadline_exhausted", error.Message);
             Assert.Equal(0, fixture.Child.Kills);
             Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind == "signal" && frame.Data.GetProperty("requested_signal").GetInt32() == 9);
         }
         else
         {
-            await fixture.Supervisor.CheckpointKillAsync("original", TestContext.Current.CancellationToken);
+            await fixture.Supervisor.CheckpointKillAsync("original-4", TestContext.Current.CancellationToken);
             Assert.Equal(1, fixture.Child.Kills);
             Assert.Single(fixture.Journal.Frames, frame => frame.Kind == "checkpoint");
         }
@@ -200,14 +200,14 @@ public sealed class B10AbruptSupervisorTests
         fixture.Child.ArmCheckpointDelay = () => fixture.DelayNextFlush = true;
         if (relativeTicks > 0)
         {
-            var error = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Supervisor.CheckpointKillAsync("original", TestContext.Current.CancellationToken));
+            var error = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Supervisor.CheckpointKillAsync("original-4", TestContext.Current.CancellationToken));
             Assert.Equal("b10_abrupt_deadline_exhausted", error.Message);
             Assert.Equal(0, fixture.Child.Kills);
             Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind == "checkpoint");
         }
         else
         {
-            await fixture.Supervisor.CheckpointKillAsync("original", TestContext.Current.CancellationToken);
+            await fixture.Supervisor.CheckpointKillAsync("original-4", TestContext.Current.CancellationToken);
             Assert.Equal(1, fixture.Child.Kills);
             Assert.Single(fixture.Journal.Frames, frame => frame.Kind == "terminal");
         }
@@ -248,7 +248,8 @@ public sealed class B10AbruptSupervisorTests
         await using var fixture = new DeadlineFixture();
         await fixture.PrepareAcceptedAsync(arm);
         using var input = new MemoryStream();
-        await B10AbruptWire.WriteMessageAsync(input, Terminal("original", 0, 2, true), token);
+        for (int i = 0; i < B10AbruptOptions.ProbeBurstSize; i++)
+            await B10AbruptWire.WriteMessageAsync(input, Terminal("original-" + i, 0, 2, true) with { Sequence = 9 + i }, token);
         input.Position = 0;
         var incoming = Channel.CreateUnbounded<B10AbruptWire.Message>();
         var captureEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -267,8 +268,8 @@ public sealed class B10AbruptSupervisorTests
         try
         {
             if (pump is not null) await captureEntered.Task.WaitAsync(TimeSpan.FromSeconds(10), token);
-            Task checkpoint = arm == "same_instance" ? fixture.Supervisor.CheckpointControlAsync("original", token) :
-                fixture.Supervisor.CheckpointKillAsync("original", token);
+            Task checkpoint = arm == "same_instance" ? fixture.Supervisor.CheckpointControlAsync("original-4", token) :
+                fixture.Supervisor.CheckpointKillAsync("original-4", token);
             await stopped.Task.WaitAsync(TimeSpan.FromSeconds(10), token);
             if (inFlight)
             {
@@ -277,10 +278,12 @@ public sealed class B10AbruptSupervisorTests
                 releaseCapture.Set();
             }
             var error = await Assert.ThrowsAsync<InvalidDataException>(() => checkpoint.WaitAsync(TimeSpan.FromSeconds(10), token));
-            Assert.Equal(arm == "same_instance" ? "b10_abrupt_control_incomplete" : "kill_too_late:no_unconfirmed_attempt", error.Message);
-            var terminal = Assert.Single(fixture.Journal.Frames, frame => frame.Kind == "terminal");
+            Assert.Equal(arm == "same_instance" ? "b10_abrupt_exposure_inconclusive" : "kill_too_late:no_unconfirmed_attempt", error.Message);
+            var terminals = fixture.Journal.Frames.Where(frame => frame.Kind == "terminal").ToArray();
+            Assert.Equal(5, terminals.Length);
             var sealedCheckpoint = Assert.Single(fixture.Journal.Frames, frame => frame.Kind == "checkpoint");
-            Assert.True(terminal.Sequence < sealedCheckpoint.Sequence);
+            Assert.All(terminals, terminal => Assert.True(terminal.Sequence < sealedCheckpoint.Sequence));
+            Assert.Equal(5, sealedCheckpoint.Data.GetProperty("accepted_attempt_ids").GetArrayLength());
             Assert.Empty(sealedCheckpoint.Data.GetProperty("selected_attempt_ids").EnumerateArray());
             Assert.Equal(0, fixture.Child.Kills);
             Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind == "signal" && frame.Data.GetProperty("requested_signal").GetInt32() == 18);
@@ -319,8 +322,8 @@ public sealed class B10AbruptSupervisorTests
         Assert.False(incoming.Reader.TryPeek(out _));
         SetPrivate(fixture.Supervisor, "_incoming", incoming);
         SetPrivate(fixture.Supervisor, "_eventReader", reader);
-        Task checkpoint = arm == "same_instance" ? fixture.Supervisor.CheckpointControlAsync("original", token) :
-            fixture.Supervisor.CheckpointKillAsync("original", token);
+        Task checkpoint = arm == "same_instance" ? fixture.Supervisor.CheckpointControlAsync("original-4", token) :
+            fixture.Supervisor.CheckpointKillAsync("original-4", token);
         var error = await Assert.ThrowsAsync<InvalidDataException>(() => checkpoint.WaitAsync(TimeSpan.FromSeconds(10), token));
         Assert.Equal("b10_abrupt_capture_gap:malformed_frame", error.Message);
         Assert.Contains("malformed_frame", fixture.Journal.Gaps);
@@ -819,12 +822,12 @@ public sealed class B10AbruptSupervisorTests
         fixture.Child.EventInput = events;
         fixture.Child.OnKill = () => fixture.Child.Exited = true;
         var failure = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Supervisor.RunAsync(TestContext.Current.CancellationToken));
-        Assert.Equal("b10_abrupt_control_incomplete", failure.Message);
+        Assert.Equal("b10_abrupt_exposure_inconclusive", failure.Message);
         using var report = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(fixture.Root, "abrupt", "failure.json"), TestContext.Current.CancellationToken));
         JsonElement data = report.RootElement.GetProperty("data");
         Assert.Equal("failed_diagnostic", report.RootElement.GetProperty("kind").GetString());
         Assert.Equal("incomplete", data.GetProperty("mechanical_status").GetString());
-        Assert.Equal("b10_abrupt_control_incomplete", data.GetProperty("failure").GetString());
+        Assert.Equal("b10_abrupt_exposure_inconclusive", data.GetProperty("failure").GetString());
         Assert.Equal("System.IO.InvalidDataException", data.GetProperty("exception_type").GetString());
         Assert.Equal("not_implemented_pr3", data.GetProperty("fatal_capture_status").GetString());
         Assert.True(data.GetProperty("kill_requested").GetBoolean());
@@ -848,18 +851,20 @@ public sealed class B10AbruptSupervisorTests
         Assert.Equal("CheckpointControlAsync", detail.GetProperty("member").GetString());
         Assert.True(detail.GetProperty("line").GetInt32() > 0);
         Assert.Equal(terminalFirst ?
-            "{\"arm\":1,\"accepted_count\":1,\"selected_count\":0,\"terminal_before_accepted\":1,\"frames_drained_after_stop\":0,\"accepted_to_stop_milliseconds\":0,\"error_code\":0,\"persistence_status\":2,\"delivered\":1}" :
-            "{\"arm\":1,\"accepted_count\":1,\"selected_count\":0,\"terminal_before_accepted\":0,\"frames_drained_after_stop\":1,\"accepted_to_stop_milliseconds\":0,\"error_code\":0,\"persistence_status\":2,\"delivered\":1}", detail.GetProperty("facts").GetRawText());
+            "{\"arm\":1,\"accepted_count\":5,\"selected_count\":0,\"terminal_before_accepted\":1,\"frames_drained_after_stop\":0,\"accepted_to_stop_milliseconds\":0,\"error_code\":0,\"persistence_status\":2,\"delivered\":1}" :
+            "{\"arm\":1,\"accepted_count\":5,\"selected_count\":0,\"terminal_before_accepted\":0,\"frames_drained_after_stop\":1,\"accepted_to_stop_milliseconds\":0,\"error_code\":0,\"persistence_status\":2,\"delivered\":1}", detail.GetProperty("facts").GetRawText());
         Assert.Equal(JsonValueKind.Null, diagnostic.GetProperty("inner_detail").ValueKind);
         var timeline = data.GetProperty("timeline");
         var entries = timeline.GetProperty("entries").EnumerateArray().ToArray();
         string[] expected = terminalFirst ?
             ["supervisor_registered", "child_started", "frame_prepared", "frame_report", "frame_terminal", "frame_accepted", "ack_sent", "stop_requested", "stop_confirmed", "checkpoint_written", "failure_observed", "abort_complete"] :
-            ["supervisor_registered", "child_started", "frame_prepared", "frame_report", "frame_accepted", "ack_sent", "stop_requested", "stop_confirmed", "frame_terminal", "checkpoint_written", "failure_observed", "abort_complete"];
+            ["supervisor_registered", "child_started", "frame_prepared", "frame_report", "frame_accepted", "ack_sent", "frame_terminal", "stop_requested", "stop_confirmed", "checkpoint_written", "failure_observed", "abort_complete"];
         Assert.Equal(expected, entries.Select(entry => entry.GetProperty("stage").GetString()));
         Assert.Equal("{\"arm\":1}", Assert.Single(entries, entry => entry.GetProperty("stage").GetString() == "ack_sent").GetProperty("facts").GetRawText());
         Assert.Equal(0, timeline.GetProperty("dropped").GetInt32());
-        string[] lines = writer.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+        string[] writerLines = writer.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+        string[] lines = writerLines.Where(line => line.StartsWith("b10_abrupt_stage ", StringComparison.Ordinal)).ToArray();
+        Assert.Single(writerLines, line => line.StartsWith("b10_abrupt_burst ", StringComparison.Ordinal));
         Assert.Equal(entries.Length, lines.Length);
         for (int index = 0; index < lines.Length; index++)
         {
@@ -894,7 +899,7 @@ public sealed class B10AbruptSupervisorTests
         Assert.Equal(0, detail.GetProperty("facts").GetProperty("progress_exists").GetInt32());
         Assert.Equal(30000, detail.GetProperty("facts").GetProperty("budget_milliseconds").GetInt32());
         var checkpoint = Assert.Single(fixture.Journal.Frames, frame => frame.Kind == "checkpoint");
-        Assert.Equal("original", Assert.Single(checkpoint.Data.GetProperty("selected_attempt_ids").EnumerateArray()).GetString());
+        Assert.Equal(["original-0", "original-1", "original-2", "original-3", "original-4"], checkpoint.Data.GetProperty("selected_attempt_ids").EnumerateArray().Select(element => element.GetString()));
         Assert.Equal(1, fixture.Child.Stops);
         Assert.Equal(1, fixture.Child.Resumes);
         Assert.Equal(1, fixture.Child.Kills);
@@ -1009,6 +1014,249 @@ public sealed class B10AbruptSupervisorTests
         Assert.True(data.GetProperty("diagnostic").GetProperty("reduced").GetBoolean());
     }
 
+    [Fact]
+    public async Task Given_TwoUnconfirmedMembers_When_ControlCheckpoints_Then_SelectsLowerOrdinal()
+    {
+        await using var fixture = new DeadlineFixture();
+        await fixture.PrepareAcceptedAsync("same_instance");
+        for (int i = 0; i < 3; i++) await fixture.Supervisor.HandleAsync(Terminal("original-" + i, 0, 2, true), TestContext.Current.CancellationToken, true);
+        await CompleteControlCheckpointAsync(fixture);
+        var checkpoint = Assert.Single(fixture.Journal.Frames, frame => frame.Kind == "checkpoint");
+        Assert.Equal(5, checkpoint.Data.GetProperty("accepted_attempt_ids").GetArrayLength());
+        Assert.Equal(["original-3", "original-4"], checkpoint.Data.GetProperty("selected_attempt_ids").EnumerateArray().Select(id => id.GetString()));
+        Assert.Equal(1, fixture.Child.Resumes);
+    }
+
+    [Fact]
+    public async Task Given_AllMembersConfirmed_When_ControlCheckpoints_Then_ExposureInconclusive()
+    {
+        await using var fixture = new DeadlineFixture();
+        await fixture.PrepareAcceptedAsync("same_instance");
+        for (int i = 0; i < 5; i++) await fixture.Supervisor.HandleAsync(Terminal("original-" + i, 0, 2, true), TestContext.Current.CancellationToken, true);
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Supervisor.CheckpointControlAsync("original-4", TestContext.Current.CancellationToken));
+        Assert.Equal("b10_abrupt_exposure_inconclusive", error.Message);
+        Assert.Equal(0, fixture.Child.Resumes);
+        var checkpoint = Assert.Single(fixture.Journal.Frames, frame => frame.Kind == "checkpoint");
+        Assert.Empty(checkpoint.Data.GetProperty("selected_attempt_ids").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Given_FourAccepted_When_Handled_Then_NoStopSignal()
+    {
+        await using var fixture = new DeadlineFixture();
+        SetControlFiles(fixture);
+        for (int i = 0; i < 4; i++)
+        {
+            await fixture.Supervisor.HandleAsync(PreparedMember(i), TestContext.Current.CancellationToken);
+            if (i == 0) await fixture.Supervisor.HandleAsync(new("pre_acceptance_report", 2, ReportData("same_instance", "original-0")), TestContext.Current.CancellationToken);
+            await fixture.AcceptAsync("original-" + i, afterKill: false);
+        }
+        Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind == "signal");
+        Assert.Equal(0, fixture.Child.Stops);
+    }
+
+    [Fact]
+    public async Task Given_BurstWithLastTerminalAfterStop_When_ControlCheckpoints_Then_BurstLineSeparatesAppendFromGap()
+    {
+        await using var fixture = new DeadlineFixture();
+        using var writer = new StringWriter(CultureInfo.InvariantCulture);
+        SetPrivate(fixture.Supervisor, "_timeline", new B10AbruptTimeline(fixture.Clock, "supervisor", writer));
+        SetControlFiles(fixture);
+        for (int i = 0; i < 5; i++)
+        {
+            await fixture.Supervisor.HandleAsync(PreparedMember(i), TestContext.Current.CancellationToken);
+            if (i == 0) await fixture.Supervisor.HandleAsync(new("pre_acceptance_report", 2, ReportData("same_instance", "original-0")), TestContext.Current.CancellationToken);
+            if (i < 4)
+            {
+                await fixture.AcceptAsync("original-" + i, afterKill: false);
+                await fixture.Supervisor.HandleAsync(Terminal("original-" + i, 0, 2, true), TestContext.Current.CancellationToken);
+            }
+        }
+        fixture.BeforeFlush = () => fixture.Clock.Advance(TimeSpan.FromMilliseconds(3));
+        fixture.DelayNextFlush = true;
+        fixture.Child.OnConfirmStopped = () => fixture.Clock.Advance(TimeSpan.FromMilliseconds(1));
+        var incoming = Channel.CreateUnbounded<B10AbruptWire.Message>();
+        Assert.True(incoming.Writer.TryWrite(Terminal("original-4", 0, 2, true)));
+        SetPrivate(fixture.Supervisor, "_incoming", incoming);
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.AcceptAsync("original-4", afterKill: false));
+        Assert.Equal("b10_abrupt_exposure_inconclusive", error.Message);
+        string line = Assert.Single(writer.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries), line => line.StartsWith("b10_abrupt_burst ", StringComparison.Ordinal));
+        using var burst = JsonDocument.Parse(line["b10_abrupt_burst ".Length..]);
+        var members = burst.RootElement.GetProperty("members").EnumerateArray().ToArray();
+        Assert.Equal(5, members.Length);
+        long stop = burst.RootElement.GetProperty("stop_request_ticks").GetInt64();
+        Assert.Equal(30000, members[4].GetProperty("ack_sent_ticks").GetInt64() - members[4].GetProperty("accepted_ticks").GetInt64());
+        Assert.Equal(0, stop - members[4].GetProperty("ack_sent_ticks").GetInt64());
+        Assert.Equal([1, 1, 1, 1, 0], members.Select(member => member.GetProperty("terminal_before_stop").GetInt32()));
+        Assert.Equal(10000, members[4].GetProperty("terminal_ticks").GetInt64() - stop);
+    }
+
+    [Fact]
+    public async Task Given_SequenceOutOfOrder_When_Accepted_Then_CaptureGap()
+    {
+        await using var fixture = new DeadlineFixture();
+        await fixture.AddPreparedAsync("original-1", sequence: 1, ordinal: 1);
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.AcceptAsync("original-1"));
+        Assert.Equal("b10_abrupt_capture_gap", error.Message);
+        Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind == "accepted");
+    }
+
+    [Fact]
+    public async Task Given_ReportNamesMember1BeforeMember0Accepted_When_Member0Accepted_Then_ReportBindingInvalid()
+    {
+        await using var fixture = new DeadlineFixture();
+        await fixture.AddPreparedAsync("original-0", "same_instance");
+        await fixture.AddPreparedAsync("original-1", "same_instance", 1, 1);
+        SetControlFiles(fixture);
+        await fixture.Supervisor.HandleAsync(new("pre_acceptance_report", 2, ReportData("same_instance", "original-1")), TestContext.Current.CancellationToken, true);
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.AcceptAsync("original-0"));
+        Assert.Equal("b10_abrupt_report_binding_invalid", error.Message);
+        Assert.Equal("b10_abrupt_report_binding_invalid", Assert.Single(fixture.Supervisor.ArmFailures).Value);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Given_TwoUnexcludedCandidates_When_Finalized_Then_SelectsLowestOnly(bool excludeFirst)
+    {
+        await using var fixture = new DeadlineFixture();
+        await fixture.PrepareAcceptedAsync();
+        string[] candidates = excludeFirst ? ["original-1", "original-2", "original-4"] : ["original-2", "original-4"];
+        foreach (string id in Enumerable.Range(0, 5).Select(i => "original-" + i).Where(id => !candidates.Contains(id, StringComparer.Ordinal)))
+            await fixture.Supervisor.HandleAsync(Terminal(id, 0, 2, true), TestContext.Current.CancellationToken, true);
+        var checkpoint = await fixture.Journal.CheckpointAsync(CheckpointData(fixture, "cross_restart", candidates), TestContext.Current.CancellationToken);
+        SetPrivate(fixture.Supervisor, "_killCheckpoint", checkpoint);
+        if (excludeFirst) await fixture.Supervisor.HandleAsync(Terminal("original-1", 0, 2, true), TestContext.Current.CancellationToken, true);
+        await File.WriteAllBytesAsync(Path.Combine(fixture.Root, "abrupt-child", "cross_restart-payload.bin"), [1], TestContext.Current.CancellationToken);
+        await fixture.Supervisor.FinalizeSelectionAsync(TestContext.Current.CancellationToken);
+        var files = (Dictionary<string, byte[]>)GetPrivate(fixture.Supervisor, "_files");
+        var selection = B10AbruptWire.ReadEnvelope(files["kill-selection.json"], "selection").GetProperty("data");
+        Assert.Equal(candidates, selection.GetProperty("candidate_attempt_ids").EnumerateArray().Select(id => id.GetString()));
+        Assert.Equal("original-2", Assert.Single(selection.GetProperty("entries").EnumerateArray()).GetProperty("attempt_id").GetString());
+        var exclusions = selection.GetProperty("terminal_exclusions").EnumerateArray().ToArray();
+        if (excludeFirst) Assert.Equal("original-1", Assert.Single(exclusions).GetProperty("attempt_id").GetString());
+        else Assert.Empty(exclusions);
+    }
+
+    [Theory]
+    [InlineData(6)]
+    [InlineData(2)]
+    public async Task Given_ControlSeal_When_Loaded_Then_RequiresSixEntries(int count)
+    {
+        await using var fixture = new DeadlineFixture();
+        await WriteControlSealAsync(fixture, count, "original-3");
+        Task load = LoadControlSealAsync(fixture);
+        if (count == 6) await load;
+        else Assert.Equal("b10_abrupt_control_incomplete", (await Assert.ThrowsAsync<InvalidDataException>(() => load)).Message);
+    }
+
+    [Theory]
+    [InlineData("original-4")]
+    [InlineData("original-3")]
+    public async Task Given_ControlResendPredecessorNotLowestSelected_When_SealLoaded_Then_ControlIncomplete(string predecessor)
+    {
+        await using var fixture = new DeadlineFixture();
+        await WriteControlSealAsync(fixture, 6, predecessor);
+        Task load = LoadControlSealAsync(fixture);
+        if (predecessor == "original-3") await load;
+        else Assert.Equal("b10_abrupt_control_incomplete", (await Assert.ThrowsAsync<InvalidDataException>(() => load)).Message);
+    }
+
+    private static B10AbruptWire.Message PreparedMember(int index) => new("prepared", 1, B10AbruptWire.Element(new
+    {
+        attempt_id = "original-" + index, invocation_ordinal = index, cohort = "same_instance", probe_id = "B10/synthetic/C1/1/same_instance", key = "B10/synthetic/C1/1/same_instance",
+        sequence = index, payload_length = 1, payload_sha256 = B10AbruptPublisher.Hash([1]), predecessor_attempt_id = (string?)null
+    }));
+
+    private static void SetControlFiles(DeadlineFixture fixture)
+    {
+        ((Dictionary<string, byte[]>)GetPrivate(fixture.Supervisor, "_files"))["timeout-seal.json"] = [1];
+        File.WriteAllBytes(Path.Combine(fixture.Root, "abrupt-child", "same_instance-pre-acceptance-report.json"), [1]);
+    }
+
+    private static async Task CompleteControlCheckpointAsync(DeadlineFixture fixture)
+    {
+        Task checkpoint = fixture.Supervisor.CheckpointControlAsync("original-4", TestContext.Current.CancellationToken);
+        await fixture.Clock.WaitForTimerAsync(TimeSpan.FromMilliseconds(10));
+        byte[] bytes = await File.ReadAllBytesAsync(Path.Combine(fixture.Root, "abrupt", "same_instance-checkpoint.json"), TestContext.Current.CancellationToken);
+        var frame = B10AbruptWire.Parse(bytes);
+        await File.WriteAllBytesAsync(Path.Combine(fixture.Root, "abrupt-child", "same_instance-resumed.json"), JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            arm = "same_instance", identity = B10AbruptWireProducerTests.TestOptions(fixture.Root).Identity(),
+            checkpoint_sequence = frame.GetProperty("sequence").GetInt64(), checkpoint_sha256 = B10AbruptPublisher.Hash(bytes)
+        }, B10AbruptWire.JsonOptions), TestContext.Current.CancellationToken);
+        fixture.Clock.Advance(TimeSpan.FromMilliseconds(10));
+        await checkpoint.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+    }
+
+    private static JsonElement CheckpointData(DeadlineFixture fixture, string arm, string[] selected) => B10AbruptWire.Element(new
+    {
+        arm,
+        accepted_attempt_ids = fixture.Journal.Frames.Where(frame => frame.Kind == "prepared" && frame.Data.GetProperty("cohort").GetString() == arm && frame.Data.GetProperty("predecessor_attempt_id").ValueKind == JsonValueKind.Null)
+            .Select(frame => frame.Data.GetProperty("attempt_id").GetString()).ToArray(),
+        selected_attempt_ids = selected, last_complete_sequence = fixture.Journal.Frames[^1].Sequence,
+        pre_acceptance_report = ((Dictionary<string, JsonElement>)GetPrivate(fixture.Supervisor, "_reports"))[arm],
+        process = fixture.Child.Identity, checkpoint_utc = B10AbruptPublisher.Utc(fixture.Clock.GetUtcNow()),
+        checkpoint_monotonic_ticks = fixture.Clock.GetTimestamp(), release_utc = B10AbruptPublisher.Utc(fixture.Clock.GetUtcNow().AddSeconds(120))
+    });
+
+    private static Task LoadControlSealAsync(DeadlineFixture fixture) =>
+        (Task)typeof(B10AbruptSupervisor).GetMethod("LoadSealAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(fixture.Supervisor, ["control", TestContext.Current.CancellationToken])!;
+
+    private static async Task WriteControlSealAsync(DeadlineFixture fixture, int count, string predecessor)
+    {
+        var token = TestContext.Current.CancellationToken;
+        await fixture.PrepareAcceptedAsync("same_instance", count - 1);
+        string[] selected = count == 2 ? ["original-0"] : ["original-3", "original-4"];
+        for (int i = 0; i < count - 3; i++) await fixture.Supervisor.HandleAsync(Terminal("original-" + i, 0, 2, true), token, true);
+        await fixture.Journal.CheckpointAsync(CheckpointData(fixture, "same_instance", selected), token);
+        var resend = PreparedMember(0);
+        var data = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(resend.Data.GetRawText())!;
+        data["attempt_id"] = B10AbruptWire.Element("resend");
+        data["predecessor_attempt_id"] = B10AbruptWire.Element(count == 2 ? "original-0" : predecessor);
+        data["invocation_ordinal"] = B10AbruptWire.Element(count - 1);
+        data["sequence"] = B10AbruptWire.Element(count == 2 ? 0 : 3);
+        await fixture.Supervisor.HandleAsync(resend with { Data = B10AbruptWire.Element(data) }, token, true);
+        await fixture.AcceptAsync("resend");
+        string[] ids = Enumerable.Range(0, count - 1).Select(i => "original-" + i).Append("resend").ToArray();
+        foreach (string id in ids.Where(id => !fixture.Journal.Frames.Any(frame => frame.Kind == "terminal" && frame.Data.GetProperty("attempt_id").GetString() == id)))
+            await fixture.Supervisor.HandleAsync(Terminal(id, 0, 2, true), token, true);
+        var identity = B10AbruptWireProducerTests.TestOptions(fixture.Root).Identity();
+        byte[] inventory = B10AbruptWire.SerializeEnvelope("cohort_inventory", identity, new
+        {
+            instance_id = identity.InstanceId, cohort = "same_instance", inventory_count = count, bookkeeping_complete = true,
+            inventory = fixture.Journal.Frames.Where(frame => frame.Kind == "prepared").Select(frame => new
+            {
+                attempt_id = frame.Data.GetProperty("attempt_id"), invocation_ordinal = frame.Data.GetProperty("invocation_ordinal"),
+                predecessor_attempt_id = frame.Data.GetProperty("predecessor_attempt_id"), key = frame.Data.GetProperty("key"),
+                sequence = frame.Data.GetProperty("sequence"), payload_length = frame.Data.GetProperty("payload_length"),
+                payload_sha256 = frame.Data.GetProperty("payload_sha256")
+            }).ToArray()
+        });
+        byte[] ledger = Encoding.UTF8.GetBytes(string.Join('\n', fixture.Journal.Frames.Where(frame => frame.Kind == "terminal").Select(frame => frame.Data.GetRawText())) + "\n");
+        byte[] statistics = [1];
+        string directory = Path.Combine(fixture.Root, "control");
+        Directory.CreateDirectory(directory);
+        await File.WriteAllBytesAsync(Path.Combine(directory, "manifest.json"), inventory, token);
+        await File.WriteAllBytesAsync(Path.Combine(directory, "ledger.jsonl"), ledger, token);
+        await File.WriteAllBytesAsync(Path.Combine(directory, "post-drain-report.json"), statistics, token);
+        byte[] seal = B10AbruptWire.SerializeEnvelope("cohort_seal", identity, new
+        {
+            cohort = "same_instance", count, drain_complete = true, guard_complete = true, fatal_capture_status = "not_implemented_pr3",
+            inventory = B10AbruptPublisher.Describe("manifest.json", inventory), ledger = B10AbruptPublisher.Describe("ledger.jsonl", ledger),
+            post_drain_statistics = B10AbruptPublisher.Describe("post-drain-report.json", statistics)
+        });
+        await File.WriteAllBytesAsync(Path.Combine(fixture.Root, "abrupt-child", "control-seal.json"), seal, token);
+    }
+
+    private static JsonElement ReportData(string arm, string attempt) => B10AbruptWire.Element(new
+    {
+        arm, attempt_id = attempt, report_length = 1, report_sha256 = B10AbruptPublisher.Hash([1]),
+        report_identity = new { scenario_id = "B10", run_id = "synthetic", role = "LoadGenProducer", client_id = "synthetic-first" },
+        report_sequence = 1, report_capture_utc = "2026-11-07T00:00:00.0000000+00:00"
+    });
+
     private static object GetPrivate(object owner, string name) =>
         owner.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(owner)!;
 
@@ -1016,28 +1264,21 @@ public sealed class B10AbruptSupervisorTests
     {
         var events = new MemoryStream();
         var token = TestContext.Current.CancellationToken;
-        await B10AbruptWire.WriteMessageAsync(events, new("prepared", 2, B10AbruptWire.Element(new
+        long wireSequence = 2;
+        for (int i = 0; i < B10AbruptOptions.ProbeBurstSize; i++)
         {
-            attempt_id = "original", invocation_ordinal = 0, cohort = "same_instance", probe_id = "B10/synthetic/C1/1/same_instance", key = "B10/synthetic/C1/1/same_instance",
-            sequence = 0, payload_length = 1, payload_sha256 = B10AbruptPublisher.Hash([1]), predecessor_attempt_id = (string?)null
-        })), token);
-        await B10AbruptWire.WriteMessageAsync(events, new("pre_acceptance_report", 3, B10AbruptWire.Element(new
-        {
-            arm = "same_instance", attempt_id = "original", report_length = 1, report_sha256 = B10AbruptPublisher.Hash([1]),
-            report_identity = new { scenario_id = "B10", run_id = "synthetic", role = "LoadGenProducer", client_id = "synthetic-first" },
-            report_sequence = 1, report_capture_utc = "2026-11-07T00:00:00.0000000+00:00"
-        })), token);
-        var accepted = new B10AbruptWire.Message("accepted", 4, B10AbruptWire.Element(new { attempt_id = "original", prepared_sequence = 1 }));
-        var terminal = new B10AbruptWire.Message("terminal", 5, B10AbruptWire.Element(new { attempt_id = "original", completion_source = "callback", delivered = true, error_code = 0, persistence_status = 2 }));
-        if (terminalFirst)
-        {
-            if (includeTerminal) await B10AbruptWire.WriteMessageAsync(events, terminal with { Sequence = 4 }, token);
-            await B10AbruptWire.WriteMessageAsync(events, accepted with { Sequence = 5 }, token);
-        }
-        else
-        {
-            await B10AbruptWire.WriteMessageAsync(events, accepted, token);
-            if (includeTerminal) await B10AbruptWire.WriteMessageAsync(events, terminal, token);
+            string attempt = "original-" + i;
+            await B10AbruptWire.WriteMessageAsync(events, new("prepared", wireSequence++, B10AbruptWire.Element(new
+            {
+                attempt_id = attempt, invocation_ordinal = i, cohort = "same_instance", probe_id = "B10/synthetic/C1/1/same_instance", key = "B10/synthetic/C1/1/same_instance",
+                sequence = i, payload_length = 1, payload_sha256 = B10AbruptPublisher.Hash([1]), predecessor_attempt_id = (string?)null
+            })), token);
+            if (i == 0) await B10AbruptWire.WriteMessageAsync(events, new("pre_acceptance_report", wireSequence++, ReportData("same_instance", attempt)), token);
+            var accepted = new B10AbruptWire.Message("accepted", 0, B10AbruptWire.Element(new { attempt_id = attempt, prepared_sequence = 1 + (includeTerminal ? 3 : 2) * i }));
+            var terminal = Terminal(attempt, 0, 2, true);
+            if (terminalFirst && includeTerminal) await B10AbruptWire.WriteMessageAsync(events, terminal with { Sequence = wireSequence++ }, token);
+            await B10AbruptWire.WriteMessageAsync(events, accepted with { Sequence = wireSequence++ }, token);
+            if (!terminalFirst && includeTerminal) await B10AbruptWire.WriteMessageAsync(events, terminal with { Sequence = wireSequence++ }, token);
         }
         events.Position = 0;
         return events;
@@ -1106,27 +1347,23 @@ public sealed class B10AbruptSupervisorTests
                 () => { Starts++; return start is null ? Child : start(); });
             if (start is null) SetPrivate(Supervisor, "_child", Child);
         }
-        internal async Task AddPreparedAsync(string attempt, string arm = "cross_restart")
+        internal async Task AddPreparedAsync(string attempt, string arm = "cross_restart", long sequence = 0, int ordinal = 0)
         {
             await Supervisor.HandleAsync(new("prepared", 1, B10AbruptWire.Element(new
             {
-                attempt_id = attempt, invocation_ordinal = 0, cohort = arm, probe_id = "B10/synthetic/C1/1/" + arm, key = "B10/synthetic/C1/1/" + arm,
-                sequence = 0, payload_length = 1, payload_sha256 = B10AbruptPublisher.Hash([1]), predecessor_attempt_id = (string?)null
+                attempt_id = attempt, invocation_ordinal = ordinal, cohort = arm, probe_id = "B10/synthetic/C1/1/" + arm, key = "B10/synthetic/C1/1/" + arm,
+                sequence = sequence, payload_length = 1, payload_sha256 = B10AbruptPublisher.Hash([1]), predecessor_attempt_id = (string?)null
             })), TestContext.Current.CancellationToken, true);
         }
-        internal async Task PrepareAcceptedAsync(string arm = "cross_restart")
+        internal async Task PrepareAcceptedAsync(string arm = "cross_restart", int burstSize = B10AbruptOptions.ProbeBurstSize)
         {
-            await AddPreparedAsync("original", arm);
+            for (int i = 0; i < burstSize; i++) await AddPreparedAsync("original-" + i, arm, i, i);
             File.WriteAllBytes(Path.Combine(Root, "abrupt-child", arm + "-pre-acceptance-report.json"), [1]);
-            await Supervisor.AcceptReportAsync(B10AbruptWire.Element(new
-            {
-                arm, attempt_id = "original", report_length = 1, report_sha256 = B10AbruptPublisher.Hash([1]),
-                report_identity = new { scenario_id = "B10", run_id = "synthetic", role = "LoadGenProducer", client_id = "synthetic-first" },
-                report_sequence = 1, report_capture_utc = B10AbruptPublisher.Utc(Clock.GetUtcNow())
-            }), TestContext.Current.CancellationToken);
-            await Supervisor.HandleAsync(new("accepted", 2, B10AbruptWire.Element(new { attempt_id = "original", prepared_sequence = Journal.Frames[0].Sequence })),
-                TestContext.Current.CancellationToken, true);
+            await Supervisor.AcceptReportAsync(ReportData(arm, "original-0"), TestContext.Current.CancellationToken);
+            for (int i = 0; i < burstSize; i++) await AcceptAsync("original-" + i);
         }
+        internal Task AcceptAsync(string attempt, bool afterKill = true) => Supervisor.HandleAsync(new("accepted", 2,
+            B10AbruptWire.Element(new { attempt_id = attempt, prepared_sequence = Journal.Frames.Single(frame => frame.Kind == "prepared" && frame.Data.GetProperty("attempt_id").GetString() == attempt).Sequence })), TestContext.Current.CancellationToken, afterKill);
         public async ValueTask DisposeAsync() { await Journal.DisposeAsync(); Directory.Delete(Root, true); }
     }
 

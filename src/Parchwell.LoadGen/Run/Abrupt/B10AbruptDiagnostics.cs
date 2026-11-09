@@ -16,7 +16,7 @@ internal enum B10AbruptFact
     GuardComplete, FatalStatusMatches, RowCount, SealCount, EntryCount, LineCount, InventoryCount, BookkeepingComplete,
     IdCount, NotAcceptedCount, NoTerminalCount, UnknownAttempt, RawMatches, ReportLength, FileLength, ReportSequence,
     ScenarioMatches, RunMatches, RoleMatches, ClientIdPresent, UtcValid, ExitCode, CleanupFailed, FrameCount,
-    TimeoutSealed, ControlSealed, KillAdmitted, ProbeCount, PlannedCount, MaximumRetries, MaximumAttempts, LatenessMicroseconds, MaximumLatenessMicroseconds, PayloadLength, MaximumPayloadBytes, PreviousCount, PredecessorMatches, PreviousAccepted, ArmKnown, NameIndex, CapturedPresent, FileExists, ExpectedCount, OutstandingCount, ReportCount, SnapshotCount, AfterDrainUtcCount, AfterNativeBoundaryCount, ExpectedBrokersCount, QualifyingBrokersCount, DrainBoundaryMatches, Overflow, Faulted, FaultReason, EvidenceFaulted, GuardObservationsComplete, NativeErrorObserved, GuardFailed, GuardReason, ExpectedBrokersObserved, KeyMatches, SequenceZero, PayloadWithinLimit, InstanceDistinct, ArrayLength, AdmittedCount, RetryAdmittedCount, DeliveredCount, TimedOutCount, SynchronousRejectionCount, OtherErrorCount, ProduceToAcceptedMilliseconds, ProduceToTerminalMilliseconds, CompletionComplete, SchemaMatches, SourceMatches, SourceCommitMatches, ConfigurationMatches, BrokerCount, BlankCount, DistinctCount, KindMatches, GapPresent, ClientIdMatches, LineLength, ProduceTicks, CallbackTicks,
+    TimeoutSealed, ControlSealed, KillAdmitted, ProbeCount, PlannedCount, MaximumRetries, MaximumAttempts, LatenessMicroseconds, MaximumLatenessMicroseconds, PayloadLength, MaximumPayloadBytes, PreviousCount, PredecessorMatches, PreviousAccepted, ArmKnown, NameIndex, CapturedPresent, FileExists, ExpectedCount, OutstandingCount, ReportCount, SnapshotCount, AfterDrainUtcCount, AfterNativeBoundaryCount, ExpectedBrokersCount, QualifyingBrokersCount, DrainBoundaryMatches, Overflow, Faulted, FaultReason, EvidenceFaulted, GuardObservationsComplete, NativeErrorObserved, GuardFailed, GuardReason, ExpectedBrokersObserved, KeyMatches, SequenceInBurst, PayloadWithinLimit, InstanceDistinct, ArrayLength, AdmittedCount, RetryAdmittedCount, DeliveredCount, TimedOutCount, SynchronousRejectionCount, OtherErrorCount, ProduceToAcceptedMilliseconds, ProduceToTerminalMilliseconds, CompletionComplete, SchemaMatches, SourceMatches, SourceCommitMatches, ConfigurationMatches, BrokerCount, BlankCount, DistinctCount, KindMatches, GapPresent, ClientIdMatches, LineLength, ProduceTicks, CallbackTicks,
 }
 
 internal enum B10AbruptStage
@@ -29,6 +29,10 @@ internal enum B10AbruptStage
 }
 
 internal readonly record struct B10AbruptFactValue(B10AbruptFact Key, long Value);
+internal readonly record struct B10AbruptSupervisorBurstMember(long BurstIndex, long PreparedTicks, long AcceptedTicks,
+    long AckSentTicks, long TerminalTicks);
+internal readonly record struct B10AbruptChildBurstMember(long BurstIndex, long ProduceTicks, long CallbackTicks,
+    long TerminalWrittenTicks);
 
 internal static class B10AbruptDiagnostics
 {
@@ -122,6 +126,7 @@ internal sealed class B10AbruptTimeline(TimeProvider clock, string role, TextWri
     private readonly long origin = clock.GetTimestamp();
     private readonly string startUtc = clock.GetUtcNow().ToString("O", CultureInfo.InvariantCulture);
     private readonly List<Entry> entries = [];
+    private string? heldBurstLine;
     private int printed;
     private long dropped;
 
@@ -129,6 +134,46 @@ internal sealed class B10AbruptTimeline(TimeProvider clock, string role, TextWri
     internal void Mark(B10AbruptStage stage, params B10AbruptFactValue[] facts) => Record(stage, facts, print: true);
     internal void Hold(B10AbruptStage stage, params B10AbruptFactValue[] facts) => Record(stage, facts, print: false);
     internal void Flush() { lock (gate) PrintHeld(); }
+
+    internal void HoldSupervisorBurst(int arm, long stopRequestTicks, IReadOnlyList<B10AbruptSupervisorBurstMember> members)
+    {
+        try
+        {
+            if (members.Count > B10AbruptOptions.ProbeBurstSize) return;
+            string line = "b10_abrupt_burst " + JsonSerializer.Serialize(new
+            {
+                role = "supervisor", arm, stop_request_ticks = stopRequestTicks,
+                members = members.Select(member => new
+                {
+                    burst_index = member.BurstIndex, prepared_ticks = member.PreparedTicks,
+                    accepted_ticks = member.AcceptedTicks, ack_sent_ticks = member.AckSentTicks,
+                    terminal_ticks = member.TerminalTicks,
+                    terminal_before_stop = member.TerminalTicks != -1 && member.TerminalTicks < stopRequestTicks ? 1 : 0
+                }).ToArray()
+            }, B10AbruptWire.JsonOptions);
+            lock (gate) heldBurstLine = line;
+        }
+        catch (Exception) { }
+    }
+
+    internal void WriteChildBurst(IReadOnlyList<B10AbruptChildBurstMember> members)
+    {
+        try
+        {
+            if (members.Count > B10AbruptOptions.ProbeBurstSize) return;
+            string line = "b10_abrupt_burst " + JsonSerializer.Serialize(new
+            {
+                role = "child", arm = 1,
+                members = members.Select(member => new
+                {
+                    burst_index = member.BurstIndex, produce_ticks = member.ProduceTicks,
+                    callback_ticks = member.CallbackTicks, terminal_written_ticks = member.TerminalWrittenTicks
+                }).ToArray()
+            }, B10AbruptWire.JsonOptions);
+            lock (gate) output?.WriteLine(line);
+        }
+        catch (Exception) { }
+    }
 
     private void Record(B10AbruptStage stage, B10AbruptFactValue[] facts, bool print)
     {
@@ -159,6 +204,12 @@ internal sealed class B10AbruptTimeline(TimeProvider clock, string role, TextWri
                     elapsed_ms = entry.ElapsedMilliseconds, ticks = entry.Ticks, facts = entry.Facts }, B10AbruptWire.JsonOptions));
             }
             catch (Exception) { }
+        }
+        if (heldBurstLine is not null)
+        {
+            try { output?.WriteLine(heldBurstLine); }
+            catch (Exception) { }
+            heldBurstLine = null;
         }
     }
 

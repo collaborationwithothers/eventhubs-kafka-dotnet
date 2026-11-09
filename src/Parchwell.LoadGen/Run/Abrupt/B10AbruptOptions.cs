@@ -7,6 +7,8 @@ namespace Parchwell.LoadGen.Run.Abrupt;
 
 internal sealed class B10AbruptOptions
 {
+    // ADR-021 protocol rule 1 fixes this policy before a run.
+    internal const int ProbeBurstSize = 5;
     internal const string Prefix = "B10Abrupt__";
     internal enum ValidationDetail
     {

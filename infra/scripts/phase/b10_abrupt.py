@@ -507,17 +507,30 @@ class Trial:
             source = prepared.get(frame['data']['attempt_id'])
             if source is None or source['sequence'] != frame['data']['prepared_sequence'] or source['sequence'] >= frame['sequence']:
                 raise ValueError('prepared acceptance binding')
-        terminal = {frame['data']['attempt_id'] for frame in frames if frame['kind'] == 'terminal'}
+        terminal_frames = {frame['data']['attempt_id']: frame for frame in frames if frame['kind'] == 'terminal'}
+        terminal = set(terminal_frames)
+        candidates = selection['candidate_attempt_ids']
+        if not 1 <= len(candidates) <= 5 or candidates != checkpoint['data']['selected_attempt_ids']:
+            raise ValueError('selection identity')
+        excluded = set()
+        for exclusion in selection['terminal_exclusions']:
+            attempt = exclusion['attempt_id']
+            if (attempt not in candidates or attempt not in terminal_frames
+                    or terminal_frames[attempt]['sequence'] != exclusion['terminal_sequence']):
+                raise ValueError('selection stale')
+            excluded.add(attempt)
+        first_unexcluded = next((attempt for attempt in candidates if attempt not in excluded), None)
+        if entry['attempt_id'] != first_unexcluded:
+            raise ValueError('selection stale')
         if entry['attempt_id'] not in accepted or entry['attempt_id'] in terminal or entry['attempt_id'] not in checkpoint['data']['selected_attempt_ids']:
             raise ValueError('selection stale')
         if (set(entry) != {'attempt_id', 'key', 'sequence', 'payload_length', 'payload_sha256', 'payload_base64'}
                 or entry['key'] != 'B10/' + self.phase()['run_id'] + '/C1/1/cross_restart'
-                or type(entry['sequence']) is not int or entry['sequence'] != 0
+                or type(entry['sequence']) is not int or not 0 <= entry['sequence'] < 5
                 or selection['candidate_attempt_ids'] != checkpoint['data']['selected_attempt_ids']):
             raise ValueError('selection identity')
         original = prepared[entry['attempt_id']]['data']
-        if (original['cohort'] != 'cross_restart' or any(original[key] != entry[key] for key in ('key', 'sequence', 'payload_length', 'payload_sha256'))
-                or selection['terminal_exclusions'] != []):
+        if original['cohort'] != 'cross_restart' or any(original[key] != entry[key] for key in ('key', 'sequence', 'payload_length', 'payload_sha256')):
             raise ValueError('prepared selection binding')
         payload = base64.b64decode(entry['payload_base64'], validate=True)
         if len(payload) != entry['payload_length'] or hashlib.sha256(payload).hexdigest() != entry['payload_sha256']:

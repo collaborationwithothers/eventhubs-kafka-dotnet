@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using Parchwell.LoadGen.Run.Abrupt;
 using Xunit;
 
@@ -11,6 +12,7 @@ public sealed class B10AbruptEnvironmentScopeDefinition { }
 [Collection("B10AbruptEnvironment")]
 public sealed class B10AbruptOptionsTests
 {
+    private static readonly string[] CheckpointAttemptIds = ["a", "b"];
     [Theory]
     [InlineData("supervisor")]
     [InlineData("successor")]
@@ -257,6 +259,7 @@ public sealed class B10AbruptOptionsTests
 
     [Theory]
     [InlineData("b10_abrupt_untrusted_secret", "b10_abrupt_capture_gap")]
+    [InlineData("b10_abrupt_exposure_inconclusive:private-token", "b10_abrupt_exposure_inconclusive")]
     [InlineData("b10_abrupt_guard_failed:private-token", "b10_abrupt_guard_failed")]
     [InlineData("kill_too_late:private-token", "kill_too_late")]
     [InlineData("kill_too_late:no_unconfirmed_attempt:private-token", "kill_too_late")]
@@ -313,6 +316,51 @@ public sealed class B10AbruptOptionsTests
         using var errors = new StringWriter(CultureInfo.InvariantCulture);
         Assert.Equal(1, B10AbruptHost.ReportFailure(new InvalidDataException("kill_too_late:no_unconfirmed_attempt"), errors));
         B10AbruptDiagnosticsTests.AssertPlainReport(errors.ToString(), "kill_too_late:no_unconfirmed_attempt exception_type=System.IO.InvalidDataException");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Given_ControlCheckpointSelection_When_ReleaseRead_Then_UsesFirstSelectedMemberOrRejectsEmpty(bool empty)
+    {
+        string root = Path.Combine(Path.GetTempPath(), "abrupt-release-" + Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture));
+        Directory.CreateDirectory(Path.Combine(root, "abrupt"));
+        Directory.CreateDirectory(Path.Combine(root, "abrupt-child"));
+        try
+        {
+            var values = Valid("child");
+            values[B10AbruptOptions.Prefix + "OutputRoot"] = root;
+            B10AbruptOptions options = B10AbruptOptions.Read(values);
+            var release = new DateTimeOffset(2026, 11, 7, 0, 2, 0, TimeSpan.Zero);
+            string captured = release.AddMinutes(-2).ToString("O", CultureInfo.InvariantCulture);
+            var frame = new B10AbruptWire.Frame(options.Identity(), 1, captured, 1, 1000, "checkpoint", JsonSerializer.SerializeToElement(new
+            {
+                arm = "same_instance", accepted_attempt_ids = CheckpointAttemptIds,
+                selected_attempt_ids = empty ? Array.Empty<string>() : CheckpointAttemptIds, last_complete_sequence = 0,
+                pre_acceptance_report = new { name = "abrupt-child/same_instance-pre-acceptance-report.json", length = 1,
+                    sha256 = new string('a', 64), report_identity = new { scenario_id = "B10", run_id = "synthetic", role = "LoadGenProducer", client_id = "client" },
+                    report_sequence = 1, report_capture_utc = captured },
+                process = new { pid = 1, parent_pid = 2, boot_id = "boot", start_identity = 1 },
+                checkpoint_utc = captured, checkpoint_monotonic_ticks = 1, release_utc = release.ToString("O", CultureInfo.InvariantCulture)
+            }));
+            await File.WriteAllBytesAsync(Path.Combine(root, "abrupt", "same_instance-checkpoint.json"), B10AbruptWire.WriteFrame(frame), TestContext.Current.CancellationToken);
+
+            Task<B10AbruptProducer.ReleaseInfo> operation = B10AbruptHost.ReadReleaseAsync(options, "same_instance", TimeProvider.System, TestContext.Current.CancellationToken);
+
+            if (empty)
+            {
+                Assert.Equal("b10_abrupt_control_incomplete", (await Assert.ThrowsAsync<InvalidDataException>(() => operation)).Message);
+                Assert.False(File.Exists(Path.Combine(root, "abrupt-child", "same_instance-resumed.json")));
+            }
+            else
+            {
+                B10AbruptProducer.ReleaseInfo info = await operation;
+                Assert.Equal(release, info.Release);
+                Assert.Equal("a", info.SelectedAttemptId);
+                Assert.True(File.Exists(Path.Combine(root, "abrupt-child", "same_instance-resumed.json")));
+            }
+        }
+        finally { Directory.Delete(root, true); }
     }
 
     private static void Invalid(IEnumerable<KeyValuePair<string, string>> values) =>
