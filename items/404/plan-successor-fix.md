@@ -1,12 +1,19 @@
 # Successor fix contract-grade plan
 
-Revision 3. Issue #404. Implementing tool: Claude Code, under [standing decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614), point 3, replacing Codex for this pull request. Base: `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`, the source of diagnostic trial 7.
+Revision 4. Issue #404. Implementing tool: Claude Code, under [standing decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614), point 3, replacing Codex for this pull request. Base: `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`, the source of diagnostic trial 7.
 
 The successor producer in trial 7 disposed its native client before it asked the statistics session to complete. No statistics report could then arrive after the completion boundary, so the evidence guard failed. This pull request completes statistics while the client is still live, then disposes it, then completes evidence. It also gives the guard one fact per statistics diagnostic code the session can emit, which raises the per-site fact cap from 16 to 35 (decision 6751449502). It changes no protocol sequence, gate, timeout, interval, failure name or wire member, touches no protected path, and authorizes no trial.
 
 This plan states requirements and tests as observable behaviour. Code text, member names, private structure and line numbers are the implementer's. Line numbers below cite `main` only to locate today's behaviour. A technique named in a test is a permitted example unless the row says it is required.
 
-### Changes since Revision 2 (commit `18301978`)
+### Changes since Revision 3 (commit `ac5a29d9`)
+
+- [decision 6753364128](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753364128), made by the control session under standing rule 1: D1 to D6 accepted; D7 not accepted, because a wrong broker set or handler from the host could give a misleading result rather than a named failure.
+- D7 is replaced by two tests on the producer that the host's successor creation path builds: T12 (broker inventory used by statistics completion) and T13 (handler order). R10 and S18 now cite them.
+- New host-path mutations H1 to H3 are added. X1 (handler order reversed) is now killed by T13.
+- Open questions: None.
+
+### Changes in Revision 3, from the check of Revision 2 (commit `18301978`)
 
 From the fresh delta reproduction check relayed by the #347 control session, and from Hari's decisions on 2026-11-09:
 
@@ -72,6 +79,7 @@ Authority, in creation order:
   - point 4, merging.
 - [Decision 6752454732](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752454732): this pull request is first in the order.
 - [Decision 6752554218](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752554218): review re-request, and stacked implementation of later pull requests.
+- [Decision 6753364128](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753364128), under standing rule 1, Hari has not seen it: D1 to D6 accepted; D7 replaced by an offline test on the producer the host's successor creation path builds (T12, T13).
 - Evidence, not authority: [Codex P1 finding r4505115034 on PR 406](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/406#discussion_r4505115034). Native error callbacks during successor disposal must be captured before evidence is finalized. Commit `54d9065` fixed that finding by disposing before both completions, and that move caused the trial 7 failure. This plan keeps the finding fixed (R5).
 
 Design text this plan depends on and does not change:
@@ -92,7 +100,7 @@ Design text this plan changes: that file's line 188, the cap number only (E5).
 5. `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptProducerTests.cs`: the existing disposal-callback test moves out (it becomes T4); the hand-written completion delegate and its disposal counter go if nothing else uses them.
 6. `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptWireProducerTests.cs`: the successor half of the exporter (T7).
 7. `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptDiagnosticsTests.cs`: the existing cap test (T11).
-8. New file `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptSuccessorCompletionTests.cs`: T1, T2, T4, T5, T6, T8, T9 and T10.
+8. New file `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptSuccessorCompletionTests.cs`: T1, T2, T4, T5, T6, T8, T9, T10, T12 and T13, all in one test class of that name.
 9. `items/404/state.md` (factory.md "Item state file") and the new receipt `items/404/successor-fix-receipt.md`.
 
 No protected path is touched: `docs/operations/` is agent-owned (factory.md "Ruleset": "`/docs/` is protected except `docs/operations/`, which agents own"; `.github/CODEOWNERS` agrees). AGENTS.md GOVERNANCE "Merge rule" applies.
@@ -222,7 +230,9 @@ R8. WHEN the first instance runs, including its timeout and control cohorts, THE
 
 R9. WHEN a successor producer is built without completion behaviour (test construction only), THEN it writes the test-only successor files as it does on `main`. Covered by the existing `Given_SuccessorEntrySequence_When_Bound_Then_InBurstOnly` and `Given_SealedKillSelection_When_Replaying_Then_InvokesOnceWithoutRetryAndDrains`.
 
-R10. WHEN the native client delivers a statistics report, THEN the host first passes it to the B10 statistics adapter's native-capture tracking, then to the statistics session. The host and T1 to T9 use the same production handler for this. No test can observe the order without relying on timing (mutation X1), so acceptance command 13 prints the handler for review.
+R10. WHEN the native client that the host's successor creation path builds delivers a statistics report, THEN the host's handler first passes it to the B10 statistics adapter's native-capture tracking, then to the statistics session. Observed by T13 on the handler installed in that client. T1 to T9 use the same production handler.
+
+R12. WHEN the host's successor creation path builds the successor producer, THEN the statistics completion that producer performs uses exactly the broker inventory the host read from the predecessor binding. Observed by T12 on that producer.
 
 R11. WHEN a failure site attaches up to 35 distinct facts, THEN all are kept in order, and a 36th distinct fact is dropped.
 
@@ -270,7 +280,7 @@ Trial 7's successor log is `b10-42679791413-1-c1-r1-loadgen2/b10-42679791413-1-c
 | S15. Guard checks after evidence completion (line 491) | Never | T4 `Local_Fail` |
 | S16. Copy of the three evidence artifacts into `successor/` | Never | T1, T7 |
 | S17. Failure report | Yes: L56 is its output | Not changed |
-| S18. Production wiring inside the host's producer construction: completion behaviour, broker inventory, statistics handler | Never. No offline test builds the host runtime with a native client | Partly: T1 to T9 use the same production handler and completion behaviour, and T9 drives them from a real client. That the host passes exactly these, with the inventory it reads, is deployment assumption D7 |
+| S18. Production wiring inside the host's successor creation path: completion behaviour, broker inventory, statistics handler | Never live past the guard (L56 is from the old wiring). No test on `main` builds the host runtime and invokes its producer factory | T12 (the inventory the host-built producer's completion uses) and T13 (the handler installed in the client the host-built factory creates). Replaces D7 under [decision 6753364128](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753364128) |
 | S19. Host cleanup: session and evidence disposal, host stop and dispose within 10 s (lines 95-101) | Never: trial 7 failed before it | Partly: T1 disposes the real session and evidence after a completed run. Host stop and dispose: D5 |
 | S20. Read of successor payloads and successor publication (lines 102-106) | Never. `phase-status.json` records `b10_abrupt_publication_ambiguous` at boundaries `successor_job` (`b10_abrupt.py` line 591) and `successor_publication` (line 394) | T7 runs the real publisher against the test file storage. The blob upload itself: D3 |
 | S21. Successor process exit 0 and Job completion | Never: `loadgen2-pods.json` shows exit code 1, started 19:20:51Z, finished 19:22:58Z | D4 |
@@ -413,6 +423,29 @@ T11. Existing `Given_ExcessFactsAndFractionalMilliseconds_When_Attached_Then_Fir
 - Expected: 35 kept, equal to the first 35 names in enum order; the millisecond assertion unchanged (1999).
 - The cap value follows decision 6751449502, and no other assertion is loosened.
 
+T12. `Given_HostBuiltSuccessor_When_StatisticsCompletionRunsWithoutReports_Then_MissingBrokersEqualHostInventory`. Covers R12 and S18.
+- Observation point (required): the producer returned by the host's successor creation path, with role `successor`, not a separately constructed completion object.
+- Input:
+  - predecessor binding whose broker inventory lists `broker-b`, then `broker-a`;
+  - host services as on `main` test helpers, with statistics `CompletionTimeout` 1 s and `TimeProvider.System`;
+  - the producer's completion behaviour invoked as the successor run invokes it: statistics completion, then evidence completion. No native client is built and no report is delivered. Invoking the producer's stored completion behaviour by reflection is a permitted example.
+- Expected:
+  - `b10_abrupt_guard_failed`, with `missing_broker_count` 2 and `diagnostic_completion_timeout` 1;
+  - `capture/capabilities.json` `statistics_completion.missing_brokers` equals `["broker-a","broker-b"]`. With production expectations, `statistics_completion` also carries `first_post_drain_timestamp_microseconds` null.
+
+T13. `Given_HostBuiltSuccessorClient_When_SessionCaptureFails_Then_NativeCaptureWasTrackedFirst`. Covers R10 and S18.
+- Observation point (required): the statistics handler installed in the native client that the host-built producer's factory creates. That client is real; it needs no broker, and the missing token only adds a non-fatal error.
+- Input:
+  - the same host successor creation path, with a test `TimeProvider` whose timestamp read throws `InvalidOperationException("synthetic_clock_failure")` while armed;
+  - report 1, `client_id` `pod-2` (the successor pod name), brokers `broker-a` and `broker-b`, delivered through the installed handler while armed;
+  - then report 2, with different content, delivered while disarmed.
+  - Reading the handler from the client by reflection is a permitted example.
+- Expected:
+  - report 1 throws `synthetic_clock_failure`;
+  - after report 2, the B10 adapter has exactly 1 report;
+  - its available-guard check fails with `guard_reason` 6, because native-capture tracking recorded report 1 before the session rejected it, so report 2 no longer matches.
+  - With the order reversed, report 1 never reaches native-capture tracking, and no guard fails.
+
 Observations, not bounds:
 
 - T9 in this prototype, 3 of 3 runs, and the fresh checks (port 1 refused, and with a listener on port 1): completion wait 92 to 106 ms, dispose 95 to 102 ms, 3 reports per run.
@@ -424,29 +457,32 @@ Observations, not bounds:
 
 ### 7.3 Mutations
 
-Each mutation is scratch only and never committed, and the receipt records the result of each. M1 to M9 are the fresh checker's list; M10 to M15, M6s, M14s, X1 and X2 are this planner's. The prototype was run with 42 cases in the new class plus the diagnostics tests. Every mutation built with 0 errors, and production was restored byte-identical afterwards. In the table, "T6 (all 34)" means every T6 case.
+Each mutation is scratch only and never committed, and the receipt records the result of each. M1 to M9 are the fresh checker's list; M10 to M15, M6s, M14s, X1, X2 and H1 to H3 are this planner's (H1 and H2 were requested by the control session). The prototype was run with 44 cases in the new class plus the diagnostics tests. Every mutation built with 0 errors, and production was restored byte-identical afterwards. In the table, "T6 (all 34)" means every T6 case.
 
 | Id | Precise mutation | Killed by (observed) |
 |---|---|---|
 | M1 | Statistics completion moved after disposal | T1, T4 x2, T5 |
 | M2 | Evidence completion moved before disposal | T4 x2, T5 |
-| M3 | Producer disposed first; statistics completion performed at the start of evidence completion (the `main` shape) | T1, T4 x2, T5, T9 |
-| M4 | The R3 guard removed: facts computed, no throw | T2, T5 |
+| M3 | Producer disposed first; statistics completion performed at the start of evidence completion (the `main` shape) | T1, T4 x2, T5, T9, T12 |
+| M4 | The R3 guard removed: facts computed, no throw | T2, T5, T12 |
 | M5 | Guard condition ignores the evidence fault | T5 |
 | M6 | The fact members mapped to codes `late_capture` and `capture_contention` swapped, so the emitted names change order | T6 (all 34), T2, T5, T10 |
 | M6s | The code strings mapped to facts 6 and 7 swapped; names and order unchanged | T6 d2, d3 |
 | M7 | Guard checks after evidence completion removed | T4 `Local_Fail` |
 | M8 | Statistics-completion exception caught; completion replaced by `new KafkaStatisticsCompletion(false, [], [])` | T8 |
 | M9 | `diagnostic_count` counts only listed codes present | T6 b, c |
-| M10 | Capture-only completion requested, without the broker inventory | T2 |
+| M10 | Capture-only completion requested, without the broker inventory | T2, T12 |
 | M11 | Handler skips native-capture tracking | T1, T2, T4 x2, T5, T8 |
 | M12 | Per-site cap left at 16 | T2, T5, T10, T11 |
 | M13 | Last flag (`broker_name_mismatch`) removed | T6 (all 34), T2, T5, T10 |
 | M14 | The fact members mapped to codes `invalid_json` and `duplicate_property` swapped | T6 (all 34), T2, T5, T10 |
 | M14s | The code strings mapped to facts 31 and 32 swapped; names and order unchanged | T6 d27, d28 |
-| M15 | `missing_broker_count` fixed at 0 | T6 b, c, d1 to d31, T2 |
-| X1 | Handler calls the session before native-capture tracking (reverses R10) | Survives. No test observes the order without relying on timing. Covered by acceptance command 13 |
-| X2 | The R3 guard evaluated before evidence completion, so evidence is never completed on the failure path | T1, T2, T4, T5, T9 |
+| M15 | `missing_broker_count` fixed at 0 | T6 b, c, d1 to d31, T2, T12 |
+| X1 | Handler calls the session before native-capture tracking (reverses R10); identical to H2 | T13 |
+| X2 | The R3 guard evaluated before evidence completion, so evidence is never completed on the failure path | T1, T2, T4, T5, T9, T12 |
+| H1 | The host passes an empty broker set to the successor's completion behaviour | T12 |
+| H2 | The host passes a handler with the order reversed (session first, then native-capture tracking) | T13 |
+| H3 | The host passes only the first inventory broker | T12 |
 
 ## 8. Timing and margin (estimates)
 
@@ -478,7 +514,7 @@ Inference: on `main`'s order, the same bounds limit disposal, evidence completio
 
 ## 9. Deployment assumptions
 
-No offline test runs these for real. Each blocks approval until it is accepted by name. Under standing decision 6752430614 point 1, the control session may accept one only if its failure gives a failed trial with logs that name it.
+No offline test runs these for real. D1 to D6 are accepted by name by [decision 6753364128](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753364128) under standing decision 6752430614 point 1, because each failure gives a failed trial with logs that name it. D7 of Revision 3 was not accepted; it is replaced by T12 and T13.
 
 - D1. After the successor's seal, the live client delivers within 20 s a report naming every expected broker. Basis: section 8 (estimate), S8 (inference) and T9 (real client, no broker). Failure is named by `diagnostic_completion_timeout` and `missing_broker_count`.
 - D2. Native disposal after statistics completion returns within the 10 s cleanup timeout. Basis: T9 (about 100 ms) and the section 8 inference (about 1.97 s live).
@@ -492,7 +528,6 @@ No offline test runs these for real. Each blocks approval until it is accepted b
     - The window is the worker drain between those two steps, measured against the 15 s interval.
     - Its fix is the capture-loss race-fix pull request (decision 6752059755), which must merge before any further B10 trial.
   - Neither race's live probability is measured. If either fires, the E2 flags name it.
-- D7. The host passes the production completion behaviour, with the broker inventory it reads, and the production handler to the successor producer (S18). Code review and acceptance commands 12 and 13 check this.
 
 ## 10. Acceptance commands
 
@@ -506,11 +541,11 @@ Run from the repository root. "Observed" is what this planning session saw on 20
    - Expected after: the same.
 3. `dotnet test --project tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj -c Release --no-build -- --filter-class "*B10Abrupt*"`.
    - Observed on `main`: total 457, succeeded 456, skipped 1.
-   - Observed on the prototype: total 497, succeeded 496, skipped 1, failed 0. That is 457, minus T4's 2 moved cases, plus the 42 cases of the new class.
-   - Expected after: total 497, succeeded 496, skipped 1, failed 0.
+   - Observed on the prototype: total 499, succeeded 498, skipped 1, failed 0. That is 457, minus T4's 2 moved cases, plus the 44 cases of the new class.
+   - Expected after: total 499, succeeded 498, skipped 1, failed 0.
 4. Repetition gate, 50 runs (a plan choice). The class includes T4, so the gate repeats the disposal-callback path.
    - `for i in $(seq 1 50); do dotnet tests/Parchwell.LoadGen.Tests/bin/Release/net10.0/Parchwell.LoadGen.Tests.dll -class Parchwell.LoadGen.Tests.Abrupt.B10AbruptSuccessorCompletionTests 2>&1 | grep -o 'Total: [0-9]*, Errors: [0-9]*, Failed: [0-9]*'; done | sort | uniq -c`
-   - Observed on the prototype: `50 Total: 42, Errors: 0, Failed: 0`.
+   - Observed on the prototype: `50 Total: 44, Errors: 0, Failed: 0`.
    - Expected after: the same.
 5. `W=$(mktemp -d)`, then `PARCHWELL_B10_ABRUPT_WIRE_OUTPUT="$W" dotnet tests/Parchwell.LoadGen.Tests/bin/Release/net10.0/Parchwell.LoadGen.Tests.dll -class Parchwell.LoadGen.Tests.Abrupt.B10AbruptWireProducerTests`.
    - Observed on the prototype, 10 of 10 runs: `Total: 8, Errors: 0, Failed: 0, Skipped: 0`.
@@ -526,30 +561,29 @@ Run from the repository root. "Observed" is what this planning session saw on 20
    - Expected after: the same.
 9. Mutations in section 7.3.
    - Observed: as tabled.
-   - Expected after: each mutation except X1 is killed by at least its listed tests, and production is restored byte-identical.
+   - Expected after: each mutation is killed by at least its listed tests, and production is restored byte-identical.
 10. `npm run check:docs`.
     - Observed on `main`: `8 warnings`, all in files this plan does not change. With the E5 line applied: that file reports `no issues found`.
     - Expected after: no new warning; the 8 take one blanket line under docs/agents/pull-requests.md rule 8.
 11. `./scripts/verify-dotnet.sh` with `dockerd` running.
-    - Observed: exit 0 on `main`, on the Revision 2 prototype and on the Revision 3 prototype (`Verification passed.`). A first Revision 3 attempt failed only the Docker-dependent PhantomSpike test because `dockerd` had stopped; after restarting it the run passed.
+    - Observed: exit 0 on `main`, on the Revision 2 prototype and on the Revision 3 prototype and on the Revision 4 prototype (`Verification passed.`). A first Revision 3 attempt failed only the Docker-dependent PhantomSpike test because `dockerd` had stopped; after restarting it the run passed.
     - Expected after: exit 0. Final-head CI (`dotnet-verification.yml`) remains the authority.
 12. A `grep -n` of `src/Parchwell.LoadGen/Run/Abrupt/` for the completion behaviour and the handler.
     - Expected: completion is requested only on the successor path, after the cohort seal, and is constructed and passed only in the host's producer construction. The handler is passed to the native client's statistics handler. The receipt records the output.
 13. Print the production statistics handler's body.
-    - Expected: native-capture tracking is called, then the session, with nothing else.
-    - This is checked by review, because mutation X1 survives every test.
+    - Expected: native-capture tracking is called, then the session, with nothing else. A review aid; T13 is the test.
 
 ## 11. Plan-check questions (factory.md "Item lifecycle" step 1)
 
 - (a) Effort that scales with a number unknown at planning time: review findings, verification failures and documentation warnings.
   - Caps: 20 root causes each per pull request, exhaustion action `push -wip and hand off to the next session` (docs/operations/b10-abrupt-contract.md line 79). The cold-review budget is under docs/agents/pull-requests.md rule 8.
-  - The repetition gate is fixed at 50 runs and the mutation list at 19, so neither scales.
+  - The repetition gate is fixed at 50 runs and the mutation list at 22, so neither scales.
   - A failure traced to D6's races stops the work and hands off.
 - (b) Where the plan is stricter than its parents:
   - the real chain, with a real client where one runs offline (decision 6749565231);
   - the 50-run gate and the deterministic delivery points, because a free-running feed proved flaky;
   - the mutation table.
-- (c) Dependencies outside `main` and this pull request: T9 depends on the bundled librdkafka emitting statistics for an unreachable bootstrap broker. It passed with port 1 refused, and with a listener on port 1 (fresh check, 2026-11-09). Behaviour no test settles is D1 to D7.
+- (c) Dependencies outside `main` and this pull request: T9 depends on the bundled librdkafka emitting statistics for an unreachable bootstrap broker. It passed with port 1 refused, and with a listener on port 1 (fresh check, 2026-11-09). T12 and T13 build a real client through the host path with no broker and no token. Behaviour no test settles is D1 to D6, accepted by [decision 6753364128](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753364128).
 
 ## 12. Sources
 
@@ -584,11 +618,9 @@ Other sources:
 
 ## 13. Open questions for Hari
 
-- Q2. Accept deployment assumptions D1 to D7 by name, or name the test or trial evidence that should settle them.
-  - Each one's failure gives a failed trial whose logs name it: D1 by its facts; D2 and D5 by the existing timeout failures; D3 and D4 by `b10_abrupt_publication_*` at a boundary; D6 by its E2 flags; D7 by `b10_abrupt_guard_failed` or a missing file.
-  - The control session may therefore decide them under standing decision 6752430614 point 1. Planner's recommendation: accept all seven.
+None.
 
-Already answered: Q1 (decision 6751199288), Q3 (decisions 6752059755 and 6752078378) and Q4 (decision 6751449502).
+Answered: Q1 (decision 6751199288), Q2 ([decision 6753364128](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753364128): D1 to D6 accepted under standing rule 1, D7 replaced by T12 and T13), Q3 (decisions 6752059755 and 6752078378) and Q4 (decision 6751449502).
 
 ## 14. Stop rule
 
