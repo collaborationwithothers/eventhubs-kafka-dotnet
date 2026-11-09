@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Threading.Channels;
 using Confluent.Kafka;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Statistics;
@@ -149,6 +150,75 @@ public sealed class B10AbruptProducerTests
         var attempt = await fixture.Runner.InvokeProbe("same_instance", [1], null, TestContext.Current.CancellationToken);
         Assert.Null(attempt.Terminal);
         Assert.DoesNotContain(fixture.Events, item => item.Kind == "terminal");
+    }
+
+    [Fact]
+    public async Task Given_ProbeCallback_When_Recorded_Then_NoStageWriteUntilMarkTerminals()
+    {
+        using var writer = new CallbackStageWriter();
+        await using var fixture = new Fixture(timeline: new B10AbruptTimeline(TimeProvider.System, "child", writer));
+        fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
+        fixture.Native.OnProduce = (_, callback) =>
+        {
+            writer.InCallback = true;
+            try { callback(Report()); }
+            finally { writer.InCallback = false; }
+        };
+
+        var attempt = await fixture.Runner.InvokeProbe("same_instance", [1], null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, writer.CallbackWrites);
+        Assert.Empty(writer.CallbackOutput.ToString());
+        Assert.DoesNotContain("\"stage\":\"probe_terminal\"", writer.ToString(), StringComparison.Ordinal);
+        Assert.True(attempt.CallbackTimestamp > 0);
+        Assert.True(attempt.CallbackTimestamp >= attempt.InvokedTimestamp);
+        fixture.Runner.MarkTerminals();
+        fixture.Runner.MarkTerminals();
+        JsonElement terminal = Assert.Single(writer.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => JsonSerializer.Deserialize<JsonElement>(line["b10_abrupt_stage ".Length..])),
+            entry => entry.GetProperty("stage").GetString() == "probe_terminal");
+        JsonElement facts = terminal.GetProperty("facts");
+        Assert.Equal(["arm", "is_original", "error_code", "persistence_status", "delivered", "produce_to_terminal_milliseconds", "produce_ticks", "callback_ticks"],
+            facts.EnumerateObject().Select(property => property.Name));
+        Assert.Equal(1, facts.GetProperty("arm").GetInt32());
+        Assert.Equal(1, facts.GetProperty("is_original").GetInt32());
+        Assert.Equal(0, facts.GetProperty("error_code").GetInt32());
+        Assert.Equal(2, facts.GetProperty("persistence_status").GetInt32());
+        Assert.Equal(1, facts.GetProperty("delivered").GetInt32());
+        Assert.Equal((long)TimeProvider.System.GetElapsedTime(attempt.InvokedTimestamp, attempt.CallbackTimestamp).TotalMilliseconds,
+            facts.GetProperty("produce_to_terminal_milliseconds").GetInt64());
+        Assert.Equal(attempt.InvokedTimestamp, facts.GetProperty("produce_ticks").GetInt64());
+        Assert.Equal(attempt.CallbackTimestamp, facts.GetProperty("callback_ticks").GetInt64());
+    }
+
+    [Fact]
+    public async Task Given_TerminalFrame_When_Written_Then_HookRunsOnWriterAfterFrame()
+    {
+        using var events = new MemoryStream();
+        var channel = (B10AbruptChildChannel)Activator.CreateInstance(typeof(B10AbruptChildChannel),
+            BindingFlags.Instance | BindingFlags.NonPublic, null, [events, Stream.Null, 1L], CultureInfo.InvariantCulture)!;
+        var lengths = new List<long>();
+        var hooksComplete = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        channel.TerminalWritten = () =>
+        {
+            lengths.Add(events.Length);
+            if (lengths.Count == 2) hooksComplete.TrySetResult();
+            throw new IOException("synthetic_hook_failure");
+        };
+        try
+        {
+            JsonElement terminal = B10AbruptWire.Element(new { attempt_id = "synthetic", error_code = 0,
+                persistence_status = 2, delivered = true, completion_source = "native_callback" });
+            Assert.True(channel.TryCaptureTerminal(terminal));
+            Assert.True(channel.TryCaptureTerminal(terminal));
+            await hooksComplete.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        }
+        finally { await channel.DisposeAsync(); }
+
+        Assert.Equal(2, lengths.Count);
+        Assert.All(lengths, length => Assert.True(length > 0));
+        Assert.True(lengths[1] > lengths[0]);
+        Assert.Null(channel.Gap);
     }
 
     [Fact]
@@ -498,6 +568,71 @@ public sealed class B10AbruptProducerTests
         Assert.Equal("b10_abrupt_control_incomplete", exception.Message);
         Assert.DoesNotContain(fixture.Native.Calls, call => Encoding.UTF8.GetString(call.Key).EndsWith("cross_restart", StringComparison.Ordinal));
         Assert.Single(fixture.Seals);
+        JsonElement facts = Detail(exception, "SealProbeCohortAsync").GetProperty("facts");
+        Assert.Equal(["arm", "entry_count", "expected_count", "no_terminal_count"], facts.EnumerateObject().Select(property => property.Name));
+        Assert.Equal(1, facts.GetProperty("arm").GetInt32());
+        Assert.Equal(2, facts.GetProperty("entry_count").GetInt32());
+        Assert.Equal(2, facts.GetProperty("expected_count").GetInt32());
+        Assert.Equal(2, facts.GetProperty("no_terminal_count").GetInt32());
+    }
+
+    [Fact]
+    public async Task Given_OutstandingMessages_When_DrainBudgetExpires_Then_DiagnosticNamesOutstandingCountAndBudget()
+    {
+        var clock = new ManualClock();
+        await using var fixture = new Fixture(clock: clock);
+        fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
+        fixture.Native.FlushResult = 3;
+        fixture.Native.OnFlush = () => clock.Advance(TimeSpan.FromSeconds(1));
+
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() => InvokePrivateAsync(fixture.Runner,
+            "DrainAsync", TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken));
+
+        Assert.Equal("b10_abrupt_control_incomplete", exception.Message);
+        JsonElement detail = Detail(exception, "DrainAsync");
+        Assert.Equal(3, detail.GetProperty("facts").GetProperty("outstanding_count").GetInt32());
+        Assert.Equal(1000, detail.GetProperty("facts").GetProperty("budget_milliseconds").GetInt32());
+    }
+
+    [Fact]
+    public async Task Given_NoReportAfterDrainBoundary_When_WaitExpires_Then_DiagnosticNamesEachSelectionPredicate()
+    {
+        var clock = new ManualClock();
+        await using var fixture = new Fixture(clock: clock);
+        fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
+        var identity = new KafkaStatisticsIdentity("B10", "run-1", KafkaClientRole.LoadGenProducer, "client");
+        fixture.Statistics.Observe(StatisticsReport(identity, clock));
+        clock.Advance(TimeSpan.FromSeconds(1));
+        DateTimeOffset drained = clock.GetUtcNow();
+        Task operation = InvokePrivateAsync(fixture.Runner, "WaitForPostDrainAsync", 0, drained, TestContext.Current.CancellationToken);
+        await clock.WaitForTimerAsync(TimeSpan.FromSeconds(1));
+        clock.Advance(TimeSpan.FromSeconds(1));
+
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() => operation);
+
+        Assert.Equal("b10_abrupt_control_incomplete", exception.Message);
+        JsonElement facts = Detail(exception, "WaitForPostDrainAsync").GetProperty("facts");
+        Assert.Equal(1, facts.GetProperty("report_count").GetInt32());
+        Assert.Equal(1, facts.GetProperty("snapshot_count").GetInt32());
+        Assert.Equal(0, facts.GetProperty("after_drain_utc_count").GetInt32());
+        Assert.Equal(0, facts.GetProperty("after_native_boundary_count").GetInt32());
+        Assert.Equal(1, facts.GetProperty("expected_brokers_count").GetInt32());
+        Assert.Equal(1, facts.GetProperty("qualifying_brokers_count").GetInt32());
+        Assert.Equal(0, facts.GetProperty("overflow").GetInt32());
+        Assert.Equal(1, facts.GetProperty("drain_boundary_matches").GetInt32());
+    }
+
+    [Fact]
+    public async Task Given_DuplicateTimeoutCallback_When_CheckingGuards_Then_DiagnosticNamesDuplicateCallbackReason()
+    {
+        await using var fixture = new Fixture();
+        fixture.Runner.Initialize(Profile(), fixture.Identity, fixture.Options);
+        fixture.Native.OnProduce = (_, callback) => { callback(Report()); callback(Report()); };
+
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Runner.RunTimeoutCohortAsync(TestContext.Current.CancellationToken));
+
+        Assert.Equal("b10_abrupt_guard_failed", exception.Message);
+        Assert.Equal(1, Detail(exception, "CheckGuards").GetProperty("facts").GetProperty("fault_reason").GetInt32());
     }
 
     [Theory]
@@ -642,6 +777,17 @@ public sealed class B10AbruptProducerTests
         Assert.Equal(["prepared", "accepted", "terminal"], fixture.Events.Select(item => item.Kind));
     }
 
+    private static JsonElement Detail(Exception exception, string member)
+    {
+        JsonElement detail = JsonSerializer.SerializeToElement(B10AbruptDiagnostics.Describe(exception)).GetProperty("detail");
+        Assert.Equal("B10AbruptProducer.cs", detail.GetProperty("file").GetString());
+        Assert.Equal(member, detail.GetProperty("member").GetString());
+        return detail;
+    }
+
+    private static Task InvokePrivateAsync(B10AbruptProducer runner, string member, params object[] arguments) =>
+        (Task)typeof(B10AbruptProducer).GetMethod(member, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(runner, arguments)!;
+
     private static void AssertCaptureGapReport(Exception exception, string expectedLine, string privatePath)
     {
         using var errors = new StringWriter(CultureInfo.InvariantCulture);
@@ -699,7 +845,7 @@ public sealed class B10AbruptProducerTests
         private Task? reportTask;
         private readonly KafkaStatisticsIdentity statisticsIdentity = new("B10", "run-1", KafkaClientRole.LoadGenProducer, "client");
 
-        internal Fixture(long sequence = 0, TimeProvider? clock = null, bool captureEvidence = false)
+        internal Fixture(long sequence = 0, TimeProvider? clock = null, bool captureEvidence = false, B10AbruptTimeline? timeline = null)
         {
             Clock = new ReleaseWindowClock(clock ?? TimeProvider.System);
             Release = _ => Task.FromResult(Clock.FreezeUtc());
@@ -734,7 +880,7 @@ public sealed class B10AbruptProducerTests
                     DisposalsAtEvidenceCompletion = Native.Disposals;
                     await Evidence.CompleteAsync(null, token);
                     return Evidence.ArtifactNames.ToDictionary(name => name, name => Path.Combine(Root, "capture", name), StringComparer.Ordinal);
-                });
+                }, timeline: timeline);
         }
 
         internal KafkaStatisticsReport Observe()
@@ -764,6 +910,18 @@ public sealed class B10AbruptProducerTests
             reportStop.Dispose();
             if (Evidence is not null) await Evidence.DisposeAsync();
             Directory.Delete(Root, true);
+        }
+    }
+
+    private sealed class CallbackStageWriter() : StringWriter(CultureInfo.InvariantCulture)
+    {
+        internal bool InCallback { get; set; }
+        internal int CallbackWrites { get; private set; }
+        internal StringBuilder CallbackOutput { get; } = new();
+        public override void WriteLine(string? value)
+        {
+            if (InCallback) { CallbackWrites++; CallbackOutput.AppendLine(value); }
+            base.WriteLine(value);
         }
     }
 
@@ -808,6 +966,44 @@ public sealed class B10AbruptProducerTests
         internal void Advance(TimeSpan duration) => Interlocked.Add(ref ticks, duration.Ticks);
     }
 
+    private sealed class ManualClock : TimeProvider
+    {
+        private long ticks;
+        private readonly List<ManualTimer> timers = [];
+        private readonly object gate = new();
+        private readonly Channel<TimeSpan> installedTimers = Channel.CreateUnbounded<TimeSpan>();
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+        public override long GetTimestamp() => Interlocked.Read(ref ticks);
+        public override DateTimeOffset GetUtcNow() => new DateTimeOffset(2026, 11, 7, 0, 0, 0, TimeSpan.Zero).AddTicks(GetTimestamp());
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = new ManualTimer(this, callback, state);
+            lock (gate) timers.Add(timer);
+            timer.Change(dueTime, period);
+            installedTimers.Writer.TryWrite(dueTime);
+            return timer;
+        }
+        internal async Task WaitForTimerAsync(TimeSpan dueTime)
+        {
+            while (await installedTimers.Reader.ReadAsync(TestContext.Current.CancellationToken).AsTask()
+                .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken) != dueTime) { }
+        }
+        internal void Advance(TimeSpan elapsed)
+        {
+            Interlocked.Add(ref ticks, elapsed.Ticks);
+            ManualTimer[] snapshot; lock (gate) snapshot = timers.ToArray();
+            foreach (var timer in snapshot) timer.Fire(GetTimestamp());
+        }
+        private sealed class ManualTimer(ManualClock clock, TimerCallback callback, object? state) : ITimer
+        {
+            private long due = long.MaxValue;
+            public bool Change(TimeSpan dueTime, TimeSpan period) { Interlocked.Exchange(ref due, dueTime < TimeSpan.Zero ? long.MaxValue : checked(clock.GetTimestamp() + dueTime.Ticks)); return true; }
+            internal void Fire(long now) { long target = Interlocked.Read(ref due); if (now >= target && Interlocked.CompareExchange(ref due, long.MaxValue, target) == target) callback(state); }
+            public void Dispose() => Interlocked.Exchange(ref due, long.MaxValue);
+            public ValueTask DisposeAsync() { Dispose(); return ValueTask.CompletedTask; }
+        }
+    }
+
     public class NativeProducer : DispatchProxy
     {
         internal List<Message<byte[], byte[]>> Calls { get; } = [];
@@ -816,6 +1012,7 @@ public sealed class B10AbruptProducerTests
         internal Action OnDispose { get; set; } = () => { };
         internal int Disposals { get; private set; }
         internal int FlushAfterKill { get; private set; }
+        internal int FlushResult { get; set; }
         private bool killed;
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {
@@ -830,7 +1027,7 @@ public sealed class B10AbruptProducerTests
                 case "Flush":
                     if (killed) FlushAfterKill++;
                     OnFlush();
-                    return 0;
+                    return FlushResult;
                 case "Dispose": Disposals++; OnDispose(); return null;
                 default: throw new NotSupportedException(targetMethod?.Name);
             }

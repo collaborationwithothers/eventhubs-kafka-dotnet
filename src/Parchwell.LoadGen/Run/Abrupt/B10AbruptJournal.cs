@@ -103,7 +103,7 @@ internal sealed class B10AbruptJournal : IAsyncDisposable
                 else await AppendAsync("terminal", message.Data, cancellationToken).ConfigureAwait(false);
             }
         }
-        catch (OperationCanceledException) { throw new InvalidOperationException("b10_abrupt_eof_incomplete"); }
+        catch (OperationCanceledException) { throw B10AbruptDiagnostics.Attach(new InvalidOperationException("b10_abrupt_eof_incomplete")); }
         catch (InvalidDataException exception) { LatchGap(exception.Message.Split(':')[^1]); throw; }
     }
 

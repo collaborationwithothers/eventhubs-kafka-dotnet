@@ -1,0 +1,36 @@
+# B10 abrupt child diagnostics receipt
+
+PR B adds diagnostic sites, facts and child stages after the merged diagnostics core. The delivery callback records timestamps with Interlocked; terminal stages are written outside the callback.
+
+## Execution card
+
+- Deliverable: Revision 3 PR B only, appendix A4 and applicable A7 mechanical fixes; exact file allowlist in A4.
+- Authorization: [plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6735133465), updated 2026-11-09T08:00:45Z, exact-body SHA-256 `41decdae9cc90eba48197c03e141f6b62390ded66157f8835f450a9b5a9dde41`; [appendix](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6735131020), updated 2026-11-09T08:00:35Z, exact-body SHA-256 `2637d71c85f6f3f35be5e2668d3c8541f331bfba20728f390411683595dcf094`; [approval](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6735505476). Both hashes and timestamps matched before edits.
+- Decisions: scope/process [6733448366](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6733448366); protocol and C1 unchanged [6734201273](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6734201273); held ack stage [6734951856](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6734951856); caller sites, ordered split and successful child stage output [6734964238](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6734964238). Checks: [Revision 3](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6735392763) and [Revision 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6734851668), whose applicable fixes are in A7.
+- Source: current main `9c06282237c366ce28f45b10d635d92074281050`; PR A [410](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/410) merged. Branch `codex/404-diagnostics-pr-b`.
+- Mandatory gates: pinned authority, red/green and acceptance, exact scope/closed failure-name proof, docs checks, cold repo-review coverage, exact-head cold Claude review and hosted Codex code/security review plus CI.
+- Commands: plan "Acceptance and bounds": `./scripts/verify-dotnet.sh`; `python3 -m unittest infra.scripts.phase.tests.test_b10_abrupt`; `python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'`; `bash charts/parchwell/tests/check-loadgen-host.sh`; `npm ci && npm run test:docs && npm run check:docs`; `git diff --check`; `git diff --name-only origin/main...HEAD`. Targeted red/green details follow below.
+- Earliest publication: tested candidate with applicable cold review; exact-head Claude review remains a merge gate. No Azure access, workflow dispatch, trial or scientific activation is authorized.
+- Caps: 20 distinct root causes each for verification, changed-file documentation warnings and review; two consolidated correction rounds. Exhaustion: push -wip and hand off to the next session, with dated basis-labelled remaining-time estimate. First scan over 100 lines stops under rule 11. Cold review: at most two comprehensive and two focused rounds cumulatively; exhaustion or unsafe focus goes to Hari. Diagnostic caps retain record-the-gap-and-continue actions from the plan.
+- Predicate map and C5: not applicable; no verifier judgement or configured mutation target changes.
+
+## Verification and review
+
+Results measured on 2026-11-09 against source main plus this candidate; program output stays outside Git under `/tmp/404-validation` and `/tmp/404-tests-red`.
+
+- First scan: 75 matching lines across the twelve plan files, below the 100-line stop. PR A already covers 12; baseline PR B red scan reports 63 violations. Candidate scan: 75 matching lines, zero violations.
+- Scratch baseline copied from current main, with only the compatible A4 tests 1-4 and expanded architecture scan. Locked restore and Release build passed with zero warnings/errors. Producer class: 60 total, 56 passed, 4 failed, zero skipped, all four failures at missing diagnostic detail. Architecture targeted test: one failed with 63 file:line violations. XML parsed by script.
+- Candidate Release build: zero warnings/errors after fixing the new test's xUnit2031 analyzer violation with the supported Assert.Single predicate overload. An earlier parallel build exited MSB4166; serial compilation with DOTNET_PROCESSOR_COUNT=1 passed. No production correction was needed.
+- Phase suite: 12 passed. First lifecycle discovery: 333 ran, 2 errors due to absent actionlint and kubeconform. Installed repository-pinned CI tools with `infra/scripts/lifecycle/install-tools.sh`; lifecycle rerun and host/chart command are pending at this review checkpoint.
+- npm ci and documentation tests passed (28 tests). npm run check:docs exited 0: eight advisory warnings in unchanged files, none in changed files. Unchanged-file warnings stand as pre-existing.
+- The full `./scripts/verify-dotnet.sh` is running. SDK 10.0.402, locked restore, Release build/analyzers, XML inventory and project settings passed; Architecture 17 and Enrichment 56 passed so far. No full-suite success is claimed yet.
+- Scripted comparisons: all production closed failure-literal multisets unchanged; supervisor file (including FailureName) byte-unchanged; failure-table name set unchanged. Diagnostics core changes append only the approved fact/stage enums. No configured C5 mutation target, project/package, workflow, scenario, expected outcome, result or protected path changes.
+- A4 callback test wording reconciliation: the requirement for empty output after InvokeProbe conflicts with mandatory ProducerConstructed, ProbePrepared and ProbeAccepted writes. The test asserts empty callback output and zero writes during the callback, no probe_terminal before MarkTerminals, and exactly one terminal line after two calls, with the prescribed facts and timestamps. Noncallback progress lines remain as expressly approved by decision 6734964238. The wire test retains the exact plan stage literal; any mismatch stops rather than editing it.
+
+Verification root causes at this checkpoint: 3 (MSBuild worker failure, new-test analyzer violation, missing pinned tool prerequisites), within 20. Changed-file documentation-warning root causes: 0. Consolidated source correction rounds: 1 of 2 (the analyzer fix). Review-finding root causes: 0 before review.
+
+## Review checkpoint
+
+Comprehensive round 1: full authored candidate against main `9c06282237c366ce28f45b10d635d92074281050`, through fresh-context repo-review. Cumulative counters on entry: comprehensive 0 of 2, focused 0 of 2. The complete report will be linked in the PR self-review record; it is not included in its own reviewed receipt. Hosted reviews and exact-head cold Claude review remain separate required gates.
+
+Models: Codex author and implementation subagents; model identity is not exposed by the interface. Repository skill requires high effort for implementation subagents and the fresh-context cold reviewer; that setting was requested. Exact-head Claude review is pending for the control session under decision 6733448366 item 4.

@@ -13,7 +13,7 @@ public sealed class B10AbruptFailureSiteTests
             ?? throw new InvalidOperationException("Run ./scripts/verify-dotnet.sh to identify the repository root.");
         var pattern = new Regex("""new\s+(?:[\w.]+)?Exception\s*\(\s*(?:\w+\s*\?\s*)?"(?:b10_abrupt_|kill_too_)|new\s*\(\s*"(?:b10_abrupt_|kill_too_)|new\s+(?:OwnedProducerProcess\.)?SignalException\s*\(""", RegexOptions.CultureInvariant);
         var violations = new List<string>();
-        foreach (string file in new[] { "B10AbruptSupervisor.cs", "B10AbruptWire.cs", "B10AbruptPublisher.cs" })
+        foreach (string file in new[] { "B10AbruptSupervisor.cs", "B10AbruptWire.cs", "B10AbruptPublisher.cs", "B10AbruptProducer.cs", "B10AbruptStatistics.cs", "B10AbruptHost.cs", "B10AbruptChildChannel.cs", "B10AbruptJournal.cs", "B10AbruptCgroup.cs", "B10AbruptProc.cs", "B10AbruptOptions.cs", "OwnedProducerProcess.cs" })
         {
             string[] lines = File.ReadAllLines(Path.Combine(root, "src/Parchwell.LoadGen/Run/Abrupt", file));
             int count = 0;

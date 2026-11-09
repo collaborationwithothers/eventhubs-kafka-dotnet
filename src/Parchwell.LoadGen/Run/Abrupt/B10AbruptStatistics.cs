@@ -6,6 +6,7 @@ using System.Text.Json;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Statistics;
 using Parchwell.LoadGen.Run.Contracts;
+using static Parchwell.LoadGen.Run.Abrupt.B10AbruptDiagnostics;
 
 namespace Parchwell.LoadGen.Run.Abrupt;
 
@@ -21,6 +22,7 @@ internal sealed class B10AbruptStatistics : IKafkaStatisticsEvidenceSink
     private long retainedBytes;
     private volatile bool overflow;
     private volatile bool guardFailed;
+    private int guardReason;
     private bool trackNativeCapture;
     private readonly Queue<(int Length, string Sha256)> pendingNative = new();
     private string? nativeName;
@@ -40,9 +42,9 @@ internal sealed class B10AbruptStatistics : IKafkaStatisticsEvidenceSink
         this.expectedBrokers = new HashSet<string>(expectedBrokers, StringComparer.Ordinal);
         this.downstream = downstream;
         sequence = initialSequence;
-        guardFailed = this.expectedBrokers.Count is 0 or > 64 || identity.Role != KafkaClientRole.LoadGenProducer ||
+        if (this.expectedBrokers.Count is 0 or > 64 || identity.Role != KafkaClientRole.LoadGenProducer ||
             expectedSettings.Count != actualSettings.Count || expectedSettings.Any(pair =>
-                !actualSettings.TryGetValue(pair.Key, out string? value) || value != pair.Value);
+                !actualSettings.TryGetValue(pair.Key, out string? value) || value != pair.Value)) Guard(15);
     }
 
     internal static async Task ValidateCapturedAsync(string path, KafkaStatisticsIdentity expectedIdentity,
@@ -52,7 +54,7 @@ internal sealed class B10AbruptStatistics : IKafkaStatisticsEvidenceSink
         byte[] bytes;
         try { bytes = await B10AbruptPublisher.ReadFileAsync(path, 134217728, cancellationToken).ConfigureAwait(false); }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        { throw new InvalidDataException("b10_abrupt_capture_gap", exception); }
+        { throw Attach(new InvalidDataException("b10_abrupt_capture_gap", exception)); }
         var available = new B10AbruptStatistics(expectedIdentity, expectedBrokers, expectedSettings, actualSettings);
         int start = 0;
         while (start < bytes.Length)
@@ -61,17 +63,20 @@ internal sealed class B10AbruptStatistics : IKafkaStatisticsEvidenceSink
             int relativeEnd = bytes.AsSpan(start).IndexOf((byte)'\n');
             // The killed writer's incomplete last record remains in the explicitly unavailable native tail.
             if (relativeEnd < 0) break;
-            if (relativeEnd is 0 or > 1048576) throw new InvalidDataException("b10_abrupt_capture_gap");
+            if (relativeEnd is 0 or > 1048576) throw Attach(new InvalidDataException("b10_abrupt_capture_gap"), [Fact(B10AbruptFact.LineLength, relativeEnd)]);
             try
             {
                 JsonElement row = B10AbruptWire.Parse(bytes.AsMemory(start, relativeEnd), 1048576);
                 B10AbruptWire.ExactMembers(row, "schema_version", "identity", "statistics_identity", "session_id",
                     "received_at", "receipt_time", "raw_json", "typed_snapshot", "diagnostics");
-                if (row.GetProperty("schema_version").GetInt32() != 1) throw new InvalidDataException("b10_abrupt_capture_gap");
+                if (row.GetProperty("schema_version").GetInt32() != 1) throw Attach(new InvalidDataException("b10_abrupt_capture_gap"));
                 var run = row.GetProperty("identity").Deserialize<RunIdentity>(B10AbruptWire.JsonOptions)!;
                 run.Validate();
-                if (run.ScenarioId != expectedIdentity.ScenarioId || run.RunId != expectedIdentity.RunId || run.ClientId != expectedIdentity.ClientId)
-                    throw new InvalidDataException("b10_abrupt_guard_failed");
+                var facts = new List<B10AbruptFactValue>();
+                if (!Check(facts, B10AbruptFact.ScenarioMatches, run.ScenarioId == expectedIdentity.ScenarioId) ||
+                    !Check(facts, B10AbruptFact.RunMatches, run.RunId == expectedIdentity.RunId) ||
+                    !Check(facts, B10AbruptFact.ClientIdMatches, run.ClientId == expectedIdentity.ClientId))
+                    throw Attach(new InvalidDataException("b10_abrupt_guard_failed"), [.. facts]);
                 B10AbruptWire.ExactMembers(row.GetProperty("statistics_identity"), "scenario_id", "run_id", "role", "client_id");
                 var identity = row.GetProperty("statistics_identity").Deserialize<KafkaStatisticsIdentity>(B10AbruptWire.JsonOptions)!;
                 var snapshot = row.GetProperty("typed_snapshot").Deserialize<KafkaStatisticsSnapshot>(B10AbruptWire.JsonOptions);
@@ -80,7 +85,7 @@ internal sealed class B10AbruptStatistics : IKafkaStatisticsEvidenceSink
                     row.GetProperty("received_at").GetDateTimeOffset(), row.GetProperty("raw_json").GetString()!, snapshot, diagnostics));
             }
             catch (Exception exception) when (exception is JsonException or KeyNotFoundException or InvalidOperationException or ArgumentException)
-            { throw new InvalidDataException("b10_abrupt_capture_gap", exception); }
+            { throw Attach(new InvalidDataException("b10_abrupt_capture_gap", exception)); }
             start = checked(start + relativeEnd + 1);
         }
         available.AssertAvailableGuards();
@@ -91,7 +96,9 @@ internal sealed class B10AbruptStatistics : IKafkaStatisticsEvidenceSink
         lock (gate)
         {
             if (guardFailed || !expectedBrokers.IsSubsetOf(observedBrokers) && reports.Count > 0)
-                throw new InvalidDataException("b10_abrupt_guard_failed");
+                throw Attach(new InvalidDataException("b10_abrupt_guard_failed"),
+                    [Fact(B10AbruptFact.GuardFailed, guardFailed), Fact(B10AbruptFact.GuardReason, guardReason),
+                        Fact(B10AbruptFact.ExpectedBrokersObserved, expectedBrokers.IsSubsetOf(observedBrokers)), Fact(B10AbruptFact.ReportCount, reports.Count)]);
         }
     }
 
@@ -99,7 +106,7 @@ internal sealed class B10AbruptStatistics : IKafkaStatisticsEvidenceSink
     {
         lock (gate)
         {
-            if (reports.Count != 0 || trackNativeCapture) throw new InvalidOperationException("b10_abrupt_configuration_invalid");
+            if (reports.Count != 0 || trackNativeCapture) throw Attach(new InvalidOperationException("b10_abrupt_configuration_invalid"));
             trackNativeCapture = true;
         }
     }
@@ -109,24 +116,24 @@ internal sealed class B10AbruptStatistics : IKafkaStatisticsEvidenceSink
         if (overflow) return;
         if (raw is null || raw.Length > 1048576)
         {
-            guardFailed = true;
+            Guard(1);
             return;
         }
         int length = Encoding.UTF8.GetByteCount(raw);
         if (length is <= 0 or > 1048576)
         {
-            guardFailed = true;
+            Guard(2);
             return;
         }
         string hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(raw)));
         if (!Monitor.TryEnter(gate))
         {
-            guardFailed = true;
+            Guard(3);
             return;
         }
         try
         {
-            if (!trackNativeCapture || pendingNative.Count >= 2048) guardFailed = true;
+            if (!trackNativeCapture || pendingNative.Count >= 2048) Guard(4);
             else pendingNative.Enqueue((length, hash));
         }
         finally { Monitor.Exit(gate); }
@@ -135,6 +142,17 @@ internal sealed class B10AbruptStatistics : IKafkaStatisticsEvidenceSink
     internal void MarkConstructed(DateTimeOffset value)
     {
         lock (gate) constructed = value;
+    }
+
+    private void Guard(int reason)
+    {
+        Interlocked.CompareExchange(ref guardReason, reason, 0);
+        guardFailed = true;
+    }
+
+    internal int ReportCount
+    {
+        get { lock (gate) return reports.Count; }
     }
 
     public async ValueTask WriteAsync(KafkaStatisticsReport report, CancellationToken cancellationToken)
@@ -153,30 +171,30 @@ internal sealed class B10AbruptStatistics : IKafkaStatisticsEvidenceSink
             int length = Encoding.UTF8.GetByteCount(report.RawJson);
             if (length is <= 0 or > 1048576 || retainedBytes + length > 134217728)
             {
-                guardFailed = true;
+                Guard(5);
                 return;
             }
             if (trackNativeCapture)
             {
                 string hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(report.RawJson)));
                 if (!pendingNative.TryDequeue(out var native) || native.Length != length || native.Sha256 != hash)
-                    guardFailed = true;
+                    Guard(6);
             }
             retainedBytes += length;
             reports.Add(new NumberedReport(sequence, report));
             if (report.Identity != identity || report.ReceivedAt.Offset != TimeSpan.Zero ||
                 report.Snapshot is not { } snapshot || !report.Diagnostics.IsDefaultOrEmpty)
             {
-                guardFailed = true;
+                Guard(7);
                 return;
             }
             if (snapshot.ClientId != identity.ClientId || snapshot.Type != "producer" ||
-                (nativeName is not null && nativeName != snapshot.Name) || string.IsNullOrEmpty(snapshot.Name)) guardFailed = true;
+                (nativeName is not null && nativeName != snapshot.Name) || string.IsNullOrEmpty(snapshot.Name)) Guard(8);
             nativeName ??= snapshot.Name;
             Int128 creation = (Int128)snapshot.TimestampMicroseconds - snapshot.AgeMicroseconds;
             if (snapshot.TimestampMicroseconds < 0 || snapshot.AgeMicroseconds < 0 ||
                 snapshot.TimestampMicroseconds <= nativeTimestamp || nativeCreation is { } priorCreation && priorCreation != creation)
-                guardFailed = true;
+                Guard(9);
             nativeTimestamp = snapshot.TimestampMicroseconds;
             nativeCreation ??= creation;
             var actual = snapshot.Brokers;
@@ -189,25 +207,25 @@ internal sealed class B10AbruptStatistics : IKafkaStatisticsEvidenceSink
                 {
                     JsonElement rawBroker = rawBrokers.GetProperty(broker.Name);
                     string? source = rawBroker.GetProperty("source").GetString();
-                    if (string.IsNullOrWhiteSpace(source)) guardFailed = true;
+                    if (string.IsNullOrWhiteSpace(source)) Guard(10);
                     if (source is "learned" or "configured" or "logical") qualifying.Add(broker.Name);
                     observedBrokers.Add(broker.Name);
                 }
-                if (qualifyingBrokers is not null && !qualifyingBrokers.SetEquals(qualifying)) guardFailed = true;
+                if (qualifyingBrokers is not null && !qualifyingBrokers.SetEquals(qualifying)) Guard(11);
                 qualifyingBrokers ??= qualifying;
             }
             catch (Exception exception) when (exception is JsonException or KeyNotFoundException or InvalidOperationException)
             {
-                guardFailed = true;
+                Guard(12);
             }
             foreach (var broker in actual)
             {
                 if (broker.TransmissionErrors != 0 || broker.ReceiveErrors != 0 || broker.RequestTimeouts < 0 ||
-                    broker.Disconnects < 0 || broker.TransmissionRetries < 0) guardFailed = true;
+                    broker.Disconnects < 0 || broker.TransmissionRetries < 0) Guard(13);
                 if (brokers.TryGetValue(broker.Name, out KafkaBrokerStatistics? prior) &&
                     (broker.NodeId != prior.NodeId || broker.RequestTimeouts < prior.RequestTimeouts ||
                      broker.Disconnects < prior.Disconnects || broker.TransmissionRetries < prior.TransmissionRetries ||
-                     broker.TransmissionErrors < prior.TransmissionErrors || broker.ReceiveErrors < prior.ReceiveErrors)) guardFailed = true;
+                     broker.TransmissionErrors < prior.TransmissionErrors || broker.ReceiveErrors < prior.ReceiveErrors)) Guard(14);
                 brokers[broker.Name] = broker;
             }
         }
@@ -218,7 +236,9 @@ internal sealed class B10AbruptStatistics : IKafkaStatisticsEvidenceSink
         lock (gate)
         {
             if (guardFailed || !expectedBrokers.IsSubsetOf(observedBrokers) && reports.Count > 0)
-                throw new InvalidDataException("b10_abrupt_guard_failed");
+                throw Attach(new InvalidDataException("b10_abrupt_guard_failed"),
+                    [Fact(B10AbruptFact.GuardFailed, guardFailed), Fact(B10AbruptFact.GuardReason, guardReason),
+                        Fact(B10AbruptFact.ExpectedBrokersObserved, expectedBrokers.IsSubsetOf(observedBrokers)), Fact(B10AbruptFact.ReportCount, reports.Count)]);
             if (overflow) return null;
             return reports.LastOrDefault(report => report.Report.Snapshot is not null &&
                 report.Report.ReceivedAt > constructed && report.Report.ReceivedAt < acceptance);
@@ -227,7 +247,7 @@ internal sealed class B10AbruptStatistics : IKafkaStatisticsEvidenceSink
 
     internal void MarkDrainBoundary(DateTimeOffset drained, long timestamp, long frequency)
     {
-        if (timestamp < 0 || frequency <= 0) throw new InvalidDataException("b10_abrupt_guard_failed");
+        if (timestamp < 0 || frequency <= 0) throw Attach(new InvalidDataException("b10_abrupt_guard_failed"));
         lock (gate)
         {
             drainUtc = drained;
@@ -240,7 +260,9 @@ internal sealed class B10AbruptStatistics : IKafkaStatisticsEvidenceSink
         lock (gate)
         {
             if (guardFailed || !expectedBrokers.IsSubsetOf(observedBrokers) && reports.Count > 0)
-                throw new InvalidDataException("b10_abrupt_guard_failed");
+                throw Attach(new InvalidDataException("b10_abrupt_guard_failed"),
+                    [Fact(B10AbruptFact.GuardFailed, guardFailed), Fact(B10AbruptFact.GuardReason, guardReason),
+                        Fact(B10AbruptFact.ExpectedBrokersObserved, expectedBrokers.IsSubsetOf(observedBrokers)), Fact(B10AbruptFact.ReportCount, reports.Count)]);
             if (overflow || drained != drainUtc || drainNativeBoundary is null) return null;
             return reports.FirstOrDefault(report => report.Report.Snapshot is { } snapshot &&
                 report.Report.ReceivedAt >= drained && snapshot.TimestampMicroseconds > drainNativeBoundary &&
@@ -249,9 +271,30 @@ internal sealed class B10AbruptStatistics : IKafkaStatisticsEvidenceSink
         }
     }
 
+    internal B10AbruptFactValue[] PostDrainFacts(DateTimeOffset drained)
+    {
+        lock (gate)
+        {
+            return
+            [
+                Fact(B10AbruptFact.ReportCount, reports.Count),
+                Fact(B10AbruptFact.SnapshotCount, reports.Count(report => report.Report.Snapshot is not null)),
+                Fact(B10AbruptFact.AfterDrainUtcCount, reports.Count(report => report.Report.ReceivedAt >= drained)),
+                Fact(B10AbruptFact.AfterNativeBoundaryCount, reports.Count(report => report.Report.Snapshot is { } snapshot &&
+                    snapshot.TimestampMicroseconds > drainNativeBoundary)),
+                Fact(B10AbruptFact.ExpectedBrokersCount, reports.Count(report => report.Report.Snapshot is { } snapshot &&
+                    expectedBrokers.IsSubsetOf(snapshot.Brokers.Select(broker => broker.Name)))),
+                Fact(B10AbruptFact.QualifyingBrokersCount, reports.Count(report => report.Report.Snapshot is { } snapshot &&
+                    (qualifyingBrokers is null || qualifyingBrokers.IsSubsetOf(snapshot.Brokers.Select(broker => broker.Name))))),
+                Fact(B10AbruptFact.Overflow, overflow),
+                Fact(B10AbruptFact.DrainBoundaryMatches, drained == drainUtc && drainNativeBoundary is not null)
+            ];
+        }
+    }
+
     internal JsonElement SealCohort(string cohort, DateTimeOffset drained)
     {
-        var report = SelectPostDrain(drained) ?? throw new InvalidDataException("b10_abrupt_control_incomplete");
+        var report = SelectPostDrain(drained) ?? throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"));
         return JsonSerializer.SerializeToElement(new
         {
             cohort, statistics_complete = true, post_drain_report = report.Binding(),
@@ -272,7 +315,7 @@ internal sealed class B10AbruptStatistics : IKafkaStatisticsEvidenceSink
                     report_capture_utc = report.Report.ReceivedAt.ToString("O", CultureInfo.InvariantCulture),
                     raw_json = report.Report.RawJson
                 });
-                if (stream.Length + bytes.Length + 1 > 134217728) throw new InvalidDataException("b10_abrupt_capture_gap");
+                if (stream.Length + bytes.Length + 1 > 134217728) throw Attach(new InvalidDataException("b10_abrupt_capture_gap"));
                 stream.Write(bytes);
                 stream.WriteByte((byte)'\n');
             }

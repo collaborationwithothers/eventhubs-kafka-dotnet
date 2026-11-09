@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Runtime.CompilerServices;
 
 namespace Parchwell.LoadGen.Run.Abrupt;
 
@@ -36,5 +37,5 @@ internal static class B10AbruptProc
         string value = Encoding.ASCII.GetString(ReadBounded("/proc/sys/kernel/random/boot_id"));
         return value.EndsWith('\n') ? value[..^1] : value;
     }
-    internal static InvalidDataException InvalidIdentity() => new("b10_abrupt_child_identity_mismatch");
+    internal static InvalidDataException InvalidIdentity([CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0) => B10AbruptDiagnostics.Attach(new InvalidDataException("b10_abrupt_child_identity_mismatch"), null, file, member, line);
 }

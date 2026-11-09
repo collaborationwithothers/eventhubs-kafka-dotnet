@@ -18,6 +18,8 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 
+using static Parchwell.LoadGen.Run.Abrupt.B10AbruptDiagnostics;
+
 namespace Parchwell.LoadGen.Run.Abrupt;
 
 internal static class B10AbruptHost
@@ -244,12 +246,13 @@ internal static class B10AbruptHost
             {
                 KafkaStatisticsCompletion completion = await statistics.CompleteAsync(brokers, token).ConfigureAwait(false);
                 await evidence.CompleteAsync(completion, token).ConfigureAwait(false);
-                if (!completion.IsComplete || evidence.IsFaulted) throw new InvalidDataException("b10_abrupt_guard_failed");
+                if (!completion.IsComplete || evidence.IsFaulted) throw Attach(new InvalidDataException("b10_abrupt_guard_failed"), [Fact(B10AbruptFact.CompletionComplete, completion.IsComplete), Fact(B10AbruptFact.EvidenceFaulted, evidence.IsFaulted)]);
                 return evidence.ArtifactNames.ToDictionary(name => name, name => Path.Combine(evidencePath, name), StringComparer.Ordinal);
-            });
+            }, new B10AbruptTimeline(clock, options.Role, Console.Error));
         var execution = new RunExecutionOptions(186000, 900000, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(300), TimeSpan.FromSeconds(10),
             16384, 67108864, 268435456, options.OutputRoot, "document-events", brokers, false, true,
             TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(20), ApplicationRetryPolicy.ForScenario("B10"));
+        if (channel is not null) channel.TerminalWritten = producer.MarkTerminals;
         return new(producer, loaded.Profile, execution, authentication, statistics, evidence);
     }
 
@@ -262,14 +265,18 @@ internal static class B10AbruptHost
         JsonElement inventory = B10AbruptWire.Parse(Encoding.UTF8.GetBytes(binding.GetProperty("broker_inventory").GetString()!));
         B10AbruptWire.ExactMembers(inventory, "schema_version", "identity", "brokers", "source", "source_commit");
         JsonElement identity = inventory.GetProperty("identity");
-        if (inventory.GetProperty("schema_version").GetInt32() != 1 || inventory.GetProperty("source").GetString() != "kafka_metadata" ||
-            inventory.GetProperty("source_commit").GetString() != options.SourceCommit || identity.GetProperty("run_id").GetString() != options.RunId ||
-            identity.GetProperty("scenario_id").GetString() != options.ScenarioId || identity.GetProperty("configuration_id").GetString() != options.ConfigurationId)
-            throw new InvalidDataException("b10_abrupt_guard_failed");
+        var facts = new List<B10AbruptFactValue>();
+        if (!(Check(facts, B10AbruptFact.SchemaMatches, inventory.GetProperty("schema_version").GetInt32() == 1) &&
+            Check(facts, B10AbruptFact.SourceMatches, inventory.GetProperty("source").GetString() == "kafka_metadata") &&
+            Check(facts, B10AbruptFact.SourceCommitMatches, inventory.GetProperty("source_commit").GetString() == options.SourceCommit) &&
+            Check(facts, B10AbruptFact.RunMatches, identity.GetProperty("run_id").GetString() == options.RunId) &&
+            Check(facts, B10AbruptFact.ScenarioMatches, identity.GetProperty("scenario_id").GetString() == options.ScenarioId) &&
+            Check(facts, B10AbruptFact.ConfigurationMatches, identity.GetProperty("configuration_id").GetString() == options.ConfigurationId)))
+            throw Attach(new InvalidDataException("b10_abrupt_guard_failed"), [.. facts]);
         var brokers = inventory.GetProperty("brokers");
-        if (brokers.GetArrayLength() is < 1 or > 64) throw new InvalidDataException("b10_abrupt_guard_failed");
+        if (brokers.GetArrayLength() is < 1 or > 64) throw Attach(new InvalidDataException("b10_abrupt_guard_failed"), [Fact(B10AbruptFact.BrokerCount, brokers.GetArrayLength())]);
         string[] names = brokers.EnumerateArray().Select(broker => broker.GetProperty("name").GetString()!).ToArray();
-        if (names.Any(string.IsNullOrWhiteSpace) || names.Distinct(StringComparer.Ordinal).Count() != names.Length) throw new InvalidDataException("b10_abrupt_guard_failed");
+        if (names.Any(string.IsNullOrWhiteSpace) || names.Distinct(StringComparer.Ordinal).Count() != names.Length) throw Attach(new InvalidDataException("b10_abrupt_guard_failed"), [Fact(B10AbruptFact.BrokerCount, names.Length), Fact(B10AbruptFact.BlankCount, names.Count(string.IsNullOrWhiteSpace)), Fact(B10AbruptFact.DistinctCount, names.Distinct(StringComparer.Ordinal).Count())]);
         return names;
     }
     internal static async Task<DateTimeOffset> ReadReleaseAsync(B10AbruptOptions options, string arm, TimeProvider clock, CancellationToken cancellationToken)
@@ -279,8 +286,11 @@ internal static class B10AbruptHost
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token, cancellationToken);
         while (!File.Exists(path)) await Task.Delay(TimeSpan.FromMilliseconds(10), clock, linked.Token).ConfigureAwait(false);
         var frame = B10AbruptWire.ReadFrame(await B10AbruptPublisher.ReadFileAsync(path, 65536, linked.Token).ConfigureAwait(false));
-        if (frame.Kind != "checkpoint" || frame.Identity != options.Identity() || frame.Data.GetProperty("arm").GetString() != arm)
-            throw new InvalidDataException("b10_abrupt_control_incomplete");
+        var facts = new List<B10AbruptFactValue>();
+        if (!(Check(facts, B10AbruptFact.KindMatches, frame.Kind == "checkpoint") &&
+            Check(facts, B10AbruptFact.IdentityMatches, frame.Identity == options.Identity()) &&
+            Check(facts, B10AbruptFact.ArmMatches, frame.Data.GetProperty("arm").GetString() == arm)))
+            throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"), [.. facts]);
         string progressPath = Path.Combine(options.OutputRoot, "abrupt-child", "same_instance-resumed.json");
         await using (var file = new FileStream(progressPath + ".pending", FileMode.CreateNew, FileAccess.Write, FileShare.None))
         {
