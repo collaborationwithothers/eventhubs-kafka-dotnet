@@ -234,13 +234,14 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
                 catch (OperationCanceledException) when (reportsStop.IsCancellationRequested) { }
             }, cancellationToken);
             var execution = Execution(work);
+            var timeline = new B10AbruptTimeline(clock, "child", null);
             var runner = new B10AbruptProducer(() => producer, clock, statistics, cohort => Ledger(work, cohort), process.SendAsync,
                 process.Terminal, async (arm, token) =>
                 {
                     DateTimeOffset release = await B10AbruptHost.ReadReleaseAsync(options, arm, clock, token);
                     clock.AdvanceTo(release);
                     return release;
-                }, (cohort, data, token) => SaveSealAsync(work, firstIdentity, cohort, data, token), diagnosticIdentity: firstIdentity);
+                }, (cohort, data, token) => SaveSealAsync(work, firstIdentity, cohort, data, token), diagnosticIdentity: firstIdentity, timeline: timeline);
             using var childStop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             Task supervisorTask = supervisor.RunAsync(cancellationToken);
             Task producerTask = runner.RunFirstAsync(B10AbruptProducerTests.Profile(), RunIdentity(firstIdentity), execution, childStop.Token);
@@ -255,6 +256,16 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
             try { await producerTask; } catch (OperationCanceledException) when (childStop.IsCancellationRequested) { }
             await reportsStop.CancelAsync();
             await reports;
+            if (processFailure is null)
+            {
+                string?[] stages = JsonSerializer.SerializeToElement(timeline.Snapshot()).GetProperty("entries")
+                    .EnumerateArray().Select(entry => entry.GetProperty("stage").GetString()).ToArray();
+                Assert.Equal(["producer_constructed", "timeout_schedule_complete", "timeout_drained", "post_drain_report", "cohort_sealed",
+                    "probe_prepared", "probe_produced", "probe_report_selected", "probe_accepted", "release_read", "release_reached",
+                    "probe_prepared", "probe_produced", "probe_accepted", "cohort_drained", "post_drain_report", "cohort_sealed",
+                    "probe_prepared", "probe_produced", "probe_report_selected", "probe_accepted"], stages.Where(stage => stage != "probe_terminal"));
+                Assert.Equal(2, stages.Count(stage => stage == "probe_terminal"));
+            }
             Assert.Equal(0, native.Disposals);
             Assert.Equal(0, native.FlushAfterKill);
             Assert.Equal(1, process.Kills);

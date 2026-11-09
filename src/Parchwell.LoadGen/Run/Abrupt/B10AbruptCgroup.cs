@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 using Microsoft.Win32.SafeHandles;
 
 namespace Parchwell.LoadGen.Run.Abrupt;
@@ -98,7 +99,7 @@ internal static class B10AbruptCgroup
     internal static bool Compare(Observation before, Observation after)
     {
         if (before.BootId != after.BootId || before.CgroupPath != after.CgroupPath || before.DirectoryIdentity != after.DirectoryIdentity || before.OomKill < 0 || after.OomKill < 0) throw Unavailable();
-        if (before.OomKill != after.OomKill) throw new InvalidOperationException("b10_abrupt_oom_conflict");
+        if (before.OomKill != after.OomKill) throw B10AbruptDiagnostics.Attach(new InvalidOperationException("b10_abrupt_oom_conflict"));
         return true;
     }
 
@@ -107,5 +108,5 @@ internal static class B10AbruptCgroup
     private static extern int Open([MarshalAs(UnmanagedType.LPUTF8Str)] string path, int flags);
 #pragma warning restore SYSLIB1054
 
-    private static InvalidOperationException Unavailable(Exception? inner = null) => new("b10_abrupt_cgroup_unavailable", inner);
+    private static InvalidOperationException Unavailable(Exception? inner = null, [CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0) => B10AbruptDiagnostics.Attach(new InvalidOperationException("b10_abrupt_cgroup_unavailable", inner), null, file, member, line);
 }

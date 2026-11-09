@@ -16,6 +16,7 @@ internal enum B10AbruptFact
     GuardComplete, FatalStatusMatches, RowCount, SealCount, EntryCount, LineCount, InventoryCount, BookkeepingComplete,
     IdCount, NotAcceptedCount, NoTerminalCount, UnknownAttempt, RawMatches, ReportLength, FileLength, ReportSequence,
     ScenarioMatches, RunMatches, RoleMatches, ClientIdPresent, UtcValid, ExitCode, CleanupFailed, FrameCount,
+    TimeoutSealed, ControlSealed, KillAdmitted, ProbeCount, PlannedCount, MaximumRetries, MaximumAttempts, LatenessMicroseconds, MaximumLatenessMicroseconds, PayloadLength, MaximumPayloadBytes, PreviousCount, PredecessorMatches, PreviousAccepted, ArmKnown, NameIndex, CapturedPresent, FileExists, ExpectedCount, OutstandingCount, ReportCount, SnapshotCount, AfterDrainUtcCount, AfterNativeBoundaryCount, ExpectedBrokersCount, QualifyingBrokersCount, DrainBoundaryMatches, Overflow, Faulted, FaultReason, EvidenceFaulted, GuardObservationsComplete, NativeErrorObserved, GuardFailed, GuardReason, ExpectedBrokersObserved, KeyMatches, SequenceZero, PayloadWithinLimit, InstanceDistinct, ArrayLength, AdmittedCount, RetryAdmittedCount, DeliveredCount, TimedOutCount, SynchronousRejectionCount, OtherErrorCount, ProduceToAcceptedMilliseconds, ProduceToTerminalMilliseconds, CompletionComplete, SchemaMatches, SourceMatches, SourceCommitMatches, ConfigurationMatches, BrokerCount, BlankCount, DistinctCount, KindMatches, GapPresent, ClientIdMatches, LineLength, ProduceTicks, CallbackTicks,
 }
 
 internal enum B10AbruptStage
@@ -24,6 +25,7 @@ internal enum B10AbruptStage
     StopRequested, StopConfirmed, CheckpointWritten, ResumeRequested, ResumeConfirmed, KillIntent, KillRequested,
     ExitObserved, EofComplete, SelectionFinalized, PublicationComplete, EventStreamEnded, GraceEnded,
     FailureObserved, AbortComplete,
+    ProducerConstructed, TimeoutScheduleComplete, TimeoutDrained, PostDrainReport, CohortSealed, ProbePrepared, ProbeProduced, ProbeReportSelected, ProbeAccepted, ProbeTerminal, ReleaseRead, ReleaseReached, CohortDrained, SuccessorReady,
 }
 
 internal readonly record struct B10AbruptFactValue(B10AbruptFact Key, long Value);

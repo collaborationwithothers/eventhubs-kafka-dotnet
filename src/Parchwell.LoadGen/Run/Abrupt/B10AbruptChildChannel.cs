@@ -27,9 +27,12 @@ internal sealed class B10AbruptChildChannel : IAsyncDisposable
 
     internal string? Gap => Volatile.Read(ref gap);
 
+    // Runs on the writer loop after a terminal frame is written, never on the delivery callback.
+    internal Action<string>? TerminalWritten { get; set; }
+
     internal static B10AbruptChildChannel Connect(string eventsHandle, string ackHandle, string challenge)
     {
-        if (!OperatingSystem.IsLinux()) throw new InvalidOperationException("b10_abrupt_platform_unsupported");
+        if (!OperatingSystem.IsLinux()) throw B10AbruptDiagnostics.Attach(new InvalidOperationException("b10_abrupt_platform_unsupported"));
         var events = new AnonymousPipeClientStream(PipeDirection.Out, eventsHandle);
         var ack = new AnonymousPipeClientStream(PipeDirection.In, ackHandle);
         try
@@ -85,6 +88,7 @@ internal sealed class B10AbruptChildChannel : IAsyncDisposable
                         message.Completion?.TrySetResult(B10AbruptWire.Nonnegative(acknowledgement.Data.GetProperty("acknowledged_sequence")));
                     }
                     else message.Completion?.TrySetResult(0);
+                    if (message.Kind == "terminal") NotifyTerminalWritten(message.Data);
                 }
                 catch (Exception exception)
                 {
@@ -100,6 +104,8 @@ internal sealed class B10AbruptChildChannel : IAsyncDisposable
             while (pending.Reader.TryRead(out var message)) message.Completion?.TrySetException(exception);
         }
     }
+
+    private void NotifyTerminalWritten(JsonElement terminal) { try { TerminalWritten?.Invoke(terminal.GetProperty("attempt_id").GetString()!); } catch (Exception) { } }
 
     public async ValueTask DisposeAsync()
     {

@@ -4,6 +4,7 @@ using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Runtime.CompilerServices;
 
 namespace Parchwell.LoadGen.Run.Abrupt;
 
@@ -18,10 +19,10 @@ internal sealed record ChildCommand(string FileName, IReadOnlyList<string> Argum
     {
         var expected = Path.Combine(baseDirectory, "Parchwell.LoadGen");
         if (processPath != expected)
-            throw B10AbruptOptions.WithDetail(new InvalidOperationException("b10_abrupt_configuration_invalid"),
+            throw B10AbruptOptions.WithDetail(B10AbruptDiagnostics.Attach(new InvalidOperationException("b10_abrupt_configuration_invalid")),
                 B10AbruptOptions.ValidationDetail.ApphostProcessPathMismatch);
         if (!File.Exists(expected))
-            throw B10AbruptOptions.WithDetail(new InvalidOperationException("b10_abrupt_configuration_invalid"),
+            throw B10AbruptOptions.WithDetail(B10AbruptDiagnostics.Attach(new InvalidOperationException("b10_abrupt_configuration_invalid")),
                 B10AbruptOptions.ValidationDetail.ApphostMissing);
         return new(expected, ["--b10-abrupt-child"], new Dictionary<string, string>());
     }
@@ -66,11 +67,11 @@ internal sealed class OwnedProducerProcess : IDisposable
             int result = Poll(ref descriptor, 1, 0);
             int error = result < 0 ? Marshal.GetLastPInvokeError() : 0;
             if (result < 0 || (descriptor.ReturnedEvents & (8 | 32)) != 0)
-                throw new IOException("b10_abrupt_capture_gap:writer_failed", new System.ComponentModel.Win32Exception(error));
+                throw B10AbruptDiagnostics.Attach(new IOException("b10_abrupt_capture_gap:writer_failed", new System.ComponentModel.Win32Exception(error)));
             return result == 1 && (descriptor.ReturnedEvents & (1 | 16)) != 0;
         }
         catch (Exception exception) when (exception is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
-        { throw new IOException("b10_abrupt_capture_gap:writer_failed", exception); }
+        { throw B10AbruptDiagnostics.Attach(new IOException("b10_abrupt_capture_gap:writer_failed", exception)); }
         finally { if (added) pipe.SafePipeHandle.DangerousRelease(); }
     }
 
@@ -87,10 +88,10 @@ internal sealed class OwnedProducerProcess : IDisposable
     internal static OwnedProducerProcess Start(ChildCommand command, B10AbruptOptions options, Func<int, int, SignalObservation> signal)
     {
         if (!OperatingSystem.IsLinux() || RuntimeInformation.ProcessArchitecture != Architecture.X64)
-            throw new InvalidOperationException("b10_abrupt_platform_unsupported");
+            throw B10AbruptDiagnostics.Attach(new InvalidOperationException("b10_abrupt_platform_unsupported"));
         PreflightSignalEntryPoint(signal);
         foreach (var key in command.ExtraEnvironment.Keys)
-            if (key.StartsWith("B10Abrupt__", StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("b10_abrupt_configuration_invalid");
+            if (key.StartsWith("B10Abrupt__", StringComparison.OrdinalIgnoreCase)) throw B10AbruptDiagnostics.Attach(new InvalidOperationException("b10_abrupt_configuration_invalid"));
         var events = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable);
         AnonymousPipeServerStream acknowledgements;
         try { acknowledgements = new AnonymousPipeServerStream(PipeDirection.Out, HandleInheritability.Inheritable); }
@@ -111,8 +112,8 @@ internal sealed class OwnedProducerProcess : IDisposable
             start.Environment["B10Abrupt__AckPipeHandle"] = acknowledgements.GetClientHandleAsString();
             start.Environment["B10Abrupt__IdentityChallenge"] = challenge;
             foreach (var pair in command.ExtraEnvironment) start.Environment[pair.Key] = pair.Value;
-            try { child = Process.Start(start) ?? throw new InvalidOperationException("b10_abrupt_child_start_failed"); }
-            catch (Exception exception) { throw new InvalidOperationException("b10_abrupt_child_start_failed", exception); }
+            try { child = Process.Start(start) ?? throw B10AbruptDiagnostics.Attach(new InvalidOperationException("b10_abrupt_child_start_failed")); }
+            catch (Exception exception) { throw B10AbruptDiagnostics.Attach(new InvalidOperationException("b10_abrupt_child_start_failed", exception)); }
             events.DisposeLocalCopyOfClientHandle();
             acknowledgements.DisposeLocalCopyOfClientHandle();
             var identity = ReadIdentity(child.Id);
@@ -134,12 +135,12 @@ internal sealed class OwnedProducerProcess : IDisposable
         }
     }
 
-    internal static StartupException CleanupStartupFailure(Exception cause, Action cleanup)
+    internal static StartupException CleanupStartupFailure(Exception cause, Action cleanup, [CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0)
     {
         Exception? cleanupFailure = null;
         try { cleanup(); }
         catch (Exception exception) { cleanupFailure = exception; }
-        return new(cause, cleanupFailure);
+        return B10AbruptDiagnostics.Attach(new StartupException(cause, cleanupFailure), null, file, member, line);
     }
 
     internal static SignalObservation PreflightSignalEntryPoint() => PreflightSignalEntryPoint(InvokeSignal);
@@ -149,13 +150,13 @@ internal sealed class OwnedProducerProcess : IDisposable
         try { observation = signal(Environment.ProcessId, 0); }
         catch (Exception exception) when (exception is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
         { observation = new(0, null, null, exception.GetType().Name); }
-        if (observation.ReturnValue != 0) throw new SignalException("b10_abrupt_signal_preflight_failed", observation);
+        if (observation.ReturnValue != 0) throw B10AbruptDiagnostics.Attach(new SignalException("b10_abrupt_signal_preflight_failed", observation));
         return observation;
     }
 
     internal static ProcessIdentity ReadIdentity(int pid)
     {
-        if (pid <= 0) throw new InvalidOperationException("b10_abrupt_target_invalid");
+        if (pid <= 0) throw B10AbruptDiagnostics.Attach(new InvalidOperationException("b10_abrupt_target_invalid"));
         var stat = B10AbruptProc.ReadBounded($"/proc/{pid.ToString(CultureInfo.InvariantCulture)}/stat");
         var status = Encoding.ASCII.GetString(B10AbruptProc.ReadBounded($"/proc/{pid.ToString(CultureInfo.InvariantCulture)}/status"));
         return ParseIdentity(pid, stat, status, B10AbruptProc.ReadBootId());
@@ -164,11 +165,11 @@ internal sealed class OwnedProducerProcess : IDisposable
     internal static ProcessIdentity ParseIdentity(int pid, byte[] stat, string status, string bootId)
     {
         var parent = StatusNumber(status, "PPid:");
-        if (StatusNumber(status, "TracerPid:") != 0) throw new InvalidOperationException("b10_abrupt_target_invalid");
+        if (StatusNumber(status, "TracerPid:") != 0) throw B10AbruptDiagnostics.Attach(new InvalidOperationException("b10_abrupt_target_invalid"));
         var fields = Encoding.ASCII.GetString(stat.AsSpan(stat.AsSpan().LastIndexOf((byte)')') + 1)).Trim(' ').Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (pid <= 0 || fields.Length < 20 || fields[0] is not ("R" or "S" or "D" or "T" or "I") ||
             !int.TryParse(fields[1], NumberStyles.None, CultureInfo.InvariantCulture, out var statParent) || parent != statParent)
-            throw new InvalidOperationException("b10_abrupt_target_invalid");
+            throw B10AbruptDiagnostics.Attach(new InvalidOperationException("b10_abrupt_target_invalid"));
         return new(pid, parent, bootId, B10AbruptProc.ReadStartTimeTicks(stat));
     }
 
@@ -176,21 +177,21 @@ internal sealed class OwnedProducerProcess : IDisposable
     {
         var rows = status.Split('\n').Where(line => line.StartsWith(key, StringComparison.Ordinal)).ToArray();
         if (rows.Length != 1 || !int.TryParse(rows[0][key.Length..].Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var value))
-            throw new InvalidOperationException("b10_abrupt_target_invalid");
+            throw B10AbruptDiagnostics.Attach(new InvalidOperationException("b10_abrupt_target_invalid"));
         return value;
     }
 
     internal static void ValidateTarget(ProcessIdentity original, ProcessIdentity current, bool exited, int parentPid)
     {
         if (exited || original.Pid <= 0 || original.ParentPid != parentPid || original != current)
-            throw new InvalidOperationException("b10_abrupt_target_invalid");
+            throw B10AbruptDiagnostics.Attach(new InvalidOperationException("b10_abrupt_target_invalid"));
     }
 
     private void ValidateTarget()
     {
         try { ValidateTarget(Identity, ReadIdentity(process.Id), process.HasExited, Environment.ProcessId); }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        { throw new InvalidOperationException("b10_abrupt_target_invalid", exception); }
+        { throw B10AbruptDiagnostics.Attach(new InvalidOperationException("b10_abrupt_target_invalid", exception)); }
     }
 
     // Linux v6.11 arch/x86/include/uapi/asm/signal.h fixes KILL=9, CONT=18 and STOP=19.
@@ -198,7 +199,7 @@ internal sealed class OwnedProducerProcess : IDisposable
     internal SignalObservation Resume() => Signal(18);
     internal SignalObservation RequestKill()
     {
-        if (killRequested) throw new InvalidOperationException("b10_abrupt_target_invalid");
+        if (killRequested) throw B10AbruptDiagnostics.Attach(new InvalidOperationException("b10_abrupt_target_invalid"));
         killRequested = true;
         return Signal(9);
     }
@@ -207,19 +208,19 @@ internal sealed class OwnedProducerProcess : IDisposable
     {
         try { return RequestSignal(Identity, ReadIdentity(process.Id), process.HasExited, Environment.ProcessId, number, InvokeSignal); }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        { throw new InvalidOperationException("b10_abrupt_target_invalid", exception); }
+        { throw B10AbruptDiagnostics.Attach(new InvalidOperationException("b10_abrupt_target_invalid", exception)); }
     }
 
     internal static SignalObservation RequestSignal(ProcessIdentity original, ProcessIdentity current, bool exited, int parentPid,
         int number, Func<int, int, SignalObservation> invoke)
     {
         ValidateTarget(original, current, exited, parentPid);
-        if (number is not (9 or 18 or 19)) throw new InvalidOperationException("b10_abrupt_target_invalid");
+        if (number is not (9 or 18 or 19)) throw B10AbruptDiagnostics.Attach(new InvalidOperationException("b10_abrupt_target_invalid"));
         SignalObservation observation;
         try { observation = invoke(original.Pid, number); }
         catch (Exception exception) when (exception is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
         { observation = new(number, null, null, exception.GetType().Name); }
-        if (observation.ReturnValue != 0) throw new SignalException("b10_abrupt_signal_failed", observation);
+        if (observation.ReturnValue != 0) throw B10AbruptDiagnostics.Attach(new SignalException("b10_abrupt_signal_failed", observation));
         return observation;
     }
 

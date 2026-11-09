@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using System.Runtime.CompilerServices;
 
 namespace Parchwell.LoadGen.Run.Abrupt;
 
@@ -116,8 +117,7 @@ internal sealed class B10AbruptOptions
 
     internal B10AbruptWire.Identity Identity(string? predecessor = null) => new(RunId, ScenarioId, ConfigurationId, Phase,
         Repeat, SourceCommit, ImageReference, JobName, PodName, PodUid, PodName, predecessor);
-    private static InvalidDataException Invalid(ValidationDetail detail) =>
-        WithDetail(new InvalidDataException("b10_abrupt_configuration_invalid"), detail);
+    private static InvalidDataException Invalid(ValidationDetail detail, [CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0) => B10AbruptDiagnostics.Attach(WithDetail(new InvalidDataException("b10_abrupt_configuration_invalid"), detail), null, file, member, line);
 
     internal static T WithDetail<T>(T exception, ValidationDetail detail) where T : Exception
     {
