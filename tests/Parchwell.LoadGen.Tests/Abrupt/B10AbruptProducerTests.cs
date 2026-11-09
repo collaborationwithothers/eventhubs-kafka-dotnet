@@ -179,6 +179,13 @@ public sealed class B10AbruptProducerTests
         Assert.True(attempt.CallbackTimestamp >= attempt.InvokedTimestamp);
         fixture.Runner.MarkTerminals();
         fixture.Runner.MarkTerminals();
+        Assert.Equal(-1, attempt.TerminalWrittenTimestamp);
+        long beforeWritten = TimeProvider.System.GetTimestamp();
+        fixture.Runner.MarkTerminals(attempt.AttemptId);
+        long written = attempt.TerminalWrittenTimestamp;
+        Assert.InRange(written, beforeWritten, TimeProvider.System.GetTimestamp());
+        fixture.Runner.MarkTerminals();
+        Assert.Equal(written, attempt.TerminalWrittenTimestamp);
         JsonElement terminal = Assert.Single(writer.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
             .Select(line => JsonSerializer.Deserialize<JsonElement>(line["b10_abrupt_stage ".Length..])),
             entry => entry.GetProperty("stage").GetString() == "probe_terminal");
@@ -367,6 +374,8 @@ public sealed class B10AbruptProducerTests
             producer.RecordTerminal(resend, Report());
             Assert.NotNull(original.Terminal);
             Assert.NotNull(resend.Terminal);
+            Assert.Equal(-1, original.TerminalWrittenTimestamp);
+            Assert.Equal(-1, resend.TerminalWrittenTimestamp);
             Assert.Empty(StageLines(errors));
 
             events.ReleaseFirst.TrySetResult();
@@ -374,6 +383,8 @@ public sealed class B10AbruptProducerTests
             JsonElement first = Assert.Single(StageLines(errors));
             Assert.Equal("probe_terminal", StageName(first));
             Assert.Equal(1, first.GetProperty("facts").GetProperty("is_original").GetInt32());
+            Assert.True(original.TerminalWrittenTimestamp > 0);
+            Assert.Equal(-1, resend.TerminalWrittenTimestamp);
             Assert.Null(channel.Gap);
         }
         finally

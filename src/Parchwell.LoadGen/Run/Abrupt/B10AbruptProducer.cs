@@ -412,11 +412,11 @@ internal sealed class B10AbruptProducer
             List<(ProbeAttempt Attempt, JsonElement Terminal)> ready = [];
             lock (gate)
                 foreach (ProbeAttempt attempt in probes)
-                    if ((writtenAttemptId is null || attempt.AttemptId == writtenAttemptId) &&
-                        attempt.Terminal is { } terminal && attempt.TryClaimTerminalMark())
+                    if ((writtenAttemptId is null || attempt.AttemptId == writtenAttemptId) && attempt.Terminal is { } terminal)
                     {
-                        attempt.TerminalWrittenTimestamp = clock.GetTimestamp();
-                        ready.Add((attempt, terminal));
+                        if (writtenAttemptId is not null && attempt.TerminalWrittenTimestamp == -1)
+                            attempt.TerminalWrittenTimestamp = clock.GetTimestamp();
+                        if (attempt.TryClaimTerminalMark()) ready.Add((attempt, terminal));
                     }
             foreach ((ProbeAttempt attempt, JsonElement terminal) in ready)
                 if (attempt.Sequence == 0 || attempt.PredecessorAttemptId is not null) timeline.Mark(B10AbruptStage.ProbeTerminal,
