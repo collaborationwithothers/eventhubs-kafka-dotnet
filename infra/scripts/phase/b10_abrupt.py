@@ -6,9 +6,12 @@ import json
 import os
 import re
 import shutil
+import sys
 import time
+import traceback
 
 AUXILIARY_MAXIMUM = 65536
+SITE_FILE = os.path.basename(__file__)
 JOURNAL_MAXIMUM = 16777216
 FIRST_FILES = ('registration.json', 'journal.jsonl', 'timeout-seal.json', 'control-seal.json',
                'kill-selection.json', 'abrupt-manifest.json', 'termination.json')
@@ -157,6 +160,19 @@ def bound(reference, name, raw):
         raise ValueError('diagnostic descriptor mismatch')
 
 
+def failure_site(error, caller):
+    """Name the raising line by file base name, function and line number; never by message, value or path."""
+    frames = traceback.extract_tb(error.__traceback__) if error.__traceback__ is not None else []
+    local = [frame for frame in frames if os.path.basename(frame.filename) == SITE_FILE]
+    origin = frames[-1] if frames else None
+    return {'file': SITE_FILE if local else os.path.basename(caller.f_code.co_filename),
+            'function': local[-1].name if local else caller.f_code.co_name,
+            'line': local[-1].lineno if local else caller.f_lineno,
+            'origin_file': os.path.basename(origin.filename) if origin else None,
+            'origin_function': origin.name if origin else None,
+            'origin_line': origin.lineno if origin else None}
+
+
 class Trial:
     def __init__(self, phase, failure=ValueError):
         self.p = phase
@@ -166,7 +182,7 @@ class Trial:
     def directory(self):
         return self.p.artifacts / 'b10-abrupt-diagnostic'
 
-    def record_failure(self, error, fallback, boundary, safety=False):
+    def record_failure(self, error, fallback, boundary, safety=False, cause=None, caller=None):
         if isinstance(error, RecordedFailure):
             return
         message = str(error)
@@ -181,14 +197,15 @@ class Trial:
         state.setdefault('b10_abrupt_gaps', []).append(reason)
         state.setdefault('b10_abrupt_diagnostics', []).append({
             'reason': reason, 'boundary': boundary, 'exception_type': type(error).__name__,
-            'validation_detail': message})
+            'validation_detail': message, 'site': failure_site(cause or error, caller or sys._getframe(1)),
+            'cause_type': type(cause).__name__ if cause is not None else None})
         state['candidate'] = None
         state['safety_stop'] = (state.get('safety_stop', False) or safety
                                 or reason == 'b10_abrupt_first_termination_unknown')
         self.p.save_state(state)
 
-    def fail(self, reason, safety=False):
-        self.record_failure(ValueError(reason), reason, 'admission', safety)
+    def fail(self, reason, safety=False, cause=None):
+        self.record_failure(ValueError(reason), reason, 'admission', safety, cause=cause, caller=sys._getframe(1))
         raise RecordedFailure(reason)
 
     def prepare(self):
@@ -341,8 +358,8 @@ class Trial:
             observation = {'job_name': record['job'], 'pod_name': metadata['name'], 'pod_uid': metadata['uid'],
                 'image_reference': image, 'source_commit': phase['source_commit'], 'finished_utc': finished}
             return observation
-        except (ValueError, OSError, LookupError, TypeError, AttributeError):
-            self.fail('b10_abrupt_first_termination_unknown', safety=True)
+        except (ValueError, OSError, LookupError, TypeError, AttributeError) as error:
+            self.fail('b10_abrupt_first_termination_unknown', safety=True, cause=error)
 
     def envelope(self, raw, kind, observation, predecessor=None, maximum=AUXILIARY_MAXIMUM):
         value = decode(raw, maximum)
