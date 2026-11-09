@@ -1,8 +1,19 @@
 # Capture contention race fix contract-grade plan
 
-Revision 1. Issue #404, pull request short name `capture contention race fix`. Implementing tool: Claude Code, under [standing decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614) point 3, which replaces Codex for this pull request. Planned and reproduced against `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`, the source of diagnostic trial 7. Implemented second, after the successor fix ([order decision 6752454732](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752454732)), on `main` after it merges or stacked on its unmerged head ([decision 6752554218](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752554218) point 2), and rechecked against it under the stop rule (section 15).
+Revision 2. Issue #404, pull request short name `capture contention race fix`. Implementing tool: Claude Code, under [standing decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614) point 3, which replaces Codex for this pull request. Planned and reproduced against `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`, the source of diagnostic trial 7. Implemented second, after the successor fix ([order decision 6752454732](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752454732)), on `main` after it merges or stacked on its unmerged head ([decision 6752554218](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752554218) point 2), and rechecked against it under the stop rule (section 15).
 
 The B10 abrupt producer's statistics adapter records each native statistics report on the callback thread, but only if it wins a non-waiting try for its lock. When another thread holds that lock, for example the 10 ms post-drain poll, the report's record is skipped and the adapter's guard fails with guard reason 3. This pull request lets the callback thread record the report without that lock, so nothing is skipped and the order is kept. It changes one source file and adds one test class. It changes no protocol sequence, gate, policy value, timeout, interval, failure name, fact name, stage name or wire member, and it authorizes no trial.
+
+Changes since Revision 1 (commit `c30bb3a624c55d942d6624921dbf942877199a0a`), answering the fresh reproduction check of Revision 1 relayed by the issue-347 control session:
+
+- B1: T7 also accepts guard reason 7 with `duplicate_property` or `invalid_or_missing_field` in the completion diagnostics ([decision 6754092685](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754092685) point 1); the masking cost is recorded; the duplicate-key deployment assumption is added (DA2); the stop-rule bullet on reason 7 follows.
+- B2: acceptance command 7 no longer runs the architecture tests directly, which fails on `main` without the manifests that `scripts/verify-dotnet.sh` prepares; its result is pinned inside command 8.
+- B3: [decision 6753263792](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753263792) folded in: guard reason 3 retired (section 4), session-side contention accepted as DA1 (section 9), open questions None, the Q1 stop-rule bullet removed.
+- B4: new regression test T8 for R3's empty-queue case; new mutation M10; class totals 9.
+- B5: required kill sets are the deterministic tests only; T7 kills are listed as possible, not required; the check's X6 and X7 are recorded as equivalent mutants.
+- m1: section 13 cites PR3a Revision 8 at `d293b4b6` (approved), successor fix Revision 4 and the capture-loss race fix Revision 2.
+- m2: T7's guard failure may come from the scanner or from the final guard check, which runs after `CompleteAsync`.
+- m3: N8 states that R7 has no killing mutation.
 
 ## 1. Goal and authority
 
@@ -17,10 +28,12 @@ Authority, in creation order (docs/agents/factory.md "Item lifecycle" step 3):
 - [Standing decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614), for the four pull requests before the next B10 trial, this one included: rule 1 lets the control session decide open questions that choose only between test techniques, fixtures or harness details, log wording or fields, file placement within allowed scope, or certain deployment assumptions; protocol, gate, policy value, timeout, failure name, verdict, design text, safety, protected-path and scope questions wait for Hari. Point 2 is standing plan approval. Point 3 names Claude Code as the implementing tool. Point 4 lets the control session merge a pull request of the four that touches no protected path, under AGENTS.md GOVERNANCE "Merge rule" in full.
 - [Order decision 6752454732](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752454732): "1. Successor fix. 2. Capture contention race fix (shares B10 load-generator files with the successor fix). 3. PR3a evidence completeness". "each later one is implemented on `main` after its predecessors have merged, with its plan rechecked against them under its stop rule".
 - [Decision 6752554218](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752554218): point 1, a stalled Codex review is re-requested once after 15 minutes; point 2, "The next pull request in the order may be implemented on a branch based on its predecessor's unmerged head", "not merged before its predecessor", then rebased onto `main`, rechecked under its stop rule and reviewed again on the new head.
+- [Decision 6753263792](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753263792), under standing rule 1; Hari has not seen it. Point 1: "Retire guard reason 3 ... the value is not reused for another condition." Point 2: the session-side lock contention in `KafkaStatisticsSession.Capture` is accepted as a deployment assumption for the next trial; whether to fix it is left for Hari.
+- [Decision 6754092685](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754092685), under standing rule 1; Hari has not seen it. Point 1: T7 also accepts guard reason 7 when the completion diagnostics contain `duplicate_property` or `invalid_or_missing_field`, the second labelled "cause not identified"; "Any guard reason 3 still fails it"; the plan records that these outcomes can mask a concurrency-only regression in those runs. Point 2: "live librdkafka statistics in the next B10 trial contain no duplicate keys" is accepted as a deployment assumption. It also corrects decision 6753263792 point 2: a trial hit by session-side contention is named in the log by guard reason 6, but `capture_contention` may not appear there.
 
-Decisions 6749995101, 6750021224, 6750864341, 6750879393, 6750891952, 6750940329, 6751199288, 6751449502 and 6751703425 govern the verifier split, PR3a or the successor fix. None of them changes `B10AbruptStatistics.cs`.
+Decisions 6749995101, 6750021224, 6750864341, 6750879393, 6750891952, 6750940329, 6751199288, 6751449502, 6751703425 and 6753364128, and approval 6753938298 (PR3a Revision 8), govern the verifier split, PR3a or the successor fix. None of them changes `B10AbruptStatistics.cs`.
 
-Catch-up for this revision: the state file covers comment 6746177383. Comments after it, all read in full: 6747016131 (completion report for the burst test-gap follow-up, not a decision) and the fifteen decisions 6749565231, 6749995101, 6750021224, 6750864341, 6750879393, 6750891952, 6750940329, 6751199288, 6751449502, 6751703425, 6752059755, 6752078378, 6752430614, 6752454732 and 6752554218. Snapshot: 154 comments, none edited or deleted since the first read; issue `updated_at` 2026-11-09T21:58:18Z. Approval 6708991894 was also read in full, for the merge statement in 3.1.
+Catch-up for this revision: the state file covers comment 6746177383. Comments after it, all read in full: 6747016131 (completion report for the burst test-gap follow-up, not a decision) and the fifteen decisions 6749565231, 6749995101, 6750021224, 6750864341, 6750879393, 6750891952, 6750940329, 6751199288, 6751449502, 6751703425, 6752059755, 6752078378, 6752430614, 6752454732, 6752554218, 6753263792, 6753364128 and 6754092685; approval 6753938298; and, by heading only, the PR3a plan comment 6753635457 and its plan check 6753915132. Snapshot for Revision 2: 160 comments, none edited or deleted since the earlier reads; issue `updated_at` 2026-11-09T23:17:54Z. Approval 6708991894 was also read in full, for the merge statement in 3.1.
 
 Design text this plan depends on and does not change:
 
@@ -55,7 +68,7 @@ Not observed live: the seven diagnostic trials (section 6) contain no `guard_rea
 ### 3.1 Files allowed to change
 
 1. `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptStatistics.cs`: the native capture path (`CaptureNative`) and the pending-report match inside `Observe`, with whatever private state they need. On `main` these are at lines 26-27, 114-140 and 177-182; the line numbers locate the code and pin nothing. No other behaviour of the file changes.
-2. New file `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptStatisticsContentionTests.cs`: T1 to T7.
+2. New file `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptStatisticsContentionTests.cs`: T1 to T8.
 3. `items/404/state.md` (docs/agents/factory.md "Item state file") and the new receipt `items/404/contention-race-fix-receipt.md`.
 
 No protected path is in this list (`.github/CODEOWNERS`: `/src/`, `/tests/Parchwell.LoadGen.Tests/` and `/items/` are not listed; `/*.md` covers root files only). [Approval 6708991894](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6708991894) said "Hari merges every pull request here"; for this pull request the later standing decision 6752430614 point 4 lets the control session merge it under AGENTS.md GOVERNANCE "Merge rule" in full, after the successor fix has merged (decision 6752554218 point 2).
@@ -92,7 +105,7 @@ This pull request changes no external contract. Pinned as unchanged:
 - `statistics.jsonl` (`CapturedBytes`) members and report sequence numbering.
 - Stage names, wire members, publication objects and the phase script.
 
-One observable change, under Q1: after this pull request no code path sets `guard_reason` 3. The value is not reused for another condition.
+One observable change: after this pull request no code path sets `guard_reason` 3. The value is retired and not reused for another condition (decision 6753263792 point 1).
 
 ## 5. Requirements
 
@@ -107,7 +120,7 @@ Each requirement is observable behaviour of the real `B10AbruptStatistics` that 
 - R5. WHEN tracking is not active, THEN `CaptureNative` fails the guard with reason 4 (unchanged).
 - R6. Reasons 1 and 2 are checked first, as on `main`; a report failing them does not become pending.
 - R7. WHEN `CaptureNative` runs on more than one thread at once, THEN each passing call makes exactly one report pending, and the bound in R4 holds.
-- R8. WHEN any of R1 to R7 applies, THEN the guard never fails with reason 3 (Q1).
+- R8. WHEN any of R1 to R7 applies, THEN the guard never fails with reason 3 (decision 6753263792 point 1).
 
 ## 6. Never-ran inventory
 
@@ -127,12 +140,12 @@ Inference from those lines: each `post_drain_report` is marked only after `Selec
 |---|---|---|
 | N1. Native callback to `CaptureNative`, uncontended, record entry | Yes: runs 42608381540 and 42679791413, the four `post_drain_report` lines above (inference) | T7 (real librdkafka client, real session, real adapter), T6 |
 | N2. `CaptureNative` while another thread holds the lock (changed) | Never: no `guard_reason` in any log; on `main` this branch fails the guard | T1, T2, T3, T4 (lock held by a real thread); T7 (real scanning thread, real native callbacks) |
-| N3. `Observe` matching and removing the oldest entry (changed: also releases one bound slot) | Matching ran live (N1). The slot release never ran: it is new | T2, T3, T6, T7 |
+| N3. `Observe` matching and removing the oldest entry (changed: also releases one bound slot) | Matching ran live (N1). The slot release never ran: it is new. The empty-queue failure never ran | T2, T3, T6, T7, T8 |
 | N4. Order kept across contention | Never | T2 (in order), T3 (out of order fails, reason 6), T7 |
 | N5. Bound reached (reason 4) | Never: no `guard_reason` in any log | T4 (2048 passes, 2049 fails) |
 | N6. Tracking not active (reason 4) | Never: production always activates (`B10AbruptHost.cs` line 224) | T5 |
 | N7. `SelectPostDrain` and `PostDrainFacts` scanning while reports arrive | Yes: the post-drain waits above (inference), unchanged code | T7 |
-| N8. Concurrent `CaptureNative` on two callback threads (R7) | Unknown: no log records the callback thread | No test. The changed code uses only thread-safe operations; review checks R7. Inference: two statistics callbacks overlap only if one takes longer than the 15000 ms statistics interval |
+| N8. Concurrent `CaptureNative` on two callback threads (R7) | Unknown: no log records the callback thread | No killing test. R7 has no killing mutation here: M11 (unsynchronized queue) and M12 (non-atomic count) each survived the class (7.3); the reproduction check reports its X4 surviving and its X9 (unsynchronized queue) caught in 1 of 10 runs. The cold review checks R7. Inference: two statistics callbacks overlap only if one takes longer than the 15000 ms statistics interval |
 
 Size of live reports: the changed statements read only the length and hash, which are computed before them exactly as on `main` (lines 117-128). Report size and content do not reach the changed code. No deployment assumption is needed for the changed path (section 9).
 
@@ -159,41 +172,54 @@ All tests are in a new class `Parchwell.LoadGen.Tests.Abrupt.B10AbruptStatistics
 | T4 `Given_PendingCapturesWhileGateHeld_When_BoundReached_Then_OnlyAboveBoundFails`, cases (2048, none) and (2049, 4) | R4, N5 | Lock held. Capture `R(1000)` 2048 or 2049 times. Release. No `Observe` | Returned while held: true. 2048: `AssertAvailableGuards()` does not throw. 2049: throws `b10_abrupt_guard_failed`, guard reason 4 | Both cases fail: reason 3 |
 | T5 `Given_TrackingNotActivated_When_NativeReportCaptured_Then_GuardReasonFour` | R5, N6 | Adapter without `ActivateNativeCaptureTracking`. Capture `R(1000)` | `AssertAvailableGuards()` throws, guard reason 4 | Passes (regression guard) |
 | T6 `Given_MoreReportsThanBoundCapturedAndObservedInTurn_When_Checked_Then_NoGuardFailure` | R3, R4 release, N3 | Tracked adapter. For i = 1 to 2049: capture `R(i*1000)`, then `Observe(R(i*1000))` | `AssertAvailableGuards()` does not throw. `ReportCount` is 2049 | Passes (regression guard for the release) |
-| T7 `Given_RealNativeReportsAndContinuousPostDrainScan_When_ReportsArrive_Then_NoGuardFailureAndEveryReportMatched` | R1, R2, R3, R8, N1, N2, N3, N7 | The production chain of `CreateProducerAsync`, built from real objects: tracked adapter with expected broker `127.0.0.1:1/bootstrap`; a real `RunEvidenceSinkRouter` with the adapter attached; a real `KafkaStatisticsSession` from `new KafkaStatisticsBridgeFactory(options, TimeProvider.System, router, new KafkaStatisticsMetrics(), nativeClockCompatible: true)` with `MaxSnapshotCharacters` 1048576, `QueueCapacity` 2048, `MaxBrokerSeries` 64, `CompletionTimeout` 1 s; and a real `ProducerBuilder<byte[], byte[]>` with `bootstrap.servers` `127.0.0.1:1` (nothing listening), `client.id` `client`, `statistics.interval.ms` 20 (test only), no-op log and error handlers, and as statistics handler the production handler member of the successor fix's R10, the one `CreateProducerAsync` passes to `SetStatisticsHandler`. `MarkDrainBoundary(DateTimeOffset.MaxValue, now, frequency)`. A scanning thread loops with no delay: `SelectPostDrain(DateTimeOffset.MaxValue)` (asserted null), then `PostDrainFacts`. Wait until `ReportCount` is at least 50 or the scanner fails, at most 30 s. Dispose the producer, stop the scanner, then `await session.CompleteAsync()` (capture-only overload), which ends at its 1 s timeout and returns the session diagnostics | Scan count above 0. Then one of two outcomes. Normal: the scanner threw nothing, `ReportCount` at least 50, and `AssertAvailableGuards()` does not throw. Outside race (section 9, R-OUT): the scanner threw `b10_abrupt_guard_failed` with guard reason 6, and the completion diagnostics contain `capture_contention`. Any other outcome fails, in particular guard reason 3 | Fails 20 of 20 runs: guard reason 3 |
+| T7 `Given_RealNativeReportsAndContinuousPostDrainScan_When_ReportsArrive_Then_NoGuardFailureAndEveryReportMatched` | R1, R2, R3, R8, N1, N2, N3, N7 | The production chain of `CreateProducerAsync`, built from real objects: tracked adapter with expected broker `127.0.0.1:1/bootstrap`; a real `RunEvidenceSinkRouter` with the adapter attached; a real `KafkaStatisticsSession` from `new KafkaStatisticsBridgeFactory(options, TimeProvider.System, router, new KafkaStatisticsMetrics(), nativeClockCompatible: true)` with `MaxSnapshotCharacters` 1048576, `QueueCapacity` 2048, `MaxBrokerSeries` 64, `CompletionTimeout` 1 s; and a real `ProducerBuilder<byte[], byte[]>` with `bootstrap.servers` `127.0.0.1:1` (nothing listening), `client.id` `client`, `statistics.interval.ms` 20 (test only), no-op log and error handlers, and as statistics handler the production handler of the successor fix's R10: the handler the host installs in the native client it builds, which that plan's T13 observes and its T1 to T9 use. `MarkDrainBoundary(DateTimeOffset.MaxValue, now, frequency)`. A scanning thread loops with no delay: `SelectPostDrain(DateTimeOffset.MaxValue)` (asserted null), then `PostDrainFacts`. Wait until `ReportCount` is at least 50 or the scanner fails, at most 30 s. Dispose the producer, stop the scanner, then `await session.CompleteAsync()` (capture-only overload), which ends at its 1 s timeout and returns the session diagnostics. Only then run the final guard check, `AssertAvailableGuards()`. "The guard failure" is the scanner's `b10_abrupt_guard_failed` if it threw one, otherwise the final check's | Scan count above 0. Then exactly one of these outcomes passes. Normal: no guard failure, and `ReportCount` at least 50. Outside A (DA1): guard reason 6, and the completion diagnostics contain `capture_contention`. Outside B (DA2): guard reason 7, and the completion diagnostics contain `duplicate_property`. Outside C: guard reason 7, and the completion diagnostics contain `invalid_or_missing_field`; cause not identified. Any other outcome fails, in particular any guard reason 3 | Fails 20 of 20 runs: guard reason 3 (in each of two 20-run sets) |
+| T8 `Given_TrackedAdapterWithNoPendingReport_When_Observed_Then_GuardReasonSix` | R3 (no pending report), N3 | Tracked adapter. No `CaptureNative`. `Observe(R(1000))` | `AssertAvailableGuards()` throws `InvalidDataException` `b10_abrupt_guard_failed`, guard reason 6 | Passes (regression guard) |
 
-T7's second outcome exists because the session's own capture contention (R-OUT) can drop a report the adapter already made pending. That is outside this pull request, and it fails the adapter guard with reason 6, never 3. T7 still fails on guard reason 3, on reason 6 without `capture_contention`, on any other reason, and on a silent drop (M3).
+The outside outcomes come from causes outside this pull request (section 9). A: the session's own capture contention drops a report the adapter already made pending, which fails the adapter guard with reason 6. B: librdkafka emitted the bootstrap broker key twice in one report (the reproduction check captured one with `connects` 0 and 1), the session parser rejects it with `duplicate_property`, and the adapter fails with reason 7 (`B10AbruptStatistics.cs` lines 185-190). C: the check saw one reason-7 run with `invalid_or_missing_field`, cause not identified. T7 still fails on any guard reason 3, on reason 6 or 7 without its named diagnostic, and on any other reason.
+
+Cost of the outside outcomes (decision 6754092685 point 1): in a run that ends in an outside outcome, T7 cannot see a concurrency-only regression of this fix, because the run stops at the outside failure. T7's mutation kills are therefore probabilistic. The required kills are the deterministic tests T1 to T6 and T8 (7.3).
 
 The prototype ran on `f5cc496`, which has no R10 member. There T7 used the two calls of `B10AbruptHost.cs` line 232, in the same order. With the successor fix as base, T7 uses the R10 member instead (stop rule, section 15).
 
 Observed in this planning session on 2026-11-09 (scratch only, never pushed):
 
-- On `main` plus the test class: `Total: 8, Errors: 0, Failed: 6`; T5 and T6 passed. T7 alone, 20 runs: every run failed with `guard_reason=3`, the first after 2 reports.
-- On the prototype fix, with T7's first design (no outside-race outcome), in order:
-  - Class repeated 50 times: `49 Total: 8, Errors: 0, Failed: 0` and `1 Total: 8, Errors: 0, Failed: 1`. The failing test and its guard reason were not recorded.
-  - Class repeated 100 times: 1 failure, T7 with guard reason 7. Reason 7 means a report reached the adapter with a session diagnostic, no snapshot, or a changed identity (`B10AbruptStatistics.cs` lines 185-190). Its cause is not identified.
-  - T7 alone, 300 runs with a scratch spy on report diagnostics: 10 failures, all guard reason 6, no report diagnostic.
-  - T7 alone, 200 runs with the spy also reading the session's diagnostic set: 9 failures, all guard reason 6 with session diagnostic `capture_contention`.
+- On `main` plus the 9-case class: `Total: 9, Errors: 0, Failed: 6`; T5, T6 and T8 passed. T7 alone, 20 runs: every run failed with `guard_reason=3`. (Revision 1's 8-case class: 3 class runs, each 6 failed; T7 alone 20 of 20 failed with reason 3, the first after 2 reports.)
+- On the prototype fix with Revision 1's T7 (no outside outcomes), in order:
+  - Class repeated 50 times: 49 passed, 1 failed; the failing test and its guard reason were not recorded.
+  - Class repeated 100 times: 1 failure, T7 with guard reason 7, diagnostics not recorded.
+  - T7 alone, 300 runs, with a scratch spy on report diagnostics: 10 failures, all guard reason 6.
+  - T7 alone, 200 runs, the spy also reading the session's diagnostic set: 9 failures, all guard reason 6 with `capture_contention`.
   - Class repeated 150 times with that spy: 3 failures, all guard reason 6 with `capture_contention`.
-  - Over these 800 runs, guard reason 7 was recorded once; every other failure whose reason was recorded was reason 6. Reason 7 checks report content from the session, which this pull request does not change; that it is unrelated to the fix is an inference, not verified.
-- On the prototype fix, with T7 as pinned above: class repeated 50 times, `50 Total: 8, Errors: 0, Failed: 0`. On `main` with the same class, 3 class runs each `Total: 8, Errors: 0, Failed: 6`, and T7 alone failed 20 of 20 runs with `guard_reason=3`.
+- The reproduction check, on its own prototype: guard reason 7 in about 4 of 683 runs (its estimate), with `duplicate_property` from a duplicated bootstrap broker key, and one more reason-7 run with `invalid_or_missing_field`.
+- On the prototype fix with T7 as pinned above:
+  - T7 alone, 220 runs, with a scratch-only line logging each outcome: 220 passed; 205 normal; 15 outside A, each with completion diagnostics `capture_contention,capture_loss,completion_timeout`; no reason 7. Every normal run had completion diagnostics `completion_timeout` only.
+  - Class repeated 50 times: `50 Total: 9, Errors: 0, Failed: 0`.
+  - So 15 of those 220 runs could not have shown a concurrency-only regression (estimate of the masking rate from this one sample, 2026-11-09).
 
 ### 7.3 Mutations
 
-Each mutation is a scratch edit of the prototype fix, never committed. Observed on the prototype, with T7 as pinned: every mutation built with 0 errors, ran against the 8 cases, and production was restored byte-identical afterwards. The same table was observed earlier with T7's first design.
+Each mutation is a scratch edit of the prototype fix, never committed. Observed on the prototype with the 9-case class as pinned, one class run per mutation: each built with 0 errors and production was restored byte-identical afterwards. "Required" lists the deterministic tests the implementer's run must show failing. "May also kill" lists T7, whose kills depend on timing and on the outside outcomes; it is not required.
 
-| Id | Requirement | Mutation | Killed by (observed) |
-|---|---|---|---|
-| M1 | R1, R2, R8 | `main` shape: `Monitor.TryEnter(gate)`, `Guard(3)` on failure | T1, T2, T3, T4 (both cases), T7 |
-| M2 | R2 | Blocking `lock (gate)` around the record | T1, T2, T3, T4 (both cases) |
-| M3 | R1 | Contended capture dropped silently (`TryEnter` failure returns without a guard) | T1, T2, T4 (2049), T7 |
-| M4 | R3 | Pending entries kept last-in, first-out | T2, T3, T7 |
-| M5 | R4 | Bound removed | T4 (2049) |
-| M6 | R4 | Bound off by one (2047) | T4 (2048) |
-| M7 | R5 | Tracking check removed | T5 |
-| M8 | R4 slot release | Matched entry not released from the bound | T6 |
-| M9 | R4 | Bound guard reason 4 changed to 3 | T4 (2049) |
+| Id | Requirement | Mutation | Required kills | May also kill (observed here) |
+|---|---|---|---|---|
+| M1 | R1, R2, R8 | `main` shape: `Monitor.TryEnter` on the adapter lock, `Guard(3)` on failure | T1, T2, T3, T4 (both cases) | T7 (killed) |
+| M2 | R2 | Blocking lock around the record | T1, T2, T3, T4 (both cases) | T7 (not killed) |
+| M3 | R1 | Contended capture dropped silently (lock try fails, no guard) | T1, T2, T4 (2049) | T7 (killed) |
+| M4 | R3 | Pending reports matched last in, first out | T2, T3 | T7 (killed here; the check saw it survive T7 in 1 suite run and 3 of 15 repeats) |
+| M5 | R4 | Bound removed | T4 (2049) | none |
+| M6 | R4 | Bound off by one (2047) | T4 (2048) | none |
+| M7 | R5 | Tracking check removed | T5 | none |
+| M8 | R4 release | Matched report not released from the bound | T6 | none |
+| M9 | R4 | Bound guard reason 4 changed to 3 | T4 (2049) | none |
+| M10 | R3 | No guard failure when no report is pending | T8 | none |
+| M11 | R7 | Pending queue not thread-safe | none (survived) | none |
+| M12 | R7 | Bound count not atomic | none (survived) | none |
 
-R6 is unchanged code; the existing `Given_NativeOversizeOrQueueOverflow_When_Selecting_Then_NoLaterReportRepairsCapture` (`B10AbruptProducerTests.cs` lines 606-620) covers reason 1 and must keep passing. R7 has no mutation that a deterministic test kills; the cold review and Codex review check it.
+Observed failing sets: M1 T1, T2, T3, T4 both, T7; M2 T1, T2, T3, T4 both; M3 T1, T2, T4 (2049), T7; M4 T2, T3, T7; M5 T4 (2049); M6 T4 (2048); M7 T5; M8 T6; M9 T4 (2049); M10 T8; M11 and M12 none, 9 of 9 passed.
+
+The reproduction check's X6 and X7, as relayed by the control session, change behaviour only after the guard has already failed. The guard keeps its first failure (I3), so they are equivalent mutants and need no kill. This session did not run them.
+
+R6 is unchanged code; the existing `Given_NativeOversizeOrQueueOverflow_When_Selecting_Then_NoLaterReportRepairsCapture` (`B10AbruptProducerTests.cs` lines 606-620) covers reason 1 and must keep passing. R7 has no killing mutation (N8); the cold review checks it.
 
 ## 8. Invariants and safety
 
@@ -205,16 +231,17 @@ R6 is unchanged code; the existing `Given_NativeOversizeOrQueueOverflow_When_Sel
 
 ## 9. Deployment assumptions
 
-None for the changed path. Every changed stage runs offline with real threads and, in T7, a real librdkafka client and a real session (section 6).
+The changed path needs none: every changed stage runs offline with real threads and, in T7, a real librdkafka client and a real session (section 6). Two assumptions outside the changed path are accepted for the next trial by the control session under standing rule 1. Hari has not seen either acceptance.
 
-Outside this pull request, not an assumption of it (R-OUT): `KafkaStatisticsSession.Capture` has its own `Monitor.TryEnter(_gate)` (`KafkaStatisticsSession.cs` lines 106-111). If it loses, the session drops the report and records `capture_contention`, while `CaptureNative` has already made the report pending. The next `Observe` then fails the adapter guard with reason 6, not 3. The prototype observed this (section 7.2). It is in `src/Parchwell.Kafka`, which this pull request must not change. It is reported to the issue-347 control session for the capture-loss race fix of decision 6752059755; this plan decides nothing about it, and T7 accepts it only in the narrow form stated in 7.2.
+- DA1 (R-OUT). The session-side lock contention in `KafkaStatisticsSession.Capture` does not occur in the next trial. Accepted by [decision 6753263792](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753263792) point 2, with the log correction of [decision 6754092685](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754092685). Mechanism: `Capture` tries the session lock without waiting (`KafkaStatisticsSession.cs` lines 106-111 on `main`). If it loses, the session drops the report and records `capture_contention`, while `CaptureNative` has already made it pending, so the next `Observe` fails the adapter guard with reason 6. If it happens live, the failure line names guard reason 6; `capture_contention` may not appear in it. Offline observation: T7 outcome A, 15 of 220 runs here. It is in `src/Parchwell.Kafka`, which this pull request must not change. Whether to fix it is left for Hari.
+- DA2. Live librdkafka statistics in the next trial contain no duplicate keys. Accepted by decision 6754092685 point 2. If they do, the session attaches `duplicate_property` and the adapter guard fails with reason 7. None of the seven diagnostic trials shows any guard reason (section 6). Offline observation: T7 outcome B, seen by the reproduction check with an unreachable bootstrap address, not seen in this session's 220 runs. Whether the parser or the adapter should tolerate duplicate broker keys is left for Hari.
 
 ## 10. Acceptance commands
 
 Run from the repository root. "Observed" is what this planning session saw on 2026-11-09, in one of two places:
 - `main`: a worktree of `f5cc496`, with the new test class added where stated;
-- the prototype: a worktree of `f5cc496` plus a prototype of R1 to R8 in `B10AbruptStatistics.cs` and the test class. It was never pushed.
-The implementer records its own results in the receipt. "Base" means the commit the pull request branches from; if another issue-404 pull request merges first, the base totals change and the expected values are "base plus 8".
+- the prototype: a worktree of `f5cc496` plus a prototype of R1 to R8 in `B10AbruptStatistics.cs` and the 9-case test class. It was never pushed.
+The implementer records its own results in the receipt. "Base" means the commit the pull request branches from; if another issue-404 pull request merges first, the base totals change and the expected values are "base plus 9".
 
 1. Restore.
    - Command: `dotnet restore tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj --locked-mode`
@@ -227,31 +254,31 @@ The implementer records its own results in the receipt. "Base" means the commit 
 3. Burst suite.
    - Command: `dotnet test --project tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj -c Release --no-build -- --filter-class "*B10Abrupt*"`
    - Observed on `main`: total 457, succeeded 456, skipped 1.
-   - Observed on the prototype: total 465, succeeded 464, skipped 1, failed 0.
-   - Expected after: total base plus 8, failed 0, skipped as base (1 on `f5cc496`, the published-apphost test reserved to CI).
+   - Observed on the prototype: total 466, succeeded 465, skipped 1, failed 0 (Revision 1's 8 cases: 465, 464, 1).
+   - Expected after: total base plus 9, failed 0, skipped as base (1 on `f5cc496`, the published-apphost test reserved to CI).
 4. Repetition gate, 50 runs of the new class. The count of 50 is a plan choice, not a measurement.
    - Command: `for i in $(seq 1 50); do dotnet tests/Parchwell.LoadGen.Tests/bin/Release/net10.0/Parchwell.LoadGen.Tests.dll -class Parchwell.LoadGen.Tests.Abrupt.B10AbruptStatisticsContentionTests 2>&1 | grep -o 'Total: [0-9]*, Errors: [0-9]*, Failed: [0-9]*'; done | sort | uniq -c`
-   - Observed on the prototype, T7 as pinned: `50 Total: 8, Errors: 0, Failed: 0`.
-   - Expected after: `50 Total: 8, Errors: 0, Failed: 0`.
+   - Observed on the prototype, T7 as pinned: `50 Total: 9, Errors: 0, Failed: 0`.
+   - Expected after: `50 Total: 9, Errors: 0, Failed: 0`.
 5. Reproduction on the base. Check out the base's `B10AbruptStatistics.cs` in a scratch worktree with the new test class, build, and run the class once.
-   - Observed on `main`: `Total: 8, Errors: 0, Failed: 6`, in each of 3 runs; failing T1, T2, T3, T4 (both cases), T7; T7's message contains `guard_reason=3`.
+   - Observed on `main`: `Total: 9, Errors: 0, Failed: 6`; failing T1, T2, T3, T4 (both cases), T7; T7's message contains `guard_reason=3`; T5, T6 and T8 pass.
    - Expected: the same six fail on the base. The receipt records it.
-6. Mutations M1 to M9 (section 7.3).
-   - Observed on the prototype: each built with 0 errors and was killed by exactly the tests listed.
-   - Expected after: each is killed by at least its listed tests; production restored byte-identical.
-7. Architecture test.
-   - Command: `dotnet build tests/Parchwell.ArchitectureTests/Parchwell.ArchitectureTests.csproj -c Release`, then `PARCHWELL_REPOSITORY_ROOT=$PWD dotnet test --project tests/Parchwell.ArchitectureTests/Parchwell.ArchitectureTests.csproj -c Release --no-build`
-   - Observed on the prototype (inside command 8): `Parchwell.ArchitectureTests: 17 passed`.
-   - Expected after: all pass.
+6. Mutations M1 to M12 (section 7.3).
+   - Observed on the prototype: each built with 0 errors; the failing sets are those listed in 7.3.
+   - Expected after: M1 to M10 each fail at least their required tests; M11 and M12 are recorded, not required; production restored byte-identical.
+7. Architecture test, run inside command 8 only.
+   - A direct `dotnet test` of `tests/Parchwell.ArchitectureTests` fails on `main` with `Missing evaluated project manifests. Run ./scripts/verify-dotnet.sh.`, because that script sets `PARCHWELL_PROJECT_MANIFEST_DIRECTORY` (line 23). Observed here on `main`.
+   - Observed on the prototype inside command 8: `Parchwell.ArchitectureTests: 17 passed; checked report.`
+   - Expected after: command 8 prints `Parchwell.ArchitectureTests: 17 passed` (base count; 17 on `f5cc496`).
 8. Full verification.
    - Command: `./scripts/verify-dotnet.sh`, with `dockerd` running.
-   - Observed on the prototype (with T7's first design): first attempt exit 2, stopped at `Parchwell.Kafka.Tests` because Docker Hub answered `429 Too Many Requests` when the PhantomSpike test pulled `confluentinc/cp-kafka`; a retry exited 0, `Verification passed.` (Architecture 17, Enrichment 56, Kafka 486, LoadGen 1685, Scenarios 340, Verifier 7389). Separately, one direct `dotnet test` of the whole LoadGen project, run before that retry, failed two Docker-backed integration tests (`BlobPublicationIntegrationTests`, `ProbeV2ComponentTests`), whose 29 cases then passed when rerun alone; both are outside the changed path.
-   - Expected after: exit 0. Final-head CI (`dotnet-verification.yml`) remains the authority.
+   - Observed on the prototype (with Revision 1's first T7 design, 8 cases): first attempt exit 2, stopped at `Parchwell.Kafka.Tests` because Docker Hub answered `429 Too Many Requests` when the PhantomSpike test pulled `confluentinc/cp-kafka`; a retry exited 0, `Verification passed.` (Architecture 17, Enrichment 56, Kafka 486, LoadGen 1685, Scenarios 340, Verifier 7389). Separately, one direct `dotnet test` of the whole LoadGen project, run before that retry, failed two Docker-backed integration tests (`BlobPublicationIntegrationTests`, `ProbeV2ComponentTests`), whose 29 cases then passed when rerun alone; both are outside the changed path.
+   - Expected after: exit 0, with `Parchwell.ArchitectureTests: 17 passed` (command 7). Final-head CI (`dotnet-verification.yml`) remains the authority.
 9. Wiring and guard-reason check.
    - Command: `grep -n "CaptureNative(" src/Parchwell.LoadGen/Run/Abrupt/*.cs; grep -n "Guard(3)" src/Parchwell.LoadGen/Run/Abrupt/B10AbruptStatistics.cs; grep -n "TryEnter" src/Parchwell.LoadGen/Run/Abrupt/B10AbruptStatistics.cs`
    - Observed on `main`: `B10AbruptHost.cs:232` (handler, `observations.CaptureNative(raw); statistics.Capture(raw);`) and `B10AbruptStatistics.cs:114` (definition); `Guard(3)` at line 131; `TryEnter` at line 129.
    - Observed on the prototype: the same two `CaptureNative(` lines; no `Guard(3)`; no `TryEnter`.
-   - Expected after: no `Guard(3)` and no `TryEnter` in `B10AbruptStatistics.cs`. `CaptureNative(` appears at its definition and, on the successor-fix base, only inside the R10 handler member, ahead of `Capture(` in that member; the member is what `SetStatisticsHandler` receives in `CreateProducerAsync`. The receipt records the output.
+   - Expected after: no `Guard(3)` and no `TryEnter` in `B10AbruptStatistics.cs`. `CaptureNative(` appears at its definition and, on the successor-fix base, only in the production statistics handler of that plan's R10, ahead of the session `Capture(` call. The receipt records the output.
 10. Documentation check.
     - Command: `npm run check:docs`
     - Observed on this plan branch with this file staged: `items/404/plan-capture-contention-race-fix.md: no issues found`; 10 warnings in total, all in other files (8 in `docs/`, 2 in `items/404/plan-pr3a-evidence-completeness.md` at that time).
@@ -259,9 +286,9 @@ The implementer records its own results in the receipt. "Base" means the commit 
 
 ## 11. Plan-check questions (factory.md "Item lifecycle" step 1)
 
-- (a) Effort that scales with a number unknown at planning time: review findings, verification failures and documentation warnings. Caps: 20 root causes each per pull request, exhaustion action `push -wip and hand off to the next session` (docs/operations/b10-abrupt-contract.md line 79). The cold-review budget falls under docs/agents/pull-requests.md rule 8. The repetition gate is fixed at 50 runs and the mutation list at 9; neither scales.
+- (a) Effort that scales with a number unknown at planning time: review findings, verification failures and documentation warnings. Caps: 20 root causes each per pull request, exhaustion action `push -wip and hand off to the next session` (docs/operations/b10-abrupt-contract.md line 79). The cold-review budget falls under docs/agents/pull-requests.md rule 8. The repetition gate is fixed at 50 runs, the T7 outcome sample at 220 runs and the mutation list at 12; none scales.
 - (b) Where the plan is stricter than its parents: decision 6752078378 asks only for the fix and a plan. This plan adds the reproduction on the base (command 5), the 50-run repetition gate, the real-client test T7 and the mutation table, as the planning prompt from the issue-347 control session required. R2 (no waiting on the callback thread) is stricter than "do not lose the lock"; its basis is in section 12, note 1.
-- (c) Tests that depend on code, data or behaviour neither on `main` nor in this pull request: T7 depends on the librdkafka bundled with the pinned Confluent.Kafka 2.16.0 (`Directory.Packages.props`, on `main`), on loopback refusing TCP port 1 in the test host, and on librdkafka naming the bootstrap broker `127.0.0.1:1/bootstrap` with error counters at 0 in its statistics. All three were observed in the prototype runs; the last also matches the successor fix plan's T9 (`items/404/plan-successor-fix.md` at `acadeaa`). No deployment assumption (section 9). T7 also depends on the successor fix's R10 handler member, which is neither on `main` nor in this pull request. It will be on the base, because this pull request is implemented after the successor fix (decisions 6752454732 and 6752554218); the stop rule covers its absence. The prototype checked the same call order with the two calls of `B10AbruptHost.cs` line 232.
+- (c) Tests that depend on code, data or behaviour neither on `main` nor in this pull request: T7 depends on the librdkafka bundled with the pinned Confluent.Kafka 2.16.0 (`Directory.Packages.props`, on `main`), on loopback refusing TCP port 1 in the test host, and on librdkafka naming the bootstrap broker `127.0.0.1:1/bootstrap` with error counters at 0 in its statistics. All three were observed in the prototype runs; the last also matches the successor fix plan's T9. The duplicate bootstrap key the reproduction check saw is DA2 and T7 outcome B. T7's outcomes A and C depend on `KafkaStatisticsSession` behaviour on `main` (`Capture` lines 106-111 and the parser), which the capture-loss race fix may change (section 13). T7 also depends on the successor fix's R10 production handler, which is neither on `main` nor in this pull request. It will be on the base, because this pull request is implemented after the successor fix (decisions 6752454732 and 6752554218); the stop rule covers its absence. The prototype checked the same call order with the two calls of `B10AbruptHost.cs` line 232.
 
 ## 12. Sources
 
@@ -293,31 +320,29 @@ Notes:
 
 Order (decision 6752454732): successor fix, then this pull request, then PR3a. The capture-loss race fix runs alongside on its own branch. This pull request is implemented on `main` after the successor fix merges, or on a branch from the successor fix's unmerged head; it does not merge before the successor fix (decision 6752554218 point 2).
 
-Read on `claude/404-plan` at `acadeaa`:
+Read on `claude/404-plan` at `5eaa316`:
 
-- Successor fix (`items/404/plan-successor-fix.md`, Revision 2), section 2.1: `B10AbruptProducer.cs`, `B10AbruptHost.cs`, `B10AbruptDiagnostics.cs`, `docs/operations/b10-abrupt-contract.md` line 188, `B10AbruptProducerTests.cs`, `B10AbruptWireProducerTests.cs`, `B10AbruptDiagnosticsTests.cs`, new `B10AbruptSuccessorCompletionTests.cs`, `items/404/state.md`, `items/404/successor-fix-receipt.md`. Its section 2.2 lists `B10AbruptStatistics.cs` as must not change. Its R10 adds the one production statistics handler member that T7 uses.
-- PR3a evidence completeness (`items/404/plan-pr3a-evidence-completeness.md`, Revision 5): source files under `src/Parchwell.LoadGen/Run/Abrupt/` other than `B10AbruptStatistics.cs`, `tests/Parchwell.LoadGen.Tests/Abrupt/*.cs`, the phase script and its tests, `docs/operations/b10-abrupt-contract.md`, one protected verifier test, `items/404/state.md` and its receipt. It lists `B10AbruptStatistics.cs` as must not change; its command A8 expects `not_implemented_pr3` to remain in `B10AbruptStatistics.cs` (`SealCohort`, which this plan does not change). Its stop rule already applies the same check to this plan.
-- Capture-loss race fix (decision 6752059755): no plan file on the branch at `acadeaa`. By that decision it changes `src/Parchwell.Kafka`, which this plan must not change.
+- Successor fix (`items/404/plan-successor-fix.md`, Revision 4). Its files include `B10AbruptProducer.cs`, `B10AbruptHost.cs`, `B10AbruptDiagnostics.cs`, `docs/operations/b10-abrupt-contract.md`, existing Abrupt test files, new `B10AbruptSuccessorCompletionTests.cs`, `items/404/state.md` and its receipt. It lists `B10AbruptStatistics.cs` as must not change. Its R10: "the host's handler first passes it to the B10 statistics adapter's native-capture tracking, then to the statistics session. Observed by T13 on the handler installed in that client. T1 to T9 use the same production handler." T7 uses that handler.
+- PR3a evidence completeness, Revision 8 at `d293b4b659261c7b4d4c3c5691328fd79a07b00e`, approved by [6753938298](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753938298) under standing approval. It lists `B10AbruptStatistics.cs` as must not change, keeps `not_implemented_pr3` in its `SealCohort` (command A8), and states that the only file it shares with this plan is `items/404/state.md`. That still holds for Revision 2: this revision adds only a test case in this plan's own new file.
+- Capture-loss race fix (`items/404/plan-capture-loss-race-fix.md`, Revision 2): changes `src/Parchwell.Kafka/Statistics/KafkaStatisticsSession.cs`, a new `tests/Parchwell.Kafka.Tests/Statistics/KafkaStatisticsLateCaptureTests.cs`, `docs/operations/statistics-bridge.md` line 87, `items/404/state.md` and its receipt. It keeps `capture_contention` reachable while capture is open. It does not change `B10AbruptStatistics.cs`.
 
-Files this plan and another plan both change: `items/404/state.md` (all three), and the directory `tests/Parchwell.LoadGen.Tests/Abrupt/` under PR3a's wildcard only; this plan's test file is new and named in no other plan. No source file is shared. This plan reads two things the successor fix changes: the statistics handler (R10, used by T7) and the base test totals.
+Files this plan and another plan both change: `items/404/state.md` (all four), and the directory `tests/Parchwell.LoadGen.Tests/Abrupt/` under PR3a's wildcard only; this plan's test file is new and named in no other plan. No source file is shared. This plan reads three things other plans change: the production statistics handler (successor fix R10, used by T7), the base test totals, and `KafkaStatisticsSession.Capture` and its diagnostic names (capture-loss race fix; T7's outside outcomes).
 
-Effects on later plans: the burst-suite totals rise by 8 after this pull request. The successor fix's stop rule names guard reason 3 as an outside race; after this pull request reason 3 cannot occur.
+Effects on later plans: the burst-suite totals rise by 9 after this pull request. The successor fix's plan names guard reason 3 as an outside race; after this pull request reason 3 cannot occur.
 
 ## 14. Open questions for Hari
 
-- Q1. Guard reason 3 retirement. After this pull request no code sets `guard_reason` 3 (R8). The failure name, fact names and every other reason are unchanged, and the capture completeness that reason 3 protected is still enforced by reasons 4 and 6. Recommendation: accept that value 3 is retired and never reused. Standing rule 1 of decision 6752430614 covers "log line wording or fields"; whether a retired value of the `guard_reason` field falls under it, or is a guard change that waits for Hari, is not decided by this plan.
-
-The order question is answered by decision 6752454732. No protected path is touched. No question is decided by this plan.
+None. The order question is answered by decision 6752454732; the guard reason 3 question by decision 6753263792 point 1. No protected path is touched. No question is decided by this plan.
 
 ## 15. Stop rule
 
 The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" in any of these cases:
 
 - it needs to change a contract in section 4, a requirement in section 5, the scope in section 3, or a value in 3.2;
-- Q1 is unanswered, or answered in a way that changes a requirement;
-- the successor fix, merged or as the stacked base, has no single production statistics handler member of its R10, or that member does not call `CaptureNative` and then `KafkaStatisticsSession.Capture` on the callback thread (I1);
-- the successor fix, or any other issue-404 pull request merged before this one, changes `B10AbruptStatistics.cs`, `KafkaStatisticsSession.Capture`, or the report shape `R(ts)` relies on, in a way that changes a requirement or a literal expected value here other than the base totals of command 3;
-- a repetition, mutation or CI failure has any cause other than the R-OUT outcome T7 accepts, including a guard reason 7 failure of T7 (seen once in planning, cause not identified).
+- decision 6753263792 or 6754092685 is reversed or changed in a way that changes a requirement, a test outcome or a deployment assumption here;
+- the successor fix, merged or as the stacked base, has no production statistics handler that tests can use as its R10 and T1 to T9 do, or that handler does not call `CaptureNative` and then `KafkaStatisticsSession.Capture` on the callback thread (I1);
+- the successor fix, or any other issue-404 pull request merged before this one, changes `B10AbruptStatistics.cs`, `KafkaStatisticsSession.Capture`, the session diagnostic names T7 reads (`capture_contention`, `duplicate_property`, `invalid_or_missing_field`), or the report shape `R(ts)` relies on, in a way that changes a requirement or a literal expected value here other than the base totals of command 3;
+- a repetition, mutation or CI failure has any cause other than T7's accepted outside outcomes A, B and C, including a T7 guard reason 7 failure whose completion diagnostics contain neither `duplicate_property` nor `invalid_or_missing_field`.
 
 Textual conflicts in `items/404/state.md` are resolved by the implementer without changing the other pull request's lines.
 
