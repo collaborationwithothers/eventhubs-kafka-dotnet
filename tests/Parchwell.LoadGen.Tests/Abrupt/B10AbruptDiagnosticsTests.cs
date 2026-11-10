@@ -68,12 +68,12 @@ public sealed class B10AbruptDiagnosticsTests
     }
 
     [Fact]
-    public void Given_ExcessFactsAndFractionalMilliseconds_When_Attached_Then_FirstSixteenAndWholeMillisecondsRemain()
+    public void Given_ExcessFactsAndFractionalMilliseconds_When_Attached_Then_FirstThirtyFiveAndWholeMillisecondsRemain()
     {
-        B10AbruptFactValue[] facts = Enum.GetValues<B10AbruptFact>().Take(17).Select(key => Fact(key, (long)key)).ToArray();
+        B10AbruptFactValue[] facts = Enum.GetValues<B10AbruptFact>().Take(36).Select(key => Fact(key, (long)key)).ToArray();
         var detail = DescribeElement(Attach(new IOException("synthetic"), facts)).GetProperty("detail");
-        Assert.Equal(16, detail.GetProperty("facts").EnumerateObject().Count());
-        Assert.Equal(facts.Take(16).Select(fact => JsonNamingPolicy.SnakeCaseLower.ConvertName(fact.Key.ToString())), detail.GetProperty("facts").EnumerateObject().Select(property => property.Name));
+        Assert.Equal(35, detail.GetProperty("facts").EnumerateObject().Count());
+        Assert.Equal(facts.Take(35).Select(fact => JsonNamingPolicy.SnakeCaseLower.ConvertName(fact.Key.ToString())), detail.GetProperty("facts").EnumerateObject().Select(property => property.Name));
         Assert.Equal(1999, Fact(B10AbruptFact.ElapsedMilliseconds, TimeSpan.FromTicks(19_999_999)).Value);
     }
 

@@ -354,27 +354,21 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
             var successorPublisher = new B10AbruptPublisher(successorStorage, clock);
             await successorPublisher.RegisterDiagnosticAsync(successorIdentity, cancellationToken);
             clock.AdvanceTo(successorRelease);
-            var secondStatisticsIdentity = new KafkaStatisticsIdentity("B10", options.RunId, KafkaClientRole.LoadGenProducer, successorOptions.PodName);
-            var secondStatistics = new B10AbruptStatistics(secondStatisticsIdentity, ["broker"], new Dictionary<string, string>(), new Dictionary<string, string>());
-            IProducer<byte[], byte[]> secondNative = DispatchProxy.Create<IProducer<byte[], byte[]>, B10AbruptProducerTests.NativeProducer>();
-            var second = (B10AbruptProducerTests.NativeProducer)(object)secondNative;
-            second.OnProduce = (_, callback) => callback(B10AbruptProducerTests.Report());
-            object secondReportGate = new();
-            second.OnFlush = () => { lock (secondReportGate) secondStatistics.Observe(B10AbruptProducerTests.StatisticsReport(secondStatisticsIdentity, clock)); };
-            using var secondStop = new CancellationTokenSource();
-            Task secondReports = Task.Run(async () =>
-            {
-                try { while (!secondStop.IsCancellationRequested) { second.OnFlush(); await Task.Delay(2, secondStop.Token); } }
-                catch (OperationCanceledException) when (secondStop.IsCancellationRequested) { }
-            }, cancellationToken);
-            long next = 0;
-            var successor = new B10AbruptProducer(() => secondNative, clock, secondStatistics, cohort => Ledger(successorWork, cohort),
-                (_, _, _) => Task.FromResult(++next), _ => true, (_, _) => Task.FromResult(new B10AbruptProducer.ReleaseInfo(successorRelease, null)),
-                (_, _, _) => Task.CompletedTask, diagnosticIdentity: successorIdentity);
-            B10AbruptProducer.SuccessorArtifacts result = await successor.RunSuccessorAsync(B10AbruptProducerTests.Profile(), RunIdentity(successorIdentity),
-                Execution(successorWork), loaded.Selection.GetProperty("data").GetProperty("entries"), successorRelease, cancellationToken);
-            await secondStop.CancelAsync();
-            await secondReports;
+            // The successor runs on the real evidence, adapter and statistics chain with the host's completion behaviour.
+            // Reports arrive at fixed points: one at the post-drain poll and one at the completion boundary.
+            await using var chain = new B10AbruptSuccessorCompletionTests.Chain(clock, TimeSpan.FromSeconds(20), identity: RunIdentity(successorIdentity),
+                root: successorWork, wireIdentity: successorIdentity);
+            chain.DeliverAtPoll = true;
+            chain.DeliverAtBoundary = true;
+            B10AbruptProducer.SuccessorArtifacts result = await chain.RunAsync(loaded.Selection.GetProperty("data").GetProperty("entries"),
+                successorRelease, Execution(successorWork), cancellationToken);
+            var second = chain.Native;
+            string[] statisticsLines = File.ReadAllLines(result.Paths["statistics.jsonl"]).Where(line => line.Length > 0).ToArray();
+            Assert.Equal(2, statisticsLines.Length);
+            Assert.Equal(["diagnostics", "identity", "raw_json", "receipt_time", "received_at", "schema_version", "session_id", "statistics_identity", "typed_snapshot"],
+                JsonSerializer.Deserialize<JsonElement>(statisticsLines[0]).EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
+            Assert.True(JsonSerializer.Deserialize<JsonElement>(await File.ReadAllTextAsync(result.Paths["capabilities.json"], cancellationToken))
+                .GetProperty("statistics_completion").GetProperty("is_complete").GetBoolean());
             var payloads = new Dictionary<string, byte[]>(StringComparer.Ordinal);
             foreach (var pair in result.Paths) payloads.Add(pair.Key, await File.ReadAllBytesAsync(pair.Value, cancellationToken));
             await successorPublisher.PublishSuccessorAsync(successorIdentity, payloads, loaded.Termination, loaded.Selection,

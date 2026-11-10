@@ -229,7 +229,7 @@ internal static class B10AbruptHost
         KafkaOAuthBearerSession authentication = authFactory.CreateSession(new KafkaAuthenticationIdentity("B10", options.RunId, KafkaClientRole.LoadGenProducer, options.PodName), cancellationToken);
         long syntheticSequence = 0;
         var producer = new B10AbruptProducer(() => authFactory.CreateProducerBuilder<byte[], byte[]>(config, authentication)
-            .SetStatisticsHandler((_, raw) => { observations.CaptureNative(raw); statistics.Capture(raw); }).SetLogHandler((_, log) => evidence.CaptureLog(log))
+            .SetStatisticsHandler(StatisticsHandler(observations, statistics)).SetLogHandler((_, log) => evidence.CaptureLog(log))
             .SetErrorHandler((_, error) => evidence.CaptureError(error)).Build(), clock, observations,
             cohort =>
             {
@@ -242,18 +242,78 @@ internal static class B10AbruptHost
             terminal => channel?.TryCaptureTerminal(terminal) ?? true,
             (arm, token) => ReadReleaseAsync(options, arm, clock, token),
             (cohort, data, token) => SaveSealAsync(options, cohort, data, token), evidence, options.Identity(input?.FirstIdentity.InstanceId),
-            async token =>
-            {
-                KafkaStatisticsCompletion completion = await statistics.CompleteAsync(brokers, token).ConfigureAwait(false);
-                await evidence.CompleteAsync(completion, token).ConfigureAwait(false);
-                if (!completion.IsComplete || evidence.IsFaulted) throw Attach(new InvalidDataException("b10_abrupt_guard_failed"), [Fact(B10AbruptFact.CompletionComplete, completion.IsComplete), Fact(B10AbruptFact.EvidenceFaulted, evidence.IsFaulted)]);
-                return evidence.ArtifactNames.ToDictionary(name => name, name => Path.Combine(evidencePath, name), StringComparer.Ordinal);
-            }, new B10AbruptTimeline(clock, options.Role, Console.Error));
+            SuccessorCompletion(statistics, evidence, brokers, evidencePath), new B10AbruptTimeline(clock, options.Role, Console.Error));
         var execution = new RunExecutionOptions(186000, 900000, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(300), TimeSpan.FromSeconds(10),
             16384, 67108864, 268435456, options.OutputRoot, "document-events", brokers, false, true,
             TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(20), ApplicationRetryPolicy.ForScenario("B10"));
         if (channel is not null) channel.TerminalWritten = producer.MarkTerminals;
         return new(producer, loaded.Profile, execution, authentication, statistics, evidence);
+    }
+
+    // Native-capture tracking must see a report before the session can reject it, or the B10 adapter
+    // could not match a report the session dropped.
+    internal static Action<IProducer<byte[], byte[]>, string> StatisticsHandler(B10AbruptStatistics observations, KafkaStatisticsSession statistics) =>
+        (_, raw) => { observations.CaptureNative(raw); statistics.Capture(raw); };
+
+    // The successor completes statistics while its client is live. The producer disposes the client after that,
+    // and only then completes evidence, so disposal callbacks reach the evidence session before it is finalized.
+    internal static B10AbruptProducer.SuccessorCompletion SuccessorCompletion(KafkaStatisticsSession statistics, RunEvidenceSession evidence,
+        string[] brokers, string evidencePath) => new(
+        token => statistics.CompleteAsync(brokers, token),
+        async (completion, token) =>
+        {
+            await evidence.CompleteAsync(completion, token).ConfigureAwait(false);
+            if (!completion.IsComplete || evidence.IsFaulted)
+                throw Attach(new InvalidDataException("b10_abrupt_guard_failed"), CompletionFacts(completion, evidence.IsFaulted));
+            return evidence.ArtifactNames.ToDictionary(name => name, name => Path.Combine(evidencePath, name), StringComparer.Ordinal);
+        });
+
+    // One flag per diagnostic code KafkaStatisticsSession can emit. The fact order is part of the failure line; B10AbruptSuccessorCompletionTests pins it.
+    private static readonly (B10AbruptFact Fact, string Code)[] CompletionCodeFacts =
+    [
+        (B10AbruptFact.DiagnosticClockUnverified, "clock_unverified"),
+        (B10AbruptFact.DiagnosticLateCapture, "late_capture"),
+        (B10AbruptFact.DiagnosticCaptureContention, "capture_contention"),
+        (B10AbruptFact.DiagnosticOversizedSnapshot, "oversized_snapshot"),
+        (B10AbruptFact.DiagnosticCaptureQueueOverflow, "capture_queue_overflow"),
+        (B10AbruptFact.DiagnosticDisposedBeforeCompletion, "disposed_before_completion"),
+        (B10AbruptFact.DiagnosticCompletionCancelled, "completion_cancelled"),
+        (B10AbruptFact.DiagnosticSinkDrainTimeout, "sink_drain_timeout"),
+        (B10AbruptFact.DiagnosticCompletionTimeout, "completion_timeout"),
+        (B10AbruptFact.DiagnosticDisposedDuringCompletion, "disposed_during_completion"),
+        (B10AbruptFact.DiagnosticAbandonedWithoutCompletion, "abandoned_without_completion"),
+        (B10AbruptFact.DiagnosticProcessingFailure, "processing_failure"),
+        (B10AbruptFact.DiagnosticMetricsRecordingFailure, "metrics_recording_failure"),
+        (B10AbruptFact.DiagnosticEvidenceDeliveryCancelled, "evidence_delivery_cancelled"),
+        (B10AbruptFact.DiagnosticEvidenceSinkFailure, "evidence_sink_failure"),
+        (B10AbruptFact.DiagnosticClientIdMismatch, "client_id_mismatch"),
+        (B10AbruptFact.DiagnosticClientTypeMismatch, "client_type_mismatch"),
+        (B10AbruptFact.DiagnosticClientNameChanged, "client_name_changed"),
+        (B10AbruptFact.DiagnosticNonIncreasingTimestamp, "non_increasing_timestamp"),
+        (B10AbruptFact.DiagnosticClientInstanceChanged, "client_instance_changed"),
+        (B10AbruptFact.DiagnosticLateAttachment, "late_attachment"),
+        (B10AbruptFact.DiagnosticFutureNativeTimestamp, "future_native_timestamp"),
+        (B10AbruptFact.DiagnosticBrokerSeriesLimitExceeded, "broker_series_limit_exceeded"),
+        (B10AbruptFact.DiagnosticCounterReset, "counter_reset"),
+        (B10AbruptFact.DiagnosticCaptureLoss, "capture_loss"),
+        (B10AbruptFact.DiagnosticWorkerCancellationFailure, "worker_cancellation_failure"),
+        (B10AbruptFact.DiagnosticInvalidJson, "invalid_json"),
+        (B10AbruptFact.DiagnosticDuplicateProperty, "duplicate_property"),
+        (B10AbruptFact.DiagnosticInvalidRoot, "invalid_root"),
+        (B10AbruptFact.DiagnosticInvalidOrMissingField, "invalid_or_missing_field"),
+        (B10AbruptFact.DiagnosticBrokerNameMismatch, "broker_name_mismatch"),
+    ];
+
+    internal static B10AbruptFactValue[] CompletionFacts(KafkaStatisticsCompletion completion, bool evidenceFaulted)
+    {
+        var codes = completion.Diagnostics.Select(diagnostic => diagnostic.Code).ToHashSet(StringComparer.Ordinal);
+        var facts = new List<B10AbruptFactValue>(35)
+        {
+            Fact(B10AbruptFact.CompletionComplete, completion.IsComplete), Fact(B10AbruptFact.EvidenceFaulted, evidenceFaulted),
+            Fact(B10AbruptFact.MissingBrokerCount, completion.MissingBrokers.Length), Fact(B10AbruptFact.DiagnosticCount, codes.Count)
+        };
+        foreach ((B10AbruptFact fact, string code) in CompletionCodeFacts) facts.Add(Fact(fact, codes.Contains(code)));
+        return [.. facts];
     }
 
     private static async Task<string[]> ReadExpectedBrokersAsync(B10AbruptOptions options, CancellationToken cancellationToken)

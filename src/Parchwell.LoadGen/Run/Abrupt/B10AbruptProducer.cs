@@ -10,6 +10,7 @@ using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Execution;
 using Parchwell.LoadGen.Run.Ledger;
 using Parchwell.LoadGen.Run.Workload;
+using Parchwell.Kafka.Statistics;
 using Parchwell.Scenarios;
 using static Parchwell.LoadGen.Run.Abrupt.B10AbruptDiagnostics;
 
@@ -27,7 +28,7 @@ internal sealed class B10AbruptProducer
     private readonly Func<string, JsonElement, CancellationToken, Task> persistCohortSeal;
     private readonly RunEvidenceSession? evidence;
     private readonly B10AbruptWire.Identity? diagnosticIdentity;
-    private readonly Func<CancellationToken, Task<IReadOnlyDictionary<string, string>>>? completeEvidence;
+    private readonly SuccessorCompletion? completion;
     private readonly B10AbruptTimeline timeline;
     private readonly object gate = new();
     private readonly List<ProbeAttempt> probes = [];
@@ -51,7 +52,7 @@ internal sealed class B10AbruptProducer
         Func<string, CancellationToken, Task<ReleaseInfo>> waitForRelease,
         Func<string, JsonElement, CancellationToken, Task> persistCohortSeal, RunEvidenceSession? evidence = null,
         B10AbruptWire.Identity? diagnosticIdentity = null,
-        Func<CancellationToken, Task<IReadOnlyDictionary<string, string>>>? completeEvidence = null,
+        SuccessorCompletion? completion = null,
         B10AbruptTimeline? timeline = null)
     {
         this.producerFactory = producerFactory;
@@ -64,9 +65,14 @@ internal sealed class B10AbruptProducer
         this.persistCohortSeal = persistCohortSeal;
         this.evidence = evidence;
         this.diagnosticIdentity = diagnosticIdentity;
-        this.completeEvidence = completeEvidence;
+        this.completion = completion;
         this.timeline = timeline ?? new B10AbruptTimeline(clock, "child", null);
     }
+
+    /// <summary>The successor's two completion steps. The producer runs them in order around native disposal.</summary>
+    internal sealed record SuccessorCompletion(
+        Func<CancellationToken, Task<KafkaStatisticsCompletion>> CompleteStatistics,
+        Func<KafkaStatisticsCompletion, CancellationToken, Task<IReadOnlyDictionary<string, string>>> CompleteEvidence);
 
     internal async Task RunFirstAsync(WorkloadProfile workload, RunIdentity runIdentity,
         RunExecutionOptions executionOptions, CancellationToken cancellationToken = default)
@@ -485,9 +491,13 @@ internal sealed class B10AbruptProducer
             _ = await SealProbeCohortAsync("cross_restart", "successor", drained, cancellationToken).ConfigureAwait(false);
             timeline.Mark(B10AbruptStage.CohortSealed, Fact(B10AbruptFact.Arm, 2), Fact(B10AbruptFact.EntryCount, 1));
             string directory = Path.Combine(options.OutputRoot, "successor");
+            // Statistics completion needs the live client: it waits for a report after the completion boundary, which a disposed client never emits.
+            // Disposal comes next so error callbacks it raises reach the evidence session before that session is completed.
+            KafkaStatisticsCompletion? statisticsCompletion = completion is null ? null :
+                await completion.CompleteStatistics(cancellationToken).ConfigureAwait(false);
             await CleanupAsync().ConfigureAwait(false);
-            IReadOnlyDictionary<string, string>? captured = completeEvidence is null ? null :
-                await completeEvidence(cancellationToken).ConfigureAwait(false);
+            IReadOnlyDictionary<string, string>? captured = completion is null ? null :
+                await completion.CompleteEvidence(statisticsCompletion!, cancellationToken).ConfigureAwait(false);
             CheckGuards();
             if (captured is not null)
             {
