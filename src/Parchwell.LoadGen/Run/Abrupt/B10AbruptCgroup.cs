@@ -10,11 +10,13 @@ internal static class B10AbruptCgroup
 {
     internal sealed record Observation(string BootId, string CgroupPath, string DirectoryIdentity, long OomKill);
 
-    internal static Observation CaptureBefore(OwnedProducerProcess.ProcessIdentity process)
+    internal static Observation CaptureBefore() => CaptureBefore(B10AbruptProcess.ReadIdentity(Environment.ProcessId));
+
+    internal static Observation CaptureBefore(B10AbruptProcess.ProcessIdentity process)
     {
         try
         {
-            if (OwnedProducerProcess.ReadIdentity(process.Pid) != process) throw Unavailable();
+            if (B10AbruptProcess.ReadIdentity(process.Pid) != process) throw Unavailable();
             var root = "/proc/" + process.Pid.ToString(CultureInfo.InvariantCulture);
             var path = Resolve(Encoding.UTF8.GetString(B10AbruptProc.ReadBounded(root + "/cgroup")),
                 Encoding.UTF8.GetString(B10AbruptProc.ReadBounded(root + "/mountinfo")));

@@ -17,6 +17,7 @@ using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Execution;
 using Parchwell.LoadGen.Run.Input;
 using Parchwell.LoadGen.Run.Ledger;
+using Parchwell.LoadGen.Run.Workload;
 using Parchwell.Scenarios;
 using Xunit;
 
@@ -45,6 +46,7 @@ public sealed class B10AbruptSuccessorCompletionTests(ITestOutputHelper output)
     private static readonly string[] FactNames =
         ["completion_complete", "evidence_faulted", "missing_broker_count", "diagnostic_count", .. Codes.Select(code => "diagnostic_" + code)];
 
+    private static readonly int[] KillOrdinals = [3, 4];
     private static readonly string[] HostBrokers = ["broker-a", "broker-b"];
     private static readonly string[] AcceptedCodes = ["duplicate_property", "invalid_or_missing_field"];
 
@@ -311,6 +313,82 @@ public sealed class B10AbruptSuccessorCompletionTests(ITestOutputHelper output)
         });
     }
 
+    [Fact]
+    public async Task Given_TwoKillSetMembers_When_SuccessorWaitsAtReleaseBoundary_Then_ResendsEachOnceWithBoundPayload()
+    {
+        var release = new DateTimeOffset(2026, 11, 7, 0, 2, 0, TimeSpan.Zero);
+        var clock = new ReleaseClock(release.AddMilliseconds(-1));
+        await using var chain = new Chain(clock);
+        chain.DeliverAtPoll = true; chain.DeliverAtBoundary = true;
+        WorkloadProfile profile = B10AbruptProducerTests.Profile();
+        byte[] payload = WorkloadGenerator.GeneratePayload(WorkloadGenerator.Generate(profile, chain.Execution.MaxAttempts, chain.Execution.MaxPayloadBytes, TestContext.Current.CancellationToken).First(), profile.Seed);
+        string hash = Convert.ToHexStringLower(SHA256.HashData(payload));
+        JsonElement entries = B10AbruptWire.Element(KillOrdinals.Select(ordinal => new
+        {
+            attempt_id = "predecessor-cross_restart-" + ordinal, arm = "cross_restart", role = "original", ordinal,
+            probe_id = "B10/run-1/C1/1/cross_restart", key = "B10/run-1/C1/1/cross_restart", sequence = ordinal,
+            payload_length = payload.Length, payload_sha256 = hash, predecessor_attempt_id = (string?)null
+        }).ToArray());
+        Task<B10AbruptProducer.SuccessorArtifacts> operation = chain.RunAsync(entries, release, chain.Execution, TestContext.Current.CancellationToken);
+        await clock.Waiting.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.Empty(chain.Native.Calls);
+        clock.Advance(TimeSpan.FromMilliseconds(1) - TimeSpan.FromTicks(1));
+        await Task.Delay(20, TestContext.Current.CancellationToken);
+        Assert.Empty(chain.Native.Calls);
+        clock.Release(TimeSpan.FromTicks(1));
+        B10AbruptProducer.SuccessorArtifacts artifacts = await operation.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.Equal(2, chain.Native.Calls.Count);
+        JsonElement[] invocations = artifacts.Invocations.EnumerateArray().ToArray();
+        Assert.Equal(2, invocations.Length);
+        for (int index = 0; index < 2; index++)
+        {
+            Assert.Equal(entries[index].GetProperty("attempt_id").GetString(), invocations[index].GetProperty("predecessor_attempt_id").GetString());
+            Assert.NotEqual(entries[index].GetProperty("attempt_id").GetString(), invocations[index].GetProperty("attempt_id").GetString());
+            Assert.Equal(entries[index].GetProperty("sequence").GetInt64(), invocations[index].GetProperty("sequence").GetInt64());
+            Assert.Equal("B10/run-1/C1/1/cross_restart", Encoding.UTF8.GetString(chain.Native.Calls[index].Key));
+            Assert.Equal(payload, chain.Native.Calls[index].Value);
+            Assert.Equal(hash, invocations[index].GetProperty("payload_sha256").GetString());
+            Assert.True(DateTimeOffset.ParseExact(invocations[index].GetProperty("invocation_utc").GetString()!, "O", CultureInfo.InvariantCulture) >= release);
+        }
+    }
+
+    private sealed class ReleaseClock(DateTimeOffset initial) : TimeProvider
+    {
+        private long ticks;
+        private long origin;
+        private bool released;
+        private readonly List<ReleaseTimer> timers = [];
+        internal TaskCompletionSource Waiting { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+        public override long GetTimestamp() => Interlocked.Read(ref ticks) + (released ? TimeProvider.System.GetElapsedTime(origin).Ticks : 0);
+        public override DateTimeOffset GetUtcNow() => initial.AddTicks(GetTimestamp());
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            if (released) return TimeProvider.System.CreateTimer(callback, state, dueTime, period);
+            var timer = new ReleaseTimer(this, callback, state); timer.Change(dueTime, period);
+            lock (timers) timers.Add(timer);
+            Waiting.TrySetResult(); return timer;
+        }
+        internal void Advance(TimeSpan duration)
+        {
+            Interlocked.Add(ref ticks, duration.Ticks);
+            ReleaseTimer[] snapshot; lock (timers) snapshot = timers.ToArray();
+            foreach (var timer in snapshot) timer.Fire(GetTimestamp());
+        }
+        internal void Release(TimeSpan duration)
+        {
+            origin = TimeProvider.System.GetTimestamp(); released = true; Advance(duration);
+        }
+        private sealed class ReleaseTimer(ReleaseClock clock, TimerCallback callback, object? state) : ITimer
+        {
+            private long due = long.MaxValue;
+            public bool Change(TimeSpan dueTime, TimeSpan period) { due = dueTime < TimeSpan.Zero ? long.MaxValue : clock.GetTimestamp() + dueTime.Ticks; return true; }
+            internal void Fire(long now) { long target = Interlocked.Read(ref due); if (now >= target && Interlocked.CompareExchange(ref due, long.MaxValue, target) == target) callback(state); }
+            public void Dispose() => Interlocked.Exchange(ref due, long.MaxValue);
+            public ValueTask DisposeAsync() { Dispose(); return ValueTask.CompletedTask; }
+        }
+    }
+
     private static string SnakeCase(string name) => JsonNamingPolicy.SnakeCaseLower.ConvertName(name);
 
     private static (string Name, long Value)[] Expected(long complete, long faulted, long missing, long count, params string[] flagged) =>
@@ -354,7 +432,6 @@ public sealed class B10AbruptSuccessorCompletionTests(ITestOutputHelper output)
         private readonly bool real;
         private readonly bool ownsRoot;
         private readonly long creation;
-        private int next;
         internal string Root { get; }
         internal HookClock Clock { get; }
         internal RunEvidenceSession Evidence { get; }
@@ -416,15 +493,7 @@ public sealed class B10AbruptSuccessorCompletionTests(ITestOutputHelper output)
             wireIdentity ??= new B10AbruptWire.Identity("run-1", "B10", "C1", "C1", 1, new string('a', 40),
                 "image@sha256:" + new string('b', 64), "run-1-loadgen", "pod-1", "uid-1", "pod-1", null);
             Producer = new B10AbruptProducer(() => (IProducer<byte[], byte[]>)(object)Native, Clock, Adapter,
-                cohort =>
-                {
-                    Directory.CreateDirectory(Path.Combine(Root, cohort));
-                    return new LocalLedgerStore(new LedgerStoreOptions(Path.Combine(Root, cohort, "ledger.jsonl"),
-                        Path.Combine(Root, cohort, "manifest.json"), 16, 16384, 1048576, 1048576, TimeSpan.FromSeconds(1)));
-                },
-                (_, _, _) => Task.FromResult((long)Interlocked.Increment(ref next)), _ => true,
-                (_, _) => Task.FromResult(new B10AbruptProducer.ReleaseInfo(DateTimeOffset.MinValue, null)),
-                (_, _, _) => Task.CompletedTask, Evidence, wireIdentity, recording);
+                evidence: Evidence, diagnosticIdentity: wireIdentity, completion: recording);
             Clock.OnFirstPollTimer = () => { if (DeliverAtPoll) Deliver(); };
         }
 
@@ -437,12 +506,13 @@ public sealed class B10AbruptSuccessorCompletionTests(ITestOutputHelper output)
 
         private static JsonElement Selection()
         {
-            byte[] payload = [1, 2, 3];
+            WorkloadProfile profile = B10AbruptProducerTests.Profile();
+            byte[] payload = WorkloadGenerator.GeneratePayload(WorkloadGenerator.Generate(profile, 8, 16384).First(), profile.Seed);
             return JsonSerializer.SerializeToElement(new[] { new
             {
                 attempt_id = "predecessor-cross_restart-0", key = "B10/run-1/C1/1/cross_restart", sequence = 0,
-                payload_length = payload.Length, payload_sha256 = Convert.ToHexStringLower(SHA256.HashData(payload)),
-                payload_base64 = Convert.ToBase64String(payload)
+                arm = "cross_restart", role = "original", ordinal = 0, probe_id = "B10/run-1/C1/1/cross_restart",
+                payload_length = payload.Length, payload_sha256 = Convert.ToHexStringLower(SHA256.HashData(payload)), predecessor_attempt_id = (string?)null
             } });
         }
 

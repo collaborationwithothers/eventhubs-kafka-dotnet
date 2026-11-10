@@ -24,6 +24,10 @@ namespace Parchwell.LoadGen.Run.Abrupt;
 
 internal static class B10AbruptHost
 {
+    internal static Action<IServiceCollection>? ConfigureTestServices { get; set; }
+    internal static Func<ProducerConfig, Action<IProducer<byte[], byte[]>, string>, Action<IProducer<byte[], byte[]>, Error>, IProducer<byte[], byte[]>>? ProducerFactoryOverride { get; set; }
+    internal static Func<(int ReturnValue, int Errno)>? SelfKillOverride { get; set; }
+
     internal static int ValidateConfiguration()
     {
         try
@@ -37,12 +41,13 @@ internal static class B10AbruptHost
             return ReportFailure(exception, Console.Error);
         }
     }
-    internal static Task<int> RunSupervisorAsync() => RunAsync("supervisor");
+    internal static Task<int> RunParentAsync() => RunAsync("parent");
     internal static Task<int> RunChildAsync() => RunAsync("child");
     internal static Task<int> RunSuccessorAsync() => RunAsync("successor");
 
     private static async Task<int> RunAsync(string role)
     {
+        long processStarted = TimeProvider.System.GetTimestamp();
         try
         {
             B10AbruptOptions options = B10AbruptOptions.Read();
@@ -54,44 +59,37 @@ internal static class B10AbruptHost
             await host.StartAsync(lifetime.Token).ConfigureAwait(false);
             TimeProvider clock = host.Services.GetRequiredService<TimeProvider>();
             B10AbruptPublisher publisher = host.Services.GetRequiredService<B10AbruptPublisher>();
-            if (role == "supervisor")
+            if (role == "parent")
             {
-                string directory = Path.Combine(options.OutputRoot, "abrupt");
-                Directory.CreateDirectory(directory);
-                await using var journal = new B10AbruptJournal(Path.Combine(directory, "journal.jsonl"), options.Identity(), clock);
-                var supervisor = new B10AbruptSupervisor(options, clock, journal, publisher,
-                    () => new B10AbruptOwnedProcess(OwnedProducerProcess.Start(ChildCommand.ForRunningApphost(), options)),
-                    async token =>
-                    {
-                        LoadedScenario loaded = await host.Services.GetRequiredService<ScenarioLoader>().LoadAsync("B10", token).ConfigureAwait(false);
-                        var resolved = host.Services.GetRequiredService<ScenarioResolver>().Resolve(loaded).Configurations["C1"].Roles[KafkaClientRole.LoadGenProducer];
-                        var settings = resolved.Settings.ToDictionary(pair => pair.Key, pair => pair.Value.Value, StringComparer.Ordinal);
-                        await B10AbruptStatistics.ValidateCapturedAsync(Path.Combine(options.OutputRoot, "capture", "statistics.jsonl"),
-                            new KafkaStatisticsIdentity("B10", options.RunId, KafkaClientRole.LoadGenProducer, options.PodName),
-                            await ReadExpectedBrokersAsync(options, token).ConfigureAwait(false), settings, settings, token).ConfigureAwait(false);
-                    }, new B10AbruptTimeline(clock, "supervisor", Console.Error));
-                await supervisor.RunAsync(lifetime.Token).ConfigureAwait(false);
+                var parent = new B10AbruptParent(options, clock, publisher, validateCapturedStatistics: async token =>
+                {
+                    LoadedScenario loaded = await host.Services.GetRequiredService<ScenarioLoader>().LoadAsync("B10", token).ConfigureAwait(false);
+                    var resolved = host.Services.GetRequiredService<ScenarioResolver>().Resolve(loaded).Configurations["C1"].Roles[KafkaClientRole.LoadGenProducer];
+                    var settings = resolved.Settings.ToDictionary(pair => pair.Key, pair => pair.Value.Value, StringComparer.Ordinal);
+                    await B10AbruptStatistics.ValidateCapturedAsync(Path.Combine(options.OutputRoot, "capture", "statistics.jsonl"),
+                        new KafkaStatisticsIdentity("B10", options.RunId, KafkaClientRole.LoadGenProducer, options.PodName),
+                        await ReadExpectedBrokersAsync(options, token).ConfigureAwait(false), settings, settings, token).ConfigureAwait(false);
+                }, parentStartedTimestamp: processStarted);
+                await parent.RunAsync(lifetime.Token).ConfigureAwait(false);
                 return 0;
             }
             if (role == "successor")
-                return await RunValidatedSuccessorAsync(options, input => RunProducerAsync(input), lifetime.Token).ConfigureAwait(false);
+                return await RunValidatedSuccessorAsync(options, publisher, input => RunProducerAsync(input), lifetime.Token).ConfigureAwait(false);
             return await RunProducerAsync(null).ConfigureAwait(false);
 
             async Task<int> RunProducerAsync(B10AbruptPublisher.SuccessorInput? input)
             {
                 if (input is not null) await publisher.RegisterDiagnosticAsync(options.Identity(input.FirstIdentity.InstanceId), lifetime.Token).ConfigureAwait(false);
-                B10AbruptChildChannel? channel = role == "child"
-                    ? B10AbruptChildChannel.Connect(options.EventsPipeHandle, options.AckPipeHandle, options.IdentityChallenge) : null;
-                await using var channelScope = channel;
-                var runtime = await CreateProducerAsync(host.Services, options, channel, input, lifetime.Token).ConfigureAwait(false);
+                B10AbruptJournal? journal = input is null ? new B10AbruptJournal(Path.Combine(options.OutputRoot, "abrupt", "journal.jsonl"), options.Identity(), clock) : null;
+                await using var journalScope = journal;
+                var runtime = await CreateProducerAsync(host.Services, options, journal, input, lifetime.Token).ConfigureAwait(false);
                 var identity = new RunIdentity(options.ScenarioId, options.ConfigurationId, options.RunId, options.PodName, options.PodName, options.PodName);
                 if (input is null)
                 {
-                    await runtime.Producer.RunFirstAsync(runtime.Profile, identity, runtime.Execution, lifetime.Token).ConfigureAwait(false);
-                    return 1; // The first child only completes by the supervisor's observed kill.
+                    return await runtime.Producer.RunFirstAsync(runtime.Profile, identity, runtime.Execution, lifetime.Token).ConfigureAwait(false);
                 }
                 B10AbruptProducer.SuccessorArtifacts result = await runtime.Producer.RunSuccessorAsync(runtime.Profile, identity, runtime.Execution,
-                    input.Selection.GetProperty("data").GetProperty("entries"), input.ReleaseUtc, lifetime.Token).ConfigureAwait(false);
+                    input.Entries, input.ReleaseUtc, lifetime.Token).ConfigureAwait(false);
                 using (var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10), clock))
                 {
                     await runtime.Statistics.DisposeAsync().AsTask().WaitAsync(cleanup.Token).ConfigureAwait(false);
@@ -102,7 +100,7 @@ internal static class B10AbruptHost
                 var payloads = new Dictionary<string, byte[]>(StringComparer.Ordinal);
                 foreach (var pair in result.Paths)
                     payloads.Add(pair.Key, await B10AbruptPublisher.ReadFileAsync(pair.Value, 268435456, lifetime.Token).ConfigureAwait(false));
-                await publisher.PublishSuccessorAsync(options.Identity(input.FirstIdentity.InstanceId), payloads, input.Termination, input.Selection,
+                await publisher.PublishSuccessorAsync(options.Identity(input.FirstIdentity.InstanceId), payloads, input.FirstTermination, input.Journal, input.KillUnconfirmedAttemptIds,
                     result.ReadyUtc, result.ReleaseUtc, result.Invocations, cleanupCompleted: true, lifetime.Token).ConfigureAwait(false);
                 return 0;
             }
@@ -113,41 +111,20 @@ internal static class B10AbruptHost
         }
     }
 
-    internal static async Task<int> RunValidatedSuccessorAsync(B10AbruptOptions options,
+    internal static async Task<int> RunValidatedSuccessorAsync(B10AbruptOptions options, B10AbruptPublisher publisher,
         Func<B10AbruptPublisher.SuccessorInput, Task<int>> continuation, CancellationToken cancellationToken)
     {
-        B10AbruptPublisher.SuccessorInput input = await B10AbruptPublisher.LoadSelectionAsync(options, cancellationToken).ConfigureAwait(false);
+        B10AbruptPublisher.SuccessorInput input = await publisher.LoadSelectionAsync(options, cancellationToken).ConfigureAwait(false);
         return await continuation(input).ConfigureAwait(false);
     }
 
     internal static int ReportFailure(Exception exception, TextWriter error)
     {
-        string failure = B10AbruptSupervisor.FailureName(exception);
+        string failure = B10AbruptParent.FailureName(exception);
         string exceptionType = exception.GetType().FullName ?? exception.GetType().Name;
-        if (exception is OwnedProducerProcess.StartupException startupFailure)
+        if (exception is B10AbruptProcess.SignalException signalFailure)
         {
-            error.WriteLine(JsonSerializer.Serialize(new
-            {
-                failure,
-                exception_type = exceptionType,
-                diagnostic = B10AbruptDiagnostics.Bounded(exception),
-                cleanup_failure = startupFailure.CleanupFailure is { } cleanupFailure ? B10AbruptSupervisor.FailureName(cleanupFailure) : null,
-                cleanup_exception_type = startupFailure.CleanupFailure is { } cleanupException
-                    ? cleanupException.GetType().FullName ?? cleanupException.GetType().Name : null,
-                cleanup_diagnostic = startupFailure.CleanupFailure is { } cleanupCause ? B10AbruptDiagnostics.Bounded(cleanupCause) : null,
-                cleanup_signal_observation = (startupFailure.CleanupFailure as OwnedProducerProcess.SignalException)?.Observation
-            }, B10AbruptWire.JsonOptions));
-            return 1;
-        }
-        if (exception is OwnedProducerProcess.SignalException signalFailure)
-        {
-            error.WriteLine(JsonSerializer.Serialize(new
-            {
-                failure,
-                exception_type = exceptionType,
-                diagnostic = B10AbruptDiagnostics.Bounded(exception),
-                signal_observation = signalFailure.Observation
-            }, B10AbruptWire.JsonOptions));
+            error.WriteLine(JsonSerializer.Serialize(new { failure, exception_type = exceptionType, diagnostic = B10AbruptDiagnostics.Bounded(exception), signal_observation = signalFailure.Observation }, B10AbruptWire.JsonOptions));
             return 1;
         }
         if (failure == "kill_too_late" && exception.Message == "kill_too_late:no_unconfirmed_attempt") failure = "kill_too_late:no_unconfirmed_attempt";
@@ -176,7 +153,7 @@ internal static class B10AbruptHost
         builder.Services.AddParchwellScenarios(value => { value.MaxDocumentCharacters = 1048576; value.MaxNestingDepth = 32; value.MaxScalarCharacters = 65536; value.MaxParserEvents = 100000; });
         builder.Services.AddSingleton<IScenarioSource>(_ => new FileSystemScenarioSource(options.ScenarioSourceRoot));
         AddB10KafkaRoles(builder.Services, options);
-        if (options.Role != "supervisor")
+        if (options.Role != "parent")
         {
             builder.Services.AddSingleton<RunEvidenceSinkRouter>();
             builder.Services.AddSingleton<IKafkaStatisticsEvidenceSink>(services => services.GetRequiredService<RunEvidenceSinkRouter>());
@@ -189,6 +166,7 @@ internal static class B10AbruptHost
             builder.Services.AddParchwellKafkaStatistics(value =>
             { value.MaxSnapshotCharacters = 1048576; value.QueueCapacity = 2048; value.MaxBrokerSeries = 64; value.CompletionTimeout = TimeSpan.FromSeconds(20); });
         }
+        ConfigureTestServices?.Invoke(builder.Services);
         return builder.Build();
     }
 
@@ -204,7 +182,7 @@ internal static class B10AbruptHost
     }
 
     private static async Task<ProducerRuntime> CreateProducerAsync(IServiceProvider services, B10AbruptOptions options,
-        B10AbruptChildChannel? channel, B10AbruptPublisher.SuccessorInput? input, CancellationToken cancellationToken)
+        B10AbruptJournal? journal, B10AbruptPublisher.SuccessorInput? input, CancellationToken cancellationToken)
     {
         TimeProvider clock = services.GetRequiredService<TimeProvider>();
         LoadedScenario loaded = await services.GetRequiredService<ScenarioLoader>().LoadAsync("B10", cancellationToken).ConfigureAwait(false);
@@ -227,38 +205,22 @@ internal static class B10AbruptHost
         KafkaAuthenticationFactory authFactory = services.GetRequiredService<KafkaAuthenticationFactory>();
         authFactory.ValidateProducerConfiguration(config);
         KafkaOAuthBearerSession authentication = authFactory.CreateSession(new KafkaAuthenticationIdentity("B10", options.RunId, KafkaClientRole.LoadGenProducer, options.PodName), cancellationToken);
-        long syntheticSequence = 0;
-        var producer = new B10AbruptProducer(() => authFactory.CreateProducerBuilder<byte[], byte[]>(config, authentication)
-            .SetStatisticsHandler(StatisticsHandler(observations, statistics)).SetLogHandler((_, log) => evidence.CaptureLog(log))
-            .SetErrorHandler(CreateErrorHandler(evidence, channel, clock)).Build(), clock, observations,
-            cohort =>
-            {
-                string path = Path.Combine(options.OutputRoot, cohort);
-                Directory.CreateDirectory(path);
-                return new LocalLedgerStore(new LedgerStoreOptions(Path.Combine(path, "ledger.jsonl"), Path.Combine(path, "manifest.json"),
-                    8192, 16384, 268435456, 67108864, TimeSpan.FromSeconds(10)));
-            },
-            (kind, data, token) => channel is not null ? channel.SendAsync(kind, data, token) : Task.FromResult(Interlocked.Increment(ref syntheticSequence)),
-            terminal => channel?.TryCaptureTerminal(terminal) ?? true,
-            (arm, token) => ReadReleaseAsync(options, arm, clock, token),
-            (cohort, data, token) => SaveSealAsync(options, cohort, data, token), evidence, options.Identity(input?.FirstIdentity.InstanceId),
-            SuccessorCompletion(statistics, evidence, brokers, evidencePath), new B10AbruptTimeline(clock, options.Role, Console.Error),
-            () => channel?.NativeErrorCount ?? 0);
+        var statisticsHandler = StatisticsHandler(observations, statistics);
+        var errorHandler = CreateErrorHandler(evidence, journal, clock);
+        IProducer<byte[], byte[]> Factory() => ProducerFactoryOverride is { } factory ? factory(config, statisticsHandler, errorHandler) : authFactory.CreateProducerBuilder<byte[], byte[]>(config, authentication)
+            .SetStatisticsHandler(statisticsHandler).SetLogHandler((_, log) => evidence.CaptureLog(log)).SetErrorHandler(errorHandler).Build();
+        var producer = new B10AbruptProducer(Factory, clock, observations, journal, evidence, options.Identity(input?.FirstIdentity.InstanceId),
+            SuccessorCompletion(statistics, evidence, brokers, evidencePath), new B10AbruptTimeline(clock, options.Role, Console.Error), selfKill: SelfKillOverride);
         var execution = new RunExecutionOptions(186000, 900000, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(300), TimeSpan.FromSeconds(10),
             16384, 67108864, 268435456, options.OutputRoot, "document-events", brokers, false, true,
             TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(20), ApplicationRetryPolicy.ForScenario("B10"));
-        if (channel is not null) channel.TerminalWritten = producer.MarkTerminals;
         return new(producer, loaded.Profile, execution, authentication, statistics, evidence);
     }
 
-    // The first child's error callback also reaches the supervisor's journal (ADR-021 protocol rule 9), so an error the evidence
-    // session still holds in its background writer is also in the journal. A message still queued in the channel when the child is
-    // stopped for the kill is not written (the unknown native tail), and none is journaled once the channel has latched a gap,
-    // such as a full write queue. Only the first child has a channel.
-    internal static Action<IProducer<byte[], byte[]>, Error> CreateErrorHandler(RunEvidenceSession evidence, B10AbruptChildChannel? channel, TimeProvider clock) =>
+    internal static Action<IProducer<byte[], byte[]>, Error> CreateErrorHandler(RunEvidenceSession evidence, B10AbruptJournal? journal, TimeProvider clock) =>
         (_, error) =>
         {
-            channel?.TryCaptureNativeError((int)error.Code, error.Code.ToString(), error.IsError, error.IsFatal, clock.GetTimestamp());
+            journal?.TryCaptureNativeError((int)error.Code, error.Code.ToString(), error.IsError, error.IsFatal, clock.GetTimestamp());
             evidence.CaptureError(error);
         };
 
@@ -350,43 +312,6 @@ internal static class B10AbruptHost
         string[] names = brokers.EnumerateArray().Select(broker => broker.GetProperty("name").GetString()!).ToArray();
         if (names.Any(string.IsNullOrWhiteSpace) || names.Distinct(StringComparer.Ordinal).Count() != names.Length) throw Attach(new InvalidDataException("b10_abrupt_guard_failed"), [Fact(B10AbruptFact.BrokerCount, names.Length), Fact(B10AbruptFact.BlankCount, names.Count(string.IsNullOrWhiteSpace)), Fact(B10AbruptFact.DistinctCount, names.Distinct(StringComparer.Ordinal).Count())]);
         return names;
-    }
-    internal static async Task<B10AbruptProducer.ReleaseInfo> ReadReleaseAsync(B10AbruptOptions options, string arm, TimeProvider clock, CancellationToken cancellationToken)
-    {
-        string path = Path.Combine(options.OutputRoot, "abrupt", arm + "-checkpoint.json");
-        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30), clock);
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token, cancellationToken);
-        while (!File.Exists(path)) await Task.Delay(TimeSpan.FromMilliseconds(10), clock, linked.Token).ConfigureAwait(false);
-        var frame = B10AbruptWire.ReadFrame(await B10AbruptPublisher.ReadFileAsync(path, 65536, linked.Token).ConfigureAwait(false));
-        var facts = new List<B10AbruptFactValue>();
-        if (!(Check(facts, B10AbruptFact.KindMatches, frame.Kind == "checkpoint") &&
-            Check(facts, B10AbruptFact.IdentityMatches, frame.Identity == options.Identity()) &&
-            Check(facts, B10AbruptFact.ArmMatches, frame.Data.GetProperty("arm").GetString() == arm)))
-            throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"), [.. facts]);
-        string? selectedAttemptId = null;
-        if (arm == "same_instance")
-        {
-            JsonElement selected = frame.Data.GetProperty("selected_attempt_ids");
-            if (selected.GetArrayLength() == 0) throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"));
-            selectedAttemptId = selected[0].GetString();
-        }
-        string progressPath = Path.Combine(options.OutputRoot, "abrupt-child", "same_instance-resumed.json");
-        await using (var file = new FileStream(progressPath + ".pending", FileMode.CreateNew, FileAccess.Write, FileShare.None))
-        {
-            await file.WriteAsync(JsonSerializer.SerializeToUtf8Bytes(new { arm, identity = options.Identity(), checkpoint_sequence = frame.Sequence,
-                checkpoint_sha256 = B10AbruptPublisher.Hash(B10AbruptWire.WriteFrame(frame)) }, B10AbruptWire.JsonOptions), linked.Token).ConfigureAwait(false);
-            file.Flush(true);
-        }
-        File.Move(progressPath + ".pending", progressPath, overwrite: false);
-        return new(DateTimeOffset.ParseExact(frame.Data.GetProperty("release_utc").GetString()!, "O", CultureInfo.InvariantCulture), selectedAttemptId);
-    }
-    private static async Task SaveSealAsync(B10AbruptOptions options, string cohort, JsonElement data, CancellationToken cancellationToken)
-    {
-        string name = cohort == "same_instance" ? "control" : cohort;
-        string path = Path.Combine(options.OutputRoot, "abrupt-child", name + "-seal.json");
-        await using var file = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read);
-        await file.WriteAsync(B10AbruptWire.SerializeEnvelope("cohort_seal", options.Identity(), data), cancellationToken).ConfigureAwait(false);
-        file.Flush(true);
     }
     private sealed record ProducerRuntime(B10AbruptProducer Producer, WorkloadProfile Profile, RunExecutionOptions Execution,
         KafkaOAuthBearerSession Authentication, KafkaStatisticsSession Statistics, RunEvidenceSession Evidence);

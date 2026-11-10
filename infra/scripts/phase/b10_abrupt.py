@@ -164,6 +164,26 @@ def bound(reference, name, raw):
         raise ValueError('diagnostic descriptor mismatch')
 
 
+def nonnegative(value):
+    return type(value) is int and 0 <= value <= 9223372036854775807
+
+
+def required_string(value):
+    return isinstance(value, str) and bool(value)
+
+
+def string_array(value):
+    return (isinstance(value, list) and all(required_string(item) for item in value)
+            and len(value) == len(set(value)))
+
+
+def reference(value):
+    return (isinstance(value, dict) and set(value) == {'name', 'length', 'sha256'}
+            and required_string(value['name']) and '/' not in value['name'] and '\\' not in value['name']
+            and '..' not in value['name'] and nonnegative(value['length'])
+            and isinstance(value['sha256'], str) and re.fullmatch('[0-9a-f]{64}', value['sha256']) is not None)
+
+
 def failure_site(error, caller):
     """Name the raising line by file base name, function and line number; never by message, value or path."""
     frames = traceback.extract_tb(error.__traceback__) if error.__traceback__ is not None else []
@@ -367,7 +387,7 @@ class Trial:
 
     def envelope(self, raw, kind, observation, predecessor=None, maximum=AUXILIARY_MAXIMUM):
         value = decode(raw, maximum)
-        if (set(value) != ENVELOPE_FIELDS or type(value['schema_version']) is not int or value['schema_version'] != 3
+        if (not isinstance(value, dict) or set(value) != ENVELOPE_FIELDS or type(value['schema_version']) is not int or value['schema_version'] != 3
                 or value['dialect'] != 'b10_abrupt' or value['purpose'] != 'diagnostic_trial'
                 or value['synthetic'] is not True or value['scientific_admissible'] is not False or value['kind'] != kind):
             raise ValueError('diagnostic envelope')
@@ -377,11 +397,104 @@ class Trial:
                     'repeat': 1, 'source_commit': phase['source_commit'], 'image_reference': phase['images']['loadgen']['reference'],
                     'job_name': observation['job_name'], 'pod_name': observation['pod_name'], 'pod_uid': observation['pod_uid'],
                     'instance_id': observation['pod_name'], 'predecessor_instance_id': predecessor}
-        if set(identity) != IDENTITY_FIELDS or identity != expected or type(identity['repeat']) is not int:
+        if not isinstance(identity, dict) or set(identity) != IDENTITY_FIELDS or identity != expected or type(identity['repeat']) is not int:
             raise ValueError('diagnostic identity')
         if kind not in DATA_FIELDS or not isinstance(value['data'], dict) or set(value['data']) != DATA_FIELDS[kind]:
             raise ValueError('diagnostic data members')
+        self.validate_data(kind, value['data'])
         return value
+
+    def validate_data(self, kind, data):
+        integer_fields = {
+            'child_started': ('pid', 'start_time_ticks'),
+            'prepared': ('ordinal', 'sequence', 'payload_length'),
+            'accepted': ('prepared_sequence',), 'synchronous_rejection': ('prepared_sequence',),
+            'native_error': ('capture_sequence', 'callback_monotonic_ticks'),
+            'control_drained': ('out_queue_length',),
+            'abrupt_manifest': ('journal_records',),
+            'termination': ('wait_bound_milliseconds', 'native_error_count', 'native_fatal_count'),
+            'pre_acceptance_report': ('length', 'report_sequence'),
+            'post_drain_report': ('length', 'report_sequence'),
+        }
+        string_fields = {
+            'child_started': ('boot_id',),
+            'prepared': ('attempt_id', 'probe_id', 'key'),
+            'accepted': ('attempt_id',), 'synchronous_rejection': ('attempt_id', 'error_reason'),
+            'terminal': ('attempt_id', 'completion_source'), 'native_error': ('error_name',),
+            'cut': ('cut_attempt_id',), 'kill_intent': ('cut_attempt_id',),
+            'termination': ('runtime_version',),
+        }
+        bool_fields = {'terminal': ('delivered',), 'native_error': ('is_error', 'is_fatal'),
+            'control_drained': ('flush_returned',), 'termination': ('successor_permitted', 'exit_observed'),
+            'successor_receipt': ('cleanup_completed',), 'no_kill': ('cross_restart_admitted',)}
+        if (any(not nonnegative(data[key]) for key in integer_fields.get(kind, ()))
+                or any(not required_string(data[key]) for key in string_fields.get(kind, ()))
+                or any(type(data[key]) is not bool for key in bool_fields.get(kind, ()))):
+            raise ValueError('diagnostic data types')
+        for key in ('error_code', 'return_value', 'errno'):
+            if key in data and (type(data[key]) is not int or not -2147483648 <= data[key] <= 2147483647):
+                raise ValueError('diagnostic data types')
+        if kind == 'child_started' and data['pid'] == 0:
+            raise ValueError('diagnostic child pid')
+        if kind == 'terminal' and (data['completion_source'] != 'callback' or
+                data['persistence_status'] is not None and (type(data['persistence_status']) is not int
+                    or not -2147483648 <= data['persistence_status'] <= 2147483647)):
+            raise ValueError('terminal binding')
+        if kind in ('cut', 'kill_intent', 'prepared', 'pre_acceptance_report', 'post_drain_report'):
+            if data['arm'] not in ('same_instance', 'cross_restart'):
+                raise ValueError('diagnostic arm')
+        if kind == 'prepared':
+            original = data['role'] == 'original'
+            if (data['role'] not in ('original', 'resend') or data['ordinal'] > 4
+                    or data['sequence'] != data['ordinal'] or data['payload_length'] > 900000
+                    or original and data['predecessor_attempt_id'] is not None
+                    or not original and not required_string(data['predecessor_attempt_id'])
+                    or not isinstance(data['payload_sha256'], str)
+                    or not re.fullmatch('[0-9a-f]{64}', data['payload_sha256'])):
+                raise ValueError('prepared binding')
+        if kind in ('cut', 'kill_intent'):
+            self.utc_ticks(data['release_utc'])
+        if kind == 'cut' and not string_array(data['unconfirmed_attempt_ids']):
+            raise ValueError('selection stale')
+        if kind in ('pre_acceptance_report', 'post_drain_report'):
+            if (not reference({key: data[key] for key in ('name', 'length', 'sha256')})
+                    or data['length'] == 0 or data['length'] > 1048576 or data['report_sequence'] == 0
+                    or kind == 'pre_acceptance_report' and not required_string(data['attempt_id'])
+                    or kind == 'post_drain_report' and (data['arm'] != 'same_instance' or data['attempt_id'] is not None)):
+                raise ValueError('report binding')
+        if kind in ('registration', 'pre_acceptance_report', 'post_drain_report'):
+            self.utc_ticks(data['registered_utc'] if kind == 'registration' else data['report_capture_utc'])
+        if kind in ('abrupt_manifest', 'termination', 'successor_receipt'):
+            for key in ('journal', 'manifest', 'first_termination', 'registration'):
+                if key in data and not reference(data[key]):
+                    raise ValueError('diagnostic descriptor mismatch')
+            for key in ('gaps', 'capture_gaps', 'control_unconfirmed_attempt_ids', 'kill_unconfirmed_attempt_ids'):
+                if key in data and not string_array(data[key]):
+                    raise ValueError('diagnostic data types')
+            for key in ('report_files', 'artifacts'):
+                if key in data and (not isinstance(data[key], list) or not all(reference(entry) for entry in data[key])):
+                    raise ValueError('diagnostic descriptor mismatch')
+        if kind == 'termination':
+            if (data['termination'] not in ('intended_self_kill', 'no_kill', 'unexpected_exit', 'unknown')
+                    or any(data[key] is not None and not required_string(data[key]) for key in ('outcome', 'detail', 'native_tail'))
+                    or data['signal_observation'] is not None and (not isinstance(data['signal_observation'], dict)
+                        or set(data['signal_observation']) != DATA_FIELDS['signal_failed'])
+                    or data['exit_code_local_observation'] is not None and (type(data['exit_code_local_observation']) is not int
+                        or not -2147483648 <= data['exit_code_local_observation'] <= 2147483647)):
+                raise ValueError('diagnostic data types')
+        if kind == 'successor_receipt':
+            self.utc_ticks(data['ready_utc'])
+            self.utc_ticks(data['release_utc'])
+            if data['cross_host_timing'] != 'not_verified' or not isinstance(data['invocations'], list):
+                raise ValueError('b10_abrupt_successor_binding_invalid')
+            for invocation in data['invocations']:
+                if (not isinstance(invocation, dict) or set(invocation) != {'attempt_id', 'predecessor_attempt_id',
+                        'key', 'sequence', 'payload_sha256', 'invocation_utc', 'monotonic_ticks'}
+                        or any(not required_string(invocation[key]) for key in ('attempt_id', 'predecessor_attempt_id', 'key'))
+                        or not nonnegative(invocation['sequence']) or not nonnegative(invocation['monotonic_ticks'])
+                        or not isinstance(invocation['payload_sha256'], str) or not re.fullmatch('[0-9a-f]{64}', invocation['payload_sha256'])):
+                    raise ValueError('b10_abrupt_successor_binding_invalid')
+                self.utc_ticks(invocation['invocation_utc'])
 
     def download(self, observation, names, deadline):
         phase = self.phase()
@@ -409,6 +522,8 @@ class Trial:
     def read_journal(self, raw, observation):
         if not 0 < len(raw) <= JOURNAL_MAXIMUM or not raw.endswith(b'\n'):
             raise ValueError('journal malformed_frame')
+        if raw.count(b'\n') > 4096:
+            raise ValueError('journal entry bound')
         lines = raw[:-1].split(b'\n')
         if not 0 < len(lines) <= 4096:
             raise ValueError('journal entry bound')
@@ -422,7 +537,9 @@ class Trial:
                    for key in ('monotonic_ticks', 'clock_frequency')) or frame['clock_frequency'] == 0:
                 raise ValueError('journal clock')
             self.utc_ticks(frame['observed_utc'])
-            self.envelope(encode({key: frame[key] for key in ENVELOPE_FIELDS}), frame['kind'], observation)
+            if frame['kind'] not in PRODUCING_KINDS | {'terminal', 'native_error', 'gap'}:
+                raise ValueError('journal record kind')
+            self.envelope(encode({key: frame[key] for key in ENVELOPE_FIELDS}), frame['kind'], observation, maximum=JOURNAL_MAXIMUM)
             if frame['kind'] == 'gap':
                 raise ValueError('journal capture gap')
             frames.append(frame)
@@ -450,11 +567,13 @@ class Trial:
                 or termination['successor_permitted'] is not True or termination['termination'] != 'intended_self_kill'
                 or termination['exit_observed'] is not True or type(termination['exit_code_local_observation']) is not int
                 or termination['exit_code_local_observation'] != 137
-                or termination['native_tail'] != 'unknown_due_to_intended_kill'):
+                or termination['native_tail'] != 'unknown_due_to_intended_kill'
+                or any(termination[key] is not None for key in ('outcome', 'detail', 'signal_observation'))):
             raise ValueError('b10_abrupt_publication_failed')
         child = termination['child']
         if (not isinstance(child, dict) or set(child) != {'pid', 'start_time_ticks', 'boot_id', 'parent_observed_start_time_ticks'}
                 or any(child.get(key) != value for key, value in frames[0]['data'].items())
+                or not nonnegative(child['parent_observed_start_time_ticks'])
                 or child['start_time_ticks'] != child['parent_observed_start_time_ticks']):
             raise ValueError('b10_abrupt_child_identity_mismatch')
         before, after = termination['cgroup_before'], termination['cgroup_after']
@@ -468,6 +587,7 @@ class Trial:
             raise ValueError('b10_abrupt_cgroup_unavailable')
         prepared, accepted, terminals, rejections = {}, [], set(), set()
         control, kill, reports, cut, intent = None, None, [], None, None
+        last_producing = None
         for frame in frames:
             kind, data = frame['kind'], frame['data']
             if kind == 'prepared':
@@ -477,9 +597,15 @@ class Trial:
                         or type(data['ordinal']) is not int or not 0 <= data['ordinal'] <= 4
                         or type(data['sequence']) is not int or data['sequence'] != data['ordinal']
                         or data['key'] != 'B10/' + self.phase()['run_id'] + '/C1/1/' + data['arm']
-                        or type(data['payload_length']) is not int or not 0 < data['payload_length'] <= 900000
+                        or data['probe_id'] != data['key']
+                        or type(data['payload_length']) is not int or not 0 <= data['payload_length'] <= 900000
                         or not isinstance(data['payload_sha256'], str) or not re.fullmatch('[0-9a-f]{64}', data['payload_sha256'])):
                     raise ValueError('prepared binding')
+                if data['arm'] == 'cross_restart':
+                    control_prepared = [item['data']['attempt_id'] for item in prepared.values() if item['data']['arm'] == 'same_instance']
+                    if ('control-post-drain-report.json' not in [entry['name'] for entry in reports]
+                            or any(item not in terminals and item not in rejections for item in control_prepared)):
+                        raise ValueError('b10_abrupt_control_incomplete')
                 prepared[attempt] = frame
             elif kind in ('accepted', 'synchronous_rejection'):
                 attempt = data['attempt_id']
@@ -488,6 +614,9 @@ class Trial:
                         or type(data['prepared_sequence']) is not int or attempt in accepted or attempt in rejections):
                     raise ValueError('prepared acceptance binding')
                 if kind == 'accepted':
+                    if original['data']['role'] == 'original' and original['data']['ordinal'] == 0:
+                        if original['data']['arm'] + '-pre-acceptance-report.json' not in [entry['name'] for entry in reports]:
+                            raise ValueError('report binding')
                     accepted.append(attempt)
                 else:
                     rejections.add(attempt)
@@ -502,6 +631,8 @@ class Trial:
                 if (data['arm'] != arm or original is None or original['data']['arm'] != arm
                         or original['data']['role'] != 'original' or original['data']['ordinal'] != 4
                         or data['cut_attempt_id'] not in accepted
+                        or last_producing is None or last_producing['kind'] != 'accepted'
+                        or last_producing['data']['attempt_id'] != data['cut_attempt_id']
                         or self.utc_ticks(data['release_utc']) - self.utc_ticks(frame['observed_utc']) != 120 * 10000000):
                     raise ValueError('release boundary')
                 unconfirmed = [attempt for attempt in accepted if prepared[attempt]['data']['arm'] == arm
@@ -526,12 +657,43 @@ class Trial:
                         or type(data['report_sequence']) is not int or not 1 <= data['report_sequence'] <= 9223372036854775807
                         or type(data['length']) is not int or not 1 <= data['length'] <= 1048576):
                     raise ValueError('report binding')
-                self.utc_ticks(data['report_capture_utc'])
+                captured = self.utc_ticks(data['report_capture_utc'])
+                if kind == 'pre_acceptance_report':
+                    original = prepared.get(data['attempt_id'])
+                    if (original is None or original['data']['arm'] != data['arm']
+                            or original['data']['role'] != 'original' or original['data']['ordinal'] != 0
+                            or data['attempt_id'] in accepted):
+                        raise ValueError('report binding')
+                else:
+                    prior_drains = [item for item in frames if item['kind'] == 'control_drained' and item['sequence'] < frame['sequence']]
+                    if len(prior_drains) != 1 or captured < self.utc_ticks(prior_drains[0]['observed_utc']):
+                        raise ValueError('report binding')
                 report = {key: data[key] for key in ('name', 'length', 'sha256')}
                 if name not in files:
                     raise ValueError('b10_abrupt_publication_ambiguous')
                 bound(report, name, files[name])
                 reports.append(report)
+            if kind in PRODUCING_KINDS:
+                last_producing = frame
+        if any(attempt not in accepted and attempt not in rejections for attempt in prepared):
+            raise ValueError('prepared acceptance binding')
+        for arm in ('same_instance', 'cross_restart'):
+            originals = [frame['data'] for frame in prepared.values() if frame['data']['arm'] == arm and frame['data']['role'] == 'original']
+            if [data['ordinal'] for data in originals] != list(range(5)):
+                raise ValueError('prepared binding')
+            if any((data['payload_length'], data['payload_sha256']) !=
+                   (originals[0]['payload_length'], originals[0]['payload_sha256']) for data in originals):
+                raise ValueError('prepared binding')
+        resends = [frame for frame in prepared.values() if frame['data']['role'] == 'resend']
+        if cut is None or [frame['data']['predecessor_attempt_id'] for frame in resends] != control:
+            raise ValueError('selection stale')
+        for frame in resends:
+            data = frame['data']
+            original = prepared.get(data['predecessor_attempt_id'])
+            if (data['arm'] != 'same_instance' or original is None
+                    or any(data[key] != original['data'][key] for key in ('key', 'sequence', 'ordinal', 'probe_id', 'payload_length', 'payload_sha256'))
+                    or self.utc_ticks(frame['observed_utc']) < self.utc_ticks(cut['data']['release_utc'])):
+                raise ValueError('prepared binding')
         kill = [attempt for attempt in accepted if prepared[attempt]['data']['arm'] == 'cross_restart'
                 and prepared[attempt]['data']['role'] == 'original' and attempt not in terminals and attempt not in rejections]
         producing = [frame for frame in frames if frame['kind'] in PRODUCING_KINDS]
@@ -556,7 +718,8 @@ class Trial:
         return {'first_pod': observation, 'termination': descriptor('termination.json', files['termination.json']),
                 'release_utc': intent['data']['release_utc'],
                 'start_line_binding': decode((self.p.private / 'b10-abrupt-start-line-binding.json').read_bytes()),
-                'runner_utc': datetime.now(timezone.utc).isoformat(), 'runner_monotonic_ticks': time.monotonic_ns(),
+                'runner_utc': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f') + '0+00:00',
+                'runner_monotonic_ticks': time.monotonic_ns(),
                 'cross_host_timing': 'not_verified'}
 
     def accept_fatal_coverage(self, frames, termination):
@@ -635,6 +798,8 @@ class Trial:
         if files is not None:
             binding = decode(binding_path.read_bytes())
             first = binding['first_pod']
+            if observation['job_name'] != self.phase()['run_id'] + '-c1-r1-loadgen-successor':
+                raise ValueError('b10_abrupt_successor_binding_invalid')
             if observation['pod_name'] == first['pod_name'] or observation['pod_uid'] == first['pod_uid']:
                 raise ValueError('b10_abrupt_successor_binding_invalid')
             receipt = self.envelope(files['completion.json'], 'successor_receipt', observation, first['pod_name'])['data']

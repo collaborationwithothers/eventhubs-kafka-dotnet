@@ -12,9 +12,9 @@ public sealed class B10AbruptEnvironmentScopeDefinition { }
 [Collection("B10AbruptEnvironment")]
 public sealed class B10AbruptOptionsTests
 {
-    private static readonly string[] CheckpointAttemptIds = ["a", "b"];
+    private static readonly string[] CutAttemptIds = ["a"];
     [Theory]
-    [InlineData("supervisor")]
+    [InlineData("parent")]
     [InlineData("successor")]
     [InlineData("child")]
     public void Given_ValidRoleInputs_When_Validated_Then_OnlyThatRoleIsAdmitted(string role)
@@ -25,12 +25,12 @@ public sealed class B10AbruptOptionsTests
         Assert.Equal(role, options.Role);
         Assert.Equal(1, options.Repeat);
         Assert.Equal("b10_abrupt_configuration_invalid", Assert.Throws<InvalidDataException>(
-            () => options.Validate(role == "successor" ? "supervisor" : "successor")).Message);
+            () => options.Validate(role == "successor" ? "parent" : "successor")).Message);
     }
 
     [Theory]
-    [InlineData("supervisor", "StartLineBindingPath", false)]
-    [InlineData("supervisor", "PredecessorBindingPath", true)]
+    [InlineData("parent", "StartLineBindingPath", false)]
+    [InlineData("parent", "PredecessorBindingPath", true)]
     [InlineData("successor", "PredecessorBindingPath", false)]
     [InlineData("successor", "StartLineBindingPath", true)]
     [InlineData("child", "StartLineBindingPath", false)]
@@ -66,7 +66,7 @@ public sealed class B10AbruptOptionsTests
     [InlineData("StartLineBindingPath", "/bindings/../escape.json")]
     public void Given_IncompatibleDiagnosticInput_When_Validated_Then_FailsClosed(string field, string value)
     {
-        var values = Valid("supervisor");
+        var values = Valid("parent");
         values[B10AbruptOptions.Prefix + field] = value;
         Invalid(values);
     }
@@ -79,7 +79,7 @@ public sealed class B10AbruptOptionsTests
     [InlineData("ImageReference")]
     public void Given_MissingDiagnosticAuthorization_When_Validated_Then_FailsClosed(string field)
     {
-        var values = Valid("supervisor");
+        var values = Valid("parent");
         values.Remove(B10AbruptOptions.Prefix + field);
         Invalid(values);
     }
@@ -104,7 +104,7 @@ public sealed class B10AbruptOptionsTests
     [InlineData("SeedF04__Role")]
     public void Given_UnknownCaseCollidingOrMixedPrefix_When_Read_Then_FailsClosed(string name)
     {
-        var values = Valid("supervisor");
+        var values = Valid("parent");
         values[name] = "forbidden";
         Invalid(values);
     }
@@ -112,8 +112,8 @@ public sealed class B10AbruptOptionsTests
     [Fact]
     public void Given_DuplicateSetting_When_Read_Then_FailsClosed()
     {
-        var values = Valid("supervisor").ToList();
-        values.Add(new(B10AbruptOptions.Prefix + "Role", "supervisor"));
+        var values = Valid("parent").ToList();
+        values.Add(new(B10AbruptOptions.Prefix + "Role", "parent"));
         Invalid(values);
     }
 
@@ -121,17 +121,20 @@ public sealed class B10AbruptOptionsTests
     [InlineData("EventsPipeHandle")]
     [InlineData("AckPipeHandle")]
     [InlineData("IdentityChallenge")]
+    [InlineData("ArmTimeoutSeconds")]
+    [InlineData("KillTimeoutSeconds")]
+    [InlineData("ReapTimeoutSeconds")]
+    [InlineData("EofTimeoutSeconds")]
+    [InlineData("MaxFrameBytes")]
     public void Given_ChildFieldMissingOrUsedByPodRole_When_Validated_Then_FailsClosed(string field)
     {
-        var child = Valid("child");
-        string value = child[B10AbruptOptions.Prefix + field];
-        child.Remove(B10AbruptOptions.Prefix + field);
-        Invalid(child);
-        foreach (string role in new[] { "supervisor", "successor" })
+        foreach (string role in new[] { "parent", "child", "successor" })
         {
             var values = Valid(role);
-            values[B10AbruptOptions.Prefix + field] = value;
-            Invalid(values);
+            values[B10AbruptOptions.Prefix + field] = "4";
+            var failure = Assert.Throws<InvalidDataException>(() => B10AbruptOptions.Read(values));
+            Assert.Equal("b10_abrupt_configuration_invalid", failure.Message);
+            Assert.Equal("SettingNameOrDuplicate", B10AbruptOptions.ReadValidationDetail(failure));
         }
     }
 
@@ -143,7 +146,45 @@ public sealed class B10AbruptOptionsTests
     {
         var values = Valid("child");
         values[B10AbruptOptions.Prefix + field] = value;
-        Invalid(values);
+        var failure = Assert.Throws<InvalidDataException>(() => B10AbruptOptions.Read(values));
+        Assert.Equal("b10_abrupt_configuration_invalid", failure.Message);
+        Assert.Equal("SettingNameOrDuplicate", B10AbruptOptions.ReadValidationDetail(failure));
+    }
+
+    [Theory]
+    [InlineData("supervisor")]
+    [InlineData("Supervisor")]
+    public void Given_RemovedOrCaseChangedRole_When_Validated_Then_NamesRole(string role)
+    {
+        var values = Valid("parent");
+        values[B10AbruptOptions.Prefix + "Role"] = role;
+        var failure = Assert.Throws<InvalidDataException>(() => B10AbruptOptions.Read(values).Validate());
+        Assert.Equal("Role", B10AbruptOptions.ReadValidationDetail(failure));
+    }
+
+    [Theory]
+    [InlineData("parent", "loadgen-restart", true)]
+    [InlineData("parent", "loadgen", false)]
+    [InlineData("parent", "loadgen2", false)]
+    [InlineData("parent", "loadgen-successor", false)]
+    [InlineData("child", "loadgen-restart", true)]
+    [InlineData("child", "loadgen", false)]
+    [InlineData("child", "loadgen2", false)]
+    [InlineData("child", "loadgen-successor", false)]
+    [InlineData("successor", "loadgen-successor", true)]
+    [InlineData("successor", "loadgen", false)]
+    [InlineData("successor", "loadgen2", false)]
+    [InlineData("successor", "loadgen-restart", false)]
+    public void Given_JobNameForRole_When_Validated_Then_OnlyItsOwnJobIsAdmitted(string role, string suffix, bool valid)
+    {
+        var values = Valid(role);
+        values[B10AbruptOptions.Prefix + "JobName"] = "synthetic-c1-r1-" + suffix;
+        if (valid) B10AbruptOptions.Read(values).Validate(role);
+        else
+        {
+            var failure = Assert.Throws<InvalidDataException>(() => B10AbruptOptions.Read(values).Validate(role));
+            Assert.Equal("JobName", B10AbruptOptions.ReadValidationDetail(failure));
+        }
     }
 
     [Fact]
@@ -151,11 +192,16 @@ public sealed class B10AbruptOptionsTests
     {
         foreach (var policy in B10AbruptOptions.Policy)
         {
-            foreach (int delta in new[] { -1, 1 })
+            foreach (int delta in new[] { -1, 0, 1 })
             {
-                var values = Valid("supervisor");
+                var values = Valid("parent");
                 values[B10AbruptOptions.Prefix + policy.Key] = (policy.Value + delta).ToString(CultureInfo.InvariantCulture);
-                Invalid(values);
+                if (delta == 0) B10AbruptOptions.Read(values).Validate();
+                else
+                {
+                    var failure = Assert.Throws<InvalidDataException>(() => B10AbruptOptions.Read(values).Validate());
+                    Assert.Equal("FixedPolicy", B10AbruptOptions.ReadValidationDetail(failure));
+                }
             }
         }
     }
@@ -201,7 +247,7 @@ public sealed class B10AbruptOptionsTests
     }
 
     [Theory]
-    [InlineData("supervisor")]
+    [InlineData("parent")]
     [InlineData("successor")]
     [InlineData("child")]
     public async Task Given_ValidConfigurationWithUnmountedBindings_When_ValidatorEntryRuns_Then_ValidatesWithoutOpeningThem(string role)
@@ -230,7 +276,7 @@ public sealed class B10AbruptOptionsTests
     public async Task Given_InvalidConfiguration_When_ValidatorReportsFailure_Then_NamesPredicateWithoutInputValues(
         string field, string value, string detail)
     {
-        var values = Valid("supervisor");
+        var values = Valid("parent");
         values[B10AbruptOptions.Prefix + field] = value;
         using var environment = new EnvironmentScope(values);
         using var errors = new StringWriter(CultureInfo.InvariantCulture);
@@ -324,41 +370,26 @@ public sealed class B10AbruptOptionsTests
     public async Task Given_ControlCheckpointSelection_When_ReleaseRead_Then_UsesFirstSelectedMemberOrRejectsEmpty(bool empty)
     {
         string root = Path.Combine(Path.GetTempPath(), "abrupt-release-" + Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture));
-        Directory.CreateDirectory(Path.Combine(root, "abrupt"));
-        Directory.CreateDirectory(Path.Combine(root, "abrupt-child"));
+        Directory.CreateDirectory(root);
         try
         {
-            var values = Valid("child");
-            values[B10AbruptOptions.Prefix + "OutputRoot"] = root;
-            B10AbruptOptions options = B10AbruptOptions.Read(values);
-            var release = new DateTimeOffset(2026, 11, 7, 0, 2, 0, TimeSpan.Zero);
-            string captured = release.AddMinutes(-2).ToString("O", CultureInfo.InvariantCulture);
-            var frame = new B10AbruptWire.Frame(options.Identity(), 1, captured, 1, 1000, "checkpoint", JsonSerializer.SerializeToElement(new
+            string path = Path.Combine(root, "journal.jsonl");
+            B10AbruptOptions options = B10AbruptOptions.Read(Valid("child"));
+            await using var journal = new B10AbruptJournal(path, options.Identity(), TimeProvider.System);
+            await journal.AppendAsync("child_started", B10AbruptWire.Element(new { pid = 1, start_time_ticks = 1, boot_id = "boot" }), TestContext.Current.CancellationToken);
+            await journal.AppendAsync("prepared", B10AbruptWire.Element(new
             {
-                arm = "same_instance", accepted_attempt_ids = CheckpointAttemptIds,
-                selected_attempt_ids = empty ? Array.Empty<string>() : CheckpointAttemptIds, last_complete_sequence = 0,
-                pre_acceptance_report = new { name = "abrupt-child/same_instance-pre-acceptance-report.json", length = 1,
-                    sha256 = new string('a', 64), report_identity = new { scenario_id = "B10", run_id = "synthetic", role = "LoadGenProducer", client_id = "client" },
-                    report_sequence = 1, report_capture_utc = captured },
-                process = new { pid = 1, parent_pid = 2, boot_id = "boot", start_identity = 1 },
-                checkpoint_utc = captured, checkpoint_monotonic_ticks = 1, release_utc = release.ToString("O", CultureInfo.InvariantCulture)
-            }));
-            await File.WriteAllBytesAsync(Path.Combine(root, "abrupt", "same_instance-checkpoint.json"), B10AbruptWire.WriteFrame(frame), TestContext.Current.CancellationToken);
-
-            Task<B10AbruptProducer.ReleaseInfo> operation = B10AbruptHost.ReadReleaseAsync(options, "same_instance", TimeProvider.System, TestContext.Current.CancellationToken);
-
-            if (empty)
-            {
-                Assert.Equal("b10_abrupt_control_incomplete", (await Assert.ThrowsAsync<InvalidDataException>(() => operation)).Message);
-                Assert.False(File.Exists(Path.Combine(root, "abrupt-child", "same_instance-resumed.json")));
-            }
-            else
-            {
-                B10AbruptProducer.ReleaseInfo info = await operation;
-                Assert.Equal(release, info.Release);
-                Assert.Equal("a", info.SelectedAttemptId);
-                Assert.True(File.Exists(Path.Combine(root, "abrupt-child", "same_instance-resumed.json")));
-            }
+                attempt_id = "a", arm = "same_instance", role = "original", ordinal = 4, probe_id = "B10/synthetic/C1/1/same_instance", key = "B10/synthetic/C1/1/same_instance", sequence = 4,
+                payload_length = 1, payload_sha256 = new string('a', 64), predecessor_attempt_id = (string?)null
+            }), TestContext.Current.CancellationToken);
+            await journal.AppendAsync("accepted", B10AbruptWire.Element(new { attempt_id = "a", prepared_sequence = 2 }), TestContext.Current.CancellationToken);
+            if (empty) await journal.AppendAsync("terminal", B10AbruptWire.Element(new
+            { attempt_id = "a", completion_source = "callback", delivered = true, error_code = 0, persistence_status = 2 }), TestContext.Current.CancellationToken);
+            B10AbruptWire.Frame cut = await journal.AppendCutAsync("a", TestContext.Current.CancellationToken);
+            B10AbruptJournal.Snapshot snapshot = B10AbruptJournal.Read(await File.ReadAllBytesAsync(path, TestContext.Current.CancellationToken), options.Identity());
+            Assert.Equal(empty ? Array.Empty<string>() : CutAttemptIds, snapshot.ControlUnconfirmedAttemptIds);
+            Assert.Equal(DateTimeOffset.ParseExact(cut.ObservedUtc, "O", CultureInfo.InvariantCulture).AddSeconds(120),
+                DateTimeOffset.ParseExact(cut.Data.GetProperty("release_utc").GetString()!, "O", CultureInfo.InvariantCulture));
         }
         finally { Directory.Delete(root, true); }
     }
@@ -373,17 +404,11 @@ public sealed class B10AbruptOptionsTests
             ["Enabled"] = "true", ["Purpose"] = "diagnostic_trial", ["Role"] = role,
             ["RunId"] = "synthetic", ["ScenarioId"] = "B10", ["ConfigurationId"] = "C1", ["Phase"] = "C1", ["Repeat"] = "1",
             ["SourceCommit"] = new('a', 40), ["ImageReference"] = "registry.invalid/parchwell/loadgen@sha256:" + new string('b', 64),
-            ["JobName"] = "synthetic-c1-r1-loadgen" + (role == "successor" ? "2" : ""),
+            ["JobName"] = "synthetic-c1-r1-loadgen-" + (role == "successor" ? "successor" : "restart"),
             ["PodName"] = "synthetic-pod", ["PodUid"] = "synthetic-uid", ["NamespaceName"] = "synthetic-ns",
             ["BlobEndpoint"] = "https://storage.invalid/", ["ScenarioSourceRoot"] = "/app", ["OutputRoot"] = "/work/loadgen",
             [role == "successor" ? "PredecessorBindingPath" : "StartLineBindingPath"] = "/bindings/not-mounted.json",
         };
-        if (role == "child")
-        {
-            values["EventsPipeHandle"] = "4";
-            values["AckPipeHandle"] = "5";
-            values["IdentityChallenge"] = new string('c', 64);
-        }
         foreach (var policy in B10AbruptOptions.Policy) values[policy.Key] = policy.Value.ToString(CultureInfo.InvariantCulture);
         return values.ToDictionary(pair => B10AbruptOptions.Prefix + pair.Key, pair => pair.Value, StringComparer.Ordinal);
     }

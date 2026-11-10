@@ -645,6 +645,7 @@
         }
       },
       "allOf": [
+        {"if": {"properties": {"mode": {"enum": ["loadgen-restart", "loadgen-successor"]}}, "required": ["mode"]}, "then": {"required": ["b10_abrupt_diagnostic"], "properties": {"b10_abrupt_diagnostic": {"const": true}}}},
         {"if": {"properties": {"b10_abrupt_diagnostic": {"const": true}}, "required": ["b10_abrupt_diagnostic"]}, "then": {"required": ["run_kind", "repeat", "b10_abrupt_binding_configmap"], "properties": {"run_kind": {"const": "smoke"}, "phase": {"const": "C1"}, "repeat": {"const": 1}, "mode": {"enum": ["loadgen-restart", "loadgen-successor"]}, "bounds": {"required": ["b10_abrupt"]}}, "not": {"anyOf": [{"required": ["enrichment_image"]}, {"required": ["seed_receipt_configmap"]}, {"required": ["action_role"]}, {"required": ["image_smoke"]}, {"required": ["stage"]}, {"required": ["probe_namespace_data_roles"]}, {"required": ["capture_authentication_metadata"]}, {"required": ["native_authentication"]}, {"required": ["native_principal_id"]}, {"required": ["capture_pods"]}, {"required": ["judge_items"]}, {"required": ["b10_last_verifier_completed_utc"]}, {"required": ["b10_last_loadgen_terminated_utc"]}]}}, "else": {"not": {"required": ["b10_abrupt_binding_configmap"]}}},
         {
           "if": { "properties": { "mode": { "enum": ["b10-sweep-line", "b10-sweep"] } }, "required": ["mode"] },

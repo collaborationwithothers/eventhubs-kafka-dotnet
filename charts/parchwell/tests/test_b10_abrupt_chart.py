@@ -83,7 +83,10 @@ def verify(document, values):
         {'name': 'work', 'emptyDir': {'sizeLimit': '8Gi'}}, {'name': 'tmp', 'emptyDir': {}},
         {'name': 'b10-abrupt-binding', 'configMap': {'name': runtime['b10_abrupt_binding_configmap'],
                                                    'items': [{'key': 'binding.json', 'path': filename}]}}]
-    ordinary = expected_environment(values)
+    ordinary_values = deepcopy(values)
+    ordinary_values['runtime']['mode'] = 'loadgen'
+    ordinary = expected_environment(ordinary_values)
+    ordinary['PARCHWELL_JOB_NAME'] = ('value', name)
     expected = {key: value for key, value in ordinary.items() if not key.startswith('LoadGen__')}
     identity = {'Enabled': 'true', 'Purpose': 'diagnostic_trial', 'Role': 'parent' if first else 'successor',
                 'RunId': runtime['run_id'], 'ScenarioId': 'B10', 'ConfigurationId': 'C1', 'Phase': 'C1',
@@ -126,6 +129,15 @@ def invalid_cases():
         yield 'missing-' + key, case
     case = deepcopy(successor); del case['runtime']['b10_abrupt_binding_configmap']
     yield 'successor-missing-binding', case
+    for original in diagnostic_cases():
+        for flag in (False, None):
+            case = deepcopy(original)
+            del case['runtime']['b10_abrupt_binding_configmap']
+            if flag is None:
+                del case['runtime']['b10_abrupt_diagnostic']
+            else:
+                case['runtime']['b10_abrupt_diagnostic'] = flag
+            yield case['runtime']['mode'] + '-flag-' + str(flag), case
     case = deepcopy(first); case['runtime']['b10_abrupt_diagnostic'] = False
     yield 'false-with-binding', case
     case = deepcopy(first); del case['runtime']['b10_abrupt_diagnostic']
@@ -150,6 +162,14 @@ def main():
         assert ordinary == render(explicit_false, directory, 'explicit-false')
         ordinary_job = next(obj for obj in yaml.safe_load_all(ordinary) if obj and obj['kind'] == 'Job')
         assert 'command' not in ordinary_job['spec']['template']['spec']['containers'][0]
+        for mode in ('loadgen', 'loadgen2'):
+            legacy = deepcopy(diagnostic_cases()[0])
+            legacy['runtime']['mode'] = mode
+            del legacy['runtime']['b10_abrupt_diagnostic']
+            del legacy['runtime']['b10_abrupt_binding_configmap']
+            implicit = render(legacy, directory, 'legacy-' + mode)
+            legacy['runtime']['b10_abrupt_diagnostic'] = False
+            assert implicit == render(legacy, directory, 'legacy-false-' + mode)
         for case_name, values in zip(('first', 'successor'), diagnostic_cases(), strict=True):
             verify(render(values, directory, case_name), values)
             proc = run(['kubeconform', '-strict', '-summary', '-kubernetes-version', '1.35.0',
@@ -158,7 +178,7 @@ def main():
         negatives = list(invalid_cases())
         for index, (case_name, values) in enumerate(negatives):
             render(values, directory, str(index) + '-' + case_name, valid=False)
-    print(f'b10 abrupt chart checks passed: 4 renders, {len(negatives)} invalid selections')
+    print(f'b10 abrupt chart checks passed: 8 renders, {len(negatives)} invalid selections')
 
 
 if __name__ == '__main__':
