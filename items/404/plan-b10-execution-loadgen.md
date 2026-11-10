@@ -1,17 +1,36 @@
 # B10 restart execution part 1 (LoadGen code) contract-grade plan
 
-Revision 3. Issue [#404](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404). Baseline: `main` at `2ed497d6a8d9ea9fe4b0c00ed4f1ce54f3f41e43` (the merged restart redesign, pull request 427).
+Revision 4. Issue [#404](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404). Baseline: `main` at `2ed497d6a8d9ea9fe4b0c00ed4f1ce54f3f41e43` (the merged restart redesign, pull request 427).
 
 This plan changes the load generator so that the first B10 restart instance becomes a parent and a self-killing producer child, as ADR-021 now states, and so that the successor reads the child's journal from Blob storage. It removes the stop/checkpoint/pipe protocol from LoadGen and, under decision 6775474492, brings the chart's abrupt Jobs and the phase script's abrupt evidence reader to schema 3 and the new Job names, so the required .NET verification step keeps passing. Section 3 is the contract that part 2 (trial workflow, three-Job orchestration, timeout Job wiring, operations documents) will cite; section 13 lists what Hari has answered and what is still open.
 
-## 0. Changes since Revision 2
+## 0. Changes since Revision 3
+
+Revision 3 is at `c96909355b97bb9db77e911e209ea54b2d2cca6d`. A narrow delta check (relayed by the control session on 2026-11-10) confirmed B1 to B3 and N1 to N7 fixed and raised D1 and E1 to E3. Fixes:
+
+| Finding | Fix |
+|---|---|
+| D1 (blocking): `charts/parchwell/values.schema.json` gates `runtime.mode` in more places than the abrupt conditional; the new modes failed `helm template`. | Section 2.1 item 4 and section 3.13 now name every mode enum the new modes must join, and section 2.2 exempts exactly those entries. Proof below. |
+| D1, same class (rule 5): a fourth enum, the conditional that requires `repeat` and `loadgen_job_name` for `start-line`, `loadgen`, `loadgen2` and `verify` (line 794 on `main`), also lists modes. | Added to the same list, so the new modes keep requiring `loadgen_job_name`. Proof below. |
+| E1: hard-coded mode literals in `b10_abrupt.py` would raise `b10_abrupt_configuration_invalid` once `execution_modes('C1')` changes. | Section 3.13 names `run()` line 626, the collection loop at lines 691 and 695, and the role mapping in `values()` line 241; renaming them is stated not to change the orchestration order section 2.2 freezes. |
+| E2: section 2.4 still asked Q4; T-H4 named no file; the section 8 preamble said every test is C#. | Section 2.4 now says the narrowing awaits Hari's confirmation. T-H1 to T-H4 name their Python files; the preamble covers both. |
+| E3: acceptance command 6 matched a stale `.pdb` under `bin/`. | Command 6 now searches `*.cs` only. |
+
+D1 proof, run by this planning session on 2026-11-10 in a scratch worktree of `main` `2ed497d6` (pinned tools at `/opt/parchwell/tools`, helm v4.3.1), then discarded with `git checkout -- charts`. Input: `diagnostic_cases()[0]` from `charts/parchwell/tests/test_b10_abrupt_chart.py` with `runtime.mode` replaced, written with `test_chart.with_case`, rendered by `helm template parchwell charts/parchwell --values <case>`.
+- Before any edit: `loadgen-restart` and `loadgen-successor` exit 1, with "value must be one of" errors from the global enum and from the abrupt conditional.
+- After the edits of section 3.13 to the four enums plus the role helper (`_helpers.tpl` line 9 adds the two modes to the `loadgen` role): `loadgen-restart` exit 0, Job `synthetic-c3-c1-r1-loadgen-restart`; `loadgen-successor` exit 0, Job `synthetic-c3-c1-r1-loadgen-successor`.
+- Same edits, flag true: `loadgen` and `loadgen2` exit 1, "at '/runtime/mode': value must be one of 'loadgen-restart', 'loadgen-successor'" (T-H2).
+- Same edits, flag false and no binding configmap: `loadgen` and `loadgen2` exit 0.
+- Same edits, `loadgen-restart` without `loadgen_job_name`: exit 1, "missing property 'loadgen_job_name'".
+
+## 0.1 Changes since Revision 2
 
 Revision 2 is at `46e68bf719f745c727c91cfc9b26031498469d9e`. Hari answered its questions "A, accept both" ([comment 6775679271](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6775679271)). Revision 3 records those answers and changes nothing else:
 - Q7 decided as option A: `infra/scripts/phase/phase.py` line 660 is in scope (section 2.1 item 5, section 3.13), with new test T-H4 proving the hook fires for both abrupt modes and not for plain `loadgen`, and mutation M21.
 - The two clear defaults of Revision 2's section 13.3 become decided defaults D7 and D8 (section 12).
 - Section 13 now holds only answered questions; nothing is open.
 
-## 0.1 Changes since Revision 1
+## 0.2 Changes since Revision 1
 
 Revision 1 is at `76d2744ce14cf9bf8f973d5034b0a11d3c5ce673`. A fresh reproduction check reported fail (relayed by the control session on 2026-11-10). Each finding and its fix:
 
@@ -60,7 +79,7 @@ Not authority: the held offline end-to-end test plan and the paused PR3b plan (s
 1. `src/Parchwell.LoadGen/Run/Abrupt/**`: change, add and delete files to implement section 4. File split and private names are the implementer's choice.
 2. `src/Parchwell.LoadGen/Program.cs`: only the four abrupt flags of section 3.1 (lines 41 to 48 on `main`). The reserved-environment refusal at lines 50 to 54 stays byte-identical.
 3. `tests/Parchwell.LoadGen.Tests/Abrupt/**`: new tests of section 8, updated existing tests, and deletion of the tests listed in section 2.4 only.
-4. Chart, under decision 6775474492 and section 3.13 only: `charts/parchwell/values.yaml` (`runtime.bounds.b10_abrupt`), `charts/parchwell/values.schema.json` (the `b10_abrupt` bounds constant and the abrupt mode enum), `charts/parchwell/templates/jobs.yaml` (the `$abrupt` branches only), `charts/parchwell/templates/_helpers.tpl` (the role mapping for the two abrupt modes), `charts/parchwell/tests/test_b10_abrupt_chart.py`, `charts/parchwell/tests/test_b10_abrupt_host.py`.
+4. Chart, under decision 6775474492 and section 3.13 only: `charts/parchwell/values.yaml` (`runtime.bounds.b10_abrupt`), `charts/parchwell/values.schema.json` (the `b10_abrupt` bounds constant, and four `mode` enums: the global `runtime.mode` enum at lines 92 to 106, the conditional requiring `repeat` and `loadgen_job_name` at line 794, the abrupt conditional at line 646, and the B10 scenario conditional at line 929, all on `main`), `charts/parchwell/templates/jobs.yaml` (the `$abrupt` branches only), `charts/parchwell/templates/_helpers.tpl` (line 9, the role mapping, gains the two abrupt modes), `charts/parchwell/tests/test_b10_abrupt_chart.py`, `charts/parchwell/tests/test_b10_abrupt_host.py`.
 5. Phase, under decision 6775474492 and section 3.13 only: `infra/scripts/phase/b10_abrupt.py` (constants, envelope reader, first-publication acceptance, successor binding, successor collection, abrupt mode names), `infra/scripts/phase/tests/test_b10_abrupt.py`, `infra/scripts/phase/tests/check_b10_abrupt_producers.py`. `infra/scripts/phase/phase.py` only at the render-hook condition, line 660 on `main` (comment 6775679271, Q7 option A); `B10_MODES` (line 26) and the ordinary B10 collection loop (line 950) stay byte-identical.
 6. `items/404/state.md`, under docs/agents/factory.md "Item state file", and a new receipt `items/404/execution-loadgen-receipt.md`. The implementing tool is Codex (decision 6774981258), so the branch is `codex/` with the issue number and every commit carries the Codex trailer (AGENTS.md "Implementer and reviewer").
 
@@ -70,8 +89,8 @@ No `*.csproj`, `Directory.*.props`, `packages*.lock.json`, solution file, new pr
 
 - Every ordinary-host file: everything under `src/Parchwell.LoadGen/` outside `Run/Abrupt/` and outside `Program.cs` lines 41 to 48 (decision 6774480762 point 1). This includes `Run/Input/LoadGenHostOptions.cs`, `Run/Restart/**`, `Run/Execution/**`, `Run/Publication/**` and `Run/Evidence/**`.
 - `src/Parchwell.Kafka/**`, `src/Parchwell.Verifier*/**`, `src/Parchwell.Scenarios/**`.
-- Every file under `charts/` and `infra/` not named in section 2.1, and in the named chart files every line outside the abrupt branches, so ordinary and legacy `loadgen2` rendering is unchanged (`charts/parchwell/tests/test_chart.py` keeps passing unedited).
-- In `infra/scripts/phase/b10_abrupt.py`: the trial orchestration order in `run()` (no third Job), the start-line metadata checks, including `expected_job_names` (the start line is produced by `src/Parchwell.Verifier`, a protected path and part 2's), and the failure-diagnostics machinery.
+- Every file under `charts/` and `infra/` not named in section 2.1, and in the named chart files every line outside the abrupt branches and the four enum entries and helper line named in section 2.1 item 4, so ordinary and legacy `loadgen2` rendering is unchanged (`charts/parchwell/tests/test_chart.py` keeps passing unedited).
+- In `infra/scripts/phase/b10_abrupt.py`: the trial orchestration order in `run()` (no third Job; renaming the mode literals of section 3.13 is not a change of order), the start-line metadata checks, including `expected_job_names` (the start line is produced by `src/Parchwell.Verifier`, a protected path and part 2's), and the failure-diagnostics machinery.
 - `.github/**`, `docs/**`, `scripts/**`, `scenarios/**` (no `expected.yaml`), `results/**`, `README.md`, `AGENTS.md`, `CLAUDE.md`.
 - `tests/Parchwell.LoadGen.Tests/Component/LocalKafkaFixture.cs` (shared with the held offline test plan; this plan uses it unchanged).
 - Every test file outside `tests/Parchwell.LoadGen.Tests/Abrupt/`.
@@ -89,13 +108,13 @@ Consequence, accepted by this scope and stated for part 2: after part 1 merges, 
 
 ### 2.4 Tests deleted with the code they test
 
-The rule for every file below: delete only a test method whose subject is code that ADR-021 protocol rule 15 removes (stop, resume, checkpoint, pipe framing, supervisor journal, cohort seals, kill selection, burst). Keep or adapt every method whose subject survives (report binding, terminal reconciliation, wire validation, statistics, cgroup, failure-report reduction, publication, successor completion). The receipt lists every deleted method with the removed member it exercised, and every kept or adapted method with its new home. Hari accepted the deletions by name (decision 6774981258, Q4); keeping a method this rule keeps narrows that acceptance and needs no new decision.
+The rule for every file below: delete only a test method whose subject is code that ADR-021 protocol rule 15 removes (stop, resume, checkpoint, pipe framing, supervisor journal, cohort seals, kill selection, burst). Keep or adapt every method whose subject survives (report binding, terminal reconciliation, wire validation, statistics, cgroup, failure-report reduction, publication, successor completion). The receipt lists every deleted method with the removed member it exercised, and every kept or adapted method with its new home. Hari accepted the deletions by name (decision 6774981258, Q4); keeping a method this rule keeps narrows that acceptance, and the narrowing awaits Hari's confirmation (the control session is asking him; the comment ID will be added when given).
 
 - `B10AbruptSupervisorTests.cs` (46 test methods, counted by script on `main`; Revision 1's 48 counted two `Dispose` helpers at lines 1492 and 1531). Kept or adapted, at least: `Given_AcceptedWithoutReport_When_LateReportArrives_Then_OnlySampleMissingPersists` (line 26) and `Given_DuplicateReport_When_AcceptedArrives_Then_OnlyBindingInvalidPersists` (line 38), retargeted to the child's `pre_acceptance_report` record; `Given_GenuineTerminal_When_CapturedAroundAcceptance_Then_RecordIsRetained` (line 145), retargeted to the journal reader; `Given_OversizeFailure_When_Reporting_Then_OriginalSurvivesAndDiagnosticReduces` (line 960) and `Given_OversizeCleanupCause_When_Reporting_Then_BuildReducesItAndWrites` (line 984), retargeted to the failure report section 3.9 keeps. `Given_NoDurableAcceptance_When_Finalizing_Then_ReportsKillTooEarly` (line 17) is replaced by T-R1, and the exposure-inconclusive method by T-C3. The file itself may be deleted once its kept methods have moved.
 - `B10AbruptProcessTests.cs`: methods that exercise `RequestStop`, `ConfirmStopped`, `Resume`, `RequestKill`, `EventsReady` or the pipe handshake. `/proc` stat parsing tests stay if `B10AbruptProc` stays. `B10AbruptPublishedApphostTests` (line 474) stays, because `test_b10_abrupt_host.py` runs it.
 - `B10AbruptJournalTests.cs`, `B10AbruptProducerTests.cs`, `B10AbruptWireProducerTests.cs`: methods whose subject is the supervisor-assigned journal, IPC messages, checkpoints, seals, the timeout cohort in the child, or schema 2.
 
-AGENTS.md "Code Review Rules" flags a deleted test in the same pull request as its code as P1. Q4 asks Hari to accept these deletions by name.
+AGENTS.md "Code Review Rules" flags a deleted test in the same pull request as its code as P1. Hari accepted these deletions by name (decision 6774981258, Q4); reviews answer that P1 by citing it and this section.
 
 ## 3. External contracts (the interface part 2, the offline test and PR3b cite)
 
@@ -232,7 +251,7 @@ After decision 6775474492, part 1 delivers the chart's abrupt Jobs and the phase
 ### 3.13 Chart and phase changes (decision 6775474492)
 
 Chart:
-- Abrupt modes are `loadgen-restart` and `loadgen-successor`, allowed only with `b10_abrupt_diagnostic` true; the schema's abrupt mode enum becomes exactly those two. The existing Job-name helper then yields the section 3.3 names. Ordinary modes `loadgen` and `loadgen2`, and their rendering, are unchanged.
+- Abrupt modes are `loadgen-restart` and `loadgen-successor`, allowed only with `b10_abrupt_diagnostic` true. In `values.schema.json` the abrupt conditional's enum (line 646) becomes exactly those two; the global `runtime.mode` enum (lines 92 to 106), the conditional requiring `repeat` and `loadgen_job_name` (line 794) and the B10 scenario conditional (line 929) each gain both, keeping every existing entry. `_helpers.tpl` line 9 adds both to the `loadgen` role. The existing Job-name helper then yields the section 3.3 names. Ordinary modes `loadgen` and `loadgen2`, and their rendering, are unchanged.
 - `loadgen-restart`: `args` `["--b10-abrupt-parent"]`, `B10Abrupt__Role` `parent`, `B10Abrupt__StartLineBindingPath` `/bindings/b10-abrupt/start-line.json`. `loadgen-successor`: `args` `["--b10-abrupt-successor"]`, `B10Abrupt__Role` `successor`, `B10Abrupt__PredecessorBindingPath` `/bindings/b10-abrupt/predecessor.json`. Command stays `["/app/Parchwell.LoadGen"]`.
 - `runtime.bounds.b10_abrupt` and its schema constant become exactly the nine fixed policy keys of section 3.2 with their values.
 - `test_b10_abrupt_chart.py` and `test_b10_abrupt_host.py` assert these literals; the five rejected inputs keep their details (`Role`, `SettingNameOrDuplicate`, `DiagnosticIdentity`, `Binding`, `SettingNameOrDuplicate`), and the host test adds `B10Abrupt__Role=supervisor` rejected with `Role` and `B10Abrupt__JobName={run}-c1-r1-loadgen` rejected with `JobName`. Its final line becomes `b10 abrupt host checks passed: 2 rendered environments, 7 rejected inputs, production-byte bridge`.
@@ -242,7 +261,7 @@ Phase (`infra/scripts/phase/b10_abrupt.py`):
 - The envelope reader requires `schema_version` 3 (an integer) and rejects 2.
 - `accept_diagnostic_publication` reads the journal with the section 3.5 rules independently of the C# reader, checks the manifest and termination receipt chain, requires `successor_permitted` true, recomputes both unconfirmed sets and requires them equal to the receipt's, and returns the section 3.11 binding.
 - `collect` checks the successor's `completion.json` as section 3.11 states.
-- `execution_modes('C1')` returns `('loadgen-restart', 'loadgen-successor')`; `values`, `release_successor` and the configmap role mapping use those modes. The two-Job order of `run()` is unchanged (part 2 adds the timeout Job).
+- `execution_modes('C1')` returns `('loadgen-restart', 'loadgen-successor')`. Every hard-coded abrupt mode literal follows: `run()` line 626 `self.job('loadgen', deadline)` becomes `'loadgen-restart'`; the collection loop's `('loadgen', 'loadgen2')` at line 691 and `'loadgen2'` at line 695 become the two new modes and `'loadgen-successor'`; the role mapping in `values()` line 241 maps `loadgen-restart` to `first`; `release_successor` runs `'loadgen-successor'`. Without these, `values()` (line 239) would raise `b10_abrupt_configuration_invalid` and break the six tests that call `self.trial.run()` (`test_b10_abrupt.py` lines 200, 394, 544, 595, 621 and 696 on `main`, found by script; the check named five). These are renames of the same two Jobs, not a change of the orchestration order frozen by section 2.2; part 2 adds the timeout Job.
 - `check_b10_abrupt_producers.py` and `ProducedBytesCases` read the export's `first/` members named by `FIRST_FILES` and the manifest, and the mutation cases become schema-3 cases (T-H3).
 - `infra/scripts/phase/phase.py` line 660 changes from `mode in ("loadgen", "loadgen2")` to `mode in ("loadgen-restart", "loadgen-successor")` (comment 6775679271, Q7 option A). No other line of `phase.py` changes.
 
@@ -319,7 +338,7 @@ New in Revision 1, answered by decision 6774981258 (Q6): DA7 accepted by name; D
 
 ## 8. Test map
 
-All tests under `tests/Parchwell.LoadGen.Tests/Abrupt/`, named `Given_When_Then`. "Real" means a real OS process started by `Process.Start`, real `kill`, and, where stated, real Confluent.Kafka 2.16.0 against `LocalKafkaFixture` unchanged. The release delay in tests is 120 s unless a test says otherwise; a test that needs a shorter delay uses a test-only seam and says so, and T-E1 uses the real 120 s.
+C# tests (sections 8.1 and 8.2) are under `tests/Parchwell.LoadGen.Tests/Abrupt/`, named `Given_When_Then`. Python tests (section 8.2a) are in the file each row names. "Real" means a real OS process started by `Process.Start`, real `kill`, and, where stated, real Confluent.Kafka 2.16.0 against `LocalKafkaFixture` unchanged. The release delay in tests is 120 s unless a test says otherwise; a test that needs a shorter delay uses a test-only seam and says so, and T-E1 uses the real 120 s.
 
 ### 8.1 Unit and component tests
 
@@ -372,10 +391,10 @@ All tests under `tests/Parchwell.LoadGen.Tests/Abrupt/`, named `Given_When_Then`
 
 | ID | Requirement | Input | Expected |
 |---|---|---|---|
-| T-H1 | R16, 3.13 | render with `mode` `loadgen-restart` and `loadgen-successor`, `b10_abrupt_diagnostic` true | Job names `{run}-c1-r1-loadgen-restart` and `-successor`; args and Role as section 3.13; the nine policy keys exactly; no pipe key |
-| T-H2 | R16 | render with `mode` `loadgen` and `loadgen2` and `b10_abrupt_diagnostic` true | schema rejection; with the flag false, output equal to `main`'s for the same values |
-| T-H4 | 3.13, comment 6775679271 | `Phase.render` in a diagnostic phase (`b10_abrupt_diagnostic` true) with `b10_abrupt().values` patched to record its calls, for modes `loadgen-restart`, `loadgen-successor` and `loadgen` | the hook is called once each for `loadgen-restart` and `loadgen-successor`, with that mode, and not called for `loadgen`; `git diff` of `phase.py` against `main` shows only line 660 |
-| T-H3 | 3.13 | produced schema-3 export; then mutations: `schema_version` 2; `successor_permitted` false; journal last byte removed; manifest journal SHA-256 changed; `kill_unconfirmed_attempt_ids` with one member removed | accepted; then `ValueError` for each mutation |
+| T-H1 | R16, 3.13; `charts/parchwell/tests/test_b10_abrupt_chart.py` | render with `mode` `loadgen-restart` and `loadgen-successor`, `b10_abrupt_diagnostic` true | Job names `{run}-c1-r1-loadgen-restart` and `-successor`; args and Role as section 3.13; the nine policy keys exactly; no pipe key |
+| T-H2 | R16; `charts/parchwell/tests/test_b10_abrupt_chart.py` | render with `mode` `loadgen` and `loadgen2` and `b10_abrupt_diagnostic` true | schema rejection; with the flag false, output equal to `main`'s for the same values |
+| T-H4 | 3.13, comment 6775679271; `infra/scripts/phase/tests/test_b10_abrupt.py` | `Phase.render` in a diagnostic phase (`b10_abrupt_diagnostic` true) with `b10_abrupt().values` patched to record its calls, for modes `loadgen-restart`, `loadgen-successor` and `loadgen` | the hook is called once each for `loadgen-restart` and `loadgen-successor`, with that mode, and not called for `loadgen`; `git diff` of `phase.py` against `main` shows only line 660 |
+| T-H3 | 3.13; `infra/scripts/phase/tests/test_b10_abrupt.py` (`ProducedBytesCases`, run through `check_b10_abrupt_producers.py`) | produced schema-3 export; then mutations: `schema_version` 2; `successor_permitted` false; journal last byte removed; manifest journal SHA-256 changed; `kill_unconfirmed_attempt_ids` with one member removed | accepted; then `ValueError` for each mutation |
 
 T-E1 and T-E2 run in the same test class, sequentially, one repeat each per test run; the receipt records their output for one run.
 
@@ -425,7 +444,7 @@ Each command was run in this planning session where stated, with its observed ou
 3. `./scripts/verify-dotnet.sh`: passes.
 4. `git diff --name-only origin/main...HEAD` prints only paths allowed by section 2.1 (script check in the receipt).
 5. `git diff origin/main...HEAD -- src/Parchwell.LoadGen ':!src/Parchwell.LoadGen/Run/Abrupt' ':!src/Parchwell.LoadGen/Program.cs'` prints nothing; and the diff of `Program.cs` touches only lines 41 to 48 (R15, P5).
-6. `grep -rnE 'AnonymousPipe|SIGSTOP|SIGCONT|RequestStop|Resume\(|EventsReady|kill-selection|checkpoint|B10AbruptChildChannel|B10AbruptSupervisor|OwnedProducerProcess|ProbeBurstSize' src/Parchwell.LoadGen` prints nothing (R14).
+6. `grep -rnE 'AnonymousPipe|SIGSTOP|SIGCONT|RequestStop|Resume\(|EventsReady|kill-selection|checkpoint|B10AbruptChildChannel|B10AbruptSupervisor|OwnedProducerProcess|ProbeBurstSize' --include='*.cs' src/Parchwell.LoadGen` prints nothing (R14); `--include` keeps build output under `bin/` and `obj/` out of the search.
 7. The mutation table: 21 rows, each with the failing test name and its output line.
 8. `LC_ALL=C grep -n -P '[^\x00-\x7F]'` over every changed file prints nothing.
 9. The required step, as CI runs it: `PARCHWELL_TOOLS_DIRECTORY=<pinned tools> DOTNET_ROOT=<dotnet> python3 infra/scripts/lifecycle/command.py 900 -- bash charts/parchwell/tests/check-loadgen-host.sh`; the last line is R16's. This planning session ran it on clean `main` `2ed497d6` with the pinned tools at `/opt/parchwell/tools` and `DOTNET_ROOT=/opt/parchwell/dotnet`; its last line was `b10 abrupt host checks passed: 2 rendered environments, 5 rejected inputs, production-byte bridge`.
