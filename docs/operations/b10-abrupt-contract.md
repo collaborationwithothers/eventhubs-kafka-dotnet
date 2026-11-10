@@ -2,6 +2,8 @@
 
 This contract defines the diagnostic-only B10 abrupt restart execution: its wire objects, state machine, fixed policy values and failure names. It is diagnostic-only and not active for scientific publication. ADR-021 in [the blueprint](../blueprint.md) owns the scientific rules; this page restates none of them.
 
+Status: superseded protocol. This page describes the stop/checkpoint supervisor protocol that `main` still implements. ADR-021's 2026-11-10 amendment ([decision 6762516530](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6762516530)) replaces that protocol with a self-killing producer child and a parent that only starts it and publishes its journal. No B10 trial runs on this protocol. The implementation pull requests of the amendment replace this page's wire, state machine, policy and failure names; until then, this page stays true of the code.
+
 On this page, PR1, PR2 and PR3 are the three pull requests of [issue 404](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404): PR1 recorded the design, PR2 adds this diagnostic execution, and PR3 is planned to add the verifier support. A decision named by a number is Hari's comment of that number on issue 404, linked where it appears.
 
 ## References used by the wire text
