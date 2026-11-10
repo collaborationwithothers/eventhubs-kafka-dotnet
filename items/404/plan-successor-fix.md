@@ -1,12 +1,16 @@
 # Successor fix contract-grade plan
 
-Revision 6. Issue #404. Implementing tool: Claude Code, under [standing decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614), point 3, replacing Codex for this pull request. Base: `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`, the source of diagnostic trial 7.
+Revision 7. Issue #404. Implementing tool: Claude Code, under [standing decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614), point 3, replacing Codex for this pull request. Base: `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`, the source of diagnostic trial 7.
 
 The successor producer in trial 7 disposed its native client before it asked the statistics session to complete. No statistics report could then arrive after the completion boundary, so the evidence guard failed. This pull request completes statistics while the client is still live, then disposes it, then completes evidence. It also gives the guard one fact per statistics diagnostic code the session can emit, which raises the per-site fact cap from 16 to 35 (decision 6751449502). It changes no protocol sequence, gate, timeout, interval, failure name or wire member, touches no protected path, and authorizes no trial.
 
 This plan states requirements and tests as observable behaviour. Code text, member names, private structure and line numbers are the implementer's. Line numbers below cite `main` only to locate today's behaviour. A technique named in a test is a permitted example unless the row says it is required.
 
-### Changes since Revision 5 (commit `fc514377`)
+### Changes since Revision 6 (commit `db28045a`)
+
+From the delta reproduction check of Revisions 5 and 6 (no blocking finding), applied exactly: T9's accepted outcome now also requires evidence not faulted (`evidence_faulted` 0), so the branch is no wider than decision 6754970055.
+
+### Changes in Revision 6, from Revision 5 (commit `fc514377`)
 
 From plan check [6754944477](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754944477) blocking finding B1, decided by [decision 6754970055](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754970055) under standing rule 1:
 
@@ -433,7 +437,7 @@ T9. `Given_RealNativeProducerWithoutBroker_When_CompletionMembersRun_Then_Statis
   - expected brokers `["127.0.0.1:1/bootstrap"]`;
   - wait 500 ms, then statistics completion, dispose, evidence completion.
 - Expected (pass): no exception; `capture/capabilities.json` `statistics_completion` matches the T1 pattern; evidence not faulted.
-- Accepted, not a pass of R1 ([decision 6754970055](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754970055)): `b10_abrupt_guard_failed` with an incomplete completion whose diagnostics contain `duplicate_property` or `invalid_or_missing_field` (the second labelled "cause not identified"), and no code other than those two and `completion_timeout`. The test records the outcome and its codes in its output, and passes.
+- Accepted, not a pass of R1 ([decision 6754970055](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754970055)): `b10_abrupt_guard_failed` with an incomplete completion whose diagnostics contain `duplicate_property` or `invalid_or_missing_field` (the second labelled "cause not identified"), and no code other than those two and `completion_timeout`, and evidence not faulted (`evidence_faulted` 0). The test records the outcome and its codes in its output, and passes.
 - Any other incomplete completion, or any other failure, fails T9.
 - Masking cost: in a run with the accepted outcome, T9 kills nothing. Every mutation row in section 7.3 that lists T9 therefore also lists a deterministic killer: M3 has T1, T4 x2 and T5. No other row depends on T9.
 - Observed on the prototype, 2026-11-10: 250 of 250 runs passed and none gave the accepted outcome, so the accepted branch has not been exercised. Earlier, about 450 runs under the Revision 5 expectation all passed.
