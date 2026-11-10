@@ -188,6 +188,7 @@ internal static class B10AbruptProcessHarness
         private string directory = "";
         private Control control = null!;
         private readonly List<Action<DeliveryReport<byte[], byte[]>>> pending = [];
+        private readonly object statisticsGate = new();
         private Timer? reports;
         private TimeProvider clock = TimeProvider.System;
         private long producerCreatedMicroseconds;
@@ -196,7 +197,10 @@ internal static class B10AbruptProcessHarness
         {
             directory = output; control = setup; clock = timeProvider;
             producerCreatedMicroseconds = checked((long)((Int128)clock.GetTimestamp() * 1000000 / clock.TimestampFrequency));
-            reports = new Timer(_ => statistics(producer, RawStatistics()), null, TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(20));
+            reports = new Timer(_ =>
+            {
+                lock (statisticsGate) statistics(producer, RawStatistics());
+            }, null, TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(20));
         }
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {
