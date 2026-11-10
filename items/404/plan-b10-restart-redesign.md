@@ -1,14 +1,34 @@
 # B10 restart redesign contract-grade plan
 
-Revision 1. Issue 404, pull request short name `B10 restart redesign`. Baseline: `main` at `0f769fb240d1de50192f4c8eefaf12698002efc7`. Status: not posted, not checked, not approved.
+Revision 2. Issue 404, pull request short name `B10 restart redesign`. Baseline: `main` at `0f769fb240d1de50192f4c8eefaf12698002efc7`. Status: not posted, not checked, not approved.
 
 This pull request changes design text only. It rewrites ADR-021's restart protocol and the B10 exceptions in ADR-012, ADR-013, ADR-019 and ADR-020 to the simplified restart that Hari chose in [decision 6762516530](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6762516530), and marks the two B10 operations documents as describing the superseded protocol. It changes no code, test, workflow, chart or Terraform; `docs/blueprint.md` is protected, so Hari approves and merges, and his merge is the recorded amendment that ADR-021 protocol rule 15 requires.
 
-The replacement text in appendix A is complete except for ten bracketed slots, `[Q1]` to `[Q11]` (no `[Q3]`, `[Q5]`, `[Q7]`), each filled verbatim from Hari's answer to the open question of that number in section 14. Until every slot is answered, the plan is not approvable.
+The replacement text in appendix A is complete except for eleven bracketed slots, `[Q1]`, `[Q2]`, `[Q4]`, `[Q6]`, `[Q8a]`, `[Q8b]`, `[Q8c]`, `[Q9]`, `[Q10]`, `[Q11]` and `[Q15]`, each filled verbatim from Hari's answer to the open question of that number in section 14. Until every slot is answered, the plan is not approvable.
 
 ## 0. Revision history
 
-- Revision 1: first revision, written by a planning session started by the #347 control session on 2026-11-10. Not posted, not checked.
+- Revision 1 (`3b5e00399a6c8af4dd58eb796a9e93372e3390ff`): first revision, written by a planning session started by the #347 control session on 2026-11-10. A fresh reproduction check, relayed by the control session the same day, reported "Verdict: fail".
+- Revision 2: answers that check. Not posted, not checked.
+
+### 0.1 Changes since Revision 1
+
+| Finding | Fix in Revision 2 |
+|---|---|
+| B1: unconfirmed control originals classified two ways; rule 14 bound fails every eligible repeat | "Unconfirmed" is now set membership only (block P rule 3). `unreported_seen`/`unreported_unseen` and the rule 14 bound apply only to originals with no complete terminal record in the journal, which rule 5 confines to the cross-restart arm. A12-11, A12-12, A12-13, A13-3, A20-9, A21-10 and A21-11 narrowed; new A12-19 (line 429) and A21-18 (Classification, line 685); rule 13 counts split into unconfirmed-set size and originals without a terminal record. Section 6 rows added. |
+| B2: line 725 "both Jobs' expected names" | New A21-19: "all three C1 Jobs' expected names". |
+| B3: stale "first producer", "either", "kill probe" | New A12-15 (409), A12-16 (410), A12-17 (418), A12-18 (425), A13-8 (435), A13-9 (447), A19-3 (601), A20-10 (656), A21-17 (681); A19-2 widened to cover 601's first instance. A script sweep of lines 360 to 735 after applying finds no remaining B10 use of these terms. "First restart producer" is used throughout, because under Q6 option A "first producer" would name the timeout producer. |
+| B4: undisclosed weakening of termination evidence | Rule 7 now states that the journal holds no record of the signal request, so a crash between `kill_intent` and the signal is not distinguishable by journal evidence, and adds slot `[Q15]` for the parent recording the observed exit status as competing evidence. Rule 9's limits sentence names this gap. Rule 15 restores main's sentence "It cannot test future verifier kill/crash separation; production-byte synthetic tests and science cover that." Section 6 rows for protocol 2, 7, 9 and 15 now state the evidence effect. New Q15. |
+| B5: parent does more than point 4's "only" | New Q16 puts the interpretation of point 4 against point 7 to Hari. |
+| N1: dropped trial criteria | Rule 15 restates journal success criteria for the new path and "No C0 or replacement trial." |
+| N2: double period at the Q9 slot | Slot now reads `[Q9] Reconcile`; each Q9 option ends with its own period. |
+| N3: Q2 has no recommended value; Q12 note has no options | Q2 now gives a policy recommendation with its basis, labelled estimate. The legacy three-Job ownership is now Q17 with options and a recommendation. |
+| N4: Q3 option B citation | Option B now also cites 6706730103 point 6. |
+| N5: protected-path statements | `docs/operations/` is not protected (`.github/CODEOWNERS` lists it with no owner). Sections 2.1 and 8 corrected; section 8 step 6 names `Parchwell.Verifier*/`. |
+| N6: carry-over overstated | Section 7 names the PR3b arm-object and envelope members that change. |
+| N7: appendix B writes files after FAIL | Part 1 now writes nothing and exits 1 on any failure. |
+| N8: process text in OW-1 | The trial-gate sentence is removed from OW-1; ADR-021 rule 15 states it once. |
+
 
 ## 1. Goal and authority
 
@@ -35,9 +55,9 @@ Not authority for this plan: [6762055013](https://github.com/collaborationwithot
 
 ### 2.1 Files allowed to change
 
-1. `docs/blueprint.md`: exactly the 49 sentence edits and the one block replacement (block P) in appendix A, at the lines given there on `0f769fb2`. Protected path.
-2. `docs/operations/b10-abrupt-contract.md`: one status paragraph after line 3 (edit OC-1). Protected path (`/docs/`).
-3. `docs/operations/b10-workflow.md`: one paragraph after line 59 (edit OW-1). Protected path (`/docs/`).
+1. `docs/blueprint.md`: exactly the 61 sentence edits and the one block replacement (block P) in appendix A, at the lines given there on `0f769fb2`. Protected path (`/docs/` in `.github/CODEOWNERS`).
+2. `docs/operations/b10-abrupt-contract.md`: one status paragraph after line 3 (edit OC-1). Not protected: `.github/CODEOWNERS` lists `/docs/operations/` with no owner.
+3. `docs/operations/b10-workflow.md`: one paragraph after line 59 (edit OW-1). Not protected, as item 2. It states what the section describes; the trial gate is stated once, in ADR-021 rule 15, not here.
 4. A receipt, `items/404/restart-redesign-receipt.md`, under docs/agents/pull-requests.md rule 8.
 
 No state-file change: the implementing session of this design pull request updates `items/404/state.md` only if docs/agents/factory.md "Item state file" makes it the writer for this pull request; it is an implementation pull request of the issue, so it does, and the update is one "Decisions in force" line for this approval plus "Next action".
@@ -80,7 +100,7 @@ R4. WHEN the changed files are scanned, THEN they contain only ASCII characters 
 
 R5. WHEN `docs/operations/b10-abrupt-contract.md` and `docs/operations/b10-workflow.md` are changed, THEN only edits OC-1 and OW-1 are applied, and every other line, including the wire, policy and failure-name tables, stays byte-identical, because they describe the code on `main`.
 
-R6. WHEN Hari's answer to a question changes text outside its slot (Q3 option B, Q5 other than `emptyDir`, Q6 with a new Job order wording, Q9 option B), THEN the plan is revised before implementation (design-changing under factory.md "Item lifecycle" step 1), not edited in implementation.
+R6. WHEN Hari's answer to a question changes text outside its slot (Q3 option B, Q5 other than `emptyDir`, Q6 with a new Job order wording, Q16 option B), THEN the plan is revised before implementation (design-changing under factory.md "Item lifecycle" step 1), not edited in implementation.
 
 ## 5. Invariants and safety rules
 
@@ -101,38 +121,41 @@ Line numbers are on `0f769fb2`. "Evidence effect" says what the change does to t
 | Option 9 (677) | Kept, option 10 added (A21-2) | Records the simplification as an option. | None. |
 | Decision (679) | Reworded (A21-3) | Option 10 replaces 6 and 9; cites 6762516530. | None. |
 | Scope (680) | Unchanged | | None. |
-| Permitted conditions (681) | Reworded (A21-4) | "stop/termination" to "self-termination"; kill originals to cross-restart originals. | Same exception set. |
+| Permitted conditions (681) | Reworded (A21-4, A21-17) | "stop/termination" to "self-termination"; kill originals to cross-restart originals. | Same exception set. |
 | Retries (682) | Reworded (A21-5) | Timeout retries in the timeout instance; successor and control resend every unconfirmed member once (6762516530 point 5, superseding 6739644842's single selected original). | More resends per repeat; more pairs possible. |
 | Restart (683) | Reworded (A21-6) | Three Jobs in C1; parent/child; no stop. | Adds a third registered instance; the first restart instance has no ordinary seal. |
 | Per-instance evidence (684) | Reworded (A21-7) | Substitution moves from "kill probe" to "first restart instance". | Control evidence comes from the journal, not a seal. |
-| Classification (685), late-write scan (686) | Unchanged | 6762516530 point 7 keeps the sweep. | None. |
+| Classification (685) | Reworded (A21-18) | Unreported classes apply to cross-restart originals without a terminal record; set membership is not a class. | Same classes; control originals keep the four classes. |
+| Late-write scan (686) | Unchanged | 6762516530 point 7 keeps the sweep. | None. |
 | Subject (690) | Unchanged | | None. |
 | Decision rule 1 (692) | Reworded (A21-8) | "first instance" to "timeout instance". | C1 timeout counts come from their own Job. |
 | Decision rule 2 (693) | Reworded (A21-9) | Three identities; journal unconfirmed set; one resend per member. | Eligibility gate unchanged in kind. |
-| Decision rule 3 (694) | Reworded (A21-10) | "selected original" to "kill-unconfirmed original". | Any unconfirmed member can form the positive pair, not only the lowest-ordinal one. |
+| Decision rule 3 (694) | Reworded (A21-10) | "selected original without a genuine terminal report" to "cross-restart original without a terminal record". | Any such member can form the positive pair, not only the lowest-ordinal one. |
 | Decision rule 4 (695) | Unchanged | | None. |
 | Decision rule 5 (696) | Reworded (A21-11) | Count names. | None. |
 | Decision rule 6 (697) | Reworded (A21-12) | Seals removed (point 4); timeout instance keeps ordinary drain; control completeness from rule 5. | Control completeness is checked from the journal. |
 | Decision rule 7 (698) | Reworded (A21-13) | Disclose self-kill, cut position and rate. | Publication wording. |
 | Protocol intro (702) | Reworded (block P) | Policy list updated; "PR2" to "the implementation pull requests". | None. |
 | Protocol 1 (704) | Reworded | Fixed-rate probes to a cut ordinal, slots Q1, Q2, Q6; burst retired. | Exposure now depends on rate and cut (risk, section 9). |
-| Protocol 2 (705) | Reworded | Supervisor becomes a parent that only starts, waits and publishes; child self-kill; `/proc` stop confirmation removed. | Intended-termination chain loses stop confirmation; gains durable intent plus no later producing-thread record. |
-| Protocol 3 (706) | Reworded | Durable `prepared`/`accepted` now in the child's own journal; callbacks enqueue only; slots Q4, Q9. | "Durable" now rests on the local file across SIGKILL (DA1). |
+| Protocol 2 (705) | Reworded | Supervisor becomes a parent that starts, waits and publishes (Q16 on what else it does); child self-kill; `/proc` stop confirmation removed. | Weaker intended-termination evidence: main required intent, an owned stopped target, a recorded signal request, observed death and competing evidence; the new chain has intent, no later producing-thread record, observed death and competing evidence, and no record of the signal request (Q15). |
+| Protocol 3 (706) | Reworded | Durable `prepared`/`accepted` now in the child's own journal; callbacks enqueue only; slots Q4, Q9; "unconfirmed" defined as set membership, not a class. | "Durable" now rests on the local file across SIGKILL (DA1). Unreported classes stay limited to originals with no terminal record. |
 | Protocol 4 (707) | Reworded | IPC frame/queue become record/callback-queue limits; values kept. | None. |
 | Protocol 5 (708) | Reworded | Pre-acceptance gate kept (6706730103 point 1); report bound in the journal instead of a pipe hand-off; control completeness defined (slot Q8c). | Same gate. |
 | Protocol 6 (709) | Reworded | Stop, checkpoint and 30 s arm/stop budget removed (point 4); cuts defined on journal order; unconfirmed defined as point 6 states. | Kill set is "at death"; control set is "before the cut record" (asymmetry, Q3 counterargument). |
-| Protocol 7 (710) | Reworded | No SIGCONT; control resend at cut plus `ReleaseDelay` (slot Q8a); kill/reap/EOF 10 s budgets removed; exit wait slot Q8b. | None beyond the chain change above. |
+| Protocol 7 (710) | Reworded | No SIGCONT; control resend at cut plus `ReleaseDelay` (slot Q8a); kill/reap/EOF 10 s budgets removed; exit wait slot Q8b; the crash-before-signal gap stated, slot Q15. | A crash after `kill_intent` and before the signal would pass as an intended kill on journal evidence; its unconfirmed set would be resent and could form a positive pair. Q15 option A narrows this; nothing closes it. |
 | Protocol 8 (711) | Reworded | Post-death drain to EOF removed (no pipe); successor recomputes the set from the blob journal and resends all members. | Successor no longer depends on a final selection file. |
-| Protocol 9 (712) | Reworded | OOM check moves to the parent, before start and after death. | Same evidence. |
+| Protocol 9 (712) | Reworded | OOM check moves to the parent, before start and after death; limits sentence adds the crash-before-signal gap. | Same OOM evidence; one more disclosed limit. |
 | Protocol 10 (713) | Reworded | Parent publishes journal after death; emptyDir loss on pod removal stated. | Same publication gate. |
 | Protocol 11 (714) | Reworded | "one checkpoint per arm" to "one cut per arm"; stop failure removed. | None. |
 | Protocol 12 (715) | Reworded | Timeout/control seals removed (point 4); independence of the three instances kept. | Removes seal-based evidence; control evidence is journal-based. |
-| Protocol 13 (716) | Reworded | Field names follow the new sets. | None. |
-| Protocol 14 (717) | Reworded | Schema version slot Q10, distinguishing schema-2 freeze evidence. | None. |
-| Protocol 15 (718) | Reworded | Records the 2026-11-10 amendment, retires the burst, restates the smoke-only and one-trial rule for the new execution pull request, adjustable list slot Q11. | None. |
+| Protocol 13 (716) | Reworded | Per-arm counts split into unconfirmed-set size and originals without a terminal record. | None. |
+| Protocol 14 (717) | Reworded | Schema version slot Q10, distinguishing schema-2 freeze evidence; bound is unreported-seen plus unseen equal to originals without a terminal record. | Bound holds for control arms, whose count is 0. |
+| Protocol 15 (718) | Reworded | Records the 2026-11-10 amendment, retires the burst, restates the smoke-only and one-trial rule, the journal success criteria and "No C0 or replacement trial" for the new path, keeps main's kill/crash-separation sentence, adjustable list slot Q11. | Trial criteria change with the protocol: no stop/resume or control seal; adds control completeness and the self-kill. |
 | Consequences (721, 722, 724, 726, 727) | Unchanged | | None. |
 | Consequence (723) | Reworded (A21-14) | Resend every unconfirmed member. | As rule 3. |
-| Consequence (725) | Reworded (A21-15, A21-16) | Self-termination; "second Job" to "successor Job". | None. |
+| Consequence (725) | Reworded (A21-15, A21-16, A21-19) | Self-termination; "second Job" to "successor Job"; three C1 Jobs' names. | None. |
+
+In ADR-012, ADR-013 and ADR-020, the B10 sentences that named "accepted-unconfirmed" or "unconfirmed" originals as an outcome now name "cross-restart originals without a terminal record" (A12-11, A12-12, A12-13, A12-19, A13-3, A20-9), so the unreported classes keep main's narrow scope.
 
 ADR-020's process-launch exception (line 637) narrows: the parent may only start, wait and publish, and sends no signal; the child may signal only itself (A20-3).
 
@@ -142,7 +165,7 @@ What the removals cost the evidence: without the stop, no one observes the child
 
 From merged code on `0f769fb2` (inference from file names and the contract; the execution plan confirms each): registration (`B10AbruptHost`, registration marker), wire envelope and identity (`B10AbruptWire`), journal record writing (`B10AbruptJournal`, now in the child), statistics capture and pre-acceptance selection (`B10AbruptStatistics`), fatal and native-error capture, cgroup reads (`B10AbruptCgroup`), create-only publication and read-back (`B10AbruptPublisher`), the successor's binding and resend path (with a new input: the journal, not `kill-selection.json`), the workflow's first-pod termination observation in `infra/scripts/phase/b10_abrupt.py`, and failure-report observability. Removed: `OwnedProducerProcess` STOP/CONT and `/proc` stop polling, `B10AbruptChildChannel` pipe framing, checkpoint and seal objects in `B10AbruptSupervisor`, and their tests.
 
-From the held plans: PR3b Revision 2 (`37128767`): readers, independent reconciliation, topic read-back with value hash, per-arm classification and the `nonfinal_result` shape carry over (decision 6762516530 consequences); its selection inputs (checkpoint, `kill-selection.json`, seals) change to journal-derived sets. Offline end-to-end test Revision 1 (`f75d6ac3`): its retargeted test (real child, real local broker, real self-SIGKILL, `FileStorage` publication, real successor) is the main offline test of the new path; its literals wait for this text.
+From the held plans: PR3b Revision 2 (`37128767`): readers, independent reconciliation, topic read-back with value hash and per-arm classification carry over (decision 6762516530 consequences). Its inputs and its `nonfinal_result` arm object change. Inputs: its envelope set (`timeout-seal.json`, `control-seal.json`, `kill-selection.json`; its lines 107 and 182 to 184) and the checkpoint become the journal, the abrupt manifest, the termination receipt and the C1 timeout Job's ordinary files. Arm object (its line 131): `checkpoint_unconfirmed`, `selected_attempt_id`, `selected_sequence`, `selected_original_seen`, `resend_attempt_id`, `resend_invoked` and `resend_terminal` assume one selected original and one resend per arm; under "resend every member" they become per-member lists or counts. Offline end-to-end test Revision 1 (`f75d6ac3`): its retargeted test (real child, real local broker, real self-SIGKILL, `FileStorage` publication, real successor) is the main offline test of the new path; its literals wait for this text.
 
 ## 8. Implementation sequence (estimates)
 
@@ -150,12 +173,12 @@ Every effort figure is an estimate, made 2026-11-10 by this planning session, ba
 
 1. This design pull request. Protected (`docs/`). Estimate: one session.
 2. Storage readiness race fix (already planned; independent; must merge before any trial under 6762516530).
-3. Execution: child journal, cuts, self-kill, parent start/wait/publish, successor from journal, C1 timeout Job, chart and phase changes, operations contract rewrite, removal of the stop protocol. Paths: `src/Parchwell.LoadGen/**`, `tests/Parchwell.LoadGen.Tests/**`, `charts/**`, `infra/scripts/phase/**`, `docs/operations/**`, and `.github/workflows/b10-abrupt-trial.yml` with its copy under `docs/operations/workflows/` if the timeout Job is added there. Protected: workflow, docs, charts and tests as `.github/CODEOWNERS` lists them; Hari merges. Estimate: 2 to 4 sessions, possibly split into a child/parent pull request and a workflow/phase pull request.
+3. Execution: child journal, cuts, self-kill, parent start/wait/publish, successor from journal, C1 timeout Job, chart and phase changes, operations contract rewrite, removal of the stop protocol. Paths: `src/Parchwell.LoadGen/**`, `tests/Parchwell.LoadGen.Tests/**`, `charts/**`, `infra/scripts/phase/**`, `docs/operations/**`, and `.github/workflows/b10-abrupt-trial.yml` with its byte-identical copy under `docs/operations/workflows/` (AGENTS.md hard safety rule 8) if the timeout Job is added there. Protected among these: only `.github/workflows/` (`/.*/` in `.github/CODEOWNERS`), and any new `*.csproj` (none is planned); `charts/`, `tests/`, `infra/scripts/` and `docs/operations/` have no owner there. If the workflow changes, Hari merges. Estimate: 2 to 4 sessions, possibly split into a child/parent pull request and a workflow/phase pull request.
 4. Offline end-to-end test, retargeted (held plan). Estimate: one session after 3.
 5. Live diagnostic trial (Hari dispatches; new explicit approval needed).
-6. PR3b classification, revised to journal-derived sets; then PR3c and the five-repeat work as already split (6750021224). Estimate for PR3b revision: one planning session.
+6. PR3b classification, revised to journal-derived sets; then PR3c and the five-repeat work as already split (6750021224). Paths: `src/Parchwell.Verifier/**` and `tests/Parchwell.Verifier.Tests/**`, protected (`Parchwell.Verifier*/` in `.github/CODEOWNERS`); Hari merges. Estimate for the PR3b revision: one planning session.
 
-The legacy two-Job scenario path (`scenario.yml`, `B10TwoInstanceVerify`, `B10ExpectedProducerJobs`) assumes two C1 producer Jobs; the three-Job C1 repeat needs its own change before the five-repeat governed run, not before the one-repeat trial. Which pull request owns it is open (section 14, Q12 note).
+The legacy two-Job scenario path (`scenario.yml`, `B10TwoInstanceVerify`, `B10ExpectedProducerJobs`) assumes two C1 producer Jobs; the three-Job C1 repeat needs its own change before the five-repeat governed run, not before the one-repeat trial. Which pull request owns it is Q17.
 
 ## 9. Never-ran inventory for the redesigned path
 
@@ -188,7 +211,7 @@ Each needs Hari's acceptance by name, or an offline test, before the execution p
 
 Run in this session's scratch workspace on 2026-11-10; nothing committed.
 
-- Journal durability across self-SIGKILL. Scratch .NET 10 program: a `FileStream` with a 4096-byte buffer, a background thread appending records concurrently through a lock, the main thread appending 2000 `prepared` and 2000 `accepted` records, one `kill_intent`, then `kill(getpid(), 9)`. Filesystem ext4, kernel 6.18. Results: `Flush()` after each record, 20 of 20 runs kept all 4001 main-thread records; no flush, 19 of 20; `Flush(true)` after each record, 20 of 20. Every run exited 137. Measured here only; not `emptyDir` on AKS. Consistent with the earlier report (50 of 50 with `Flush()`), which this run does not replace.
+- Journal durability across self-SIGKILL. Scratch .NET 10 program: a `FileStream` with a 4096-byte buffer, a background thread appending records concurrently through a lock, the main thread appending 2000 `prepared` and 2000 `accepted` records, one `kill_intent`, then `kill(getpid(), 9)`. Filesystem ext4, kernel 6.18. Results: `Flush()` after each record, 20 of 20 runs kept all 4001 main-thread records; no flush, 19 of 20; `Flush(true)` after each record, 20 of 20. Every run exited 137. Measured here only; not `emptyDir` on AKS. Consistent with the earlier report (50 of 50 with `Flush()`), which this run does not replace. The Revision 1 reproduction check reran it: `Flush()` and `Flush(true)` 20 of 20, no flush 14 of 20. The no-flush variant is not recommended and ships in no text.
 - librdkafka v2.16.0 CONFIGURATION.md, `transactional.id`: "used to identify the same transactional producer instance across process restarts"; "If no transactional.id is provided, then the producer is limited to idempotent delivery". INTRODUCTION.md: the protocol sequence number "is reset each time the Producer's ID (PID) or Epoch changes". Neither page states that a new process gets a fresh producer ID; that part rests on KIP-98 (not re-read here) and K-53 in `docs/research/kubernetes-kafka-clients.md`. The new ADR text adds no Kafka claim, so nothing ships on it.
 - Microsoft Learn's conflict on Event Hubs transactions: not re-read; already recorded in section 12 (B05 row) and not used by the new text.
 - Rule list "1, 2, 4, 6, 7, 8, 10, 11 and 15": verified and extended. Rules 3, 5, 9, 12, 13 and 14 also change, because they name the supervisor, seals, selection or the pipe hand-off.
@@ -231,12 +254,12 @@ Q1. Kill point (and control cut): position and seed. Slot `[Q1]` in rule 1.
 Q2. Probe rate `[Q2]` (originals per second).
 - A: a low rate (for example 10 per second), so each original is a separate request and the cut original is likely alone in flight.
 - B: a high rate (for example 1000 per second), so several originals are in flight at the cut.
-- Recommendation: a rate Hari sets so that more than one original is likely in flight at the cut; no value is measured, and DA2 is untested either way.
+- Recommendation: 100 originals per second, as a policy value, not evidence-based. Basis (estimate, 2026-11-10): no produce latency on this namespace is measured, so no value can rest on evidence. A 10 ms interval is of the order of the about 7 ms local-broker acknowledgement that an earlier planning session reported (local broker, not Event Hubs, not re-measured). With Q1's recommended cut at the fifth original, the arm lasts about 40 ms, and the cut original is outstanding at the kill unless Event Hubs acknowledges within the two local flushes (inference). DA2 is untested either way.
 - Counterargument: a high rate with `max.in.flight` 5 and idempotence can batch originals into one request, so they share one fate, and a resend of each multiplies pairs that are not independent observations.
 
 Q3. How the same-instance control pair is formed.
 - A (written in block P): the child runs a control arm first, with its own cut record; the control unconfirmed set is the arm's accepted originals with no terminal record before the cut record in journal order; after `ReleaseDelay` the same producer resends each member once; the arm must drain complete before the cross-restart arm.
-- B: drop the matched control. Needs Hari to reverse 6707306269 point 1, and a revision of decision rules 2 and 5, README and factory.md.
+- B: drop the matched control. Needs Hari to reverse [6706730103](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6706730103) point 6 ("Keep the matched same-instance control") and [6707306269](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6707306269) point 1, and a revision of decision rules 2 and 5, README and factory.md.
 - C: control from a separate ordinary instance. Not same-instance; contradicts 6706730103 point 6.
 - Recommendation: A.
 - Counterargument: the control set is fixed at the cut record, while the kill set is fixed at death, so the kill set excludes reports journaled in the microseconds between intent and death and the control set does not; the arms are not exactly matched.
@@ -273,15 +296,33 @@ Q10. Schema version for the new dialect `[Q10]`: 3 (recommended, so schema-2 fre
 
 Q11. What may change after the trial `[Q11]`: A, "mechanical `ReleaseDelay`, parent exit-wait and journal budgets" (recommended); B, A plus `ProbeRate` and `CutOrdinal`. Counterargument to A: if the trial finds an empty kill set, A leaves no way to raise exposure without a new design decision; B lets exposure be tuned to evidence, which 6707306269 point 3 forbade for gates.
 
-Q12. Deployment assumptions DA1 to DA5 (section 10): accept each by name, or require an offline test first. Recommendation: require the offline end-to-end test for DA1 and DA5; accept DA2 to DA4 by name for the one-repeat trial only. Note: which pull request owns the three-Job C1 change of the legacy scenario path (section 8) is also open.
+Q12. Deployment assumptions DA1 to DA5 (section 10): accept each by name, or require an offline test first. Recommendation: require the offline end-to-end test for DA1 and DA5; accept DA2 to DA4 by name for the one-repeat trial only. Counterargument: DA2 is the assumption most likely to fail, and accepting it means the trial may spend money to learn only that the kill set was empty.
 
 Q13. Implementing tools: this design pull request (recommended: Claude Code, as it is text only and this plan holds its exact text), and the execution, offline-test and verifier pull requests (Hari names each).
 
 Q14. Operations documents: A, a status paragraph now and the full contract rewrite with the execution pull request (planned here); B, rewrite the contract now. Recommendation: A, because the contract pins the code on `main` and a rewrite now would make it false about that code. Counterargument: until the execution pull request merges, readers find the design only in ADR-021, and the contract's long tables invite reuse of removed rules.
 
+Q15. Exit status as competing evidence `[Q15]` (rule 7).
+- A: "the parent records the child's observed exit status from `Process.ExitCode` as a labelled local observation and requires it to equal the value that the execution pull request's offline test records for a self-SIGKILL on the pinned runtime; any other value fails intended termination."
+- B: "the parent records the observed exit status as a labelled local observation only; it does not gate intended termination."
+- Recommendation: A. A native crash usually ends with another signal (for example SIGSEGV), and A rejects that case. Main's rule 2 already says `ExitCode` defines no SIGKILL encoding, so A rests on a recorded local observation, not documentation.
+- Counterargument: A makes an undocumented runtime encoding a gate; a runtime update could change it and fail every repeat. Neither option detects a crash that itself ends in SIGKILL, such as the OOM killer, which rule 9 covers only at group level.
+
+Q16. What the parent may do beyond "only starts the child, waits for it to exit, hashes the journal and uploads it" (decision 6762516530 point 4), given point 7's "Registration ... and fatal capture are kept". Block P has the parent also write the registration marker before the child starts (rule 2), read `memory.events.local` before start and after death (rule 9), and apply rule 4's limits before publication (rule 10).
+- A: keep all three in the parent (written in block P).
+- B: move registration and the cgroup reads into the child, so the parent does exactly point 4's four things; the after-death cgroup read is then lost.
+- Recommendation: A. Registration must precede producer construction, and the after-death OOM read can only be done by a survivor; applying the limits is part of hashing.
+- Counterargument: point 4's "only" is Hari's word, and A widens the parent again, one duty at a time, toward the supervisor that point 4 removed.
+
+Q17. Which pull request moves the legacy scenario path (`scenario.yml`, `B10TwoInstanceVerify`, `B10ExpectedProducerJobs`) from two to three C1 producer Jobs.
+- A: the execution pull request (section 8 step 3).
+- B: a separate pull request after the one-repeat trial and before the five-repeat governed run.
+- Recommendation: B. The one-repeat trial runs through `b10-abrupt-trial.yml`, not `scenario.yml`, and B keeps the execution pull request smaller.
+- Counterargument: two pull requests then change the same phase code and B10 verifier in sequence, and the legacy path stays out of step with ADR-021 until B merges.
+
 ## 15. Plan-check questions (factory.md "Item lifecycle" step 1)
 
-(a) Runtime-sized steps: none in this pull request. The edit count (52: 49 sentence edits and block P in `docs/blueprint.md`, and one edit in each operations document) and the scratch measurement are fixed. Disposition caps: up to 20 documentation-warning root causes; exhaustion: `push -wip and hand off to the next session`.
+(a) Runtime-sized steps: none in this pull request. The edit count (64: 61 sentence edits and block P in `docs/blueprint.md`, and one edit in each operations document) and the scratch measurement are fixed. Disposition caps: up to 20 documentation-warning root causes; exhaustion: `push -wip and hand off to the next session`.
 
 (b) Stricter than the parent plan: the stop rule also covers changes by the storage readiness and PR3b plans to shared files (section 2.3), as the planning prompt requires.
 
@@ -304,12 +345,11 @@ The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when:
 1. it needs to change a contract, a requirement or the scope, or any text in appendix A other than filling a slot with Hari's recorded answer;
 2. any old string of appendix A does not occur exactly once on its `main`;
 3. the storage readiness race fix, the PR3b classification work or any other change has altered `docs/blueprint.md`, `docs/operations/b10-abrupt-contract.md` or `docs/operations/b10-workflow.md` on `main` since `0f769fb2`, even where every old string still matches;
-4. an answer to Q3, Q5, Q6 or Q9 needs text outside its slot.
-
+4. an answer to Q3, Q5, Q6, Q9, Q15 or Q16 needs text outside its slot.
 
 ## Appendix A. Exact replacement text
 
-Each entry gives the file, the line on `0f769fb2` where the old text starts, the old text (which occurs exactly once in that file) and the new text. Apply them in any order; none overlaps another. Fenced blocks carry the info string `old <id>` or `new <id>` so that the script in appendix B can read them from this file.
+Each entry gives the file, the line on `0f769fb2` where the old text starts, the old text (which occurs exactly once in that file) and the new text. Apply them in the order listed; each old string still occurs exactly once when its turn comes, and none overlaps another. Fenced blocks carry the info string `old <id>` or `new <id>` so that the script in appendix B can read them from this file.
 
 ### L12: `docs/blueprint.md` line 12
 
@@ -428,7 +468,7 @@ For B10, only ADR-021's accepted-unconfirmed kill originals may join a checked j
 ```
 
 ```new A12-11
-For B10, only ADR-021's unconfirmed probe originals may join a checked journal entry without a final callback row;
+For B10, only ADR-021's cross-restart originals without a terminal record may join a checked journal entry without a final callback row;
 ```
 
 ### A12-12: `docs/blueprint.md` line 403
@@ -438,7 +478,7 @@ Accepted-unconfirmed originals are separately reported as unreported_seen or unr
 ```
 
 ```new A12-12
-Unconfirmed originals are separately reported as unreported_seen or unreported_unseen through the phase sweep;
+Cross-restart originals without a terminal record are separately reported as unreported_seen or unreported_unseen through the phase sweep;
 ```
 
 ### A12-13: `docs/blueprint.md` line 422
@@ -448,7 +488,7 @@ For B10, a record joined to an ADR-021 accepted-unconfirmed original is unreport
 ```
 
 ```new A12-13
-For B10, a record joined to an ADR-021 unconfirmed original is unreported_seen, not phantom;
+For B10, a record joined to an ADR-021 cross-restart original without a terminal record is unreported_seen, not phantom;
 ```
 
 ### A12-14: `docs/blueprint.md` line 428
@@ -488,7 +528,7 @@ accepted-unconfirmed kill original has no callback status to invent.
 ```
 
 ```new A13-3
-unconfirmed probe original has no callback status to invent.
+cross-restart original without a terminal record has no callback status to invent.
 ```
 
 ### A13-4: `docs/blueprint.md` line 455
@@ -544,11 +584,11 @@ abrupt attempt journal, cut and termination bookkeeping
 ### A19-2: `docs/blueprint.md` line 601
 
 ```old A19-2
-authenticated abrupt manifest, journal, selection and termination receipt replace the ordinary final ledger and successful producer-completion receipt; a missing required substitute cannot authorize a complete repeat. The second producer still requires its ordinary completion receipt.
+For B10's intentionally killed first producer only, ADR-021's authenticated abrupt manifest, journal, selection and termination receipt replace the ordinary final ledger and successful producer-completion receipt; a missing required substitute cannot authorize a complete repeat. The second producer still requires its ordinary completion receipt.
 ```
 
 ```new A19-2
-authenticated journal, abrupt manifest and termination receipt replace the ordinary final ledger and successful producer-completion receipt; a missing required substitute cannot authorize a complete repeat. The C1 timeout producer and the successor still require their ordinary completion receipts.
+For B10's intentionally self-killed first restart producer only, ADR-021's authenticated journal, abrupt manifest and termination receipt replace the ordinary final ledger and successful producer-completion receipt; a missing required substitute cannot authorize a complete repeat. The C1 timeout producer and the successor still require their ordinary completion receipts.
 ```
 
 ### A20-1: `docs/blueprint.md` line 625
@@ -638,7 +678,7 @@ For B10 this applies to each separately checked cohort; accepted-unconfirmed obs
 ```
 
 ```new A20-9
-For B10 this applies to each separately checked cohort; unconfirmed observations never become known-terminal counts.
+For B10 this applies to each separately checked cohort; observations of originals without a terminal record never become known-terminal counts.
 ```
 
 ### A21-1: `docs/blueprint.md` line 674
@@ -739,7 +779,7 @@ at least one eligible repeat must have a selected original without a genuine ter
 ```
 
 ```new A21-10
-at least one eligible repeat must have a kill-unconfirmed original consumed (`unreported_seen >= 1`)
+at least one eligible repeat must have a cross-restart original without a terminal record consumed (`unreported_seen >= 1`)
 ```
 
 ### A21-11: `docs/blueprint.md` line 696
@@ -749,7 +789,7 @@ Read each arm's accepted-unconfirmed original, invoked resend, observed original
 ```
 
 ```new A21-11
-Read each arm's unconfirmed-original, invoked-resend, observed original/resend and pair counts.
+Read each arm's unconfirmed-set, invoked-resend, observed original/resend and pair counts.
 ```
 
 ### A21-12: `docs/blueprint.md` line 697
@@ -802,6 +842,126 @@ Only this deliberate producer-child self-termination and sequential fresh-pod re
 - The successor Job, its name and the predecessor field in its registration marker belong to B10's producer-restart pull request,
 ```
 
+### A12-15: `docs/blueprint.md` line 409
+
+```old A12-15
+For B10's intentionally killed first producer only, ADR-021 substitutes its required abrupt bookkeeping artifacts;
+```
+
+```new A12-15
+For B10's intentionally self-killed first restart producer only, ADR-021 substitutes its required abrupt bookkeeping artifacts;
+```
+
+### A12-16: `docs/blueprint.md` line 410
+
+```old A12-16
+(either permitted instance for B10;
+```
+
+```new A12-16
+(any of the three permitted C1 instances for B10;
+```
+
+### A12-17: `docs/blueprint.md` line 418
+
+```old A12-17
+For B10's kill probe, ADR-021 substitutes independent abrupt reconciliation;
+```
+
+```new A12-17
+For B10's cross-restart arm, ADR-021 substitutes independent abrupt reconciliation;
+```
+
+### A12-18: `docs/blueprint.md` line 425
+
+```old A12-18
+replace only the intentionally killed first producer's ordinary completion artifacts;
+```
+
+```new A12-18
+replace only the intentionally self-killed first restart producer's ordinary completion artifacts;
+```
+
+### A13-8: `docs/blueprint.md` line 435
+
+```old A13-8
+The B10 kill probe cannot finish normal producer drain or capture the native tail through death.
+```
+
+```new A13-8
+The B10 cross-restart arm cannot finish normal producer drain or capture the native tail through death.
+```
+
+### A13-9: `docs/blueprint.md` line 447
+
+```old A13-9
+For B10's killed first producer only, ADR-021 substitutes its checked abrupt manifest and termination receipt;
+```
+
+```new A13-9
+For B10's self-killed first restart producer only, ADR-021 substitutes its checked abrupt manifest and termination receipt;
+```
+
+### A19-3: `docs/blueprint.md` line 601
+
+```old A19-3
+abrupt bookkeeping for B10's intentionally killed first producer; no ordinary success receipt is fabricated.
+```
+
+```new A19-3
+abrupt bookkeeping for B10's intentionally self-killed first restart producer; no ordinary success receipt is fabricated.
+```
+
+### A20-10: `docs/blueprint.md` line 656
+
+```old A20-10
+ADR-021 later permits B10's second, sequential load generator Job and its instance.
+```
+
+```new A20-10
+ADR-021 later permits B10's sequential successor load generator Job and its instance.
+```
+
+### A21-17: `docs/blueprint.md` line 681
+
+```old A21-17
+except only for the expressly enumerated kill-probe observation gaps.
+```
+
+```new A21-17
+except only for the expressly enumerated cross-restart-arm observation gaps.
+```
+
+### A21-18: `docs/blueprint.md` line 685
+
+```old A21-18
+Accepted kill originals without a report use separate unreported_seen and unreported_unseen observations.
+```
+
+```new A21-18
+Cross-restart originals without a terminal record use separate unreported_seen and unreported_unseen observations; unconfirmed-set membership is not an outcome class.
+```
+
+### A21-19: `docs/blueprint.md` line 725
+
+```old A21-19
+The start line and the verifier's options must then carry both Jobs' expected names.
+```
+
+```new A21-19
+The start line and the verifier's options must then carry all three C1 Jobs' expected names.
+```
+
+### A12-19: `docs/blueprint.md` line 429
+
+```old A12-19
+An unconfirmed original observed by the sweep is not a phantom; one not observed is not a proven loss.
+```
+
+```new A12-19
+An original without a terminal record observed by the sweep is not a phantom; one not observed is not a proven loss.
+```
+
 ### OC-1: `docs/operations/b10-abrupt-contract.md` line 3
 
 ```old OC-1
@@ -823,36 +983,36 @@ The trial cannot test fatal-capture completeness, the verifier's separation of a
 ```new OW-1
 The trial cannot test fatal-capture completeness, the verifier's separation of an intended kill from a crash, broker persistence, pod or node loss, or a verdict.
 
-This diagnostic trial runs the stop/checkpoint supervisor protocol that ADR-021's 2026-11-10 amendment ([decision 6762516530](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6762516530)) replaces. No B10 trial runs until the storage readiness race fix merges and the amended protocol is implemented. The implementation pull requests replace this section.
+This diagnostic trial runs the stop/checkpoint supervisor protocol that ADR-021's 2026-11-10 amendment ([decision 6762516530](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6762516530)) replaces. The implementation pull requests replace this section.
 ```
 
 ### P: `docs/blueprint.md` lines 702 to 718, ADR-021 "Restart protocol and policy" block
 
-Old: lines 702 to 718 inclusive on `0f769fb2`, from `  Every value and gate below is policy fixed before any run:` to the end of protocol rule 15. SHA-256 of those 17 lines, each with its newline: `d0b6fca6471a62c1dbbb257f9ac3122608d23a4fd8d39311539b1b2664ab1df4`. Line 701 (blank) and line 719 (blank) stay. Replace the 17 lines with the 17 lines below; the block P edits are applied after the sentence edits, which touch none of lines 702 to 718.
+Old: lines 702 to 718 inclusive on `0f769fb2`, from `  Every value and gate below is policy fixed before any run:` to the end of protocol rule 15. SHA-256 of those 17 lines, each with its newline: `d0b6fca6471a62c1dbbb257f9ac3122608d23a4fd8d39311539b1b2664ab1df4`. Line 701 (blank) and line 719 (blank) stay. Replace the 17 lines with the 17 lines below; block P is applied after the sentence edits, which touch none of lines 702 to 718.
 
 ```new P
   Every value and gate below is policy fixed before any run: order, probe rate, cut positions, keys, journal limits and flush rule, release and lifecycle budgets, pre-acceptance samples, cgroup/OOM exclusions, capture/guard gates, witnesses and trial bound. These are not measured capabilities, latencies or rates. Feasibility is not verified until implementation tests and the diagnostic trial demonstrate it. Post-trial changes require the recorded decision specified below. In ADR-021, in the B10 exceptions of ADR-012, ADR-013, ADR-019 and ADR-020, and in the implementation pull requests, "authenticated" means checked SHA-256 and byte-length binding to the accepted publication manifest/receipt plus exact run, configuration, repeat, source/image, instance and Job identity agreement. It does not mean cryptographic signing, signer identity or protection against a writer able to replace both bytes and their binding; no signing guarantee is claimed.
 
   1. C0 has one ordinary producer Job with same-instance timeout retries, no probes, kill or successor. C1 runs three producer Jobs in sequence, in the order [Q6]. The C1 timeout Job is an ordinary producer Job like C0's: ordinary timeout cohort, same-instance timeout retries, no probes, no kill, ordinary manifest, ledger, drain, post-drain statistics and completion receipt. In the first restart pod the producer child runs the `same_instance` arm, then the `cross_restart` arm; only the cross-restart arm's unconfirmed set reaches the successor. In each arm the child prepares, invokes and journals probe originals at a fixed rate, `ProbeRate` = [Q2] originals per second, with ordinals from 0 to `CutOrdinal` = [Q1], and invokes no further original in that arm after the cut. Both arms use equal configured payload shape, settings, rate and cut ordinal. Fixed synthetic keys are `B10/{run_id}/{configuration}/{repeat}/same_instance` and `B10/{run_id}/{configuration}/{repeat}/cross_restart`, using authenticated identity strings and invariant decimal repeat; probe IDs equal those keys, sequence is the original's ordinal, and keys are disjoint from timeout keys. Every original and resend of an arm uses identical payload bytes/hash. Fixed ordering and different native/broker state remain confounds, not a universal causal contrast.
   2. In the first restart pod a parent process writes the registration marker, then uses .NET 10 `Process.Start` for only this repository's fixed built producer child, observes its death with `WaitForExit`, and then reads, hashes and publishes the child's journal and abrupt evidence. The parent sends no signal to the child, holds no pipe or other channel to it, reads no child output as protocol evidence, and is not a Kafka client or separately registered producer. Parent and child share the first restart pod's producer identity; bind run/scenario/configuration/repeat, source/image, Job, pod UID/name and child start identity before producer construction. The child sends SIGKILL only to itself, once, through libc `kill` via `DllImport` with its own process ID; POSIX `kill` sends the signal to the process whose ID equals `pid` ([kill](https://pubs.opengroup.org/onlinepubs/9799919799/functions/kill.html)). Forbid shells/CLI, Kubernetes API, PID discovery, signals to any other process, group/name signals, pod/node management and infrastructure control. Keep SDK, framework, projects and packages unchanged. Microsoft documents [Start](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.process.start?view=net-10.0), [WaitForExit](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.process.waitforexit?view=net-10.0) and [DllImport](https://learn.microsoft.com/en-us/dotnet/api/system.runtime.interopservices.dllimportattribute?view=net-10.0), not this protocol's runtime interoperability. [ExitCode](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.process.exitcode?view=net-10.0) defines no SIGKILL encoding: record it only as a labelled local observation on the pinned runtime.
-  3. The child appends its own journal on the pod's local `emptyDir` work volume. The producing thread appends `prepared` before invocation (attempt/logical identity, arm, payload hash and ordinal), `accepted` only after `Produce` returns, `synchronous_rejection` when it throws, each arm's `cut` and the `kill_intent`. Delivery and error callbacks only enqueue to a bounded in-memory queue, with no file or network I/O; one journal writer thread appends their `terminal` and native-error records. After writing each record the child calls [Q4] before the next record or action. A record is durably journaled when it is complete in the journal file that the parent reads after the child's death; Kubernetes keeps `emptyDir` data across container crashes and deletes it permanently when the pod is removed from its node ([volumes](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir)). Survival of completed writes across the child's SIGKILL is inferred from POSIX `write()` ([write](https://pubs.opengroup.org/onlinepubs/9799919799/functions/write.html), Rationale: a read proven to occur after a `write()` "must reflect that write()"), not stated by a cited source, and not verified on the deployed node. [Q9]. Reconcile callback-before-acceptance by identity. Prepared-only ambiguity invalidates and does not prove invocation. Never suppress callbacks to obtain exposure. Genuine terminal attempts retain the four classes; unconfirmed originals are `unreported_seen` or `unreported_unseen`, never phantom or loss.
+  3. The child appends its own journal on the pod's local `emptyDir` work volume. The producing thread appends `prepared` before invocation (attempt/logical identity, arm, payload hash and ordinal), `accepted` only after `Produce` returns, `synchronous_rejection` when it throws, each arm's `cut` and the `kill_intent`. Delivery and error callbacks only enqueue to a bounded in-memory queue, with no file or network I/O; one journal writer thread appends their `terminal` and native-error records. After writing each record the child calls [Q4] before the next record or action. A record is durably journaled when it is complete in the journal file that the parent reads after the child's death; Kubernetes keeps `emptyDir` data across container crashes and deletes it permanently when the pod is removed from its node ([volumes](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir)). Survival of completed writes across the child's SIGKILL is inferred from POSIX `write()` ([write](https://pubs.opengroup.org/onlinepubs/9799919799/functions/write.html), Rationale: a read proven to occur after a `write()` "must reflect that write()"), not stated by a cited source, and not verified on the deployed node. [Q9] Reconcile callback-before-acceptance by identity. Prepared-only ambiguity invalidates and does not prove invocation. Never suppress callbacks to obtain exposure. "Unconfirmed" names membership of an arm's unconfirmed set under rule 6 and is not an outcome class. Genuine terminal attempts retain the four classes, including control originals that were unconfirmed at the cut and completed later. Only originals with no complete terminal record anywhere in the journal, which the control arm's completeness (rule 5) confines to the cross-restart arm, are `unreported_seen` or `unreported_unseen`, never phantom or loss.
   4. Charge policy limits before admission: record 65536 bytes, callback queue 256 entries, journal 16777216 bytes and 4096 records. Gaps, overflow and writer errors are sticky. Exhaustion: `record the gap and continue` to publication of diagnostics and cleanup, with capture invalid and authoritative fields absent; no truncation into success. Raw statistics retain their existing separate bounds and authenticated hashes.
   5. Require a parsed statistics report after construction and before each arm's first original acceptance; the child journals a binding of the latest such report (name, length, SHA-256, sequence and time) before that acceptance. No post-acceptance report gate; `statistics.interval.ms` stays unchanged. Apply expected-broker, settings, mandatory-field, stable-identity and monotone-counter checks to available reports. Reject counter reset, nonzero `txerrs`/`rxerrs`, disallowed delivery errors, error-level native callbacks and missing status on genuine reports. The last-report-to-kill interval is unobserved. A sampled gauge cannot prove kill-instant wire state (inference from [statistics](https://github.com/confluentinc/librdkafka/blob/v2.16.0/STATISTICS.md)). The control arm is complete only when, after its resends, the child's producer `Flush` returns within [Q8c] with an empty out queue, the journal holds a terminal record for every control original and resend, and a parsed statistics report follows that drain; the child admits no cross-restart original before the control arm is complete. The C1 timeout instance and the successor retain ordinary post-drain coverage.
   6. Each arm's cut is the `accepted` record of the original with ordinal `CutOrdinal`. In the control arm the child then appends a `cut` record; the control unconfirmed set is, in invocation order, the arm's accepted originals with no complete terminal record before that `cut` record in journal order. In the cross-restart arm the child appends `kill_intent` immediately after the cut and then kills itself (rule 7); the kill unconfirmed set is, in invocation order, the arm's accepted originals with no complete terminal record anywhere in the journal at death. An empty control set is `b10_abrupt_exposure_inconclusive`; an empty kill set is `kill_too_late`/`no_unconfirmed_attempt`; a cross-restart arm with no durably accepted original is `kill_too_early`. None is a pass or a protocol failure; each fails eligibility, records the gap and continues to publication of diagnostics and cleanup only, and never triggers another original, arm or kill. This defines application-capture unconfirmed exposure, not transmission, broker acceptance, wire-inflight state, persistence status or loss. [POSIX sigaction](https://pubs.opengroup.org/onlinepubs/9799919799/functions/sigaction.html) says SIGSTOP/SIGKILL cannot be caught or ignored; it does not verify the runtime observer.
-  7. The control arm keeps running after its cut and retains subsequent outcomes and fatals. At the `cut` record's UTC plus `ReleaseDelay` = [Q8a], the child resends each member of the control unconfirmed set once, in invocation order, with new attempt IDs and the same instance, even if a member has since completed. In the cross-restart arm the producing thread, immediately after the durable `kill_intent`, sends SIGKILL to itself once; it calls no `Flush` or `Dispose` after the arm's first original is admitted. A `kill` call that returns records its return value and errno and fails the chain. Intended termination requires a durable `kill_intent`, no producing-thread record after it, the parent's observed death within [Q8b] and the competing-evidence checks of rule 9. A child that exits without a durable `kill_intent` is an unexpected exit. Exit code alone never proves intended termination.
+  7. The control arm keeps running after its cut and retains subsequent outcomes and fatals. At the `cut` record's UTC plus `ReleaseDelay` = [Q8a], the child resends each member of the control unconfirmed set once, in invocation order, with new attempt IDs and the same instance, even if a member has since completed. In the cross-restart arm the producing thread, immediately after the durable `kill_intent`, sends SIGKILL to itself once; it calls no `Flush` or `Dispose` after the arm's first original is admitted. A `kill` call that returns records its return value and errno and fails the chain. Intended termination requires a durable `kill_intent`, no producing-thread record after it, the parent's observed death within [Q8b] and the competing-evidence checks of rule 9. A child that exits without a durable `kill_intent` is an unexpected exit. The journal holds no record of the signal request itself, so a runtime or native crash after the durable `kill_intent` and before the signal takes effect is not distinguishable from the intended kill by journal evidence; [Q15] Exit code alone never proves intended termination.
   8. After the parent's publication and the workflow's first-pod termination check, the fresh successor reads the authenticated journal from Blob storage, recomputes the kill unconfirmed set under rule 6, and resends every member once, in invocation order, preserving logical identity/payload with new instance and attempt IDs, at the `kill_intent` record's UTC plus `ReleaseDelay`. Azure Storage documents a strong consistency model in which, after an insert or update, subsequent read or list operations return the latest update ([concurrency](https://learn.microsoft.com/en-us/azure/storage/blobs/concurrency-manage)). It never resends ordinary timeouts or control attempts. Missing readiness at that boundary makes comparison incomplete, with no late substitute, extra probe or replacement.
-  9. Install native capture before use; retain actual code/name/IsError/IsFatal, ordered sequence/time, instance, start/cutoff and dropped/writer-error status. Captured fatal remains fatal after later kill. The parent requires stable memory-cgroup identity and readable `memory.events.local` `oom_kill` before it starts the child and after it observes death, without reset/increment. [Kernel documentation](https://docs.kernel.org/admin-guide/cgroup-v2.html#memory-interface-files) makes this group-level evidence, not victim identity. Runtime availability is not verified; absent support fails eligibility. Unexpected crash/prior exit, OOM, node/pod loss or conflicting evidence fails intended termination. Even zero delta and the full chain cannot exclude indistinguishable external SIGKILL; disclose that limit.
+  9. Install native capture before use; retain actual code/name/IsError/IsFatal, ordered sequence/time, instance, start/cutoff and dropped/writer-error status. Captured fatal remains fatal after later kill. The parent requires stable memory-cgroup identity and readable `memory.events.local` `oom_kill` before it starts the child and after it observes death, without reset/increment. [Kernel documentation](https://docs.kernel.org/admin-guide/cgroup-v2.html#memory-interface-files) makes this group-level evidence, not victim identity. Runtime availability is not verified; absent support fails eligibility. Unexpected crash/prior exit, OOM, node/pod loss or conflicting evidence fails intended termination. Even zero delta and the full chain cannot exclude indistinguishable external SIGKILL, or a crash between `kill_intent` and the signal (rule 7); disclose both limits.
   10. After observed child death the parent reads the journal from the local volume, applies rule 4's limits, hashes it, publishes create-only the journal, abrupt manifest and termination receipt, then exits; it asserts no child cleanup. Workflow verifies actual first-pod termination and publication before the fresh successor pod. Unknown termination preserves `safety_stop` and blocks successor. The successor retains ordinary registration/drain/ledger/manifest/completion. This does not simulate parent/pod/node loss; [Kubernetes lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/) does not make deletion proof of process death. Pod or node loss before publication deletes the `emptyDir` journal and leaves the repeat ineligible.
   11. Policy caps: one cut per arm, one kill per repeat, no exposure retry or replacement. Budget exhaustion, signal/death failure, capture gaps, missing publication or late successor: `record the gap and continue` only to diagnostics/sweep/judge/cleanup with affected evidence unavailable. Block successor if death or first-pod termination/publication is unverified. Failed global gates clear affected counts; workflow cleanup remains mandatory.
   12. The C1 timeout instance, the first restart instance and the successor each pass independent checks; none repairs another's missing evidence. No probe enters timeout totals. Shared identity corruption, missing required coverage or global sweep failure still blocks affected evidence.
-  13. Publish only checked fields consumed by these rules: timeout six counts (rule 1); termination identity, cuts, unconfirmed sets and coverage (2/6); per-arm unconfirmed-original, invoked-resend, original/resend seen, pair and unreported-seen/unseen counts (2/3/5); actual fatal events/coverage (6); separate resend loss (3/4); comparison (5); declared/eligible count and reasons (2/4). Retain one checked pair witness per arm/repeat when present, chosen lexicographically by original attempt ID, resend attempt ID and original/resend coordinates. Count all pairs. Excess witnesses: `record the gap and continue`, without losing counts. Never turn unknown into zero or a persistence status.
-  14. Closed `b10_abrupt` schema [Q10] distinguishes journal, manifest, termination receipt, nonfinal result and final sweep projection from legacy evidence, including schema-2 evidence of the superseded stop protocol. Bind hash/length, run/configuration/repeat, source/image and ordered identities; charge existing byte/depth/entry budgets before filtering/allocation. Enforce closed members/types/version, nonnegative checked Int64 counts, exact identities/arm/predecessor/invocations, independent bookkeeping, nonempty kill unconfirmed set, exactly one linked resend per unconfirmed member, pair subsets bounded by originals/resends seen, seen bounded by unconfirmed/invoked, unreported-seen plus unseen equal to unconfirmed originals, deterministic witnesses/distinct coordinates, guard/fatal/termination gates and sweep finality. Missing/null/unknown required fields, fractional/overflow counts, conflicting terminals or failed bounds reject authoritative evidence. Old readers reject abrupt dialect; new readers retain schema-one behavior. No fabricated compatibility success, mixed source/image/dialect phase or promotion of legacy results to the new claim. Test actual produced bytes in both directions before publication.
-  15. Amendment of 2026-11-10 ([decision 6762516530](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6762516530)): nine diagnostic trials failed on harness machinery, none on the behaviour under test. Rules 1 to 14 above replace the stop/checkpoint/supervisor protocol, its pipe framing, freeze, checkpoint and drain budgets and pre-kill cohort seals, and the burst of the 2026-11-09 amendment ([decision 6739289644](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6739289644), [decision 6739625843](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6739625843), [decision 6739632202](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6739632202)), whose `ProbeBurstSize` is retired. Registration, authenticated hashes, the workflow's first-pod termination check, the late-write sweep, the decision rules, three-of-five eligibility and fatal capture are kept. The restart subject is unchanged. No B10 trial runs until the storage readiness race fix merges and this protocol is implemented. The pull request that implements this protocol's execution is the inactive smoke-only pull request permitted by factory.md "Item lifecycle" step 1; one diagnostic trial follows its merge, policy workload one C1 repeat with its timeout Job, control arm and kill/replacement arm, read back as a one-repeat diagnostic observation ([decision 6749995101](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6749995101)), never a published result. Policy cap: one trial. On failure or exhaustion, record the gap and continue to diagnostics and cleanup only, with no scientific activation and no automatic second trial; a second trial spends money, so the session hands off to Hari. Afterwards only implementation bugs and [Q11] may change, each by Hari's recorded decision before science and disclosed in the pack. Eligibility threshold, pre-acceptance statistics gate, control gate, verdict rules, restart subject and expectations may not change.
+  13. Publish only checked fields consumed by these rules: timeout six counts (rule 1); termination identity, cuts, unconfirmed sets and coverage (2/6); per-arm unconfirmed-set size, originals without a terminal record, invoked-resend, original/resend seen, pair and unreported-seen/unseen counts (2/3/5); actual fatal events/coverage (6); separate resend loss (3/4); comparison (5); declared/eligible count and reasons (2/4). Retain one checked pair witness per arm/repeat when present, chosen lexicographically by original attempt ID, resend attempt ID and original/resend coordinates. Count all pairs. Excess witnesses: `record the gap and continue`, without losing counts. Never turn unknown into zero or a persistence status.
+  14. Closed `b10_abrupt` schema [Q10] distinguishes journal, manifest, termination receipt, nonfinal result and final sweep projection from legacy evidence, including schema-2 evidence of the superseded stop protocol. Bind hash/length, run/configuration/repeat, source/image and ordered identities; charge existing byte/depth/entry budgets before filtering/allocation. Enforce closed members/types/version, nonnegative checked Int64 counts, exact identities/arm/predecessor/invocations, independent bookkeeping, nonempty kill unconfirmed set, exactly one linked resend per unconfirmed member, pair subsets bounded by originals/resends seen, seen bounded by unconfirmed/invoked, unreported-seen plus unseen equal to originals without a terminal record, deterministic witnesses/distinct coordinates, guard/fatal/termination gates and sweep finality. Missing/null/unknown required fields, fractional/overflow counts, conflicting terminals or failed bounds reject authoritative evidence. Old readers reject abrupt dialect; new readers retain schema-one behavior. No fabricated compatibility success, mixed source/image/dialect phase or promotion of legacy results to the new claim. Test actual produced bytes in both directions before publication.
+  15. Amendment of 2026-11-10 ([decision 6762516530](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6762516530)): nine diagnostic trials failed on harness machinery, none on the behaviour under test. Rules 1 to 14 above replace the stop/checkpoint/supervisor protocol, its pipe framing, freeze, checkpoint and drain budgets and pre-kill cohort seals, and the burst of the 2026-11-09 amendment ([decision 6739289644](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6739289644), [decision 6739625843](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6739625843), [decision 6739632202](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6739632202)), whose `ProbeBurstSize` is retired. Registration, authenticated hashes, the workflow's first-pod termination check, the late-write sweep, the decision rules, three-of-five eligibility and fatal capture are kept. The restart subject is unchanged. No B10 trial runs until the storage readiness race fix merges and this protocol is implemented. The pull request that implements this protocol's execution is the inactive smoke-only pull request permitted by factory.md "Item lifecycle" step 1; one diagnostic trial follows its merge, policy workload one C1 repeat with its timeout Job, control arm and kill/replacement arm, read back as a one-repeat diagnostic observation ([decision 6749995101](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6749995101)), never a published result. Journal success requires authenticated identities, durable acceptance records, the control arm's completeness, a nonempty kill unconfirmed set or its named exposure outcome, the self-kill and observed death, publication, first-pod termination and successor release within bounds with required capture/guards. No C0 or replacement trial. Policy cap: one trial. On failure or exhaustion, record the gap and continue to diagnostics and cleanup only, with no scientific activation and no automatic second trial; a second trial spends money, so the session hands off to Hari. It cannot test future verifier kill/crash separation; production-byte synthetic tests and science cover that. Afterwards only implementation bugs and [Q11] may change, each by Hari's recorded decision before science and disclosed in the pack. Eligibility threshold, pre-acceptance statistics gate, control gate, verdict rules, restart subject and expectations may not change.
 ```
 
 ## Appendix B. Edit script
 
-Part 1 applies appendix A. Run from the repository root with Python 3, `python3 -I apply.py <plan file> <output dir>`; it reads each file from `origin/main`, checks counts and the block P hash, and writes the edited files under `<output dir>`. Before running, the slots in block P and its sentences are filled with Hari's answers in the plan file copy the implementer uses; part 1 refuses any remaining `[Q` slot.
+Part 1 applies appendix A. Run from the repository root with Python 3, `python3 -I apply.py <plan file> <output dir>`. It reads each file from `origin/main`, checks every count, the block P hash and that no `[Q` slot remains, and only then writes the edited files under `<output dir>`. On any failure it prints each `FAIL`, writes nothing and exits 1. The implementer runs it on a copy of this file in which the slots are filled with Hari's recorded answers.
 
 ```python
 import hashlib, os, re, subprocess, sys
@@ -882,9 +1042,13 @@ files['docs/blueprint.md'] = '\n'.join(bp)
 for path, body in files.items():
     if '[Q' in body:
         print('FAIL slot', path); bad += 1
+if bad:
+    print('bad', bad)
+    sys.exit(1)
+for path, body in files.items():
     os.makedirs(os.path.dirname(os.path.join(outdir, path)), exist_ok=True)
     open(os.path.join(outdir, path), 'w', encoding='ascii').write(body)
-print('bad', bad)
+print('bad 0')
 ```
 
 Then `diff -r <output dir>/docs docs` for the three files prints nothing once the working tree holds the change.
@@ -892,10 +1056,9 @@ Then `diff -r <output dir>/docs docs` for the three files prints nothing once th
 Part 2, acceptance command 4:
 
 ```python
-import subprocess
+import difflib, subprocess
 old = subprocess.run(['git', 'show', 'origin/main:docs/blueprint.md'], capture_output=True, text=True, check=True).stdout.split('\n')
 new = open('docs/blueprint.md').read().split('\n')
-import difflib
 bad = 0
 for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, old, new, autojunk=False).get_opcodes():
     if tag in ('replace', 'delete'):
