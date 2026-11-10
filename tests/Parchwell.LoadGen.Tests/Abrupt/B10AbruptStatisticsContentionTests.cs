@@ -121,7 +121,7 @@ public sealed class B10AbruptStatisticsContentionTests
         await using var sessionOwner = session;
         var config = new ProducerConfig { BootstrapServers = "127.0.0.1:1", ClientId = "client", StatisticsIntervalMs = 20 };
         IProducer<byte[], byte[]> producer = new ProducerBuilder<byte[], byte[]>(config)
-            .SetStatisticsHandler((_, raw) => { stats.CaptureNative(raw); session.Capture(raw); })
+            .SetStatisticsHandler(B10AbruptHost.StatisticsHandler(stats, session))
             .SetLogHandler((_, _) => { }).SetErrorHandler((_, _) => { }).Build();
         stats.MarkDrainBoundary(DateTimeOffset.MaxValue, System.Diagnostics.Stopwatch.GetTimestamp(), System.Diagnostics.Stopwatch.Frequency);
 
