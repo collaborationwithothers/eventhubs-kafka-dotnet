@@ -27,6 +27,9 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
     private readonly Dictionary<string, BrokerCounters> _counters = new(StringComparer.Ordinal);
     private readonly TaskCompletionSource _coverageReached = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+    // Set inside the gate section that closes capture, before _captureOpen changes. A Capture call
+    // that reads it set starts after capture closed and is ignored (docs/operations/statistics-bridge.md).
+    private bool _admissionClosed;
     private bool _captureOpen = true;
     private bool _disposed;
     private bool _completionStarted;
@@ -87,11 +90,18 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
     /// <summary>Records a native callback report without blocking the Kafka callback thread.</summary>
     /// <remarks>
     /// Reports beyond the configured UTF-16 length or queue capacity are rejected and latch
-    /// incomplete evidence. A call after the completion freeze is diagnosed as a late capture.
+    /// incomplete evidence. A call that starts after completion closes capture is ignored: it is
+    /// not queued and does not change the completion result. A call that started before capture
+    /// closed and is refused because capture has closed records capture loss.
     /// </remarks>
     /// <param name="json">The original librdkafka statistics JSON.</param>
     public void Capture(string json)
     {
+        if (Volatile.Read(ref _admissionClosed))
+        {
+            return;
+        }
+
         if (!_completionState.TryBeginCapture())
         {
             AddDiagnostic("late_capture");
@@ -602,6 +612,8 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
     {
         lock (_gate)
         {
+            Volatile.Write(ref _admissionClosed, true);
+            Interlocked.MemoryBarrier();
             _captureOpen = false;
             _queue.Writer.TryComplete();
         }
