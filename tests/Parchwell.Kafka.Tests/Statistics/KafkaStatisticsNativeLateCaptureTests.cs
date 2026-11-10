@@ -14,7 +14,7 @@ public sealed class KafkaStatisticsNativeLateCaptureTests
 {
     // Real librdkafka statistics thread, session built by the production registration. Linux only:
     // TimeProvider.System and librdkafka's report timestamp share CLOCK_MONOTONIC there
-    // (docs/operations/statistics-bridge.md, "Native clock").
+    // (docs/operations/statistics-bridge.md, "Drain, completion and clock proof").
     [Fact]
     public async Task Given_RealProducerCallbackAfterCaptureClosed_When_CompletionSeals_Then_CompletionStaysComplete()
     {
@@ -60,7 +60,7 @@ public sealed class KafkaStatisticsNativeLateCaptureTests
         {
             await LateCaptureTestSupport.WaitUntilAsync(() => sink.WrittenTimestamps.Length >= 1, "one written report", token);
             Task<KafkaStatisticsCompletion> completionTask = session.CompleteAsync(token);
-            Volatile.Write(ref threshold, Stopwatch.GetTimestamp() * 1_000_000 / Stopwatch.Frequency);
+            Volatile.Write(ref threshold, (long)((Int128)Stopwatch.GetTimestamp() * 1_000_000 / Stopwatch.Frequency));
             await sink.EnteredAsync(1, token);
             int endedAtHold = Volatile.Read(ref ended);
             await LateCaptureTestSupport.WaitUntilAsync(() => Volatile.Read(ref ended) > endedAtHold, "a callback queued before close", token);

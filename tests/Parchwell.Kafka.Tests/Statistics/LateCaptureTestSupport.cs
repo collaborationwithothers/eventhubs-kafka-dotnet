@@ -3,8 +3,9 @@ using Parchwell.Kafka.Statistics;
 
 namespace Parchwell.Kafka.Tests.Statistics;
 
-// Test doubles for the late-capture tests. They build sessions only through the public factory and
-// observe the session through its public surface, plus one read-only reflection probe (SessionProbe).
+// Test doubles for the late-capture tests. Sessions come from the public Create of the factory, built
+// through its internal constructor so a test can supply a clock. The session is driven through its public
+// surface; SessionProbe additionally reads two private fields and takes the session's gate once.
 internal static class LateCaptureTestSupport
 {
     internal static readonly TimeSpan Watchdog = TimeSpan.FromSeconds(5);
@@ -38,7 +39,9 @@ internal static class LateCaptureTestSupport
     }
 }
 
-// Reads the session's private capture state so a test can tell that completion closed capture.
+// Reads the session's private capture state so a test can tell that completion closed capture, and
+// briefly takes the session's gate to learn that no other thread holds it. Do not use it while a live
+// callback is running: holding the gate makes that callback record capture contention.
 // A probe that cannot find what it reads fails the test; it never passes vacuously.
 internal static class SessionProbe
 {
