@@ -1,13 +1,13 @@
 # PR3a evidence completeness receipt
 
-After a B10 abrupt first pod is killed, the ledger container now holds the eight cohort files the verifier needs to check the timeout and control cohorts without the child, and the supervisor journal carries every native error callback the first child saw until its event stream ended. The change adds no verifier logic, gate, failure name or budget. It touches one protected test file (the `ExportNames` array only), so Hari merges it.
+After a B10 abrupt first pod is killed, the ledger container now holds the eight cohort files the verifier needs to check the timeout and control cohorts without the child, and the supervisor journal carries, as numbered `native_error` records, every first-child error callback whose message reached the supervisor before its event stream ended. A callback whose message was still queued in the child when it was stopped for the kill, and any native error not yet delivered to the callback, belong to the unknown native tail; the change records no absence of fatal errors. The change adds no verifier logic, gate, failure name or budget. It touches one protected test file (the `ExportNames` array only), so Hari merges it.
 
 This receipt is the single authored receipt of the pull request. It records the plan and decisions that govern it, the execution card, the choices the plan left to the implementer, the commands run with their results, and the review record.
 
 ## Execution card
 
 - Deliverable: the change that [PR3a evidence completeness plan Revision 8](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753635457) specifies, `items/404/plan-pr3a-evidence-completeness.md` at `d293b4b659261c7b4d4c3c5691328fd79a07b00e` (SHA-256 `b5d857b78747e45daed325a7910fc8e73cd64be6416e03c31510642a53ecb858`, verified against the file at that commit). Files and requirements are the plan's sections 3 and 5; they are not copied here.
-- Current authorization: [approval 6753938298](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753938298) under standing decision [6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614) point 2 (posted by the control session, not after Hari's review); [plan check 6753915132](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753915132), `Blocking findings: none`, whose P2-1 to P2-4 are `apply in implementation`. Implementing tool: Claude Code (6752430614 point 3). Order and stacking: [6752454732](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752454732) and [6752554218](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752554218) point 2: this branch starts from the unmerged successor fix head `9c84ba4174e2c7b40f0805b3e6cfe6efd26ba818`, is not merged before it, and is rebased, rechecked under the plan's stop rule and reviewed again after it merges. No trial, dispatch, Azure access, `expected.yaml` or `results/` change is authorized.
+- Current authorization: [approval 6753938298](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753938298) under standing decision [6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614) point 2 (posted by the control session, not after Hari's review); [plan check 6753915132](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753915132), `Blocking findings: none`, whose P2-1 to P2-4 are `apply in implementation`. Implementing tool: Claude Code (6752430614 point 3). Order and stacking: the order is the successor fix, the capture contention race fix, then PR3a ([6752454732](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752454732)); [6752554218](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752554218) point 2 lets the next pull request stack on its immediate predecessor's unmerged head. This branch starts from the unmerged successor fix head `9c84ba4174e2c7b40f0805b3e6cfe6efd26ba818` at the control session's direction. The contention race fix, PR3a's immediate predecessor, is not in the base; whether that stacking is covered is reported to the control session and Hari (cold review round 1, P1-1). The branch is not merged before either predecessor, and is rebased, rechecked under the plan's stop rule and reviewed again after they merge. No trial, dispatch, Azure access, `expected.yaml` or `results/` change is authorized.
 - Mandatory gates: the plan's acceptance commands A0 to A9 (below), `./scripts/verify-dotnet.sh`, `npm run check:docs`, the cold review of docs/agents/pull-requests.md rule 8, final-head CI and hosted Codex code and security reviews, and Hari's merge.
 - Exact verification commands: those of the plan's section 10 (A0 to A9), run as written; and `./scripts/verify-dotnet.sh`.
 - Earliest authorized publication checkpoint: the control session tells this session that the successor fix pull request exists. Until then only backup pushes to `claude/404-pr3a-evidence-completeness-wip` (rule 12).
@@ -53,8 +53,8 @@ The plan's section 8 is the predicate map. Each test maps as follows (test names
 | T10 | R9 | `B10AbruptPublicationTests`: `NativeErrorsBeforeAndAfterTheKill...` |
 | T11 | R6 | `B10AbruptFatalCaptureTests`: `FullWriteQueue...` |
 | T12 | none (guard) | `check_b10_abrupt_producers.py` on the new export (A3) |
-| T13 | none | `B10AbruptRejectionTests` (A5); its diff adds eight lines of names and removes none |
-| T14 | R12 | `B10AbruptPublicationTests`: `CohortFileUploads...`, `SecondCohortUploadFails...` |
+| T13 | none | `B10AbruptRejectionTests` (A5); its diff adds three lines holding the eight names and removes none |
+| T14 | R12 | `B10AbruptPublicationTests`: `CohortFileUploads...`, `SecondCohortUploadFails...` (timeline `dropped` is not observable on stderr; exactly eight lines and two lines show no entry was dropped) |
 | T15 | R6 | `B10AbruptFatalCaptureTests`: `HostBuiltProducer_When_NativeFatalErrorIsRaised...` |
 | T16 | R6, R8 | `B10AbruptFatalCaptureTests`: `NativeErrorCountThatChangesDuringCohortRuns...` |
 
@@ -62,10 +62,29 @@ Mutants of the plan's section 8 table, run on scratch edits of the source (each 
 
 ## Verification record
 
-Source commit for the results below: the commit named in "Commands run", with the working tree otherwise clean.
+Source commit for the results below: the commit `6b85cbe` (code and tests) plus `b97a362` (contract, state, receipt); later commits change only the review fixes listed under the cold review record.
 
-(filled in after the final run)
+Run at the tree of `b97a362` (code identical at `6b85cbe`), .NET SDK 10.0.402, dockerd started in the session:
+
+- A0 `dotnet restore --locked-mode` and `dotnet build -c Release`: exit 0, 0 warnings, 0 errors.
+- A1 abrupt LoadGen tests with the published apphost: total 519, succeeded 519, failed 0, skipped 0. Without the apphost: 518 succeeded, 1 skipped. Before the change: 457 total.
+- A2 `*B10AbruptFatal*`: 12 of 12 passed.
+- A3 export: 22 files plus `export.json`; wire tests 8, 0 failed; checker `Ran 15 tests`, `OK`, `b10_abrupt_produced_bytes_checked`.
+- A4 `test_b10_abrupt.py`: `Ran 12 tests`, `OK`.
+- A5 verifier rejection tests: 2 of 2. A6 architecture tests with `PARCHWELL_REPOSITORY_ROOT`: 1 of 1.
+- A7 `npm run check:docs`: 8 warnings, all in files this change does not touch (the baseline's eight); `git diff --check` clean.
+- A8 `not_implemented_pr3`: 3 lines (`B10AbruptWire.cs`, `B10AbruptProducer.cs`, `B10AbruptStatistics.cs`).
+- A9 contract script: `1270 370 -130`.
+- `./scripts/verify-dotnet.sh`: exit 0 (LoadGen 1739, Verifier 7389, Kafka 486 passed).
+- Fatal-capture and publication test classes run 15 times in a row: 15 of 15 passed.
 
 ## Cold review record
 
-(filled in after each round)
+Round 1, comprehensive, input `b97a362`, compared with the stacked base `9c84ba4`: 2 P1, 5 P2. Cumulative: 1 comprehensive, 0 focused.
+- P1-1 stacking authority: not fixable by this session. Receipt and state now state the facts; reported to the control session for a decision.
+- P1-2 goal wording: narrowed in this receipt (P2-3 wording).
+- P2 comments: the false "a kill cannot lose" claim and the wrong rule number are fixed in `B10AbruptHost.cs` and the two test files (ADR-021 protocol rule 9).
+- P2 contract consequence column: states that collection-time findings block nothing; "after the successor is released" reworded.
+- P2 T14: the failure test now asserts the `name_index` 0 line before the second create; `dropped` recorded as not observable.
+- P2 T13 wording and the verification record: fixed above.
+- Stop-rule note (plan pins successor fix Revision 3, approved Revision 7): `9c84ba4` is the Revision 7 implementation; the diff in "Decisions and stop rule" is against it. The contention fix and successor fix merges still trigger the plan's recheck.

@@ -215,6 +215,7 @@ public sealed class B10AbruptPublicationTests
             Assert.Equal(0, failed.GetProperty("upload_succeeded").GetInt64());
             Assert.Equal(30000, failed.GetProperty("elapsed_milliseconds").GetInt64());
             // The failure line was already written when the abort path first read the child's exited state, which precedes any cleanup call.
+            Assert.Contains("\"name_index\":0,", seen[1]);
             Assert.NotNull(seen[7]);
             Assert.Contains("\"name_index\":1,", seen[7]);
             Assert.Contains("\"upload_succeeded\":0", seen[7]);

@@ -16,8 +16,8 @@ namespace Parchwell.LoadGen.Tests.Abrupt;
 
 #pragma warning disable CA1707
 /// <summary>
-/// Fatal-error capture (ADR-021 rule 12): every first-child error callback reaches the supervisor's journal as a numbered
-/// <c>native_error</c> record, so a kill cannot lose an error the child's own evidence session still held in memory.
+/// Fatal-error capture (ADR-021 protocol rule 9): every first-child error callback reaches the supervisor's journal as a numbered
+/// <c>native_error</c> record, so an error the child's own evidence session still held in memory is also in the journal, unless its message was still queued when the child was stopped.
 /// </summary>
 [Collection("B10AbruptEnvironment")]
 public sealed class B10AbruptFatalCaptureTests
