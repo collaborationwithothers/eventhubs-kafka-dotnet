@@ -268,7 +268,7 @@ internal static class B10AbruptHost
             return evidence.ArtifactNames.ToDictionary(name => name, name => Path.Combine(evidencePath, name), StringComparer.Ordinal);
         });
 
-    // One flag per diagnostic code KafkaStatisticsSession can emit, in the order the contract lists them.
+    // One flag per diagnostic code KafkaStatisticsSession can emit. The fact order is part of the failure line; B10AbruptSuccessorCompletionTests pins it.
     private static readonly (B10AbruptFact Fact, string Code)[] CompletionCodeFacts =
     [
         (B10AbruptFact.DiagnosticClockUnverified, "clock_unverified"),
