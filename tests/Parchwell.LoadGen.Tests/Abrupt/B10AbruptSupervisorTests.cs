@@ -829,7 +829,7 @@ public sealed class B10AbruptSupervisorTests
         Assert.Equal("incomplete", data.GetProperty("mechanical_status").GetString());
         Assert.Equal("b10_abrupt_exposure_inconclusive", data.GetProperty("failure").GetString());
         Assert.Equal("System.IO.InvalidDataException", data.GetProperty("exception_type").GetString());
-        Assert.Equal("not_implemented_pr3", data.GetProperty("fatal_capture_status").GetString());
+        Assert.Equal("journal", data.GetProperty("fatal_capture_status").GetString());
         Assert.True(data.GetProperty("kill_requested").GetBoolean());
         Assert.True(data.GetProperty("has_exited").GetBoolean());
         Assert.Empty(data.GetProperty("capture_gaps").EnumerateArray());
@@ -923,7 +923,7 @@ public sealed class B10AbruptSupervisorTests
         {
             cohort = fault == "cohort" ? "same_instance" : "timeout", inventory = d, count = 1, ledger = d,
             drain_complete = fault != "drain_complete", post_drain_statistics = d, guard_complete = fault != "guard_complete",
-            fatal_capture_status = "not_implemented_pr3"
+            fatal_capture_status = "journal", native_error_count = 0
         });
         await File.WriteAllBytesAsync(Path.Combine(fixture.Root, "abrupt-child", "timeout-seal.json"), seal, TestContext.Current.CancellationToken);
         Assert.Equal("b10_abrupt_control_incomplete", (await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Supervisor.RunAsync(TestContext.Current.CancellationToken))).Message);
@@ -1274,11 +1274,12 @@ public sealed class B10AbruptSupervisorTests
         checkpoint_monotonic_ticks = fixture.Clock.GetTimestamp(), release_utc = B10AbruptPublisher.Utc(fixture.Clock.GetUtcNow().AddSeconds(120))
     });
 
-    private static Task LoadControlSealAsync(DeadlineFixture fixture) =>
+    internal static Task LoadControlSealAsync(DeadlineFixture fixture) =>
         (Task)typeof(B10AbruptSupervisor).GetMethod("LoadSealAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
             .Invoke(fixture.Supervisor, ["control", TestContext.Current.CancellationToken])!;
 
-    private static async Task WriteControlSealAsync(DeadlineFixture fixture, int count, string predecessor)
+    internal static async Task WriteControlSealAsync(DeadlineFixture fixture, int count, string predecessor,
+        long nativeErrorCount = 0, string fatalCaptureStatus = "journal")
     {
         var token = TestContext.Current.CancellationToken;
         await fixture.PrepareAcceptedAsync("same_instance", count - 1);
@@ -1317,7 +1318,7 @@ public sealed class B10AbruptSupervisorTests
         await File.WriteAllBytesAsync(Path.Combine(directory, "post-drain-report.json"), statistics, token);
         byte[] seal = B10AbruptWire.SerializeEnvelope("cohort_seal", identity, new
         {
-            cohort = "same_instance", count, drain_complete = true, guard_complete = true, fatal_capture_status = "not_implemented_pr3",
+            cohort = "same_instance", count, drain_complete = true, guard_complete = true, fatal_capture_status = fatalCaptureStatus, native_error_count = nativeErrorCount,
             inventory = B10AbruptPublisher.Describe("manifest.json", inventory), ledger = B10AbruptPublisher.Describe("ledger.jsonl", ledger),
             post_drain_statistics = B10AbruptPublisher.Describe("post-drain-report.json", statistics)
         });
@@ -1395,7 +1396,7 @@ public sealed class B10AbruptSupervisorTests
         return events;
     }
 
-    private sealed class DeadlineFixture : IAsyncDisposable
+    internal sealed class DeadlineFixture : IAsyncDisposable
     {
         internal string Root { get; } = Path.Combine(Path.GetTempPath(), "b10-deadline-" + Guid.NewGuid().ToString("N"));
         internal ManualClock Clock { get; } = new();
@@ -1460,7 +1461,7 @@ public sealed class B10AbruptSupervisorTests
         }
     }
 
-    private sealed class DeadlineChild(string marker) : IB10AbruptProcess
+    internal sealed class DeadlineChild(string marker) : IB10AbruptProcess
     {
         public OwnedProducerProcess.ProcessIdentity Identity { get; } = new(123, 122, marker, 1);
         internal Stream EventInput { get; set; } = Stream.Null;
@@ -1491,7 +1492,7 @@ public sealed class B10AbruptSupervisorTests
         public void Dispose() { Disposals++; }
     }
 
-    private sealed class ManualClock : TimeProvider
+    internal sealed class ManualClock : TimeProvider
     {
         private long ticks;
         private readonly List<ManualTimer> timers = [];

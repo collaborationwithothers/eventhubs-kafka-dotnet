@@ -24,6 +24,9 @@ public sealed class B10AbruptRejectionTests
     private static readonly string[] ExportNames =
     [
         "first/registration.json", "first/journal.jsonl", "first/timeout-seal.json", "first/control-seal.json",
+        "first/timeout-manifest.json", "first/timeout-ledger.jsonl", "first/timeout-post-drain-report.json",
+        "first/control-manifest.json", "first/control-ledger.jsonl", "first/control-post-drain-report.json",
+        "first/same_instance-pre-acceptance-report.json", "first/cross_restart-pre-acceptance-report.json",
         "first/kill-selection.json", "first/abrupt-manifest.json", "first/termination.json",
         "successor/registration.json", "successor/ledger.jsonl", "successor/manifest.json",
         "successor/statistics.jsonl", "successor/request-lifecycle.jsonl", "successor/capabilities.json", "successor/completion.json"
