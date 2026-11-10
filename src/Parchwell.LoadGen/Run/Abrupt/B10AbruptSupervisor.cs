@@ -70,6 +70,7 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
     private Exception? _cleanupFailureCause;
     private Exception? _cleanupCaptureCause;
     private long _ackSequence;
+    private long _nativeErrorSequence;
     private bool _killRequested;
     private CleanupDiagnostic? _cleanup;
     private sealed record CleanupDiagnostic(string Arm, string? Failure, OwnedProducerProcess.SignalObservation? SignalObservation, string? CaptureFailure);
@@ -134,23 +135,27 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
             B10AbruptWire.Descriptor journalDescriptor = await journal.SealAsync(cancellationToken).ConfigureAwait(false);
             _files["journal.jsonl"] = await B10AbruptPublisher.ReadFileAsync(journal.Path, 16777216, cancellationToken).ConfigureAwait(false);
             if (journal.Gaps.Count != 0) throw Failure("b10_abrupt_capture_gap", [Fact(B10AbruptFact.JournalGapCount, journal.Gaps.Count)]);
+            B10AbruptWire.Descriptor[] cohortFiles = await ReadCohortFilesAsync(cancellationToken).ConfigureAwait(false);
+            long nativeErrors = journal.Frames.LongCount(frame => frame.Kind == "native_error");
+            long nativeFatals = journal.Frames.LongCount(frame => frame.Kind == "native_error" && frame.Data.GetProperty("is_fatal").GetBoolean());
             _files["abrupt-manifest.json"] = B10AbruptWire.SerializeEnvelope("abrupt_manifest", options.Identity(), new
             {
                 journal = journalDescriptor, journal_entry_count = journal.Frames.Count,
                 timeout_seal = B10AbruptPublisher.Describe("timeout-seal.json", _files["timeout-seal.json"]),
                 control_seal = B10AbruptPublisher.Describe("control-seal.json", _files["control-seal.json"]),
                 selection = B10AbruptPublisher.Describe("kill-selection.json", _files["kill-selection.json"]),
-                gaps = journal.Gaps, registration = B10AbruptPublisher.Describe("registration.json", _files["registration.json"])
+                gaps = journal.Gaps, registration = B10AbruptPublisher.Describe("registration.json", _files["registration.json"]),
+                cohort_files = cohortFiles
             });
             _files["termination.json"] = B10AbruptWire.SerializeEnvelope("termination", options.Identity(), new
             {
                 manifest = B10AbruptPublisher.Describe("abrupt-manifest.json", _files["abrupt-manifest.json"]),
                 process = child.Identity, signals = _signals, exit, cgroup_before = _before, cgroup_after = after,
-                eof_complete = true, mechanical_status = "complete", fatal_capture_status = "not_implemented_pr3",
-                native_tail = "unknown_due_to_intended_kill"
+                eof_complete = true, mechanical_status = "complete", fatal_capture_status = "journal_through_eof",
+                native_tail = "unknown_due_to_intended_kill", native_error_count = nativeErrors, native_fatal_count = nativeFatals
             });
             await publisher.PublishFirstAsync(options.Identity(), _files.Where(pair => pair.Key != "registration.json")
-                .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal), cancellationToken).ConfigureAwait(false);
+                .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal), cancellationToken, _timeline).ConfigureAwait(false);
             _timeline.Mark(B10AbruptStage.PublicationComplete);
         }
         catch (Exception failure)
@@ -167,7 +172,7 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
                     exception_type = failure.GetType().FullName ?? failure.GetType().Name,
                     diagnostic = Describe(failure, reduce: reduction >= 2),
                     process = child?.Identity, kill_requested = _killRequested, has_exited = child?.HasExited,
-                    capture_gaps = journal.Gaps, arm_failures = _armFailures, fatal_capture_status = "not_implemented_pr3",
+                    capture_gaps = journal.Gaps, arm_failures = _armFailures, fatal_capture_status = "journal",
                     signal_observation = (failure as OwnedProducerProcess.SignalException)?.Observation,
                     cleanup = _cleanup is null ? null : new
                     {
@@ -368,6 +373,16 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
                 var rejection = await journal.AppendAsync(message.Kind, message.Data, cancellationToken).ConfigureAwait(false);
                 if (!afterKill) await AckAsync(rejection.Sequence, cancellationToken).ConfigureAwait(false);
                 throw Failure("b10_abrupt_guard_failed", [Fact(B10AbruptFact.ErrorCode, NumberOrMinusOne(message.Data, "error_code"))]);
+            case "native_error":
+                long captureSequence = message.Data.GetProperty("capture_sequence").GetInt64();
+                if (captureSequence != _nativeErrorSequence + 1)
+                {
+                    journal.LatchGap("sequence_gap");
+                    throw Failure("b10_abrupt_capture_gap", [Fact(B10AbruptFact.GapReason, GapReasonCode("sequence_gap")), Fact(B10AbruptFact.AfterKill, afterKill)]);
+                }
+                await journal.AppendAsync("native_error", message.Data, cancellationToken).ConfigureAwait(false);
+                _nativeErrorSequence = captureSequence;
+                break;
             case "capture_gap":
                 string reason = message.Data.GetProperty("reason").GetString()!;
                 journal.LatchGap(reason);
@@ -612,7 +627,8 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
             Check(sealFacts, B10AbruptFact.CohortMatches, data.GetProperty("cohort").GetString() == (cohort == "control" ? "same_instance" : cohort)) &&
             Check(sealFacts, B10AbruptFact.DrainComplete, data.GetProperty("drain_complete").GetBoolean()) &&
             Check(sealFacts, B10AbruptFact.GuardComplete, data.GetProperty("guard_complete").GetBoolean()) &&
-            Check(sealFacts, B10AbruptFact.FatalStatusMatches, data.GetProperty("fatal_capture_status").GetString() == "not_implemented_pr3"))) throw Failure("b10_abrupt_control_incomplete", [.. sealFacts]);
+            Check(sealFacts, B10AbruptFact.FatalStatusMatches, data.GetProperty("fatal_capture_status").GetString() == "journal" &&
+                NativeErrorsJournaled(data.GetProperty("native_error_count").GetInt64())))) throw Failure("b10_abrupt_control_incomplete", [.. sealFacts]);
         string directory = Path.Combine(options.OutputRoot, cohort);
         var artifacts = new Dictionary<string, byte[]>(StringComparer.Ordinal);
         foreach (var pair in new[] { ("inventory", "manifest.json", 67108864), ("ledger", "ledger.jsonl", 268435456), ("post_drain_statistics", "post-drain-report.json", 1048576) })
@@ -650,6 +666,52 @@ internal sealed class B10AbruptSupervisor(B10AbruptOptions options, TimeProvider
         }
         _files.Add(name, bytes);
         _timeline.Hold(B10AbruptStage.SealLoaded, Fact(B10AbruptFact.Cohort, ArmCode(cohort == "control" ? "same_instance" : cohort)), Fact(B10AbruptFact.SealCount, NumberOrMinusOne(data, "count")));
+    }
+
+    // A seal's native_error_count is the child's highest capture_sequence when it built the seal. Those messages were
+    // queued before any later message, so the journal must already hold frames 1 to the count (ADR-021 rule 12).
+    private bool NativeErrorsJournaled(long count)
+    {
+        long expected = 1;
+        foreach (B10AbruptWire.Frame frame in journal.Frames.Where(frame => frame.Kind == "native_error"))
+        {
+            if (expected > count) break;
+            if (frame.Data.GetProperty("capture_sequence").GetInt64() != expected++) return false;
+        }
+        return expected > count;
+    }
+
+    // The eight cohort files are read again at publication and must still equal the descriptors that bound them
+    // (the seals for six, the checkpoints for the two arm reports), so nothing is published that the seals do not describe.
+    private async Task<B10AbruptWire.Descriptor[]> ReadCohortFilesAsync(CancellationToken cancellationToken)
+    {
+        var bound = new List<(string Published, string Local, int Limit, JsonElement Descriptor)>();
+        foreach (string cohort in new[] { "timeout", "control" })
+        {
+            JsonElement data = B10AbruptWire.ReadEnvelope(_files[cohort + "-seal.json"], "cohort_seal").GetProperty("data");
+            bound.Add(($"{cohort}-manifest.json", $"{cohort}/manifest.json", 67108864, data.GetProperty("inventory")));
+            bound.Add(($"{cohort}-ledger.jsonl", $"{cohort}/ledger.jsonl", 268435456, data.GetProperty("ledger")));
+            bound.Add(($"{cohort}-post-drain-report.json", $"{cohort}/post-drain-report.json", 1048576, data.GetProperty("post_drain_statistics")));
+        }
+        foreach (string arm in new[] { "same_instance", "cross_restart" })
+            bound.Add(($"{arm}-pre-acceptance-report.json", $"abrupt-child/{arm}-pre-acceptance-report.json", 1048576, _reports[arm]));
+        var descriptors = new B10AbruptWire.Descriptor[bound.Count];
+        for (int index = 0; index < bound.Count; index++)
+        {
+            (string published, string local, int limit, JsonElement descriptor) = bound[index];
+            if (published != B10AbruptPublisher.CohortMembers[index]) throw Failure("b10_abrupt_publication_failed", [Fact(B10AbruptFact.NameIndex, index)]);
+            byte[] bytes;
+            try { bytes = await B10AbruptPublisher.ReadFileAsync(Path.Combine(options.OutputRoot, local), limit, cancellationToken).ConfigureAwait(false); }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            { throw Failure("b10_abrupt_publication_failed", [Fact(B10AbruptFact.NameIndex, index), Fact(B10AbruptFact.FileExists, File.Exists(Path.Combine(options.OutputRoot, local)))], exception); }
+            bool lengthMatches = descriptor.GetProperty("length").GetInt64() == bytes.Length;
+            bool hashMatches = descriptor.GetProperty("sha256").GetString() == B10AbruptPublisher.Hash(bytes);
+            if (!lengthMatches || !hashMatches)
+                throw Failure("b10_abrupt_publication_failed", [Fact(B10AbruptFact.NameIndex, index), Fact(B10AbruptFact.LengthMatches, lengthMatches), Fact(B10AbruptFact.HashMatches, hashMatches)]);
+            _files[published] = bytes;
+            descriptors[index] = B10AbruptPublisher.Describe(published, bytes);
+        }
+        return descriptors;
     }
 
     private async Task CheckCapturedErrorsAsync(CancellationToken cancellationToken)

@@ -30,6 +30,7 @@ internal sealed class B10AbruptProducer
     private readonly B10AbruptWire.Identity? diagnosticIdentity;
     private readonly SuccessorCompletion? completion;
     private readonly B10AbruptTimeline timeline;
+    private readonly Func<long> nativeErrorCount;
     private readonly object gate = new();
     private readonly List<ProbeAttempt> probes = [];
     private IProducer<byte[], byte[]>? producer;
@@ -53,7 +54,8 @@ internal sealed class B10AbruptProducer
         Func<string, JsonElement, CancellationToken, Task> persistCohortSeal, RunEvidenceSession? evidence = null,
         B10AbruptWire.Identity? diagnosticIdentity = null,
         SuccessorCompletion? completion = null,
-        B10AbruptTimeline? timeline = null)
+        B10AbruptTimeline? timeline = null,
+        Func<long>? nativeErrorCount = null)
     {
         this.producerFactory = producerFactory;
         this.clock = clock;
@@ -67,7 +69,11 @@ internal sealed class B10AbruptProducer
         this.diagnosticIdentity = diagnosticIdentity;
         this.completion = completion;
         this.timeline = timeline ?? new B10AbruptTimeline(clock, "child", null);
+        this.nativeErrorCount = nativeErrorCount ?? (() => 0);
     }
+
+    /// <summary>The highest native error sequence the first child has assigned so far; 0 when the child has no channel.</summary>
+    internal long NativeErrorCount => nativeErrorCount();
 
     /// <summary>The successor's two completion steps. The producer runs them in order around native disposal.</summary>
     internal sealed record SuccessorCompletion(
@@ -248,7 +254,8 @@ internal sealed class B10AbruptProducer
         {
             cohort = "timeout", count = entries.Length, inventory = Describe(Path.Combine(directory, "manifest.json")),
             ledger = Describe(Path.Combine(directory, "ledger.jsonl")), drain_complete = true,
-            guard_complete = true, post_drain_statistics = Describe(Path.Combine(directory, "post-drain-report.json")), fatal_capture_status = "not_implemented_pr3"
+            guard_complete = true, post_drain_statistics = Describe(Path.Combine(directory, "post-drain-report.json")), fatal_capture_status = "journal",
+            native_error_count = nativeErrorCount()
         }), cancellationToken).ConfigureAwait(false);
         timeline.Mark(B10AbruptStage.CohortSealed, Fact(B10AbruptFact.Arm, 0), Fact(B10AbruptFact.EntryCount, entries.Length));
         timeoutSealed = true;
@@ -562,7 +569,8 @@ internal sealed class B10AbruptProducer
         {
             cohort = arm, count = entries.Length, inventory = Describe(Path.Combine(directory, "manifest.json")),
             ledger = Describe(Path.Combine(directory, "ledger.jsonl")), drain_complete = true,
-            guard_complete = true, post_drain_statistics = Describe(Path.Combine(directory, "post-drain-report.json")), fatal_capture_status = "not_implemented_pr3"
+            guard_complete = true, post_drain_statistics = Describe(Path.Combine(directory, "post-drain-report.json")), fatal_capture_status = "journal",
+            native_error_count = nativeErrorCount()
         });
     }
 

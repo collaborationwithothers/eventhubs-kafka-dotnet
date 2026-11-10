@@ -710,7 +710,7 @@ public sealed class B10AbruptProducerTests
         Assert.Equal(2, rows.Length);
         Assert.NotEqual(rows[0].Attempt.AttemptId, rows[1].Attempt.AttemptId);
         Assert.Single(fixture.Seals);
-        Assert.Equal("not_implemented_pr3", fixture.Seals[0].GetProperty("fatal_capture_status").GetString());
+        Assert.Equal("journal", fixture.Seals[0].GetProperty("fatal_capture_status").GetString());
     }
 
     [Theory]
@@ -1109,9 +1109,9 @@ public sealed class B10AbruptProducerTests
 
     private static string? StageName(JsonElement entry) => entry.GetProperty("stage").GetString();
 
-    private static T RuntimeMember<T>(object runtime, string name) => (T)runtime.GetType().GetProperty(name)!.GetValue(runtime)!;
+    internal static T RuntimeMember<T>(object runtime, string name) => (T)runtime.GetType().GetProperty(name)!.GetValue(runtime)!;
 
-    private static B10AbruptOptions HostOptions(string root)
+    internal static B10AbruptOptions HostOptions(string root)
     {
         var values = new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -1127,7 +1127,7 @@ public sealed class B10AbruptProducerTests
         return B10AbruptOptions.Read(values.ToDictionary(pair => B10AbruptOptions.Prefix + pair.Key, pair => pair.Value, StringComparer.Ordinal));
     }
 
-    private static ServiceProvider ProducerHostServices(B10AbruptOptions options, UnusedTokenProvider tokenProvider)
+    internal static ServiceProvider ProducerHostServices(B10AbruptOptions options, UnusedTokenProvider tokenProvider)
     {
         var services = new ServiceCollection();
         services.AddSingleton(TimeProvider.System);
@@ -1191,7 +1191,7 @@ public sealed class B10AbruptProducerTests
             name => name, _ => ImmutableArray.Create(new PayloadBucket(4, 1)), StringComparer.Ordinal),
         [new LoadStage("one", 1, 1)], new SourceLocation("synthetic"));
 
-    private sealed class Fixture : IAsyncDisposable
+    internal sealed class Fixture : IAsyncDisposable
     {
         internal string Root { get; } = Path.Combine(Path.GetTempPath(), "abrupt-producer-" + Guid.NewGuid().ToString("N"));
         internal RunIdentity Identity { get; } = new("B10", "C1", "run-1", "pod-1", "pod-1", "client");
@@ -1212,7 +1212,7 @@ public sealed class B10AbruptProducerTests
         private Task? reportTask;
         private readonly KafkaStatisticsIdentity statisticsIdentity = new("B10", "run-1", KafkaClientRole.LoadGenProducer, "client");
 
-        internal Fixture(long sequence = 0, TimeProvider? clock = null, B10AbruptTimeline? timeline = null)
+        internal Fixture(long sequence = 0, TimeProvider? clock = null, B10AbruptTimeline? timeline = null, Func<long>? nativeErrorCount = null)
         {
             Clock = new ReleaseWindowClock(clock ?? TimeProvider.System);
             Release = _ => Task.FromResult(Clock.FreezeUtc());
@@ -1238,7 +1238,7 @@ public sealed class B10AbruptProducerTests
                 }, data => { Events.Add(("terminal", data)); return true; },
                 async (arm, _) => { Releases++; return new(await Release(arm), Selected(arm)); },
                 (_, seal, _) => { Seals.Add(seal); return Task.CompletedTask; }, diagnosticIdentity: wireIdentity,
-                timeline: timeline);
+                timeline: timeline, nativeErrorCount: nativeErrorCount);
         }
 
         internal KafkaStatisticsReport Observe()
@@ -1270,7 +1270,7 @@ public sealed class B10AbruptProducerTests
         }
     }
 
-    private sealed class UnusedTokenProvider : IKafkaTokenProvider
+    internal sealed class UnusedTokenProvider : IKafkaTokenProvider
     {
         internal int Calls { get; private set; }
         public AccessToken GetToken(string scope, CancellationToken cancellationToken)
@@ -1336,7 +1336,7 @@ public sealed class B10AbruptProducerTests
         }
     }
 
-    private sealed class ReleaseWindowClock(TimeProvider inner) : TimeProvider
+    internal sealed class ReleaseWindowClock(TimeProvider inner) : TimeProvider
     {
         private readonly object gate = new();
         private DateTimeOffset? frozenUtc;

@@ -14,7 +14,7 @@ def main(argv):
         print('b10_abrupt_wire_export_missing:' + str(root), file=sys.stderr)
         return 1
     try:
-        expected = {'first/' + name for name in abrupt.FIRST_FILES} | {'successor/' + name for name in abrupt.SUCCESSOR_FILES}
+        expected = {'first/' + name for name in abrupt.FIRST_FILES + abrupt.COHORT_FILES} | {'successor/' + name for name in abrupt.SUCCESSOR_FILES}
         listing = abrupt.decode((root / 'export.json').read_bytes())
         if set(listing) != {'files'} or [entry['name'] for entry in listing['files']] != sorted(expected):
             raise ValueError('export listing differs')

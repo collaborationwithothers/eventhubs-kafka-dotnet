@@ -13,6 +13,8 @@ internal sealed class B10AbruptChildChannel : IAsyncDisposable
     private readonly Task writer;
     private long sequence;
     private long acknowledgementSequence;
+    private readonly object nativeErrorGate = new();
+    private long nativeErrorCount;
     private string? gap;
     private bool gapSent;
     private sealed record Pending(string Kind, JsonElement Data, TaskCompletionSource<long>? Completion);
@@ -56,6 +58,35 @@ internal sealed class B10AbruptChildChannel : IAsyncDisposable
             throw B10AbruptWire.Gap("queue_full");
         }
         return await completion.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The highest <c>capture_sequence</c> assigned to a <c>native_error</c> message. Every message numbered up to the
+    /// value read is already in the write queue, so a seal that records it can be checked against the journal.
+    /// </summary>
+    internal long NativeErrorCount { get { lock (nativeErrorGate) return nativeErrorCount; } }
+
+    // Runs on librdkafka's callback thread: one lock, one non-blocking enqueue, no file or network I/O.
+    // The sequence is assigned and the message enqueued in one step, so the count never runs ahead of the queue.
+    internal bool TryCaptureNativeError(int errorCode, string errorName, bool isError, bool isFatal, long monotonicTicks)
+    {
+        lock (nativeErrorGate)
+        {
+            if (Gap is not null) return false;
+            long next = checked(nativeErrorCount + 1);
+            JsonElement data = B10AbruptWire.Element(new
+            {
+                capture_sequence = next, error_code = errorCode, error_name = errorName, is_error = isError, is_fatal = isFatal,
+                callback_monotonic_ticks = monotonicTicks
+            });
+            if (!pending.Writer.TryWrite(new("native_error", data, null)))
+            {
+                Interlocked.CompareExchange(ref gap, "queue_full", null);
+                return false;
+            }
+            nativeErrorCount = next;
+            return true;
+        }
     }
 
     internal bool TryCaptureTerminal(JsonElement data)

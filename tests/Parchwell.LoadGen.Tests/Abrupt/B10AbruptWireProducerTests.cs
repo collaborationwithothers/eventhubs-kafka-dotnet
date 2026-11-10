@@ -232,24 +232,30 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
 
-    internal static async Task ProduceAsync(string destination, CancellationToken cancellationToken, bool terminalAtKill = false, Action<byte[]>? captureLegacy = null, string? processFailure = null, Action<JsonElement>? captureFailure = null)
+    /// <summary>What a test sees of the first instance's publication: the harness clock, the synthetic child, the supervisor's stderr and the real file storage.</summary>
+    internal sealed record PublicationContext(HarnessClock Clock, SyntheticProcess Process, TextWriter Stderr, IB10AbruptStorage Inner);
+
+    internal static async Task ProduceAsync(string destination, CancellationToken cancellationToken, bool terminalAtKill = false, Action<byte[]>? captureLegacy = null, string? processFailure = null, Action<JsonElement>? captureFailure = null,
+        bool nativeErrors = false, Action<string>? atKill = null, Func<PublicationContext, IB10AbruptStorage>? publicationStorage = null, TextWriter? supervisorErrors = null)
     {
         Directory.CreateDirectory(destination);
         string work = Path.Combine(Path.GetTempPath(), "b10-work-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(Path.Combine(work, "abrupt"));
         try
         {
-            var clock = new ReleaseClock();
+            var clock = new HarnessClock();
             B10AbruptOptions options = TestOptions(work);
             var firstIdentity = options.Identity();
             var firstStorage = new FileStorage(Path.Combine(destination, "first"));
-            var publisher = new B10AbruptPublisher(firstStorage, clock);
-            await using var journal = new B10AbruptJournal(Path.Combine(work, "abrupt", "journal.jsonl"), firstIdentity, clock);
             using var process = new SyntheticProcess { Failure = processFailure };
+            var stderr = supervisorErrors ?? new StringWriter(CultureInfo.InvariantCulture);
+            var publisher = new B10AbruptPublisher(publicationStorage?.Invoke(new(clock, process, stderr, firstStorage)) ?? firstStorage, clock);
+            await using var journal = new B10AbruptJournal(Path.Combine(work, "abrupt", "journal.jsonl"), firstIdentity, clock);
             var supervisor = new B10AbruptSupervisor(options, clock, journal, publisher, () => process,
                 token => B10AbruptStatistics.ValidateCapturedAsync(Path.Combine(work, "capture", "statistics.jsonl"),
                     new KafkaStatisticsIdentity("B10", options.RunId, KafkaClientRole.LoadGenProducer, options.PodName),
-                    ["broker"], new Dictionary<string, string>(), new Dictionary<string, string>(), token));
+                    ["broker"], new Dictionary<string, string>(), new Dictionary<string, string>(), token),
+                supervisorErrors is null ? null : new B10AbruptTimeline(clock, "supervisor", supervisorErrors));
             var statisticsIdentity = new KafkaStatisticsIdentity("B10", options.RunId, KafkaClientRole.LoadGenProducer, options.PodName);
             Directory.CreateDirectory(Path.Combine(work, "capture"));
             await using var captured = new RunEvidenceSession(RunIdentity(firstIdentity), new RunEvidenceOptions(Path.Combine(work, "capture"),
@@ -261,12 +267,16 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
             var killOriginals = new List<Action<DeliveryReport<byte[], byte[]>>>();
             process.BeforeKill = () =>
             {
+                atKill?.Invoke(work);
+                if (nativeErrors) process.SendNative(fatal: false);
                 if (terminalAtKill)
                     foreach (var callback in killOriginals) callback(B10AbruptProducerTests.Report());
             };
             native.OnProduce = (message, callback) =>
             {
                 string key = Encoding.UTF8.GetString(message.Key);
+                if (nativeErrors && process.NativeSent == 0) process.SendNative(fatal: false);
+                if (nativeErrors && process.NativeSent == 1 && key.EndsWith("cross_restart", StringComparison.Ordinal)) process.SendNative(fatal: true);
                 if (key.EndsWith("same_instance", StringComparison.Ordinal))
                 {
                     if (controlOriginals.Count < B10AbruptOptions.ProbeBurstSize) controlOriginals.Add(callback);
@@ -296,7 +306,8 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
                     B10AbruptProducer.ReleaseInfo info = await B10AbruptHost.ReadReleaseAsync(options, arm, clock, token);
                     clock.AdvanceTo(info.Release);
                     return info;
-                }, (cohort, data, token) => SaveSealAsync(work, firstIdentity, cohort, data, token), diagnosticIdentity: firstIdentity, timeline: timeline);
+                }, (cohort, data, token) => SaveSealAsync(work, firstIdentity, cohort, data, token), diagnosticIdentity: firstIdentity, timeline: timeline,
+                nativeErrorCount: () => process.NativeSent);
             using var childStop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             Task supervisorTask = supervisor.RunAsync(cancellationToken);
             Task producerTask = runner.RunFirstAsync(B10AbruptProducerTests.Profile(), RunIdentity(firstIdentity), execution, childStop.Token);
@@ -381,7 +392,7 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
                 B10AbruptPublisher.CheckDescriptor(descriptor, descriptor.GetProperty("name").GetString()!, successorStorage.Files);
             var exported = Directory.GetFiles(destination, "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal)
                 .Select(path => B10AbruptPublisher.Describe(Path.GetRelativePath(destination, path).Replace(Path.DirectorySeparatorChar, '/'), File.ReadAllBytes(path))).ToArray();
-            Assert.Equal(14, exported.Length);
+            Assert.Equal(22, exported.Length);
             await File.WriteAllBytesAsync(Path.Combine(destination, "export.json"), JsonSerializer.SerializeToUtf8Bytes(new { files = exported }, B10AbruptWire.JsonOptions), cancellationToken);
         }
         finally
@@ -428,7 +439,7 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
     private static byte[] Binding(B10AbruptWire.Identity identity, IReadOnlyDictionary<string, byte[]> files, DateTimeOffset release, TimeProvider clock) =>
         JsonSerializer.SerializeToUtf8Bytes(new
         {
-            files = files.Where(pair => pair.Key != "journal.jsonl").ToDictionary(pair => pair.Key, pair => Encoding.UTF8.GetString(pair.Value), StringComparer.Ordinal),
+            files = files.Where(pair => pair.Key != "journal.jsonl" && !B10AbruptPublisher.CohortMembers.Contains(pair.Key)).ToDictionary(pair => pair.Key, pair => Encoding.UTF8.GetString(pair.Value), StringComparer.Ordinal),
             first_pod = new { identity.JobName, identity.PodName, identity.PodUid, identity.ImageReference, identity.SourceCommit, finished_utc = B10AbruptPublisher.Utc(clock.GetUtcNow()) },
             release_utc = B10AbruptPublisher.Utc(release), runner_utc = B10AbruptPublisher.Utc(clock.GetUtcNow()), runner_monotonic_ticks = clock.GetTimestamp(),
             cross_host_timing = "not_verified", start_line_binding = new { start_line = "{}", broker_inventory = "{}", completion = "{}" }
@@ -446,19 +457,57 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
         public Task<byte[]> ReadAsync(string name, int maximumBytes, CancellationToken cancellationToken) =>
             B10AbruptPublisher.ReadFileAsync(Path.Combine(root, Path.GetFileName(name)), maximumBytes, cancellationToken);
     }
-    private sealed class ReleaseClock : TimeProvider
+    /// <summary>
+    /// The export flow's clock. After <see cref="EnterManual"/> its timestamp and UTC move only when a test calls
+    /// <see cref="Advance"/>, and its timers fire on those calls, so publication timing is exact.
+    /// </summary>
+    internal sealed class HarnessClock : TimeProvider
     {
         private readonly DateTimeOffset initial = TimeProvider.System.GetUtcNow();
         private readonly long timestamp = TimeProvider.System.GetTimestamp();
+        private readonly List<ManualTimer> timers = [];
         private long offset;
+        private long manualBase = -1;
+        private long manualOffset;
         private bool frozen;
         internal void Tick() { if (!frozen) Interlocked.Increment(ref offset); }
         public override DateTimeOffset GetUtcNow() => initial.AddTicks(Interlocked.Read(ref offset));
         public override long TimestampFrequency => TimeSpan.TicksPerSecond;
-        public override long GetTimestamp() => TimeProvider.System.GetElapsedTime(timestamp).Ticks + Interlocked.Read(ref offset);
+        public override long GetTimestamp() => Interlocked.Read(ref manualBase) >= 0
+            ? Interlocked.Read(ref manualBase) + Interlocked.Read(ref offset) - Interlocked.Read(ref manualOffset)
+            : TimeProvider.System.GetElapsedTime(timestamp).Ticks + Interlocked.Read(ref offset);
         internal void AdvanceTo(DateTimeOffset value) { frozen = true; Interlocked.Exchange(ref offset, (value - initial).Ticks); }
+        internal void EnterManual()
+        {
+            frozen = true;
+            Interlocked.Exchange(ref manualOffset, Interlocked.Read(ref offset));
+            Interlocked.Exchange(ref manualBase, GetTimestamp());
+        }
+        internal void ExitManual() => Interlocked.Exchange(ref manualBase, -1);
+        internal void Advance(TimeSpan elapsed)
+        {
+            Interlocked.Add(ref offset, elapsed.Ticks);
+            ManualTimer[] snapshot; lock (timers) snapshot = timers.ToArray();
+            foreach (ManualTimer timer in snapshot) timer.Fire(GetTimestamp());
+        }
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            if (Interlocked.Read(ref manualBase) < 0) return base.CreateTimer(callback, state, dueTime, period);
+            var timer = new ManualTimer(this, callback, state);
+            lock (timers) timers.Add(timer);
+            timer.Change(dueTime, period);
+            return timer;
+        }
+        private sealed class ManualTimer(HarnessClock clock, TimerCallback callback, object? state) : ITimer
+        {
+            private long due = long.MaxValue;
+            public bool Change(TimeSpan dueTime, TimeSpan period) { Interlocked.Exchange(ref due, dueTime < TimeSpan.Zero ? long.MaxValue : checked(clock.GetTimestamp() + dueTime.Ticks)); return true; }
+            internal void Fire(long now) { long target = Interlocked.Read(ref due); if (now >= target && Interlocked.CompareExchange(ref due, long.MaxValue, target) == target) callback(state); }
+            public void Dispose() => Interlocked.Exchange(ref due, long.MaxValue);
+            public ValueTask DisposeAsync() { Dispose(); return ValueTask.CompletedTask; }
+        }
     }
-    private sealed class SyntheticProcess : IB10AbruptProcess
+    internal sealed class SyntheticProcess : IB10AbruptProcess
     {
         private readonly ByteStream events = new();
         private readonly ByteStream acknowledgements = new();
@@ -469,7 +518,11 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
         public Stream Events => events;
         public bool EventsReady() => events.Ready;
         public Stream Acknowledgements => acknowledgements;
-        public bool HasExited { get; private set; }
+        private volatile bool exited;
+        public bool HasExited { get { ExitedRead?.Invoke(); return exited; } private set => exited = value; }
+        internal Action? ExitedRead { get; set; }
+        internal long NativeSent => Interlocked.Read(ref nativeSent);
+        private long nativeSent;
         internal string? Failure { get; init; }
         internal int Kills { get; private set; }
         internal Action BeforeKill { get; set; } = () => { };
@@ -487,6 +540,12 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
             lock (gate) B10AbruptWire.WriteMessageAsync(events, new(kind, ++sent, data)).GetAwaiter().GetResult();
         }
         internal bool Terminal(JsonElement data) { Write("terminal", data); return true; }
+        // The first child's error callback: a numbered message the supervisor journals (ADR-021 protocol rule 9).
+        internal void SendNative(bool fatal) => Write("native_error", B10AbruptWire.Element(new
+        {
+            capture_sequence = Interlocked.Increment(ref nativeSent), error_code = fatal ? 45 : -169,
+            error_name = fatal ? "OutOfOrderSequenceNumber" : "Local_Authentication", is_error = true, is_fatal = fatal, callback_monotonic_ticks = 1L
+        }));
         public OwnedProducerProcess.SignalObservation Stop()
         {
             if (Failure == "stop_errno") throw new OwnedProducerProcess.SignalException("b10_abrupt_signal_failed", new(19, -1, 13));

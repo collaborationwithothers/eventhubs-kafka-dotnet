@@ -29,6 +29,7 @@ internal enum B10AbruptFact
     DiagnosticCaptureLoss, DiagnosticWorkerCancellationFailure, DiagnosticInvalidJson,
     DiagnosticDuplicateProperty, DiagnosticInvalidRoot, DiagnosticInvalidOrMissingField,
     DiagnosticBrokerNameMismatch,
+    UploadSucceeded,
 }
 
 internal enum B10AbruptStage
@@ -38,6 +39,7 @@ internal enum B10AbruptStage
     ExitObserved, EofComplete, SelectionFinalized, PublicationComplete, EventStreamEnded, GraceEnded,
     FailureObserved, AbortComplete,
     ProducerConstructed, TimeoutScheduleComplete, TimeoutDrained, PostDrainReport, CohortSealed, ProbePrepared, ProbeProduced, ProbeReportSelected, ProbeAccepted, ProbeTerminal, ReleaseRead, ReleaseReached, CohortDrained, SuccessorReady,
+    CohortFileUploaded,
 }
 
 internal readonly record struct B10AbruptFactValue(B10AbruptFact Key, long Value);

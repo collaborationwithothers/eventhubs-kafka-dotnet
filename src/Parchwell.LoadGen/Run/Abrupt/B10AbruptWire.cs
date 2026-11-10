@@ -42,6 +42,7 @@ internal static class B10AbruptWire
         ["accepted"] = ["attempt_id", "prepared_sequence"],
         ["synchronous_rejection"] = ["attempt_id", "prepared_sequence", "error_code", "error_reason"],
         ["terminal"] = ["attempt_id", "completion_source", "delivered", "error_code", "persistence_status"],
+        ["native_error"] = ["capture_sequence", "error_code", "error_name", "is_error", "is_fatal", "callback_monotonic_ticks"],
         ["capture_gap"] = ["reason", "first_missing_sequence", "capture_status"],
         ["gap"] = ["reason", "first_missing_sequence", "capture_status"],
         ["pre_acceptance_report"] = ["arm", "attempt_id", "report_length", "report_sha256", "report_identity", "report_sequence", "report_capture_utc"],
@@ -49,9 +50,9 @@ internal static class B10AbruptWire
         ["signal"] = ["arm", "requested_signal", "process", "intent_sequence", "request_utc", "request_monotonic_ticks", "return_value", "errno"],
         ["exit"] = ["process", "wait_for_exit_observed", "observed_utc", "monotonic_ticks", "exit_code_local_observation", "runtime_version"],
         ["selection"] = ["checkpoint", "checkpoint_descriptor", "candidate_attempt_ids", "terminal_exclusions", "entries"],
-        ["cohort_seal"] = ["cohort", "inventory", "count", "ledger", "drain_complete", "post_drain_statistics", "guard_complete", "fatal_capture_status"],
-        ["abrupt_manifest"] = ["journal", "journal_entry_count", "timeout_seal", "control_seal", "selection", "gaps", "registration"],
-        ["termination"] = ["manifest", "process", "signals", "exit", "cgroup_before", "cgroup_after", "eof_complete", "mechanical_status", "fatal_capture_status", "native_tail"],
+        ["cohort_seal"] = ["cohort", "inventory", "count", "ledger", "drain_complete", "post_drain_statistics", "guard_complete", "fatal_capture_status", "native_error_count"],
+        ["abrupt_manifest"] = ["journal", "journal_entry_count", "timeout_seal", "control_seal", "selection", "gaps", "registration", "cohort_files"],
+        ["termination"] = ["manifest", "process", "signals", "exit", "cgroup_before", "cgroup_after", "eof_complete", "mechanical_status", "fatal_capture_status", "native_tail", "native_error_count", "native_fatal_count"],
         ["successor_receipt"] = ["first_termination", "selection", "registration", "artifacts", "ready_utc", "release_utc", "invocations", "cleanup_completed", "cross_host_timing"],
     };
 
@@ -90,7 +91,7 @@ internal static class B10AbruptWire
         var parsed = Parse(bytes, 16777216);
         if (parsed.ValueKind != JsonValueKind.Object || !parsed.TryGetProperty("kind", out var tag)) throw Gap("malformed_frame");
         var kind = RequiredString(tag);
-        if (kind is not ("prepared" or "accepted" or "synchronous_rejection" or "terminal" or "checkpoint" or "signal" or "exit" or "gap")) throw Gap("malformed_frame");
+        if (kind is not ("prepared" or "accepted" or "synchronous_rejection" or "terminal" or "native_error" or "checkpoint" or "signal" or "exit" or "gap")) throw Gap("malformed_frame");
         var root = ReadEnvelopeCore(parsed, kind);
         var sequence = Nonnegative(root.GetProperty("sequence"));
         var frequency = Nonnegative(root.GetProperty("clock_frequency"));
@@ -173,12 +174,21 @@ internal static class B10AbruptWire
             _ = Nonnegative(data.GetProperty("count"));
             if (RequiredString(data.GetProperty("cohort")) is not ("timeout" or "same_instance" or "cross_restart")) throw Gap("malformed_frame");
             Boolean(data.GetProperty("drain_complete")); Boolean(data.GetProperty("guard_complete"));
+            _ = Nonnegative(data.GetProperty("native_error_count"));
         }
         if (kind == "abrupt_manifest")
         {
             foreach (string name in new[] { "journal", "timeout_seal", "control_seal", "selection", "registration" }) ValidateDescriptor(data.GetProperty(name));
             if (Nonnegative(data.GetProperty("journal_entry_count")) > MaximumEntries) throw Gap("malformed_frame");
             ValidateStringArray(data.GetProperty("gaps"));
+            JsonElement cohortFiles = data.GetProperty("cohort_files");
+            if (cohortFiles.ValueKind != JsonValueKind.Array || cohortFiles.GetArrayLength() != B10AbruptPublisher.CohortMembers.Length) throw Gap("malformed_frame");
+            int cohortIndex = 0;
+            foreach (var descriptor in cohortFiles.EnumerateArray())
+            {
+                ValidateDescriptor(descriptor);
+                if (RequiredString(descriptor.GetProperty("name")) != B10AbruptPublisher.CohortMembers[cohortIndex++]) throw Gap("malformed_frame");
+            }
         }
         if (kind == "termination")
         {
@@ -198,6 +208,17 @@ internal static class B10AbruptWire
             }
             Boolean(data.GetProperty("eof_complete"));
             if (RequiredString(data.GetProperty("mechanical_status")) is not ("complete" or "incomplete")) throw Gap("malformed_frame");
+            _ = Nonnegative(data.GetProperty("native_error_count"));
+            _ = Nonnegative(data.GetProperty("native_fatal_count"));
+        }
+        if (kind == "native_error")
+        {
+            if (Nonnegative(data.GetProperty("capture_sequence")) == 0) throw Gap("malformed_frame");
+            JsonElement code = data.GetProperty("error_code");
+            if (code.ValueKind != JsonValueKind.Number || !code.TryGetInt32(out _)) throw Gap("malformed_frame");
+            if (RequiredString(data.GetProperty("error_name")).Length > 128) throw Gap("malformed_frame");
+            Boolean(data.GetProperty("is_error")); Boolean(data.GetProperty("is_fatal"));
+            _ = Nonnegative(data.GetProperty("callback_monotonic_ticks"));
         }
         if (kind == "successor_receipt")
         {
@@ -232,8 +253,13 @@ internal static class B10AbruptWire
             }
         }
         if (kind == "registration" && !IsUtc(RequiredString(data.GetProperty("registered_utc")))) throw Gap("malformed_frame");
-        if (kind is "cohort_seal" or "termination" or "capabilities")
-            if (RequiredString(data.GetProperty("fatal_capture_status")) != "not_implemented_pr3") throw Gap("malformed_frame");
+        // A seal's status literal is compared by the supervisor's seal load, which names a wrong one b10_abrupt_control_incomplete.
+        if (kind == "cohort_seal") _ = RequiredString(data.GetProperty("fatal_capture_status"));
+        if (kind is "termination" or "capabilities")
+        {
+            string expectedStatus = kind == "termination" ? "journal_through_eof" : "not_implemented_pr3";
+            if (RequiredString(data.GetProperty("fatal_capture_status")) != expectedStatus) throw Gap("malformed_frame");
+        }
         if (kind is "gap" or "capture_gap")
         {
             if (RequiredString(data.GetProperty("reason")) is not ("frame_oversize" or "queue_full" or "journal_bytes_exceeded" or "journal_entries_exceeded" or "writer_failed" or "malformed_frame" or "sequence_gap")) throw Gap("malformed_frame");
@@ -332,7 +358,7 @@ internal static class B10AbruptWire
         var sequence = Nonnegative(root.GetProperty("sequence"));
         if (sequence != expectedSequence || sequence == 0) throw Gap("sequence_gap");
         var kind = RequiredString(root.GetProperty("kind"));
-        if (kind is not ("hello" or "prepared" or "accepted" or "synchronous_rejection" or "terminal" or "capture_gap" or "pre_acceptance_report" or "ack")) throw Gap("malformed_frame");
+        if (kind is not ("hello" or "prepared" or "accepted" or "synchronous_rejection" or "terminal" or "native_error" or "capture_gap" or "pre_acceptance_report" or "ack")) throw Gap("malformed_frame");
         ValidateData(kind, root.GetProperty("data"));
         return new(kind, sequence, root.GetProperty("data").Clone());
     }

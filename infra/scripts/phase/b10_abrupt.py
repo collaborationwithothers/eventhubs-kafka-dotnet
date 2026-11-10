@@ -15,6 +15,12 @@ SITE_FILE = os.path.basename(__file__)
 JOURNAL_MAXIMUM = 16777216
 FIRST_FILES = ('registration.json', 'journal.jsonl', 'timeout-seal.json', 'control-seal.json',
                'kill-selection.json', 'abrupt-manifest.json', 'termination.json')
+# Published after the first pod exits and downloaded only after the successor is released, so the
+# pre-release acceptance set stays FIRST_FILES. The order is the one in docs/operations/b10-abrupt-contract.md.
+COHORT_FILES = ('timeout-manifest.json', 'timeout-ledger.jsonl', 'timeout-post-drain-report.json',
+                'control-manifest.json', 'control-ledger.jsonl', 'control-post-drain-report.json',
+                'same_instance-pre-acceptance-report.json', 'cross_restart-pre-acceptance-report.json')
+COHORT_LIMITS = dict(zip(COHORT_FILES, (67108864, 268435456, 1048576, 67108864, 268435456, 1048576, 1048576, 1048576)))
 SUCCESSOR_FILES = ('registration.json', 'ledger.jsonl', 'manifest.json', 'statistics.jsonl',
                    'request-lifecycle.jsonl', 'capabilities.json', 'completion.json')
 IDENTITY_FIELDS = set('run_id scenario_id configuration_id phase repeat source_commit image_reference job_name pod_name pod_uid instance_id predecessor_instance_id'.split())
@@ -26,14 +32,15 @@ DATA_FIELDS = {key: set(value.split()) for key, value in {
     'accepted': 'attempt_id prepared_sequence',
     'synchronous_rejection': 'attempt_id prepared_sequence error_code error_reason',
     'terminal': 'attempt_id completion_source delivered error_code persistence_status',
+    'native_error': 'capture_sequence error_code error_name is_error is_fatal callback_monotonic_ticks',
     'checkpoint': 'arm accepted_attempt_ids selected_attempt_ids last_complete_sequence pre_acceptance_report process checkpoint_utc checkpoint_monotonic_ticks release_utc',
     'signal': 'arm requested_signal process intent_sequence request_utc request_monotonic_ticks return_value errno',
     'exit': 'process wait_for_exit_observed observed_utc monotonic_ticks exit_code_local_observation runtime_version',
     'gap': 'reason first_missing_sequence capture_status',
     'selection': 'checkpoint checkpoint_descriptor candidate_attempt_ids terminal_exclusions entries',
-    'cohort_seal': 'cohort inventory count ledger drain_complete post_drain_statistics guard_complete fatal_capture_status',
-    'abrupt_manifest': 'journal journal_entry_count timeout_seal control_seal selection gaps registration',
-    'termination': 'manifest process signals exit cgroup_before cgroup_after eof_complete mechanical_status fatal_capture_status native_tail',
+    'cohort_seal': 'cohort inventory count ledger drain_complete post_drain_statistics guard_complete fatal_capture_status native_error_count',
+    'abrupt_manifest': 'journal journal_entry_count timeout_seal control_seal selection gaps registration cohort_files',
+    'termination': 'manifest process signals exit cgroup_before cgroup_after eof_complete mechanical_status fatal_capture_status native_tail native_error_count native_fatal_count',
     'successor_receipt': 'first_termination selection registration artifacts ready_utc release_utc invocations cleanup_completed cross_host_timing',
 }.items()}
 
@@ -387,7 +394,7 @@ class Trial:
         files = {}
         for name in names:
             limits = {'journal.jsonl': JOURNAL_MAXIMUM, 'ledger.jsonl': 268435456, 'manifest.json': 67108864,
-                      'statistics.jsonl': 134217728, 'request-lifecycle.jsonl': 134217728}
+                      'statistics.jsonl': 134217728, 'request-lifecycle.jsonl': 134217728, **COHORT_LIMITS}
             limit = min(limits.get(name, AUXILIARY_MAXIMUM), 1073741824 - sum(map(len, files.values())))
             raw = self.p.download_blob(prefix + name, target / name, limit, deadline, container='ledger', minimum=0 if name == 'request-lifecycle.jsonl' else 1)
             if raw is None:
@@ -412,7 +419,7 @@ class Trial:
                           ('control_seal', 'control-seal.json'), ('selection', 'kill-selection.json')]:
             bound(manifest[key], name, files[name])
         if (manifest['gaps'] != [] or termination['mechanical_status'] != 'complete'
-                or termination['eof_complete'] is not True or termination['fatal_capture_status'] != 'not_implemented_pr3'
+                or termination['eof_complete'] is not True or termination['fatal_capture_status'] != 'journal_through_eof'
                 or termination['native_tail'] != 'unknown_due_to_intended_kill'):
             raise ValueError('b10_abrupt_publication_failed')
         for name, cohort in [('timeout-seal.json', 'timeout'), ('control-seal.json', 'same_instance')]:
@@ -467,6 +474,8 @@ class Trial:
                         or not isinstance(report['report_capture_utc'], str) or len(report['report_capture_utc']) != 33
                         or self.p.b10_utc(report['report_capture_utc'])[0] != report['report_capture_utc']):
                     raise ValueError('report binding')
+        self.accept_fatal_coverage(frames, objects, termination)
+        self.accept_cohort_files(frames, objects, manifest)
         signals = [frame for frame in frames if frame['kind'] == 'signal']
         if termination['signals'] != [frame['data'] for frame in signals]:
             raise ValueError('signal inventory')
@@ -544,6 +553,46 @@ class Trial:
                 'start_line_binding': decode((self.p.private / 'b10-abrupt-start-line-binding.json').read_bytes()),
                 'runner_utc': datetime.now(timezone.utc).isoformat(), 'runner_monotonic_ticks': time.monotonic_ns(),
                 'cross_host_timing': 'not_verified'}
+
+    def accept_fatal_coverage(self, frames, objects, termination):
+        natives = [frame['data'] for frame in frames if frame['kind'] == 'native_error']
+        count = len(natives)
+        if any(type(data['capture_sequence']) is not int or type(data['is_fatal']) is not bool for data in natives):
+            raise ValueError('b10_abrupt_publication_failed')
+        if [data['capture_sequence'] for data in natives] != list(range(1, count + 1)):
+            raise ValueError('b10_abrupt_publication_failed')
+        fatal = sum(1 for data in natives if data['is_fatal'])
+        if (type(termination['native_error_count']) is not int or termination['native_error_count'] != count
+                or type(termination['native_fatal_count']) is not int or termination['native_fatal_count'] != fatal):
+            raise ValueError('b10_abrupt_publication_failed')
+        for name in ('timeout-seal.json', 'control-seal.json'):
+            seal = objects[name]['data']
+            if (seal['fatal_capture_status'] != 'journal' or type(seal['native_error_count']) is not int
+                    or not 0 <= seal['native_error_count'] <= count):
+                raise ValueError('b10_abrupt_publication_failed')
+
+    def accept_cohort_files(self, frames, objects, manifest):
+        timeout, control = objects['timeout-seal.json']['data'], objects['control-seal.json']['data']
+        reports = {frame['data']['arm']: frame['data']['pre_acceptance_report'] for frame in frames if frame['kind'] == 'checkpoint'}
+        sources = [timeout['inventory'], timeout['ledger'], timeout['post_drain_statistics'],
+                   control['inventory'], control['ledger'], control['post_drain_statistics'],
+                   reports.get('same_instance'), reports.get('cross_restart')]
+        entries = manifest['cohort_files']
+        if not isinstance(entries, list) or len(entries) != len(COHORT_FILES):
+            raise ValueError('b10_abrupt_publication_failed')
+        for name, entry, source in zip(COHORT_FILES, entries, sources):
+            if (not isinstance(entry, dict) or set(entry) != {'name', 'length', 'sha256'} or entry['name'] != name
+                    or type(entry['length']) is not int or not 1 <= entry['length'] <= COHORT_LIMITS[name]
+                    or not isinstance(source, dict) or entry['length'] != source.get('length')
+                    or entry['sha256'] != source.get('sha256')):
+                raise ValueError('b10_abrupt_publication_failed')
+
+    def collect_cohort_files(self, binding, deadline):
+        first = binding['first_pod']
+        files = self.download(first, COHORT_FILES, deadline)
+        entries = decode(binding['files']['abrupt-manifest.json'].encode())['data']['cohort_files']
+        for name, entry in zip(COHORT_FILES, entries):
+            bound(entry, name, files[name])
 
     def release_successor(self, binding, deadline):
         if self.p.state().get('safety_stop', False):
@@ -632,6 +681,12 @@ class Trial:
                     raise ValueError('b10_abrupt_successor_binding_invalid')
             return receipt
         failed = False
+        if binding_path.exists():
+            try:
+                self.collect_cohort_files(decode(binding_path.read_bytes()), self.p.b10_deadline())
+            except (ValueError, OSError, LookupError, TypeError, AttributeError, self.failure) as error:
+                self.record_failure(error, 'b10_abrupt_publication_failed', 'first_cohort_publication')
+                failed = True
         for record in self.p.state()['modes']:
             if record['mode'] not in ('loadgen', 'loadgen2') or record['apply'] is None:
                 continue
