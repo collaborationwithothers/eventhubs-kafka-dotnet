@@ -13,7 +13,9 @@ This change lets the B10 abrupt statistics adapter record each native statistics
 
 ## Base and ordering
 
-Branch `claude/404-capture-contention-race-fix`, base `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`, the commit the plan was written against. When this was implemented, the successor fix had no pull request branch: only its backup branch `claude/404-successor-fix-wip` existed on the remote. A backup branch is not a stacking base, so the work stands on `main`, as the control session's start instruction for this session directs when the successor fix's branch does not exist. The plan's section 7.2 only records that its prototype ran on `f5cc496` with the two calls of `B10AbruptHost.cs` line 232; it is not a permission. T7 therefore installs that handler shape in the test itself, so it does not observe the production handler or invariant I1 until the work is rebased onto the successor fix's R10 handler; the stop rule's third bullet is checked then. This pull request does not merge before the successor fix (decision 6752554218 point 2). After it merges, the control session will direct a rebase, and the plan's stop rule (section 15) is rechecked against the merged files then.
+Branch `claude/404-capture-contention-race-fix`, stacked on the successor fix's unmerged head `9c84ba4174e2c7b40f0805b3e6cfe6efd26ba818` (branch `claude/404-successor-fix-wip`), which is based on `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`. Decision [6752554218](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752554218) point 2 allows stacking on a predecessor's unmerged head; the 347 control session directed this base after the first cold review found that `main` was not an allowed base. This pull request does not merge before the successor fix. After it merges, it is rebased onto `main`, the plan's stop rule (section 15) is rechecked against the merged files, and it is reviewed again.
+
+Stop-rule bullets 3 and 4 against this base: the successor fix has a production statistics handler member, `B10AbruptHost.StatisticsHandler`, which calls `CaptureNative` and then `KafkaStatisticsSession.Capture` on the callback thread (invariant I1), and T7 uses it. The successor fix does not change `B10AbruptStatistics.cs`, `KafkaStatisticsSession.Capture` or the diagnostic names T7 reads (`git diff` of the base against `main` lists no such file). The review diff for this pull request is its changes relative to `9c84ba4`.
 
 ## Implementation choices left to the implementer
 
@@ -21,22 +23,23 @@ Branch `claude/404-capture-contention-race-fix`, base `main` at `f5cc496fa3cf845
 - `trackNativeCapture` became `volatile`, because `CaptureNative` now reads it without the lock.
 - Reasons 1, 2 and the oversize checks are unchanged and run first (R6). The reason 4 site now covers both "tracking off" and "bound reached", as on `main`. No code sets reason 3 (R8).
 - Test technique for the held lock: the test reads the private `gate` field by reflection, as `B10AbruptProducerTests` does at its line 438, and holds it with `lock` on a real thread released by an event. "Returned while held" means the capture thread was joined within 5 s while the lock was still held.
+- T7 installs the successor fix's production handler, `B10AbruptHost.StatisticsHandler(stats, session)`, in the real client, as the plan's T7 input requires.
 - T7 accepts the plan's outside outcomes by reading the guard reason from the exception's recorded site facts and the session's completion diagnostics.
 - Plan-check P2-1 (`apply in implementation`) is applied: every test that holds the lock, T3 included, asserts "returned while held" before the lock is released. T3 therefore kills M2.
 
 ## Verification
 
-SDK `10.0.402`. Source base `f5cc496f` plus the working tree this receipt describes. dockerd was started for command 8.
+SDK `10.0.402`. Source base `9c84ba4` plus the working tree this receipt describes. dockerd was started for command 8.
 
 | # | Command | Result |
 |---|---|---|
 | 1 | locked restore of the LoadGen test project | exit 0, all projects up to date |
 | 2 | Release build, no restore | `0 Warning(s)`, `0 Error(s)` |
-| 3 | burst suite `*B10Abrupt*` | total 466, succeeded 465, skipped 1 (published-apphost case), failed 0; base plus 9 as expected |
+| 3 | burst suite `*B10Abrupt*` | total 508, succeeded 507, skipped 1 (published-apphost case), failed 0; 508 minus the 9 new cases is 499, the implied base total, which was not run separately |
 | 4 | 50 runs of the new class | `50 Total: 9, Errors: 0, Failed: 0` |
 | 5 | new class against the base `B10AbruptStatistics.cs` | `Total: 9, Errors: 0, Failed: 6`; failing T1, T2, T3, T4 (both cases), T7; T7 message `guard_reason=3 diagnostics=completion_timeout`; T5, T6, T8 pass |
 | 6 | mutations M1 to M12, scratch edits of the fixed file, one class run each | see below; production restored byte-identical (`cmp`) |
-| 7 and 8 | `./scripts/verify-dotnet.sh` | exit 0, `Verification passed`; `Parchwell.ArchitectureTests: 17 passed`, Enrichment 56, Kafka 486, LoadGen 1686, Scenarios 340, Verifier 7389 |
+| 7 and 8 | `./scripts/verify-dotnet.sh` | exit 0, `Verification passed`; `Parchwell.ArchitectureTests: 17 passed`, Enrichment 56, Kafka 486, LoadGen 1728, Scenarios 340, Verifier 7389 |
 | 9 | grep of `CaptureNative(`, `Guard(3)`, `TryEnter` | `CaptureNative(` at `B10AbruptHost.cs:232` (handler, ahead of `statistics.Capture(raw)`) and its definition at `B10AbruptStatistics.cs:117`; no `Guard(3)`; no `TryEnter` |
 | 10 | `npm run check:docs` | no warning in `items/404/state.md` or this receipt once this file exists; nine warnings, all in other files and unchanged by this pull request |
 
