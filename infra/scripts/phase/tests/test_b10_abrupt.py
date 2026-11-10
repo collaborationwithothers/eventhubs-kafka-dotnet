@@ -223,6 +223,7 @@ class ProducedBytesCases(Setup):
     def produced(self):
         self.diagnostic()
         self.first = {name: (self.export_directory / 'first' / name).read_bytes() for name in abrupt.FIRST_FILES}
+        self.cohort = {name: (self.export_directory / 'first' / name).read_bytes() for name in abrupt.COHORT_FILES}
         self.successor = {name: (self.export_directory / 'successor' / name).read_bytes() for name in abrupt.SUCCESSOR_FILES}
         identity = abrupt.decode(self.first['termination.json'])['identity']
         document = self.p.read('phase.json')
@@ -296,6 +297,144 @@ class ProducedBytesCases(Setup):
         del missing['termination.json']
         with self.assertRaises(ValueError):
             self.trial.accept_diagnostic_publication(self.observation, missing)
+
+    def rebound(self, edit):
+        """Apply edit to the decoded seals, manifest and termination and to the journal lines, then rebind every
+        descriptor above the edit, so only the targeted check can fail."""
+        files = dict(self.first)
+        names = ('timeout-seal.json', 'control-seal.json', 'abrupt-manifest.json', 'termination.json')
+        objects = {name: abrupt.decode(files[name]) for name in names}
+        lines = files['journal.jsonl'].splitlines()
+        edit(objects, lines)
+        files['journal.jsonl'] = b'\n'.join(lines) + b'\n'
+        for name in ('timeout-seal.json', 'control-seal.json'):
+            files[name] = abrupt.encode(objects[name])
+        manifest = objects['abrupt-manifest.json']
+        manifest['data'].update(journal=abrupt.descriptor('journal.jsonl', files['journal.jsonl']), journal_entry_count=len(lines),
+            timeout_seal=abrupt.descriptor('timeout-seal.json', files['timeout-seal.json']),
+            control_seal=abrupt.descriptor('control-seal.json', files['control-seal.json']))
+        files['abrupt-manifest.json'] = abrupt.encode(manifest)
+        objects['termination.json']['data']['manifest'] = abrupt.descriptor('abrupt-manifest.json', files['abrupt-manifest.json'])
+        files['termination.json'] = abrupt.encode(objects['termination.json'])
+        return files
+
+    @staticmethod
+    def native_lines(lines, *captures):
+        """Journal lines for native_error frames appended after the last frame; captures are (capture_sequence, is_fatal)."""
+        last = abrupt.decode(lines[-1], abrupt.JOURNAL_MAXIMUM)
+        added = []
+        for offset, (capture, fatal) in enumerate(captures, 1):
+            frame = dict(last, kind='native_error', sequence=last['sequence'] + offset, data={
+                'capture_sequence': capture, 'error_code': 45 if fatal else -169,
+                'error_name': 'OutOfOrderSequenceNumber' if fatal else 'Local_Authentication',
+                'is_error': True, 'is_fatal': fatal, 'callback_monotonic_ticks': 1})
+            added.append(abrupt.encode(frame))
+        return added
+
+    def test_produced_cohort_files_accepted(self):
+        self.produced()
+        binding = self.trial.accept_diagnostic_publication(self.observation, self.first)
+        self.assertEqual(['abrupt-manifest.json', 'control-seal.json', 'kill-selection.json', 'registration.json',
+                          'termination.json', 'timeout-seal.json'], sorted(binding['files']))
+        manifest = abrupt.decode(self.first['abrupt-manifest.json'])['data']
+        self.assertEqual(list(abrupt.COHORT_FILES), [entry['name'] for entry in manifest['cohort_files']])
+        for name, entry in zip(abrupt.COHORT_FILES, manifest['cohort_files']):
+            abrupt.bound(entry, name, self.cohort[name])
+        # The same-instance and cross-restart reports can hold identical bytes to a post-drain report: binding is by role.
+        # Two journaled native errors, one fatal, with seals that covered none and one of them, are accepted.
+        def edit(objects, lines):
+            lines.extend(self.native_lines(lines, (1, False), (2, True)))
+            objects['termination.json']['data'].update(native_error_count=2, native_fatal_count=1)
+            objects['control-seal.json']['data'].update(native_error_count=1)
+        self.trial.accept_diagnostic_publication(self.observation, self.rebound(edit))
+
+    def test_produced_cohort_mutations_rejected(self):
+        self.produced()
+        def cohort(change):
+            def edit(objects, _lines):
+                change(objects['abrupt-manifest.json']['data']['cohort_files'])
+            return edit
+        def digit(entries):
+            entries[3]['sha256'] = ('0' if entries[3]['sha256'][0] != '0' else '1') + entries[3]['sha256'][1:]
+        def termination(**changes):
+            return lambda objects, _lines: objects['termination.json']['data'].update(changes)
+        count = abrupt.decode(self.first['termination.json'])['data']['native_error_count']
+        def swap(entries):
+            entries[0], entries[1] = entries[1], entries[0]
+        def length(entries):
+            entries[2]['length'] += 1
+        def seal(objects, _lines):
+            objects['timeout-seal.json']['data']['native_error_count'] = count + 1
+        def gap(objects, lines):
+            lines.extend(self.native_lines(lines, (1, False), (3, False)))
+            objects['termination.json']['data'].update(native_error_count=2, native_fatal_count=0)
+        cases = {'seven entries': cohort(lambda entries: entries.pop()), 'swapped entries': cohort(swap),
+                 'length plus one': cohort(length), 'sha256 digit': cohort(digit),
+                 'termination status': termination(fatal_capture_status='not_implemented_pr3'),
+                 'termination count': termination(native_error_count=count + 1),
+                 'seal count above journal': seal, 'sequence gap': gap}
+        for label, edit in cases.items():
+            with self.subTest(label=label), self.assertRaises(ValueError):
+                self.trial.accept_diagnostic_publication(self.observation, self.rebound(edit))
+        # Each mutation, applied to the checker's input, is the only difference from an accepted publication.
+        self.trial.accept_diagnostic_publication(self.observation, self.rebound(lambda objects, lines: None))
+
+    def test_produced_cohort_collection(self):
+        self.produced()
+        binding = self.trial.accept_diagnostic_publication(self.observation, self.first)
+        identity = abrupt.decode(self.successor['completion.json'])['identity']
+        successor_observation = {key: identity[key] for key in ('job_name', 'pod_name', 'pod_uid', 'source_commit', 'image_reference')}
+        prefix = self.observation['pod_name'].join((identity['run_id'] + '/C1/r1/b10-abrupt-diagnostic/', '/'))
+        original = abrupt.Trial.download
+        calls = []
+        def command(args, seconds, output=None, maximum=4 * 1024 * 1024):
+            calls.append(args)
+            return 0 if 'collect-job' in args else self.fake(self.p, args, seconds, output, maximum)
+        def download(observation, names, deadline):
+            calls.append(tuple(names))
+            return original(self.trial, observation, names, deadline) if tuple(names) == abrupt.COHORT_FILES else self.successor
+        def run(blobs, document=None):
+            state = self.p.state()
+            state.update(modes=[{'mode': 'loadgen2', 'job': identity['job_name'], 'apply': 0}], b10_abrupt_gaps=[], b10_abrupt_diagnostics=[])
+            self.p.save_state(state)
+            (self.trial.directory / 'predecessor-binding.json').write_bytes(abrupt.encode(document or binding))
+            self.fake.blobs.clear()
+            self.fake.blobs.update({prefix + name: raw for name, raw in blobs.items()})
+            del calls[:]
+            with patch.object(self.trial, 'observe_first_termination', return_value=successor_observation), \
+                 patch.object(self.trial, 'download', side_effect=download), \
+                 patch.object(self.p, 'b10_deadline', return_value=time.monotonic() + 60), \
+                 patch.object(self.p, 'run', side_effect=command):
+                return self.trial.collect()
+        self.assertEqual(0, run(self.cohort))
+        self.assertEqual([], self.p.state()['b10_abrupt_gaps'])
+        for name in abrupt.COHORT_FILES:
+            self.assertEqual(self.cohort[name], (self.trial.directory / self.observation['pod_name'] / name).read_bytes())
+        # One byte changed: named once, collection continues with the successor and the Job logs.
+        changed = dict(self.cohort)
+        changed['control-ledger.jsonl'] = bytes([changed['control-ledger.jsonl'][0] ^ 1]) + changed['control-ledger.jsonl'][1:]
+        self.assertEqual(1, run(changed))
+        self.assertEqual(['b10_abrupt_publication_failed'], self.p.state()['b10_abrupt_gaps'])
+        self.assertEqual('first_cohort_publication', self.p.state()['b10_abrupt_diagnostics'][0]['boundary'])
+        self.assertIn(abrupt.SUCCESSOR_FILES, calls)
+        self.assertTrue(any('collect-job' in call for call in calls if isinstance(call, list)))
+        # A missing object is ambiguous, not failed.
+        missing = dict(self.cohort)
+        del missing['timeout-post-drain-report.json']
+        self.assertEqual(1, run(missing))
+        self.assertEqual(['b10_abrupt_publication_ambiguous'], self.p.state()['b10_abrupt_gaps'])
+        self.assertEqual('first_cohort_publication', self.p.state()['b10_abrupt_diagnostics'][0]['boundary'])
+        self.assertIn(abrupt.SUCCESSOR_FILES, calls)
+        # A 70000-byte ledger is above the 65536-byte auxiliary limit that applied before the cohort limits existed.
+        large = dict(self.cohort)
+        large['timeout-ledger.jsonl'] = b'x' * 70000
+        document = dict(binding)
+        manifest = abrupt.decode(binding['files']['abrupt-manifest.json'].encode())
+        manifest['data']['cohort_files'][1] = abrupt.descriptor('timeout-ledger.jsonl', large['timeout-ledger.jsonl'])
+        document['files'] = dict(binding['files'], **{'abrupt-manifest.json': abrupt.encode(manifest).decode()})
+        self.assertEqual(0, run(large, document))
+        self.assertEqual([], self.p.state()['b10_abrupt_gaps'])
+        self.assertEqual(70000, len((self.trial.directory / self.observation['pod_name'] / 'timeout-ledger.jsonl').read_bytes()))
 
     def test_produced_second_candidate_without_first_exclusion_is_stale(self):
         self.produced()
@@ -488,8 +627,10 @@ class ProducedBytesCases(Setup):
             state.update(modes=[{'mode': 'loadgen2', 'job': identity['job_name'], 'apply': 0}],
                          b10_abrupt_gaps=[], b10_abrupt_diagnostics=[])
             self.p.save_state(state)
+            def download(_observation, names, _deadline, files=files):
+                return self.cohort if tuple(names) == abrupt.COHORT_FILES else files
             with self.subTest(detail=detail), patch.object(self.trial, 'observe_first_termination', return_value=observation), \
-                 patch.object(self.trial, 'download', return_value=files), \
+                 patch.object(self.trial, 'download', side_effect=download), \
                  patch.object(self.p, 'b10_deadline', return_value=time.monotonic() + 60), \
                  patch.object(self.p, 'run', return_value=0) as run:
                 self.assertEqual(1, self.trial.collect())

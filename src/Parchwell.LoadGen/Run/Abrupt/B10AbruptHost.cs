@@ -230,7 +230,7 @@ internal static class B10AbruptHost
         long syntheticSequence = 0;
         var producer = new B10AbruptProducer(() => authFactory.CreateProducerBuilder<byte[], byte[]>(config, authentication)
             .SetStatisticsHandler(StatisticsHandler(observations, statistics)).SetLogHandler((_, log) => evidence.CaptureLog(log))
-            .SetErrorHandler((_, error) => evidence.CaptureError(error)).Build(), clock, observations,
+            .SetErrorHandler(CreateErrorHandler(evidence, channel, clock)).Build(), clock, observations,
             cohort =>
             {
                 string path = Path.Combine(options.OutputRoot, cohort);
@@ -242,13 +242,23 @@ internal static class B10AbruptHost
             terminal => channel?.TryCaptureTerminal(terminal) ?? true,
             (arm, token) => ReadReleaseAsync(options, arm, clock, token),
             (cohort, data, token) => SaveSealAsync(options, cohort, data, token), evidence, options.Identity(input?.FirstIdentity.InstanceId),
-            SuccessorCompletion(statistics, evidence, brokers, evidencePath), new B10AbruptTimeline(clock, options.Role, Console.Error));
+            SuccessorCompletion(statistics, evidence, brokers, evidencePath), new B10AbruptTimeline(clock, options.Role, Console.Error),
+            () => channel?.NativeErrorCount ?? 0);
         var execution = new RunExecutionOptions(186000, 900000, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(300), TimeSpan.FromSeconds(10),
             16384, 67108864, 268435456, options.OutputRoot, "document-events", brokers, false, true,
             TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(20), ApplicationRetryPolicy.ForScenario("B10"));
         if (channel is not null) channel.TerminalWritten = producer.MarkTerminals;
         return new(producer, loaded.Profile, execution, authentication, statistics, evidence);
     }
+
+    // The first child's error callback also reaches the supervisor's journal (ADR-021 rule 12), so a kill cannot lose an
+    // error the evidence session still holds in its background writer. Only the first child has a channel.
+    internal static Action<IProducer<byte[], byte[]>, Error> CreateErrorHandler(RunEvidenceSession evidence, B10AbruptChildChannel? channel, TimeProvider clock) =>
+        (_, error) =>
+        {
+            channel?.TryCaptureNativeError((int)error.Code, error.Code.ToString(), error.IsError, error.IsFatal, clock.GetTimestamp());
+            evidence.CaptureError(error);
+        };
 
     // Native-capture tracking must see a report before the session can reject it, or the B10 adapter
     // could not match a report the session dropped.

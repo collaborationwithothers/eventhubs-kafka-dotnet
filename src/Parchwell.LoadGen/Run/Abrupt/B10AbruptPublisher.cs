@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using static Parchwell.LoadGen.Run.Abrupt.B10AbruptDiagnostics;
 
 namespace Parchwell.LoadGen.Run.Abrupt;
 
@@ -32,8 +33,19 @@ internal sealed class B10AbruptBlobStorage(BlobServiceClient client) : IB10Abrup
 
 internal sealed class B10AbruptPublisher(IB10AbruptStorage storage, TimeProvider clock)
 {
-    internal static readonly string[] FirstMembers = ["registration.json", "journal.jsonl", "timeout-seal.json", "control-seal.json", "kill-selection.json", "abrupt-manifest.json", "termination.json"];
+    // The eight "cohort files": the three files each cohort seal binds, then the two arm pre-acceptance reports.
+    // The order is the order in docs/operations/b10-abrupt-contract.md; the manifest's cohort_files array follows it.
+    internal static readonly string[] CohortMembers =
+    [
+        "timeout-manifest.json", "timeout-ledger.jsonl", "timeout-post-drain-report.json",
+        "control-manifest.json", "control-ledger.jsonl", "control-post-drain-report.json",
+        "same_instance-pre-acceptance-report.json", "cross_restart-pre-acceptance-report.json"
+    ];
+    internal static readonly string[] FirstMembers = ["registration.json", "journal.jsonl", "timeout-seal.json", "control-seal.json", .. CohortMembers, "kill-selection.json", "abrupt-manifest.json", "termination.json"];
+    // The successor's mounted binding holds the first-instance members it must check, not the journal or the cohort files.
+    internal static readonly string[] BindingMembers = [.. FirstMembers.Where(name => name != "journal.jsonl" && !CohortMembers.Contains(name))];
     internal static readonly string[] SuccessorMembers = ["registration.json", "ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json", "completion.json"];
+    private static readonly TimeSpan UploadBudget = TimeSpan.FromSeconds(30);
     private readonly Dictionary<string, byte[]> _published = new(StringComparer.Ordinal);
 
     internal async Task<byte[]> RegisterDiagnosticAsync(B10AbruptWire.Identity identity, CancellationToken cancellationToken)
@@ -44,12 +56,35 @@ internal sealed class B10AbruptPublisher(IB10AbruptStorage storage, TimeProvider
         return bytes;
     }
 
-    internal async Task PublishFirstAsync(B10AbruptWire.Identity identity, IReadOnlyDictionary<string, byte[]> files, CancellationToken cancellationToken)
+    internal async Task PublishFirstAsync(B10AbruptWire.Identity identity, IReadOnlyDictionary<string, byte[]> files, CancellationToken cancellationToken,
+        B10AbruptTimeline? timeline = null)
     {
         if (identity.PredecessorInstanceId is not null) throw PublicationFailed();
         RequireSet(files, FirstMembers.Where(name => name != "registration.json"));
         foreach (string name in FirstMembers.Skip(1))
-            await PublishAsync(identity, name, files[name], cancellationToken).ConfigureAwait(false);
+        {
+            int cohortIndex = Array.IndexOf(CohortMembers, name);
+            if (cohortIndex < 0 || timeline is null)
+            {
+                await PublishAsync(identity, name, files[name], cancellationToken).ConfigureAwait(false);
+                continue;
+            }
+            // One line per cohort-file attempt, written at once: a held line would be lost if the process watchdog
+            // fired during a slow upload, the case the line exists to diagnose.
+            long begin = clock.GetTimestamp();
+            bool succeeded = false;
+            try
+            {
+                await PublishAsync(identity, name, files[name], cancellationToken).ConfigureAwait(false);
+                succeeded = true;
+            }
+            finally
+            {
+                timeline.Mark(B10AbruptStage.CohortFileUploaded, Fact(B10AbruptFact.NameIndex, cohortIndex),
+                    Fact(B10AbruptFact.FileLength, files[name].LongLength), Fact(B10AbruptFact.ElapsedMilliseconds, clock.GetElapsedTime(begin)),
+                    Fact(B10AbruptFact.BudgetMilliseconds, UploadBudget), Fact(B10AbruptFact.UploadSucceeded, succeeded));
+            }
+        }
     }
 
     internal async Task PublishSuccessorAsync(B10AbruptWire.Identity identity, IReadOnlyDictionary<string, byte[]> payloads,
@@ -83,8 +118,7 @@ internal sealed class B10AbruptPublisher(IB10AbruptStorage storage, TimeProvider
             if (root.GetProperty("cross_host_timing").GetString() != "not_verified") throw Binding("selection_stale");
             JsonElement objects = root.GetProperty("files");
             if (!objects.TryGetProperty("termination.json", out _)) throw Binding("receipt_missing");
-            string[] included = FirstMembers.Where(name => name != "journal.jsonl").ToArray();
-            B10AbruptWire.ExactMembers(objects, included);
+            B10AbruptWire.ExactMembers(objects, BindingMembers);
             var files = objects.EnumerateObject().ToDictionary(property => property.Name,
                 property => Encoding.UTF8.GetBytes(property.Value.GetString() ?? throw Binding("receipt_missing")), StringComparer.Ordinal);
             JsonElement termination = B10AbruptWire.ReadEnvelope(files["termination.json"], "termination");
@@ -159,7 +193,7 @@ internal sealed class B10AbruptPublisher(IB10AbruptStorage storage, TimeProvider
         if (!allowed.Contains(name, StringComparer.Ordinal) || bytes.Length > 268435456 ||
             _published.Values.Sum(value => (long)value.Length) + bytes.Length > 1073741824) throw PublicationFailed();
         string path = $"{identity.RunId}/C1/r1/b10-abrupt-diagnostic/{identity.PodName}/{name}";
-        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30), clock);
+        using var deadline = new CancellationTokenSource(UploadBudget, clock);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token, cancellationToken);
         try
         {
