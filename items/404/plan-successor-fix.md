@@ -1,12 +1,20 @@
 # Successor fix contract-grade plan
 
-Revision 5. Issue #404. Implementing tool: Claude Code, under [standing decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614), point 3, replacing Codex for this pull request. Base: `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`, the source of diagnostic trial 7.
+Revision 6. Issue #404. Implementing tool: Claude Code, under [standing decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614), point 3, replacing Codex for this pull request. Base: `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`, the source of diagnostic trial 7.
 
 The successor producer in trial 7 disposed its native client before it asked the statistics session to complete. No statistics report could then arrive after the completion boundary, so the evidence guard failed. This pull request completes statistics while the client is still live, then disposes it, then completes evidence. It also gives the guard one fact per statistics diagnostic code the session can emit, which raises the per-site fact cap from 16 to 35 (decision 6751449502). It changes no protocol sequence, gate, timeout, interval, failure name or wire member, touches no protected path, and authorizes no trial.
 
 This plan states requirements and tests as observable behaviour. Code text, member names, private structure and line numbers are the implementer's. Line numbers below cite `main` only to locate today's behaviour. A technique named in a test is a permitted example unless the row says it is required.
 
-### Changes since Revision 4 (commit `5eaa3167`)
+### Changes since Revision 5 (commit `fc514377`)
+
+From plan check [6754944477](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754944477) blocking finding B1, decided by [decision 6754970055](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754970055) under standing rule 1:
+
+- T9 also accepts an incomplete completion whose diagnostics contain `duplicate_property` or `invalid_or_missing_field` and no other code except `completion_timeout`. That outcome is recorded as accepted, not as a pass of R1. Its masking cost is recorded.
+- [decision 6754092685](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754092685) and [decision 6754970055](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754970055) are cited; answer (c), section 9 and the stop rule are updated.
+- The check's P2-1 stays `apply in implementation` and is not applied here.
+
+### Changes in Revision 5, from Revision 4 (commit `5eaa3167`)
 
 From the fresh delta check of Revision 4 (no blocking finding), applied exactly:
 
@@ -91,6 +99,8 @@ Authority, in creation order:
 - [Decision 6752454732](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752454732): this pull request is first in the order.
 - [Decision 6752554218](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752554218): review re-request, and stacked implementation of later pull requests.
 - [Decision 6753364128](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753364128), under standing rule 1, Hari has not seen it: D1 to D6 accepted; D7 replaced by an offline test on the producer the host's successor creation path builds (T12, T13).
+- [decision 6754092685](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754092685), under standing rule 1, Hari has not seen it: librdkafka statistics with an unreachable bootstrap broker were seen to carry a duplicate broker key (`duplicate_property`), and one run carried `invalid_or_missing_field`, cause not identified. Point 2 accepts as a deployment assumption that live statistics in the next trial contain no duplicate keys.
+- [decision 6754970055](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754970055), under standing rule 1, Hari has not seen it: T9's accepted outcome and masking cost (B1 of plan check 6754944477).
 - Evidence, not authority: [Codex P1 finding r4505115034 on PR 406](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/406#discussion_r4505115034). Native error callbacks during successor disposal must be captured before evidence is finalized. Commit `54d9065` fixed that finding by disposing before both completions, and that move caused the trial 7 failure. This plan keeps the finding fixed (R5).
 
 Design text this plan depends on and does not change:
@@ -422,7 +432,11 @@ T9. `Given_RealNativeProducerWithoutBroker_When_CompletionMembersRun_Then_Statis
   - session `CompletionTimeout` 20 s;
   - expected brokers `["127.0.0.1:1/bootstrap"]`;
   - wait 500 ms, then statistics completion, dispose, evidence completion.
-- Expected: no exception; `capture/capabilities.json` `statistics_completion` matches the T1 pattern; evidence not faulted.
+- Expected (pass): no exception; `capture/capabilities.json` `statistics_completion` matches the T1 pattern; evidence not faulted.
+- Accepted, not a pass of R1 ([decision 6754970055](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754970055)): `b10_abrupt_guard_failed` with an incomplete completion whose diagnostics contain `duplicate_property` or `invalid_or_missing_field` (the second labelled "cause not identified"), and no code other than those two and `completion_timeout`. The test records the outcome and its codes in its output, and passes.
+- Any other incomplete completion, or any other failure, fails T9.
+- Masking cost: in a run with the accepted outcome, T9 kills nothing. Every mutation row in section 7.3 that lists T9 therefore also lists a deterministic killer: M3 has T1, T4 x2 and T5. No other row depends on T9.
+- Observed on the prototype, 2026-11-10: 250 of 250 runs passed and none gave the accepted outcome, so the accepted branch has not been exercised. Earlier, about 450 runs under the Revision 5 expectation all passed.
 - Guard observations are not asserted: the refused connection adds `native_error_callback_observed`.
 
 T10. `Given_AllStatisticsCodes_When_GuardFactsAreAttached_Then_CapKeepsAllThirtyFive`. Covers R11 and E4.
@@ -526,7 +540,7 @@ Inference: on `main`'s order, the same bounds limit disposal, evidence completio
 
 ## 9. Deployment assumptions
 
-No offline test runs these for real. D1 to D6 are accepted by name by [decision 6753364128](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753364128) under standing decision 6752430614 point 1, because each failure gives a failed trial with logs that name it. D7 of Revision 3 was not accepted; it is replaced by T12 and T13.
+No offline test runs these for real. [decision 6754092685](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754092685) point 2 separately accepts that live statistics in the next trial contain no duplicate keys. D1 to D6 are accepted by name by [decision 6753364128](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753364128) under standing decision 6752430614 point 1, because each failure gives a failed trial with logs that name it. D7 of Revision 3 was not accepted; it is replaced by T12 and T13.
 
 - D1. After the successor's seal, the live client delivers within 20 s a report naming every expected broker. Basis: section 8 (estimate), S8 (inference) and T9 (real client, no broker). Failure is named by `diagnostic_completion_timeout` and `missing_broker_count`.
 - D2. Native disposal after statistics completion returns within the 10 s cleanup timeout. Basis: T9 (about 100 ms) and the section 8 inference (about 1.97 s live).
@@ -595,7 +609,7 @@ Run from the repository root. "Observed" is what this planning session saw on 20
   - the real chain, with a real client where one runs offline (decision 6749565231);
   - the 50-run gate and the deterministic delivery points, because a free-running feed proved flaky;
   - the mutation table.
-- (c) Dependencies outside `main` and this pull request: T9 depends on the bundled librdkafka emitting statistics for an unreachable bootstrap broker. It passed with port 1 refused, and with a listener on port 1 (fresh check, 2026-11-09). T12 and T13 build a real client through the host path with no broker and no token. Behaviour no test settles is D1 to D6, accepted by [decision 6753364128](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753364128).
+- (c) Dependencies outside `main` and this pull request: T9 depends on the bundled librdkafka emitting statistics for an unreachable bootstrap broker. It passed with port 1 refused, and with a listener on port 1 (fresh check, 2026-11-09). With the same kind of fixture, [decision 6754092685](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754092685) recorded a duplicate broker key and one `invalid_or_missing_field`. T9 accepts those outcomes without counting them as a pass ([decision 6754970055](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754970055)). T12 and T13 build a real client through the host path, with no broker and no token. Behaviour that no test settles is D1 to D6, accepted by [decision 6753364128](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753364128).
 
 ## 12. Sources
 
@@ -640,7 +654,7 @@ The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" in any
 
 - it needs to change a contract in section 3, a requirement in section 4, the scope in section 2 or a value in 2.2;
 - the source has a reachable diagnostic code not in E2;
-- a repetition, mutation or CI failure traces to either D6 race.
+- a repetition, mutation or CI failure traces to either D6 race. A T9 run with the accepted outcome of [decision 6754970055](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754970055) is not a failure and does not stop the implementer.
 
 Left open to the implementer, and recorded in the receipt with reasons:
 
