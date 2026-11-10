@@ -23,11 +23,9 @@ public sealed class B10AbruptRejectionTests
     private static readonly InputLimits Limits = new(32, 268435456, 1073741824, 16384, 186000, 186000, 256);
     private static readonly string[] ExportNames =
     [
-        "first/registration.json", "first/journal.jsonl", "first/timeout-seal.json", "first/control-seal.json",
-        "first/timeout-manifest.json", "first/timeout-ledger.jsonl", "first/timeout-post-drain-report.json",
-        "first/control-manifest.json", "first/control-ledger.jsonl", "first/control-post-drain-report.json",
-        "first/same_instance-pre-acceptance-report.json", "first/cross_restart-pre-acceptance-report.json",
-        "first/kill-selection.json", "first/abrupt-manifest.json", "first/termination.json",
+        "first/registration.json", "first/journal.jsonl", "first/same_instance-pre-acceptance-report.json",
+        "first/control-post-drain-report.json", "first/cross_restart-pre-acceptance-report.json",
+        "first/abrupt-manifest.json", "first/termination.json",
         "successor/registration.json", "successor/ledger.jsonl", "successor/manifest.json",
         "successor/statistics.jsonl", "successor/request-lifecycle.jsonl", "successor/capabilities.json", "successor/completion.json"
     ];
@@ -42,11 +40,12 @@ public sealed class B10AbruptRejectionTests
             await ProduceExportAsync(directory);
             Dictionary<string, byte[]> files = ReadExport(directory);
             foreach (string name in new[] { "first/registration.json", "first/abrupt-manifest.json", "first/termination.json",
-                "first/kill-selection.json", "successor/registration.json", "successor/manifest.json", "successor/completion.json" })
+                "first/journal.jsonl", "successor/registration.json", "successor/manifest.json", "successor/completion.json" })
             {
-                byte[] original = files[name];
+                byte[] original = name == "first/journal.jsonl"
+                    ? files[name][..Array.IndexOf(files[name], (byte)'\n')] : files[name];
                 using JsonDocument document = JsonDocument.Parse(original);
-                Assert.Equal(2, document.RootElement.GetProperty("schema_version").GetInt32());
+                Assert.Equal(3, document.RootElement.GetProperty("schema_version").GetInt32());
                 Assert.Equal("b10_abrupt", document.RootElement.GetProperty("dialect").GetString());
                 Assert.False(document.RootElement.GetProperty("scientific_admissible").GetBoolean());
                 foreach (byte[] bytes in Variants(original))

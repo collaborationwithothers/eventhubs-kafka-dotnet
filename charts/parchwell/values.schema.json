@@ -94,6 +94,8 @@
             "start-line",
             "loadgen",
             "loadgen2",
+            "loadgen-restart",
+            "loadgen-successor",
             "verify",
             "judge",
             "b10-sweep-line",
@@ -336,7 +338,7 @@
             "single_action_judge"
           ],
           "properties": {
-            "b10_abrupt": { "type": "object", "const": {"MaxFrameBytes": 65536, "QueueCapacity": 256, "MaxJournalBytes": 16777216, "MaxJournalEntries": 4096, "MaxAuxiliaryBytes": 65536, "MaxJsonDepth": 32, "ArmTimeoutSeconds": 30, "KillTimeoutSeconds": 10, "ReapTimeoutSeconds": 10, "EofTimeoutSeconds": 10, "ReleaseDelaySeconds": 120} },
+            "b10_abrupt": { "type": "object", "const": {"MaxRecordBytes": 65536, "QueueCapacity": 256, "MaxJournalBytes": 16777216, "MaxJournalEntries": 4096, "MaxAuxiliaryBytes": 65536, "MaxJsonDepth": 32, "ReleaseDelaySeconds": 120, "ProbeRate": 100, "CutOrdinal": 4} },
             "b10_capture": { "type": "object", "const": { "B10SettleIntervalMilliseconds": 60000 } },
             "b10_sweep": { "type": "object", "const": { "B10SettleIntervalMilliseconds": 60000, "MaxConsumedRecords": 9300000, "MaxConsumedBytes": 429496729600 } },
             "scenario_parsing": {
@@ -643,7 +645,7 @@
         }
       },
       "allOf": [
-        {"if": {"properties": {"b10_abrupt_diagnostic": {"const": true}}, "required": ["b10_abrupt_diagnostic"]}, "then": {"required": ["run_kind", "repeat", "b10_abrupt_binding_configmap"], "properties": {"run_kind": {"const": "smoke"}, "phase": {"const": "C1"}, "repeat": {"const": 1}, "mode": {"enum": ["loadgen", "loadgen2"]}, "bounds": {"required": ["b10_abrupt"]}}, "not": {"anyOf": [{"required": ["enrichment_image"]}, {"required": ["seed_receipt_configmap"]}, {"required": ["action_role"]}, {"required": ["image_smoke"]}, {"required": ["stage"]}, {"required": ["probe_namespace_data_roles"]}, {"required": ["capture_authentication_metadata"]}, {"required": ["native_authentication"]}, {"required": ["native_principal_id"]}, {"required": ["capture_pods"]}, {"required": ["judge_items"]}, {"required": ["b10_last_verifier_completed_utc"]}, {"required": ["b10_last_loadgen_terminated_utc"]}]}}, "else": {"not": {"required": ["b10_abrupt_binding_configmap"]}}},
+        {"if": {"properties": {"b10_abrupt_diagnostic": {"const": true}}, "required": ["b10_abrupt_diagnostic"]}, "then": {"required": ["run_kind", "repeat", "b10_abrupt_binding_configmap"], "properties": {"run_kind": {"const": "smoke"}, "phase": {"const": "C1"}, "repeat": {"const": 1}, "mode": {"enum": ["loadgen-restart", "loadgen-successor"]}, "bounds": {"required": ["b10_abrupt"]}}, "not": {"anyOf": [{"required": ["enrichment_image"]}, {"required": ["seed_receipt_configmap"]}, {"required": ["action_role"]}, {"required": ["image_smoke"]}, {"required": ["stage"]}, {"required": ["probe_namespace_data_roles"]}, {"required": ["capture_authentication_metadata"]}, {"required": ["native_authentication"]}, {"required": ["native_principal_id"]}, {"required": ["capture_pods"]}, {"required": ["judge_items"]}, {"required": ["b10_last_verifier_completed_utc"]}, {"required": ["b10_last_loadgen_terminated_utc"]}]}}, "else": {"not": {"required": ["b10_abrupt_binding_configmap"]}}},
         {
           "if": { "properties": { "mode": { "enum": ["b10-sweep-line", "b10-sweep"] } }, "required": ["mode"] },
           "then": { "not": { "anyOf": [{ "required": ["repeat"] }, { "required": ["loadgen_job_name"] }] } }
@@ -792,6 +794,8 @@
                         "start-line",
                         "loadgen",
                         "loadgen2",
+                        "loadgen-restart",
+                        "loadgen-successor",
                         "verify"
                       ]
                     }
@@ -926,7 +930,7 @@
       "then": {
         "properties": {
           "configuration_id": { "enum": ["C0", "C1"] },
-          "runtime": { "properties": { "phase": { "enum": ["C0", "C1"] }, "mode": { "enum": ["start-line", "loadgen", "loadgen2", "verify", "b10-sweep-line", "b10-sweep", "judge"] } } }
+          "runtime": { "properties": { "phase": { "enum": ["C0", "C1"] }, "mode": { "enum": ["start-line", "loadgen", "loadgen2", "loadgen-restart", "loadgen-successor", "verify", "b10-sweep-line", "b10-sweep", "judge"] } } }
         }
       }
     },

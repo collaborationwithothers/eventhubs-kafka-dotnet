@@ -1,5 +1,4 @@
 """Bounded diagnostic-only orchestration for the owned-child restart trial."""
-import base64
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -13,14 +12,9 @@ import traceback
 AUXILIARY_MAXIMUM = 65536
 SITE_FILE = os.path.basename(__file__)
 JOURNAL_MAXIMUM = 16777216
-FIRST_FILES = ('registration.json', 'journal.jsonl', 'timeout-seal.json', 'control-seal.json',
-               'kill-selection.json', 'abrupt-manifest.json', 'termination.json')
-# Published after the first pod exits and downloaded only after the successor is released, so the
-# pre-release acceptance set stays FIRST_FILES. The order is the one in docs/operations/b10-abrupt-contract.md.
-COHORT_FILES = ('timeout-manifest.json', 'timeout-ledger.jsonl', 'timeout-post-drain-report.json',
-                'control-manifest.json', 'control-ledger.jsonl', 'control-post-drain-report.json',
-                'same_instance-pre-acceptance-report.json', 'cross_restart-pre-acceptance-report.json')
-COHORT_LIMITS = dict(zip(COHORT_FILES, (67108864, 268435456, 1048576, 67108864, 268435456, 1048576, 1048576, 1048576)))
+FIRST_FILES = ('registration.json', 'journal.jsonl', 'abrupt-manifest.json', 'termination.json')
+REPORT_FILES = ('same_instance-pre-acceptance-report.json', 'control-post-drain-report.json',
+                'cross_restart-pre-acceptance-report.json')
 SUCCESSOR_FILES = ('registration.json', 'ledger.jsonl', 'manifest.json', 'statistics.jsonl',
                    'request-lifecycle.jsonl', 'capabilities.json', 'completion.json')
 IDENTITY_FIELDS = set('run_id scenario_id configuration_id phase repeat source_commit image_reference job_name pod_name pod_uid instance_id predecessor_instance_id'.split())
@@ -28,21 +22,26 @@ ENVELOPE_FIELDS = set('schema_version dialect purpose synthetic scientific_admis
 
 DATA_FIELDS = {key: set(value.split()) for key, value in {
     'registration': 'registered_utc',
-    'prepared': 'attempt_id invocation_ordinal cohort probe_id key sequence payload_length payload_sha256 predecessor_attempt_id',
+    'child_started': 'pid start_time_ticks boot_id',
+    'prepared': 'attempt_id arm role ordinal probe_id key sequence payload_length payload_sha256 predecessor_attempt_id',
+    'pre_acceptance_report': 'arm attempt_id name length sha256 report_identity report_sequence report_capture_utc',
+    'post_drain_report': 'arm attempt_id name length sha256 report_identity report_sequence report_capture_utc',
     'accepted': 'attempt_id prepared_sequence',
     'synchronous_rejection': 'attempt_id prepared_sequence error_code error_reason',
     'terminal': 'attempt_id completion_source delivered error_code persistence_status',
     'native_error': 'capture_sequence error_code error_name is_error is_fatal callback_monotonic_ticks',
-    'checkpoint': 'arm accepted_attempt_ids selected_attempt_ids last_complete_sequence pre_acceptance_report process checkpoint_utc checkpoint_monotonic_ticks release_utc',
-    'signal': 'arm requested_signal process intent_sequence request_utc request_monotonic_ticks return_value errno',
-    'exit': 'process wait_for_exit_observed observed_utc monotonic_ticks exit_code_local_observation runtime_version',
+    'cut': 'arm cut_attempt_id release_utc unconfirmed_attempt_ids',
+    'control_drained': 'flush_returned out_queue_length',
+    'kill_intent': 'arm cut_attempt_id release_utc',
+    'signal_failed': 'return_value errno',
+    'no_kill': 'reason cross_restart_admitted',
     'gap': 'reason first_missing_sequence capture_status',
-    'selection': 'checkpoint checkpoint_descriptor candidate_attempt_ids terminal_exclusions entries',
-    'cohort_seal': 'cohort inventory count ledger drain_complete post_drain_statistics guard_complete fatal_capture_status native_error_count',
-    'abrupt_manifest': 'journal journal_entry_count timeout_seal control_seal selection gaps registration cohort_files',
-    'termination': 'manifest process signals exit cgroup_before cgroup_after eof_complete mechanical_status fatal_capture_status native_tail native_error_count native_fatal_count',
-    'successor_receipt': 'first_termination selection registration artifacts ready_utc release_utc invocations cleanup_completed cross_host_timing',
+    'abrupt_manifest': 'journal journal_records report_files gaps',
+    'termination': 'termination outcome detail signal_observation successor_permitted child exit_observed exit_code_local_observation runtime_version wait_bound_milliseconds cgroup_before cgroup_after control_unconfirmed_attempt_ids kill_unconfirmed_attempt_ids capture_gaps native_error_count native_fatal_count native_tail manifest',
+    'successor_receipt': 'first_termination journal kill_unconfirmed_attempt_ids registration artifacts ready_utc release_utc invocations cleanup_completed cross_host_timing',
 }.items()}
+PRODUCING_KINDS = frozenset(('child_started', 'prepared', 'pre_acceptance_report', 'accepted',
+    'synchronous_rejection', 'cut', 'control_drained', 'post_drain_report', 'kill_intent', 'signal_failed', 'no_kill'))
 
 # Emitted outcomes are the closed list in the approved diagnostic contract.
 FAILURE_NAMES = frozenset('''
@@ -52,18 +51,16 @@ b10_abrupt_platform_unsupported
 b10_abrupt_signal_preflight_failed
 b10_abrupt_child_start_failed
 b10_abrupt_child_identity_mismatch
-b10_abrupt_target_invalid
 b10_abrupt_signal_failed
-b10_abrupt_stop_unconfirmed
-b10_abrupt_resume_unconfirmed
 b10_abrupt_exit_unobserved
-b10_abrupt_eof_incomplete
 b10_abrupt_unexpected_exit
 b10_abrupt_capture_gap
 b10_abrupt_sample_missing
 b10_abrupt_report_binding_invalid
 b10_abrupt_guard_failed
 b10_abrupt_control_incomplete
+b10_abrupt_exposure_inconclusive
+b10_abrupt_cut_rejected
 kill_too_early
 kill_too_late
 b10_abrupt_cgroup_unavailable
@@ -85,7 +82,7 @@ def execution_modes(configuration):
     if configuration == 'C0':
         return ('loadgen',)
     if configuration == 'C1':
-        return ('loadgen', 'loadgen2')
+        return ('loadgen-restart', 'loadgen-successor')
     raise ValueError('b10_abrupt_configuration_invalid')
 
 
@@ -239,7 +236,7 @@ class Trial:
         if mode not in execution_modes('C1'):
             raise ValueError('b10_abrupt_configuration_invalid')
         values = values or self.p.values(mode, 1)
-        role = 'first' if mode == 'loadgen' else 'successor'
+        role = 'first' if mode == 'loadgen-restart' else 'successor'
         values['runtime'].update(b10_abrupt_diagnostic=True, run_kind='smoke',
             b10_abrupt_binding_configmap=phase['run_id'] + '-b10-abrupt-' + role)
         return values
@@ -370,7 +367,7 @@ class Trial:
 
     def envelope(self, raw, kind, observation, predecessor=None, maximum=AUXILIARY_MAXIMUM):
         value = decode(raw, maximum)
-        if (set(value) != ENVELOPE_FIELDS or type(value['schema_version']) is not int or value['schema_version'] != 2
+        if (set(value) != ENVELOPE_FIELDS or type(value['schema_version']) is not int or value['schema_version'] != 3
                 or value['dialect'] != 'b10_abrupt' or value['purpose'] != 'diagnostic_trial'
                 or value['synthetic'] is not True or value['scientific_admissible'] is not False or value['kind'] != kind):
             raise ValueError('diagnostic envelope')
@@ -394,7 +391,7 @@ class Trial:
         files = {}
         for name in names:
             limits = {'journal.jsonl': JOURNAL_MAXIMUM, 'ledger.jsonl': 268435456, 'manifest.json': 67108864,
-                      'statistics.jsonl': 134217728, 'request-lifecycle.jsonl': 134217728, **COHORT_LIMITS}
+                      'statistics.jsonl': 134217728, 'request-lifecycle.jsonl': 134217728, **dict.fromkeys(REPORT_FILES, 1048576)}
             limit = min(limits.get(name, AUXILIARY_MAXIMUM), 1073741824 - sum(map(len, files.values())))
             raw = self.p.download_blob(prefix + name, target / name, limit, deadline, container='ledger', minimum=0 if name == 'request-lifecycle.jsonl' else 1)
             if raw is None:
@@ -404,157 +401,165 @@ class Trial:
             raise ValueError('b10_abrupt_publication_failed')
         return files
 
+    def utc_ticks(self, value):
+        if not isinstance(value, str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{7}\+00:00', value):
+            raise ValueError('journal utc')
+        return self.p.b10_utc(value)[1]
+
+    def read_journal(self, raw, observation):
+        if not 0 < len(raw) <= JOURNAL_MAXIMUM or not raw.endswith(b'\n'):
+            raise ValueError('journal malformed_frame')
+        lines = raw[:-1].split(b'\n')
+        if not 0 < len(lines) <= 4096:
+            raise ValueError('journal entry bound')
+        frames = []
+        for sequence, line in enumerate(lines, 1):
+            frame = decode(line, 65536)
+            if (set(frame) != ENVELOPE_FIELDS | {'sequence', 'observed_utc', 'monotonic_ticks', 'clock_frequency'}
+                    or type(frame['sequence']) is not int or frame['sequence'] != sequence):
+                raise ValueError('journal sequence_gap')
+            if any(type(frame[key]) is not int or not 0 <= frame[key] <= 9223372036854775807
+                   for key in ('monotonic_ticks', 'clock_frequency')) or frame['clock_frequency'] == 0:
+                raise ValueError('journal clock')
+            self.utc_ticks(frame['observed_utc'])
+            self.envelope(encode({key: frame[key] for key in ENVELOPE_FIELDS}), frame['kind'], observation)
+            if frame['kind'] == 'gap':
+                raise ValueError('journal capture gap')
+            frames.append(frame)
+        if frames[0]['kind'] != 'child_started' or sum(frame['kind'] == 'child_started' for frame in frames) != 1:
+            raise ValueError('journal child identity')
+        return frames
+
     def accept_diagnostic_publication(self, observation, files):
-        if set(files) != set(FIRST_FILES):
+        if not set(FIRST_FILES) <= set(files) <= set(FIRST_FILES + REPORT_FILES):
             raise ValueError('b10_abrupt_publication_ambiguous')
         receipt_identity = decode(files['termination.json'])['identity']
         if any(receipt_identity.get(key) != observation.get(key) for key in ('job_name', 'pod_name', 'pod_uid')):
             self.fail('b10_abrupt_first_termination_unknown', safety=True)
-        kinds = {'registration.json': 'registration', 'timeout-seal.json': 'cohort_seal', 'control-seal.json': 'cohort_seal',
-                 'kill-selection.json': 'selection', 'abrupt-manifest.json': 'abrupt_manifest', 'termination.json': 'termination'}
-        objects = {name: self.envelope(files[name], kind, observation) for name, kind in kinds.items()}
-        termination, manifest, selection = (objects[name]['data'] for name in ('termination.json', 'abrupt-manifest.json', 'kill-selection.json'))
+        if observation['job_name'] != self.phase()['run_id'] + '-c1-r1-loadgen-restart':
+            raise ValueError('diagnostic identity')
+        objects = {name: self.envelope(files[name], kind, observation) for name, kind in
+                   (('registration.json', 'registration'), ('abrupt-manifest.json', 'abrupt_manifest'),
+                    ('termination.json', 'termination'))}
+        termination, manifest = (objects[name]['data'] for name in ('termination.json', 'abrupt-manifest.json'))
         bound(termination['manifest'], 'abrupt-manifest.json', files['abrupt-manifest.json'])
-        for key, name in [('registration', 'registration.json'), ('journal', 'journal.jsonl'), ('timeout_seal', 'timeout-seal.json'),
-                          ('control_seal', 'control-seal.json'), ('selection', 'kill-selection.json')]:
-            bound(manifest[key], name, files[name])
-        if (manifest['gaps'] != [] or termination['mechanical_status'] != 'complete'
-                or termination['eof_complete'] is not True or termination['fatal_capture_status'] != 'journal_through_eof'
+        bound(manifest['journal'], 'journal.jsonl', files['journal.jsonl'])
+        frames = self.read_journal(files['journal.jsonl'], observation)
+        if (type(manifest['journal_records']) is not int or manifest['journal_records'] != len(frames)
+                or manifest['gaps'] != [] or termination['capture_gaps'] != []
+                or termination['successor_permitted'] is not True or termination['termination'] != 'intended_self_kill'
+                or termination['exit_observed'] is not True or type(termination['exit_code_local_observation']) is not int
+                or termination['exit_code_local_observation'] != 137
                 or termination['native_tail'] != 'unknown_due_to_intended_kill'):
             raise ValueError('b10_abrupt_publication_failed')
-        for name, cohort in [('timeout-seal.json', 'timeout'), ('control-seal.json', 'same_instance')]:
-            seal = objects[name]['data']
-            if seal['cohort'] != cohort or seal['drain_complete'] is not True or seal['guard_complete'] is not True:
-                raise ValueError('b10_abrupt_control_incomplete')
+        child = termination['child']
+        if (not isinstance(child, dict) or set(child) != {'pid', 'start_time_ticks', 'boot_id', 'parent_observed_start_time_ticks'}
+                or any(child.get(key) != value for key, value in frames[0]['data'].items())
+                or child['start_time_ticks'] != child['parent_observed_start_time_ticks']):
+            raise ValueError('b10_abrupt_child_identity_mismatch')
         before, after = termination['cgroup_before'], termination['cgroup_after']
         cgroup_fields = {'boot_id', 'cgroup_path', 'directory_identity', 'oom_kill'}
         if (not isinstance(before, dict) or not isinstance(after, dict) or set(before) != cgroup_fields
                 or set(after) != cgroup_fields or before != after or type(before['oom_kill']) is not int
                 or not 0 <= before['oom_kill'] <= 9223372036854775807):
             raise ValueError('b10_abrupt_oom_conflict')
-        if (before['boot_id'] != termination['process'].get('boot_id')
+        if (before['boot_id'] != child['boot_id']
                 or any(not isinstance(before[key], str) or not before[key] for key in ('boot_id', 'cgroup_path', 'directory_identity'))):
             raise ValueError('b10_abrupt_cgroup_unavailable')
-        if termination['exit'].get('wait_for_exit_observed') is not True:
-            raise ValueError('b10_abrupt_first_termination_unknown')
-        if len(files['journal.jsonl']) > JOURNAL_MAXIMUM:
-            raise ValueError('journal size')
-        if files['journal.jsonl'].count(b'\n') > 4096:
-            raise ValueError('journal entry bound')
-        lines = files['journal.jsonl'].splitlines()
-        if not 0 < len(lines) <= 4096 or type(manifest['journal_entry_count']) is not int or manifest['journal_entry_count'] != len(lines):
-            raise ValueError('journal count')
-        frames = [decode(line, JOURNAL_MAXIMUM) for line in lines]
-        for sequence, frame in enumerate(frames, 1):
-            if (set(frame) != ENVELOPE_FIELDS | {'sequence', 'observed_utc', 'monotonic_ticks', 'clock_frequency'}
-                    or type(frame['sequence']) is not int or frame['sequence'] != sequence
-                    or frame['identity'] != objects['termination.json']['identity']):
-                raise ValueError('journal sequence or identity')
-            if any(type(frame[key]) is not int or not 0 <= frame[key] <= 9223372036854775807 for key in ('monotonic_ticks', 'clock_frequency')) or frame['clock_frequency'] == 0:
-                raise ValueError('journal clock')
-            self.p.b10_utc(frame['observed_utc'])
-            envelope = {key: frame[key] for key in ENVELOPE_FIELDS}
-            self.envelope(encode(envelope), frame['kind'], observation, maximum=JOURNAL_MAXIMUM)
+        prepared, accepted, terminals, rejections = {}, [], set(), set()
+        control, kill, reports, cut, intent = None, None, [], None, None
         for frame in frames:
-            if frame['kind'] == 'gap':
-                raise ValueError('journal capture gap')
-            if frame['kind'] == 'checkpoint':
-                report = frame['data']['pre_acceptance_report']
-                if set(report) != {'name', 'length', 'sha256', 'report_identity', 'report_sequence', 'report_capture_utc'}:
-                    raise ValueError('report descriptor')
-                report_identity = report['report_identity']
-                if (set(report_identity) != {'scenario_id', 'run_id', 'role', 'client_id'}
-                        or report_identity['scenario_id'] != 'B10' or report_identity['run_id'] != observation.get('run_id', self.phase()['run_id'])
-                        or report_identity['role'] != 'LoadGenProducer' or not isinstance(report_identity['client_id'], str)
-                        or not report_identity['client_id'] or type(report['report_sequence']) is not int
-                        or not 1 <= report['report_sequence'] <= 9223372036854775807
-                        or type(report['length']) is not int or not 1 <= report['length'] <= 1048576
-                        or not re.fullmatch('[0-9a-f]{64}', report['sha256'])
-                        or report['name'] != 'abrupt-child/' + frame['data']['arm'] + '-pre-acceptance-report.json'
-                        or not isinstance(report['report_capture_utc'], str) or len(report['report_capture_utc']) != 33
-                        or self.p.b10_utc(report['report_capture_utc'])[0] != report['report_capture_utc']):
+            kind, data = frame['kind'], frame['data']
+            if kind == 'prepared':
+                attempt = data['attempt_id']
+                if (not isinstance(attempt, str) or not attempt or attempt in prepared
+                        or data['arm'] not in ('same_instance', 'cross_restart') or data['role'] not in ('original', 'resend')
+                        or type(data['ordinal']) is not int or not 0 <= data['ordinal'] <= 4
+                        or type(data['sequence']) is not int or data['sequence'] != data['ordinal']
+                        or data['key'] != 'B10/' + self.phase()['run_id'] + '/C1/1/' + data['arm']
+                        or type(data['payload_length']) is not int or not 0 < data['payload_length'] <= 900000
+                        or not isinstance(data['payload_sha256'], str) or not re.fullmatch('[0-9a-f]{64}', data['payload_sha256'])):
+                    raise ValueError('prepared binding')
+                prepared[attempt] = frame
+            elif kind in ('accepted', 'synchronous_rejection'):
+                attempt = data['attempt_id']
+                original = prepared.get(attempt)
+                if (original is None or original['sequence'] != data['prepared_sequence']
+                        or type(data['prepared_sequence']) is not int or attempt in accepted or attempt in rejections):
+                    raise ValueError('prepared acceptance binding')
+                if kind == 'accepted':
+                    accepted.append(attempt)
+                else:
+                    rejections.add(attempt)
+            elif kind == 'terminal':
+                attempt = data['attempt_id']
+                if attempt not in prepared or attempt in terminals or type(data['delivered']) is not bool:
+                    raise ValueError('terminal binding')
+                terminals.add(attempt)
+            elif kind in ('cut', 'kill_intent'):
+                arm = 'same_instance' if kind == 'cut' else 'cross_restart'
+                original = prepared.get(data['cut_attempt_id'])
+                if (data['arm'] != arm or original is None or original['data']['arm'] != arm
+                        or original['data']['role'] != 'original' or original['data']['ordinal'] != 4
+                        or data['cut_attempt_id'] not in accepted
+                        or self.utc_ticks(data['release_utc']) - self.utc_ticks(frame['observed_utc']) != 120 * 10000000):
+                    raise ValueError('release boundary')
+                unconfirmed = [attempt for attempt in accepted if prepared[attempt]['data']['arm'] == arm
+                    and prepared[attempt]['data']['role'] == 'original' and attempt not in terminals and attempt not in rejections]
+                if kind == 'cut':
+                    if cut is not None or data['unconfirmed_attempt_ids'] != unconfirmed:
+                        raise ValueError('selection stale')
+                    control, cut = unconfirmed, frame
+                else:
+                    if intent is not None:
+                        raise ValueError('selection stale')
+                    intent = frame
+            elif kind in ('pre_acceptance_report', 'post_drain_report'):
+                name = data['name']
+                expected_name = (data['arm'] + '-pre-acceptance-report.json' if kind == 'pre_acceptance_report'
+                                 else 'control-post-drain-report.json')
+                identity = data['report_identity']
+                if (name != expected_name or name not in REPORT_FILES or name in [entry['name'] for entry in reports]
+                        or not isinstance(identity, dict) or set(identity) != {'scenario_id', 'run_id', 'role', 'client_id'}
+                        or identity['scenario_id'] != 'B10' or identity['run_id'] != self.phase()['run_id']
+                        or identity['role'] != 'LoadGenProducer' or not isinstance(identity['client_id'], str) or not identity['client_id']
+                        or type(data['report_sequence']) is not int or not 1 <= data['report_sequence'] <= 9223372036854775807
+                        or type(data['length']) is not int or not 1 <= data['length'] <= 1048576):
                     raise ValueError('report binding')
-        self.accept_fatal_coverage(frames, objects, termination)
-        self.accept_cohort_files(frames, objects, manifest)
-        signals = [frame for frame in frames if frame['kind'] == 'signal']
-        if termination['signals'] != [frame['data'] for frame in signals]:
-            raise ValueError('signal inventory')
-        if [(frame['data']['arm'], frame['data']['requested_signal']) for frame in signals] != [
-                ('same_instance', 19), ('same_instance', 18), ('cross_restart', 19), ('cross_restart', 9), ('cross_restart', 9)]:
-            raise ValueError('signal order')
-        for index, frame in enumerate(signals):
-            data = frame['data']
-            if (data['process'] != termination['process'] or data['return_value'] != (None if index == 3 else 0)
-                    or index != 3 and type(data['return_value']) is not int):
-                raise ValueError('signal result')
-        if signals[4]['data']['intent_sequence'] != signals[3]['sequence']:
-            raise ValueError('kill intent')
-        checkpoints = [frame for frame in frames if frame['kind'] == 'checkpoint']
-        if ([frame['data']['arm'] for frame in checkpoints] != ['same_instance', 'cross_restart']
-                or not signals[0]['sequence'] < checkpoints[0]['sequence'] < signals[1]['sequence']
-                or not signals[2]['sequence'] < checkpoints[1]['sequence'] < signals[3]['sequence']):
-            raise ValueError('checkpoint signal order')
-        exits = [frame for frame in frames if frame['kind'] == 'exit']
-        if (len(exits) != 1 or exits[0]['sequence'] <= signals[-1]['sequence']
-                or exits[0]['data']['wait_for_exit_observed'] is not True
-                or exits[0]['data']['process'] != termination['process']):
-            raise ValueError('observed exit')
-        checkpoint = selection['checkpoint']
-        if checkpoint not in frames or checkpoint['kind'] != 'checkpoint' or checkpoint['data']['arm'] != 'cross_restart':
-            raise ValueError('selection checkpoint')
-        checkpoint_bytes = lines[frames.index(checkpoint)]
-        bound(selection['checkpoint_descriptor'], 'cross_restart-checkpoint.json', checkpoint_bytes)
-        if len(selection['entries']) != 1:
-            raise ValueError('kill_too_late')
-        entry = selection['entries'][0]
-        prepared = {frame['data']['attempt_id']: frame for frame in frames if frame['kind'] == 'prepared'}
-        accepted_frames = [frame for frame in frames if frame['kind'] == 'accepted']
-        accepted = {frame['data']['attempt_id'] for frame in accepted_frames}
-        if len(accepted) != len(accepted_frames):
-            raise ValueError('duplicate acceptance')
-        for frame in accepted_frames:
-            source = prepared.get(frame['data']['attempt_id'])
-            if source is None or source['sequence'] != frame['data']['prepared_sequence'] or source['sequence'] >= frame['sequence']:
-                raise ValueError('prepared acceptance binding')
-        terminal_frames = {frame['data']['attempt_id']: frame for frame in frames if frame['kind'] == 'terminal'}
-        terminal = set(terminal_frames)
-        candidates = selection['candidate_attempt_ids']
-        if not 1 <= len(candidates) <= 5 or candidates != checkpoint['data']['selected_attempt_ids']:
-            raise ValueError('selection identity')
-        excluded = set()
-        for exclusion in selection['terminal_exclusions']:
-            attempt = exclusion['attempt_id']
-            if (attempt not in candidates or attempt not in terminal_frames
-                    or terminal_frames[attempt]['sequence'] != exclusion['terminal_sequence']):
-                raise ValueError('selection stale')
-            excluded.add(attempt)
-        first_unexcluded = next((attempt for attempt in candidates if attempt not in excluded), None)
-        if entry['attempt_id'] != first_unexcluded:
+                self.utc_ticks(data['report_capture_utc'])
+                report = {key: data[key] for key in ('name', 'length', 'sha256')}
+                if name not in files:
+                    raise ValueError('b10_abrupt_publication_ambiguous')
+                bound(report, name, files[name])
+                reports.append(report)
+        kill = [attempt for attempt in accepted if prepared[attempt]['data']['arm'] == 'cross_restart'
+                and prepared[attempt]['data']['role'] == 'original' and attempt not in terminals and attempt not in rejections]
+        producing = [frame for frame in frames if frame['kind'] in PRODUCING_KINDS]
+        drains = [frame['data'] for frame in frames if frame['kind'] == 'control_drained']
+        control_attempts = [attempt for attempt in accepted if prepared[attempt]['data']['arm'] == 'same_instance']
+        if (cut is None or intent is None or not control or not kill or producing[-1] != intent
+                or termination['control_unconfirmed_attempt_ids'] != control or termination['kill_unconfirmed_attempt_ids'] != kill
+                or len(drains) != 1 or drains[0]['flush_returned'] is not True
+                or type(drains[0]['out_queue_length']) is not int or drains[0]['out_queue_length'] != 0
+                or any(attempt not in terminals for attempt in control_attempts)):
             raise ValueError('selection stale')
-        if entry['attempt_id'] not in accepted or entry['attempt_id'] in terminal or entry['attempt_id'] not in checkpoint['data']['selected_attempt_ids']:
-            raise ValueError('selection stale')
-        if (set(entry) != {'attempt_id', 'key', 'sequence', 'payload_length', 'payload_sha256', 'payload_base64'}
-                or entry['key'] != 'B10/' + self.phase()['run_id'] + '/C1/1/cross_restart'
-                or type(entry['sequence']) is not int or not 0 <= entry['sequence'] < 5
-                or selection['candidate_attempt_ids'] != checkpoint['data']['selected_attempt_ids']):
-            raise ValueError('selection identity')
-        original = prepared[entry['attempt_id']]['data']
-        if original['cohort'] != 'cross_restart' or any(original[key] != entry[key] for key in ('key', 'sequence', 'payload_length', 'payload_sha256')):
-            raise ValueError('prepared selection binding')
-        payload = base64.b64decode(entry['payload_base64'], validate=True)
-        if len(payload) != entry['payload_length'] or hashlib.sha256(payload).hexdigest() != entry['payload_sha256']:
-            raise ValueError('selection payload')
-        _, checkpoint_ticks = self.p.b10_utc(checkpoint['data']['checkpoint_utc'])
-        release, release_ticks = self.p.b10_utc(checkpoint['data']['release_utc'])
-        if release_ticks - checkpoint_ticks != 120 * 10000000:
-            raise ValueError('release boundary')
-        return {'files': {name: raw.decode() for name, raw in files.items() if name != 'journal.jsonl'},
-                'first_pod': observation, 'release_utc': release,
+        if manifest['report_files'] != reports or [entry['name'] for entry in reports] != list(REPORT_FILES):
+            raise ValueError('b10_abrupt_publication_failed')
+        if set(files) != set(FIRST_FILES) | {entry['name'] for entry in reports}:
+            raise ValueError('b10_abrupt_publication_ambiguous')
+        self.accept_fatal_coverage(frames, termination)
+        # Keep precisely the bytes accepted here for successor receipt checks.
+        target = self.directory / observation['pod_name']
+        target.mkdir(exist_ok=True)
+        for name, raw in files.items():
+            (target / name).write_bytes(raw)
+        return {'first_pod': observation, 'termination': descriptor('termination.json', files['termination.json']),
+                'release_utc': intent['data']['release_utc'],
                 'start_line_binding': decode((self.p.private / 'b10-abrupt-start-line-binding.json').read_bytes()),
                 'runner_utc': datetime.now(timezone.utc).isoformat(), 'runner_monotonic_ticks': time.monotonic_ns(),
                 'cross_host_timing': 'not_verified'}
 
-    def accept_fatal_coverage(self, frames, objects, termination):
+    def accept_fatal_coverage(self, frames, termination):
         natives = [frame['data'] for frame in frames if frame['kind'] == 'native_error']
         count = len(natives)
         if any(type(data['capture_sequence']) is not int or type(data['is_fatal']) is not bool for data in natives):
@@ -565,34 +570,6 @@ class Trial:
         if (type(termination['native_error_count']) is not int or termination['native_error_count'] != count
                 or type(termination['native_fatal_count']) is not int or termination['native_fatal_count'] != fatal):
             raise ValueError('b10_abrupt_publication_failed')
-        for name in ('timeout-seal.json', 'control-seal.json'):
-            seal = objects[name]['data']
-            if (seal['fatal_capture_status'] != 'journal' or type(seal['native_error_count']) is not int
-                    or not 0 <= seal['native_error_count'] <= count):
-                raise ValueError('b10_abrupt_publication_failed')
-
-    def accept_cohort_files(self, frames, objects, manifest):
-        timeout, control = objects['timeout-seal.json']['data'], objects['control-seal.json']['data']
-        reports = {frame['data']['arm']: frame['data']['pre_acceptance_report'] for frame in frames if frame['kind'] == 'checkpoint'}
-        sources = [timeout['inventory'], timeout['ledger'], timeout['post_drain_statistics'],
-                   control['inventory'], control['ledger'], control['post_drain_statistics'],
-                   reports.get('same_instance'), reports.get('cross_restart')]
-        entries = manifest['cohort_files']
-        if not isinstance(entries, list) or len(entries) != len(COHORT_FILES):
-            raise ValueError('b10_abrupt_publication_failed')
-        for name, entry, source in zip(COHORT_FILES, entries, sources):
-            if (not isinstance(entry, dict) or set(entry) != {'name', 'length', 'sha256'} or entry['name'] != name
-                    or type(entry['length']) is not int or not 1 <= entry['length'] <= COHORT_LIMITS[name]
-                    or not isinstance(source, dict) or entry['length'] != source.get('length')
-                    or entry['sha256'] != source.get('sha256')):
-                raise ValueError('b10_abrupt_publication_failed')
-
-    def collect_cohort_files(self, binding, deadline):
-        first = binding['first_pod']
-        files = self.download(first, COHORT_FILES, deadline)
-        entries = decode(binding['files']['abrupt-manifest.json'].encode())['data']['cohort_files']
-        for name, entry in zip(COHORT_FILES, entries):
-            bound(entry, name, files[name])
 
     def release_successor(self, binding, deadline):
         if self.p.state().get('safety_stop', False):
@@ -603,7 +580,7 @@ class Trial:
         self.configmap('successor', binding)
         if time.time() * 10000000 >= ticks:
             self.fail('b10_abrupt_successor_late')
-        return self.job('loadgen2', deadline)
+        return self.job('loadgen-successor', deadline)
 
     def run(self):
         self.phase()
@@ -623,13 +600,18 @@ class Trial:
                 raise ValueError('b10_abrupt_publication_failed')
             self.metadata(metadata, deadline)
             boundary, failure = 'first_job', 'b10_abrupt_publication_failed'
-            first = self.job('loadgen', deadline)
+            first = self.job('loadgen-restart', deadline)
             boundary, failure = 'first_termination', 'b10_abrupt_first_termination_unknown'
             observation = self.observe_first_termination(first)
             if first['outcome'] != 'complete':
                 raise ValueError('b10_abrupt_publication_failed')
             boundary, failure = 'first_publication', 'b10_abrupt_publication_failed'
             files = self.download(observation, FIRST_FILES, deadline)
+            manifest = self.envelope(files['abrupt-manifest.json'], 'abrupt_manifest', observation)['data']
+            names = [entry['name'] for entry in manifest['report_files']]
+            if len(names) > len(REPORT_FILES) or len(set(names)) != len(names) or not set(names) <= set(REPORT_FILES):
+                raise ValueError('b10_abrupt_publication_failed')
+            files.update(self.download(observation, names, deadline))
             binding = self.accept_diagnostic_publication(observation, files)
             (self.directory / 'predecessor-binding.json').write_bytes(encode(binding))
             boundary, failure = 'successor_admission', 'b10_abrupt_successor_binding_invalid'
@@ -663,36 +645,38 @@ class Trial:
                 raise ValueError('successor artifact set')
             for entry in receipt['artifacts']:
                 bound(entry, entry['name'], files[entry['name']])
-            for key, name in [('first_termination', 'termination.json'), ('selection', 'kill-selection.json')]:
-                bound(receipt[key], name, binding['files'][name].encode())
+            target = self.directory / first['pod_name']
+            accepted_files = {name: (target / name).read_bytes() for name in ('termination.json', 'journal.jsonl')}
+            for key, name in [('first_termination', 'termination.json'), ('journal', 'journal.jsonl')]:
+                bound(receipt[key], name, accepted_files[name])
+            bound(binding['termination'], 'termination.json', accepted_files['termination.json'])
             if receipt['release_utc'] != binding['release_utc'] or receipt['cross_host_timing'] != 'not_verified':
                 raise ValueError('successor release')
             self.envelope(files['registration.json'], 'registration', observation, first['pod_name'])
-            _, ready = self.p.b10_utc(receipt['ready_utc'])
-            _, release = self.p.b10_utc(receipt['release_utc'])
-            selected = decode(binding['files']['kill-selection.json'].encode())['data']['entries']
+            ready = self.utc_ticks(receipt['ready_utc'])
+            release = self.utc_ticks(receipt['release_utc'])
+            selected = decode(accepted_files['termination.json'])['data']['kill_unconfirmed_attempt_ids']
+            if receipt['kill_unconfirmed_attempt_ids'] != selected:
+                raise ValueError('b10_abrupt_successor_binding_invalid')
+            prepared = {frame['data']['attempt_id']: frame['data'] for frame in
+                        self.read_journal(accepted_files['journal.jsonl'], first) if frame['kind'] == 'prepared'}
             invocations = receipt['invocations']
             if ready > release or len(invocations) != len(selected):
                 raise ValueError('b10_abrupt_successor_late')
-            for original, invocation in zip(selected, invocations):
-                if (invocation['predecessor_attempt_id'] != original['attempt_id'] or invocation['attempt_id'] == original['attempt_id']
+            for member, invocation in zip(selected, invocations):
+                original = prepared[member]
+                if (invocation['predecessor_attempt_id'] != member or invocation['attempt_id'] == member
                         or any(invocation[key] != original[key] for key in ('key', 'sequence', 'payload_sha256'))
-                        or self.p.b10_utc(invocation['invocation_utc'])[1] < release):
+                        or self.utc_ticks(invocation['invocation_utc']) < release):
                     raise ValueError('b10_abrupt_successor_binding_invalid')
             return receipt
         failed = False
-        if binding_path.exists():
-            try:
-                self.collect_cohort_files(decode(binding_path.read_bytes()), self.p.b10_deadline())
-            except (ValueError, OSError, LookupError, TypeError, AttributeError, self.failure) as error:
-                self.record_failure(error, 'b10_abrupt_publication_failed', 'first_cohort_publication')
-                failed = True
         for record in self.p.state()['modes']:
-            if record['mode'] not in ('loadgen', 'loadgen2') or record['apply'] is None:
+            if record['mode'] not in ('loadgen-restart', 'loadgen-successor') or record['apply'] is None:
                 continue
             boundary, failure = 'successor_termination', 'b10_abrupt_first_termination_unknown'
             try:
-                if record['mode'] == 'loadgen2':
+                if record['mode'] == 'loadgen-successor':
                     observation = self.observe_first_termination(record)
                     boundary, failure = 'successor_publication', 'b10_abrupt_publication_failed'
                     files = self.download(observation, SUCCESSOR_FILES, self.p.b10_deadline())

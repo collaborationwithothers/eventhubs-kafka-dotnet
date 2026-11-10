@@ -33,17 +33,8 @@ internal sealed class B10AbruptBlobStorage(BlobServiceClient client) : IB10Abrup
 
 internal sealed class B10AbruptPublisher(IB10AbruptStorage storage, TimeProvider clock)
 {
-    // The eight "cohort files": the three files each cohort seal binds, then the two arm pre-acceptance reports.
-    // The order is the order in docs/operations/b10-abrupt-contract.md; the manifest's cohort_files array follows it.
-    internal static readonly string[] CohortMembers =
-    [
-        "timeout-manifest.json", "timeout-ledger.jsonl", "timeout-post-drain-report.json",
-        "control-manifest.json", "control-ledger.jsonl", "control-post-drain-report.json",
-        "same_instance-pre-acceptance-report.json", "cross_restart-pre-acceptance-report.json"
-    ];
-    internal static readonly string[] FirstMembers = ["registration.json", "journal.jsonl", "timeout-seal.json", "control-seal.json", .. CohortMembers, "kill-selection.json", "abrupt-manifest.json", "termination.json"];
-    // The successor's mounted binding holds the first-instance members it must check, not the journal or the cohort files.
-    internal static readonly string[] BindingMembers = [.. FirstMembers.Where(name => name != "journal.jsonl" && !CohortMembers.Contains(name))];
+    internal static readonly string[] ReportMembers = ["same_instance-pre-acceptance-report.json", "control-post-drain-report.json", "cross_restart-pre-acceptance-report.json"];
+    internal static readonly string[] FirstMembers = ["registration.json", "journal.jsonl", .. ReportMembers, "abrupt-manifest.json", "termination.json"];
     internal static readonly string[] SuccessorMembers = ["registration.json", "ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json", "completion.json"];
     private static readonly TimeSpan UploadBudget = TimeSpan.FromSeconds(30);
     private readonly Dictionary<string, byte[]> _published = new(StringComparer.Ordinal);
@@ -59,39 +50,50 @@ internal sealed class B10AbruptPublisher(IB10AbruptStorage storage, TimeProvider
     internal async Task PublishFirstAsync(B10AbruptWire.Identity identity, IReadOnlyDictionary<string, byte[]> files, CancellationToken cancellationToken,
         B10AbruptTimeline? timeline = null)
     {
-        if (identity.PredecessorInstanceId is not null) throw PublicationFailed();
-        RequireSet(files, FirstMembers.Where(name => name != "registration.json"));
-        foreach (string name in FirstMembers.Skip(1))
+        if (identity.PredecessorInstanceId is not null || !files.TryGetValue("journal.jsonl", out byte[]? journalBytes) ||
+            !files.TryGetValue("abrupt-manifest.json", out byte[]? manifestBytes) || !files.TryGetValue("termination.json", out byte[]? terminationBytes))
+            throw PublicationFailed();
+        var journal = B10AbruptJournal.Read(journalBytes, identity);
+        var reports = journal.Frames.Where(frame => frame.Kind is "pre_acceptance_report" or "post_drain_report").ToArray();
+        string[] reportNames = reports.Select(frame => frame.Data.GetProperty("name").GetString()!).ToArray();
+        RequireSet(files, ["journal.jsonl", .. reportNames.Distinct(StringComparer.Ordinal), "abrupt-manifest.json", "termination.json"]);
+        JsonElement manifest;
+        JsonElement termination;
+        try
         {
-            int cohortIndex = Array.IndexOf(CohortMembers, name);
-            if (cohortIndex < 0 || timeline is null)
+            manifest = B10AbruptWire.ReadEnvelope(manifestBytes, "abrupt_manifest");
+            termination = B10AbruptWire.ReadEnvelope(terminationBytes, "termination");
+            if (manifest.GetProperty("identity").Deserialize<B10AbruptWire.Identity>(B10AbruptWire.JsonOptions) != identity ||
+                termination.GetProperty("identity").Deserialize<B10AbruptWire.Identity>(B10AbruptWire.JsonOptions) != identity) throw PublicationFailed();
+            JsonElement data = manifest.GetProperty("data");
+            CheckDescriptor(data.GetProperty("journal"), "journal.jsonl", files);
+            CheckDescriptor(termination.GetProperty("data").GetProperty("manifest"), "abrupt-manifest.json", files);
+            if (data.GetProperty("journal_records").GetInt64() != journal.Frames.Count ||
+                data.GetProperty("report_files").GetArrayLength() != reports.Length) throw PublicationFailed();
+            for (int i = 0; i < reports.Length; i++)
             {
-                await PublishAsync(identity, name, files[name], cancellationToken).ConfigureAwait(false);
-                continue;
-            }
-            // One line per cohort-file attempt, written at once: a held line would be lost if the process watchdog
-            // fired during a slow upload, the case the line exists to diagnose.
-            long begin = clock.GetTimestamp();
-            bool succeeded = false;
-            try
-            {
-                await PublishAsync(identity, name, files[name], cancellationToken).ConfigureAwait(false);
-                succeeded = true;
-            }
-            finally
-            {
-                timeline.Mark(B10AbruptStage.CohortFileUploaded, Fact(B10AbruptFact.NameIndex, cohortIndex),
-                    Fact(B10AbruptFact.FileLength, files[name].LongLength), Fact(B10AbruptFact.ElapsedMilliseconds, clock.GetElapsedTime(begin)),
-                    Fact(B10AbruptFact.BudgetMilliseconds, UploadBudget), Fact(B10AbruptFact.UploadSucceeded, succeeded));
+                string name = reportNames[i];
+                if (!ReportMembers.Contains(name, StringComparer.Ordinal) || !files.TryGetValue(name, out byte[]? bytes) ||
+                    reports[i].Data.GetProperty("length").GetInt64() != bytes.LongLength ||
+                    reports[i].Data.GetProperty("sha256").GetString() != Hash(bytes)) throw PublicationFailed();
+                CheckDescriptor(data.GetProperty("report_files")[i], name, files);
             }
         }
+        catch (Exception exception) when (exception is InvalidDataException or JsonException or InvalidOperationException or KeyNotFoundException or FormatException or OverflowException)
+        { throw PublicationFailed(exception); }
+        await PublishAsync(identity, "journal.jsonl", journalBytes, cancellationToken).ConfigureAwait(false);
+        foreach (string name in reportNames.Distinct(StringComparer.Ordinal))
+            await PublishAsync(identity, name, files[name], cancellationToken).ConfigureAwait(false);
+        await PublishAsync(identity, "abrupt-manifest.json", manifestBytes, cancellationToken).ConfigureAwait(false);
+        await PublishAsync(identity, "termination.json", terminationBytes, cancellationToken).ConfigureAwait(false);
+        timeline?.Mark(B10AbruptStage.PublicationComplete);
     }
 
     internal async Task PublishSuccessorAsync(B10AbruptWire.Identity identity, IReadOnlyDictionary<string, byte[]> payloads,
-        JsonElement firstTermination, JsonElement selection, DateTimeOffset readyUtc, DateTimeOffset releaseUtc,
-        object invocations, bool cleanupCompleted, CancellationToken cancellationToken)
+        JsonElement firstTermination, B10AbruptWire.Descriptor journal, IReadOnlyList<string> killUnconfirmedAttemptIds,
+        DateTimeOffset readyUtc, DateTimeOffset releaseUtc, object invocations, bool cleanupCompleted, CancellationToken cancellationToken)
     {
-        if (identity.PredecessorInstanceId is null || !cleanupCompleted) throw PublicationFailed();
+        if (identity.PredecessorInstanceId is null || !cleanupCompleted || killUnconfirmedAttemptIds.Count == 0) throw PublicationFailed();
         RequireSet(payloads, SuccessorMembers.Skip(1).SkipLast(1));
         foreach (string name in SuccessorMembers.Skip(1).SkipLast(1))
             await PublishAsync(identity, name, payloads[name], cancellationToken).ConfigureAwait(false);
@@ -99,83 +101,68 @@ internal sealed class B10AbruptPublisher(IB10AbruptStorage storage, TimeProvider
         var receipt = new
         {
             first_termination = Describe("termination.json", Encoding.UTF8.GetBytes(firstTermination.GetRawText())),
-            selection = Describe("kill-selection.json", Encoding.UTF8.GetBytes(selection.GetRawText())),
+            journal, kill_unconfirmed_attempt_ids = killUnconfirmedAttemptIds,
             registration = Describe("registration.json", registration),
-            artifacts = payloads.Select(pair => Describe(pair.Key, pair.Value)).ToArray(),
+            artifacts = SuccessorMembers.Skip(1).SkipLast(1).Select(name => Describe(name, payloads[name])).ToArray(),
             ready_utc = Utc(readyUtc), release_utc = Utc(releaseUtc), invocations,
             cleanup_completed = cleanupCompleted, cross_host_timing = "not_verified"
         };
         await PublishAsync(identity, "completion.json", B10AbruptWire.SerializeEnvelope("successor_receipt", identity, receipt), cancellationToken).ConfigureAwait(false);
     }
 
-    internal static async Task<SuccessorInput> LoadSelectionAsync(B10AbruptOptions options, CancellationToken cancellationToken)
+    internal async Task<SuccessorInput> LoadSelectionAsync(B10AbruptOptions options, CancellationToken cancellationToken)
     {
         try
         {
-            byte[] binding = await ReadFileAsync(options.PredecessorBindingPath, 65536, cancellationToken).ConfigureAwait(false);
-            JsonElement root = B10AbruptWire.Parse(binding);
-            B10AbruptWire.ExactMembers(root, "files", "first_pod", "release_utc", "runner_utc", "runner_monotonic_ticks", "cross_host_timing", "start_line_binding");
-            if (root.GetProperty("cross_host_timing").GetString() != "not_verified") throw Binding("selection_stale");
-            JsonElement objects = root.GetProperty("files");
-            if (!objects.TryGetProperty("termination.json", out _)) throw Binding("receipt_missing");
-            B10AbruptWire.ExactMembers(objects, BindingMembers);
-            var files = objects.EnumerateObject().ToDictionary(property => property.Name,
-                property => Encoding.UTF8.GetBytes(property.Value.GetString() ?? throw Binding("receipt_missing")), StringComparer.Ordinal);
+            JsonElement root = B10AbruptWire.Parse(await ReadFileAsync(options.PredecessorBindingPath, 65536, cancellationToken).ConfigureAwait(false));
+            B10AbruptWire.ExactMembers(root, "first_pod", "termination", "release_utc", "runner_utc", "runner_monotonic_ticks", "cross_host_timing", "start_line_binding");
+            if (root.GetProperty("cross_host_timing").GetString() != "not_verified" ||
+                !B10AbruptWire.IsUtc(root.GetProperty("runner_utc").GetString() ?? "")) throw Binding("selection_stale");
+            _ = B10AbruptWire.Nonnegative(root.GetProperty("runner_monotonic_ticks"));
+            JsonElement observed = root.GetProperty("first_pod");
+            B10AbruptWire.ExactMembers(observed, "job_name", "pod_name", "pod_uid", "image_reference", "source_commit", "finished_utc");
+            if (observed.GetProperty("job_name").GetString() != $"{options.RunId}-c1-r1-loadgen-restart") throw Binding("job_mismatch");
+            string podName = observed.GetProperty("pod_name").GetString() ?? throw Binding("predecessor_mismatch");
+            if (string.IsNullOrWhiteSpace(podName) || podName.Any(c => char.IsControl(c) || char.IsWhiteSpace(c)) ||
+                podName.Contains('/', StringComparison.Ordinal) || podName.Contains('\\') || podName is "." or "..") throw Binding("predecessor_mismatch");
+            string prefix = $"{options.RunId}/C1/r1/b10-abrupt-diagnostic/{podName}/";
+            var files = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+            files.Add("termination.json", await ReadPublishedAsync(prefix + "termination.json", 65536, cancellationToken).ConfigureAwait(false));
+            CheckDescriptor(root.GetProperty("termination"), "termination.json", files);
             JsonElement termination = B10AbruptWire.ReadEnvelope(files["termination.json"], "termination");
             var first = termination.GetProperty("identity").Deserialize<B10AbruptWire.Identity>(B10AbruptWire.JsonOptions)!;
             ValidateIdentity(first);
-            if (first.RunId != options.RunId || first.ConfigurationId != options.ConfigurationId || first.Repeat != options.Repeat || first.Phase != options.Phase || first.ScenarioId != options.ScenarioId)
+            if (first.RunId != options.RunId || first.ConfigurationId != options.ConfigurationId || first.Repeat != options.Repeat || first.Phase != options.Phase || first.ScenarioId != options.ScenarioId || first.PredecessorInstanceId is not null)
                 throw Binding("predecessor_mismatch");
             if (first.SourceCommit != options.SourceCommit) throw Binding("source_mismatch");
             if (first.ImageReference != options.ImageReference) throw Binding("image_mismatch");
             if (first.PodUid == options.PodUid || first.PodName == options.PodName || first.InstanceId == options.PodName) throw Binding("pod_uid_reused");
-            if (first.JobName != options.JobName.TrimEnd('2')) throw Binding("job_mismatch");
-            JsonElement observed = root.GetProperty("first_pod");
-            B10AbruptWire.ExactMembers(observed, "job_name", "pod_name", "pod_uid", "image_reference", "source_commit", "finished_utc");
-            if (observed.GetProperty("job_name").GetString() != first.JobName) throw Binding("job_mismatch");
-            if (observed.GetProperty("pod_uid").GetString() != first.PodUid || observed.GetProperty("pod_name").GetString() != first.PodName) throw Binding("predecessor_mismatch");
+            if (first.JobName != $"{options.RunId}-c1-r1-loadgen-restart") throw Binding("job_mismatch");
+            if (observed.GetProperty("pod_uid").GetString() != first.PodUid || podName != first.PodName) throw Binding("predecessor_mismatch");
             if (observed.GetProperty("source_commit").GetString() != first.SourceCommit) throw Binding("source_mismatch");
             if (observed.GetProperty("image_reference").GetString() != first.ImageReference) throw Binding("image_mismatch");
             if (!B10AbruptWire.IsUtc(observed.GetProperty("finished_utc").GetString() ?? "")) throw Binding("predecessor_mismatch");
             JsonElement terminationData = termination.GetProperty("data");
-            if (terminationData.GetProperty("mechanical_status").GetString() != "complete" || !terminationData.GetProperty("eof_complete").GetBoolean()) throw Binding("receipt_changed");
+            if (terminationData.GetProperty("successor_permitted").ValueKind != JsonValueKind.True ||
+                terminationData.GetProperty("termination").GetString() != "intended_self_kill") throw Binding("receipt_changed");
+            files.Add("abrupt-manifest.json", await ReadPublishedAsync(prefix + "abrupt-manifest.json", 65536, cancellationToken).ConfigureAwait(false));
             CheckDescriptor(terminationData.GetProperty("manifest"), "abrupt-manifest.json", files);
             JsonElement manifest = B10AbruptWire.ReadEnvelope(files["abrupt-manifest.json"], "abrupt_manifest");
+            if (manifest.GetProperty("identity").Deserialize<B10AbruptWire.Identity>(B10AbruptWire.JsonOptions) != first) throw Binding("predecessor_mismatch");
             JsonElement manifestData = manifest.GetProperty("data");
-            foreach (var pair in new[] { ("registration", "registration.json"), ("timeout_seal", "timeout-seal.json"), ("control_seal", "control-seal.json"), ("selection", "kill-selection.json") })
-                CheckDescriptor(manifestData.GetProperty(pair.Item1), pair.Item2, files);
-            if (manifestData.GetProperty("gaps").GetArrayLength() != 0) throw Binding("receipt_changed");
-            foreach (var file in files.Where(pair => pair.Key != "termination.json"))
-            {
-                JsonElement document = B10AbruptWire.Parse(file.Value);
-                if (document.GetProperty("identity").Deserialize<B10AbruptWire.Identity>(B10AbruptWire.JsonOptions) != first) throw Binding("predecessor_mismatch");
-            }
-            JsonElement selection = B10AbruptWire.ReadEnvelope(files["kill-selection.json"], "selection");
-            JsonElement data = selection.GetProperty("data");
-            JsonElement checkpoint = data.GetProperty("checkpoint");
-            byte[] checkpointBytes = Encoding.UTF8.GetBytes(checkpoint.GetRawText());
-            _ = B10AbruptWire.ReadFrame(checkpointBytes);
-            CheckDescriptor(data.GetProperty("checkpoint_descriptor"), "cross_restart-checkpoint.json",
-                new Dictionary<string, byte[]>(StringComparer.Ordinal) { ["cross_restart-checkpoint.json"] = checkpointBytes });
-            DateTimeOffset release = DateTimeOffset.ParseExact(checkpoint.GetProperty("data").GetProperty("release_utc").GetString()!, "O", CultureInfo.InvariantCulture);
-            if (root.GetProperty("release_utc").GetString() != Utc(release) || data.GetProperty("entries").GetArrayLength() != 1) throw Binding("selection_stale");
-            string[] selected = checkpoint.GetProperty("data").GetProperty("selected_attempt_ids").EnumerateArray().Select(item => item.GetString()!).ToArray();
-            string[] candidates = data.GetProperty("candidate_attempt_ids").EnumerateArray().Select(item => item.GetString()!).ToArray();
-            string[] excluded = data.GetProperty("terminal_exclusions").EnumerateArray()
-                .Select(item => item.GetProperty("attempt_id").GetString()!).ToArray();
-            if (selected.Length is < 1 or > B10AbruptOptions.ProbeBurstSize || !candidates.SequenceEqual(selected, StringComparer.Ordinal) ||
-                excluded.Any(id => !candidates.Contains(id, StringComparer.Ordinal))) throw Binding("selection_stale");
-            string? firstUnexcluded = candidates.FirstOrDefault(id => !excluded.Contains(id, StringComparer.Ordinal));
-            if (firstUnexcluded is null) throw Binding("selection_stale");
-            foreach (JsonElement entry in data.GetProperty("entries").EnumerateArray())
-            {
-                B10AbruptWire.ExactMembers(entry, "attempt_id", "key", "sequence", "payload_length", "payload_sha256", "payload_base64");
-                if (entry.GetProperty("attempt_id").GetString() != firstUnexcluded) throw Binding("selection_stale");
-                byte[] payload = Convert.FromBase64String(entry.GetProperty("payload_base64").GetString()!);
-                if (payload.Length > 900000 || payload.Length != entry.GetProperty("payload_length").GetInt64() || Hash(payload) != entry.GetProperty("payload_sha256").GetString() ||
-                    entry.GetProperty("key").GetString() != $"B10/{options.RunId}/C1/1/cross_restart" || entry.GetProperty("sequence").GetInt64() is < 0 or >= B10AbruptOptions.ProbeBurstSize) throw Binding("selection_stale");
-            }
-            return new(first, termination, selection, release);
+            files.Add("journal.jsonl", await ReadPublishedAsync(prefix + "journal.jsonl", 16777216, cancellationToken).ConfigureAwait(false));
+            CheckDescriptor(manifestData.GetProperty("journal"), "journal.jsonl", files);
+            var snapshot = B10AbruptJournal.Read(files["journal.jsonl"], first);
+            if (snapshot.Gaps.Count != 0 || snapshot.Failures.Count != 0 || manifestData.GetProperty("gaps").GetArrayLength() != 0 ||
+                manifestData.GetProperty("journal_records").GetInt64() != snapshot.Frames.Count) throw Binding("receipt_changed");
+            string[] selected = terminationData.GetProperty("kill_unconfirmed_attempt_ids").EnumerateArray().Select(item => item.GetString()!).ToArray();
+            if (selected.Length == 0 || !snapshot.KillUnconfirmedAttemptIds.SequenceEqual(selected, StringComparer.Ordinal)) throw Binding("selection_stale");
+            B10AbruptWire.Frame? intent = snapshot.Frames.SingleOrDefault(frame => frame.Kind == "kill_intent");
+            if (intent is null || root.GetProperty("release_utc").GetString() != intent.Data.GetProperty("release_utc").GetString()) throw Binding("selection_stale");
+            DateTimeOffset release = DateTimeOffset.ParseExact(intent.Data.GetProperty("release_utc").GetString()!, "O", CultureInfo.InvariantCulture);
+            JsonElement entries = B10AbruptWire.Element(selected.Select(id => snapshot.Frames.Single(frame => frame.Kind == "prepared" &&
+                frame.Data.GetProperty("attempt_id").GetString() == id).Data).ToArray());
+            return new(first, termination, Describe("journal.jsonl", files["journal.jsonl"]), entries, release, selected);
         }
         catch (FileNotFoundException exception) { throw Binding("receipt_missing", exception); }
         catch (DirectoryNotFoundException exception) { throw Binding("receipt_missing", exception); }
@@ -183,6 +170,13 @@ internal sealed class B10AbruptPublisher(IB10AbruptStorage storage, TimeProvider
         { throw Binding("receipt_changed", exception); }
         catch (Exception exception) when (exception is IOException or JsonException or InvalidOperationException or FormatException or OverflowException or KeyNotFoundException)
         { throw Binding("receipt_changed", exception); }
+    }
+
+    private async Task<byte[]> ReadPublishedAsync(string name, int limit, CancellationToken cancellationToken)
+    {
+        byte[] bytes = await storage.ReadAsync(name, limit, cancellationToken).ConfigureAwait(false);
+        if (bytes.Length > limit) throw Binding("receipt_changed");
+        return bytes;
     }
 
     private async Task PublishAsync(B10AbruptWire.Identity identity, string name, byte[] bytes, CancellationToken cancellationToken)
@@ -238,11 +232,12 @@ internal sealed class B10AbruptPublisher(IB10AbruptStorage storage, TimeProvider
     private static void ValidateIdentity(B10AbruptWire.Identity identity)
     {
         B10AbruptWire.ValidateIdentity(B10AbruptWire.Element(identity));
-        if (identity.InstanceId != identity.PodName || identity.JobName != $"{identity.RunId}-c1-r1-loadgen{(identity.PredecessorInstanceId is null ? "" : "2")}") throw PublicationFailed();
+        if (identity.InstanceId != identity.PodName || identity.JobName != $"{identity.RunId}-c1-r1-loadgen-{(identity.PredecessorInstanceId is null ? "restart" : "successor")}") throw PublicationFailed();
     }
     private static void RequireSet(IReadOnlyDictionary<string, byte[]> files, IEnumerable<string> expected)
     { if (!files.Keys.Order(StringComparer.Ordinal).SequenceEqual(expected.Order(StringComparer.Ordinal), StringComparer.Ordinal)) throw PublicationFailed(); }
-    private static InvalidDataException PublicationFailed([CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0) => B10AbruptDiagnostics.Attach(new InvalidDataException("b10_abrupt_publication_failed"), [], file, member, line);
+    private static InvalidDataException PublicationFailed(Exception? inner = null, [CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0) => B10AbruptDiagnostics.Attach(new InvalidDataException("b10_abrupt_publication_failed", inner), [], file, member, line);
     private static InvalidDataException Binding(string detail, Exception? inner = null, [CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0) => B10AbruptDiagnostics.Attach(new InvalidDataException("b10_abrupt_successor_binding_invalid:" + detail, inner), [B10AbruptDiagnostics.Fact(B10AbruptFact.SuccessorDetail, B10AbruptDiagnostics.SuccessorDetailCode(detail))], file, member, line);
-    internal sealed record SuccessorInput(B10AbruptWire.Identity FirstIdentity, JsonElement Termination, JsonElement Selection, DateTimeOffset ReleaseUtc);
+    internal sealed record SuccessorInput(B10AbruptWire.Identity FirstIdentity, JsonElement Termination, B10AbruptWire.Descriptor Journal,
+        JsonElement Entries, DateTimeOffset ReleaseUtc, IReadOnlyList<string> KillUnconfirmedAttemptIds);
 }

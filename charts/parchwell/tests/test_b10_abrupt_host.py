@@ -52,7 +52,7 @@ def b10_abrupt_host_acceptance(td, publish):
         assert guard.returncode == 0, (name, guard.returncode, guard.stderr)
         assert guard_output.read_bytes() == b'b10_abrupt_running_apphost_checked\n', guard_output.read_bytes()
         assert container['command'] == ['/app/Parchwell.LoadGen']
-        assert container['args'] == ['--b10-abrupt-supervisor' if name == 'b10-abrupt-first' else '--b10-abrupt-successor']
+        assert container['args'] == ['--b10-abrupt-parent' if name == 'b10-abrupt-first' else '--b10-abrupt-successor']
         apphost = publish / PurePosixPath(container['command'][0]).name
         require_file(apphost, 'b10_abrupt_apphost_missing')
         apphost_output = td / (name + '.apphost.out')
@@ -70,6 +70,8 @@ def b10_abrupt_host_acceptance(td, publish):
     first, successor = environments
     invalid = (
         ('b10-abrupt-first-missing-role', first, 'Role', None, 'Role'),
+        ('b10-abrupt-first-supervisor', first, 'Role', 'supervisor', 'Role'),
+        ('b10-abrupt-first-timeout-job', first, 'JobName', first['B10Abrupt__RunId'] + '-c1-r1-loadgen', 'JobName'),
         ('b10-abrupt-first-unknown', first, 'UnsupportedSetting', 'forbidden', 'SettingNameOrDuplicate'),
         ('b10-abrupt-first-repeat', first, 'Repeat', '2', 'DiagnosticIdentity'),
         ('b10-abrupt-successor-missing-predecessor', successor, 'PredecessorBindingPath', None, 'Binding'),
@@ -108,4 +110,4 @@ def b10_abrupt_host_acceptance(td, publish):
     require_file(output, 'b10_abrupt_check_output_missing')
     assert proc.returncode == 0, proc.stderr
     assert output.read_bytes() == b'b10_abrupt_produced_bytes_checked\n', output.read_bytes()
-    print('b10 abrupt host checks passed: 2 rendered environments, 5 rejected inputs, production-byte bridge')
+    print('b10 abrupt host checks passed: 2 rendered environments, 7 rejected inputs, production-byte bridge')

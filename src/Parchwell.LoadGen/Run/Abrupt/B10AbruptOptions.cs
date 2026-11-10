@@ -7,22 +7,20 @@ namespace Parchwell.LoadGen.Run.Abrupt;
 
 internal sealed class B10AbruptOptions
 {
-    // ADR-021 protocol rule 1 fixes this policy before a run.
-    internal const int ProbeBurstSize = 5;
+    internal const int OriginalCount = 5;
     internal const string Prefix = "B10Abrupt__";
     internal enum ValidationDetail
     {
         Unclassified, MixedPrefix, SettingNameOrDuplicate, DiagnosticIdentity, RequiredIdentity,
         RunSourceOrImage, PodOrNamespace, JobName, BlobEndpoint, AbsolutePath, FixedPolicy,
-        Role, Binding, ChildFields, ChildHandshake, ApphostProcessPathMismatch, ApphostMissing
+        Role, Binding, ApphostProcessPathMismatch, ApphostMissing
     }
     private static readonly string[] OtherPrefixes = ["LoadGen__", "Verifier__", "SingleAction__", "ProbeV2__", "IdleObservation__", "SeedF04__"];
     internal static IReadOnlyDictionary<string, int> Policy { get; } = new Dictionary<string, int>(StringComparer.Ordinal)
     {
-        ["MaxFrameBytes"] = 65536, ["QueueCapacity"] = 256, ["MaxJournalBytes"] = 16777216,
+        ["MaxRecordBytes"] = 65536, ["QueueCapacity"] = 256, ["MaxJournalBytes"] = 16777216,
         ["MaxJournalEntries"] = 4096, ["MaxAuxiliaryBytes"] = 65536, ["MaxJsonDepth"] = 32,
-        ["ArmTimeoutSeconds"] = 30, ["KillTimeoutSeconds"] = 10, ["ReapTimeoutSeconds"] = 10,
-        ["EofTimeoutSeconds"] = 10, ["ReleaseDelaySeconds"] = 120
+        ["ReleaseDelaySeconds"] = 120, ["ProbeRate"] = 100, ["CutOrdinal"] = 4
     };
     private readonly Dictionary<string, string> _values;
     public B10AbruptOptions() : this(new Dictionary<string, string>(StringComparer.Ordinal)) { }
@@ -47,9 +45,6 @@ internal sealed class B10AbruptOptions
     public string OutputRoot => Get("OutputRoot");
     public string StartLineBindingPath => Get("StartLineBindingPath");
     public string PredecessorBindingPath => Get("PredecessorBindingPath");
-    public string EventsPipeHandle => Get("EventsPipeHandle");
-    public string AckPipeHandle => Get("AckPipeHandle");
-    public string IdentityChallenge => Get("IdentityChallenge");
     private string Get(string key) => _values.GetValueOrDefault(key, string.Empty);
 
     internal static bool HasReservedEnvironment() => Environment.GetEnvironmentVariables().Keys.Cast<string>()
@@ -62,7 +57,7 @@ internal sealed class B10AbruptOptions
     {
         HashSet<string> names = ["Enabled", "Purpose", "Role", "RunId", "ScenarioId", "ConfigurationId", "Phase", "Repeat",
             "SourceCommit", "ImageReference", "JobName", "PodName", "PodUid", "NamespaceName", "BlobEndpoint",
-            "ScenarioSourceRoot", "OutputRoot", "StartLineBindingPath", "PredecessorBindingPath", "EventsPipeHandle", "AckPipeHandle", "IdentityChallenge"];
+            "ScenarioSourceRoot", "OutputRoot", "StartLineBindingPath", "PredecessorBindingPath"];
         names.UnionWith(Policy.Keys);
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var entry in environment)
@@ -88,7 +83,7 @@ internal sealed class B10AbruptOptions
             !Regex.IsMatch(ImageReference, "^[a-z0-9][a-z0-9./:_-]*@sha256:[a-f0-9]{64}$", RegexOptions.CultureInvariant)) throw Invalid(ValidationDetail.RunSourceOrImage);
         foreach (string value in new[] { PodName, PodUid, NamespaceName })
             if (value.Any(char.IsWhiteSpace) || value.Contains('/', StringComparison.Ordinal) || value is "." or ".." or "seed") throw Invalid(ValidationDetail.PodOrNamespace);
-        if (JobName != $"{RunId}-c1-r1-loadgen{(Role == "successor" ? "2" : string.Empty)}") throw Invalid(ValidationDetail.JobName);
+        if (JobName != $"{RunId}-c1-r1-loadgen-{(Role == "successor" ? "successor" : "restart")}") throw Invalid(ValidationDetail.JobName);
         if (!Uri.TryCreate(BlobEndpoint, UriKind.Absolute, out var endpoint) || endpoint.Scheme != "https" ||
             endpoint.AbsolutePath != "/" || endpoint.UserInfo.Length != 0 || endpoint.Query.Length != 0 || endpoint.Fragment.Length != 0) throw Invalid(ValidationDetail.BlobEndpoint);
         foreach (string path in new[] { ScenarioSourceRoot, OutputRoot, Role == "successor" ? PredecessorBindingPath : StartLineBindingPath })
@@ -99,22 +94,14 @@ internal sealed class B10AbruptOptions
 
     internal void ValidateRole()
     {
-        if (Role is not ("supervisor" or "successor" or "child")) throw Invalid(ValidationDetail.Role);
+        if (Role is not ("parent" or "successor" or "child")) throw Invalid(ValidationDetail.Role);
         string required = Role == "successor" ? "PredecessorBindingPath" : "StartLineBindingPath";
         string rejected = Role == "successor" ? "StartLineBindingPath" : "PredecessorBindingPath";
         if (string.IsNullOrWhiteSpace(Get(required)) || _values.ContainsKey(rejected)) throw Invalid(ValidationDetail.Binding);
-        string[] childFields = ["EventsPipeHandle", "AckPipeHandle", "IdentityChallenge"];
-        if (Role != "child")
-        {
-            if (childFields.Any(_values.ContainsKey)) throw Invalid(ValidationDetail.ChildFields);
-        }
-        else if (!Regex.IsMatch(IdentityChallenge, "^[a-f0-9]{64}$", RegexOptions.CultureInvariant) ||
-            !long.TryParse(EventsPipeHandle, NumberStyles.None, CultureInfo.InvariantCulture, out long events) || events < 0 ||
-            !long.TryParse(AckPipeHandle, NumberStyles.None, CultureInfo.InvariantCulture, out long ack) || ack < 0 || events == ack) throw Invalid(ValidationDetail.ChildHandshake);
     }
 
     internal IReadOnlyDictionary<string, string> ToChildEnvironment() => _values.Where(pair => pair.Key is not
-        ("Role" or "EventsPipeHandle" or "AckPipeHandle" or "IdentityChallenge" or "PredecessorBindingPath"))
+        ("Role" or "PredecessorBindingPath"))
         .ToDictionary(pair => Prefix + pair.Key, pair => pair.Value, StringComparer.Ordinal);
 
     internal B10AbruptWire.Identity Identity(string? predecessor = null) => new(RunId, ScenarioId, ConfigurationId, Phase,

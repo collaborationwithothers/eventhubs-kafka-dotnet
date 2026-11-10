@@ -657,7 +657,7 @@ class Phase:
         values = self.private / f"values-{job}.json"
         rendered = self.private / f"rendered-{job}.yaml"
         value_set = self.values(mode, repeat, item, configuration, action_role)
-        if phase.get("b10_abrupt_diagnostic") is True and mode in ("loadgen", "loadgen2"):
+        if phase.get("b10_abrupt_diagnostic") is True and mode in ("loadgen-restart", "loadgen-successor"):
             value_set = self.b10_abrupt().values(mode, value_set)
         write_json(values, value_set)
         self.render_code = self.run(["helm", "template", "parchwell", "charts/parchwell", "--values", str(values)],
