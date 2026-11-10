@@ -1,10 +1,25 @@
 # B10 restart execution part 1 (LoadGen code) contract-grade plan
 
-Revision 5. Issue [#404](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404). Baseline: `main` at `2ed497d6a8d9ea9fe4b0c00ed4f1ce54f3f41e43` (the merged restart redesign, pull request 427).
+Revision 6. Issue [#404](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404). Baseline: `main` at `2ed497d6a8d9ea9fe4b0c00ed4f1ce54f3f41e43` (the merged restart redesign, pull request 427).
 
 This plan changes the load generator so that the first B10 restart instance becomes a parent and a self-killing producer child, as ADR-021 now states, and so that the successor reads the child's journal from Blob storage. It removes the stop/checkpoint/pipe protocol from LoadGen and, under decision 6775474492, brings the chart's abrupt Jobs and the phase script's abrupt evidence reader to schema 3 and the new Job names, so the required .NET verification step keeps passing. Section 3 is the contract that part 2 (trial workflow, three-Job orchestration, timeout Job wiring, operations documents) will cite; section 13 lists what Hari has answered and what is still open.
 
-## 0. Changes since Revision 4
+## 0. Changes since Revision 5
+
+Revision 5 is at `432660a11d51e4f095cfa15b7ef876f2eff1bf1a`, pointer comment 6775850681. Plan check [6776047324](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6776047324) found two blocking findings; Hari answered in [decision 6776084683](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6776084683). Each finding was verified against `main` `2ed497d6` before the text changed; none was found wrong.
+
+| Finding | Verified | Fix |
+|---|---|---|
+| Blocking 1: `tests/Parchwell.ArchitectureTests/B10AbruptFailureSiteTests.cs` line 16 names 12 abrupt files, three of which part 1 deletes; `scripts/verify-dotnet.sh` line 93 runs it. | Yes: the list includes `B10AbruptSupervisor.cs`, `B10AbruptChildChannel.cs` and `OwnedProducerProcess.cs`, and line 27 asserts at least one site per file. | Decision 6776084683 point 2: in scope (section 2.1 item 7), list rule pinned in section 3.14, freeze exempted (2.2). |
+| Blocking 2: protected `tests/Parchwell.Verifier.Tests/Host/B10AbruptRejectionTests.cs` runs `B10AbruptWireProducerTests` and asserts the schema-2 export. | Yes: line 99 runs it; lines 24 to 33 hold the 22-name set with `first/kill-selection.json`; line 49 asserts `schema_version` 2. | Decision 6776084683 point 1, option A: in scope (2.1 item 7), new export and assertions pinned in section 3.14. Part 1 touches a protected path, so Hari merges; every "no protected path" and "agent may merge" claim is removed (2.1, 11(b), stop rule 7). |
+| N1: section 3.11's binding drops `release_utc` and `files`, which `release_successor` (line 600) and `collect` (lines 666 to 673) read on `main`. | Yes. | The binding gains `release_utc` (copied from `kill_intent.data.release_utc`; the successor requires equality). `files` stays dropped: section 3.13 now says `release_successor` reads `release_utc` from the binding and `collect` binds `completion.first_termination` and `completion.journal` to the phase script's own accepted copies, and its invocation count to the receipt's kill set. |
+| N2: T-C5's expected empty set needs terminals for ordinals 0 to 3 before ordinal 4's `accepted`. | Yes. | Added to T-C5's input. |
+| N3: whether the record newline counts toward the limits. | Yes, unstated. | Section 3.5 pins it: the record limit counts the JSON bytes without the `0x0A`; the journal limit counts every byte including each `0x0A`, as `B10AbruptJournal.FitsByteBudget(file.Length, bytes.LongLength + 1)` does on `main`. |
+| N4: the state-file coverage in section 1 was wrong. | Yes: `items/404/state.md` on `main` covers comment 6770899438 (Revision 1 read the plan branch's older copy). | Section 1 corrected. |
+| N5: role mapping at line 242, not 241; the abrupt publisher's 30 s is `UploadBudget`. | Yes (`B10AbruptPublisher.cs` line 48). The 720 s arithmetic is unchanged. | Both citations corrected. |
+| Plan-check answer (b): the stricter-than-parent list should name D5 and the exit-code-137 gate. | Agreed. | Section 11(b) adds both. |
+
+## 0.0a Changes since Revision 4
 
 Revision 4 is at `984f727879f722ceffa2afaf7f9430ec999196bc`. Two citation updates only, from the authority refresh after that push; no requirement, contract, test or scope changes:
 - [6775679271](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6775679271) was edited to the heading `## Decision` (updated 2026-11-10T18:26:30Z, same content); the plan now calls it a decision.
@@ -18,7 +33,7 @@ Revision 3 is at `c96909355b97bb9db77e911e209ea54b2d2cca6d`. A narrow delta chec
 |---|---|
 | D1 (blocking): `charts/parchwell/values.schema.json` gates `runtime.mode` in more places than the abrupt conditional; the new modes failed `helm template`. | Section 2.1 item 4 and section 3.13 now name every mode enum the new modes must join, and section 2.2 exempts exactly those entries. Proof below. |
 | D1, same class (rule 5): a fourth enum, the conditional that requires `repeat` and `loadgen_job_name` for `start-line`, `loadgen`, `loadgen2` and `verify` (line 794 on `main`), also lists modes. | Added to the same list, so the new modes keep requiring `loadgen_job_name`. Proof below. |
-| E1: hard-coded mode literals in `b10_abrupt.py` would raise `b10_abrupt_configuration_invalid` once `execution_modes('C1')` changes. | Section 3.13 names `run()` line 626, the collection loop at lines 691 and 695, and the role mapping in `values()` line 241; renaming them is stated not to change the orchestration order section 2.2 freezes. |
+| E1: hard-coded mode literals in `b10_abrupt.py` would raise `b10_abrupt_configuration_invalid` once `execution_modes('C1')` changes. | Section 3.13 names `run()` line 626, the collection loop at lines 691 and 695, and the role mapping in `values()` line 242; renaming them is stated not to change the orchestration order section 2.2 freezes. |
 | E2: section 2.4 still asked Q4; T-H4 named no file; the section 8 preamble said every test is C#. | Section 2.4 now says the narrowing awaits Hari's confirmation. T-H1 to T-H4 name their Python files; the preamble covers both. |
 | E3: acceptance command 6 matched a stale `.pdb` under `bin/`. | Command 6 now searches `*.cs` only. |
 
@@ -59,7 +74,7 @@ Also folded in: Hari's answers to Revision 1's questions (decision 6774981258), 
 
 Goal: implement ADR-021 protocol rules 1 to 11 for the first restart instance and the successor in `src/Parchwell.LoadGen/**`, with tests in `tests/Parchwell.LoadGen.Tests/**`, and pin every interface part 2 depends on.
 
-Authority, in creation order. Catch-up on 2026-11-10: 230 comments on issue 404, listed by script across three pages; newest 6775474492. No state file covers comments after 6746177383 (`items/404/state.md` on `main`), so every decision and approval comment below was read in full, plus every comment the planning prompt names.
+Authority, in creation order. Catch-up on 2026-11-10: 230 comments on issue 404, listed by script across three pages; newest 6775474492. The state file on `main` (`items/404/state.md`) covers comments up to 6770899438; every decision and approval comment below was read in full, plus every comment the planning prompt names.
 
 1. Issue body of #404 and the decisions carried in `items/404/state.md`, as recorded in the approved design plan's section 1, items 1 to 3.
 2. [Decision 6762516530](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6762516530): the simplified restart (points 1 to 7).
@@ -76,6 +91,8 @@ Authority, in creation order. Catch-up on 2026-11-10: 230 comments on issue 404,
 
 11. [Decision 6775792095](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6775792095): the per-method rule of section 2.4 replaces the whole-file deletion of `B10AbruptSupervisorTests.cs` accepted in 6774981258 Q4.
 
+12. [Decision 6776084683](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6776084683): answers plan check 6776047324. Part 1 updates the protected `tests/Parchwell.Verifier.Tests/Host/B10AbruptRejectionTests.cs` to the schema-3 export, keeping its rejection intent, and Hari merges; part 1 updates the file list in `tests/Parchwell.ArchitectureTests/B10AbruptFailureSiteTests.cs` to the abrupt files that exist after part 1, with the same rule per file and nothing else loosened.
+
 Also read: [issue 428](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/428) (operations documents that still describe the stop protocol; the full rewrite is part 2's).
 
 Not authority: the held offline end-to-end test plan and the paused PR3b plan (section 2.3 only lists shared files), and this session's prototype results (section 10, evidence for literals, not decisions).
@@ -90,8 +107,9 @@ Not authority: the held offline end-to-end test plan and the paused PR3b plan (s
 4. Chart, under decision 6775474492 and section 3.13 only: `charts/parchwell/values.yaml` (`runtime.bounds.b10_abrupt`), `charts/parchwell/values.schema.json` (the `b10_abrupt` bounds constant, and four `mode` enums: the global `runtime.mode` enum at lines 92 to 106, the conditional requiring `repeat` and `loadgen_job_name` at line 794, the abrupt conditional at line 646, and the B10 scenario conditional at line 929, all on `main`), `charts/parchwell/templates/jobs.yaml` (the `$abrupt` branches only), `charts/parchwell/templates/_helpers.tpl` (line 9, the role mapping, gains the two abrupt modes), `charts/parchwell/tests/test_b10_abrupt_chart.py`, `charts/parchwell/tests/test_b10_abrupt_host.py`.
 5. Phase, under decision 6775474492 and section 3.13 only: `infra/scripts/phase/b10_abrupt.py` (constants, envelope reader, first-publication acceptance, successor binding, successor collection, abrupt mode names), `infra/scripts/phase/tests/test_b10_abrupt.py`, `infra/scripts/phase/tests/check_b10_abrupt_producers.py`. `infra/scripts/phase/phase.py` only at the render-hook condition, line 660 on `main` (decision 6775679271, Q7 option A); `B10_MODES` (line 26) and the ordinary B10 collection loop (line 950) stay byte-identical.
 6. `items/404/state.md`, under docs/agents/factory.md "Item state file", and a new receipt `items/404/execution-loadgen-receipt.md`. The implementing tool is Codex (decision 6774981258), so the branch is `codex/` with the issue number and every commit carries the Codex trailer (AGENTS.md "Implementer and reviewer").
+7. Tests outside the two test trees above, under decision 6776084683 and section 3.14 only: `tests/Parchwell.ArchitectureTests/B10AbruptFailureSiteTests.cs` (the file list at line 16) and `tests/Parchwell.Verifier.Tests/Host/B10AbruptRejectionTests.cs` (protected, `Parchwell.Verifier*/` in `.github/CODEOWNERS`).
 
-No `*.csproj`, `Directory.*.props`, `packages*.lock.json`, solution file, new project, assembly reference or NuGet package. `src/Parchwell.LoadGen`, `tests/Parchwell.LoadGen.Tests`, `charts/` and `infra/scripts/` have no owner in `.github/CODEOWNERS`, so no protected path is touched; an agent may merge under AGENTS.md GOVERNANCE "Merge rule".
+No `*.csproj`, `Directory.*.props`, `packages*.lock.json`, solution file, new project, assembly reference or NuGet package. `tests/Parchwell.Verifier.Tests/Host/B10AbruptRejectionTests.cs` is a protected path (`Parchwell.Verifier*/`); every other file in scope has no owner in `.github/CODEOWNERS`. Because one protected path is touched, Hari merges (decision 6776084683; AGENTS.md GOVERNANCE "Merge rule"). The implementing session carries the pull request through its reviews to a ready state and hands the merge to Hari; it does not merge.
 
 ### 2.2 Paths that must not change
 
@@ -101,7 +119,7 @@ No `*.csproj`, `Directory.*.props`, `packages*.lock.json`, solution file, new pr
 - In `infra/scripts/phase/b10_abrupt.py`: the trial orchestration order in `run()` (no third Job; renaming the mode literals of section 3.13 is not a change of order), the start-line metadata checks, including `expected_job_names` (the start line is produced by `src/Parchwell.Verifier`, a protected path and part 2's), and the failure-diagnostics machinery.
 - `.github/**`, `docs/**`, `scripts/**`, `scenarios/**` (no `expected.yaml`), `results/**`, `README.md`, `AGENTS.md`, `CLAUDE.md`.
 - `tests/Parchwell.LoadGen.Tests/Component/LocalKafkaFixture.cs` (shared with the held offline test plan; this plan uses it unchanged).
-- Every test file outside `tests/Parchwell.LoadGen.Tests/Abrupt/`.
+- Every test file outside `tests/Parchwell.LoadGen.Tests/Abrupt/`, except the two files of section 2.1 item 7 and the Python test files of items 4 and 5.
 
 Consequence, accepted by this scope and stated for part 2: after part 1 merges, the chart renders the parent and successor Jobs that the new LoadGen accepts, and the phase script reads schema-3 evidence. The required step "Verify the load generator accepts the rendered chart environment" (`.github/workflows/dotnet-verification.yml` line 87) checks both through `b10_abrupt_host_acceptance`. The trial orchestration still runs two Jobs and the start line still expects the old names, so a dispatched trial would fail; no trial can run before part 2 (decisions 6761783572 and 6762516530). `docs/operations/b10-abrupt-contract.md` line 5 already says the page describes the superseded code until the implementation pull requests replace it; its line 174 link to `B10AbruptSupervisor.cs` will dangle until part 2 (accepted, decision 6774981258, Q5).
 
@@ -164,7 +182,7 @@ Every journal record and every JSON object below carries `schema_version: 3`, `d
 
 ### 3.5 Journal `journal.jsonl`
 
-Written only by the child, at `<OutputRoot>/abrupt/journal.jsonl` (`/work/loadgen/abrupt/journal.jsonl` in the chart), opened `FileMode.CreateNew`. One record per line: UTF-8 JSON, then byte `0x0A`. Record members: the envelope, then `sequence` (from 1, plus 1 per record, assigned under one lock shared by both writing threads), `observed_utc`, `monotonic_ticks`, `clock_frequency`, `data`. After each record the child calls `FileStream.Flush()` before the next record or action (Q4 of the design plan). Limits are charged before writing: a record above 65536 bytes, more than 4096 records or more than 16777216 bytes latches the matching existing gap reason. The reason strings are unchanged: `frame_oversize`, `queue_full`, `journal_bytes_exceeded`, `journal_entries_exceeded`, `writer_failed`, `malformed_frame`, `sequence_gap`.
+Written only by the child, at `<OutputRoot>/abrupt/journal.jsonl` (`/work/loadgen/abrupt/journal.jsonl` in the chart), opened `FileMode.CreateNew`. One record per line: UTF-8 JSON, then byte `0x0A`. Record members: the envelope, then `sequence` (from 1, plus 1 per record, assigned under one lock shared by both writing threads), `observed_utc`, `monotonic_ticks`, `clock_frequency`, `data`. After each record the child calls `FileStream.Flush()` before the next record or action (Q4 of the design plan). Limits are charged before writing: a record above 65536 bytes, more than 4096 records or more than 16777216 bytes latches the matching existing gap reason. The record limit counts the record's JSON bytes without its terminating `0x0A`; the journal limit counts every byte of the file, including each `0x0A`, as `B10AbruptJournal.FitsByteBudget(file.Length, bytes.LongLength + 1)` does on `main`. The reason strings are unchanged: `frame_oversize`, `queue_full`, `journal_bytes_exceeded`, `journal_entries_exceeded`, `writer_failed`, `malformed_frame`, `sequence_gap`.
 
 Record kinds and their `data` members (closed):
 
@@ -205,7 +223,7 @@ Reader rules (one shared reader, used by the parent and the successor): every li
 1. Write `registration.json` to Blob (create-only), as on `main`.
 2. Read `memory.events.local` (`B10AbruptCgroup.CaptureBefore`, retargeted to the parent's own process).
 3. `Process.Start` the child with no redirection and no inherited handle beyond the defaults. Read the child's `/proc/<pid>/stat` start time and `/proc/sys/kernel/random/boot_id`.
-4. `WaitForExit(bound)`, where `bound` is 720 s minus the parent's elapsed time since start: the 900 s process lifetime less 180 s, which is 6 post-death uploads times the existing 30 s `UploadTimeout` (Q8b text "the remaining LoadGen process lifetime less the time its publication needs"; arithmetic by script). The parent sends no signal and opens no pipe.
+4. `WaitForExit(bound)`, where `bound` is 720 s minus the parent's elapsed time since start: the 900 s process lifetime less 180 s, which is 6 post-death uploads times the abrupt publisher's existing 30 s `UploadBudget` (`B10AbruptPublisher.cs` line 48 on `main`) (Q8b text "the remaining LoadGen process lifetime less the time its publication needs"; arithmetic by script). The parent sends no signal and opens no pipe.
 5. After death: read `memory.events.local` again; read the journal (16777216-byte limit); apply the reader rules; compute termination (section 3.8); hash and publish.
 6. If the bound expires: termination `unknown`, failure `b10_abrupt_exit_unobserved`, publish what exists, exit 0 after `termination.json`; never signal the child.
 
@@ -244,9 +262,9 @@ Container `ledger`, prefix `<run_id>/C1/r1/b10-abrupt-diagnostic/<pod_name>/`, c
 
 ### 3.11 Successor
 
-Binding file at `PredecessorBindingPath`, built by `accept_diagnostic_publication` in `infra/scripts/phase/b10_abrupt.py` (section 3.13) and mounted by the successor's configmap as on `main`, exact members: `first_pod` (`job_name`, `pod_name`, `pod_uid`, `image_reference`, `source_commit`, `finished_utc`), `termination` (`{name:"termination.json",length,sha256}`), `start_line_binding` (unchanged shape), `runner_utc`, `runner_monotonic_ticks`, `cross_host_timing` (`not_verified`).
+Binding file at `PredecessorBindingPath`, built by `accept_diagnostic_publication` in `infra/scripts/phase/b10_abrupt.py` (section 3.13) and mounted by the successor's configmap as on `main`, exact members: `first_pod` (`job_name`, `pod_name`, `pod_uid`, `image_reference`, `source_commit`, `finished_utc`), `termination` (`{name:"termination.json",length,sha256}`), `start_line_binding` (unchanged shape), `release_utc` (equal to the journal's `kill_intent.data.release_utc`), `runner_utc`, `runner_monotonic_ticks`, `cross_host_timing` (`not_verified`). The pipe-era member `files` is dropped: the successor downloads what it needs from Blob.
 
-The successor downloads `termination.json`, `abrupt-manifest.json` and `journal.jsonl` from the first pod's prefix, checks `termination` against the binding descriptor, the manifest against `termination.data.manifest`, and the journal against the manifest; requires `successor_permitted` true; recomputes the kill unconfirmed set with the shared reader and requires it equal to `kill_unconfirmed_attempt_ids` (else detail `selection_stale`); requires `first_pod.job_name` to be `{RunId}-c1-r1-loadgen-restart`. It registers with `predecessor_instance_id` the first pod's instance, waits until `kill_intent.release_utc`, resends each member once in invocation order with new instance and attempt IDs and the original's key, sequence and payload (payload SHA-256 must equal the `prepared` record's), then drains and publishes its existing seven members (`registration.json`, `ledger.jsonl`, `manifest.json`, `statistics.jsonl`, `request-lifecycle.jsonl`, `capabilities.json`, `completion.json`). `completion.json` replaces `selection` with `kill_unconfirmed_attempt_ids` and adds `journal` (descriptor). Not ready at `release_utc`: `b10_abrupt_successor_late`, no resend.
+The successor downloads `termination.json`, `abrupt-manifest.json` and `journal.jsonl` from the first pod's prefix, checks `termination` against the binding descriptor, the manifest against `termination.data.manifest`, and the journal against the manifest; requires `successor_permitted` true; recomputes the kill unconfirmed set with the shared reader and requires it equal to `kill_unconfirmed_attempt_ids` (else detail `selection_stale`); requires `first_pod.job_name` to be `{RunId}-c1-r1-loadgen-restart`; requires the binding's `release_utc` to equal `kill_intent.data.release_utc` (else detail `selection_stale`). It registers with `predecessor_instance_id` the first pod's instance, waits until `kill_intent.release_utc`, resends each member once in invocation order with new instance and attempt IDs and the original's key, sequence and payload (payload SHA-256 must equal the `prepared` record's), then drains and publishes its existing seven members (`registration.json`, `ledger.jsonl`, `manifest.json`, `statistics.jsonl`, `request-lifecycle.jsonl`, `capabilities.json`, `completion.json`). `completion.json` replaces `selection` with `kill_unconfirmed_attempt_ids` and adds `journal` (descriptor). Not ready at `release_utc`: `b10_abrupt_successor_late`, no resend.
 
 ### 3.12 What part 2 must do (named so its plan can cite it)
 
@@ -268,11 +286,19 @@ Phase (`infra/scripts/phase/b10_abrupt.py`):
 - `FIRST_FILES` is `registration.json`, `journal.jsonl`, `abrupt-manifest.json`, `termination.json`, plus the bound report files of section 3.10 read from the manifest; `COHORT_FILES` and `COHORT_LIMITS` are removed; `SUCCESSOR_FILES` is unchanged.
 - The envelope reader requires `schema_version` 3 (an integer) and rejects 2.
 - `accept_diagnostic_publication` reads the journal with the section 3.5 rules independently of the C# reader, checks the manifest and termination receipt chain, requires `successor_permitted` true, recomputes both unconfirmed sets and requires them equal to the receipt's, and returns the section 3.11 binding.
-- `collect` checks the successor's `completion.json` as section 3.11 states.
-- `execution_modes('C1')` returns `('loadgen-restart', 'loadgen-successor')`. Every hard-coded abrupt mode literal follows: `run()` line 626 `self.job('loadgen', deadline)` becomes `'loadgen-restart'`; the collection loop's `('loadgen', 'loadgen2')` at line 691 and `'loadgen2'` at line 695 become the two new modes and `'loadgen-successor'`; the role mapping in `values()` line 241 maps `loadgen-restart` to `first`; `release_successor` runs `'loadgen-successor'`. Without these, `values()` (line 239) would raise `b10_abrupt_configuration_invalid` and break the six tests that call `self.trial.run()` (`test_b10_abrupt.py` lines 200, 394, 544, 595, 621 and 696 on `main`, found by script; the check named five). These are renames of the same two Jobs, not a change of the orchestration order frozen by section 2.2; part 2 adds the timeout Job.
+- `release_successor` reads `release_utc` from the section 3.11 binding, as on `main` (line 600). `collect` checks the successor's `completion.json` as section 3.11 states, binding `completion.first_termination` and `completion.journal` to the `termination.json` and `journal.jsonl` bytes that `accept_diagnostic_publication` accepted and kept in the phase directory, and requiring `invocations` to have one entry per member of the accepted receipt's `kill_unconfirmed_attempt_ids`; it no longer reads `binding['files']` (lines 666 to 673 on `main`).
+- `execution_modes('C1')` returns `('loadgen-restart', 'loadgen-successor')`. Every hard-coded abrupt mode literal follows: `run()` line 626 `self.job('loadgen', deadline)` becomes `'loadgen-restart'`; the collection loop's `('loadgen', 'loadgen2')` at line 691 and `'loadgen2'` at line 695 become the two new modes and `'loadgen-successor'`; the role mapping in `values()` line 242 maps `loadgen-restart` to `first`; `release_successor` runs `'loadgen-successor'`. Without these, `values()` (line 239) would raise `b10_abrupt_configuration_invalid` and break the six tests that call `self.trial.run()` (`test_b10_abrupt.py` lines 200, 394, 544, 595, 621 and 696 on `main`, found by script; the check named five). These are renames of the same two Jobs, not a change of the orchestration order frozen by section 2.2; part 2 adds the timeout Job.
 - `check_b10_abrupt_producers.py` and `ProducedBytesCases` read the export's `first/` members named by `FIRST_FILES` and the manifest, and the mutation cases become schema-3 cases (T-H3).
 - `infra/scripts/phase/phase.py` line 660 changes from `mode in ("loadgen", "loadgen2")` to `mode in ("loadgen-restart", "loadgen-successor")` (decision 6775679271, Q7 option A). No other line of `phase.py` changes.
 
+
+### 3.14 Tests outside the LoadGen test tree (decision 6776084683)
+
+`tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptWireProducerTests.cs` keeps its environment switch `PARCHWELL_B10_ABRUPT_WIRE_OUTPUT` and writes `export.json` plus these 14 files, from one intended-self-kill run with a nonempty kill set and a completed successor: `first/registration.json`, `first/journal.jsonl`, `first/same_instance-pre-acceptance-report.json`, `first/control-post-drain-report.json`, `first/cross_restart-pre-acceptance-report.json`, `first/abrupt-manifest.json`, `first/termination.json`, `successor/registration.json`, `successor/ledger.jsonl`, `successor/manifest.json`, `successor/statistics.jsonl`, `successor/request-lifecycle.jsonl`, `successor/capabilities.json`, `successor/completion.json`. `check_b10_abrupt_producers.py` requires exactly this set.
+
+`tests/Parchwell.Verifier.Tests/Host/B10AbruptRejectionTests.cs` (protected): `ExportNames` becomes the 14 names above. The per-document loop covers `first/registration.json`, `first/abrupt-manifest.json`, `first/termination.json`, `successor/registration.json`, `successor/manifest.json`, `successor/completion.json` (`first/kill-selection.json` no longer exists) and the first line of `first/journal.jsonl`; for each it asserts `schema_version` 3, `dialect` `b10_abrupt` and `scientific_admissible` false. The six variants (`unchanged`, `remove-purpose`, `schema-one`, `mixed-source`, `mixed-image`, `mixed-dialect`), every reader assertion and `AssertPublicationRejected` stay as on `main`. No assertion is removed or weakened; the only removals are the names of files that no longer exist.
+
+`tests/Parchwell.ArchitectureTests/B10AbruptFailureSiteTests.cs`: the file list at line 16 becomes every `*.cs` file in `src/Parchwell.LoadGen/Run/Abrupt/` after part 1 that the test's existing pattern matches at least once, sorted, computed by script and recorded in the receipt. Every file on the `main` list that still exists after part 1 stays on the list. The pattern, the `Attach(`/`[CallerLineNumber]` rule and the at-least-one-site assertion are unchanged.
 
 ## 4. Requirements
 
@@ -311,6 +337,8 @@ R16. WHEN `charts/parchwell/tests/check-loadgen-host.sh` runs, THEN it passes an
 R17. WHEN the child's `kill` returns, THEN it appends `signal_failed` with the return value and errno and exits 4, and the parent classifies `unexpected_exit` with outcome `b10_abrupt_signal_failed`.
 
 R18. WHEN the control arm's `cut` is appended while terminals race in, THEN the set in `cut.unconfirmed_attempt_ids` equals the set recomputed from journal order.
+
+R19. WHEN `scripts/verify-dotnet.sh` runs, THEN `Parchwell.ArchitectureTests` and `B10AbruptRejectionTests` pass with the section 3.14 lists, and the rejection test still rejects every variant of every listed document.
 
 ## 5. Invariants and safety rules
 
@@ -364,7 +392,7 @@ C# tests (sections 8.1 and 8.2) are under `tests/Parchwell.LoadGen.Tests/Abrupt/
 | T-C2 | R4 | terminal for ordinal 4 arrives after `cut` | still resent (set fixed at `cut`) |
 | T-C3 | R5 | all five terminals before `cut` | `no_kill` reason `b10_abrupt_exposure_inconclusive`, exit 3, no `cross_restart` `prepared` |
 | T-C4 | R6 | `Flush` returns 1 left; and a missing terminal for one resend | `no_kill` reason `b10_abrupt_control_incomplete` both cases |
-| T-C5 | R18, N1 | synthetic producer; a terminal for ordinal 4 enqueued concurrently with the `cut` append, 1000 iterations | in every iteration the journal-recomputed set equals `cut.unconfirmed_attempt_ids`; when the terminal precedes `cut` in journal order the set is empty and the child ends `no_kill` with `b10_abrupt_exposure_inconclusive` |
+| T-C5 | R18, N1 | synthetic producer; terminals for ordinals 0 to 3 appended before ordinal 4's `accepted`; a terminal for ordinal 4 enqueued concurrently with the `cut` append, 1000 iterations | in every iteration the journal-recomputed set equals `cut.unconfirmed_attempt_ids`; when the terminal precedes `cut` in journal order the set is empty and the child ends `no_kill` with `b10_abrupt_exposure_inconclusive` |
 | T-B1 | 3.5, rule 5 | ordinal 0 `accepted` before any `pre_acceptance_report`, then a late report | one failure `b10_abrupt_sample_missing`; no `b10_abrupt_report_binding_invalid` (adapted from line 26 of the supervisor tests) |
 | T-B2 | 3.5, rule 5 | two `pre_acceptance_report` records for one arm, then `accepted` | one failure `b10_abrupt_report_binding_invalid`; no `b10_abrupt_sample_missing` (adapted from line 38) |
 | T-B3 | 3.5, rule 3 | `terminal` appended before its attempt's `accepted`; and after | the attempt counts as terminal in both cases and is in no unconfirmed set (adapted from line 145) |
@@ -471,7 +499,7 @@ A scratch .NET 10 program outside the repository (Confluent.Kafka 2.16.0, `enabl
 
 (a) Runtime-sized steps: deleted test methods (bounded by the 2.4 files on `main`, listed by script in the receipt); mutation runs (fixed at 21); documentation warnings (none expected, no doc change); verification failures and review findings. Caps: 20 verification-failure root causes and 20 review-finding root causes, exhaustion `push -wip and hand off to the next session`.
 
-(b) Stricter than the parent plan: the stop rule also covers changes to the shared files of section 2.3; the ordinary host is frozen by acceptance command 5, which decision 6774480762 states but does not test.
+(b) Stricter than the parent plan: the stop rule also covers changes to the shared files of section 2.3; the ordinary host is frozen by acceptance command 5, which decision 6774480762 states but does not test; default D5 adds two conditions to `successor_permitted` (no latched capture gap, successful publication) beyond ADR-021 rule 10's intended self-kill with a nonempty kill set; and the exit-code gate pins the single value 137, observed locally, where ADR-021 rule 7 requires "the value that the execution pull request's offline test records".
 
 (c) Dependencies outside `main` and this pull request: part 2's orchestration (DA7, accepted); the AKS runtime exit code (DA6, settled by the offline test); DA1 to DA5 as decided. The required CI step now depends on part 1's own chart and phase changes, which acceptance command 9 covers.
 
@@ -522,4 +550,5 @@ The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when:
 3. a file in section 2.3 changes on `main` after `2ed497d6`, or any file this plan changes changes on `main` before implementation starts;
 4. a test cannot pass without changing a path in section 2.2, or `phase.py` beyond the one line of section 3.13;
 5. the self-SIGKILL exit code observed by T-P2 is not 137 (section 3.1 would then be wrong);
-6. a change to `phase.py` beyond the line-660 condition seems needed.
+6. a change to `phase.py` beyond the line-660 condition seems needed;
+7. the pull request is ready to merge: the implementer hands the merge to Hari (protected path, decision 6776084683) and does not merge.
