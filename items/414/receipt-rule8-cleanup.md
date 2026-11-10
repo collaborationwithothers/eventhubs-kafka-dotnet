@@ -27,3 +27,16 @@ Run from the repository root on a working tree based on `origin/main` `2ed497d`.
 | `git diff --stat origin/main` before this receipt | 2 files, 5 deletions: `.github/pull_request_template.md` 1, `docs/agents/pull-requests.md` 4 |
 | `grep -rn -i -E 'first (five\|three) pull requests\|prose-only P2 round\|rubric stays\|issue #414'` outside `results/`, `items/` and evidence folders, before the change | only the two removed paragraphs matched |
 | `npm run check:docs` | 8 warnings, all in files this pull request does not change (`docs/agents/factory.md`, evidence READMEs for issues 124 and 140, receipt for issue 211) |
+
+## Cold-review rounds
+
+Each round reviewed the full diff against `origin/main` `2ed497d`. Reports and dispositions are in the pull request's self-review record.
+
+| Round | Mode | Input revision | Comparison revision |
+|---|---|---|---|
+| 1 | comprehensive | `e329a06` | `2ed497d` |
+| 2 | comprehensive (consolidated re-review) | `615e5a6` | `2ed497d` |
+| 3 | focused | `07b6c60` | `615e5a6`, with the full diff against `2ed497d` as context |
+| 4 | focused, for the hosted Codex finding on this table | the commit that adds this table | `07b6c60`, with the full diff against `2ed497d` as context |
+
+Cumulative budget after round 4: 2 of 2 comprehensive, 2 of 2 focused.
