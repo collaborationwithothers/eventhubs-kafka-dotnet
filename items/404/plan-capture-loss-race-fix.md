@@ -1,10 +1,15 @@
 # Capture-loss race fix contract-grade plan
 
-Revision 6. Issue #404. Implementing tool: Claude Code, under [standing decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614) point 3, which replaces Codex for this pull request. The state file on `main` (`items/404/state.md`, "Implementing tool") still names Codex; the implementing session updates it. Base: `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`.
+Revision 7. Issue #404. Implementing tool: Claude Code, under [standing decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614) point 3, which replaces Codex for this pull request. The state file on `main` (`items/404/state.md`, "Implementing tool") still names Codex; the implementing session updates it. Base: `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`.
 
 A statistics callback that starts after the statistics session closes capture, and before completion seals its result, makes the completion incomplete on `main`. Such a report was never going to be written to evidence, so the failure hides nothing; it only fails a good run. This pull request makes the session ignore a callback that starts after capture closes, and keeps every outcome that marks a real capture gap. It changes no diagnostic code, public type, wire member, timeout, gate or failure name, and it authorizes no trial.
 
-Changes since Revision 5 (commit `4951ccd4`), from Hari's answers to Q1 to Q4 on 2026-11-10:
+Changes since Revision 6 (commit `0f238998`), the two wording fixes of the delta reproduction check of Revision 6, and nothing else:
+
+- m1: acceptance command 2 names `capture_contention,capture_loss` for either T1 case.
+- m2: the stop rule names the new test files of 4.1 item 2.
+
+Changes in Revision 6 (since Revision 5, commit `4951ccd4`), from Hari's answers to Q1 to Q4 on 2026-11-10:
 
 - Section 1 cites decisions 6760139065 (Q1, option A), 6760170847 (Q2, leave it, with the open-capture contention assumption accepted by name), 6760180716 (Q3, leave it) and 6760201403 (Q4).
 - E4: one sentence replaced exactly as decision 6760201403 orders. E3 is unchanged, approved as written. The prototype's `statistics-bridge.md` hash and docs check were rerun (section 11.1).
@@ -308,7 +313,7 @@ Nothing else. The change is in-process logic in one class. Which thread, library
 Run from the repository root with .NET SDK 10.0.402. Each was run in this planning session on the prototype unless marked `main`.
 
 1. `dotnet build Parchwell.slnx --configuration Release` (inside `./scripts/verify-dotnet.sh`). Evidence: 0 warnings, 0 errors.
-2. On `main` with only the new test files added, 25 times under load: `dotnet test --project tests/Parchwell.Kafka.Tests --configuration Release --no-build -- --filter-class Parchwell.Kafka.Tests.Statistics.KafkaStatisticsLateCaptureTests`, and 20 times the same with `KafkaStatisticsNativeLateCaptureTests`. Evidence, observed: as in 9.1. Each failure shows `IsComplete` false, with `capture_loss,late_capture` or (T1 `inventory`) `capture_contention,capture_loss`; T3 passes every run.
+2. On `main` with only the new test files added, 25 times under load: `dotnet test --project tests/Parchwell.Kafka.Tests --configuration Release --no-build -- --filter-class Parchwell.Kafka.Tests.Statistics.KafkaStatisticsLateCaptureTests`, and 20 times the same with `KafkaStatisticsNativeLateCaptureTests`. Evidence, observed: as in 9.1. Each failure shows `IsComplete` false, with `capture_loss,late_capture` or (either T1 case) `capture_contention,capture_loss`; T3 passes every run.
 3. The same two commands on the branch, 25 and 20 times. Evidence, observed: every run `failed: 0`.
 4. `dotnet test --project tests/Parchwell.Kafka.Tests --configuration Release --no-build -- --filter-namespace Parchwell.Kafka.Tests.Statistics`. Evidence, observed on the Revision 3 tests: `total: 99`, `failed: 0`.
 5. `./scripts/verify-dotnet.sh`. Evidence: every step passes, on a workspace with a Docker daemon (CI has one). Observed in this session: section 11.1.
@@ -354,7 +359,7 @@ None. Hari answered Revision 5's Q1 to Q4 in decisions 6760139065, 6760170847, 6
 
 The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it needs to change a contract (E1 to E5), a requirement, the scope of 4.1, or any existing test assertion. It also stops when:
 
-- the successor fix, PR3a or the contention race fix, merged or in a newer plan revision, changes `KafkaStatisticsSession.cs`, `statistics-bridge.md`, `KafkaStatisticsLateCaptureTests.cs` or the diagnostic-code list the successor fix pins;
+- the successor fix, PR3a or the contention race fix, merged or in a newer plan revision, changes `KafkaStatisticsSession.cs`, `statistics-bridge.md`, the new test files of 4.1 item 2 or the diagnostic-code list the successor fix pins;
 - a newer revision of the successor fix's tests relies on a callback between capture close and the seal producing `late_capture` or `capture_loss`;
 - T1, T2 or T3 fails, or passes on `main`, in a way this plan does not predict;
 - any mutation of 9.2 other than M8 survives;
