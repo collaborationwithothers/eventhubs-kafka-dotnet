@@ -1,10 +1,26 @@
 # Capture-loss race fix contract-grade plan
 
-Revision 2. Issue #404. Implementing tool: Claude Code, under [standing decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614) point 3, which replaces Codex for this pull request. The state file on `main` (`items/404/state.md`, "Implementing tool") still names Codex; the implementing session updates it. Base: `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`.
+Revision 3. Issue #404. Implementing tool: Claude Code, under [standing decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614) point 3, which replaces Codex for this pull request. The state file on `main` (`items/404/state.md`, "Implementing tool") still names Codex; the implementing session updates it. Base: `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`.
 
 A statistics callback that starts after the statistics session closes capture, and before completion seals its result, makes the completion incomplete on `main`. Such a report was never going to be written to evidence, so the failure hides nothing; it only fails a good run. This pull request makes the session ignore a callback that starts after capture closes, and keeps every outcome that marks a real capture gap. It changes no diagnostic code, public type, wire member, timeout, gate or failure name, and it authorizes no trial.
 
-Changes since Revision 1 (commit `d1a977ef`), from two control-session messages received after that push:
+Changes since Revision 2 (commit `e411fa3c`), from the fresh reproduction check relayed by the control session (findings F1 to F7, mutations M8 to M10) and its order ruling:
+
+- F1 (blocking): T3 now also waits until the session's gate is free before resuming its admitted callback. Without that wait the callback could meet the close itself and take the contention path. The wait is a requirement, with fail-if-absent; reflection stays a permitted technique.
+- F2: a held sink write waits at most 5 s, then throws, so a failed test's disposal completes.
+- F3: I1 states that admission closes inside the same gate section that closes capture. No test can see that order, so mutation M8 survives by construction and the cold review checks it.
+- F4: mutations run one test class at a time under `timeout 240`; exit 124 is recorded as "killed by hang". No timeout is added to an existing test.
+- F5: a reflection-free way to observe the close for T1 is listed as a permitted technique.
+- F6: T2 moves to its own class with trait `Category` `Native`.
+- F7: T2's residual false failure is stated.
+- Mutations M8, M9 and M10 are added to 9.2.
+- Order (Q5): settled by the control session reading order decision 6752454732 literally (section 4.3). Q5 is removed from the open questions.
+- Note for the successor fix about `late_capture` (section 4.3).
+- Every observation in 9.1 and 9.2 was rerun on the Revision 3 tests.
+- New decisions 6754092685 and 6754970055 (standing rule 1) found that a real librdkafka client pointed at an unreachable address can emit a duplicate broker key. T2 uses that fixture, so section 9 states the false-failure risk and proposes the same treatment those decisions gave; the choice is the control session's (section 14, last paragraph).
+- Section 4.3 cites the sibling plans at `db280455`.
+
+Changes in Revision 2 (since Revision 1, commit `d1a977ef`), from two control-session messages:
 
 - Requirements, contracts and tests state observable behaviour only. No private member, field or line number is pinned. Section 2 still cites `main`'s private code as evidence of the race.
 - Every test now builds its session through the factory production uses: T2 through `AddParchwellKafkaStatistics` and the service provider; T1 and T3 through `KafkaStatisticsBridgeFactory.Create` with a test clock.
@@ -24,12 +40,15 @@ Authority, in creation order:
 - [Decision 6752059755](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752059755): fix "the capture-loss race between `CloseCapture` and the completion seal" rather than accept it, in its own pull request, with its own contract-grade plan, fresh reproduction check, plan check and Hari's approval. "It must merge before any further B10 trial." The plan "states the effect on every scenario that uses `KafkaStatisticsSession`". The successor fix "does not change `src/Parchwell.Kafka`".
 - [Decision 6752078378](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752078378): the `B10AbruptStatistics.CaptureNative` contention race is fixed in a separate pull request. This plan does not touch it.
 - [Standing decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614), for the four pull requests including this one: standing rule 1 lets the control session decide some open questions on its own recommendation; point 2 standing plan approval requires "Open questions for Hari" to state `None`; point 3 makes Claude Code the implementing tool; point 4 lets the control session merge a pull request that touches no protected path under GOVERNANCE "Merge rule" in full.
-- [Order decision 6752454732](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752454732): the capture-loss race fix "runs alongside the sequence on its own branch from `main`. If its plan shows a shared file with any of the three, it joins the sequence after the successor fix." See 4.3 and Q5.
+- [Order decision 6752454732](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752454732): the capture-loss race fix "runs alongside the sequence on its own branch from `main`. If its plan shows a shared file with any of the three, it joins the sequence after the successor fix." See 4.3.
 - [Decision 6752554218](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752554218): review re-request after 15 minutes, and stacked implementation of the next pull request in the order.
 - [Decision 6753263792](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753263792), standing rule 1, not seen by Hari: for the contention race fix, the session-side contention in `KafkaStatisticsSession.Capture` (lines 106-111) is accepted as a deployment assumption for the next trial; "Whether to **fix** it is a scope change and is left for Hari." This plan does not fix it (Q2).
 - [Decision 6753364128](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753364128), standing rule 1, not seen by Hari: the successor fix's D6 (the two capture races) is accepted because each is "fixed by its own pull request ... before any trial".
+- [Decision 6754092685](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754092685), standing rule 1, not seen by Hari: in the contention race fix's real-client test, librdkafka's statistics JSON once held the broker key `127.0.0.1:1/bootstrap` twice, which the session parser rejects as `duplicate_property` (about 4 of 683 runs, an estimate by that session, 2026-11-09). That test accepts that outcome as labelled; duplicate keys in the next trial are a deployment assumption; whether the parser should tolerate them is left for Hari. It also corrects decision 6753263792: a post-drain selection failure names session contention by guard reason only.
+- [Decision 6754970055](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754970055), standing rule 1, not seen by Hari: the successor fix's real-client test T9 gets the same treatment, recorded as accepted, not as a pass, with a deterministic test in each kill set.
+- Approvals under standing point 2, not reviewed by Hari: PR3a Revision 8 ([6753938298](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6753938298)) and the capture contention race fix Revision 3 ([6755102182](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6755102182)). Neither changes this plan.
 
-All decisions above were read in full in this planning session on 2026-11-09. The newest comment read is 6753364128 (created 2026-11-09T22:38:22Z); the issue body `updated_at` was 2026-11-09T22:38:22Z.
+All decisions and approvals above were read in full in this planning session on 2026-11-09 and 2026-11-10. The newest comment read is 6755306662 (created 2026-11-10T00:28:22Z), a plan check of another plan; plan and plan-check comments were read by heading only.
 
 ## 2. The race on `main`, verified against the code
 
@@ -83,7 +102,7 @@ Published results (read only; this pull request changes nothing under `results/`
 ### 4.1 Files allowed to change
 
 1. `src/Parchwell.Kafka/Statistics/KafkaStatisticsSession.cs`: the behaviour of E1 and R1 to R6, and the `Capture` XML remarks (E3). Code structure, private and internal names are the implementer's choice; internal types may be added in this file.
-2. New file `tests/Parchwell.Kafka.Tests/Statistics/KafkaStatisticsLateCaptureTests.cs`: T1 to T3.
+2. New test files under `tests/Parchwell.Kafka.Tests/Statistics/`: class `KafkaStatisticsLateCaptureTests` (T1 and T3, trait `Category` `Unit`) and class `KafkaStatisticsNativeLateCaptureTests` (T2, trait `Category` `Native`, as `tests/Parchwell.Kafka.Tests/Authentication/KafkaOAuthBearerNativeClientTests.cs` line 14 does). Test-only helpers may go in further new files in that folder; their placement is the implementer's choice.
 3. `docs/operations/statistics-bridge.md`: line 87 only, as E4 pins. `docs/operations/` is not a protected path: `.github/CODEOWNERS` lists `/docs/operations/` with no owner after `/docs/`.
 4. `items/404/state.md` (factory.md "Item state file") and the new receipt `items/404/capture-loss-race-fix-receipt.md`.
 
@@ -99,13 +118,15 @@ This pull request touches no protected path.
 
 ### 4.3 Files other `items/404` plans also change
 
-Read on `claude/404-plan` at `ac5a29d98c59e80025eba89b43f52f27f7d9f583`: successor fix Revision 3, capture contention race fix Revision 1 (`items/404/plan-capture-contention-race-fix.md`, added in `c30bb3a`), PR3a Revision 6, verifier Revision 1.
+Read on `claude/404-plan` at `db280455` (re-read for the file lists and E2 code count): successor fix Revision 6, capture contention race fix Revision 3 (approved, 6755102182), PR3a Revision 8 (approved, 6753938298), verifier Revision 1.
 
-- `items/404/state.md` is the only file another plan also changes: the successor fix (its 2.1 item 9), the contention race fix (its 3.1 item 3) and PR3a (its 3.1). Under order decision 6752454732 a shared file puts this pull request after the successor fix; whether the state file counts is Q5.
+- `items/404/state.md` is the only file another plan also changes: the successor fix (its file list, item 9), the contention race fix (its file list, item 3) and PR3a (its 3.1). Revision 6 of the successor fix and Revision 3 of the contention race fix still forbid `src/Parchwell.Kafka/**`.
+- Order, as the control session settled it on 2026-11-09 by applying [order decision 6752454732](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752454732) literally (not a standing-rule decision): the state file is a shared file, so this pull request joins the sequence after the successor fix. If the successor fix has not merged when this one is implemented, this one is implemented stacked on the successor fix's head under [decision 6752554218](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752554218) point 2: it is not merged before the successor fix, and after that merge it is rebased onto `main`, rechecked under the stop rule and reviewed again on the new head.
 - No source, test or documentation file is shared. The successor fix and the contention race fix both forbid `src/Parchwell.Kafka/**` (successor 2.2; contention 3.2). PR3a and the verifier plan name no `src/Parchwell.Kafka` file and not `statistics-bridge.md`.
 - Semantic dependencies:
-  - The successor fix's E2 (Revision 3) pins guard flags for 31 session diagnostic codes, including `late_capture`, `capture_contention` and `capture_loss`. This plan adds and removes no code and keeps all three reachable (E2, R2 to R4), so that list stays whole. Its T1 delivers report P3 during disposal, after the seal; that path is unchanged here (R5).
+  - The successor fix's E2 (Revision 6) pins guard flags for 31 session diagnostic codes, including `late_capture`, `capture_contention` and `capture_loss`. This plan adds and removes no code and keeps all three reachable (E2, R2 to R4), so that list stays whole. Its T1 delivers report P3 during disposal, after the seal; that path is unchanged here (R5).
   - The contention race fix's I1 relies on the production handler calling `CaptureNative` and then `KafkaStatisticsSession.Capture` on the callback thread. This plan changes neither the handler nor that call.
+  - Note for whichever of this pull request and the successor fix merges second: the `late_capture` that `main` adds for a call after the seal (session line 97) can never reach a returned completion, on `main` or after this fix, because it is added after the completion copies its codes (line 621). The checker reported that emission as unreachable after its own prototype of this fix; in this planner's prototype the line still runs, with no effect on any result. Either way, after this fix the successor fix's `diagnostic_late_capture` flag can be 1 only through a call admitted before capture closed and refused at the gate after it (session line 117; R2). That flag stays in its E2 list.
 
 ## 5. External contracts
 
@@ -163,7 +184,7 @@ R6. Disposal.
 
 ## 7. Invariants and safety
 
-- I1. Capture closes at exactly one atomic point. A call is either admitted before it (and keeps `main`'s handling) or starts after it (and is ignored). No call is both.
+- I1. Capture closes at exactly one atomic point. A call is either admitted before it (and keeps `main`'s handling) or starts after it (and is ignored). No call is both. Admission closes inside the same gate section that closes capture to callbacks reaching the gate, no later than the session's capture-open state changes. No test can observe that order, so the cold review checks it (mutation M8 survives by construction).
 - I2. The seal still counts every call admitted before capture closed and not yet finished as capture loss. Calls that start after capture closes are never counted as in flight.
 - I3. The evidence written to the sink is identical to `main` for every interleaving: a call after capture closes was never queued on `main` either.
 - I4. AGENTS.md hard safety rules hold: no Azure credential, no workflow dispatch, no `.github/` change, no trial. Verdict integrity holds: nothing under `results/`, no expected outcome.
@@ -187,7 +208,7 @@ No stage of this path needs a deployed container, image or chart. The deployed i
 
 ## 9. Test map
 
-All new tests are in `tests/Parchwell.Kafka.Tests/Statistics/KafkaStatisticsLateCaptureTests.cs`, trait `Category` `Unit`, named under docs/engineering/dotnet.md line 62.
+T1 and T3 are in class `KafkaStatisticsLateCaptureTests` (trait `Category` `Unit`) and T2 in class `KafkaStatisticsNativeLateCaptureTests` (trait `Category` `Native`), named under docs/engineering/dotnet.md line 62.
 
 Common inputs:
 - Where each test observes: on a session built the way production builds one, never on a helper called directly.
@@ -197,37 +218,44 @@ Common inputs:
 - Options for T1 and T3: `MaxSnapshotCharacters` 16384, `QueueCapacity` 8, `MaxBrokerSeries` 4, `CompletionTimeout` 5 s (`StatisticsTestSupport.Options`). T2: the same, with `CompletionTimeout` 20 s. Identity: scenario `A01`, run `run-test`, role `LoadGenProducer`, client ID `test-client` (T2: `client`).
 - Reports: `StatisticsTestSupport.Report("test-client", ts, ts - 9_000_000)`, one broker `broker/1`.
 - Clock: `ManualTimeProvider(initialTimestamp: 9_000_000)` (frequency 1000000 per second, from `StatisticsTestSupport.cs`), advanced 1 s before `CompleteAsync`, so the drain boundary is 10000000 us; advanced 1 ms after.
-- Holding sink: a test `IKafkaStatisticsEvidenceSink` that blocks its first and second qualifying writes until the test releases each, then records the report. In T2 a write qualifies only when the report's native `ts` is above a threshold armed after `CompleteAsync` returns; in T1 and T3 every write qualifies.
+- Holding sink: a test `IKafkaStatisticsEvidenceSink` that blocks its first and second qualifying writes until the test releases each, then records the report. A held write waits for its release for at most 5 s, then throws, so a failed test's disposal completes. In T2 a write qualifies only when the report's native `ts` is above a threshold armed after `CompleteAsync` returns; in T1 and T3 every write qualifies.
 - Capture-closed wait. The test delivers its late callback only after it has observed that completion closed capture. The technique is the implementer's choice, with two constraints:
   - the observation must not run ahead of the E1 close point, or a callback "after close" could still be admitted before it;
   - if the technique cannot find what it observes, the test fails; it never passes vacuously.
-  - Permitted example, used by the prototype: poll every 1 ms, under a 5 s watchdog, a reflection read of the session's private capture-open state, with the fix closing admission before that state changes. On `main` this is the only way found to observe the close without a new seam. Another permitted example is an internal observation hook; the test then cannot run on `main`, and mutation M1 is the evidence that it catches `main`'s behaviour.
-- Watchdog: every wait is bounded at 5 s (20 s for T2's completion).
+  - Permitted example, used by the prototype: poll every 1 ms, under a 5 s watchdog, a reflection read of the session's private capture-open state, with the fix closing admission before that state changes (I1). Another permitted example is an internal observation hook; the test then cannot run on `main`, and mutation M1 is the evidence that it catches `main`'s behaviour.
+  - Permitted example for T1, reflection-free, from the reproduction check (not rerun by this planner): after held write 2, call `Capture` repeatedly 1 ms apart, at most 5 probes, and count the test clock's timestamp reads on the calling thread. A probe that reads no clock was refused at admission, so capture has closed; the test fails with "did not close within five probes" otherwise. It assumes admission precedes the clock read, as T3 already does. The check observed: `main` 40 of 40 fail, its prototype 20 of 20 pass, and it kills M1, M2, M3, M5 and M10. Probe k (k from 1) uses ts 10000002+k, and the first refused probe is T1's late callback; no separate late capture is sent. A probe accepted before the close is queued and written, so with this technique T1's expected written list is the two pinned values, then the ts of each probe accepted before the first refused probe, in order; the first refused probe and anything after it are not written, and the expected diagnostics stay `""`.
+- Gate-free wait, T3 only. After the capture-closed wait and before resuming its admitted callback, T3 waits until no other thread holds the session's state gate, bounded at 5 s; if the wait cannot find the gate or times out, the test fails. Without it, the resumed callback can find the gate still held by the close and take the contention path (`capture_contention,capture_loss`), which made T3 fail 3 of 20 and 3 of 25 runs under load in the reproduction check. Permitted example, used by the prototype: reflect the session's private gate object and acquire and release it with a 5 s timeout. No reflection-free way was found.
+- Watchdog: every test wait, and every held sink write, is bounded at 5 s; T2's completion wait at 20 s. A failing test therefore fails within those bounds and its session disposal completes. Existing tests are unchanged and get no timeout.
 
 | Test | Covers | Input | Literal expected values |
 |---|---|---|---|
 | T1 `Given_CallbackAfterCaptureClosed_When_CompletionSeals_Then_CompletionStaysComplete`, cases `capture-only` and `inventory` | R1, E1, I3 | `capture-only`: `CompleteAsync(token)`; capture ts 10000001 (held write 1), capture ts 10000002 (queued before close), release 1; wait for held write 2; wait until capture closed; capture ts 10000003; release 2. `inventory`: `CompleteAsync(["broker/1"], token)`; first capture ts 9999999, second ts 10000001, otherwise the same | `string.Join(",", Diagnostics codes)` is `""`. `IsComplete` true. `MissingBrokers` empty. Sink wrote exactly ts `[10000001, 10000002]` (`capture-only`) or `[9999999, 10000001]` (`inventory`), in that order; ts 10000003 is not written. On `main`: `IsComplete` false, with diagnostics `capture_loss,late_capture` or `capture_contention,capture_loss` |
 | T2 `Given_RealProducerCallbackAfterCaptureClosed_When_CompletionSeals_Then_CompletionStaysComplete` | R1, E1, N1, N2 | Session from the production registration (above). Real `ProducerBuilder<byte[], byte[]>`: `bootstrap.servers` `127.0.0.1:1` (nothing listening), `client.id` `client`, `statistics.interval.ms` 100 (test only), no-op log and error handlers. Statistics handler: increment `started`, call `Capture`, increment `ended`. Wait for one written report; `CompleteAsync(token)`; arm the threshold at the current monotonic time in microseconds; wait for held write 1; wait for one more ended callback (queued before close); release 1; wait for held write 2; wait until capture closed; read `started`; wait until a callback started after that read has ended; release 2 | `string.Join(",", Diagnostics codes)` is `""`. `IsComplete` true. On `main`: `IsComplete` false (observed `capture_loss,late_capture`). Requires Linux, where `TimeProvider.System` and librdkafka `ts` share `CLOCK_MONOTONIC` (docs/operations/statistics-bridge.md lines 81-83); CI runs on `ubuntu-24.04` (`.github/workflows/dotnet-verification.yml` line 15) |
-| T3 `Given_CallbackAdmittedBeforeCaptureClosed_When_ItReachesGateAfterClose_Then_LossIsReported` | R2, I1 | Capture-only. A clock that pauses the next timestamp read, which `Capture` makes after admission and before the gate (on `main`, line 104; the implementer keeps a pause point between admission and the gate, or uses another permitted technique that holds an admitted call there). Capture ts 10000001 (held write 1); capture ts 10000002 (queued); pause next timestamp; start capture ts 10000003 on another thread and wait until it pauses (admitted before close); release 1; wait for held write 2; wait until capture closed; resume; wait for that capture to return; release 2 | `string.Join(",", Diagnostics codes)` is `"capture_loss,late_capture"`. `IsComplete` false. Sink wrote exactly ts `[10000001, 10000002]` |
+| T3 `Given_CallbackAdmittedBeforeCaptureClosed_When_ItReachesGateAfterClose_Then_LossIsReported` | R2, I1 | Capture-only. A clock that pauses the next timestamp read, which `Capture` makes after admission and before the gate (on `main`, line 104; the implementer keeps a pause point between admission and the gate, or uses another permitted technique that holds an admitted call there). Capture ts 10000001 (held write 1); capture ts 10000002 (queued); pause next timestamp; start capture ts 10000003 on another thread and wait until it pauses (admitted before close); release 1; wait for held write 2; wait until capture closed; wait until the gate is free; resume; wait for that capture to return; release 2 | `string.Join(",", Diagnostics codes)` is `"capture_loss,late_capture"`. `IsComplete` false. Sink wrote exactly ts `[10000001, 10000002]` |
 | Existing, unchanged | R3, R4, R5 | As on `main` | `KafkaStatisticsBoundaryTests.Given_CallbackPausesBeforeAdmissionGate_When_CompletionSeals_Then_ResultIncludesCaptureLoss` (2 cases): diagnostics exactly `capture_loss`. `KafkaStatisticsCaptureCompletionTests.Given_CallbackPausedBeforeGate_When_CompletionSeals_Then_ReturnedLossCannotBeRewritten`: diagnostics exactly `capture_loss`, unrevised after a later capture. `...Given_CaptureContendsWithCompletionGate_When_FreshReportFollows_Then_LossStaysLatched`: contains `capture_contention` and `capture_loss` |
 
 Boundaries: the change has one predicate, "admitted before capture closed". T1 and T2 test just after the close point; T3 and the in-flight tests test just before it; the existing completion tests test well before it. There is no numeric boundary.
 
-Why T2 cannot be fully deterministic: the late callback comes from librdkafka's own timer. The test waits for it, so a missing callback fails by watchdog, not by a false pass. The test waits for a callback whose handler started after the capture-closed observation, so that callback was admitted after the close.
+Why T2 cannot be fully deterministic: the late callback comes from librdkafka's own timer. The test waits for it, so a missing callback fails by watchdog, not by a false pass. The test waits for a callback whose handler started after the capture-closed observation, so that callback was admitted after the close. Residuals, each a false failure, never a false pass:
+- a callback admitted just before capture closes that reaches the gate after it records capture loss and fails the test. Not observed in 60 runs (reproduction check) nor in this planner's 20 runs of the Revision 3 class;
+- librdkafka may emit a statistics report with a duplicate broker key against the unreachable bootstrap address (decision 6754092685). The session then records `duplicate_property` (or, in one recorded case, `invalid_or_missing_field`), and T2's literal `""` fails. Not observed in this planner's T2 runs (20 on `main` and 20 on the prototype at Revision 3, and the Revision 1 and 2 runs).
+- Proposed treatment, the same as decisions 6754092685 and 6754970055 gave their real-client tests: T2 also accepts an incomplete completion whose diagnostics contain `duplicate_property` or `invalid_or_missing_field` (the second labelled "cause not identified") and no other code, records it as an accepted outcome and not a pass of R1, and the kill sets of M1, M2 and M3 already include the deterministic T1. This is a test-technique choice for the control session under standing rule 1; until it decides, T2 asserts the literal `""`.
 
 ### 9.1 Observed on the prototype
 
-The prototype is a scratch worktree of `main` with the fix (source SHA-256, with E3 applied, `18136698a36fcc102668c062a729d611f0375b0bc36349e3c625b7e772f7c7df`; test file SHA-256 `ea16169bca71ec64fa6d1b04c06ead15ef44784c5312d8c86d9dec65a5662064`). Nothing was committed.
+The prototype is a scratch worktree of `main` with the fix. Source SHA-256, with E3 applied, `18136698a36fcc102668c062a729d611f0375b0bc36349e3c625b7e772f7c7df`. Revision 3 test files, SHA-256: `KafkaStatisticsLateCaptureTests.cs` `f38662bd2debaae4afa544476d69666e6f50bd7bb4f932e048d5964631defebb`, `KafkaStatisticsNativeLateCaptureTests.cs` `e6d75ffbcc62bea022623a7958607d3fce719703ea1268e2351a51b3b4434e11`, helper file `LateCaptureTestSupport.cs` `b45d29442af6a597ee90ec9dbf9ab165f9558e818dcadbab6ae5152b96e2b756`. Nothing was committed.
 
-- `main` plus the new test file: T1 (both cases) and T2 fail and T3 passes, in 20 of 20 runs; diagnostics as counted in section 2.
-- Prototype: all 4 pass, in 50 of 50 runs.
-- Prototype, namespace `Parchwell.Kafka.Tests.Statistics`: 99 passed of 99, in about 5 s.
-- In Revision 1's prototype, which set its close flag just after the capture-open state changed, 40 of 40 runs passed. Revision 2's order removes the window that `main`'s 2 contention runs show such an observation can hit.
-- T2 took 529 to 580 ms in the runs that printed a duration (Revision 1 runs).
+Revision 3 tests, counted by script; "under load" means 4 busy-loop processes on this 4-core workspace for the whole run:
+
+- `main`, `KafkaStatisticsLateCaptureTests`, 25 runs under load: T1 `capture-only` failed 25 times with `capture_loss,late_capture`; T1 `inventory` failed 24 times with `capture_loss,late_capture` and once with `capture_contention,capture_loss`; T3 passed 25 times.
+- `main`, `KafkaStatisticsNativeLateCaptureTests`, 20 runs: T2 failed 20 times with `capture_loss,late_capture`.
+- Prototype, `KafkaStatisticsLateCaptureTests`, 25 runs under load: all 3 passed every time.
+- Prototype, `KafkaStatisticsNativeLateCaptureTests`, 20 runs: T2 passed every time.
+- Earlier revisions, for the record: Revision 2's single class passed 50 of 50 runs on the prototype; T2 took 529 to 580 ms in the Revision 1 runs that printed a duration.
 
 ### 9.2 Mutations
 
-Each mutation is scratch only, applied one at a time to the prototype source and restored byte-identical afterwards (SHA-256 checked). Killers are the tests that failed in the namespace `Parchwell.Kafka.Tests.Statistics` (99 tests), observed in this session on the Revision 2 tests.
+Each mutation is scratch only, applied one at a time to the prototype source and restored byte-identical afterwards (SHA-256 checked). Each mutant was run one test class at a time, every class in `tests/Parchwell.Kafka.Tests/Statistics/`, with `timeout 240 dotnet test --project tests/Parchwell.Kafka.Tests --configuration Release --no-build -- --filter-class Parchwell.Kafka.Tests.Statistics.<Class>`. Exit 124 is recorded as "killed by hang". Observed in this session on the Revision 3 tests.
 
 | Id | Requirement | Mutation | Killed by (observed) |
 |---|---|---|---|
@@ -235,11 +263,14 @@ Each mutation is scratch only, applied one at a time to the prototype source and
 | M2 | R1 | A call after capture closes adds `late_capture` | T1 both cases, T2 |
 | M3 | R1 | A call after capture closes records capture loss | T1 both cases, T2 |
 | M4 | R2 | A call refused at the gate after close records no capture loss | T3 |
-| M5 | I1 | Admission closes when completion starts instead of at the E1 point | T1 both cases, T2, T3 (class run: 4 of 4 failed). The namespace run did not finish within 300 s: an existing test has no watchdog and waits for coverage that never comes. Recorded as a hang, not a pass |
+| M5 | I1 | Admission closes when completion starts instead of at the E1 point | T1 both cases, T2, T3; 4 `KafkaStatisticsBoundaryTests` and 19 `KafkaStatisticsCaptureCompletionTests` cases; killed by hang: `KafkaStatisticsCounterTests`, `KafkaStatisticsLifetimeTests`, `KafkaStatisticsSessionTests` |
 | M6 | R3, I2 | The seal no longer marks calls in flight as lost | `Given_CallbackPausesBeforeAdmissionGate_When_CompletionSeals_Then_ResultIncludesCaptureLoss` (2 cases), `Given_CallbackPausedBeforeGate_When_CompletionSeals_Then_ReturnedLossCannotBeRewritten` |
 | M7 | R4 | Contention records no capture loss | `Given_CaptureContendsWithCompletionGate_When_FreshReportFollows_Then_LossStaysLatched` |
+| M8 | I1 | Admission closes after the gate section that closes capture, not inside it | Survives; review-only. No test can observe the order (I1). The cold review checks it |
+| M9 | R2, Q1 option C | A call admitted before close and refused at the gate after close is dropped silently (no loss, no `late_capture`) | T3 only |
+| M10 | I1 | The closed state is shared by every session (static) | T1 `inventory`, T3, 3 `KafkaStatisticsBoundaryTests` cases, 18 `KafkaStatisticsCaptureCompletionTests` cases, 1 `KafkaStatisticsCounterTests` case; killed by hang: `KafkaStatisticsLifetimeTests`, `KafkaStatisticsSessionTests` |
 
-The receipt records the same table from the implementer's own run.
+The receipt records the same table from the implementer's own run. M10 needed one extra line in the mutant (an instance read) so the analyzers accept it; that line has no behaviour.
 
 ## 10. Deployment assumptions
 
@@ -250,13 +281,13 @@ None. The change is in-process logic in one class. Which thread, library build o
 Run from the repository root with .NET SDK 10.0.402. Each was run in this planning session on the prototype unless marked `main`.
 
 1. `dotnet build Parchwell.slnx --configuration Release` (inside `./scripts/verify-dotnet.sh`). Evidence: 0 warnings, 0 errors.
-2. On `main` with only the new test file added: `dotnet test --project tests/Parchwell.Kafka.Tests --configuration Release --no-build -- --filter-class Parchwell.Kafka.Tests.Statistics.KafkaStatisticsLateCaptureTests`. Evidence, observed: `total: 4`, `failed: 3`, `succeeded: 1`; each failure shows `Actual: "capture_loss,late_capture"`. The receipt records the same from a scratch checkout of `main`.
-3. The same command on the branch, 20 times. Evidence, observed: 20 of 20 runs `failed: 0`, `succeeded: 4`.
-4. `dotnet test --project tests/Parchwell.Kafka.Tests --configuration Release --no-build -- --filter-namespace Parchwell.Kafka.Tests.Statistics`. Evidence, observed: `total: 99`, `failed: 0`.
+2. On `main` with only the new test files added, 25 times under load: `dotnet test --project tests/Parchwell.Kafka.Tests --configuration Release --no-build -- --filter-class Parchwell.Kafka.Tests.Statistics.KafkaStatisticsLateCaptureTests`, and 20 times the same with `KafkaStatisticsNativeLateCaptureTests`. Evidence, observed: as in 9.1; T1 and T2 fail every run with `IsComplete` false; T3 passes every run.
+3. The same two commands on the branch, 25 and 20 times. Evidence, observed: every run `failed: 0`.
+4. `dotnet test --project tests/Parchwell.Kafka.Tests --configuration Release --no-build -- --filter-namespace Parchwell.Kafka.Tests.Statistics`. Evidence, observed on the Revision 3 tests: `total: 99`, `failed: 0`.
 5. `./scripts/verify-dotnet.sh`. Evidence: every step passes, on a workspace with a Docker daemon (CI has one). Observed in this session: section 11.1.
 6. `npm run check:docs`. Evidence: `docs/operations/statistics-bridge.md: no issues found`. Observed: section 11.1.
-7. `git diff --name-only origin/main...HEAD`. Evidence: exactly the four paths of 4.1 (the receipt and state file count as item 4).
-8. The mutation table of 9.2, run by the implementer, each killed by the listed tests.
+7. `git diff --name-only origin/main...HEAD`. Evidence: only paths that 4.1 allows: the session source, `statistics-bridge.md`, the new test files under `tests/Parchwell.Kafka.Tests/Statistics/`, the state file and the receipt.
+8. The mutation table of 9.2, run by the implementer with the per-class command of 9.2, each mutant except M8 killed by the listed tests.
 
 ### 11.1 Observed results of commands 5 and 6
 
@@ -272,11 +303,11 @@ This workspace has no Docker daemon (`docker info` exit 1). Every test that fail
 
 ## 12. Plan-check questions (factory.md "Item lifecycle" step 1)
 
-(a) Effort that scales with a runtime count: none. The mutation list is fixed at 7, the repetition count at 20 runs, and every test wait has a watchdog.
+(a) Effort that scales with a runtime count: none. The mutation list is fixed at 10. The repetition counts are fixed: 25 runs of `KafkaStatisticsLateCaptureTests` and 20 of `KafkaStatisticsNativeLateCaptureTests`. Every test wait and held sink write is bounded at 5 s, T2's completion at 20 s. Each mutation run is one test class at a time under `timeout 240`; its exhaustion action is to record "killed by hang" for that class and continue.
 
 (b) Stricter than the parent: the item plan does not cover this pull request; decision 6752059755 is its authority. The plan is stricter than that decision in one place: it requires T3 and the existing loss tests to stay green, so the fix cannot hide a real gap. The decision says "rather than accept it" and does not define benign; Q1 asks Hari.
 
-(c) Dependencies not on `main` or in this pull request: none for the tests. The successor fix's live-completion path (N7) is not on `main`; this plan's tests do not depend on it.
+(c) Dependencies not on `main` or in this pull request: none for T1 and T3. T2 depends on the librdkafka build bundled with the pinned Confluent.Kafka 2.16.0 (`Directory.Packages.props` line 9), checked by running it: its statistics callbacks arrive after capture closes in every run, and its duplicate-key behaviour is the residual in section 9. The successor fix's live-completion path (N7) is not on `main`; this plan's tests do not depend on it.
 
 ## 13. Sources
 
@@ -301,10 +332,9 @@ This workspace has no Docker daemon (`docker info` exit 1). Every test that fail
   - Q2-c. Admit reports without the gate, using an atomic admission state like the one this plan adds, and the queue's own thread safety (the channel allows multiple writers, lines 77-83). Cost, estimate on the same basis: a larger change to admission, close and disposal ordering, and new race tests for each; a separate pull request. This plan's close flag would be a building block for it, but this plan does not depend on that.
 - Q3. A residual false loss, unchanged. A callback that has already queued its report but not yet run its end-of-capture step (line 139) when the seal runs counts as in flight and gives `capture_loss`. Its window is a few instructions. It was not reproduced and its live probability is not measured. Leave it, or move the end-of-capture step inside the gate in this or a separate pull request.
 - Q4. E3 and E4 change contract wording in the public XML remarks and in docs/operations/statistics-bridge.md line 87. Approval of this plan approves that exact text.
-- Q5. Order. Order decision 6752454732 runs this pull request alongside the sequence unless "its plan shows a shared file with any of the three". The only shared file is `items/404/state.md`, which every implementing session must update (factory.md "Item state file"). Options:
-  - (a) The state file counts: this pull request joins the sequence after the successor fix, and is implemented on `main` after it merges, or stacked on it under decision 6752554218 point 2.
-  - (b) The state file does not count, because its lines are per-pull-request bookkeeping and a later merge rebases them without changing behaviour: this pull request runs alongside, on its own branch from `main`.
-  - Either way it touches no protected path, so standing decision 6752430614 point 4 lets the control session merge it under GOVERNANCE "Merge rule" in full, and decision 6752059755 requires it to merge before any further B10 trial. Planner's recommendation: (b). This is a sequencing choice, which standing rule 1 does not list; it is left to Hari or the control session as the authorities allow.
+Q5 (order) of Revision 2 is settled; see section 4.3.
+
+For the control session, not Hari: whether T2 takes the duplicate-key treatment proposed in section 9 (a test-technique choice under standing rule 1 of decision 6752430614).
 
 ## 15. Stop rule
 
@@ -313,5 +343,5 @@ The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when i
 - the successor fix, PR3a or the contention race fix, merged or in a newer plan revision, changes `KafkaStatisticsSession.cs`, `statistics-bridge.md`, `KafkaStatisticsLateCaptureTests.cs` or the diagnostic-code list the successor fix pins;
 - a newer revision of the successor fix's tests relies on a callback between capture close and the seal producing `late_capture` or `capture_loss`;
 - T1, T2 or T3 fails, or passes on `main`, in a way this plan does not predict;
-- any mutation of 9.2 survives;
+- any mutation of 9.2 other than M8 survives;
 - Hari answers Q1 with anything but A, or Q2 with anything but Q2-a.
