@@ -19,4 +19,3 @@ internal sealed record ChildCommand(string FileName, IReadOnlyList<string> Argum
         return new(expected, ["--b10-abrupt-child"], new Dictionary<string, string>());
     }
 }
-

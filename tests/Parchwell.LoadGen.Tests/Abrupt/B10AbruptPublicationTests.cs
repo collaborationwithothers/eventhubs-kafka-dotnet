@@ -68,6 +68,17 @@ public sealed class B10AbruptPublicationTests
                 string name = change == "ledger_byte" ? "journal.jsonl" : "cross_restart-pre-acceptance-report.json";
                 if (change == "report_length") files[name] = [.. files[name], 0];
                 else { files[name] = (byte[])files[name].Clone(); files[name][0] ^= 1; }
+                if (change is "report_byte" or "report_length")
+                {
+                    JsonObject manifest = JsonNode.Parse(files["abrupt-manifest.json"])!.AsObject();
+                    JsonNode descriptor = manifest["data"]!["report_files"]!.AsArray().Single(entry => entry!["name"]!.GetValue<string>() == name)!;
+                    descriptor["length"] = files[name].LongLength;
+                    descriptor["sha256"] = B10AbruptPublisher.Hash(files[name]);
+                    files["abrupt-manifest.json"] = JsonSerializer.SerializeToUtf8Bytes(manifest);
+                    JsonObject termination = JsonNode.Parse(files["termination.json"])!.AsObject();
+                    termination["data"]!["manifest"] = JsonSerializer.SerializeToNode(B10AbruptPublisher.Describe("abrupt-manifest.json", files["abrupt-manifest.json"]), B10AbruptWire.JsonOptions);
+                    files["termination.json"] = JsonSerializer.SerializeToUtf8Bytes(termination);
+                }
             }
             var storage = new RecordingStorage(); var publisher = new B10AbruptPublisher(storage, TimeProvider.System);
             var identity = Identity(root);

@@ -1,5 +1,5 @@
 # State: #404 B10 restart-pair attribution
-Covers: comment 6776685705 created 2026-11-10T19:09:43Z; read at 2026-11-10T19:41:48Z
+Covers: comment 6777482103 created 2026-11-10T19:44:30Z; read at 2026-11-10T19:55:03Z
 Parent items: [#348](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/348), [#347](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/347)
 Item plan: [Revision 5](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6705594392)
 Implementing tool: Codex for B10 restart execution part 1. Source: [decision 6774981258](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6774981258), Q2.
@@ -42,4 +42,4 @@ Decisions in force:
 - Require the diagnostic flag present and true for either new abrupt mode through one additional schema allOf entry, exempt from the freeze; add false/absent flag render rejection tests. Everything else stands. Source: [decision 6776685705](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6776685705)
 Open questions:
 - None
-Next action: Continue execution part 1 in the next session after its 20-root-cause verification cap was exhausted: apply the two identified fixture fixes and M10 input isolation, freeze source, complete mandatory verification and reviews, then hand the ready pull request to Hari for merge. See [execution receipt](execution-loadgen-receipt.md). No pull request exists. Part 2 needs its own approved plan; the offline test remains held and PR3b paused. No trial or dispatch is authorized.
+Next action: The fresh execution part 1 continuation starts from backup `1b7ef642dcf28fe05d4c58c1a28409d2b84b1f12` and [handoff 6777482103](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6777482103): verify the applied fixture corrections and M10 input isolation on a frozen source, complete mandatory acceptance/mutation gates and reviews, then hand the ready pull request to Hari for merge. See [execution receipt](execution-loadgen-receipt.md). The previous run's 20-cause ledger is preserved; this continuation has zero new verification-failure causes and two known carryovers. Cumulative cold reviews consumed: zero comprehensive and zero focused. No pull request exists. Part 2 needs its own approved plan; the offline test remains held and PR3b paused. No trial or dispatch is authorized.

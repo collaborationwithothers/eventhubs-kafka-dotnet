@@ -47,7 +47,7 @@ internal static class B10AbruptProcessHarness
                 local.BootstrapServers = control.BootstrapServers;
                 local.SecurityProtocol = SecurityProtocol.Plaintext;
                 local.SaslMechanism = null;
-                local.Set("sasl.oauthbearer.config", null!);
+                local.SaslOauthbearerConfig = null;
                 return new ProducerBuilder<byte[], byte[]>(local).SetStatisticsHandler(statistics).SetErrorHandler(error).Build();
             }
             IProducer<byte[], byte[]> producer = DispatchProxy.Create<IProducer<byte[], byte[]>, RecordingProducer>();
@@ -99,10 +99,12 @@ internal static class B10AbruptProcessHarness
         private readonly List<Action<DeliveryReport<byte[], byte[]>>> pending = [];
         private Timer? reports;
         private TimeProvider clock = TimeProvider.System;
+        private long producerCreatedMicroseconds;
         internal void Initialize(string output, Control setup, IProducer<byte[], byte[]> producer,
             Action<IProducer<byte[], byte[]>, string> statistics, TimeProvider timeProvider)
         {
             directory = output; control = setup; clock = timeProvider;
+            producerCreatedMicroseconds = checked((long)((Int128)clock.GetTimestamp() * 1000000 / clock.TimestampFrequency));
             reports = new Timer(_ => statistics(producer, RawStatistics()), null, TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(20));
         }
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
@@ -168,7 +170,7 @@ internal static class B10AbruptProcessHarness
             return JsonSerializer.Serialize(new
             {
                 name = "synthetic-native", client_id = Environment.GetEnvironmentVariable("B10Abrupt__PodName"), type = "producer",
-                ts = micros, time = clock.GetUtcNow().ToUnixTimeSeconds(), age = micros,
+                ts = micros, time = clock.GetUtcNow().ToUnixTimeSeconds(), age = micros - producerCreatedMicroseconds,
                 brokers = new Dictionary<string, object>
                 {
                     ["broker"] = new { name = "broker", nodeid = 0, source = "learned", state = "UP", stateage = 0,
