@@ -17,6 +17,18 @@ internal enum B10AbruptFact
     IdCount, NotAcceptedCount, NoTerminalCount, UnknownAttempt, RawMatches, ReportLength, FileLength, ReportSequence,
     ScenarioMatches, RunMatches, RoleMatches, ClientIdPresent, UtcValid, ExitCode, CleanupFailed, FrameCount,
     TimeoutSealed, ControlSealed, KillAdmitted, ProbeCount, PlannedCount, MaximumRetries, MaximumAttempts, LatenessMicroseconds, MaximumLatenessMicroseconds, PayloadLength, MaximumPayloadBytes, PreviousCount, PredecessorMatches, PreviousAccepted, ArmKnown, NameIndex, CapturedPresent, FileExists, ExpectedCount, OutstandingCount, ReportCount, SnapshotCount, AfterDrainUtcCount, AfterNativeBoundaryCount, ExpectedBrokersCount, QualifyingBrokersCount, DrainBoundaryMatches, Overflow, Faulted, FaultReason, EvidenceFaulted, GuardObservationsComplete, NativeErrorObserved, GuardFailed, GuardReason, ExpectedBrokersObserved, KeyMatches, SequenceInBurst, PayloadWithinLimit, InstanceDistinct, ArrayLength, AdmittedCount, RetryAdmittedCount, DeliveredCount, TimedOutCount, SynchronousRejectionCount, OtherErrorCount, ProduceToAcceptedMilliseconds, ProduceToTerminalMilliseconds, CompletionComplete, SchemaMatches, SourceMatches, SourceCommitMatches, ConfigurationMatches, BrokerCount, BlankCount, DistinctCount, KindMatches, GapPresent, ClientIdMatches, LineLength, ProduceTicks, CallbackTicks,
+    MissingBrokerCount, DiagnosticCount,
+    DiagnosticClockUnverified, DiagnosticLateCapture, DiagnosticCaptureContention,
+    DiagnosticOversizedSnapshot, DiagnosticCaptureQueueOverflow, DiagnosticDisposedBeforeCompletion,
+    DiagnosticCompletionCancelled, DiagnosticSinkDrainTimeout, DiagnosticCompletionTimeout,
+    DiagnosticDisposedDuringCompletion, DiagnosticAbandonedWithoutCompletion, DiagnosticProcessingFailure,
+    DiagnosticMetricsRecordingFailure, DiagnosticEvidenceDeliveryCancelled, DiagnosticEvidenceSinkFailure,
+    DiagnosticClientIdMismatch, DiagnosticClientTypeMismatch, DiagnosticClientNameChanged,
+    DiagnosticNonIncreasingTimestamp, DiagnosticClientInstanceChanged, DiagnosticLateAttachment,
+    DiagnosticFutureNativeTimestamp, DiagnosticBrokerSeriesLimitExceeded, DiagnosticCounterReset,
+    DiagnosticCaptureLoss, DiagnosticWorkerCancellationFailure, DiagnosticInvalidJson,
+    DiagnosticDuplicateProperty, DiagnosticInvalidRoot, DiagnosticInvalidOrMissingField,
+    DiagnosticBrokerNameMismatch,
 }
 
 internal enum B10AbruptStage
@@ -36,7 +48,7 @@ internal readonly record struct B10AbruptChildBurstMember(long BurstIndex, long 
 
 internal static class B10AbruptDiagnostics
 {
-    internal const int MaximumChainDepth = 8, MaximumSiteFacts = 16, MaximumStageFacts = 8, MaximumTimelineEntries = 48;
+    internal const int MaximumChainDepth = 8, MaximumSiteFacts = 35, MaximumStageFacts = 8, MaximumTimelineEntries = 48;
     internal sealed record Site(string File, string Member, int Line, ImmutableArray<B10AbruptFactValue> Facts);
     internal sealed record ChainEntry(string ExceptionType, string? ThrowerType, string? ThrowerMethod);
     internal sealed record Chain(IReadOnlyList<ChainEntry> Entries, bool Truncated);
