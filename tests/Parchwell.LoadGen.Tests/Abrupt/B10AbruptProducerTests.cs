@@ -241,7 +241,7 @@ public sealed class B10AbruptProducerTests
     {
         for (int iteration = 0; iteration < 1000; iteration++)
         {
-            await using var fixture = new Fixture();
+            await using var fixture = Fixture.ForCutRace();
             Task? racing = null;
             int originals = 0;
             fixture.Native.OnProduce = (message, callback) =>
@@ -259,7 +259,7 @@ public sealed class B10AbruptProducerTests
                 }
                 else { callback(Report()); fixture.Journal.DrainAvailable().GetAwaiter().GetResult(); }
             };
-            fixture.StartReports();
+            fixture.StartReports(advanceClock: false);
             int result;
             try { result = await fixture.Runner.RunFirstAsync(Profile(), fixture.Identity, fixture.Options, TestContext.Current.CancellationToken); }
             catch (SimulatedDeathException) { result = 137; }
@@ -818,6 +818,14 @@ public sealed class B10AbruptProducerTests
             Runner = new(() => { Constructions++; return native; }, Clock, Statistics, Journal, diagnosticIdentity: wireIdentity,
                 timeline: timeline, selfKill: () => { AtKill(); throw new SimulatedDeathException(); }, exit: code => Exits.Add(code));
         }
+        internal static Fixture ForCutRace()
+        {
+            var clock = new CutRaceClock();
+            var fixture = new Fixture(clock: clock);
+            clock.ReleaseUtc = () => fixture.Journal.Frames.LastOrDefault(frame => frame.Kind == "cut") is { } cut
+                ? DateTimeOffset.Parse(cut.Data.GetProperty("release_utc").GetString()!, CultureInfo.InvariantCulture) : null;
+            return fixture;
+        }
         internal void Initialize()
         {
             Journal.AppendAsync("child_started", B10AbruptWire.Element(new { pid = Environment.ProcessId, start_time_ticks = B10AbruptProc.ReadStartTimeTicks(B10AbruptProc.ReadBounded("/proc/self/stat")), boot_id = B10AbruptProc.ReadBootId() })).GetAwaiter().GetResult();
@@ -853,16 +861,17 @@ public sealed class B10AbruptProducerTests
                 BeforeAdvanceRelease = () => { pending!(Report()); originalCompleted = true; Journal.DrainAvailable().GetAwaiter().GetResult(); };
         }
         private Action? BeforeAdvanceRelease { get; set; }
-        internal void StartReports() => reportTask = Task.Run(async () =>
+        internal void StartReports(bool advanceClock = true) => reportTask = Task.Run(async () =>
         {
             try
             {
                 bool released = false;
                 while (!reportStop.IsCancellationRequested)
                 {
-                    Advancing.Advance(TimeSpan.FromMilliseconds(10)); Observe();
+                    if (advanceClock) Advancing.Advance(TimeSpan.FromMilliseconds(10));
+                    Observe();
                     B10AbruptWire.Frame? cut = Journal.Frames.LastOrDefault(frame => frame.Kind == "cut");
-                    if (!released && cut is not null)
+                    if (advanceClock && !released && cut is not null)
                     {
                         released = true; BeforeAdvanceRelease?.Invoke();
                         Advancing.AdvanceTo(DateTimeOffset.Parse(cut.Data.GetProperty("release_utc").GetString()!, CultureInfo.InvariantCulture));
@@ -879,6 +888,33 @@ public sealed class B10AbruptProducerTests
             await StopReportsAsync();
             await Journal.DisposeAsync(); reportStop.Dispose();
             if (Directory.Exists(Root)) Directory.Delete(Root, true);
+        }
+    }
+
+    private sealed class CutRaceClock : TimeProvider
+    {
+        private readonly DateTimeOffset initialUtc = TimeProvider.System.GetUtcNow();
+        private readonly long initialTimestamp = TimeProvider.System.GetTimestamp();
+        private long releaseOffset;
+        internal Func<DateTimeOffset?> ReleaseUtc { get; set; } = () => null;
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+        public override long GetTimestamp() => TimeProvider.System.GetElapsedTime(initialTimestamp).Ticks + Interlocked.Read(ref releaseOffset);
+        public override DateTimeOffset GetUtcNow() => initialUtc.AddTicks(GetTimestamp());
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            // Advance only the registered control-release wait. Ordinary pacing and the one-second
+            // deadlines use live system timers, so report scheduling cannot expire queued cleanup.
+            if (dueTime > TimeSpan.FromSeconds(1) && dueTime <= TimeSpan.FromSeconds(120) && ReleaseUtc() is { } release)
+            {
+                DateTimeOffset now = GetUtcNow();
+                // Task.Delay rounds its timer request down to whole milliseconds.
+                if (now < release && now + dueTime + TimeSpan.FromMilliseconds(1) >= release)
+                {
+                    Interlocked.Add(ref releaseOffset, (release - now).Ticks);
+                    dueTime = TimeSpan.Zero;
+                }
+            }
+            return TimeProvider.System.CreateTimer(callback, state, dueTime, period);
         }
     }
 
