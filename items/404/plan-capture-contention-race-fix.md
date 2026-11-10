@@ -1,10 +1,12 @@
 # Capture contention race fix contract-grade plan
 
-Revision 2. Issue #404, pull request short name `capture contention race fix`. Implementing tool: Claude Code, under [standing decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614) point 3, which replaces Codex for this pull request. Planned and reproduced against `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`, the source of diagnostic trial 7. Implemented second, after the successor fix ([order decision 6752454732](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752454732)), on `main` after it merges or stacked on its unmerged head ([decision 6752554218](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752554218) point 2), and rechecked against it under the stop rule (section 15).
+Revision 3. Issue #404, pull request short name `capture contention race fix`. Implementing tool: Claude Code, under [standing decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614) point 3, which replaces Codex for this pull request. Planned and reproduced against `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`, the source of diagnostic trial 7. Implemented second, after the successor fix ([order decision 6752454732](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752454732)), on `main` after it merges or stacked on its unmerged head ([decision 6752554218](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752554218) point 2), and rechecked against it under the stop rule (section 15).
 
 The B10 abrupt producer's statistics adapter records each native statistics report on the callback thread, but only if it wins a non-waiting try for its lock. When another thread holds that lock, for example the 10 ms post-drain poll, the report's record is skipped and the adapter's guard fails with guard reason 3. This pull request lets the callback thread record the report without that lock, so nothing is skipped and the order is kept. It changes one source file and adds one test class. It changes no protocol sequence, gate, policy value, timeout, interval, failure name, fact name, stage name or wire member, and it authorizes no trial.
 
-Changes since Revision 1 (commit `c30bb3a624c55d942d6624921dbf942877199a0a`), answering the fresh reproduction check of Revision 1 relayed by the issue-347 control session:
+Changes since Revision 2 (commit `db29ee5c62a11b5b66ab526571461cb6373fc44c`), the two minor corrections of the Revision 2 reproduction check ("Reproduction: pass"), relayed by the issue-347 control session: m4, section 12 cites the sibling plans at `5eaa316`; m5, section 12 adds `KafkaStatisticsParser.cs`, cited for T7 outcome B. Nothing else changed.
+
+Changes in Revision 2 since Revision 1 (commit `c30bb3a624c55d942d6624921dbf942877199a0a`), answering the fresh reproduction check of Revision 1 relayed by the issue-347 control session:
 
 - B1: T7 also accepts guard reason 7 with `duplicate_property` or `invalid_or_missing_field` in the completion diagnostics ([decision 6754092685](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6754092685) point 1); the masking cost is recorded; the duplicate-key deployment assumption is added (DA2); the stop-rule bullet on reason 7 follows.
 - B2: acceptance command 7 no longer runs the architecture tests directly, which fails on `main` without the manifests that `scripts/verify-dotnet.sh` prepares; its result is pinned inside command 8.
@@ -299,6 +301,7 @@ Files on `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`:
 - `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptHost.cs`: lines 222-233.
 - `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptDiagnostics.cs`: lines 39-55, 74-84.
 - `src/Parchwell.Kafka/Statistics/KafkaStatisticsSession.cs`: lines 77-141, 320-440.
+- `src/Parchwell.Kafka/Statistics/KafkaStatisticsParser.cs`: lines 48-50 and 233-265 (duplicate-key rejection, `duplicate_property`; cited for T7 outcome B).
 - `src/Parchwell.LoadGen/Run/Execution/RunEvidenceSinkRouter.cs`.
 - `src/Parchwell.Kafka/Statistics/KafkaStatisticsBridgeFactory.cs`: lines 26-47.
 - `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptProducerTests.cs`: lines 26, 438, 586-636, 1213-1229.
@@ -310,7 +313,7 @@ Files on `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`:
 Other sources:
 
 - The seven trial artifacts and log hashes in section 6.
-- `items/404/plan-successor-fix.md` and `items/404/plan-pr3a-evidence-completeness.md` on `claude/404-plan` at `acadeaa`, for section 13.
+- `items/404/plan-successor-fix.md` and `items/404/plan-pr3a-evidence-completeness.md` on `claude/404-plan` at `5eaa316`, for section 13.
 
 Notes:
 
