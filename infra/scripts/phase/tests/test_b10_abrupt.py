@@ -373,11 +373,28 @@ class ProducedBytesCases(Setup):
                  'termination status': termination(fatal_capture_status='not_implemented_pr3'),
                  'termination count': termination(native_error_count=count + 1),
                  'seal count above journal': seal, 'sequence gap': gap}
-        for label, edit in cases.items():
-            with self.subTest(label=label), self.assertRaises(ValueError):
-                self.trial.accept_diagnostic_publication(self.observation, self.rebound(edit))
-        # Each mutation, applied to the checker's input, is the only difference from an accepted publication.
+        # The unchanged input is accepted, so each case below differs from it in exactly one way.
         self.trial.accept_diagnostic_publication(self.observation, self.rebound(lambda objects, lines: None))
+        for label, edit in cases.items():
+            files = self.rebound(edit)
+            with self.subTest(label=label), self.assertRaisesRegex(ValueError, '^b10_abrupt_publication_failed$'):
+                self.trial.accept_diagnostic_publication(self.observation, files)
+            state = self.p.state()
+            state.pop('b10_abrupt_started', None)
+            state.update(b10_abrupt_gaps=[], b10_abrupt_diagnostics=[])
+            self.p.save_state(state)
+            with self.subTest(label=label, recorded=True), \
+                 patch.object(self.p, 'b10_deadline', return_value=time.monotonic() + 18000), \
+                 patch.object(self.p, 'run_mode', return_value={'outcome': 'complete'}), \
+                 patch.object(self.trial, 'metadata', return_value=None), \
+                 patch.object(self.trial, 'job', return_value={**self.record, 'outcome': 'complete'}), \
+                 patch.object(self.trial, 'observe_first_termination', return_value=self.observation), \
+                 patch.object(self.trial, 'download', return_value=files), \
+                 patch.object(self.trial, 'release_successor') as release:
+                self.assertEqual(1, self.trial.run())
+                release.assert_not_called()
+                self.assertEqual(['b10_abrupt_publication_failed'], self.p.state()['b10_abrupt_gaps'])
+                self.assertEqual('first_publication', self.p.state()['b10_abrupt_diagnostics'][0]['boundary'])
 
     def test_produced_cohort_collection(self):
         self.produced()

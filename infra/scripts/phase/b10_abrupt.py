@@ -560,7 +560,7 @@ class Trial:
         if any(type(data['capture_sequence']) is not int or type(data['is_fatal']) is not bool for data in natives):
             raise ValueError('b10_abrupt_publication_failed')
         if [data['capture_sequence'] for data in natives] != list(range(1, count + 1)):
-            raise ValueError('b10_abrupt_capture_gap')
+            raise ValueError('b10_abrupt_publication_failed')
         fatal = sum(1 for data in natives if data['is_fatal'])
         if (type(termination['native_error_count']) is not int or termination['native_error_count'] != count
                 or type(termination['native_fatal_count']) is not int or termination['native_fatal_count'] != fatal):
