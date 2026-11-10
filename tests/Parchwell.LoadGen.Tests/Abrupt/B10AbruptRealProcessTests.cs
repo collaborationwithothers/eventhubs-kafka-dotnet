@@ -9,6 +9,7 @@ namespace Parchwell.LoadGen.Tests.Abrupt;
 
 #pragma warning disable CA1707 // Binding engineering standards require Given_When_Then names.
 
+[Collection("B10AbruptEnvironment")]
 public sealed class B10AbruptRealProcessTests(ITestOutputHelper output)
 {
     [Fact]

@@ -354,6 +354,115 @@ class ProducedBytesCases(Setup):
         self.change_record(lines, kind, **changes)
         files['journal.jsonl'] = b'\n'.join(lines) + b'\n'
 
+    def terminal_publication(self, edit):
+        """Edit one completed control original without changing either selected set."""
+        def change(_objects, lines):
+            frames = [abrupt.decode(line) for line in lines]
+            original = next(frame for frame in frames if frame['kind'] == 'prepared'
+                            and frame['data']['arm'] == 'same_instance' and frame['data']['role'] == 'original'
+                            and frame['data']['ordinal'] == 0)
+            attempt = original['data']['attempt_id']
+            terminal = next(frame for frame in frames if frame['kind'] == 'terminal' and frame['data']['attempt_id'] == attempt)
+            accepted = next(frame for frame in frames if frame['kind'] == 'accepted' and frame['data']['attempt_id'] == attempt)
+            self.assertNotIn(attempt, _objects['termination.json']['data']['control_unconfirmed_attempt_ids'])
+            self.assertNotIn(attempt, _objects['termination.json']['data']['kill_unconfirmed_attempt_ids'])
+            edit(frames, terminal, accepted)
+            prepared = {frame['data']['attempt_id']: sequence for sequence, frame in enumerate(frames, 1)
+                        if frame['kind'] == 'prepared'}
+            for sequence, frame in enumerate(frames, 1):
+                frame['sequence'] = sequence
+                if frame['kind'] in ('accepted', 'synchronous_rejection'):
+                    frame['data']['prepared_sequence'] = prepared[frame['data']['attempt_id']]
+            lines[:] = [abrupt.encode(frame) for frame in frames]
+        return self.rebound(change)
+
+    def test_produced_terminal_tuples_require_permitted_state(self):
+        self.produced()
+        # The first nine vectors retain the independent delivered input of the C# supervisor theory.
+        cases = [(0, 2, True, True), (0, 0, True, True), (0, 1, True, False),
+                 (-192, 0, False, True), (-192, 1, False, True), (-192, 1, True, False),
+                 (-192, 2, False, False), (-195, 1, False, False), (0, None, True, False),
+                 (0, 2, False, False), (0, -1, True, False), (0, 3, True, False)]
+        for code, status, delivered, permitted in cases:
+            files = self.terminal_publication(lambda _frames, terminal, _accepted:
+                terminal['data'].update(error_code=code, persistence_status=status, delivered=delivered))
+            with self.subTest(code=code, status=status, delivered=delivered):
+                if permitted:
+                    self.trial.accept_diagnostic_publication(self.observation, files)
+                else:
+                    with self.assertRaisesRegex(ValueError, '^b10_abrupt_guard_failed$'):
+                        self.trial.accept_diagnostic_publication(self.observation, files)
+
+    def test_produced_terminal_fields_require_strict_types(self):
+        self.produced()
+        cases = [('error_code', False, 'diagnostic data types'),
+                 ('error_code', 0.0, 'diagnostic data types'),
+                 ('error_code', '0', 'diagnostic data types'),
+                 ('error_code', None, 'diagnostic data types'),
+                 ('error_code', -2147483649, 'diagnostic data types'),
+                 ('error_code', 2147483648, 'diagnostic data types'),
+                 ('error_code', -2147483648, 'b10_abrupt_guard_failed'),
+                 ('error_code', 2147483647, 'b10_abrupt_guard_failed'),
+                 ('persistence_status', False, 'terminal binding'),
+                 ('persistence_status', 0.0, 'terminal binding'),
+                 ('persistence_status', '0', 'terminal binding'),
+                 ('persistence_status', -2147483649, 'terminal binding'),
+                 ('persistence_status', 2147483648, 'terminal binding'),
+                 ('persistence_status', -2147483648, 'b10_abrupt_guard_failed'),
+                 ('persistence_status', 2147483647, 'b10_abrupt_guard_failed'),
+                 ('delivered', 0, 'diagnostic data types'),
+                 ('delivered', 1, 'diagnostic data types'),
+                 ('delivered', None, 'diagnostic data types'),
+                 ('delivered', 'true', 'diagnostic data types'),
+                 ('completion_source', '', 'diagnostic data types'),
+                 ('completion_source', 'flush', 'terminal binding')]
+        for field, value, error in cases:
+            files = self.terminal_publication(lambda _frames, terminal, _accepted: terminal['data'].update({field: value}))
+            with self.subTest(field=field, value=value), self.assertRaisesRegex(ValueError, '^' + error + '$'):
+                self.trial.accept_diagnostic_publication(self.observation, files)
+
+    def test_produced_terminal_relations_reconcile_eventual_acceptance(self):
+        self.produced()
+        def reorder(frames, terminal, accepted, before):
+            frames.remove(terminal)
+            frames.insert(frames.index(accepted) + (0 if before else 1), terminal)
+        for before in (True, False):
+            files = self.terminal_publication(lambda frames, terminal, accepted: reorder(frames, terminal, accepted, before))
+            with self.subTest(before_acceptance=before):
+                self.trial.accept_diagnostic_publication(self.observation, files)
+
+        def reject(frames, terminal, accepted, before):
+            accepted['kind'] = 'synchronous_rejection'
+            accepted['data'].update(error_code=-184, error_reason='synthetic rejection')
+            reorder(frames, terminal, accepted, not before)
+
+        def before_prepared(frames, terminal, accepted):
+            prepared = next(frame for frame in frames if frame['kind'] == 'prepared'
+                            and frame['data']['attempt_id'] == accepted['data']['attempt_id'])
+            frames.remove(terminal)
+            frames.insert(frames.index(prepared), terminal)
+
+        cases = [('unknown prepared attempt', lambda _frames, terminal, _accepted:
+                    terminal['data'].update(attempt_id='synthetic-unprepared'), 'terminal binding'),
+                 ('terminal before prepared', before_prepared, 'terminal binding'),
+                 ('duplicate terminal', lambda frames, terminal, _accepted:
+                    frames.insert(frames.index(terminal) + 1, abrupt.decode(abrupt.encode(terminal))), 'terminal binding'),
+                 ('rejection before terminal', lambda frames, terminal, accepted:
+                    reject(frames, terminal, accepted, True), 'terminal binding'),
+                 ('rejection after terminal', lambda frames, terminal, accepted:
+                    reject(frames, terminal, accepted, False), 'terminal binding'),
+                 ('missing acceptance', lambda frames, _terminal, accepted:
+                    frames.remove(accepted), 'prepared acceptance binding')]
+        for label, edit, error in cases:
+            files = self.terminal_publication(edit)
+            with self.subTest(label=label), self.assertRaisesRegex(ValueError, '^' + error + '$'):
+                self.trial.accept_diagnostic_publication(self.observation, files)
+
+        def rejected_without_callback(frames, terminal, accepted):
+            reject(frames, terminal, accepted, True)
+            frames.remove(terminal)
+        self.trial.accept_diagnostic_publication(self.observation, self.terminal_publication(rejected_without_callback))
+
     @staticmethod
     def native_lines(lines, *captures):
         """Journal lines for native_error frames appended after the last frame; captures are (capture_sequence, is_fatal)."""

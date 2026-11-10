@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -186,7 +187,10 @@ public sealed class B10AbruptSupervisorTests
         {
             Exception cause = new InvalidOperationException("synthetic", B10AbruptDiagnosticsTests.HugeChain(7));
             var options = B10AbruptWireProducerTests.TestOptions(root);
-            var timeline = new B10AbruptTimeline(TimeProvider.System, "parent", null);
+            var clock = new StartupFailureClock(cause);
+            var parent = new B10AbruptParent(options, clock,
+                new B10AbruptPublisher(new B10AbruptWireProducerTests.FileStorage(Path.Combine(root, "storage")), clock));
+            var timeline = (B10AbruptTimeline)typeof(B10AbruptParent).GetField("timeline", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(parent)!;
             for (int index = 0; index < 48; index++) timeline.Hold(B10AbruptStage.FailureObserved,
                 Enum.GetValues<B10AbruptFact>().Take(8).Select(key => B10AbruptDiagnostics.Fact(key, long.MinValue)).ToArray());
             using var errors = new StringWriter(CultureInfo.InvariantCulture);
@@ -195,7 +199,9 @@ public sealed class B10AbruptSupervisorTests
             try
             {
                 Console.SetError(errors);
-                bytes = await B10AbruptDiagnostics.WriteFailureAsync(options, TimeProvider.System, cause, new Records().Read(), timeline);
+                clock.ThrowOnNextTimestamp = true;
+                Assert.Same(cause, await Assert.ThrowsAsync<InvalidOperationException>(() => parent.RunAsync(TestContext.Current.CancellationToken)));
+                bytes = await File.ReadAllBytesAsync(Path.Combine(root, "abrupt", "failure.json"), TestContext.Current.CancellationToken);
             }
             finally { Console.SetError(previous); }
             Assert.Equal(Encoding.UTF8.GetString(bytes) + Environment.NewLine, errors.ToString());
@@ -239,6 +245,8 @@ public sealed class B10AbruptSupervisorTests
             using var report = JsonDocument.Parse(bytes);
             var data = report.RootElement.GetProperty("data");
             B10AbruptWire.ExactMembers(data, "mechanical_status", "failure", "exception_type", "diagnostic", "process", "kill_requested", "has_exited", "capture_gaps", "arm_failures", "fatal_capture_status", "signal_observation", "cleanup", "startup_cleanup", "timeline");
+            Assert.Equal("b10_abrupt_guard_failed", data.GetProperty("failure").GetString());
+            Assert.Equal(typeof(InvalidDataException).FullName, data.GetProperty("exception_type").GetString());
             var cleanup = data.GetProperty("cleanup");
             B10AbruptWire.ExactMembers(cleanup, "arm", "failure", "signal_observation", "capture_failure", "failure_diagnostic", "capture_diagnostic");
             var reduced = cleanup.GetProperty(cause == "failure" ? "failure_diagnostic" : "capture_diagnostic");
@@ -268,25 +276,41 @@ public sealed class B10AbruptSupervisorTests
     }
 
     [Theory]
-    [InlineData("b10_abrupt_child_start_failed")]
-    [InlineData("b10_abrupt_signal_preflight_failed")]
-    public async Task Given_StartupThrows_When_SupervisorReports_Then_PreservesOriginalAndDoesNotRepeatOwnedCleanup(string failureName)
+    [InlineData("b10_abrupt_child_start_failed", false)]
+    [InlineData("b10_abrupt_child_start_failed", true)]
+    [InlineData("b10_abrupt_signal_preflight_failed", false)]
+    [InlineData("b10_abrupt_signal_preflight_failed", true)]
+    public async Task Given_StartupThrows_When_SupervisorReports_Then_PreservesOriginalAndDoesNotRepeatOwnedCleanup(string failureName, bool diagnosticCollision)
     {
         string root = Path.Combine(Path.GetTempPath(), "b10-startup-report-" + Guid.NewGuid().ToString("N"));
         try
         {
             var options = B10AbruptWireProducerTests.TestOptions(root);
-            var failure = new InvalidOperationException(failureName + ":private-startup-message /private/startup-path token=private-token");
+            var observation = new B10AbruptProcess.SignalObservation(0, -1, 13);
+            string message = failureName + ":private-startup-message /private/startup-path token=private-token";
+            Exception failure = failureName == "b10_abrupt_signal_preflight_failed"
+                ? new B10AbruptProcess.SignalException(message, observation) : new InvalidOperationException(message);
+            string path = Path.Combine(root, "abrupt", "failure.json");
+            byte[] existing = Encoding.UTF8.GetBytes("existing-diagnostic");
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            if (diagnosticCollision) await File.WriteAllBytesAsync(path, existing, TestContext.Current.CancellationToken);
+            var clock = new StartupFailureClock(failure);
+            var storage = new B10AbruptWireProducerTests.FileStorage(Path.Combine(root, "storage"));
+            var parent = new B10AbruptParent(options, clock, new B10AbruptPublisher(storage, clock));
+            var signals = new List<(int Pid, int Signal)>();
+            var previousSignal = B10AbruptProcess.SignalOverride;
+            B10AbruptProcess.SignalOverride = (pid, signal) => { signals.Add((pid, signal)); return (0, 0); };
             using var errors = new StringWriter(CultureInfo.InvariantCulture);
             TextWriter previous = Console.Error;
             byte[] bytes;
             try
             {
                 Console.SetError(errors);
-                bytes = await B10AbruptDiagnostics.WriteFailureAsync(options, TimeProvider.System, failure,
-                    new([], [], new Dictionary<string, string>(), [], []), new B10AbruptTimeline(TimeProvider.System, "parent", null));
+                clock.ThrowOnNextTimestamp = true;
+                Assert.Same(failure, await Assert.ThrowsAnyAsync<Exception>(() => parent.RunAsync(TestContext.Current.CancellationToken)));
+                bytes = Encoding.UTF8.GetBytes(errors.ToString().TrimEnd('\r', '\n'));
             }
-            finally { Console.SetError(previous); }
+            finally { Console.SetError(previous); B10AbruptProcess.SignalOverride = previousSignal; }
             using var report = JsonDocument.Parse(bytes);
             var data = report.RootElement.GetProperty("data");
             Assert.Equal("failed_diagnostic", report.RootElement.GetProperty("kind").GetString());
@@ -299,9 +323,15 @@ public sealed class B10AbruptSupervisorTests
             Assert.False(data.GetProperty("kill_requested").GetBoolean());
             Assert.Equal(JsonValueKind.Null, data.GetProperty("cleanup").ValueKind);
             Assert.Equal(JsonValueKind.Null, data.GetProperty("startup_cleanup").ValueKind);
+            if (failure is B10AbruptProcess.SignalException)
+                Assert.Equal(observation, data.GetProperty("signal_observation").Deserialize<B10AbruptProcess.SignalObservation>(B10AbruptWire.JsonOptions));
+            else Assert.Equal(JsonValueKind.Null, data.GetProperty("signal_observation").ValueKind);
+            Assert.Empty(signals);
+            Assert.Empty(storage.Files);
+            Assert.Equal(1, clock.FailuresThrown);
             foreach (string secret in new[] { "private-startup-message", "/private/startup-path", "private-token" }) Assert.DoesNotContain(secret, errors.ToString(), StringComparison.Ordinal);
             Assert.Equal(Encoding.UTF8.GetString(bytes) + Environment.NewLine, errors.ToString());
-            Assert.Equal(bytes, await File.ReadAllBytesAsync(Path.Combine(root, "abrupt", "failure.json"), TestContext.Current.CancellationToken));
+            Assert.Equal(diagnosticCollision ? existing : bytes, await File.ReadAllBytesAsync(path, TestContext.Current.CancellationToken));
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
@@ -326,6 +356,7 @@ public sealed class B10AbruptSupervisorTests
             using var report = JsonDocument.Parse(bytes);
             var data = report.RootElement.GetProperty("data");
             Assert.Equal("b10_abrupt_guard_failed", data.GetProperty("failure").GetString());
+            Assert.Equal(typeof(InvalidDataException).FullName, data.GetProperty("exception_type").GetString());
             var cleanup = data.GetProperty("cleanup");
             Assert.Equal("b10_abrupt_signal_failed", cleanup.GetProperty("failure").GetString());
             Assert.Equal("b10_abrupt_capture_gap", cleanup.GetProperty("capture_failure").GetString());
@@ -333,6 +364,26 @@ public sealed class B10AbruptSupervisorTests
             Assert.Equal("System.IO.InvalidDataException", cleanup.GetProperty("capture_diagnostic").GetProperty("exception_chain").GetProperty("entries")[0].GetProperty("exception_type").GetString());
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    private sealed class StartupFailureClock(Exception failure) : TimeProvider
+    {
+        internal bool ThrowOnNextTimestamp { get; set; }
+        internal int FailuresThrown { get; private set; }
+        public override long TimestampFrequency => TimeProvider.System.TimestampFrequency;
+        public override DateTimeOffset GetUtcNow() => TimeProvider.System.GetUtcNow();
+        public override long GetTimestamp()
+        {
+            if (ThrowOnNextTimestamp)
+            {
+                ThrowOnNextTimestamp = false;
+                FailuresThrown++;
+                throw failure;
+            }
+            return TimeProvider.System.GetTimestamp();
+        }
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period) =>
+            TimeProvider.System.CreateTimer(callback, state, dueTime, period);
     }
 
     internal sealed class Records

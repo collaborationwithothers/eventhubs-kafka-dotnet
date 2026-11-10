@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -38,8 +39,39 @@ public sealed class B10AbruptProducerTests
         Directory.CreateDirectory(root);
         string path = Path.Combine(root, "abrupt");
         await File.WriteAllBytesAsync(path, [1], TestContext.Current.CancellationToken);
-        Assert.Throws<IOException>(() => new B10AbruptJournal(Path.Combine(path, "journal.jsonl"), HostOptions(root).Identity(), TimeProvider.System));
+        var exception = Assert.Throws<IOException>(() => new B10AbruptJournal(Path.Combine(path, "journal.jsonl"), HostOptions(root).Identity(), TimeProvider.System));
         Assert.Equal(0, fixture.Constructions);
+        AssertCaptureGapReport(exception, "b10_abrupt_capture_gap exception_type=System.IO.IOException", path);
+
+        using var childFixture = new B10AbruptProcessFixture("self-kill");
+        string childPath = Path.Combine(childFixture.Directory, "abrupt");
+        await File.WriteAllBytesAsync(childPath, [1], TestContext.Current.CancellationToken);
+        var start = new ProcessStartInfo(B10AbruptProcessFixture.Apphost())
+        { UseShellExecute = false, RedirectStandardError = true, RedirectStandardOutput = true };
+        start.ArgumentList.Add("--b10-abrupt-child");
+        foreach (var pair in childFixture.EnvironmentValues) start.Environment[pair.Key] = pair.Value;
+        foreach (var pair in childFixture.Command.ExtraEnvironment) start.Environment[pair.Key] = pair.Value;
+        start.Environment[B10AbruptOptions.Prefix + "Role"] = "child";
+        B10AbruptOptions.Read(start.Environment.Select(pair => new KeyValuePair<string, string>(pair.Key, pair.Value ?? ""))).Validate("child");
+        using Process child = Process.Start(start)!;
+        Task<string> stdout = child.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
+        Task<string> stderr = child.StandardError.ReadToEndAsync(TestContext.Current.CancellationToken);
+        try
+        {
+            await child.WaitForExitAsync(TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromSeconds(15), TestContext.Current.CancellationToken);
+            Assert.Equal(1, child.ExitCode);
+            string errors = await stderr;
+            B10AbruptDiagnosticsTests.AssertPlainReport(errors, "b10_abrupt_capture_gap exception_type=System.IO.IOException");
+            Assert.DoesNotContain(childPath, errors, StringComparison.Ordinal);
+            Assert.DoesNotContain(childFixture.Directory, errors, StringComparison.Ordinal);
+            Assert.False(File.Exists(Path.Combine(childFixture.Directory, "producer-calls.txt")));
+            Assert.False(Directory.Exists(Path.Combine(childFixture.Directory, "capture")));
+            Assert.DoesNotContain(childPath, await stdout, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (!child.HasExited) { child.Kill(entireProcessTree: true); Assert.True(child.WaitForExit(10000)); }
+        }
     }
 
     [Fact]

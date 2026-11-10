@@ -622,8 +622,11 @@ class Trial:
                     rejections.add(attempt)
             elif kind == 'terminal':
                 attempt = data['attempt_id']
-                if attempt not in prepared or attempt in terminals or type(data['delivered']) is not bool:
+                if attempt not in prepared or attempt in terminals or attempt in rejections or type(data['delivered']) is not bool:
                     raise ValueError('terminal binding')
+                if (data['delivered'] != (data['error_code'] == 0)
+                        or (data['error_code'], data['persistence_status']) not in ((0, 0), (0, 2), (-192, 0), (-192, 1))):
+                    raise ValueError('b10_abrupt_guard_failed')
                 terminals.add(attempt)
             elif kind in ('cut', 'kill_intent'):
                 arm = 'same_instance' if kind == 'cut' else 'cross_restart'
@@ -677,6 +680,8 @@ class Trial:
                 last_producing = frame
         if any(attempt not in accepted and attempt not in rejections for attempt in prepared):
             raise ValueError('prepared acceptance binding')
+        if any(attempt not in accepted or attempt in rejections for attempt in terminals):
+            raise ValueError('terminal binding')
         for arm in ('same_instance', 'cross_restart'):
             originals = [frame['data'] for frame in prepared.values() if frame['data']['arm'] == arm and frame['data']['role'] == 'original']
             if [data['ordinal'] for data in originals] != list(range(5)):
