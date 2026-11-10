@@ -1,16 +1,30 @@
 # B10 restart redesign contract-grade plan
 
-Revision 3. Issue 404, pull request short name `B10 restart redesign`. Baseline: `main` at `0f769fb240d1de50192f4c8eefaf12698002efc7`. Status: not posted, not checked, not approved.
+Revision 4. Issue 404, pull request short name `B10 restart redesign`. Baseline: `main` at `0f769fb240d1de50192f4c8eefaf12698002efc7`. Status: not posted, not checked, not approved.
 
 This pull request changes design text only. It rewrites ADR-021's restart protocol and the B10 exceptions in ADR-012, ADR-013, ADR-019 and ADR-020 to the simplified restart that Hari chose in [decision 6762516530](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6762516530), and marks the two B10 operations documents as describing the superseded protocol. It changes no code, test, workflow, chart or Terraform; `docs/blueprint.md` is protected, so Hari approves and merges, and his merge is the recorded amendment that ADR-021 protocol rule 15 requires.
 
-The replacement text in appendix A is complete except for fourteen bracketed slots, `[Q1]`, `[Q2]`, `[Q4]`, `[Q6]`, `[Q8a]`, `[Q8b]`, `[Q8c]`, `[Q9]`, `[Q10]`, `[Q11]`, `[Q15]`, `[Q18a]`, `[Q18b]` and `[Q19]`. Section 14 gives, for each, the exact fill string of every option; the implementer pastes the string of the option Hari chooses, or Hari's own words. Until every slot is answered, the plan is not approvable.
+The replacement text in appendix A is complete except for fifteen bracketed slots, `[Q1]`, `[Q2]`, `[Q4]`, `[Q6]`, `[Q8a]`, `[Q8b]`, `[Q8c]`, `[Q9]`, `[Q10]`, `[Q11]`, `[Q15]`, `[Q18a]`, `[Q18c]`, `[Q19]` and `[Q20]`. Section 14 gives, for each, the exact fill string of every option; the implementer pastes the string of the option Hari chooses, or Hari's own words. Until every slot is answered, the plan is not approvable.
 
 ## 0. Revision history
 
 - Revision 1 (`3b5e00399a6c8af4dd58eb796a9e93372e3390ff`): first revision, written by a planning session started by the #347 control session on 2026-11-10. A fresh reproduction check, relayed by the control session the same day, reported "Verdict: fail".
 - Revision 2 (`b15944c56fbbff8dad0fc2cc521e30bc874d2cd5`): answers that check. A delta check, relayed by the control session on 2026-11-10, reported "Verdict: fail" on two blocking findings; it passed the script, the diff, the docs check, the term sweep and the Revision 1 findings B2 to B5 and N1 to N8.
-- Revision 3: answers the delta check. Not posted, not checked.
+- Revision 3 (`ac7612c1e379959125b502f7d0b8e015aa4c8784`): answers the delta check. A narrow delta check, relayed by the control session on 2026-11-10, reported "Verdict: fail"; the script, the docs check and both named fixes reproduced, and the normal-run example passed.
+- Revision 4: answers the narrow delta check. Not posted, not checked.
+
+### 0.3 Changes since Revision 3
+
+| Finding | Fix in Revision 4 |
+|---|---|
+| B1: Permitted conditions (line 681) still named "unconfirmed cross-restart originals" | A21-4 now reads "accepted journaled probe attempts without terminal records (protocol rule 3)", the same scope as rule 3 under Q19 A. Section 6 row corrected. |
+| B2: sentences assumed the successor always starts | Made conditional on the successor having started: A21-6 (three registered C1 instances when the successor started, two when rule 10 did not start it; "up to three" Jobs; successor's ordinary files "when it started"), A21-7, A21-12, A19-2, A12-6, A12-8, A12-9, A12-10, A12-16, A20-4, A20-5, and block P rules 1, 5, 8, 10, 12 and 14. Rule 14 now accepts, for a repeat without a successor, the outcome that rule 6 or 7 names and no successor evidence, so its per-arm counts stay authoritative. Rule 15's journal success criteria require successor release only when rule 10 starts the successor; whether a trial that ends without a successor counts as the one trial is new slot `[Q20]` and Q20. |
+| B3: Q18a option A (Flush and Dispose) contradicted rule 7's no-Flush rule after cross-restart admission | Rule 7 now splits the no-kill path: before the cross-restart arm's first original is admitted, the child ends under `[Q18a]`; after it, the child exits without `Flush` or `Dispose`, as rule 7 already requires. The exit code is new slot `[Q18c]`. |
+| B4: Q18b option B contradicted rule 6 | Q18b is removed. Rule 10 states the successor condition as fixed text; starting a successor on an empty kill set is listed in R6 and stop rule 4 as needing a revision, with the sentences it changes (Q18). |
+| N1: rule 7's trigger matched every control arm | Now "when the child ends without reaching `kill_intent`". |
+| N2: R6 and stop rule 4 disagreed | Both now list the same questions whose answers need text outside a slot: Q1 (B, C), Q3 (B), Q5 (other than the default `emptyDir`), Q10 (second option), Q16 (B), Q18 (a successor on an empty kill set), Q19 (B). Q6, Q9 and Q15 are removed from that list because every one of their options fits its slot. In Revision 3 stop rule 4 listed Q6 and R6 did not, and Revision 2's lists had included Q9 and Q15. |
+| Example (b): control resends without a terminal record had no class | The unreported scope now covers every accepted journaled probe attempt (originals and control resends) without a terminal record. Q19's fills, A12-11, A12-12, A12-13, A12-19, A13-3, A20-9, A21-4, A21-18 and rules 13 and 14 say "accepted journaled probe attempts". Successor resends stay in the successor's ordinary ledger. Decision rule 3 still counts only cross-restart originals for the positive pair. |
+
 
 ### 0.2 Changes since Revision 2
 
@@ -117,7 +131,7 @@ R4. WHEN the changed files are scanned, THEN they contain only ASCII characters 
 
 R5. WHEN `docs/operations/b10-abrupt-contract.md` and `docs/operations/b10-workflow.md` are changed, THEN only edits OC-1 and OW-1 are applied, and every other line, including the wire, policy and failure-name tables, stays byte-identical, because they describe the code on `main`.
 
-R6. WHEN Hari's answer to a question changes text outside its slot (Q1 options B or C, Q3 option B, Q5 other than `emptyDir`, Q10's second option, Q16 option B, Q19 option B), THEN the plan is revised before implementation (design-changing under factory.md "Item lifecycle" step 1), not edited in implementation.
+R6. WHEN Hari's answer to a question changes text outside its slot (Q1 (options B or C), Q3 (option B), Q5 (other than the default `emptyDir`), Q10 (second option), Q16 (option B), Q18 (a successor on an empty kill set) and Q19 (option B)), THEN the plan is revised before implementation (design-changing under factory.md "Item lifecycle" step 1), not edited in implementation.
 
 ## 5. Invariants and safety rules
 
@@ -138,7 +152,7 @@ Line numbers are on `0f769fb2`. "Evidence effect" says what the change does to t
 | Option 9 (677) | Kept, option 10 added (A21-2) | Records the simplification as an option. | None. |
 | Decision (679) | Reworded (A21-3) | Option 10 replaces 6 and 9; cites 6762516530. | None. |
 | Scope (680) | Unchanged | | None. |
-| Permitted conditions (681) | Reworded (A21-4, A21-17) | "stop/termination" to "self-termination"; kill originals to cross-restart originals. | Same exception set. |
+| Permitted conditions (681) | Reworded (A21-4, A21-17) | "stop/termination" to "self-termination"; "accepted-unconfirmed kill originals" to "accepted journaled probe attempts without terminal records (protocol rule 3)". | The exception covers the same attempts that rule 3 classes as unreported, in either arm. |
 | Retries (682) | Reworded (A21-5) | Timeout retries in the timeout instance; successor and control resend every unconfirmed member once (6762516530 point 5, superseding 6739644842's single selected original). | More resends per repeat; more pairs possible. |
 | Restart (683) | Reworded (A21-6) | Three Jobs in C1; parent/child; no stop. | Adds a third registered instance; the first restart instance has no ordinary seal. |
 | Per-instance evidence (684) | Reworded (A21-7) | Substitution moves from "kill probe" to "first restart instance". | Control evidence comes from the journal, not a seal. |
@@ -159,16 +173,16 @@ Line numbers are on `0f769fb2`. "Evidence effect" says what the change does to t
 | Protocol 4 (707) | Reworded | IPC frame/queue become record/callback-queue limits; values kept. | None. |
 | Protocol 5 (708) | Reworded | Pre-acceptance gate kept (6706730103 point 1); report bound in the journal instead of a pipe hand-off; control completeness defined (slot Q8c). | Same gate. |
 | Protocol 6 (709) | Reworded | Stop, checkpoint and 30 s arm/stop budget removed (point 4); cuts defined on journal order; unconfirmed defined as point 6 states. | Kill set is "at death"; control set is "before the cut record" (asymmetry, Q3 counterargument). |
-| No-kill path (rules 6, 7, 9, 10) | New | Defines the end of the child when an arm ends without a kill (slots Q18a, Q18b). | A named exposure outcome is no longer read as an unexpected exit; the repeat stays ineligible; no successor resends anything unless Q18b allows it. |
+| No-kill path (rules 6, 7, 9, 10, 14, 15) | New | Defines the end of the child when it ends without reaching `kill_intent` (slots Q18a, Q18c); rule 10 starts the successor only after an intended self-kill with a nonempty kill set. | A named exposure outcome is no longer read as an unexpected exit; the repeat stays ineligible, with two registered C1 instances and authoritative per-arm counts; whether such a trial uses the one trial is Q20. |
 | Protocol 7 (710) | Reworded | No SIGCONT; control resend at cut plus `ReleaseDelay` (slot Q8a); kill/reap/EOF 10 s budgets removed; exit wait slot Q8b; the crash-before-signal gap stated, slot Q15. | A crash after `kill_intent` and before the signal would pass as an intended kill on journal evidence; its unconfirmed set would be resent and could form a positive pair. Q15 option A narrows this; nothing closes it. |
 | Protocol 8 (711) | Reworded | Post-death drain to EOF removed (no pipe); successor recomputes the set from the blob journal and resends all members. | Successor no longer depends on a final selection file. |
 | Protocol 9 (712) | Reworded | OOM check moves to the parent, before start and after death; limits sentence adds the crash-before-signal gap. | Same OOM evidence; one more disclosed limit. |
 | Protocol 10 (713) | Reworded | Parent publishes journal after death; emptyDir loss on pod removal stated. | Same publication gate. |
 | Protocol 11 (714) | Reworded | "one checkpoint per arm" to "one cut per arm"; stop failure removed. | None. |
-| Protocol 12 (715) | Reworded | Timeout/control seals removed (point 4); independence of the three instances kept. | Removes seal-based evidence; control evidence is journal-based. |
+| Protocol 12 (715) | Reworded | Timeout/control seals removed (point 4); independence of the instances kept, the successor's only when it started. | Removes seal-based evidence; control evidence is journal-based. |
 | Protocol 13 (716) | Reworded | Per-arm counts split into unconfirmed-set size and originals without a terminal record. | None. |
 | Protocol 14 (717) | Reworded | Schema version slot Q10, distinguishing schema-2 freeze evidence; the bound is per arm: unreported-seen plus unseen equal to accepted originals without a terminal record. | The bound holds in every arm, complete or not; a complete control arm has a count of 0. |
-| Protocol 15 (718) | Reworded | Records the 2026-11-10 amendment, retires the burst, restates the smoke-only and one-trial rule, the journal success criteria and "No C0 or replacement trial" for the new path, keeps main's kill/crash-separation sentence, adjustable list slot Q11. | Trial criteria change with the protocol: no stop/resume or control seal; adds control completeness and the self-kill. |
+| Protocol 15 (718) | Reworded | Records the 2026-11-10 amendment, retires the burst, restates the smoke-only and one-trial rule, the journal success criteria (successor release only when rule 10 starts it) and "No C0 or replacement trial" for the new path, keeps main's kill/crash-separation sentence, slots Q11 and Q20. | Trial criteria change with the protocol: no stop/resume or control seal; adds control completeness and the self-kill. |
 | Consequences (721, 722, 724, 726, 727) | Unchanged | | None. |
 | Consequence (723) | Reworded (A21-14) | Resend every unconfirmed member. | As rule 3. |
 | Consequence (725) | Reworded (A21-15, A21-16, A21-19) | Self-termination; "second Job" to "successor Job"; three C1 Jobs' names. | None. |
@@ -345,23 +359,26 @@ Q17. Which pull request moves the legacy scenario path (`scenario.yml`, `B10TwoI
 - Counterargument: two pull requests then change the same phase code and B10 verifier in sequence, and the legacy path stays out of step with ADR-021 until B merges.
 
 Q18. The no-kill path (rules 6, 7 and 10).
-- `[Q18a]`, how the child ends after its durable `no_kill` record. Fill strings (each ends with its own period):
-  - A: "calls the producer's `Flush` within the existing `ProducerDrainTimeout`, disposes the producer and exits with exit code 3."
-  - B: "exits with exit code 3 without calling `Flush` or `Dispose`."
-  - Recommendation: A. Flushing gives terminal records to the arm's outstanding originals, so fewer of its sends are left unknown for the sweep. Exit code 3 is a policy value; the execution plan checks it against the LoadGen's existing exit codes.
+- `[Q18a]`, how the child ends after its durable `no_kill` record when the cross-restart arm's first original has not been admitted. After that admission, rule 7's fixed text makes the child exit without `Flush` or `Dispose`, because rule 7 already forbids both after admission. Fill strings (each ends with its own period):
+  - A: "calls the producer's `Flush` within the existing `ProducerDrainTimeout`, disposes the producer and exits with exit code [Q18c]."
+  - B: "exits with exit code [Q18c] without calling `Flush` or `Dispose`."
+  - Recommendation: A. Flushing gives terminal records to the outstanding control attempts, so fewer of its sends are left unknown for the sweep.
   - Counterargument: a `Flush` on a failing producer can take the full 300 s, and the first pod then holds its time budget for a repeat that is already ineligible.
-- `[Q18b]`, when the workflow starts the successor. Fill strings:
-  - A: "the termination receipt records an intended self-kill with a nonempty kill unconfirmed set"
-  - B: "the termination receipt records an intended self-kill, even with an empty kill unconfirmed set, in which case the successor resends nothing"
-  - Recommendation: A. It follows "continues to publication of diagnostics and cleanup only" in rule 6: an empty kill set, `kill_too_early` and the no-kill path start no successor.
-  - Counterargument: under A, a trial whose kill set is empty never runs the successor, so the successor's live path stays untested; B tests it at the cost of one more pod.
+- `[Q18c]`, the exit code on the no-kill path. Fill string: an integer, recommended `3`, a policy value; the execution plan checks it against the LoadGen's existing exit codes. Counterargument: any fixed code can collide with a code the runtime or host already uses for another failure.
+- When the workflow starts the successor (rule 10, fixed text): only when the termination receipt records an intended self-kill with a nonempty kill unconfirmed set. So an empty kill set, `kill_too_early` and the no-kill path start no successor, which follows rule 6's "continues to publication of diagnostics and cleanup only". Alternative: start the successor after any intended self-kill, resending nothing for an empty set. That needs a revision of rule 6's sentence, rule 10's successor sentence, and A21-6's registered-instance count. Recommendation: the fixed text. Counterargument: a trial whose kill set is empty never runs the successor, so the successor's live path stays untested.
 - Failure name: the no-kill path adds no failure name to ADR text. The record kind `no_kill` is pinned here (section 3); the outcome it names is an existing name such as `b10_abrupt_exposure_inconclusive` or `b10_abrupt_control_incomplete`, and the execution plan pins the list.
 
 Q19. Scope of `unreported_seen`/`unreported_unseen` `[Q19]` (rule 3). Fill strings (each ends with its own period):
-- A: "Only accepted probe originals with no complete terminal record anywhere in the journal, in either arm, are `unreported_seen` or `unreported_unseen`, never phantom or loss; when the control arm is complete under rule 5, only cross-restart originals can be."
-- B: "Only accepted cross-restart originals with no complete terminal record anywhere in the journal are `unreported_seen` or `unreported_unseen`, never phantom or loss; accepted control originals without a terminal record are counted only as such and fail eligibility."
-- Recommendation: A. It gives every accepted original exactly one class in every repeat, eligible or not, and the ADR-012, ADR-013, ADR-020 and Classification sentences are written for it.
+- A: "Only accepted journaled probe attempts, originals and control resends, with no complete terminal record anywhere in the journal, in either arm, are `unreported_seen` or `unreported_unseen`, never phantom or loss; when the control arm is complete under rule 5, only cross-restart originals can be."
+- B: "Only accepted cross-restart originals with no complete terminal record anywhere in the journal are `unreported_seen` or `unreported_unseen`, never phantom or loss; accepted control originals and resends without a terminal record are counted only as such and fail eligibility."
+- Recommendation: A. It gives every accepted journaled attempt exactly one class in every repeat, eligible or not, and the ADR-012, ADR-013, ADR-020, Permitted-conditions and Classification sentences are written for it.
 - Counterargument: A widens the unreported classes beyond main, which limited them to accepted kill originals; under B they keep main's scope, but B needs a revision of those sentences (text outside the slot).
+
+Q20. Does a trial that ends without a successor count as the one diagnostic trial `[Q20]` (rule 15)? Such a trial ends on the no-kill path, with an empty kill set, or with `kill_too_early`. Fill strings (each ends with its own period):
+- A: "A trial that ends without a successor counts as the one trial."
+- B: "A trial that ends without a successor, with an intended self-kill not reached or an empty kill set, does not count as the one trial, and at most one further trial follows only under Hari's recorded decision."
+- Recommendation: A. The cap exists because a trial spends money; B already needs Hari's decision for the second dispatch, so A changes nothing about who decides and keeps the cap literal.
+- Counterargument: under A, an exposure miss (DA2) uses the only trial without testing the successor, publication-to-successor path or verifier join.
 
 ## 15. Plan-check questions (factory.md "Item lifecycle" step 1)
 
@@ -388,7 +405,7 @@ The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when:
 1. it needs to change a contract, a requirement or the scope, or any text in appendix A other than filling a slot with Hari's recorded answer;
 2. any old string of appendix A does not occur exactly once on its `main`;
 3. the storage readiness race fix, the PR3b classification work or any other change has altered `docs/blueprint.md`, `docs/operations/b10-abrupt-contract.md` or `docs/operations/b10-workflow.md` on `main` since `0f769fb2`, even where every old string still matches;
-4. an answer to Q1, Q3, Q5, Q6, Q10, Q16 or Q19 needs text outside its slot (options marked so in section 14).
+4. an answer to Q1 (options B or C), Q3 (option B), Q5 (other than the default `emptyDir`), Q10 (second option), Q16 (option B), Q18 (a successor on an empty kill set) and Q19 (option B) needs text outside its slot.
 
 ## Appendix A. Exact replacement text
 
@@ -461,7 +478,7 @@ ADR-021 permits one sequential restarted instance, in a second load generator Jo
 ```
 
 ```new A12-6
-ADR-021 permits, in a B10 C1 repeat only, three sequential load generator Jobs with one instance each: the C1 timeout instance, the first restart instance and its successor. C0 retains one ordinary instance.
+ADR-021 permits, in a B10 C1 repeat only, up to three sequential load generator Jobs with one instance each: the C1 timeout instance, the first restart instance and, when ADR-021 starts it, its successor. C0 retains one ordinary instance.
 ```
 
 ### A12-7: `docs/blueprint.md` line 389
@@ -481,7 +498,7 @@ or for B10 against the two instances ADR-021 permits, each bound to its own expe
 ```
 
 ```new A12-8
-or for B10 C1 against the three instances ADR-021 permits, each bound to its own expected load generator Job.
+or for B10 C1 against the instances ADR-021 permits (three, or two when it starts no successor), each bound to its own expected load generator Job.
 ```
 
 ### A12-9: `docs/blueprint.md` line 410
@@ -491,7 +508,7 @@ or for B10 C1 against the three instances ADR-021 permits, each bound to its own
 ```
 
 ```new A12-9
-(three for B10 C1, under ADR-021)
+(for B10 C1, three, or two when ADR-021 starts no successor)
 ```
 
 ### A12-10: `docs/blueprint.md` line 412
@@ -501,7 +518,7 @@ For B10 under ADR-021's redesign, require two independently registered C1 instan
 ```
 
 ```new A12-10
-For B10 under ADR-021's redesign, require three independently registered C1 instances and one ordinary C0 instance;
+For B10 under ADR-021's redesign, require three independently registered C1 instances, or two when ADR-021 starts no successor, and one ordinary C0 instance;
 ```
 
 ### A12-11: `docs/blueprint.md` line 415
@@ -511,7 +528,7 @@ For B10, only ADR-021's accepted-unconfirmed kill originals may join a checked j
 ```
 
 ```new A12-11
-For B10, only ADR-021's accepted probe originals without a terminal record may join a checked journal entry without a final callback row;
+For B10, only ADR-021's accepted journaled probe attempts without a terminal record may join a checked journal entry without a final callback row;
 ```
 
 ### A12-12: `docs/blueprint.md` line 403
@@ -521,7 +538,7 @@ Accepted-unconfirmed originals are separately reported as unreported_seen or unr
 ```
 
 ```new A12-12
-Accepted probe originals without a terminal record are separately reported as unreported_seen or unreported_unseen through the phase sweep;
+Accepted journaled probe attempts without a terminal record are separately reported as unreported_seen or unreported_unseen through the phase sweep;
 ```
 
 ### A12-13: `docs/blueprint.md` line 422
@@ -531,7 +548,7 @@ For B10, a record joined to an ADR-021 accepted-unconfirmed original is unreport
 ```
 
 ```new A12-13
-For B10, a record joined to an ADR-021 accepted probe original without a terminal record is unreported_seen, not phantom;
+For B10, a record joined to an ADR-021 accepted journaled probe attempt without a terminal record is unreported_seen, not phantom;
 ```
 
 ### A12-14: `docs/blueprint.md` line 428
@@ -571,7 +588,7 @@ an accepted-unconfirmed kill original has no callback status to invent.
 ```
 
 ```new A13-3
-an accepted probe original without a terminal record has no callback status to invent.
+an accepted journaled probe attempt without a terminal record has no callback status to invent.
 ```
 
 ### A13-4: `docs/blueprint.md` line 455
@@ -631,7 +648,7 @@ For B10's intentionally killed first producer only, ADR-021's authenticated abru
 ```
 
 ```new A19-2
-For B10's intentionally self-killed first restart producer only, ADR-021's authenticated journal, abrupt manifest and termination receipt replace the ordinary final ledger and successful producer-completion receipt; a missing required substitute cannot authorize a complete repeat. The C1 timeout producer and the successor still require their ordinary completion receipts.
+For B10's intentionally self-killed first restart producer only, ADR-021's authenticated journal, abrupt manifest and termination receipt replace the ordinary final ledger and successful producer-completion receipt; a missing required substitute cannot authorize a complete repeat. The C1 timeout producer and, when it started, the successor still require their ordinary completion receipts.
 ```
 
 ### A20-1: `docs/blueprint.md` line 625
@@ -671,7 +688,7 @@ ADR-021 permits two sequential load generator Jobs, each with one registered ins
 ```
 
 ```new A20-4
-ADR-021 permits three sequential load generator Jobs, each with one registered instance, in a B10 C1 repeat.
+ADR-021 permits up to three sequential load generator Jobs, each with one registered instance, in a B10 C1 repeat.
 ```
 
 ### A20-5: `docs/blueprint.md` line 643
@@ -681,7 +698,7 @@ For B10, supervisor and child share the first-pod producer identity; authenticat
 ```
 
 ```new A20-5
-For B10, parent and child share the first restart pod's producer identity; authenticated registration precedes child producer construction. The parent is not a registered Kafka producer. For B10 under ADR-021's redesign, require exactly three sequential registered C1 instances and one ordinary C0 instance.
+For B10, parent and child share the first restart pod's producer identity; authenticated registration precedes child producer construction. The parent is not a registered Kafka producer. For B10 under ADR-021's redesign, require exactly three sequential registered C1 instances, or two when ADR-021 starts no successor, and one ordinary C0 instance.
 ```
 
 ### A20-6: `docs/blueprint.md` line 645
@@ -721,7 +738,7 @@ For B10 this applies to each separately checked cohort; accepted-unconfirmed obs
 ```
 
 ```new A20-9
-For B10 this applies to each separately checked cohort; observations of accepted probe originals without a terminal record never become known-terminal counts.
+For B10 this applies to each separately checked cohort; observations of accepted journaled probe attempts without a terminal record never become known-terminal counts.
 ```
 
 ### A21-1: `docs/blueprint.md` line 674
@@ -762,7 +779,7 @@ The only new exceptions are accepted-unconfirmed kill originals without terminal
 ```
 
 ```new A21-4
-The only new exceptions are unconfirmed cross-restart originals without terminal reports, replacement of the cross-restart arm's normal post-drain/cleanup requirements by the closed self-termination protocol,
+The only new exceptions are accepted journaled probe attempts without terminal records (protocol rule 3), replacement of the cross-restart arm's normal post-drain/cleanup requirements by the closed self-termination protocol,
 ```
 
 ### A21-5: `docs/blueprint.md` line 682
@@ -782,7 +799,7 @@ Ordinary permitted timeout retries occur inside the timeout instance: C0's one i
 ```
 
 ```new A21-6
-- Restart. A C1 repeat runs three load generator Jobs in sequence, between its start line and its verifier: the C1 timeout Job, the first restart Job and the successor Job, in the order of protocol rule 1. C0 runs one ordinary producer Job with same-instance timeout retries, no probes, no kill and no successor Job. Each Job keeps ADR-020's shape, one completion, one pod and no retries, and its instance ID stays its pod name. The C1 timeout Job is an ordinary producer Job with no probes and no kill. In the first restart pod, a parent process starts this repository's fixed producer child, which runs the matched same-instance control and then the distinct cross-restart arm and kills itself under the protocol below; the parent observes its death, publishes the child's journal and abrupt evidence and exits. The workflow verifies first-pod termination and publication before starting the successor Job, which it starts only as protocol rule 10 allows, and whose pod registers a further instance. Its registration marker names the first restart instance as its predecessor. Each instance is bound to its own Job's expected name. For C1, reject other than three registered instances, duplicate instance IDs, a successor that does not name the first restart instance, or missing first-restart bookkeeping. Require the authenticated journal, abrupt manifest and termination receipt. The C1 timeout instance and the successor retain their ordinary manifest, ledger and completion receipt. C0 requires exactly one registered instance with ordinary manifest, ledger and completion receipt. Archived clean-restart evidence and evidence of the superseded stop protocol retain their dialects and cannot authorize the new restart claim.
+- Restart. A C1 repeat runs up to three load generator Jobs in sequence, between its start line and its verifier: the C1 timeout Job, the first restart Job and the successor Job, in the order of protocol rule 1. C0 runs one ordinary producer Job with same-instance timeout retries, no probes, no kill and no successor Job. Each Job keeps ADR-020's shape, one completion, one pod and no retries, and its instance ID stays its pod name. The C1 timeout Job is an ordinary producer Job with no probes and no kill. In the first restart pod, a parent process starts this repository's fixed producer child, which runs the matched same-instance control and then the distinct cross-restart arm and kills itself under the protocol below; the parent observes its death, publishes the child's journal and abrupt evidence and exits. The workflow verifies first-pod termination and publication before starting the successor Job, which it starts only as protocol rule 10 allows, and whose pod registers a further instance. Its registration marker names the first restart instance as its predecessor. Each instance is bound to its own Job's expected name. For C1, reject other than three registered instances when the successor Job started, or two when protocol rule 10 did not start it, duplicate instance IDs, a successor that does not name the first restart instance, or missing first-restart bookkeeping. Require the authenticated journal, abrupt manifest and termination receipt. The C1 timeout instance and, when it started, the successor retain their ordinary manifest, ledger and completion receipt. C0 requires exactly one registered instance with ordinary manifest, ledger and completion receipt. Archived clean-restart evidence and evidence of the superseded stop protocol retain their dialects and cannot authorize the new restart claim.
 ```
 
 ### A21-7: `docs/blueprint.md` line 684
@@ -792,7 +809,7 @@ Only the C1 kill probe substitutes abrupt bookkeeping and pre-acceptance statist
 ```
 
 ```new A21-7
-Only the first restart instance substitutes abrupt bookkeeping and pre-acceptance statistics coverage, with the control arm's completeness under protocol rule 5; the C1 timeout instance and the successor retain their normal completion and coverage requirements.
+Only the first restart instance substitutes abrupt bookkeeping and pre-acceptance statistics coverage, with the control arm's completeness under protocol rule 5; the C1 timeout instance and, when it started, the successor retain their normal completion and coverage requirements.
 ```
 
 ### A21-8: `docs/blueprint.md` line 692
@@ -842,7 +859,7 @@ Timeout/control require pre-kill seals with ordinary drain and post-drain statis
 ```
 
 ```new A21-12
-The C1 timeout instance requires its ordinary drain, post-drain statistics and completion receipt; the control arm requires the completeness of protocol rule 5 in the authenticated journal. No successful first-child cleanup receipt is fabricated; the successor requires ordinary completion.
+The C1 timeout instance requires its ordinary drain, post-drain statistics and completion receipt; the control arm requires the completeness of protocol rule 5 in the authenticated journal. No successful first-child cleanup receipt is fabricated; when it started, the successor requires ordinary completion.
 ```
 
 ### A21-13: `docs/blueprint.md` line 698
@@ -902,7 +919,7 @@ For B10's intentionally self-killed first restart producer only, ADR-021 substit
 ```
 
 ```new A12-16
-(any of the three permitted C1 instances for B10;
+(any permitted C1 instance for B10;
 ```
 
 ### A12-17: `docs/blueprint.md` line 418
@@ -982,7 +999,7 @@ Accepted kill originals without a report use separate unreported_seen and unrepo
 ```
 
 ```new A21-18
-Accepted probe originals without a terminal record use separate unreported_seen and unreported_unseen observations, under protocol rule 3; unconfirmed-set membership is not an outcome class.
+Accepted journaled probe attempts without a terminal record use separate unreported_seen and unreported_unseen observations, under protocol rule 3; unconfirmed-set membership is not an outcome class.
 ```
 
 ### A21-19: `docs/blueprint.md` line 725
@@ -1002,7 +1019,7 @@ An unconfirmed original observed by the sweep is not a phantom; one not observed
 ```
 
 ```new A12-19
-An accepted probe original without a terminal record observed by the sweep is not a phantom; one not observed is not a proven loss.
+An accepted journaled probe attempt without a terminal record observed by the sweep is not a phantom; one not observed is not a proven loss.
 ```
 
 ### A21-20: `docs/blueprint.md` line 696
@@ -1046,21 +1063,21 @@ Old: lines 702 to 718 inclusive on `0f769fb2`, from `  Every value and gate belo
 ```new P
   Every value and gate below is policy fixed before any run: order, probe rate, cut positions, keys, journal limits and flush rule, release and lifecycle budgets, pre-acceptance samples, cgroup/OOM exclusions, capture/guard gates, witnesses and trial bound. These are not measured capabilities, latencies or rates. Feasibility is not verified until implementation tests and the diagnostic trial demonstrate it. Post-trial changes require the recorded decision specified below. In ADR-021, in the B10 exceptions of ADR-012, ADR-013, ADR-019 and ADR-020, and in the implementation pull requests, "authenticated" means checked SHA-256 and byte-length binding to the accepted publication manifest/receipt plus exact run, configuration, repeat, source/image, instance and Job identity agreement. It does not mean cryptographic signing, signer identity or protection against a writer able to replace both bytes and their binding; no signing guarantee is claimed.
 
-  1. C0 has one ordinary producer Job with same-instance timeout retries, no probes, kill or successor. C1 runs three producer Jobs in sequence, in the order [Q6]. The C1 timeout Job is an ordinary producer Job like C0's: ordinary timeout cohort, same-instance timeout retries, no probes, no kill, ordinary manifest, ledger, drain, post-drain statistics and completion receipt. In the first restart pod the producer child runs the `same_instance` arm, then the `cross_restart` arm; only the cross-restart arm's unconfirmed set reaches the successor. In each arm the child prepares, invokes and journals probe originals at a fixed rate, `ProbeRate` = [Q2] originals per second, with ordinals from 0 to `CutOrdinal` = [Q1], and invokes no further original in that arm after the cut. Both arms use equal configured payload shape, settings, rate and cut ordinal. Fixed synthetic keys are `B10/{run_id}/{configuration}/{repeat}/same_instance` and `B10/{run_id}/{configuration}/{repeat}/cross_restart`, using authenticated identity strings and invariant decimal repeat; probe IDs equal those keys, sequence is the original's ordinal, and keys are disjoint from timeout keys. Every original and resend of an arm uses identical payload bytes/hash. Fixed ordering and different native/broker state remain confounds, not a universal causal contrast.
+  1. C0 has one ordinary producer Job with same-instance timeout retries, no probes, kill or successor. C1 runs up to three producer Jobs in sequence, in the order [Q6]; rule 10 decides whether the successor Job starts. The C1 timeout Job is an ordinary producer Job like C0's: ordinary timeout cohort, same-instance timeout retries, no probes, no kill, ordinary manifest, ledger, drain, post-drain statistics and completion receipt. In the first restart pod the producer child runs the `same_instance` arm, then the `cross_restart` arm; only the cross-restart arm's unconfirmed set reaches the successor. In each arm the child prepares, invokes and journals probe originals at a fixed rate, `ProbeRate` = [Q2] originals per second, with ordinals from 0 to `CutOrdinal` = [Q1], and invokes no further original in that arm after the cut. Both arms use equal configured payload shape, settings, rate and cut ordinal. Fixed synthetic keys are `B10/{run_id}/{configuration}/{repeat}/same_instance` and `B10/{run_id}/{configuration}/{repeat}/cross_restart`, using authenticated identity strings and invariant decimal repeat; probe IDs equal those keys, sequence is the original's ordinal, and keys are disjoint from timeout keys. Every original and resend of an arm uses identical payload bytes/hash. Fixed ordering and different native/broker state remain confounds, not a universal causal contrast.
   2. In the first restart pod a parent process writes the registration marker, then uses .NET 10 `Process.Start` for only this repository's fixed built producer child, observes its death with `WaitForExit`, and then reads, hashes and publishes the child's journal and abrupt evidence. The parent sends no signal to the child, holds no pipe or other channel to it, reads no child output as protocol evidence, and is not a Kafka client or separately registered producer. Parent and child share the first restart pod's producer identity; bind run/scenario/configuration/repeat, source/image, Job, pod UID/name and child start identity before producer construction. The child sends SIGKILL only to itself, once, through libc `kill` via `DllImport` with its own process ID; POSIX `kill` sends the signal to the process whose ID equals `pid` ([kill](https://pubs.opengroup.org/onlinepubs/9799919799/functions/kill.html)). Forbid shells/CLI, Kubernetes API, PID discovery, signals to any other process, group/name signals, pod/node management and infrastructure control. Keep SDK, framework, projects and packages unchanged. Microsoft documents [Start](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.process.start?view=net-10.0), [WaitForExit](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.process.waitforexit?view=net-10.0) and [DllImport](https://learn.microsoft.com/en-us/dotnet/api/system.runtime.interopservices.dllimportattribute?view=net-10.0), not this protocol's runtime interoperability. [ExitCode](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.process.exitcode?view=net-10.0) defines no SIGKILL encoding: record it as a labelled local observation on the pinned runtime; rule 7 states whether it gates intended termination.
   3. The child appends its own journal on the pod's local `emptyDir` work volume. The producing thread appends `prepared` before invocation (attempt/logical identity, arm, payload hash and ordinal), `accepted` only after `Produce` returns, `synchronous_rejection` when it throws, each arm's `cut` and the `kill_intent`. Delivery and error callbacks only enqueue to a bounded in-memory queue, with no file or network I/O; one journal writer thread appends their `terminal` and native-error records. After writing each record the child calls [Q4] before the next record or action. A record is durably journaled when it is complete in the journal file that the parent reads after the child's death; Kubernetes keeps `emptyDir` data across container crashes and deletes it permanently when the pod is removed from its node ([volumes](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir)). Survival of completed writes across the child's SIGKILL is inferred from POSIX `write()` ([write](https://pubs.opengroup.org/onlinepubs/9799919799/functions/write.html), Rationale: a read proven to occur after a `write()` "must reflect that write()"), not stated by a cited source, and not verified on the deployed node. [Q9] Reconcile callback-before-acceptance by identity. Prepared-only ambiguity invalidates and does not prove invocation. Never suppress callbacks to obtain exposure. A `terminal` or `synchronous_rejection` record is a terminal record for its attempt; an attempt with a `synchronous_rejection` has no `accepted` record and belongs to no unconfirmed set. "Unconfirmed" names membership of an arm's unconfirmed set under rule 6 and is not an outcome class. Genuine terminal attempts retain the four classes, including control originals that were unconfirmed at the cut and completed later. [Q19]
   4. Charge policy limits before admission: record 65536 bytes, callback queue 256 entries, journal 16777216 bytes and 4096 records. Gaps, overflow and writer errors are sticky. Exhaustion: `record the gap and continue` to publication of diagnostics and cleanup, with capture invalid and authoritative fields absent; no truncation into success. Raw statistics retain their existing separate bounds and authenticated hashes.
-  5. Require a parsed statistics report after construction and before each arm's first original acceptance; the child journals a binding of the latest such report (name, length, SHA-256, sequence and time) before that acceptance. No post-acceptance report gate; `statistics.interval.ms` stays unchanged. Apply expected-broker, settings, mandatory-field, stable-identity and monotone-counter checks to available reports. Reject counter reset, nonzero `txerrs`/`rxerrs`, disallowed delivery errors, error-level native callbacks and missing status on genuine reports. The last-report-to-kill interval is unobserved. A sampled gauge cannot prove kill-instant wire state (inference from [statistics](https://github.com/confluentinc/librdkafka/blob/v2.16.0/STATISTICS.md)). The control arm is complete only when, after its resends, the child's producer `Flush` returns within [Q8c] with an empty out queue, the journal holds a terminal record for every control original and resend, and a parsed statistics report follows that drain; the child admits no cross-restart original before the control arm is complete. The C1 timeout instance and the successor retain ordinary post-drain coverage.
+  5. Require a parsed statistics report after construction and before each arm's first original acceptance; the child journals a binding of the latest such report (name, length, SHA-256, sequence and time) before that acceptance. No post-acceptance report gate; `statistics.interval.ms` stays unchanged. Apply expected-broker, settings, mandatory-field, stable-identity and monotone-counter checks to available reports. Reject counter reset, nonzero `txerrs`/`rxerrs`, disallowed delivery errors, error-level native callbacks and missing status on genuine reports. The last-report-to-kill interval is unobserved. A sampled gauge cannot prove kill-instant wire state (inference from [statistics](https://github.com/confluentinc/librdkafka/blob/v2.16.0/STATISTICS.md)). The control arm is complete only when, after its resends, the child's producer `Flush` returns within [Q8c] with an empty out queue, the journal holds a terminal record for every control original and resend, and a parsed statistics report follows that drain; the child admits no cross-restart original before the control arm is complete. The C1 timeout instance and, when it started, the successor retain ordinary post-drain coverage.
   6. Each arm's cut is the `accepted` record of the original with ordinal `CutOrdinal`. In the control arm the child then appends a `cut` record; the control unconfirmed set is, in invocation order, the arm's accepted originals with no complete terminal record before that `cut` record in journal order. In the cross-restart arm the child appends `kill_intent` immediately after the cut and then kills itself (rule 7); the kill unconfirmed set is, in invocation order, the arm's accepted originals with no complete terminal record anywhere in the journal at death. An empty control set is `b10_abrupt_exposure_inconclusive`; an empty kill set is `kill_too_late`/`no_unconfirmed_attempt`; a cross-restart arm with no durably accepted original is `kill_too_early`. None is a pass or a protocol failure; each fails eligibility, records the gap and continues to publication of diagnostics and cleanup only, and never triggers another original, arm or kill. An empty control set, an incomplete control arm (rule 5) and any other failure before `kill_intent` end the child on the no-kill path of rule 7. This defines application-capture unconfirmed exposure, not transmission, broker acceptance, wire-inflight state, persistence status or loss.
-  7. The control arm keeps running after its cut and retains subsequent outcomes and fatals. At the `cut` record's UTC plus `ReleaseDelay` = [Q8a], the child resends each member of the control unconfirmed set once, in invocation order, with new attempt IDs and the same instance, even if a member has since completed. In the cross-restart arm the producing thread, immediately after the durable `kill_intent`, sends SIGKILL to itself once; it calls no `Flush` or `Dispose` after the arm's first original is admitted. A `kill` call that returns records its return value and errno and fails the chain. Intended termination requires a durable `kill_intent`, no producing-thread record after it, the parent's observed death within [Q8b] and the competing-evidence checks of rule 9. No-kill path: when the child ends an arm without a kill, it appends a durable `no_kill` record naming the outcome or failure, then [Q18a] A child that exits with a durable `no_kill` record and no `kill_intent` has ended on the no-kill path, which is a known termination, not an unexpected exit, and fails eligibility. A child that exits with neither record is an unexpected exit. [POSIX sigaction](https://pubs.opengroup.org/onlinepubs/9799919799/functions/sigaction.html) says SIGKILL cannot be caught or ignored, so no handler in the child can intercept its own kill. The journal holds no record of the signal request itself, so a runtime or native crash after the durable `kill_intent` and before the signal takes effect is not distinguishable from the intended kill by journal evidence; [Q15] Exit code alone never proves intended termination.
-  8. After the parent's publication and the workflow's first-pod termination check, the fresh successor reads the authenticated journal from Blob storage, recomputes the kill unconfirmed set under rule 6, and resends every member once, in invocation order, preserving logical identity/payload with new instance and attempt IDs, at the `kill_intent` record's UTC plus `ReleaseDelay`. Azure Storage documents a strong consistency model in which, after an insert or update, subsequent read or list operations return the latest update ([concurrency](https://learn.microsoft.com/en-us/azure/storage/blobs/concurrency-manage)). It never resends ordinary timeouts or control attempts. Missing readiness at that boundary makes comparison incomplete, with no late substitute, extra probe or replacement.
+  7. The control arm keeps running after its cut and retains subsequent outcomes and fatals. At the `cut` record's UTC plus `ReleaseDelay` = [Q8a], the child resends each member of the control unconfirmed set once, in invocation order, with new attempt IDs and the same instance, even if a member has since completed. In the cross-restart arm the producing thread, immediately after the durable `kill_intent`, sends SIGKILL to itself once; it calls no `Flush` or `Dispose` after the arm's first original is admitted. A `kill` call that returns records its return value and errno and fails the chain. Intended termination requires a durable `kill_intent`, no producing-thread record after it, the parent's observed death within [Q8b] and the competing-evidence checks of rule 9. No-kill path: when the child ends without reaching `kill_intent`, it appends a durable `no_kill` record naming the outcome or failure. If the cross-restart arm's first original has not been admitted, the child then [Q18a] If it has, the child exits with exit code [Q18c] without calling `Flush` or `Dispose`, as this rule requires after that admission. A child that exits with a durable `no_kill` record and no `kill_intent` has ended on the no-kill path, which is a known termination, not an unexpected exit, and fails eligibility. A child that exits with neither record is an unexpected exit. [POSIX sigaction](https://pubs.opengroup.org/onlinepubs/9799919799/functions/sigaction.html) says SIGKILL cannot be caught or ignored, so no handler in the child can intercept its own kill. The journal holds no record of the signal request itself, so a runtime or native crash after the durable `kill_intent` and before the signal takes effect is not distinguishable from the intended kill by journal evidence; [Q15] Exit code alone never proves intended termination.
+  8. When rule 10 starts it, after the parent's publication and the workflow's first-pod termination check, the fresh successor reads the authenticated journal from Blob storage, recomputes the kill unconfirmed set under rule 6, and resends every member once, in invocation order, preserving logical identity/payload with new instance and attempt IDs, at the `kill_intent` record's UTC plus `ReleaseDelay`. Azure Storage documents a strong consistency model in which, after an insert or update, subsequent read or list operations return the latest update ([concurrency](https://learn.microsoft.com/en-us/azure/storage/blobs/concurrency-manage)). It never resends ordinary timeouts or control attempts. Missing readiness at that boundary makes comparison incomplete, with no late substitute, extra probe or replacement.
   9. Install native capture before use; retain actual code/name/IsError/IsFatal, ordered sequence/time, instance, start/cutoff and dropped/writer-error status. Captured fatal remains fatal after later kill. The parent requires stable memory-cgroup identity and readable `memory.events.local` `oom_kill` before it starts the child and after it observes death, without reset/increment. [Kernel documentation](https://docs.kernel.org/admin-guide/cgroup-v2.html#memory-interface-files) makes this group-level evidence, not victim identity. Runtime availability is not verified; absent support fails eligibility. Unexpected crash/prior exit (rule 7), OOM, node/pod loss or conflicting evidence fails intended termination. Even zero delta and the full chain cannot exclude indistinguishable external SIGKILL, or a crash between `kill_intent` and the signal (rule 7); disclose both limits.
-  10. After observed child death the parent reads the journal from the local volume, applies rule 4's limits, hashes it, publishes create-only the journal, abrupt manifest and termination receipt, then exits; it asserts no child cleanup. Workflow verifies actual first-pod termination and publication before the fresh successor pod, and starts the successor only when [Q18b]. Unknown termination preserves `safety_stop` and blocks successor; a no-kill end is a known termination and does not set `safety_stop`. The successor retains ordinary registration/drain/ledger/manifest/completion. This does not simulate parent/pod/node loss; [Kubernetes lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/) does not make deletion proof of process death. Pod or node loss before publication deletes the `emptyDir` journal and leaves the repeat ineligible.
+  10. After observed child death the parent reads the journal from the local volume, applies rule 4's limits, hashes it, publishes create-only the journal, abrupt manifest and termination receipt, then exits; it asserts no child cleanup. Workflow verifies actual first-pod termination and publication before the fresh successor pod, and starts the successor only when the termination receipt records an intended self-kill with a nonempty kill unconfirmed set. Unknown termination preserves `safety_stop` and blocks successor; a no-kill end is a known termination and does not set `safety_stop`. When started, the successor retains ordinary registration/drain/ledger/manifest/completion. This does not simulate parent/pod/node loss; [Kubernetes lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/) does not make deletion proof of process death. Pod or node loss before publication deletes the `emptyDir` journal and leaves the repeat ineligible.
   11. Policy caps: one cut per arm, one kill per repeat, no exposure retry or replacement. Budget exhaustion, signal/death failure, capture gaps, missing publication or late successor: `record the gap and continue` only to diagnostics/sweep/judge/cleanup with affected evidence unavailable. Block successor if death or first-pod termination/publication is unverified. Failed global gates clear affected counts; workflow cleanup remains mandatory.
-  12. The C1 timeout instance, the first restart instance and the successor each pass independent checks; none repairs another's missing evidence. No probe enters timeout totals. Shared identity corruption, missing required coverage or global sweep failure still blocks affected evidence.
-  13. Publish only checked fields consumed by these rules: timeout six counts (rule 1); termination identity, cuts, unconfirmed sets and coverage (2/6); per-arm unconfirmed-set size, accepted originals without a terminal record, invoked-resend, original/resend seen, pair and unreported-seen/unseen counts (2/3/5); actual fatal events/coverage (6); separate resend loss (3/4); comparison (5); declared/eligible count and reasons (2/4). Retain one checked pair witness per arm/repeat when present, chosen lexicographically by original attempt ID, resend attempt ID and original/resend coordinates. Count all pairs. Excess witnesses: `record the gap and continue`, without losing counts. Never turn unknown into zero or a persistence status.
-  14. Closed `b10_abrupt` schema [Q10] distinguishes journal, manifest, termination receipt, nonfinal result and final sweep projection from legacy evidence, including schema-2 evidence of the superseded stop protocol. Bind hash/length, run/configuration/repeat, source/image and ordered identities; charge existing byte/depth/entry budgets before filtering/allocation. Enforce closed members/types/version, nonnegative checked Int64 counts, exact identities/arm/predecessor/invocations, independent bookkeeping, nonempty kill unconfirmed set, exactly one linked resend per unconfirmed member, pair subsets bounded by originals/resends seen, seen bounded by unconfirmed/invoked, per arm, unreported-seen plus unseen equal to accepted originals without a terminal record, deterministic witnesses/distinct coordinates, guard/fatal/termination gates and sweep finality. Missing/null/unknown required fields, fractional/overflow counts, conflicting terminals or failed bounds reject authoritative evidence. Old readers reject abrupt dialect; new readers retain schema-one behavior. No fabricated compatibility success, mixed source/image/dialect phase or promotion of legacy results to the new claim. Test actual produced bytes in both directions before publication.
-  15. Amendment of 2026-11-10 ([decision 6762516530](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6762516530)): nine diagnostic trials failed on harness machinery, none on the behaviour under test. Rules 1 to 14 above replace the stop/checkpoint/supervisor protocol, its pipe framing, freeze, checkpoint and drain budgets and pre-kill cohort seals, and the burst of the 2026-11-09 amendment ([decision 6739289644](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6739289644), [decision 6739625843](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6739625843), [decision 6739632202](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6739632202)), whose `ProbeBurstSize` is retired. Registration, authenticated hashes, the workflow's first-pod termination check, the late-write sweep, the decision rules, three-of-five eligibility and fatal capture are kept. The restart subject is unchanged. No B10 trial runs until the storage readiness race fix merges and this protocol is implemented. The pull request that implements this protocol's execution is the inactive smoke-only pull request permitted by factory.md "Item lifecycle" step 1; one diagnostic trial follows its merge, policy workload one C1 repeat with its timeout Job, control arm and kill/replacement arm, read back as a one-repeat diagnostic observation ([decision 6749995101](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6749995101)), never a published result. Journal success requires authenticated identities, durable acceptance records, the control arm's completeness, a nonempty kill unconfirmed set or its named exposure outcome, the self-kill or the no-kill path, observed death, publication, first-pod termination and successor release within bounds with required capture/guards. No C0 or replacement trial. Policy cap: one trial. On failure or exhaustion, record the gap and continue to diagnostics and cleanup only, with no scientific activation and no automatic second trial; a second trial spends money, so the session hands off to Hari. It cannot test future verifier kill/crash separation; production-byte synthetic tests and science cover that. Afterwards only implementation bugs and [Q11] may change, each by Hari's recorded decision before science and disclosed in the pack. Eligibility threshold, pre-acceptance statistics gate, control gate, verdict rules, restart subject and expectations may not change.
+  12. The C1 timeout instance, the first restart instance and, when it started, the successor each pass independent checks; none repairs another's missing evidence. No probe enters timeout totals. Shared identity corruption, missing required coverage or global sweep failure still blocks affected evidence.
+  13. Publish only checked fields consumed by these rules: timeout six counts (rule 1); termination identity, cuts, unconfirmed sets and coverage (2/6); per-arm unconfirmed-set size, accepted journaled probe attempts without a terminal record, invoked-resend, original/resend seen, pair and unreported-seen/unseen counts (2/3/5); actual fatal events/coverage (6); separate resend loss (3/4); comparison (5); declared/eligible count and reasons (2/4). Retain one checked pair witness per arm/repeat when present, chosen lexicographically by original attempt ID, resend attempt ID and original/resend coordinates. Count all pairs. Excess witnesses: `record the gap and continue`, without losing counts. Never turn unknown into zero or a persistence status.
+  14. Closed `b10_abrupt` schema [Q10] distinguishes journal, manifest, termination receipt, nonfinal result and final sweep projection from legacy evidence, including schema-2 evidence of the superseded stop protocol. Bind hash/length, run/configuration/repeat, source/image and ordered identities; charge existing byte/depth/entry budgets before filtering/allocation. Enforce closed members/types/version, nonnegative checked Int64 counts, exact identities/arm/predecessor/invocations, independent bookkeeping, for a repeat whose successor started a nonempty kill unconfirmed set and exactly one linked resend per member, for a repeat without a successor the outcome that rule 6 or rule 7 names and no successor evidence, pair subsets bounded by originals/resends seen, seen bounded by unconfirmed/invoked, per arm, unreported-seen plus unseen equal to accepted journaled probe attempts without a terminal record, deterministic witnesses/distinct coordinates, guard/fatal/termination gates and sweep finality. Missing/null/unknown required fields, fractional/overflow counts, conflicting terminals or failed bounds reject authoritative evidence. Old readers reject abrupt dialect; new readers retain schema-one behavior. No fabricated compatibility success, mixed source/image/dialect phase or promotion of legacy results to the new claim. Test actual produced bytes in both directions before publication.
+  15. Amendment of 2026-11-10 ([decision 6762516530](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6762516530)): nine diagnostic trials failed on harness machinery, none on the behaviour under test. Rules 1 to 14 above replace the stop/checkpoint/supervisor protocol, its pipe framing, freeze, checkpoint and drain budgets and pre-kill cohort seals, and the burst of the 2026-11-09 amendment ([decision 6739289644](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6739289644), [decision 6739625843](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6739625843), [decision 6739632202](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6739632202)), whose `ProbeBurstSize` is retired. Registration, authenticated hashes, the workflow's first-pod termination check, the late-write sweep, the decision rules, three-of-five eligibility and fatal capture are kept. The restart subject is unchanged. No B10 trial runs until the storage readiness race fix merges and this protocol is implemented. The pull request that implements this protocol's execution is the inactive smoke-only pull request permitted by factory.md "Item lifecycle" step 1; one diagnostic trial follows its merge, policy workload one C1 repeat with its timeout Job, control arm and kill/replacement arm, read back as a one-repeat diagnostic observation ([decision 6749995101](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6749995101)), never a published result. Journal success requires authenticated identities, durable acceptance records, the control arm's completeness, a nonempty kill unconfirmed set or its named exposure outcome, the self-kill or the no-kill path, observed death, publication, first-pod termination and, when rule 10 starts the successor, successor release within bounds, with required capture/guards. [Q20] No C0 or replacement trial. Policy cap: one trial. On failure or exhaustion, record the gap and continue to diagnostics and cleanup only, with no scientific activation and no automatic second trial; a second trial spends money, so the session hands off to Hari. It cannot test future verifier kill/crash separation; production-byte synthetic tests and science cover that. Afterwards only implementation bugs and [Q11] may change, each by Hari's recorded decision before science and disclosed in the pack. Eligibility threshold, pre-acceptance statistics gate, control gate, verdict rules, restart subject and expectations may not change.
 ```
 
 ## Appendix B. Edit script
