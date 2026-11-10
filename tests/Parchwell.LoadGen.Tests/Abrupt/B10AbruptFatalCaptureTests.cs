@@ -68,19 +68,17 @@ public sealed class B10AbruptFatalCaptureTests
     }
 
     [Fact]
-    public void Given_NativeErrorAfterKillRequest_When_SupervisorHandlesIt_Then_ItIsJournaled()
+    public async Task Given_NativeErrorAfterKillRequest_When_SupervisorHandlesIt_Then_ItIsJournaled()
     {
-        var records = new B10AbruptSupervisorTests.Records();
-        for (int ordinal = 0; ordinal <= 4; ordinal++)
-        {
-            records.Prepare(ordinal, "cross_restart");
-            if (ordinal == 0) records.Report(0, "cross_restart");
-            records.Accept(ordinal, "cross_restart");
-        }
-        string release = B10AbruptPublisher.Utc(DateTimeOffset.ParseExact(records.Frames[^1].ObservedUtc, "O", CultureInfo.InvariantCulture).AddTicks(1).AddSeconds(120));
-        records.Add("kill_intent", B10AbruptWire.Element(new { arm = "cross_restart", cut_attempt_id = "cross_restart-original-4", release_utc = release }));
-        records.Add("native_error", NativeError(1));
-        var snapshot = records.Read();
+        await using var fixture = new B10AbruptProducerTests.Fixture();
+        fixture.ConfigureControl();
+        fixture.StartReports();
+        await Assert.ThrowsAsync<B10AbruptProducerTests.SimulatedDeathException>(() =>
+            fixture.Runner.RunFirstAsync(B10AbruptProducerTests.Profile(), fixture.Identity, fixture.Options, TestContext.Current.CancellationToken));
+        Assert.Equal("kill_intent", fixture.Journal.Frames[^1].Kind);
+        Assert.True(fixture.Journal.TryCaptureNativeError(-169, "Local_Authentication", true, false, 1));
+        await fixture.Journal.DrainAvailable(TestContext.Current.CancellationToken);
+        var snapshot = B10AbruptJournal.Read(await File.ReadAllBytesAsync(Path.Combine(fixture.Root, "abrupt", "journal.jsonl"), TestContext.Current.CancellationToken));
         Assert.Equal(1, Assert.Single(snapshot.Frames, frame => frame.Kind == "native_error").Data.GetProperty("capture_sequence").GetInt64());
         Assert.Empty(snapshot.Gaps);
     }
