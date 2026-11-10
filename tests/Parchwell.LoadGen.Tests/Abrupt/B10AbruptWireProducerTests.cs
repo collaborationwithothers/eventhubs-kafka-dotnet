@@ -540,7 +540,7 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
             lock (gate) B10AbruptWire.WriteMessageAsync(events, new(kind, ++sent, data)).GetAwaiter().GetResult();
         }
         internal bool Terminal(JsonElement data) { Write("terminal", data); return true; }
-        // The first child's error callback: a numbered message the supervisor journals (ADR-021 rule 12).
+        // The first child's error callback: a numbered message the supervisor journals (ADR-021 protocol rule 9).
         internal void SendNative(bool fatal) => Write("native_error", B10AbruptWire.Element(new
         {
             capture_sequence = Interlocked.Increment(ref nativeSent), error_code = fatal ? 45 : -169,

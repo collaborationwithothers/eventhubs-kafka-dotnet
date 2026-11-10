@@ -251,8 +251,9 @@ internal static class B10AbruptHost
         return new(producer, loaded.Profile, execution, authentication, statistics, evidence);
     }
 
-    // The first child's error callback also reaches the supervisor's journal (ADR-021 rule 12), so a kill cannot lose an
-    // error the evidence session still holds in its background writer. Only the first child has a channel.
+    // The first child's error callback also reaches the supervisor's journal (ADR-021 protocol rule 9), so an error the evidence
+    // session still holds in its background writer is also in the journal. A message still queued in the channel when the child is
+    // stopped for the kill is not written; that is the unknown native tail. Only the first child has a channel.
     internal static Action<IProducer<byte[], byte[]>, Error> CreateErrorHandler(RunEvidenceSession evidence, B10AbruptChildChannel? channel, TimeProvider clock) =>
         (_, error) =>
         {
