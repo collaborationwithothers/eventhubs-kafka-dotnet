@@ -1,10 +1,17 @@
 # B10 restart execution part 1 (LoadGen code) contract-grade plan
 
-Revision 2. Issue [#404](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404). Baseline: `main` at `2ed497d6a8d9ea9fe4b0c00ed4f1ce54f3f41e43` (the merged restart redesign, pull request 427).
+Revision 3. Issue [#404](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404). Baseline: `main` at `2ed497d6a8d9ea9fe4b0c00ed4f1ce54f3f41e43` (the merged restart redesign, pull request 427).
 
 This plan changes the load generator so that the first B10 restart instance becomes a parent and a self-killing producer child, as ADR-021 now states, and so that the successor reads the child's journal from Blob storage. It removes the stop/checkpoint/pipe protocol from LoadGen and, under decision 6775474492, brings the chart's abrupt Jobs and the phase script's abrupt evidence reader to schema 3 and the new Job names, so the required .NET verification step keeps passing. Section 3 is the contract that part 2 (trial workflow, three-Job orchestration, timeout Job wiring, operations documents) will cite; section 13 lists what Hari has answered and what is still open.
 
-## 0. Changes since Revision 1
+## 0. Changes since Revision 2
+
+Revision 2 is at `46e68bf719f745c727c91cfc9b26031498469d9e`. Hari answered its questions "A, accept both" ([comment 6775679271](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6775679271)). Revision 3 records those answers and changes nothing else:
+- Q7 decided as option A: `infra/scripts/phase/phase.py` line 660 is in scope (section 2.1 item 5, section 3.13), with new test T-H4 proving the hook fires for both abrupt modes and not for plain `loadgen`, and mutation M21.
+- The two clear defaults of Revision 2's section 13.3 become decided defaults D7 and D8 (section 12).
+- Section 13 now holds only answered questions; nothing is open.
+
+## 0.1 Changes since Revision 1
 
 Revision 1 is at `76d2744ce14cf9bf8f973d5034b0a11d3c5ce673`. A fresh reproduction check reported fail (relayed by the control session on 2026-11-10). Each finding and its fix:
 
@@ -40,6 +47,8 @@ Authority, in creation order. Catch-up on 2026-11-10: 230 comments on issue 404,
 8. [Decision 6774981258](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6774981258): answers to Revision 1's Q1 to Q6. Job names as recommended; implementing tool Codex; `b10_abrupt_cut_rejected` accepted; deletion of the listed tests accepted by name; the operations contract gap accepted; DA7 accepted by name, DA6 settled by the offline test running the child inside the built image. Its last paragraph returns any changed literal or option to Hari.
 9. [Decision 6775474492](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6775474492): amends 6773282644. Part 1 also includes what the required step "Verify the load generator accepts the rendered chart environment" needs: the chart's B10 abrupt values and templates (including `bounds.b10_abrupt`), `test_b10_abrupt_chart.py`, `test_b10_abrupt_host.py`, and `infra/scripts/phase/b10_abrupt.py` with its tests, as far as schema 3 and the new Job names require. Part 2 keeps the trial workflow change and its committed copy, the C1 timeout Job wiring, the three-Job phase orchestration, the `docs/operations/` rewrite, and decision 6774480762 point 3's test.
 
+10. [Comment 6775679271](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6775679271): Hari's answer "A, accept both" to Revision 2's questions. Q7 option A extends 6775474492 to the one render-hook condition at `phase.py` line 660; `B10_MODES` (line 26) and the ordinary B10 collection loop stay unchanged. Accepted: exit code 4, `unexpected_exit` and `b10_abrupt_signal_failed` for a returned `kill`; `cut.unconfirmed_attempt_ids` computed under the journal lock, stored and checked, a disagreement being a capture gap.
+
 Also read: [issue 428](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/428) (operations documents that still describe the stop protocol; the full rewrite is part 2's).
 
 Not authority: the held offline end-to-end test plan and the paused PR3b plan (section 2.3 only lists shared files), and this session's prototype results (section 10, evidence for literals, not decisions).
@@ -52,7 +61,7 @@ Not authority: the held offline end-to-end test plan and the paused PR3b plan (s
 2. `src/Parchwell.LoadGen/Program.cs`: only the four abrupt flags of section 3.1 (lines 41 to 48 on `main`). The reserved-environment refusal at lines 50 to 54 stays byte-identical.
 3. `tests/Parchwell.LoadGen.Tests/Abrupt/**`: new tests of section 8, updated existing tests, and deletion of the tests listed in section 2.4 only.
 4. Chart, under decision 6775474492 and section 3.13 only: `charts/parchwell/values.yaml` (`runtime.bounds.b10_abrupt`), `charts/parchwell/values.schema.json` (the `b10_abrupt` bounds constant and the abrupt mode enum), `charts/parchwell/templates/jobs.yaml` (the `$abrupt` branches only), `charts/parchwell/templates/_helpers.tpl` (the role mapping for the two abrupt modes), `charts/parchwell/tests/test_b10_abrupt_chart.py`, `charts/parchwell/tests/test_b10_abrupt_host.py`.
-5. Phase, under decision 6775474492 and section 3.13 only: `infra/scripts/phase/b10_abrupt.py` (constants, envelope reader, first-publication acceptance, successor binding, successor collection, abrupt mode names), `infra/scripts/phase/tests/test_b10_abrupt.py`, `infra/scripts/phase/tests/check_b10_abrupt_producers.py`. `infra/scripts/phase/phase.py` only at the render hook (line 660 on `main`), and only if Hari answers Q7 with option A.
+5. Phase, under decision 6775474492 and section 3.13 only: `infra/scripts/phase/b10_abrupt.py` (constants, envelope reader, first-publication acceptance, successor binding, successor collection, abrupt mode names), `infra/scripts/phase/tests/test_b10_abrupt.py`, `infra/scripts/phase/tests/check_b10_abrupt_producers.py`. `infra/scripts/phase/phase.py` only at the render-hook condition, line 660 on `main` (comment 6775679271, Q7 option A); `B10_MODES` (line 26) and the ordinary B10 collection loop (line 950) stay byte-identical.
 6. `items/404/state.md`, under docs/agents/factory.md "Item state file", and a new receipt `items/404/execution-loadgen-receipt.md`. The implementing tool is Codex (decision 6774981258), so the branch is `codex/` with the issue number and every commit carries the Codex trailer (AGENTS.md "Implementer and reviewer").
 
 No `*.csproj`, `Directory.*.props`, `packages*.lock.json`, solution file, new project, assembly reference or NuGet package. `src/Parchwell.LoadGen`, `tests/Parchwell.LoadGen.Tests`, `charts/` and `infra/scripts/` have no owner in `.github/CODEOWNERS`, so no protected path is touched; an agent may merge under AGENTS.md GOVERNANCE "Merge rule".
@@ -235,7 +244,7 @@ Phase (`infra/scripts/phase/b10_abrupt.py`):
 - `collect` checks the successor's `completion.json` as section 3.11 states.
 - `execution_modes('C1')` returns `('loadgen-restart', 'loadgen-successor')`; `values`, `release_successor` and the configmap role mapping use those modes. The two-Job order of `run()` is unchanged (part 2 adds the timeout Job).
 - `check_b10_abrupt_producers.py` and `ProducedBytesCases` read the export's `first/` members named by `FIRST_FILES` and the manifest, and the mutation cases become schema-3 cases (T-H3).
-- `infra/scripts/phase/phase.py` line 660 changes from `mode in ("loadgen", "loadgen2")` to `mode in ("loadgen-restart", "loadgen-successor")`, only under Q7 option A.
+- `infra/scripts/phase/phase.py` line 660 changes from `mode in ("loadgen", "loadgen2")` to `mode in ("loadgen-restart", "loadgen-successor")` (comment 6775679271, Q7 option A). No other line of `phase.py` changes.
 
 
 ## 4. Requirements
@@ -365,6 +374,7 @@ All tests under `tests/Parchwell.LoadGen.Tests/Abrupt/`, named `Given_When_Then`
 |---|---|---|---|
 | T-H1 | R16, 3.13 | render with `mode` `loadgen-restart` and `loadgen-successor`, `b10_abrupt_diagnostic` true | Job names `{run}-c1-r1-loadgen-restart` and `-successor`; args and Role as section 3.13; the nine policy keys exactly; no pipe key |
 | T-H2 | R16 | render with `mode` `loadgen` and `loadgen2` and `b10_abrupt_diagnostic` true | schema rejection; with the flag false, output equal to `main`'s for the same values |
+| T-H4 | 3.13, comment 6775679271 | `Phase.render` in a diagnostic phase (`b10_abrupt_diagnostic` true) with `b10_abrupt().values` patched to record its calls, for modes `loadgen-restart`, `loadgen-successor` and `loadgen` | the hook is called once each for `loadgen-restart` and `loadgen-successor`, with that mode, and not called for `loadgen`; `git diff` of `phase.py` against `main` shows only line 660 |
 | T-H3 | 3.13 | produced schema-3 export; then mutations: `schema_version` 2; `successor_permitted` false; journal last byte removed; manifest journal SHA-256 changed; `kill_unconfirmed_attempt_ids` with one member removed | accepted; then `ValueError` for each mutation |
 
 T-E1 and T-E2 run in the same test class, sequentially, one repeat each per test run; the receipt records their output for one run.
@@ -380,7 +390,7 @@ Tests cannot close these without unbounded mutants:
 
 ### 8.4 Mutation table
 
-The implementer applies each mutation by hand, runs the named test, records it failing in the receipt, and reverts. 20 mutations, fixed.
+The implementer applies each mutation by hand, runs the named test, records it failing in the receipt, and reverts. 21 mutations, fixed.
 
 | # | Mutation | Must fail |
 |---|---|---|
@@ -404,6 +414,7 @@ The implementer applies each mutation by hand, runs the named test, records it f
 | M18 | Compute the control set before taking the journal lock for `cut` | T-C5 |
 | M19 | Phase reader accepts `schema_version` 2 | T-H3 |
 | M20 | Chart renders `--b10-abrupt-supervisor` for `loadgen-restart` | T-H1 and acceptance command 9 |
+| M21 | Render hook condition keeps `"loadgen"` among its modes | T-H4 |
 
 ## 9. Acceptance commands
 
@@ -415,7 +426,7 @@ Each command was run in this planning session where stated, with its observed ou
 4. `git diff --name-only origin/main...HEAD` prints only paths allowed by section 2.1 (script check in the receipt).
 5. `git diff origin/main...HEAD -- src/Parchwell.LoadGen ':!src/Parchwell.LoadGen/Run/Abrupt' ':!src/Parchwell.LoadGen/Program.cs'` prints nothing; and the diff of `Program.cs` touches only lines 41 to 48 (R15, P5).
 6. `grep -rnE 'AnonymousPipe|SIGSTOP|SIGCONT|RequestStop|Resume\(|EventsReady|kill-selection|checkpoint|B10AbruptChildChannel|B10AbruptSupervisor|OwnedProducerProcess|ProbeBurstSize' src/Parchwell.LoadGen` prints nothing (R14).
-7. The mutation table: 20 rows, each with the failing test name and its output line.
+7. The mutation table: 21 rows, each with the failing test name and its output line.
 8. `LC_ALL=C grep -n -P '[^\x00-\x7F]'` over every changed file prints nothing.
 9. The required step, as CI runs it: `PARCHWELL_TOOLS_DIRECTORY=<pinned tools> DOTNET_ROOT=<dotnet> python3 infra/scripts/lifecycle/command.py 900 -- bash charts/parchwell/tests/check-loadgen-host.sh`; the last line is R16's. This planning session ran it on clean `main` `2ed497d6` with the pinned tools at `/opt/parchwell/tools` and `DOTNET_ROOT=/opt/parchwell/dotnet`; its last line was `b10 abrupt host checks passed: 2 rendered environments, 5 rejected inputs, production-byte bridge`.
 10. `bash charts/parchwell/tests/check.sh` and `python3 -m unittest discover -s infra/scripts/phase/tests -p 'test_*.py'`: pass; `test_chart.py` unedited (section 2.2).
@@ -431,7 +442,7 @@ A scratch .NET 10 program outside the repository (Confluent.Kafka 2.16.0, `enabl
 
 ## 11. Plan-check questions (factory.md "Item lifecycle" step 1)
 
-(a) Runtime-sized steps: deleted test methods (bounded by the 2.4 files on `main`, listed by script in the receipt); mutation runs (fixed at 20); documentation warnings (none expected, no doc change); verification failures and review findings. Caps: 20 verification-failure root causes and 20 review-finding root causes, exhaustion `push -wip and hand off to the next session`.
+(a) Runtime-sized steps: deleted test methods (bounded by the 2.4 files on `main`, listed by script in the receipt); mutation runs (fixed at 21); documentation warnings (none expected, no doc change); verification failures and review findings. Caps: 20 verification-failure root causes and 20 review-finding root causes, exhaustion `push -wip and hand off to the next session`.
 
 (b) Stricter than the parent plan: the stop rule also covers changes to the shared files of section 2.3; the ordinary host is frozen by acceptance command 5, which decision 6774480762 states but does not test.
 
@@ -443,6 +454,8 @@ A scratch .NET 10 program outside the repository (Confluent.Kafka 2.16.0, `enabl
 - D3, child launch: same apphost and path check, `--b10-abrupt-child`, settings by environment only, stderr inherited and never parsed; parent flag `--b10-abrupt-parent`, role `parent`; child identity by its `child_started` record compared with the parent's `/proc` reads.
 - D4, successor input: workflow-mounted binding of section 3.11; journal, manifest and termination receipt downloaded from Blob and hash-chained; release at `kill_intent.release_utc`.
 - D5, `successor_permitted` also requires no latched capture gap and successful publication. Basis: ADR-021 rule 4 ("capture invalid and authoritative fields absent" on any gap) and rule 11 ("Block successor if death or first-pod termination/publication is unverified").
+- D7, a returned self-kill (comment 6775679271): the child appends `signal_failed` and exits 4; termination `unexpected_exit`, outcome `b10_abrupt_signal_failed` (sections 3.1, 3.6 step 5, 3.8).
+- D8, the control set at the cut (comment 6775679271): computed under the journal lock in the same critical section as the `cut` append, stored as `cut.unconfirmed_attempt_ids`, and checked by readers; a disagreement latches `malformed_frame` (section 3.5).
 - D6, configuration keys: `MaxFrameBytes` becomes `MaxRecordBytes` (same value, ADR-021 rule 4 now says "record"); `ProbeRate` 100 and `CutOrdinal` 4 become fixed policy keys for the values Hari decided (6769312013, 6769269811); the four stop and arm budgets are removed with the protocol.
 
 ## 13. Open questions for Hari
@@ -458,14 +471,17 @@ A scratch .NET 10 program outside the repository (Confluent.Kafka 2.16.0, `enabl
 | Q5 Operations contract gap until part 2 | accepted |
 | Q6 DA6 and DA7 | DA7 accepted by name; DA6 settled by the offline test inside the built image |
 
-### 13.2 Real decision
+### 13.2 Answered (comment 6775679271)
 
-- Q7. The new abrupt modes need `infra/scripts/phase/phase.py`'s render hook (line 660 on `main`: `if phase.get("b10_abrupt_diagnostic") is True and mode in ("loadgen", "loadgen2")`), which decision 6775474492 does not name. Options: A part 1 changes that one condition to the two abrupt modes (section 3.13), so the phase script and chart agree; B part 1 keeps the chart modes `loadgen`/`loadgen2` and maps them to the new Job names inside the chart's Job-name helper when `b10_abrupt_diagnostic` is true, leaving `phase.py` untouched, while `phase.py`'s `mode_job` keeps computing the old names until part 2. Recommendation A: under B the phase script and chart compute different Job names for the same Job until part 2, and part 2's timeout Job (mode `loadgen`, ordinary) would collide with the abrupt meaning of `loadgen`. Counter: A touches a file every phase run imports, outside the decided list.
+| Question | Answer |
+|---|---|
+| Q7 `phase.py` render hook | option A: line 660 changes to the two abrupt modes; `B10_MODES` and the ordinary collection loop unchanged |
+| Exit code 4 and classification for a returned `kill` | accepted (D7) |
+| Stored and checked `cut.unconfirmed_attempt_ids` | accepted (D8) |
 
-### 13.3 Clear defaults for Hari to confirm
+### 13.3 Open
 
-- Child exit code 4 and termination `unexpected_exit` with outcome `b10_abrupt_signal_failed` when `kill` returns (B2). Counter: a separate termination class `signal_failed` would let part 2 and PR3b tell a failed signal from a crash without reading `outcome`.
-- `cut.unconfirmed_attempt_ids` as a redundant, checked member (N1). Counter: a stored set can disagree with the journal; the reader treats that as `malformed_frame`, which turns a child bug into a capture gap rather than a wrong set.
+None.
 
 ## 14. Sources
 
@@ -479,4 +495,4 @@ The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when:
 3. a file in section 2.3 changes on `main` after `2ed497d6`, or any file this plan changes changes on `main` before implementation starts;
 4. a test cannot pass without changing a path in section 2.2, or `phase.py` beyond the one line of section 3.13;
 5. the self-SIGKILL exit code observed by T-P2 is not 137 (section 3.1 would then be wrong);
-6. Q7 is unanswered when implementation reaches the chart or phase changes.
+6. a change to `phase.py` beyond the line-660 condition seems needed.
