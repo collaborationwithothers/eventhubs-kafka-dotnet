@@ -1,14 +1,14 @@
 # Storage readiness race fix: contract-grade plan
 
-Revision 1. Issue 404. Plan branch `claude/404-plan`. Baseline: `main` at `aadb0c6d5252d6ca9638d116c1bbf7339c17037e`. Not posted; awaiting a fresh reproduction check.
+Revision 2. Issue 404. Plan branch `claude/404-plan`. Baseline: `main` at `0f769fb240d1de50192f4c8eefaf12698002efc7` (Revision 1 was written on `aadb0c6d5252d6ca9638d116c1bbf7339c17037e`; section 17 lists what changed). Not posted; awaiting a fresh reproduction check.
 
 In trial 9 the first blob write of the `start-line` verifier job got `404` with error code `ResourceNotFound`, so the run failed before any producer started. This plan makes the verifier retry that one write, only on that exact answer, inside the Blob I/O budget it already has. Every other answer, and every other write, fails exactly as on `main`; a condition that does not clear within the budget still fails with the same answer.
 
 ## 1. Goal and authority
 
 - Authority: Hari's [decision 6761783572](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6761783572), items 3 and 4: plan the storage readiness race fix in its own pull request; state its effect on every scenario that uses the same phase path; every gate, timeout, failure name, protocol change and the implementing tool goes to Hari.
-- Item 1 of the same decision: no further B10 trial until the capture-loss race fix and the partial-frame race fix merge. This plan authorizes no trial and no dispatch.
-- Catch-up: `items/404/state.md` on `main` (covers comment 6756884940), then every comment created after it, read in full: 6758253501, 6760104002, 6760120861, 6760139065, 6760170847, 6760180716, 6760201403, 6760218433, 6760242955, 6760646338, 6760749353, 6760770654, 6761052971, 6761095907, 6761380716, 6761394550, 6761524200, 6761542603, 6761783572. Newest comment read: 6761783572 (created 2026-11-10T07:37:13Z). 190 comments in total. The decision says what the control session's prompt says; no conflict was found.
+- Item 1 of the same decision set the trial gate. [Decision 6762516530](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6762516530) amends it: no further B10 trial until this storage readiness race fix merges and the B10 restart redesign is implemented. The capture-loss race fix requirement is met: it merged as #425 (merge commit `0f769fb2`). This plan authorizes no trial and no dispatch.
+- Catch-up: `items/404/state.md` on `main` (covers comment 6756884940), then every comment created after it, read in full: 6758253501, 6760104002, 6760120861, 6760139065, 6760170847, 6760180716, 6760201403, 6760218433, 6760242955, 6760646338, 6760749353, 6760770654, 6761052971, 6761095907, 6761380716, 6761394550, 6761524200, 6761542603, 6761783572. Revision 2 refresh, read in full: 6761981257 (offline end-to-end test plan, option a0, in parallel), 6762055013 (PR3b Q13, option C), 6762156869 (capture-loss race fix #425 merged) and 6762516530 (B10 restart redesign: partial-frame plan stopped, PR3b paused at Revision 2 `37128767`, storage readiness fix continues, trial gate amended). Newest comment read: 6762516530 (created 2026-11-10T08:19:11Z). 194 comments in total; no comment was edited or deleted since the Revision 1 read. The decision says what the control session's prompt says; no conflict was found.
 - No earlier decision covers storage readiness, the start-line write or `StartLineHandler`. The item plan (Revision 5, 6705594392) does not cover this pull request.
 
 ## 2. The failure and what is known about its cause
@@ -49,11 +49,11 @@ So neither a young role assignment nor a fast recreation explains trial 9 by its
 - [Common REST API error codes](https://learn.microsoft.com/rest/api/storageservices/common-rest-api-error-codes) (read 2026-11-10): `ResourceNotFound`, Not Found (404), "The specified resource doesn't exist." It is a code common to all storage services, not a Blob-specific code.
 - [Blob Storage error codes](https://learn.microsoft.com/rest/api/storageservices/blob-service-error-codes) (read 2026-11-10): `ContainerNotFound`, 404, "The specified container does not exist."; `BlobNotFound`, 404.
 - [Create Container, Remarks](https://learn.microsoft.com/rest/api/storageservices/create-container#remarks) (read 2026-11-10): "Containers are created immediately within the storage account." This is the data-plane Create Container call. Our containers are created through Azure Resource Manager (`azapi_resource`), so the page does not settle it.
-- [Authorize access to blobs by using Microsoft Entra ID](https://learn.microsoft.com/azure/storage/blobs/authorize-access-azure-active-directory#role-assignment-propagation-delays-for-blob-data-access) (read 2026-11-10): "When you assign roles or remove role assignments, it can take up to 10 minutes for changes to take effect." The page does not state which status or code a request gets during that delay.
+- [Authorize access to blobs by using Microsoft Entra ID](https://learn.microsoft.com/azure/storage/blobs/authorize-access-azure-active-directory#role-assignment-propagation-delays-for-blob-data-access) (read 2026-11-10). Under "Role assignment propagation delays for blob data access": "When you assign roles or remove role assignments, it can take up to 10 minutes for changes to take effect." The same section continues: "If you set the appropriate allow permissions to access data via Microsoft Entra ID and can't access the data, for example you're getting an "AuthorizationPermissionMismatch" error, be sure to allow enough time for the permissions changes you made in Microsoft Entra ID to replicate." Under "Azure built-in roles for blobs", the same page says: "Azure role assignments can take up to 30 minutes to propagate." So the page gives two figures, 10 and 30 minutes, and names `AuthorizationPermissionMismatch` as an example of what a request gets while a new grant replicates. That code is a 403 in [Blob Storage error codes](https://learn.microsoft.com/rest/api/storageservices/blob-service-error-codes) (not quoted here; the fresh check confirmed the page).
 - [Troubleshoot private endpoint creation](https://learn.microsoft.com/troubleshoot/azure/private-link/troubleshoot-private-endpoint-creation-failed#resolution-b) (read 2026-11-10): deletion is asynchronous; "The network adapter, DNS records, and the connection on the target resource are cleaned up after the `delete` call returns"; "Wait at least 20 minutes before re-creating." Its symptom is `PrivateEndpointAlreadyExists` at creation, which trial 9 did not show (the apply succeeded).
 - No Microsoft page was found that confirms or refutes a data-plane delay after an ARM-created storage account or container, or after a private endpoint becomes ready. Searched 2026-11-10 with the Microsoft Learn search for storage account propagation, `ResourceNotFound` after creation and private endpoint recreation.
 
-Inference, not verified: the storage front end did not yet serve the recreated account, or its private endpoint connection, to the verifier's request. Role propagation is a weaker candidate, because a missing grant would be expected to answer 403, not 404; no page states that mapping. The fix in this plan does not depend on which cause is right: it acts on the observed answer.
+Inference, not verified: the storage front end did not yet serve the recreated account, or its private endpoint connection, to the verifier's request. Role propagation is a weaker candidate for trial 9: the Entra ID page names `AuthorizationPermissionMismatch` (a 403) as the example answer while a grant replicates, and Hari read a 404. A later run whose verifier grant is young may still get that 403; the predicate of E1 does not retry it (Q2). The fix in this plan does not depend on which cause is right: it acts on the observed answer.
 
 ## 3. Where the fix belongs
 
@@ -78,7 +78,7 @@ Measured context (section 2.3): across 18 start-line first Jobs, the Job was cre
 | Identity and path tested | the verifier identity, through the cluster network, at the real write | same | none | runner: the runner identity, whose data-plane role is not in this repository; cluster: the verifier identity |
 | Offline test | real handler, store and SDK (section 8) | same shape | only that the delay is called | runner: only with a fake `az`; no offline test reaches real storage |
 
-Basis for a delay or ceiling length: none documented for storage (section 2.4). The only documented figure is role propagation "up to 10 minutes", which applies only if the cause is role propagation, and that cause fits a 404 poorly. The measured data give one failure at about 15 to 26 s after the apply and passes at 14.0 to 17.5 s; they say nothing about how long the condition lasts. Any length chosen now is policy, not a measurement.
+Basis for a delay or ceiling length: none documented for storage readiness (section 2.4). The only documented figures are for role propagation, "up to 10 minutes" and "up to 30 minutes" on the same page; they apply only if the cause is role propagation, which fits a 404 poorly. The measured data give one failure at about 15 to 26 s after the apply and passes at 14.0 to 17.5 s; they say nothing about how long the condition lasts. Any length chosen now is policy, not a measurement.
 
 A readiness poll from the runner can only prove the runner's view. A poll that passes does not show the verifier identity can write, and a poll that fails on the runner's own permissions would block runs that would have passed. A poll from the cluster needs a new verifier mode or Job, which is a larger change than this pull request's scope.
 
@@ -87,7 +87,7 @@ A readiness poll from the runner can only prove the runner's view. A poll that p
 ### 4.1 Files allowed to change
 
 1. `src/Parchwell.Verifier/StartLine/StartLineHandler.cs`: the retry of the start-line note write (section 5), and an optional `ILogger<StartLineHandler>` constructor parameter for the retry log line.
-2. New file `tests/Parchwell.Verifier.Tests/Host/StartLineStorageReadinessTests.cs`: tests T1 to T5 of section 8.
+2. New file `tests/Parchwell.Verifier.Tests/Host/StartLineStorageReadinessTests.cs`: tests T1 to T7 of section 8.
 3. `docs/operations/verifier-contract.md`: one new paragraph, E4, after the paragraph that begins "Budget requirements are mode-specific." (line 302 on `main`).
 4. `items/404/state.md` (decisions added since its covered comment) and a new receipt `items/404/storage-readiness-receipt.md`.
 
@@ -101,14 +101,16 @@ A readiness poll from the runner can only prove the runner's view. A poll that p
 
 ### 4.3 Files shared with other open work on issue 404
 
-- Capture-loss race fix (Revision 7, being implemented): shares only `items/404/state.md`.
-- PR3b classification plan (`items/404/plan-pr3b-classification.md` at `3712876`): shares `items/404/state.md` and `docs/operations/verifier-contract.md` (PR3b changes its lines 3 and 5; this plan adds a paragraph after line 302). PR3b also changes `src/Parchwell.Verifier/Program.cs`, which this plan must not change. PR3b's test T7 runs the real `StartLineHandler` against a local Kafka fixture; that path writes through an in-memory store or a local one, not Azure, so the retry does not change T7's result (to recheck when either merges).
-- Partial-frame race fix plan (`items/404/plan-partial-frame-race-fix.md`): not on the plan branch when this revision was written; no shared file is known.
-- Whichever merges later rebases the shared files. The stop rule (section 14) covers a change by any of them to a file in 4.1, to `StartLineHandler`'s callers, or to the start-line chart values.
+- Capture-loss race fix: merged as #425 (`0f769fb2`). It changed `src/Parchwell.Kafka/Statistics/`, its tests, `docs/operations/statistics-bridge.md`, `items/404/state.md` and its receipt. Of the files in 4.1 it changed only `items/404/state.md`. None of `StartLineHandler.cs`, `Program.cs` (line 255), `BlobVerifierArtifactStore.cs`, `verifier-contract.md` (line 302), `VerifierHostOptionsValidator.cs`, `a01-runtime-limits.json` or `b10_abrupt.py` (lines 619 to 623) changed between `aadb0c6d` and `0f769fb2` (`git diff --name-only`).
+- PR3b classification plan: paused at Revision 2 (`37128767`) by decision 6762516530. It shares `items/404/state.md` and `docs/operations/verifier-contract.md` (PR3b changes its lines 3 and 5; this plan adds a paragraph after line 302). PR3b also changes `src/Parchwell.Verifier/Program.cs`, which this plan must not change.
+- Partial-frame race fix: stopped by decision 6762516530. No shared file.
+- Offline end-to-end test plan (decision 6761981257, option a0): its test is in `tests/Parchwell.LoadGen.Tests`; no file in 4.1 is known to be shared.
+- B10 restart redesign (decision 6762516530): its design pull request changes `docs/blueprint.md`, which this plan does not change. Its later implementation may change `infra/scripts/phase/b10_abrupt.py` and the B10 Job sequence, which section 11 depends on.
+- Whichever merges later rebases `items/404/state.md`. The stop rule (section 16) names the changes that stop this work.
 
 ## 5. External contracts
 
-- E1, retry predicate. The start-line note write (`StartLineHandler`, the `CreateAsync` of `StartLineOutputName`) is retried only when it throws `Azure.RequestFailedException` with `Status == 404` and `ErrorCode == "ResourceNotFound"` (ordinal comparison). Any other exception, status or code propagates at once, unchanged.
+- E1, retry predicate. The start-line note write (`StartLineHandler`, the `CreateAsync` of `StartLineOutputName`) is retried only when it throws `Azure.RequestFailedException` with `Status == 404` and `ErrorCode == "ResourceNotFound"` (ordinal comparison). Any other exception, status or code propagates at once, unchanged. This includes a `RequestFailedException` with status 0, which is how the SDK reports a transport failure such as a refused connection, a code that differs only in letter case, and any `OperationCanceledException`, including a transport timeout.
 - E2, budget. Attempts share the existing publication budget: the origin and `BlobIoTimeout` that `main` already applies to both start-line writes (`StartLineHandler.cs` lines 55 to 64). The wait between attempts is 2 s, on the handler's `TimeProvider`. A retry happens only if `elapsed + 2 s < BlobIoTimeout`; otherwise the last `RequestFailedException` is rethrown unchanged. With the deployed 30 s this allows at most 15 attempts, at 0, 2, ..., 28 s.
 - E3, log line. Each retried answer logs one warning, event ID 1, category `Parchwell.Verifier.StartLine.StartLineHandler`, text exactly: `start_line_storage_not_ready attempt <n> status 404 error_code ResourceNotFound; retrying the start-line write.` where `<n>` is the failed attempt's number from 1. No line is logged for the final, rethrown answer.
 - E4, contract text appended to `docs/operations/verifier-contract.md` as its own paragraph after line 302:
@@ -120,9 +122,10 @@ A readiness poll from the runner can only prove the runner's view. A poll that p
 ## 6. Requirements
 
 - R1. WHEN the note write is answered 404 `ResourceNotFound` and a later attempt within the budget succeeds, THEN the mode returns 0, writes the note once successfully and the inventory once, every PUT carries `If-None-Match: *`, and one E3 line is logged per retried answer. Observed in T1 at the HTTP transport and the logger.
-- R2. WHEN the note write is answered anything else (404 `ContainerNotFound`, 404 `BlobNotFound`, 403 `AuthorizationPermissionMismatch`, 403 `AuthorizationFailure`, 409 `BlobAlreadyExists`, 500 `InternalError`, or `ResourceNotFound` with a status other than 404), THEN the mode throws that `RequestFailedException` with the same status and code after exactly one PUT, as on `main`. Observed in T2.
-- R3. WHEN every attempt is answered 404 `ResourceNotFound`, THEN the mode throws the last `RequestFailedException` (404, `ResourceNotFound`), not a cancellation, after exactly 15 PUTs with the deployed 30 s budget, the last at 28 s after the first, with 14 E3 lines. Observed in T3.
+- R2. WHEN the note write is answered anything else (404 `ContainerNotFound`, 404 `BlobNotFound`, 403 `AuthorizationPermissionMismatch`, 403 `AuthorizationFailure`, 409 `BlobAlreadyExists`, 500 `InternalError`, `ResourceNotFound` with a status other than 404, or `resourcenotfound` in lower case with status 404), THEN the mode throws that `RequestFailedException` with the same status and code after exactly one PUT, as on `main`. Observed in T2.
+- R3. WHEN every attempt is answered 404 `ResourceNotFound` at once, THEN the mode throws the last `RequestFailedException` (404, `ResourceNotFound`), not a cancellation, after exactly 15 PUTs with the deployed 30 s budget, the last at 28 s after the first, with 14 E3 lines. Observed in T3. If the last attempt has not returned when the 30 s budget ends, the linked publication token cancels it and the mode throws a cancellation instead; the phase outcome is the same (Q3).
 - R4. WHEN the note succeeds and the inventory write is answered 404 `ResourceNotFound`, THEN the mode throws it after one inventory PUT. Observed in T4.
+- R7. WHEN the note write fails in transport (the handler throws `HttpRequestException`, or a transport timeout), THEN the mode throws what `main` throws (a `RequestFailedException` with status 0 and the `HttpRequestException` inside, or an `OperationCanceledException`) after one PUT, with no E3 line. Observed in T6 and T7.
 - R5. WHEN the host composes `start-line` mode, THEN the handler receives the host's `ILogger<StartLineHandler>`. Observed in T5.
 - R6. Everything else `main` does in `start-line` is unchanged: existing `StartLineHandlerTests` and `BlobArtifactStoreTests` pass unchanged.
 
@@ -130,7 +133,7 @@ A readiness poll from the runner can only prove the runner's view. A poll that p
 
 - I1. No retry of any write other than the start-line note.
 - I2. No change to any timeout, deadline or process-lifetime sum. The retry spends only budget `main` already grants. The start-line budget sum that `VerifierHostOptionsValidator` checks (lines 45 and 67 to 71: cleanup 10, token 10, metadata 10, watermark 10, Blob I/O 30) stays 70 s, below `ProcessLifetime` 120 s; the fixed 10 s receipt budget is outside that sum; the Job deadline stays 150 s (`a01-runtime-limits.json`).
-- I3. A persistent `ResourceNotFound` still fails the run, at most about 28 s later than on `main`, with the same answer and the same phase failure.
+- I3. A persistent `ResourceNotFound` still fails the run, at most about 30 s later than on `main`, with the same phase failure. The exception is the same 404 when the last attempt returns before the budget ends, and a cancellation otherwise (R3).
 - I4. No hard safety rule is touched: no Azure credentials in the session, no infrastructure change, no workflow or trigger change, no identity or network change.
 
 ## 8. Test map
@@ -140,27 +143,33 @@ All tests are in `StartLineStorageReadinessTests` (`[Trait("Category", "Unit")]`
 | Test | Requirement | Script | Expected |
 |---|---|---|---|
 | T1 `Given_FirstWriteAnsweredResourceNotFound_When_StorageBecomesReady_Then_StartLinePublishesBothArtifacts` | R1 | 404 `ResourceNotFound`, 201, 201 | returns 0; requests `["PUT note","PUT note","PUT inventory"]`; every `If-None-Match` is `*`; request times `[0, 2000, 2000]` ms from the first; log lines exactly `["Warning start_line_storage_not_ready attempt 1 status 404 error_code ResourceNotFound; retrying the start-line write."]` |
-| T2 `Given_FirstWriteAnsweredOtherFailure_When_Publishing_Then_FailsOnFirstAttemptUnchanged` (7 cases) | R2 | (404 `ContainerNotFound`), (404 `BlobNotFound`), (403 `AuthorizationPermissionMismatch`), (403 `AuthorizationFailure`), (409 `BlobAlreadyExists`), (500 `InternalError`), (400 `ResourceNotFound`), then 201, 201 | throws `RequestFailedException` with that status and code; requests `["PUT note"]` |
+| T2 `Given_FirstWriteAnsweredOtherFailure_When_Publishing_Then_FailsOnFirstAttemptUnchanged` (8 cases) | R2 | (404 `ContainerNotFound`), (404 `BlobNotFound`), (403 `AuthorizationPermissionMismatch`), (403 `AuthorizationFailure`), (409 `BlobAlreadyExists`), (500 `InternalError`), (400 `ResourceNotFound`), (404 `resourcenotfound`), then 201, 201 | throws `RequestFailedException` with that status and code; requests `["PUT note"]` |
 | T3 `Given_ResourceNotFoundThroughoutBudget_When_Publishing_Then_LastResponsePropagatesAfterBoundedAttempts` | R3, I3 | 40 x 404 `ResourceNotFound` | throws `RequestFailedException` 404 `ResourceNotFound`; 15 requests, all `PUT note`; last at 28000 ms; 14 log lines |
 | T4 `Given_InventoryWriteAnsweredResourceNotFound_When_NoteSucceeded_Then_InventoryFailsWithoutRetry` | R4, I1 | 201, 404 `ResourceNotFound`, 201 | throws 404 `ResourceNotFound`; requests `["PUT note","PUT inventory"]` |
+| T6 `Given_FirstWriteConnectionFailure_When_Publishing_Then_FailsOnFirstAttemptWithoutRetry` | R7 | the handler throws `HttpRequestException("synthetic connection refused")`, then 201, 201 | throws `RequestFailedException` with `Status` 0 and an `HttpRequestException` inner exception; requests `["PUT note"]`; no log line |
+| T7 `Given_FirstWriteTransportTimeout_When_Publishing_Then_FailsOnFirstAttemptWithoutRetry` | R7 | the handler throws `TaskCanceledException("synthetic transport timeout")`, then 201, 201 | throws an `OperationCanceledException`; requests `["PUT note"]`; no log line |
 | T5 `Given_StartLineMode_When_HostComposed_Then_HandlerReceivesHostLogger` | R5 | `Program.BuildHost` with `ArgumentsFor("start-line", ...)` | exactly one `IVerifierModeHandler`, of type `StartLineHandler`; its single private instance field of type `ILogger<StartLineHandler>` is non-null (reflection, test code only) |
 | Existing `StartLineHandlerTests`, `BlobArtifactStoreTests` | R6, I1 | unchanged | unchanged, all pass |
+
+The scripted handler lets the test clock move after a thrown failure too, so a mutant that wrongly retries a transport failure fails the test instead of hanging it.
+
+T2, T4, T6 and T7 pass on `main` by design: they are preservation tests. They hold R2, R4 and R7, which say the fix must leave those paths as `main` has them. Their power is shown by the mutants they kill (M1 to M3, M7, X1, X2 and X4 in 8.2).
 
 Boundaries: T1 is one attempt below the bound; T3 is at the bound (`28 + 2 = 30` is not `< 30`, so the 15th answer is rethrown); mutant M5 (`<=`) shows the above-bound case. T2 covers the predicate's two parts separately: right code with wrong status (400), right status with wrong code (404 `ContainerNotFound`, `BlobNotFound`).
 
 ### 8.1 Reproduction on `main`
 
-The final test file, copied unchanged into a clean `main` worktree at `aadb0c6d`, builds with 0 warnings and gives `total: 11, failed: 3, succeeded: 8`. T1 fails with `Azure.RequestFailedException : synthetic failure` and `x-ms-error-code: ResourceNotFound`, which is trial 9's answer, raised from the real handler's line 58. T3 fails (`Expected: 14, Actual: 0` log lines). T5 fails (no logger field). T2 and T4 pass on `main`, as R2 and R4 require. The reproduction is deterministic: no real time or network is involved.
+The final test file, copied unchanged into a clean `main` worktree at `0f769fb2`, builds with 0 warnings and gives `total: 14, failed: 3, succeeded: 11`. T1 fails with `Azure.RequestFailedException : synthetic failure` and `x-ms-error-code: ResourceNotFound`, which is trial 9's answer, raised from the real handler's line 58. T3 fails (no E3 lines on `main`). T5 fails (no logger field). T2, T4, T6 and T7 pass on `main`, as R2, R4 and R7 require. The reproduction is deterministic: no real time or network is involved. Revision 1's file gave the same three failures on `aadb0c6d` (`total: 11, failed: 3, succeeded: 8`).
 
 ### 8.2 Mutation table
 
-Each mutant was applied to the final prototype by script, the test project was rebuilt and the class run under `timeout 240`. All 10 were killed (exit 2, none by hang).
+Each mutant was applied to the final prototype on `0f769fb2` by script, the test project was rebuilt and the class run under `timeout 240`. All 13 were killed (exit 2, none by hang). X1, X2 and X4 came from the Revision 1 reproduction check, where they survived.
 
 | Mutant | Break | Caught by |
 |---|---|---|
 | M1 | retry any 404 | T2 (`ContainerNotFound`, `BlobNotFound`) |
 | M2 | retry `ResourceNotFound` at any status | T2 (400 case) |
-| M3 | retry any `RequestFailedException` | T2 |
+| M3 | retry any `RequestFailedException` | T2, T6 |
 | M4 | no budget check | T3 |
 | M5 | budget `<=` instead of `<` | T3 |
 | M6 | no wait between attempts | T1, T3 |
@@ -168,6 +177,9 @@ Each mutant was applied to the final prototype by script, the test project was r
 | M8 | retry log never written | T1, T3 |
 | M9 | fix removed | T1, T3 |
 | M10 | logger parameter not host-resolvable (`ILogger` instead of `ILogger<StartLineHandler>`) | T1, T3, T5 |
+| X1 | also retry `RequestFailedException` with status 0 (transport failure) | T6 |
+| X2 | compare the error code ignoring case | T2 (`resourcenotfound` case) |
+| X4 | also retry an `OperationCanceledException` inside the budget | T7 |
 
 ## 9. Never-ran inventory
 
@@ -181,6 +193,7 @@ Evidence: trials 7, 8 and 9 (artifacts and job logs above) and the 38 job logs o
 | Second attempt succeeds and inventory follows | No | T1 |
 | Exhaustion and rethrow of the last answer | No | T3 |
 | Non-matching answer on the first attempt | No live instance seen | T2 |
+| Transport failure or timeout on the first attempt | No live instance seen | T6, T7 |
 | E3 line through the host's logger into the container log | No | T5 (host injects the logger); delivery to `ContainerLogV2` is DA2 |
 | Live storage clears `ResourceNotFound` within 28 s | No | None possible offline: DA1 |
 
@@ -192,7 +205,7 @@ Evidence: trials 7, 8 and 9 (artifacts and job logs above) and the 38 job logs o
 
 ## 11. Effect on workflows and scenarios
 
-- `b10-abrupt-trial.yml` (B10 abrupt diagnostic): its first Job is start-line (`b10_abrupt.py` line 621); covered.
+- `b10-abrupt-trial.yml` (B10 abrupt diagnostic): on `0f769fb2` its first Job is start-line (`b10_abrupt.py` lines 619 to 623); covered. Decision 6762516530 redesigns the B10 restart path and may change this sequence. It keeps registration and authenticated hashes, but does not state whether start-line stays the first Job. Its journal upload by the parent and the successor's journal read are new early blob writes and reads that this fix does not cover; the redesign should take the same readiness choice (Q1, Q6).
 - `scenario.yml`: start-line runs in every repeat of A01, B04 and B10 (`phase.py` `run_repeats`, `run_b10_repeats`) and in B06 and B07 (`ledger_batch.py`); each start-line Job gets the retry, not only the first after the apply. The probe batch items (B01, B03, B05, C08, C12, F04), idle observation (A02 to A04), B08 and F06 run no start-line; their first writers (seed, action, idle Jobs) are unchanged and not covered. None of their first Jobs failed in section 2.3.
 - `cluster-smoke.yml`: started no worker Job in either run; no effect.
 - `dotnet-verification.yml`: runs the new tests. `verifier-c5-mutation.yml`: `StartLineHandler.cs` is not named in `docs/operations/verifier-mutation.md`'s targets; no effect expected (to confirm in implementation).
@@ -201,33 +214,33 @@ Evidence: trials 7, 8 and 9 (artifacts and job logs above) and the 38 job logs o
 
 ## 12. Acceptance commands
 
-Each was run on the prototype: a scratch worktree of `main` at `aadb0c6d` with the section 4.1 code and test changes and nothing else (source diff SHA-256 `bac1f3632e29470c86714f4864978e0cf8851228c37fe3f51cdf897711c78b77`; test file SHA-256 `b5d4127df3c34f80cfae0736d4b14412fa93b8b0b3c61a57bac62ceecfbdb9f5`). The prototype is not committed; the implementer writes its own code to the contracts and reruns every command, recording output in the receipt.
+Each was run on the prototype: a scratch worktree of `main` at `0f769fb2` with the section 4.1 code and test changes and nothing else (source diff SHA-256 `bac1f3632e29470c86714f4864978e0cf8851228c37fe3f51cdf897711c78b77`, unchanged from Revision 1; test file SHA-256 `2c107050a64a9dca82ed211a434330dea9ec745e2d3d1dcfb201c6efef9526fd`). The prototype is not committed; the implementer writes its own code to the contracts and reruns every command, recording output in the receipt.
 
-1. On a clean `main` worktree with only the new test file: `dotnet build tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj -c Release --no-restore` then `dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj -c Release --no-build -- --filter-class Parchwell.Verifier.Tests.Host.StartLineStorageReadinessTests`. Observed: build 0 warnings; `total: 11, failed: 3, succeeded: 8`; failed T1, T3, T5.
-2. On the branch, the same filter plus `--filter-class Parchwell.Verifier.Tests.Host.StartLineHandlerTests --filter-class Parchwell.Verifier.Tests.Storage.BlobArtifactStoreTests`. Observed: `total: 80, failed: 0` for the three classes before T5 was added; the final readiness class alone: `total: 11, failed: 0, succeeded: 11`.
-3. Repetition: the readiness class 20 times in a loop, each under `timeout 240`. Observed: 20 of 20 runs `succeeded: 11`.
-4. Mutations M1 to M10 of 8.2, one at a time, class run under `timeout 240`; exit 124 is recorded as "killed by hang" and the work continues. Observed: 10 of 10 killed.
-5. `./scripts/verify-dotnet.sh` with Docker running. Observed on the final prototype: exit 0, "Verification passed"; Architecture 17, Enrichment 56, Kafka 486, LoadGen 1748, Scenarios 340 and Verifier 7400 tests passed (Verifier was 7389 on PR3a's receipt; this adds 11). An earlier attempt without a Docker daemon failed only in `PhantomSpikeTests` (no Docker endpoint), an environment fault.
-6. `npm run check:docs`. Observed on the plan branch with this file: exit 0, no warning naming this file. The implementer runs it on the changed files.
+1. On a clean `main` worktree at `0f769fb2` with only the new test file: `dotnet build tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj -c Release --no-restore` then `dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj -c Release --no-build -- --filter-class Parchwell.Verifier.Tests.Host.StartLineStorageReadinessTests`. Observed: build 0 warnings; `total: 14, failed: 3, succeeded: 11`; failed T1, T3, T5.
+2. On the branch, the same filter plus `--filter-class Parchwell.Verifier.Tests.Host.StartLineHandlerTests --filter-class Parchwell.Verifier.Tests.Storage.BlobArtifactStoreTests`. Observed: `total: 84, failed: 0, succeeded: 84`.
+3. Repetition: the readiness class 20 times in a loop, each under `timeout 240`. Observed: 20 of 20 runs `succeeded: 14`.
+4. Mutations M1 to M10 and X1, X2, X4 of 8.2, one at a time, class run under `timeout 240`; exit 124 is recorded as "killed by hang" and the work continues. Observed: 13 of 13 killed.
+5. `./scripts/verify-dotnet.sh` with Docker running. Observed on the final prototype at `0f769fb2`: exit 0, "Verification passed"; Architecture 17, Enrichment 56, Kafka 491, LoadGen 1748, Scenarios 340 and Verifier 7403 tests passed (Verifier 7389 plus the 14 new tests). Two attempts failed only in `PhantomSpikeTests` because the Docker daemon was not running (no Docker endpoint), an environment fault; each passed after the daemon was started.
+6. `npm run check:docs`. Observed on the plan branch with this revision: exit 0, `items/404/plan-storage-readiness-race-fix.md: no issues found`. The implementer runs it on the changed files.
 
 ## 13. Sources
 
 - Decision 6761783572 and the catch-up comments of section 1.
-- On `main` at `aadb0c6d`: `src/Parchwell.Verifier/StartLine/StartLineHandler.cs` lines 14 to 80; `VerifierHostOptionsValidator.cs` lines 44 to 71 and 475 to 491; `Common/Storage/BlobVerifierArtifactStore.cs` lines 38 to 50; `Program.cs` lines 245 to 258 and 176; `infra/ephemeral/storage.tf`; `infra/ephemeral/identity.tf` lines 3 to 27; `infra/scripts/phase/phase.py` lines 23 to 24, 604 to 614, 669 to 776, 1225 to 1253; `infra/scripts/phase/b10_abrupt.py` line 621; `charts/parchwell/templates/jobs.yaml` line 29; `docs/operations/a01-runtime-limits.json`; `docs/operations/verifier-contract.md` lines 124, 290 and 302; `docs/blueprint.md` lines 544 to 546 (the Job retry rule, `backoffLimit: 0`, is unchanged by an in-process write retry); `.github/CODEOWNERS`; `Directory.Packages.props` lines 14 and 15.
+- On `main` at `aadb0c6d`, each unchanged at `0f769fb2` (`git diff --quiet` over these paths): `src/Parchwell.Verifier/StartLine/StartLineHandler.cs` lines 14 to 80; `VerifierHostOptionsValidator.cs` lines 44 to 71 and 475 to 491; `Common/Storage/BlobVerifierArtifactStore.cs` lines 38 to 50; `Program.cs` lines 245 to 258 and 176; `infra/ephemeral/storage.tf`; `infra/ephemeral/identity.tf` lines 3 to 27; `infra/scripts/phase/phase.py` lines 23 to 24, 604 to 614, 669 to 776, 1225 to 1253; `infra/scripts/phase/b10_abrupt.py` line 621; `charts/parchwell/templates/jobs.yaml` line 29; `docs/operations/a01-runtime-limits.json`; `docs/operations/verifier-contract.md` lines 124, 290 and 302; `docs/blueprint.md` lines 544 to 546 (the Job retry rule, `backoffLimit: 0`, is unchanged by an in-process write retry); `.github/CODEOWNERS`; `Directory.Packages.props` lines 14 and 15.
 - GitHub Actions job logs of the 38 jobs of section 2.3; artifacts 13742914191, 13742900343, 13704155185.
 - Microsoft pages of section 2.4, read 2026-11-10.
 
 ## 14. Plan-check questions
 
-- (a) Runtime-sized effort: none uncapped. Mutations are fixed at 10; repetition at 20; the retry itself is capped at 15 attempts by E2. The log search of section 2.3 was a planning read, already done.
+- (a) Runtime-sized effort: none uncapped. Mutations are fixed at 13; repetition at 20; the retry itself is capped at 15 attempts by E2. The log search of section 2.3 was a planning read, already done.
 - (b) Stricter than the parent: decision 6761783572 asks for the minimum change that stops this failure. The plan is stricter in two ways: it retries one write only, and only on one exact answer, so a real missing container (`ContainerNotFound`) or access failure (403) still fails at once (T2).
 - (c) Dependencies not on `main` or in the pull request: live storage behaviour (DA1), log delivery (DA2) and the live header (DA3). The SDK behaviour is exercised with the pinned package.
 
 ## 15. Open questions for Hari
 
 - Q1. Which candidate of section 3.1. Options: V, retry inside the Blob budget (this plan); H1, retry with waits 10, 20 and 40 s; H2, fixed delay after the apply, length open; P, bounded readiness poll from the runner or from the cluster; R, runner-side probe in `check_dns` (the runner form of P). Recommendation: V. Strongest counterargument: H2 and the runner form of P cover every scenario's first writer and live in an unprotected path, while V changes protected verifier code and covers start-line only; and V's 28 s may be too short, which H1 addresses at the cost of changing `ProcessLifetime` and the Job deadline.
-- Q2. Retry predicate. Options: exactly 404 `ResourceNotFound` (recommended); also 403 `AuthorizationPermissionMismatch` for role propagation. Counterargument for widening: role propagation is documented at up to 10 minutes. Against: it was not observed, and retrying a 403 delays every real access failure.
-- Q3. Bound. Options: inside the existing 30 s `BlobIoTimeout` with a 2 s wait (recommended, no timeout changes); a separate larger readiness budget, which adds to the validated 70 s sum and, past 50 s more, reaches `ProcessLifetime` 120 s, so it changes policy values. Counterargument: 30 s may be too short; nothing measured says how long the condition lasts.
+- Q2. Retry predicate. Options: exactly 404 `ResourceNotFound` (recommended); also 403 `AuthorizationPermissionMismatch`, for role propagation. For widening: the Entra ID page says role assignments take "up to 10 minutes" and, in another section, "up to 30 minutes", and names `AuthorizationPermissionMismatch` as what a request may get meanwhile (section 2.4). A future run whose verifier grant is young may get that 403, and this predicate will not retry it. Trial 9 is not such a case: Hari read a 404. Against: no 403 has been observed in any run, and retrying a 403 delays every real access failure by up to 30 s and hides a missing grant for that long.
+- Q3. Bound. Options: inside the existing 30 s `BlobIoTimeout` with a 2 s wait (recommended, no timeout changes); a separate larger readiness budget, which adds to the validated 70 s sum and, past 50 s more, reaches `ProcessLifetime` 120 s, so it changes policy values. Counterargument: 30 s may be too short; nothing measured says how long the condition lasts. Two effects of the recommended option, disclosed: (1) "the same answer" on exhaustion holds only when the last attempt, started at about 28 s, returns before 30 s; otherwise the linked publication token cancels it and the mode throws a cancellation, not the 404. The phase outcome is the same (`b10_abrupt_publication_failed` at boundary `metadata`, `b10_abrupt.py` lines 619 to 623) but the exception text in the container log differs. (2) The note and the inventory share one 30 s budget on `main`. A note that succeeds late leaves the inventory write only what remains. The configured values and the validated sum are unchanged (I2), but the inventory's effective budget shrinks, to about 2 s after a note that succeeds at 28 s.
 - Q4. Log line E3: its name `start_line_storage_not_ready`, level Warning and text. Recommendation: as written. Counterargument: a new operator-visible name.
 - Q5. Failure name on exhaustion. Recommendation: unchanged (`b10_abrupt_publication_failed` at boundary `metadata` for B10 abrupt; the existing outcome elsewhere). Option: a new name for exhausted readiness. Counterargument: a distinct name would tell a later reader that the retry ran out.
 - Q6. Scope across repeats. Recommendation: every start-line Job (all repeats; A01, B04, B06, B07, B10). Option: only the first start-line after the apply, which needs a new input from the phase script. Counterargument: in later repeats the condition is not expected, and a retry there could mask a new fault for up to 28 s, though it still fails if it persists.
@@ -240,4 +253,25 @@ Non-blocking note, nothing decided. Collecting the start-line Job's log into the
 
 ## 16. Stop rule
 
-The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it would need to change a contract (E1 to E5), a requirement, the scope of 4.1 and 4.2, a literal expected value of section 8, or a timeout; when a test on `main` or the branch gives a result other than section 8 states; when a mutant of 8.2 survives; or when the capture-loss race fix, the PR3b classification or the partial-frame race fix changes a file in 4.1, `StartLineHandler`'s callers in `Program.cs`, or the start-line chart values before this pull request merges.
+The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when any of these holds:
+- It would need to change a contract (E1 to E5), a requirement, the scope of 4.1 and 4.2, a literal expected value of section 8, or a timeout.
+- A test on `main` or the branch gives a result other than section 8 states, or a mutant of 8.2 survives.
+- Before this pull request merges, another change on `main` or in a pull request about to merge changes any of: `src/Parchwell.Verifier/StartLine/StartLineHandler.cs`; `src/Parchwell.Verifier/Program.cs` at the start-line registration (line 176) or the Blob client options (lines 245 to 258); `src/Parchwell.Verifier/Common/Storage/BlobVerifierArtifactStore.cs`; `src/Parchwell.Verifier/VerifierHostOptionsValidator.cs` start-line budgets; `tests/Parchwell.Verifier.Tests/Host/StartLineHandlerTests.cs`, `tests/Parchwell.Verifier.Tests/Storage/BlobArtifactStoreTests.cs` or `tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs`; the paragraph at line 302 of `docs/operations/verifier-contract.md`; the start-line values of `docs/operations/a01-runtime-limits.json` or `charts/parchwell/`; or the start-line step of `infra/scripts/phase/b10_abrupt.py` (lines 619 to 623), `phase.py` (`run_repeats`, `run_b10_repeats`) or `ledger_batch.py`.
+- A change to `items/404/state.md` alone does not stop the work; the implementer rebases it.
+
+## 17. Changes since Revision 1
+
+Revision 1 is commit `ffbb38b9`. Each finding of its fresh reproduction check, and each catch-up item, maps to these changes:
+
+| Finding | Change |
+|---|---|
+| B1 (blocking): mutant X1, which also retries status 0 transport failures, survived | E1 names status 0, case and cancellation; new R7; new tests T6 (connection failure) and T7 (transport timeout); X1 and X4 added to 8.2 and killed by T6 and T7; the scripted handler lets the clock move after a thrown failure |
+| N1: the Entra ID page does name `AuthorizationPermissionMismatch` and gives "up to 30 minutes" | Section 2.4 quotes both; the inference in 2.4, the basis paragraph of 3.1 and Q2 corrected |
+| N2: `main` moved to `0f769fb2`; the capture-loss fix merged; the stop rule fired on the state file | Baseline updated; 4.3 rewritten; stop rule narrowed to code, test, contract and phase files; every command rerun on `0f769fb2`; Kafka count now 491 |
+| N3: decision 6762516530 | Section 1 and 4.3 record it; section 11's B10 row says the B10 path may change and whether start-line stays first is not stated |
+| N4: exhaustion can end in a cancellation; the inventory's effective budget shrinks | R3 and I3 corrected; both disclosed under Q3 |
+| N5: T2 and T4 cannot fail on `main` | Section 8 states they are preservation tests and names the mutants that show their power |
+| N6: mutant X2 (case-insensitive code) survived | T2 gains a 404 `resourcenotfound` case; X2 added to 8.2 and killed by T2 |
+| Catch-up items 1 to 5 | Partial-frame plan removed (stopped); PR3b recorded as paused at `37128767`; trial gate amendment added; the B10 first-Job assumption added to section 11 and the stop rule; the redesign's journal blob writes noted as not covered |
+
+No contract, literal or expected value of Revision 1 changed except: T2 has 8 cases, not 7; the class has 14 tests, not 11; the reproduction on `main` gives 3 failures of 14, not 3 of 11; 13 mutants, not 10. The open questions are the same ten, with Q2 and Q3 corrected.
