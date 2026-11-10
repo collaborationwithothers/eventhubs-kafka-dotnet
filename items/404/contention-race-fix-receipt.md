@@ -13,7 +13,7 @@ This change lets the B10 abrupt statistics adapter record each native statistics
 
 ## Base and ordering
 
-Branch `claude/404-capture-contention-race-fix`, base `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`, the commit the plan was written against. When this was implemented, the successor fix had no pull request branch: only its backup branch `claude/404-successor-fix-wip` existed on the remote. A backup branch is not a stacking base, so the work stands on `main`. T7 therefore installs the host's current statistics handler shape (the two calls of `B10AbruptHost.cs` line 232, in that order) as the plan's section 7.2 allows for a base without the successor fix's handler member. This pull request does not merge before the successor fix (decision 6752554218 point 2). After it merges, the control session will direct a rebase, and the plan's stop rule (section 15) is rechecked against the merged files then.
+Branch `claude/404-capture-contention-race-fix`, base `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`, the commit the plan was written against. When this was implemented, the successor fix had no pull request branch: only its backup branch `claude/404-successor-fix-wip` existed on the remote. A backup branch is not a stacking base, so the work stands on `main`, as the control session's start instruction for this session directs when the successor fix's branch does not exist. The plan's section 7.2 only records that its prototype ran on `f5cc496` with the two calls of `B10AbruptHost.cs` line 232; it is not a permission. T7 therefore installs that handler shape in the test itself, so it does not observe the production handler or invariant I1 until the work is rebased onto the successor fix's R10 handler; the stop rule's third bullet is checked then. This pull request does not merge before the successor fix (decision 6752554218 point 2). After it merges, the control session will direct a rebase, and the plan's stop rule (section 15) is rechecked against the merged files then.
 
 ## Implementation choices left to the implementer
 
@@ -36,7 +36,7 @@ SDK `10.0.402`. Source base `f5cc496f` plus the working tree this receipt descri
 | 4 | 50 runs of the new class | `50 Total: 9, Errors: 0, Failed: 0` |
 | 5 | new class against the base `B10AbruptStatistics.cs` | `Total: 9, Errors: 0, Failed: 6`; failing T1, T2, T3, T4 (both cases), T7; T7 message `guard_reason=3 diagnostics=completion_timeout`; T5, T6, T8 pass |
 | 6 | mutations M1 to M12, scratch edits of the fixed file, one class run each | see below; production restored byte-identical (`cmp`) |
-| 7 and 8 | `./scripts/verify-dotnet.sh` | exit 0, `Verification passed`; `Parchwell.ArchitectureTests: 17 passed`, Kafka 486, LoadGen 1686, Scenarios 340, Verifier 7389 |
+| 7 and 8 | `./scripts/verify-dotnet.sh` | exit 0, `Verification passed`; `Parchwell.ArchitectureTests: 17 passed`, Enrichment 56, Kafka 486, LoadGen 1686, Scenarios 340, Verifier 7389 |
 | 9 | grep of `CaptureNative(`, `Guard(3)`, `TryEnter` | `CaptureNative(` at `B10AbruptHost.cs:232` (handler, ahead of `statistics.Capture(raw)`) and its definition at `B10AbruptStatistics.cs:117`; no `Guard(3)`; no `TryEnter` |
 | 10 | `npm run check:docs` | no warning in `items/404/state.md` or this receipt once this file exists; nine warnings, all in other files and unchanged by this pull request |
 
