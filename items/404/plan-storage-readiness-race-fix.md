@@ -1,6 +1,6 @@
 # Storage readiness race fix: contract-grade plan
 
-Revision 5. Issue 404. Plan branch `claude/404-plan`. Baseline: `main` at `0f769fb240d1de50192f4c8eefaf12698002efc7`. Revision 3 was posted as [pointer 6764508653](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6764508653) and checked in [6764643941](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6764643941). Revision 4 (`9d64a2c2`) was not posted; its full reproduction check failed on the points section 18.1 lists. This revision is not posted yet; it awaits a fresh reproduction check.
+Revision 6. Issue 404. Plan branch `claude/404-plan`. Baseline: `main` at `0f769fb240d1de50192f4c8eefaf12698002efc7`. Revision 3 was posted as [pointer 6764508653](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6764508653) and checked in [6764643941](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6764643941). Revisions 4 (`9d64a2c2`) and 5 (`d5c11d68`) were not posted; their checks failed on the points sections 18.2 and 18.1 list. This revision is not posted yet; it awaits a fresh reproduction check.
 
 In trial 9 the first blob write of the run, about 20 seconds after the ephemeral apply ended, was answered `404 ResourceNotFound`, and the run failed before any producer started. Hari chose a fixed 2-minute wait after the ephemeral apply and before the first worker Job ([decision 6765011642](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6765011642)). This plan puts that wait at the end of the phase script's private DNS check, which every workflow job that applies the ephemeral layer and then runs Blob-writing work already calls immediately after the apply, so no workflow file changes.
 
@@ -99,7 +99,7 @@ Q1 asks Hari to choose. The rest of this plan specifies P1.
 
 ## 6. External contracts
 
-- E1, value. `STORAGE_READINESS_WAIT_SECONDS = 120` in `infra/scripts/phase/phase.py`. Hari's policy value (decision 6765011642), not a measurement. Where the value lives is Q3.
+- E1, value. `STORAGE_READINESS_WAIT_SECONDS = 120` in `infra/scripts/phase/phase.py`. Hari's policy value (decision 6765011642), not a measurement. Where the value lives is Q3. The wait is unconditional: `check_dns` reads no environment variable, input or phase file field to decide whether to wait or for how long. This is a reviewable property of the diff; the subtests of section 9 sample it, they cannot prove it.
 - E2, log line. When the DNS check passes, `check_dns` prints exactly one line to standard output, with `flush=True`, before the wait: `storage_readiness_wait seconds=120 policy=decision-6765011642`. The flush makes the line reach the piped job log when the wait starts, not at process exit; `phase.py`'s existing `::group::` and `::warning::` lines do the same (lines 694, 697 and 717). It appears in the public job log of the `Require private endpoint DNS answers` step. Whether to log, and its text, is Q2.
 - E3, order. The wait runs once, after both names resolve as required and before `check_dns` returns 0. A DNS failure raises `Failure("private DNS check failed: <host>", 1)` as on `main`, with no log line and no wait.
 - E4, mechanism. The wait goes through `Phase.sleep`. `check_dns` sets no command deadline, so `Phase.sleep` passes the full 120 s to `time.sleep` (`phase.py` lines 350 to 354 on `main`).
@@ -107,7 +107,7 @@ Q1 asks Hari to choose. The rest of this plan specifies P1.
 
 ## 7. Requirements
 
-- R1. WHEN `phase.sh check-dns` runs, under the environment of any workflow job that calls it, and both private endpoint names resolve to exactly their recorded addresses, THEN it runs the two `resolve` commands, prints the E2 line once, waits 120 s once, and exits 0, in that order. Observed in T1 (ordered calls and standard output) and T4 (the process-level sleep), each run once per job environment of section 9.
+- R1. WHEN `phase.sh check-dns` runs, under any environment (the wait is unconditional, E1), and both private endpoint names resolve to exactly their recorded addresses, THEN it runs the two `resolve` commands, prints the E2 line once, waits 120 s once, and exits 0, in that order. Observed in T1 (ordered calls and standard output) and T4 (the process-level sleep), each run once per job environment of section 9, a sample of the environments the workflows can set.
 - R2. WHEN a name resolves to anything else or the `resolve` command fails, THEN `check-dns` exits 1 after that command, with no wait and no E2 line. Observed in T2.
 - R3. WHEN the existing `test_check_dns` inputs run (`["10.0.0.4"]` exits 0; `["10.0.0.4", "20.1.1.1"]` exits 1; exit 124 exits 1), THEN the exit codes are unchanged. Observed in `test_check_dns`.
 - R4. The value is the named constant `STORAGE_READINESS_WAIT_SECONDS`, equal to 120. Observed in T3.
@@ -125,7 +125,7 @@ Q1 asks Hari to choose. The rest of this plan specifies P1.
 
 All tests are offline. T1 to T5 run the real `phase.main(['check-dns'])` against the existing `PhaseTests.prepare()` fixture, with only the external `resolve` commands scripted by `ScriptedCommands`. Its default answers are `["10.0.0.4"]` for the Event Hubs name and `["10.0.0.5"]` for the Blob name, which match the fixture's recorded addresses.
 
-T1 and T4 run once per job environment, as `subTest`s, with these variables set over the fixture's (from the `env:` blocks of `scenario.yml` jobs `probe`, `full-C0`, `full-C3` and `batch`, and of `b10-abrupt-trial.yml` job `trial`):
+T1 and T4 run once per job environment, as `subTest`s, each inside its own `patch.dict(os.environ, ...)` so no subtest's variables reach the next. The variables are set over the fixture's, from the `env:` blocks of `scenario.yml` jobs `probe`, `full-C0`, `full-C3` and `batch` and of `b10-abrupt-trial.yml` job `trial`. They are a sample of reachable environments, not every one (E1):
 
 | Label | Variables |
 |---|---|
@@ -133,38 +133,42 @@ T1 and T4 run once per job environment, as `subTest`s, with these variables set 
 | `A01 C0` | `PARCHWELL_SCENARIO=A01`, `PARCHWELL_PHASE=C0` |
 | `A01 C3` | `PARCHWELL_SCENARIO=A01`, `PARCHWELL_PHASE=C3` |
 | `B04 C1` | `PARCHWELL_SCENARIO=B04`, `PARCHWELL_PHASE=C1` |
+| `B04 C0` | `PARCHWELL_SCENARIO=B04`, `PARCHWELL_PHASE=C0` (the `probe` job for B04) |
+| `B10 C0` | `PARCHWELL_SCENARIO=B10`, `PARCHWELL_PHASE=C0` (the `probe` job for B10) |
 | `B10 C1` | `PARCHWELL_SCENARIO=B10`, `PARCHWELL_PHASE=C1` |
 | `B10 abrupt diagnostic` | `PARCHWELL_SCENARIO=B10`, `PARCHWELL_PHASE=C1`, `PARCHWELL_CONFIGURATION=C1`, `PARCHWELL_RUN_KIND=smoke`, `PARCHWELL_PURPOSE=diagnostic_trial`, `PARCHWELL_B10_ABRUPT_DIAGNOSTIC=true` |
 | `probe batch`, `probe batch 2`, `idle observation`, `ledger batch` | `PARCHWELL_SCENARIO` = `probe-batch`, `probe-batch-2`, `idle-observation` or `ledger-batch`; `PARCHWELL_PHASE=single-action`; `PARCHWELL_RUN_KIND=smoke`; `PARCHWELL_BATCH_ITEMS=all` |
+| the same four, each with ` run kind batch` appended to its label | as above, with `PARCHWELL_RUN_KIND=batch` |
+| `A01 C0 with authentication inputs` | `PARCHWELL_SCENARIO=A01`, `PARCHWELL_PHASE=C0`, `PARCHWELL_CAPTURE_AUTHENTICATION_METADATA=true`, `PARCHWELL_TEST_HANDLER_REFRESH_PATH=true`, `PARCHWELL_TEST_NATIVE_AUTHENTICATION=true` |
 
 | Test | Requirement | Input | Expected |
 |---|---|---|---|
-| T1 `test_check_dns_answers_then_fixed_storage_readiness_wait` (10 subtests) | R1, E2, E3 | default answers; each job environment; `Phase.run` and `Phase.sleep` recorded into one ordered list | in every subtest: exit 0; events exactly `[('run', ('infra/scripts/phase/phase.py', 'resolve')), ('run', ('infra/scripts/phase/phase.py', 'resolve')), ('sleep', 120)]`; the only stdout line starting `storage_readiness_wait` is `storage_readiness_wait seconds=120 policy=decision-6765011642` |
+| T1 `test_check_dns_answers_then_fixed_storage_readiness_wait` (17 subtests) | R1, E2, E3 | default answers; each job environment; `Phase.run` and `Phase.sleep` recorded into one ordered list | in every subtest: exit 0; events exactly `[('run', ('infra/scripts/phase/phase.py', 'resolve')), ('run', ('infra/scripts/phase/phase.py', 'resolve')), ('sleep', 120)]`; the only stdout line starting `storage_readiness_wait` is `storage_readiness_wait seconds=120 policy=decision-6765011642` |
 | T2 `test_check_dns_failure_fails_without_storage_readiness_wait` | R2, E3 | Event Hubs answer `["10.0.0.4", "20.1.1.1"]` | exit 1; events exactly `[('run', ('infra/scripts/phase/phase.py', 'resolve'))]`; no `storage_readiness_wait` in stdout |
 | T3 `test_storage_readiness_wait_is_the_policy_constant` | R4, E1 | none | `phase.STORAGE_READINESS_WAIT_SECONDS == 120` |
-| T4 `test_check_dns_storage_readiness_wait_reaches_the_process_sleep` (10 subtests) | R1, E4 | default answers; each job environment; `Phase.run` scripted; `phase.time.sleep` recorded, `Phase.sleep` real | in every subtest: exit 0; `time.sleep` called exactly once, with 120 |
+| T4 `test_check_dns_storage_readiness_wait_reaches_the_process_sleep` (17 subtests) | R1, E4 | default answers; each job environment; `Phase.run` scripted; `phase.time.sleep` recorded, `Phase.sleep` real | in every subtest: exit 0; `time.sleep` called exactly once, with 120 |
 | T5 `test_check_dns_storage_readiness_line_is_flushed_before_the_wait` | R5, E2 | default answers; standard output is a `StringIO` subclass whose `flush()` records the text written so far; the recorded `Phase.sleep` reads that record | exit 0; one sleep; the flushed text at that moment contains `storage_readiness_wait seconds=120 policy=decision-6765011642` followed by a newline |
-| T6 `test_check_dns_immediately_follows_every_ephemeral_apply_with_the_same_condition` | R6, E5 | the real `.github/workflows/*.yml`, parsed with PyYAML | each job has at most one `lifecycle.sh apply-ephemeral` step; where it has a `phase.sh check-dns` step, that step is exactly the next step and its `if:` equals the apply step's `if:`; the observed map of `check-dns` conditions is exactly `{(b10-abrupt-trial.yml, trial): None, (cluster-smoke.yml, smoke): no wait, (scenario.yml, batch): None, (scenario.yml, full-C0): None, (scenario.yml, full-C3): "steps.allowed.outputs.workload == 'true'", (scenario.yml, probe): None}` |
+| T6 `test_check_dns_immediately_follows_every_ephemeral_apply_with_the_same_condition` | R6, E5 | the real `.github/workflows/*.yml`, parsed with PyYAML | each job has at most one `lifecycle.sh apply-ephemeral` step; where it has any `phase.sh check-dns` step, it has exactly one, and that step is exactly the next step and its `if:` equals the apply step's `if:`; the observed map of `check-dns` conditions is exactly `{(b10-abrupt-trial.yml, trial): None, (cluster-smoke.yml, smoke): no wait, (scenario.yml, batch): None, (scenario.yml, full-C0): None, (scenario.yml, full-C3): "steps.allowed.outputs.workload == 'true'", (scenario.yml, probe): None}` |
 | `test_check_dns` (existing) | R3 | unchanged | unchanged |
 
 T2, T6 and `test_check_dns` pass on `main` by design: they hold behaviour the change must keep. Their power is shown by the mutants they kill (W3, W9, W13 and W14 in 9.2).
 
 ### 9.1 Reproduction on `main`
 
-On a clean `main` worktree at `0f769fb2` with only the test changes of 5.1 items 2 and 3, the seven tests give `Ran 7 tests`, `FAILED (failures=21, errors=1)`:
-- T1 fails in all 10 subtests at its first assertion on the event list: `Lists differ: [...('sleep', 120)] != [...]`. On `main`, `check-dns` returns straight after the second `resolve`, so the first worker Job starts with no wait, whatever the job. This is the offline form of trial 9's path: nothing between the apply and the first Blob write waits for storage.
-- T4 fails in all 10 subtests: `time.sleep` is never called.
+On a clean `main` worktree at `0f769fb2` with only the test changes of 5.1 items 2 and 3, the seven tests give `Ran 7 tests`, `FAILED (failures=35, errors=1)`:
+- T1 fails in all 17 subtests at its first assertion on the event list: `Lists differ: [...('sleep', 120)] != [...]`. On `main`, `check-dns` returns straight after the second `resolve`, so the first worker Job starts with no wait, whatever the job. This is the offline form of trial 9's path: nothing between the apply and the first Blob write waits for storage.
+- T4 fails in all 17 subtests: `time.sleep` is never called.
 - T5 fails: no sleep happens, so nothing is recorded.
 - T3 errors: `module 'phase' has no attribute 'STORAGE_READINESS_WAIT_SECONDS'`.
 - T2, T6 and `test_check_dns` pass.
 
-The full lifecycle suite on that worktree, `python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'`, gives `Ran 339 tests`, `FAILED (failures=21, errors=1)`: exactly the 10 T1 subtests, the 10 T4 subtests, T5 and T3.
+The full lifecycle suite on that worktree, `python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'`, gives `Ran 339 tests`, `FAILED (failures=35, errors=1)`: exactly the 17 T1 subtests, the 17 T4 subtests, T5 and T3.
 
 What cannot be reproduced offline: storage answering `404 ResourceNotFound`, and whether 120 s is enough (DA1).
 
 ### 9.2 Mutation table
 
-Each mutant was applied to the prototype by script, and the seven tests were run under `timeout 240`. Exit 124 counts as killed by hang. All 14 were killed.
+Each mutant was applied to the prototype by script, and the seven tests were run under `timeout 240`. Exit 124 counts as killed by hang. All 17 were killed.
 
 | Mutant | Break | Caught by |
 |---|---|---|
@@ -182,6 +186,9 @@ Each mutant was applied to the prototype by script, and the seven tests were run
 | W12 | skip the wait when `PARCHWELL_BATCH_ITEMS` is set | T1, T4 (batch subtests) |
 | W13 | scratch `scenario.yml` with the batch job's `single-action-seed` run line swapped with its `check-dns` run line | T6 |
 | W14 | scratch `scenario.yml` with the full-C3 `check-dns` step's `if:` changed to `steps.allowed.outputs.workload == 'never'` | T6 |
+| W15 | skip the wait when `PARCHWELL_RUN_KIND` is `batch` | T1, T4 (run kind batch subtests) |
+| W16 | skip the wait when `PARCHWELL_CAPTURE_AUTHENTICATION_METADATA` is `true` | T1, T4 (authentication inputs subtest) |
+| W17 | skip the wait for `PARCHWELL_SCENARIO=B04` with `PARCHWELL_PHASE=C0` | T1, T4 (B04 C0 subtest) |
 
 ## 10. Never-ran inventory
 
@@ -217,23 +224,25 @@ Added time is 120 s of wall time per job that runs `check-dns`, plus that much m
 
 Every scenario that `scenario.yml` routes to one of its four jobs pays 120 s for each selected job. The first Jobs of section 3.3 name F04, B08, F06, A02, B06 and B10; the other start-line first Jobs there do not name their scenario. Which scenario reaches which job is decided by `scenario.yml`'s job conditions; this plan does not restate them, and the per-job wait does not depend on them.
 
-Deadline fit: the wait sits outside every Job's `activeDeadlineSeconds` (it runs before any Job exists) and outside every phase budget (I2). The only runtime deadline that contains it is each job's 360-minute `timeout-minutes`. The configured worst-case bounds that `docs/operations/a01-workflow.md` documents grow by 120 s: its row "DNS 30, credentials 120, namespace reset 360" goes from 510 to 630 s, and its job totals from probe 34203, full-C0 32943 and full-C3 34743 s to 34323, 33063 and 34863 s (configured bounds, not measurements; computed by script). On `main` these totals already exceed the 360-minute (21600 s) job timeout: they are sums of configured per-step bounds, not a forecast of run time, and this change adds 120 s to each without changing that relation.
+Deadline fit: the wait sits outside every Job's `activeDeadlineSeconds` (it runs before any Job exists) and outside every phase budget (I2). The only runtime deadline that contains it is each job's 360-minute `timeout-minutes`. The configured worst-case bounds that `docs/operations/a01-workflow.md` documents grow by 120 s: its row "DNS 30, credentials 120, namespace reset 360" goes from 510 to 630 s, and its job totals from probe 34203, full-C0 32943 and full-C3 34743 s to 34323, 33063 and 34863 s (configured bounds, not measurements; computed by script). On `main` these totals already exceed the 360-minute (21600 s) job timeout. That is allowed: `docs/operations/a01-workflow.md` line 64 says "The sums above are not required to fit that limit", under [decision 6388539631](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/163#issuecomment-6388539631) point 2 ("their worst-case sum is not required to fit within 21600 seconds"). This change adds 120 s to each sum without changing that relation.
 
 ## 13. Acceptance commands
 
-Each was run on the prototype: a scratch worktree of `main` at `0f769fb2` with the 5.1 items 1 to 3 changes only (`phase.py` diff SHA-256 `7a58a6aa15a5eaf1591fbbaf6cb763f0632da71cea5597cd1390bc9bb17947de`; whole diff SHA-256 `cfafc32aa3b7b7512fd5766b62477abe39f1d360e8e1be971dd2df1fe7a231fc`; T6 file SHA-256 `e2a73732bd0043e3bc5b5877d75b339374a2640ee4ce78325df5ea59014b21e2`). The pinned tools were installed with `bash infra/scripts/lifecycle/install-tools.sh <dir> ci`, which needs Python 3.12 first on `PATH`. The prototype is not committed; the implementer writes its own code to the contracts, reruns every command and records the output in the receipt.
+Each was run on the prototype: a scratch worktree of `main` at `0f769fb2` with the 5.1 items 1 to 3 changes only (`phase.py` diff SHA-256 `7a58a6aa15a5eaf1591fbbaf6cb763f0632da71cea5597cd1390bc9bb17947de`; whole diff SHA-256 `0c7dabb2a6ea70cbfc44b596f045c95fd948d9a696c33cfed3822ff96b47e304`; T6 file SHA-256 `e2a73732bd0043e3bc5b5877d75b339374a2640ee4ce78325df5ea59014b21e2`). The pinned tools were installed with `bash infra/scripts/lifecycle/install-tools.sh <dir> ci`, which needs Python 3.12 first on `PATH`. The prototype is not committed; the implementer writes its own code to the contracts, reruns every command and records the output in the receipt.
 
 The seven tests, run from `infra/scripts/phase/tests`, are: `test_phase.PhaseTests.test_check_dns test_phase.PhaseTests.test_check_dns_answers_then_fixed_storage_readiness_wait test_phase.PhaseTests.test_check_dns_storage_readiness_line_is_flushed_before_the_wait test_phase.PhaseTests.test_check_dns_failure_fails_without_storage_readiness_wait test_phase.PhaseTests.test_check_dns_storage_readiness_wait_reaches_the_process_sleep test_phase.PhaseTests.test_storage_readiness_wait_is_the_policy_constant test_storage_readiness_workflow`.
 
-1. On a clean `main` worktree with only the test changes: `python3 -m unittest <the seven tests>`. Observed: `Ran 7 tests`, `FAILED (failures=21, errors=1)`, failing the 10 T1 subtests, the 10 T4 subtests and T5, with T3 an error.
+1. On a clean `main` worktree with only the test changes: `python3 -m unittest <the seven tests>`. Observed: `Ran 7 tests`, `FAILED (failures=35, errors=1)`, failing the 17 T1 subtests, the 17 T4 subtests and T5, with T3 an error.
 2. The same command on the branch. Observed: `Ran 7 tests`, `OK`.
 3. Repetition: command 2, 20 times, each under `timeout 120`. Observed: 20 of 20 passed.
-4. Mutations W1 to W14 of 9.2. Observed: 14 of 14 killed (W7 by hang).
-5. The CI lifecycle step, with the pinned tools on `PATH`: `python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'`. Observed on the branch: `Ran 339 tests`, `OK`, exit 0. On `main` with only the tests: `Ran 339 tests`, `FAILED (failures=21, errors=1)`, exit 1.
+4. Mutations W1 to W17 of 9.2. Observed: 17 of 17 killed (W7 by hang).
+5. The CI lifecycle step, with the pinned tools on `PATH`: `python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'`. Observed on the branch: `Ran 339 tests`, `OK`, exit 0. On `main` with only the tests: `Ran 339 tests`, `FAILED (failures=35, errors=1)`, exit 1.
 6. `PARCHWELL_TOOLS_DIRECTORY=<dir> python3 infra/scripts/lifecycle/command.py 600 -- bash infra/scripts/lifecycle/check-offline.sh`. Observed on the branch: exit 0.
 7. `npm run check:docs`. Observed on the plan branch with this revision: exit 0, `items/404/plan-storage-readiness-race-fix.md: no issues found`.
 
 `./scripts/verify-dotnet.sh` is not an acceptance command: no .NET file changes.
+
+Receipt guidance: the cold reviewer checks the property of E1 by reading the diff: `check_dns` and the lines it calls must contain no read of `os.environ`, a workflow input or a phase file field that can change whether or how long it waits. On the prototype, the `phase.py` diff contains no `os.environ` (counted by script: 0).
 
 Environment-fault reruns: if a command fails only because of the environment (a stopped Docker daemon, a registry rate limit, a missing pinned tool), the implementer may rerun it at most twice. After that it records the gap in the receipt and continues (AGENTS.md "Before opening a pull request" rule 11).
 
@@ -246,8 +255,8 @@ Environment-fault reruns: if a command fails only because of the environment (a 
 
 ## 15. Plan-check questions
 
-- (a) Effort that scales with a runtime count: none uncapped. Mutations are fixed at 14 and repetitions at 20. Environment-fault reruns are capped at 2 per command, with "record the gap and continue". The wait itself is a fixed 120 s per job.
-- (b) Stricter than the parent: decision 6765011642 asks for a fixed 2-minute wait after the ephemeral apply and before the first worker Job. The plan adds that the wait runs only after the private DNS check passes, so a DNS failure still fails at once (R2), and it pins, by test, that every Blob-writing job keeps `check-dns` between the apply and its first worker step (R5).
+- (a) Effort that scales with a runtime count: none uncapped. Mutations are fixed at 17 and repetitions at 20. Environment-fault reruns are capped at 2 per command, with "record the gap and continue". The wait itself is a fixed 120 s per job.
+- (b) Stricter than the parent: decision 6765011642 asks for a fixed 2-minute wait after the ephemeral apply and before the first worker Job. The plan adds that the wait runs only after the private DNS check passes, so a DNS failure still fails at once (R2), and it pins, by test, that every Blob-writing job keeps `check-dns` immediately after the apply, under the same `if:` (R6).
 - (c) Dependencies on neither `main` nor the pull request: storage readiness timing (DA1), the runner's step limits (DA2) and job log delivery (DA3). The workflow files T6 reads are on `main`.
 
 ## 16. Open questions for Hari
@@ -279,7 +288,18 @@ The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when a
 
 ## 18. Changes since Revision 3
 
-### 18.1 Revision 5, from the full reproduction check of Revision 4 (`9d64a2c2`)
+### 18.1 Revision 6, from the delta check of Revision 5 (`d5c11d68`)
+
+| Finding | Change |
+|---|---|
+| BF1: the subtest table omitted reachable environments, so guards on them survived | (a) E1 and R1 state that the wait is unconditional and `check_dns` reads no environment variable to decide it, a reviewable property; (b) the table adds `B04 C0`, `B10 C0`, the four batch scenarios with `PARCHWELL_RUN_KIND=batch`, and one subtest with the three authentication inputs set (17 subtests each in T1 and T4), each inside its own `patch.dict`; mutants W15 to W17 added and killed; 9.1 and 13 updated to `failures=35, errors=1`; (c) section 13's receipt guidance says the cold reviewer checks the property by reading the diff |
+| N1: 15(b) cited R5 | It cites R6 |
+| N3: changes in Revision 5 not listed in its table | Listed below, at the end of 18.2; T6 requires exactly one `check-dns` step per job that has one, and section 9 now says so |
+| N4: the totals exceeding the job timeout | Section 12 cites `docs/operations/a01-workflow.md` line 64 and decision 6388539631 point 2 |
+
+Counts that follow: 17 subtests in T1 and T4, 35 failures and 1 error on `main`, 17 mutants.
+
+### 18.2 Revision 5, from the full reproduction check of Revision 4 (`9d64a2c2`)
 
 | Finding | Change |
 |---|---|
@@ -294,7 +314,9 @@ The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when a
 
 Renumbering: the workflow test is now T6 (it was T5); T5 is the new flush test. Counts that follow: 7 tests, 21 failures and 1 error on `main`, 14 mutants, 339 lifecycle tests.
 
-### 18.2 Revision 4, rewritten after decision 6765011642
+Other Revision 5 changes, not in the table above (N3 of the Revision 5 check): the header and section 4's P1 say `check-dns` runs immediately after the apply; 5.2 adds `docs/operations/a01-workflow.md` as conditional on Q4; E4 cites `phase.py` lines 350 to 354 on `main`; E5 states that `check-dns` stays immediately after `apply-ephemeral` under the same `if:`; R1 covers every job environment; section 12 adds the bound arithmetic and that the totals already exceed the job timeout; 5.3 adds the B10 restart redesign plan's stop rule; section 14 adds the new line citations; 15(a) counts 14 mutants; the stop rule adds `if:`, job environment variables and `a01-workflow.md` lines 34, 55 and 59.
+
+### 18.3 Revision 4, rewritten after decision 6765011642
 
 Revision 3 is commit `b5167340`. Revision 4 is a rewrite around Hari's decision 6765011642; it keeps section 3 (evidence, run search and citations) and replaces everything about the retry.
 
