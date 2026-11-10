@@ -13,7 +13,6 @@
 - Scripted checks run and warning dispositions:
 - Cold review (repo-review; AGENTS.md "Before opening a pull request" rule 8): reviewed revisions, cumulative comprehensive/focused counts, last complete report and final result line:
 - Hosted Codex review and final-head CI (separate from cold review):
-- Historical prose-only P2 trial evidence (AGENTS.md rule 8), if applicable:
 - Models, with effort where visible: authoring session; cold reviewer; Codex:
 
 </details>
