@@ -1,0 +1,36 @@
+# Storage readiness wait implementation receipt
+
+This change adds Hari's fixed wait after successful private DNS checks. The 120 s is a policy value, not a measured storage readiness time.
+
+## Execution card
+
+- Deliverable and authorization: [Revision 7](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/658500afc9bd847c0494d8441392c3f71add3619/items/404/plan-storage-readiness-race-fix.md), exact-body SHA-256 `eb38d25f4fa9a4d4b6646a0fce59bec5d359ca11ea785ea4069bfb070a29b477`, selected by [pointer](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6767796313), [plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6767891384) and [Hari's approval](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6768160441).
+- Recognized decisions: plan section 1's eight answers, [placement](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6767436384) through [merge](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6767566226), read in full. Later decision 6768228960 concerns the unapproved restart redesign and changes no requirement here.
+- Mandatory gates: plan sections 9 and 13, documentation check, cold review under docs/agents/pull-requests.md rule 8, final-head CI and hosted Codex code and security reviews. No protected paths; merge uses the REST route with the SHA recorded when these gates are verified. No trial or dispatch is authorized.
+- Exact verification commands: plan section 13, commands 1 to 7. Seven-test selection: `test_phase.PhaseTests.test_check_dns test_phase.PhaseTests.test_check_dns_answers_then_fixed_storage_readiness_wait test_phase.PhaseTests.test_check_dns_storage_readiness_line_is_flushed_before_the_wait test_phase.PhaseTests.test_check_dns_failure_fails_without_storage_readiness_wait test_phase.PhaseTests.test_check_dns_storage_readiness_wait_reaches_the_process_sleep test_phase.PhaseTests.test_storage_readiness_wait_is_the_policy_constant test_storage_readiness_workflow`, run with `python3 -m unittest` from `infra/scripts/phase/tests`. Repeat 20 times under `timeout 120`; W1 to W17 under `timeout 240`. Lifecycle: `python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'`. Offline: `PARCHWELL_TOOLS_DIRECTORY=/tmp/404-tools python3 infra/scripts/lifecycle/command.py 600 -- bash infra/scripts/lifecycle/check-offline.sh`. Docs: `npm run check:docs`.
+- Earliest publication checkpoint: after acceptance and clean cold-review coverage, publish the tested PR while CI and hosted reviews run.
+- Review budget: two comprehensive passes, then at most two focused correction rounds cumulatively; exhaustion or unsafe focus saves `-wip` and hands off to Hari. Environment-fault reruns: at most two per command, then record the gap and continue (plan section 13).
+- Predicate map: plan section 9 maps R1 to R6 and E1 to E5 to T1 to T6 and the existing unchanged test. No verifier predicate changes.
+
+## Implementation choices and verification
+
+Baseline: `0f769fb240d1de50192f4c8eefaf12698002efc7`. Verification results below describe source commit `8a63a0ca55b42a2303a18892e6a05067f942c411`; the state and this receipt add no runtime behavior. The plan check's N1 to N9 are non-blocking; they require no implementation change. The immutable plan is left at its approved commit.
+
+
+- T1/T4 share the literal table of 17 isolated job environments. T1/T2 record `Phase.run` and `Phase.sleep` in one list; T5 records the stdout flush snapshot when the sleep starts. T6 parses the actual workflows and uses the plan's literal `no wait` marker. Private helper names and code structure are implementation choices; all test names, inputs and expected values follow section 9.
+- E1 was checked by reading `check_dns`, `run` and `sleep`: the wait and its value have no environment/input/phase-field guard. `check_dns` sets no deadline, so the real sleep seam receives the full 120 s. The existing DNS test was compared by AST source extraction and is unchanged.
+- Baseline reproduction, clean detached worktree at `0f769fb240d1de50192f4c8eefaf12698002efc7` with only the two test-file changes: selected seven tests exit 1 with 35 failures and one error; full lifecycle suite runs 339 tests and exits 1 with the same 35 failures and one error. These are exactly the expected T1/T4 subtest failures, T5 failure and missing T3 constant.
+- Branch selected seven tests: pass. Twenty repetitions under `timeout 120`: 20 passed. Full lifecycle acceptance command with `/tmp/404-tools` and its venv on PATH: 339 tests pass, exit 0.
+- Pinned tools installed with `bash infra/scripts/lifecycle/install-tools.sh /tmp/404-tools ci` using CPython 3.12.14 and PyYAML 6.0.3. Offline acceptance command: exit 0, including shell/workflow/mirror checks and chart render/validation tests. No .NET verification was added locally because the approved plan changes no .NET files.
+- `npm ci --ignore-scripts` and `npm run check:docs`: exit 0. Eight advisory warnings are in unchanged files; blanket disposition: pre-existing warnings remain outside this PR. The two changed Markdown files have no issues. The docs check is repeated before cold review after this receipt is finalized.
+- No command needed an environment-fault rerun. No live infrastructure was run; DA1 to DA3 retain Hari's acceptance from decision 6767526008. Neither storage readiness after 120 s nor live log delivery has been measured here.
+
+## Mutation acceptance
+
+Seventeen scratch mutants W1 to W17 from plan section 9.2 were run sequentially against the seven-test selection under `timeout 240 python3 -B -m unittest ...`. All 17 were killed: W7 exited 124 after the 240 s bound; every other mutant exited 1 with test failures. `-B` avoided cached bytecode during rapid source replacement. Each source mutation starts from the tested source commit; workflow mutations touch only the scratch worktree. No mutant or generated output is committed.
+
+The exact source variations were: W1 removes the sleep; W2 sets the constant to 60; W3 moves log and sleep before the loop; W4 moves both into the loop; W5 removes the log; W6 changes `seconds=120` to `wait=120`; W7 calls `time.sleep` directly; W8 guards log/sleep on B10; W10 removes `flush=True`; W11 skips B10; W12 skips a set batch-items variable; W15 skips batch run kind; W16 skips authentication metadata; W17 skips B04 C0. W9 replaces the probe DNS step's run body with `true`; W13 swaps the batch DNS and seed run bodies; W14 changes the full-C3 DNS condition to `steps.allowed.outputs.workload == 'never'`.
+
+## Cold review inputs
+
+Initial mode: comprehensive; comparison revision `0f769fb240d1de50192f4c8eefaf12698002efc7`. Freeze the full authored diff and supply it with this receipt to a fresh-context `repo-review` subagent at high effort. Cumulative budget before this review: zero comprehensive, zero focused. Complete reports, dispositions, cumulative counts and the final reviewed SHA are recorded in the pull request self-review record, avoiding a receipt-only commit to include this receipt's own head.
