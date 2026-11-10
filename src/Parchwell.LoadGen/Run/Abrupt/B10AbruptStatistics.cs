@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Security.Cryptography;
@@ -23,8 +24,10 @@ internal sealed class B10AbruptStatistics : IKafkaStatisticsEvidenceSink
     private volatile bool overflow;
     private volatile bool guardFailed;
     private int guardReason;
-    private bool trackNativeCapture;
-    private readonly Queue<(int Length, string Sha256)> pendingNative = new();
+    private volatile bool trackNativeCapture;
+    // The native callback thread records reports here without taking gate, so a reader holding gate never makes it skip a report.
+    private readonly ConcurrentQueue<(int Length, string Sha256)> pendingNative = new();
+    private int pendingNativeCount;
     private string? nativeName;
     private long? nativeTimestamp;
     private Int128? nativeCreation;
@@ -126,17 +129,24 @@ internal sealed class B10AbruptStatistics : IKafkaStatisticsEvidenceSink
             return;
         }
         string hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(raw)));
-        if (!Monitor.TryEnter(gate))
+        if (!trackNativeCapture || !TryReservePendingSlot())
         {
-            Guard(3);
+            Guard(4);
             return;
         }
-        try
+        pendingNative.Enqueue((length, hash));
+    }
+
+    private bool TryReservePendingSlot()
+    {
+        int count = Volatile.Read(ref pendingNativeCount);
+        while (count < 2048)
         {
-            if (!trackNativeCapture || pendingNative.Count >= 2048) Guard(4);
-            else pendingNative.Enqueue((length, hash));
+            int observed = Interlocked.CompareExchange(ref pendingNativeCount, count + 1, count);
+            if (observed == count) return true;
+            count = observed;
         }
-        finally { Monitor.Exit(gate); }
+        return false;
     }
 
     internal void MarkConstructed(DateTimeOffset value)
@@ -177,8 +187,13 @@ internal sealed class B10AbruptStatistics : IKafkaStatisticsEvidenceSink
             if (trackNativeCapture)
             {
                 string hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(report.RawJson)));
-                if (!pendingNative.TryDequeue(out var native) || native.Length != length || native.Sha256 != hash)
+                if (!pendingNative.TryDequeue(out var native))
                     Guard(6);
+                else
+                {
+                    Interlocked.Decrement(ref pendingNativeCount);
+                    if (native.Length != length || native.Sha256 != hash) Guard(6);
+                }
             }
             retainedBytes += length;
             reports.Add(new NumberedReport(sequence, report));
