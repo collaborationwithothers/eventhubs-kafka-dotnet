@@ -17,6 +17,8 @@ import time
 from urllib.parse import urlsplit
 
 MIB = 1024 * 1024
+# Hari's policy wait, not a measured readiness time (decision 6765011642).
+STORAGE_READINESS_WAIT_SECONDS = 120
 SCENARIOS = {"A01": {"probe": "C0", "C0": "C0", "C3": "C3"},
              "B04": {"C0": "C0", "C1": "C1"},
              "B10": {"C0": "C0", "C1": "C1"}}
@@ -611,6 +613,8 @@ class Phase:
                             output=path, maximum=65536)
             if code or set(strict_json(path.read_bytes())) != {address}:
                 raise Failure("private DNS check failed: " + host, 1)
+        print("storage_readiness_wait seconds=120 policy=decision-6765011642", flush=True)
+        self.sleep(STORAGE_READINESS_WAIT_SECONDS)
         return 0
 
     def values(self, mode, repeat, item=None, configuration=None, action_role=None):

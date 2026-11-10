@@ -42,6 +42,55 @@ LEDGER_STATS = (json.dumps({'schema_version': 1, 'raw_json': json.dumps({'ts': 1
 LEDGER_ROWS = (json.dumps({'delivered': True, 'delivery_latency_ms': 9.5}) + '\n' + json.dumps({'delivered': True, 'delivery_latency_ms': 4}) + '\n'
                + json.dumps({'delivered': False, 'delivery_latency_ms': None}) + '\n').encode()
 LEDGER_CONFIGURATIONS = (('B06', 'C0'), ('B06', 'C1'), ('B07', 'C0'), ('B07', 'C1'))
+STORAGE_READINESS_WAIT_SECONDS = 120
+STORAGE_READINESS_LINE = 'storage_readiness_wait seconds=120 policy=decision-6765011642'
+STORAGE_READINESS_EVENTS = [
+    ('run', ('infra/scripts/phase/phase.py', 'resolve')),
+    ('run', ('infra/scripts/phase/phase.py', 'resolve')),
+    ('sleep', 120),
+]
+STORAGE_READINESS_ENVIRONMENTS = (
+    ('A01 probe', {'PARCHWELL_SCENARIO': 'A01', 'PARCHWELL_PHASE': 'probe'}),
+    ('A01 C0', {'PARCHWELL_SCENARIO': 'A01', 'PARCHWELL_PHASE': 'C0'}),
+    ('A01 C3', {'PARCHWELL_SCENARIO': 'A01', 'PARCHWELL_PHASE': 'C3'}),
+    ('B04 C1', {'PARCHWELL_SCENARIO': 'B04', 'PARCHWELL_PHASE': 'C1'}),
+    ('B04 C0', {'PARCHWELL_SCENARIO': 'B04', 'PARCHWELL_PHASE': 'C0'}),
+    ('B10 C0', {'PARCHWELL_SCENARIO': 'B10', 'PARCHWELL_PHASE': 'C0'}),
+    ('B10 C1', {'PARCHWELL_SCENARIO': 'B10', 'PARCHWELL_PHASE': 'C1'}),
+    ('B10 abrupt diagnostic', {'PARCHWELL_SCENARIO': 'B10', 'PARCHWELL_PHASE': 'C1',
+                              'PARCHWELL_CONFIGURATION': 'C1', 'PARCHWELL_RUN_KIND': 'smoke',
+                              'PARCHWELL_PURPOSE': 'diagnostic_trial', 'PARCHWELL_B10_ABRUPT_DIAGNOSTIC': 'true'}),
+    ('probe batch', {'PARCHWELL_SCENARIO': 'probe-batch', 'PARCHWELL_PHASE': 'single-action',
+                     'PARCHWELL_RUN_KIND': 'smoke', 'PARCHWELL_BATCH_ITEMS': 'all'}),
+    ('probe batch 2', {'PARCHWELL_SCENARIO': 'probe-batch-2', 'PARCHWELL_PHASE': 'single-action',
+                       'PARCHWELL_RUN_KIND': 'smoke', 'PARCHWELL_BATCH_ITEMS': 'all'}),
+    ('idle observation', {'PARCHWELL_SCENARIO': 'idle-observation', 'PARCHWELL_PHASE': 'single-action',
+                          'PARCHWELL_RUN_KIND': 'smoke', 'PARCHWELL_BATCH_ITEMS': 'all'}),
+    ('ledger batch', {'PARCHWELL_SCENARIO': 'ledger-batch', 'PARCHWELL_PHASE': 'single-action',
+                      'PARCHWELL_RUN_KIND': 'smoke', 'PARCHWELL_BATCH_ITEMS': 'all'}),
+    ('probe batch run kind batch', {'PARCHWELL_SCENARIO': 'probe-batch', 'PARCHWELL_PHASE': 'single-action',
+                                    'PARCHWELL_RUN_KIND': 'batch', 'PARCHWELL_BATCH_ITEMS': 'all'}),
+    ('probe batch 2 run kind batch', {'PARCHWELL_SCENARIO': 'probe-batch-2', 'PARCHWELL_PHASE': 'single-action',
+                                      'PARCHWELL_RUN_KIND': 'batch', 'PARCHWELL_BATCH_ITEMS': 'all'}),
+    ('idle observation run kind batch', {'PARCHWELL_SCENARIO': 'idle-observation', 'PARCHWELL_PHASE': 'single-action',
+                                         'PARCHWELL_RUN_KIND': 'batch', 'PARCHWELL_BATCH_ITEMS': 'all'}),
+    ('ledger batch run kind batch', {'PARCHWELL_SCENARIO': 'ledger-batch', 'PARCHWELL_PHASE': 'single-action',
+                                     'PARCHWELL_RUN_KIND': 'batch', 'PARCHWELL_BATCH_ITEMS': 'all'}),
+    ('A01 C0 with authentication inputs', {'PARCHWELL_SCENARIO': 'A01', 'PARCHWELL_PHASE': 'C0',
+                                           'PARCHWELL_CAPTURE_AUTHENTICATION_METADATA': 'true',
+                                           'PARCHWELL_TEST_HANDLER_REFRESH_PATH': 'true',
+                                           'PARCHWELL_TEST_NATIVE_AUTHENTICATION': 'true'}),
+)
+
+
+class FlushedOutput(io.StringIO):
+    def __init__(self):
+        super().__init__()
+        self.flushed_text = ''
+
+    def flush(self):
+        self.flushed_text = self.getvalue()
+        super().flush()
 
 
 class ScriptedCommands:
@@ -1318,6 +1367,70 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
                 self.fake.responses[(os.sys.executable, 'infra/scripts/phase/phase.py', 'resolve', 'eh-synthetic.servicebus.windows.net')] = (code, response)
                 with self.mocked():
                     self.assertEqual(expected, self.main('check-dns'))
+
+    def test_check_dns_answers_then_fixed_storage_readiness_wait(self):
+        self.prepare()
+        for label, environment in STORAGE_READINESS_ENVIRONMENTS:
+            with self.subTest(environment=label), patch.dict(os.environ, environment):
+                events = []
+                output = io.StringIO()
+
+                def run(instance, args, *arguments, **keywords):
+                    events.append(('run', tuple(args[1:3])))
+                    return self.fake(instance, args, *arguments, **keywords)
+
+                with patch.object(phase.Phase, 'run', autospec=True, side_effect=run), \
+                        patch.object(phase.Phase, 'sleep', side_effect=lambda seconds: events.append(('sleep', seconds))), \
+                        contextlib.redirect_stdout(output):
+                    code = phase.main(['check-dns'])
+                self.assertEqual(STORAGE_READINESS_EVENTS, events)
+                self.assertEqual(0, code)
+                self.assertEqual([STORAGE_READINESS_LINE],
+                                 [line for line in output.getvalue().splitlines() if line.startswith('storage_readiness_wait')])
+
+    def test_check_dns_failure_fails_without_storage_readiness_wait(self):
+        self.prepare()
+        self.fake.responses[(sys.executable, 'infra/scripts/phase/phase.py', 'resolve',
+                             'eh-synthetic.servicebus.windows.net')] = (0, '["10.0.0.4", "20.1.1.1"]')
+        events = []
+        output = io.StringIO()
+
+        def run(instance, args, *arguments, **keywords):
+            events.append(('run', tuple(args[1:3])))
+            return self.fake(instance, args, *arguments, **keywords)
+
+        with patch.object(phase.Phase, 'run', autospec=True, side_effect=run), \
+                patch.object(phase.Phase, 'sleep', side_effect=lambda seconds: events.append(('sleep', seconds))), \
+                contextlib.redirect_stdout(output), contextlib.redirect_stderr(io.StringIO()):
+            code = phase.main(['check-dns'])
+        self.assertEqual(1, code)
+        self.assertEqual([('run', ('infra/scripts/phase/phase.py', 'resolve'))], events)
+        self.assertNotIn('storage_readiness_wait', output.getvalue())
+
+    def test_storage_readiness_wait_is_the_policy_constant(self):
+        self.assertEqual(STORAGE_READINESS_WAIT_SECONDS, phase.STORAGE_READINESS_WAIT_SECONDS)
+
+    def test_check_dns_storage_readiness_wait_reaches_the_process_sleep(self):
+        self.prepare()
+        for label, environment in STORAGE_READINESS_ENVIRONMENTS:
+            with self.subTest(environment=label), patch.dict(os.environ, environment):
+                with patch.object(phase.Phase, 'run', autospec=True, side_effect=self.fake), \
+                        patch.object(phase.time, 'sleep') as sleep, contextlib.redirect_stdout(io.StringIO()):
+                    code = phase.main(['check-dns'])
+                self.assertEqual(0, code)
+                sleep.assert_called_once_with(STORAGE_READINESS_WAIT_SECONDS)
+
+    def test_check_dns_storage_readiness_line_is_flushed_before_the_wait(self):
+        self.prepare()
+        output = FlushedOutput()
+        flushed_at_wait = []
+        with patch.object(phase.Phase, 'run', autospec=True, side_effect=self.fake), \
+                patch.object(phase.Phase, 'sleep', side_effect=lambda seconds: flushed_at_wait.append(output.flushed_text)), \
+                contextlib.redirect_stdout(output):
+            code = phase.main(['check-dns'])
+        self.assertEqual(0, code)
+        self.assertEqual(1, len(flushed_at_wait))
+        self.assertIn(STORAGE_READINESS_LINE + '\n', flushed_at_wait[0])
 
     def test_delete_workload_argv(self):
         self.prepare()
