@@ -54,7 +54,7 @@ The plan's section 8 is the predicate map. Each test maps as follows (test names
 | T11 | R6 | `B10AbruptFatalCaptureTests`: `FullWriteQueue...` |
 | T12 | none (guard) | `check_b10_abrupt_producers.py` on the new export (A3) |
 | T13 | none | `B10AbruptRejectionTests` (A5); its diff adds three lines holding the eight names and removes none |
-| T14 | R12 | `B10AbruptPublicationTests`: `CohortFileUploads...`, `SecondCohortUploadFails...` (timeline `dropped` 0 is read from the failure report in the failure case; on the success path the snapshot is not written, and exactly eight lines show no entry was dropped) |
+| T14 | R12 | `B10AbruptPublicationTests`: `CohortFileUploads...`, `SecondCohortUploadFails...` (timeline `dropped` 0 is read from the failure report in the failure case; the success path writes no snapshot, so `dropped` is not asserted there) |
 | T15 | R6 | `B10AbruptFatalCaptureTests`: `HostBuiltProducer_When_NativeFatalErrorIsRaised...` |
 | T16 | R6, R8 | `B10AbruptFatalCaptureTests`: `NativeErrorCountThatChangesDuringCohortRuns...` |
 
@@ -95,4 +95,6 @@ Round 2, focused, input `93d89f3`, compared with `b97a362` (full PR diff against
 - The contract (lines 73, 159, 160) no longer says collection-time findings follow a successor run: `collect()` runs whether or not a successor was released, because the binding file is written before release.
 - The comments in `B10AbruptHost.cs` and `B10AbruptFatalCaptureTests.cs` now also name the latched-gap path (a full write queue, T11) as a way a callback is not journaled.
 - T14's failure test asserts timeline `dropped` 0 from the failure report; the row above is corrected. A misplaced comment in that test is moved.
-Because the fixes include a test assertion, one focused P2-correction review (the second and last focused round) covers them.
+The fixes include a test assertion, which is not prose, so round 3 was run as an ordinary focused round (see below), not as the prose-only P2-correction round.
+
+Round 3, focused, input `333951c`, compared with `93d89f3`: 1 P1, no P2 in the non-prose hunk. Cumulative: 1 comprehensive, 2 focused; the budget of rule 8 is spent. The reviewer confirmed the corrections themselves (contract wording, comments, the T14 `dropped` assertion) against their sources. The P1 is about this record: the round was labelled a prose-only P2-correction round although its fixes include a test assertion. The reviewer reviewed that hunk at all severities and found nothing, so the code had full coverage; the label was wrong and is corrected above. No further round remains, so the receipt edit that records this correction (the commit after `333951c`) has no review of its own. Success-path `dropped` 0 (plan T14) stays unasserted, as reported in round 1 and left under rule 10 with the reason above.
