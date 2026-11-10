@@ -1,22 +1,38 @@
 # B10 restart execution part 1: execution receipt
 
-This change replaces the stop/checkpoint/pipe protocol with a producer child that journals and kills itself, a parent that observes and publishes, and a successor that validates the journal and resends unconfirmed attempts. It adapts chart and phase evidence to schema 3 while trial wiring, classification and scientific publication remain separate work. Final-source acceptance and all 21 mutation rows are complete; the final authored documentation scan and mandatory reviews remain pending.
+This change replaces the stop/checkpoint/pipe protocol with a producer child that journals and kills itself, a parent that observes and publishes, and a successor that validates the journal and resends unconfirmed attempts. It adapts chart and phase evidence to schema 3 while trial wiring, classification and scientific publication remain separate work. Consolidated review corrections pass all local acceptance and mutation gates; final authored documentation checks and the second comprehensive review remain pending.
 
 ## Execution card
 
 - Deliverable: [execution part 1 Revision 6](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/fc1a4f36452b2d302f1d73987e1ba5eb967b3d65/items/404/plan-b10-execution-loadgen.md), sections 2 to 4, with [amendment 6776685705](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6776685705).
 - Authorization: [plan pointer](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6775850681), [approval](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6776159640), and the seven decisions adopted by that approval. The latest exact-revision [plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6776377996) states `Blocking findings: none`; its four `apply in implementation` findings apply.
 - Plan commit: `fc1a4f36452b2d302f1d73987e1ba5eb967b3d65`. Exact-body SHA-256, recomputed by `sha256sum`: `728351add854338a840433ab47f4aad540cd4690ea2fbe0a17cbb01ca898272a`. Baseline: `2ed497d6a8d9ea9fe4b0c00ed4f1ce54f3f41e43`, the merged redesign.
-- Branch: `codex/404-execution-loadgen`; backup: `codex/404-execution-loadgen-wip`. This continuation starts from `1b7ef642dcf28fe05d4c58c1a28409d2b84b1f12`, as [handoff 6777482103](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6777482103) records. Before implementation resumes, this card records the current task: correct the two identified fixture causes and isolate M10, freeze source, complete the approved acceptance and mutation gates, then obtain the mandatory reviews. The current user brief authorizes that continuation without expanding scope.
+- Branch: `codex/404-execution-loadgen`; backup: `codex/404-execution-loadgen-wip`. This continuation starts from `1b7ef642dcf28fe05d4c58c1a28409d2b84b1f12`, as [handoff 6777482103](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6777482103) records. The continuation corrected the two identified fixture causes and isolated M10 before the first comprehensive review. The continuation consolidated that review's four code/test corrections, corrected the exposed fatal-capture test input, froze source and completed local acceptance and mutation gates. The next task is final authored documentation verification and the second comprehensive review. The current user brief authorizes that continuation without expanding scope.
 - Mandatory gates: plan sections 8 and 9, including the real child/Kafka tests and all 21 manual mutations, the full .NET check, chart/phase checks, scope and ASCII checks, documentation scan, cold review, final-head CI and hosted Codex code/security reviews. Exact commands and their status are below.
 - Earliest non-backup publication: the tested, cold-reviewed checkpoint under [pull-request rule 8](../../docs/agents/pull-requests.md). That checkpoint remains pending. The protected verifier rejection test means Hari merges the ready pull request; the implementing session does not merge.
-- Cumulative cold-review budget: two comprehensive and two focused rounds, across all sessions. Consumed: zero comprehensive and zero focused; these counts never reset on continuation. Another required review beyond that budget, or unsafe focused review, saves a backup and hands off to Hari. Plan section 11(a) separately caps verification-failure and review-finding root causes at 20 each, with exhaustion `push -wip and hand off to the next session`. The previous run exhausted its verification cap and completed that handoff. This fresh continuation has eight new verification-failure root causes and zero review-finding root causes; the two corrected carryovers are historical causes 19 and 20, not new causes. The historical ledger below remains intact.
-- Models: Codex; the underlying model identifier is not exposed. Fresh implementation and verification agents use high effort. Cold review has not started.
+- Cumulative cold-review budget: two comprehensive and two focused rounds, across all sessions. Consumed: one comprehensive and zero focused; these counts never reset on continuation. Another required review beyond that budget, or unsafe focused review, saves a backup and hands off to Hari. Plan section 11(a) separately caps verification-failure and review-finding root causes at 20 each, with exhaustion `push -wip and hand off to the next session`. The previous run exhausted its verification cap and completed that handoff. This fresh continuation has eleven new verification-failure root causes and five review-finding root causes (four defects and one separately retained approved-deletion flag); the two corrected carryovers are historical causes 19 and 20, not new causes. The historical ledger below remains intact.
+- Models: Codex; the underlying model identifier is not exposed. Fresh implementation and verification agents use high effort. The first comprehensive cold review is complete; the second comprehensive review is planned.
 - Predicate map: plan sections 8.1, 8.2, 8.2a and 3.14, mapped to concrete tests below. Production scientific-verifier predicates do not change. The protected test retains scientific-admission rejection assertions for the schema-3 diagnostic export.
 
 ## Cold-review input record
 
-First round: comprehensive review of the entire authored PR diff, including this receipt and state. Code input revision: `1d6b5a381ee73c9d62ecde4d6f6decd965514b20`; comparison revision: `origin/main` at `2ed497d6a8d9ea9fe4b0c00ed4f1ce54f3f41e43`. The control session supplies the frozen authored-diff metadata after final receipt edits. No earlier cold-review report exists. Cumulative consumed counts before that round: zero comprehensive, zero focused. The complete report and dispositions belong in the PR self-review record; the final report is not added to its own reviewed receipt.
+First round (R1): comprehensive, complete. Reviewed authored revision: `f2c1a6bc61157f2dec40cc79aa2f1aa665244472`; tested-code input: `1d6b5a381ee73c9d62ecde4d6f6decd965514b20`; comparison: `origin/main` at `2ed497d6a8d9ea9fe4b0c00ed4f1ce54f3f41e43`. Diff-body SHA-256: `912a1c489d42c6f9e902c246cb4233cb3da2be7267c5cc72cb0f9adbe883d00e`. The complete earlier authored report is retained [below](#earlier-complete-r1-report), followed here by a disposition for every finding. All reports started on R1 were complete before corrections began.
+
+Second round (R2): consolidated comprehensive re-review planned; final code input is `7028773d8e0d12c3af6f37a6d917e314e742d46d`, including the fatal-capture fixture correction after `f1561886f79a7497fe29ff39142c0e723b55cc5f`; the full authored input commit and diff metadata will be supplied with the frozen review inputs after this receipt is committed. Comparison is current `origin/main` at `d06d64f5f3cd220abc012e1fa1c1553c2fdbe1e9`; the R1 comparison and approved-plan baseline remain the historical `2ed497d6` identified above. Its inputs will include the full authored diff, this receipt, the earlier complete R1 report and dispositions, and the approved plan and later decisions. The control session records the final authored revision with the review inputs; this receipt need not record the head commit that contains itself. The final R2 report belongs in the PR self-review record, not in its own reviewed receipt. Cumulative completed counts: one comprehensive, zero focused; R2 will consume the second comprehensive round. Tool-reported R1 review run time: not reported.
+
+Authority refresh: the control session read at `2026-11-10T22:08:29Z` found issue 404 unchanged with 239 comments, newest 6777482103, listed parents unchanged (five comments on 347, four on 348), and no deleted comment. The approved plan, approval, newest exact-revision check, amendment and continuation authority remain unchanged. Current `main` advanced to `d06d64f5f3cd220abc012e1fa1c1553c2fdbe1e9` through governance cleanup PR 429, removing expired review-measurement prose/template fields without changing the review caps or publication checkpoint. The branch merges it without conflict at `9743f4e2ba8e06a284b796d198b59fbe66ab994c`. Script/runtime/code/test/chart/phase/skill/AGENTS bytes match tested `7028773d`; its measurements remain applicable after the merge, and the authored PR diff remains 48 allowed paths. R2 applies the current governing review text. No review count resets.
+
+### R1 finding dispositions
+
+| Finding / root cause | Disposition and present evidence |
+|---|---|
+| R1-1, P1: C# reader misses prepared-attempt reconciliation and final complete-control prerequisite | Fixed in the shared reader: reconcile every prepared attempt to acceptance or synchronous rejection, and require complete matched control before any cross-restart prepared record or kill intent. A terminal must ultimately have acceptance, preserving callback-before-acceptance. Generic accepted same-instance prefixes retain no added completion prerequisite. Isolated red/green evidence is below; final combined-source acceptance passes on `7028773d` as recorded below. |
+| R1-2, P1: original pacing anchored before durable setup, with no post-delay deadline check | Fixed in production: each arm anchors to original zero's actual producer invocation, rounds a positive wait up to a whole millisecond and rechecks its deadline after every wake. Six actual-invocation regression cases cover both arms with durable-setup latency and early/quantized timers. All fail behaviorally on R1 and pass with the correction in the isolated 11-case run below; final corrected-source acceptance passes on `7028773d` below. |
+| R1-3, P1: synchronous rejection never satisfies the control terminal check | Fixed in production: a durable synchronous rejection satisfies the attempt's terminal state without inventing a delivery callback; callback/rejection conflicts retain the first terminal and latch the existing duplicate guard. Five cases cover control originals zero through three and the selected resend, preserving ordinal-four cut rejection and cross-arm policy. All fail behaviorally on R1 and pass with the correction in the isolated 11-case run below; final corrected-source acceptance passes on `7028773d` below. |
+| R1-4, P1: retained terminal theory loses independent delivered/error contradiction | Accepted. Restored independently supplied delivered input and the retained timed-out/PossiblyPersisted/delivered=true rejection case, preserving the prior eight cases and assertions. The focused terminal-tuple run passed all nine cases with zero skips after a zero-warning/error build; final full-source acceptance is also recorded below. |
+| R1-5, P1: mandatory flag for tests deleted with retired protocol code | Kept under the explicit approval and pull-request rule 8 exception; this is not a `Not valid:` disposition. [Approved plan section 2.4](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/fc1a4f36452b2d302f1d73987e1ba5eb967b3d65/items/404/plan-b10-execution-loadgen.md#24-tests-deleted-with-the-code-they-test), [decision 6774981258 Q4](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6774981258), and [decision 6775792095](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6775792095) explicitly authorize only methods whose subjects were removed and retain the per-method inventory below. Keep this finding separately in the eventual PR description and leave the merge to Hari. The unapproved retained-test loss in R1-4 is corrected separately. |
+
+The five reported roots count against the plan's review-finding cap. The approved-deletion flag remains visible and separately identified; it does not request revival of the retired protocol. No PR exists, no normal push has occurred, and the remote backup remains `1b7ef642dcf28fe05d4c58c1a28409d2b84b1f12`.
 
 ## Implementation and plan-check dispositions
 
@@ -24,7 +40,7 @@ The child records `prepared`, `accepted`, terminal and native-error observations
 
 The schema amendment adds one adjacent `allOf` condition requiring a present, true diagnostic flag for either new abrupt mode. The chart tests add the four false/absent flag rejection cases. This resolves the scope conflict recorded before implementation resumed; the amendment leaves every other freeze and stop rule in force.
 
-The exact-revision check's findings are disposed of as follows. The verification sections below distinguish preserved previous-run observations from completed final-source acceptance.
+The exact-revision check's findings are disposed of as follows. The verification sections below distinguish preserved previous-run observations and pre-R1 acceptance from measured post-R1 checkpoints and completed final-source acceptance.
 
 | Finding | Implementation choice and evidence |
 |---|---|
@@ -41,9 +57,81 @@ The exact-revision check's findings are disposed of as follows. The verification
 
 ## Verification and continuation
 
-Final source freeze: `1d6b5a381ee73c9d62ecde4d6f6decd965514b20`; all applicable local acceptance commands and 21 mutation rows are complete; the final authored documentation scan and reviews are pending. Prior cgroup freeze: `9e17e201752def19fbcf35d20d6aa6f5d0f68eea`. The first continuation freeze was `1e0719c6b550e9e92c43654db955610539669b5a`; the cgroup freeze adds only the private capture fixture and its proof tests, and the final freeze changes only the cut-race clock fixture. Commands run in isolated detached worktrees, with `DOTNET_ROOT=/home/agent/.parchwell/dotnet` and that SDK plus `/tmp/parchwell-tools` on PATH. Docker tests use the local Unix socket. Program output remains outside the repository.
+Final corrected source freeze: `7028773d8e0d12c3af6f37a6d917e314e742d46d`. Its only change from correction checkpoint `f1561886f79a7497fe29ff39142c0e723b55cc5f` is the fatal-capture test input described below; both retained assertions and every other file are byte-identical. The four R1 corrections, test-only fixture correction and ten required mutation replays are complete at their named checkpoints; historical evidence remains scoped to its named revision, and the final acceptance below establishes the combined corrected source. Final authored documentation/ASCII checks and R2 also remain pending.
 
-| Command or gate | Current evidence |
+### Final corrected-source gates
+
+Final tested code: `7028773d8e0d12c3af6f37a6d917e314e742d46d`; current merged branch: `9743f4e2ba8e06a284b796d198b59fbe66ab994c`, with byte-identical execution and verification inputs as recorded above. The fatal-capture test now obtains a production-generated complete control and kill intent, then uses the actual native-error queue, drain and persisted journal read. This preserves the original native-error-after-kill subject and both assertions, with no production change. File SHA-256: `27619f8ac4f92b2f083ed3fcfba9b0afa7097c47c839220148ca9f66ccb3c906`. Its isolated full fatal-capture class passes 12 cases with zero failures/errors/skips/not-run in 3.974 s after a zero-warning/error build in 21.22 s. The final full-source acceptance pass also covers this correction, resolving cause 11.
+
+| Gate | Final-source status |
+|---|---|
+| Explicit acceptance-1 LoadGen build | At final `7028773d`, passed with zero warnings/errors in 15.56 s. |
+| Exact `./scripts/verify-dotnet.sh` | At `7028773d`, actual tool exit 0; XML independently parsed by the control session: 10018 of 10018 passed, zero failures/errors/skips/not-run (Architecture 17, Enrichment 56, Kafka 491, LoadGen 1725, Scenarios 340, Verifier 7389). Full restore/build, test manifests, report validation and warning control all pass; the valid counterpart builds and intended CS1030 is rejected. Protected diagnostic rejection passes in 3.169 s and legacy roundtrip in 0.007 s. The full unfiltered LoadGen step also executes acceptance 2: 1725 passed, zero errors/failures/skips, MTP 8 min 00.201 s (XML 479.254 s). Published-apphost test runs unskipped and passes in 0.001 s; corrected fatal-after-kill test passes in 0.086 s. |
+| All 21 mutation rows | Applicable: ten measured replays at `f1561886` plus eleven retained rows below. Only the unrelated fatal-capture fixture changes at final freeze; production, every mutation target/detector and host-bridge input are byte-identical to `f1561886`. |
+| Acceptance-9 host bridge | Retains the fresh `f1561886` pass by byte-identical production/export/host input paths. |
+| Static scope and final authored ASCII/documentation checks | Scope remains 48 paths because the fatal-capture file was already included; final receipt/state ASCII and documentation scan remain pending. |
+| R2, final-head CI and hosted Codex code/security reviews | Pending; one comprehensive and zero focused cold rounds completed. |
+
+The final script's LoadGen step records E1/E2 passing in 318.121 s with local observation `exit_code_local_observation=137 runtime=10.0.13 kernel=6.18.57 cut_accepted_to_kill_intent_microseconds=134978982.936`, followed by one consumed successor resend. T-N3 passes in 122.805 s, with its only control Flush preceding cross admission; the fixed 1000-iteration cut race passes in 112.476 s. These measurements apply to final tested `7028773d` and the execution-equivalent merge `9743f4e2`.
+
+### Correction-checkpoint acceptance
+
+The following measurements describe correction checkpoint `f1561886f79a7497fe29ff39142c0e723b55cc5f`. The fixed ten mutation replays are complete; the fatal-capture input correction is measured separately at the final freeze above and full final-source gates pass as recorded above. Targeted correction tests do not substitute for them.
+
+| Command or gate | Corrected-source evidence |
+|---|---|
+| `dotnet build tests/Parchwell.LoadGen.Tests -c Release` | Passed with zero warnings/errors in 17.26 s. |
+| `dotnet build src/Parchwell.Verifier -c Release` | Passed with zero warnings/errors in 9.07 s. |
+| Full unfiltered LoadGen acceptance suite | At `f1561886`, 1725 total: 1723 passed, one failed, one designed published-apphost skip, zero runner errors. The failure is the hand-built native-error-after-kill fixture, whose cross-only journal omits the now-required complete matched control; no production change is proposed. The fixture owner preserves every original assertion and the native-error subject. The final `7028773d` script supplies the full passing run above. |
+| `./scripts/verify-dotnet.sh` | Superseded by the final `7028773d` build and passing script above; its unfiltered LoadGen step also executes acceptance 2. |
+| Static scope, ordinary-host freeze, retired-marker and ASCII checks | At `f1561886`: 48 approved changed paths, 45 surviving files and three deletions; no out-of-scope path or non-ASCII byte. Ordinary source diff is empty; Program.cs changes only line 44 and bytes outside baseline lines 41 to 48 are identical. Retired-marker matches: zero. Schema/phase permitted deltas match exactly. Architecture inventory remains 12 listed files out of 13 source files, with 60 matched sites and caller-information checks retained. Final receipt/state edits still require the final authored ASCII scan. |
+| Chart and phase gates | Both trees are byte-identical from `f2c1a6bc` to `f1561886` and retain the earlier identical-source proof through `1e0719c6`: full chart gate passed, including 8 abrupt renders/54 invalid selections; phase suite passed all 284 tests. Ordinary-render byte-equality proof is retained. |
+| Required host bridge | At `f1561886`, fresh exact acceptance-9 900 s wrapper passed with exit 0; all six host groups passed. Final line: `b10 abrupt host checks passed: 2 rendered environments, 7 rejected inputs, production-byte bridge`. The strict shared C# reader and independent phase reader accept the current production export bytes. |
+| Final authored documentation scan | Pending. |
+| Changed-source mutations | All ten fixed replays at `f1561886` reach the prescribed behavioral assertions after successful builds; every mutant is restored with clean status and byte equality. The complete row summary and eleven-row retention assessment are below. |
+| R2, final-head CI and hosted Codex code/security reviews | Pending. One comprehensive and zero focused cold rounds completed; no PR or normal push. |
+
+Despite the fixture failure, the same `f1561886` full acceptance run passes the real E1/E2 test in 324.978 s, recording local observation `exit_code_local_observation=137 runtime=10.0.13 kernel=6.18.57 cut_accepted_to_kill_intent_microseconds=134994745.191`, followed by one consumed successor resend. Real-host no-drain T-N3 passes in 124.225 s and the fixed 1000-iteration cut race passes in 114.202 s. These passing subjects do not make the failed full suite an acceptance pass.
+
+The final gate sequence ran the explicit LoadGen build and then `./scripts/verify-dotnet.sh`. Lines 52 to 55 of the unchanged [verification script](../../scripts/verify-dotnet.sh) invoke the same full `dotnet test --project ... --configuration Release --no-build --minimum-expected-tests 1 --results-directory ... -- --report-xunit-xml --report-xunit-xml-filename results.xml` command as acceptance 2. Lines 46 to 50 publish and supply the apphost fixture. Its unfiltered full LoadGen run therefore serves acceptance 2 and the script's acceptance-3 gate together, with the published-apphost test required to run unskipped. No filter, required check or policy changes; the measured passing results above describe final test-corrected source `7028773d8e0d12c3af6f37a6d917e314e742d46d`.
+
+### Post-R1 targeted correction evidence
+
+These isolated checks establish their named corrections only. They are not the frozen corrected-source acceptance or R2, and consume no cold-review round.
+
+| Correction and command | Measured result |
+|---|---|
+| R1-2/R1-3, `dotnet build tests/Parchwell.LoadGen.Tests -c Release -m:1 --disable-build-servers`, then compiled runner `-class Parchwell.LoadGen.Tests.Abrupt.B10AbruptProducerPolicyTests -reporter verbose` | In `/tmp/404-producer-policy-regressions`, all 11 explicit new cases fail on old R1 production at their intended behavioral assertions: 11 failed, zero errors/skips, 0.572 s, after a zero-warning/error build. With only corrected producer source copied in, the build passes with zero warnings/errors in 22.35 s and all 11 cases pass with zero failures/errors/skips/not-run in 0.704 s. Tested producer SHA-256 `840a996d03f2d80e0a7a6ce8301e28ba5ed1430550746c7bb20ab6f239d6dba8`; new test-file SHA-256 `2d0a75bb6460a90d87b179b0ec2ac7b05f9a20df3556c252c347048fd39dbd01`. |
+| R1-1, isolated R1 plus reader correction: LoadGen test build, then compiled runner selecting Journal, Supervisor, ParentProcess, Publication, WireProducer and SuccessorCompletion classes | On old R1 production, the journal class runs 59 cases: 24 expected new behavioral failures, zero errors/skips, 0.951 s; the two removed-ordinal-four-acceptance cases already reject under existing boundary logic and the three positive controls pass. With only the journal source/test correction applied, build has zero warnings/errors and six classes pass 223 cases with zero failures/errors/skips in 8.514 s. This run includes 29 added journal cases and does not cover the combined producer-policy and restored-tuple changes. Commands in `/tmp/404-journal-fix`: `dotnet build tests/Parchwell.LoadGen.Tests -c Release -m:1`; then test apphost `tests/Parchwell.LoadGen.Tests/bin/Release/net10.0/Parchwell.LoadGen.Tests -class Parchwell.LoadGen.Tests.Abrupt.B10AbruptJournalTests` for red, adding fully qualified `-class` selections for `B10AbruptSupervisorTests`, `B10AbruptParentProcessTests`, `B10AbruptPublicationTests`, `B10AbruptWireProducerTests` and `B10AbruptSuccessorCompletionTests` for green. Both use `DOTNET_ROOT=/home/agent/.parchwell/dotnet`; build uses that installation's `dotnet`. |
+| R1-4, `dotnet build tests/Parchwell.LoadGen.Tests -c Release`, then compiled runner `-method Parchwell.LoadGen.Tests.Abrupt.B10AbruptSupervisorTests.Given_TerminalPersistenceTuple_When_SupervisorCaptures_Then_OnlyPermittedTuplePasses -reporter verbose -noColor -result-xml <scratch>` | In isolated R1 worktree `/tmp/404-tuple-restore-f2`, with only the restored theory applied, build has zero warnings/errors; all nine cases pass, with zero failures/errors/skips/not-run. XML parsing confirms execution of the independent contradictory tuple. |
+
+The combined focused check in `/tmp/404-journal-fix` then copies the five current correction files (journal source/test, producer source/new policy test, restored supervisor theory), builds with `dotnet build tests/Parchwell.LoadGen.Tests -c Release -m:1`, and invokes the apphost with the prior six fully qualified class selections plus `Parchwell.LoadGen.Tests.Abrupt.B10AbruptProducerPolicyTests`. Build passes with zero warnings/errors in 13.69 s; all 235 cases pass with zero failures/errors/skips in 8.671 s. This verifies composition of the four corrections, while mandatory full gates and mutation evidence remain separate. The following byte hashes bind its input:
+
+| Correction file | SHA-256 |
+|---|---|
+| `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptJournal.cs` | `dabb649d385e9c68a5fd2a34b464de2fea41f2e9262ec290194c3f4ef02d00ac` |
+| `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptJournalTests.cs` | `3c6e598584aa8db445395742cbce9c7280e74cd988cec93195b612b0e6a3b459` |
+| `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptProducer.cs` | `840a996d03f2d80e0a7a6ce8301e28ba5ed1430550746c7bb20ab6f239d6dba8` |
+| `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptProducerPolicyTests.cs` | `2d0a75bb6460a90d87b179b0ec2ac7b05f9a20df3556c252c347048fd39dbd01` |
+| `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptSupervisorTests.cs` | `5a23789340f8e767a0aa2e298816019fa04bdfbbc740c4410647a84ac2a47da4` |
+
+The producer-policy and terminal-tuple runs use `DOTNET_ROOT=/home/agent/.parchwell/dotnet` and that installation's `dotnet`. The producer-policy methods are `Given_FirstOriginalSetupTakes50Milliseconds_When_InvokingOriginals_Then_OffsetsStartAtItsNativeInvocation` (two arms), `Given_EarlyOrQuantizedTimerWake_When_InvokingOriginals_Then_EachNativeInvocationHonorsItsExactLowerBound` (two arms, each with early and quantized wake), and `Given_DurableSynchronousRejection_When_OtherControlAttemptsFinish_Then_ControlCompletesAndKillIsAdmitted` (control originals zero through three and resend ordinal four). They add new coverage without altering baseline methods or assertions. The retained terminal-tuple theory preserves all prior eight cases and assertions while adding the independently contradictory ninth case.
+
+The reader's complete-control prerequisite checks the preceding same-instance originals zero through four, one nonempty checked cut, exactly the cut-member resends in order at or after release and before one successful zero-outqueue drain, one following post-drain report, and terminal-or-rejection completion of every control attempt. Existing report/guard failures continue to block successor permission. The diagnostic publication path is unchanged. This implements ADR-021 protocol rules 3, 5, 6, 7 and 14 and approved plan sections 3.5, 3.6, 3.11 and D5.
+
+| New journal method | Added regression coverage |
+|---|---|
+| `Given_ProductionJournalWithPreparedOnlyCrossOriginal_When_Read_Then_CaptureBlocksSuccessor` | Remove a non-cut cross original's acceptance from production-generated complete evidence; block capture and successor. |
+| `Given_CompleteJournalWithOneAcceptanceRemoved_When_Read_Then_AmbiguousAttemptBlocksSuccessor` | Eleven control original/resend and cross-original acceptance removals, with unrelated structural references kept valid. |
+| `Given_IncompleteControlWithOtherwiseValidKill_When_Read_Then_CaptureBlocksSuccessor` | Fourteen control-exposure, resend, timing, terminal, drain and post-drain defects; each keeps the kill evidence otherwise valid. |
+| `Given_CompleteControlWithSynchronousRejection_When_Read_Then_RejectionCountsAsTerminal` | Two valid controls, with a rejected original or selected resend. |
+| `Given_AcceptedControlPrefixWithoutBoundary_When_Read_Then_NoCompletionRequirementIsInvented` | Valid accepted same-instance prefix without cross/kill admission. |
+
+### Pre-R1 acceptance evidence
+
+Pre-R1 source freeze: `1d6b5a381ee73c9d62ecde4d6f6decd965514b20`; all applicable local acceptance commands and 21 mutation rows were complete for that source; the first review then found the defects recorded above. The measurements in this subsection are preserved as pre-R1 evidence. Prior cgroup freeze: `9e17e201752def19fbcf35d20d6aa6f5d0f68eea`. The first continuation freeze was `1e0719c6b550e9e92c43654db955610539669b5a`; the cgroup freeze adds only the private capture fixture and its proof tests, and the final freeze changes only the cut-race clock fixture. Commands run in isolated detached worktrees, with `DOTNET_ROOT=/home/agent/.parchwell/dotnet` and that SDK plus `/tmp/parchwell-tools` on PATH. Docker tests use the local Unix socket. Program output remains outside the repository.
+
+| Command or gate | Pre-R1 evidence at named source |
 |---|---|
 | `dotnet build tests/Parchwell.LoadGen.Tests -c Release` | At final `1d6b5a38`, passed with zero warnings/errors in 6.54 s. |
 | `dotnet build src/Parchwell.Verifier -c Release` | At final `1d6b5a38`, passed with zero warnings/errors in 3.13 s. |
@@ -61,7 +149,7 @@ Final source freeze: `1d6b5a381ee73c9d62ecde4d6f6decd965514b20`; all applicable 
 | `PATH=/tmp/parchwell-tools:$PATH python3 -m unittest discover -s infra/scripts/phase/tests -p 'test_*.py'` | Passed at `1e0719c6`: 284 tests in 23.097 s; unchanged-source coverage retained. |
 | Ordinary chart baseline render comparison | At `1e0719c6`, byte equal to `2ed497d6`: loadgen 7552 bytes, loadgen2 7555 bytes; unchanged-source coverage retained. |
 | `npm run check:docs` | At `1e0719c6`, exited 0 with 10 advisory warnings in six unchanged files and zero in changed Markdown. Final authored revision scan remains required; unchanged warnings take one blanket PR disposition. |
-| Cold review; final-head CI; hosted Codex code/security reviews | Pending; zero comprehensive and zero focused cold rounds consumed. No pull request exists. |
+| Cold review; final-head CI; hosted Codex code/security reviews | R1 is complete on `f2c1a6bc`; R2 is planned. Cumulative completed cold rounds: one comprehensive, zero focused. Final-head CI and hosted reviews remain pending; no pull request exists. |
 
 The mandatory script's separate E1/E2 run passes in 322.110 s and records `local_observation parent_exit=0 exit_code_local_observation=137 runtime=10.0.13 kernel=6.18.57 cut_accepted_to_kill_intent_microseconds=135012474.448`; `local_observation successor_exit=0 consumed_resends=1`. Its fixed 1000 race passes in 107.505 s. These observations are distinct from the direct acceptance-2 run above. Final verification worktree is clean; raw logs and XML remain scratch artifacts, not committed output.
 
@@ -104,7 +192,7 @@ Targeted tests used the compiled entry point `dotnet tests/Parchwell.LoadGen.Tes
 
 ### Current continuation
 
-New verification-failure root causes: eight, counted from the shared continuation ledger below. Known carryovers: historical causes 19 and 20; both corrections are applied. T-N3, corrected E1/E2 and the full fixed-race test pass on final source. M10 input isolation is verified by its caught mutant, not an additional measured failure cause. New review-finding root causes: zero. Each category retains the plan section 11(a) cap of 20; exhaustion is `push -wip and hand off to the next session`. Repeat failures from an existing root cause are not counted again. Cold-review counts remain cumulative at zero comprehensive and zero focused.
+New verification-failure root causes: eleven, counted from the shared continuation ledger below. Known carryovers: historical causes 19 and 20; both corrections are applied. T-N3, corrected E1/E2 and the full fixed-race test passed on pre-R1 source `1d6b5a38`; post-R1 acceptance now passes on final `7028773d`, including the unskipped published-apphost fixture. M10 input isolation is verified by its caught mutant, not an additional measured failure cause. New review-finding root causes: five, listed in the R1 disposition table above. Each category retains the plan section 11(a) cap of 20; exhaustion is `push -wip and hand off to the next session`. Repeat failures from an existing root cause are not counted again. Cold-review counts remain cumulative at one completed comprehensive and zero focused; R2 is planned.
 
 | New root cause | Correction and status |
 |---|---|
@@ -116,6 +204,9 @@ New verification-failure root causes: eight, counted from the shared continuatio
 | 6. Scratch fallback checker guessed a lambda spelling | Read actual method-group fallback, correct scratch assertion; static check passed. No source defect. |
 | 7. Full-suite fixed 1000-iteration race fixture times out in CleanupAsync | At `9e17e201`, TimeoutException precedes any behavioral assertion. Correct only the race fixture clock, preserving its exact 1 s timeout and all 1000 assertions; private fixture correction applied; final full LoadGen suite passes and fresh M18 is detected. Full .NET script also passes. |
 | 8. Initial race-clock correction misses quantized release timer | Task.Delay drops sub-millisecond timeout precision, so an exact-only matcher misses the release wait. The invalid targeted run was stopped without pass/failure proof; the fixture now allows only the documented sub-millisecond truncation and jumps exactly to release, never early. Corrected fixed-race target and final full LoadGen suite pass. |
+| 9. Isolated old-f2 producer-policy regression build loses MSBuild child nodes | The build reports MSB4166 for child nodes 2/3 exiting prematurely, with no source compiler diagnostic and no tests run. Its private MSBuild diagnostic directory disappeared before inspection; serial `-m:1 --disable-build-servers` retry passed with zero warnings/errors, enabling the 11 intended behavioral failures and corrected 11-case pass recorded above. The original build attempt supplies no behavioral result. |
+| 10. Isolated journal regression helper violates CA1861 | The new helper passed a constant `new[]` control-ID argument; replace it with a collection expression in the owned test helper only. The first attempt stopped at analyzer build failure before any baseline red test. The collection-expression correction and subsequent isolated green build passed; the six-class 223-case pass is recorded above. |
+| 11. Retained fatal-capture fixture omits the complete control before cross admission | Full acceptance at `f1561886` fails `Given_NativeErrorAfterKillRequest_When_SupervisorHandlesIt_Then_ItIsJournaled` at its existing empty-gap assertion because its manually constructed cross-only journal lacks the matched-control prerequisite. Correct only the fixture input, preserve every assertion and native-error-after-kill subject, then freeze and rerun the mandatory gates. At `7028773d`, the test uses production-generated complete control/kill evidence and the actual native-error capture queue, retaining both assertions unchanged. Full fatal class passes all 12 cases without errors/skips; final full gates pass on `7028773d` as recorded above. |
 
 ### Previous run (preserved)
 
@@ -146,6 +237,8 @@ The previous verifier's scratch ledger contains 20 distinct root causes, counted
 
 ## Manual mutations
 
+The table and changed-source assessments in this section preserve proof through pre-R1 source `1d6b5a38`. Post-R1 production and detector changes require the impact assessment and applicable replays below before these rows establish coverage of the corrected source.
+
 Each mutation was applied separately in an isolated worktree, compiled successfully, failed the named behavioral assertion and was restored before the next mutation. M1 to M18 ran at `1e0719c6`; every prescribed target had passed in that freeze's full-suite attempt, although the independent E1 cgroup gate had failed. No full-baseline pass is claimed for that attempt. M19 and M21 retain the previous run's unchanged-source proof; M20 also has a fresh exact host-bridge failure at `1e0719c6`.
 
 Commands: each M1 to M18 used `dotnet build tests/Parchwell.LoadGen.Tests -c Release -m:1` (or `--no-restore` after restore), with zero warnings/errors, then `dotnet tests/Parchwell.LoadGen.Tests/bin/Release/net10.0/Parchwell.LoadGen.Tests.dll -method Parchwell.LoadGen.Tests.Abrupt.<class>.<method> -reporter verbose`. The concrete detector names are mapped in the test tables below. Every mutation test exited 1 through its behavioral assertion, with zero runner errors; compile failures do not count. Restored tracked worktrees were empty, and touched files equalled frozen blobs byte for byte.
@@ -175,6 +268,38 @@ Commands: each M1 to M18 used `dotnet build tests/Parchwell.LoadGen.Tests -c Rel
 | M21: render hook includes ordinary loadgen | `ByteIndependentCases.test_render_hook_selects_only_abrupt_modes`: `Expected 'values' to not have been called. Called 1 times.` |
 
 Changed-source assessment at `9e17e201`: the classifier, producer, publisher, options, journal, all M1 to M18 detector methods and all chart/phase targets/detectors are byte-unchanged. M16/M17 use non-Kafka modes and do not enter the new real-Kafka/realtime/parent cgroup hook. Coverage at that freeze remains valid. The race-fixture correction changes the M18 detector; the fresh final-freeze replay above restores its coverage. At `1d6b5a38`, all other production/chart/phase predicates and detector assertions remain unchanged, and default Fixture/StartReports callers retain the equivalent advancing behavior. All 21 rows have applicable coverage. The mandatory host-bridge refresh passed at `9e17e201`.
+
+### Corrected-source mutation impact
+
+The correction freeze is `f1561886f79a7497fe29ff39142c0e723b55cc5f`. The fixed replay set is ten rows: M3, M4, M5, M6, M10, M11, M12, M16, M17 and M18. They traverse the changed producer/reader paths; each needs a new failing behavioral detector on the frozen source and restoration proof. All ten rows have fresh behavioral detections and restoration proof at `f1561886`. No compile/setup/crash/timeout result counts as detection; every prescribed mutant builds with zero warnings/errors and every compiled detector exits 1 through the intended assertion, with zero runner errors/skips/not-run.
+
+| Replay at `f1561886` | Behavioral detector result |
+|---|---|
+| M3 | T-C2 terminal-after-cut row: required prepared resend is absent, `Assert.Single` at producer test line 169; the other row passes. |
+| M4 | Same T-C2 row and direct missing-resend assertion; the other row passes. |
+| M5 | T-J2 torn row: `Assert.Contains` cannot find `malformed_frame`; other three rows pass. |
+| M6 | T-J2 skipped row: `Assert.Contains` cannot find `sequence_gap`; other three rows pass. |
+| M10 | T-P8 `report_byte` and `report_length`: `Assert.Throws` finds no InvalidDataException; membership/existence and descriptor checks remain enabled and other two rows pass. |
+| M11 | T-S1 hash row: `Assert.Throws` finds no InvalidDataException; other three binding rows pass. |
+| M12 | T-S3 kill-set row: expected `selection_stale`, actual later `receipt_changed`; other three binding rows pass. |
+| M16 | Real T-N3: `Assert.DoesNotContain` finds Flush after cross_produce; test 123.371 s, runner 123.570 s, observed exit 3 and cross-admitted cut-rejected no-kill. |
+| M17 | Real T-K2: `Assert.Equal`, expected exit 4, actual 3; test 2.907 s, runner 3.069 s. |
+| M18 | One unchanged fixed-race detector invocation stops at `Assert.Empty` with `malformed_frame`; test 0.269 s, runner 0.433 s. The mutant does not claim 1000 completed iterations. |
+
+All ten replays use isolated worktrees at the named freeze, `DOTNET_ROOT=/home/agent/.parchwell/dotnet` and pinned tools on PATH. Builds use `dotnet build tests/Parchwell.LoadGen.Tests -c Release -m:1` (later B-series rows add `--no-restore`); each then invokes the compiled LoadGen test DLL with `-method Parchwell.LoadGen.Tests.Abrupt.<class>.<method> -reporter verbose`, using the exact detectors already mapped above. Source and all detector/harness bytes equal frozen blobs after every restoration, and final tracked worktrees are clean. The earlier nonunique scratch M3 anchor is narrowed to the already-established exact control wait context, preserving its prescribed behavior and remaining cause 4; no new cause is counted.
+
+Final freeze `7028773d` changes only the unrelated fatal-capture fixture; all production, mutation target and detector bytes remain equal to `f1561886`, so both the ten replays and the eleven retained proofs apply to that final source.
+
+The other eleven rows retain their named-source proof with this source/path assessment:
+
+| Rows | Retention basis at corrected freeze |
+|---|---|
+| M1, M2, M8 | Production target and detector source are unchanged; parent detectors construct snapshots directly and do not enter the changed reader. |
+| M7 | Queue-boundary detector bypasses the shared reader; queue target and detector are unchanged. |
+| M9 | Publication-order target and detector are unchanged. Its complete capture input remains valid in the combined 235-case pass; ordering is independent of the new reader reconciliation. |
+| M13 | Successor release target and detector are unchanged; producer edits affect original-arm pacing and synchronous-rejection bookkeeping. |
+| M14, M15 | Options targets and detectors are unchanged. |
+| M19, M20, M21 | Chart/phase targets and detectors are unchanged. The mandatory corrected-source host bridge is still rerun separately. |
 
 ## Test map and method dispositions
 
@@ -535,7 +660,7 @@ The fixed 1000-iteration cut race now uses a private CutRaceClock. Its ordinary 
 
 Pinned .NET 10.0.13 sources define [System time-provider timestamps/timers](https://github.com/dotnet/runtime/blob/v10.0.13/src/libraries/Common/src/System/TimeProvider.cs#L13-L21), [Stopwatch frequency and timestamp](https://github.com/dotnet/runtime/blob/v10.0.13/src/libraries/Common/src/System/TimeProvider.cs#L83-L97), [System timer implementation](https://github.com/dotnet/runtime/blob/v10.0.13/src/libraries/Common/src/System/TimeProvider.cs#L160-L188), [Task.Delay timeout validation](https://github.com/dotnet/runtime/blob/v10.0.13/src/libraries/System.Private.CoreLib/src/System/Threading/Tasks/Task.cs#L5725-L5728) and [conversion of TotalMilliseconds to long](https://github.com/dotnet/runtime/blob/v10.0.13/src/libraries/System.Private.CoreLib/src/System/Threading/Tasks/Task.cs#L5779-L5787). This is a private fixture correction within the existing test scope, with no changed enforced check.
 
-Remaining gates are the final authored documentation/ASCII checks, cold review, final-head CI and hosted code/security reviews. The host bridge retains its pass at `9e17e201` because the final change affects only the private race fixture; host/export/default-fixture behavior is unchanged. The merge waits for Hari because the protected rejection test changes. The approved plan, amendment and every stop rule remain in force.
+At the pre-R1 checkpoint the remaining gates were the final authored documentation/ASCII checks, cold review, final-head CI and hosted code/security reviews. Its host-bridge retention applied only through `1d6b5a38`. R1 is now complete and all 21 mutation rows have applicable coverage at the final freeze; corrected-source full acceptance also passes. Final documentation/ASCII checks, R2 and hosted gates remain pending. The merge waits for Hari because the protected rejection test changes. The approved plan, amendment and every stop rule remain in force.
 
 ## Sources and remaining boundaries
 
@@ -544,3 +669,111 @@ The design authority is ADR-021 at baseline `2ed497d6`, as adopted by the approv
 The plan's inherited source set is [Process.Start](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.process.start?view=net-10.0), [Process.WaitForExit](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.process.waitforexit?view=net-10.0), [Process.ExitCode](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.process.exitcode?view=net-10.0), [DllImport](https://learn.microsoft.com/en-us/dotnet/api/system.runtime.interopservices.dllimportattribute?view=net-10.0), POSIX [kill](https://pubs.opengroup.org/onlinepubs/9799919799/functions/kill.html), [write](https://pubs.opengroup.org/onlinepubs/9799919799/functions/write.html) and [sigaction](https://pubs.opengroup.org/onlinepubs/9799919799/functions/sigaction.html), Kubernetes [emptyDir](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) and [pod lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/), and [Azure Storage consistency](https://learn.microsoft.com/en-us/azure/storage/blobs/concurrency-manage). The SIGKILL exit code and survival of flushed journal bytes are local observations, not documented portable guarantees.
 
 Part 2 still owns the separate timeout Job, three-Job orchestration, workflow and committed copy, operations-contract rewrite, and test rejecting diagnostic timeout evidence from scientific admission. The current phase path still has two Jobs, so part 1 does not enable a trial. The accepted operations-document gap persists until part 2. The held offline test owns deployed-image exit encoding and AKS journal/death assumptions before a trial; local tests do not settle them. PR3b classification remains paused and must be revised against schema 3. No workflow dispatch, infrastructure operation, scientific result, expected outcome or verdict change is authorized or performed by this part.
+
+## Earlier complete R1 report
+
+This is the complete authored first-round report, retained before the second review; headings are nested here and curly quotation marks are normalized to ASCII to satisfy repository writing standards. Scratch reproduction paths are historical evidence locations; no raw program output or logs are committed.
+
+## B10 execution part 1 cold review
+
+Review mode: comprehensive
+Reviewed revision: `f2c1a6bc61157f2dec40cc79aa2f1aa665244472`
+Comparison revision: `2ed497d6a8d9ea9fe4b0c00ed4f1ce54f3f41e43` (`origin/main`)
+Authored tested-code revision: `1d6b5a381ee73c9d62ecde4d6f6decd965514b20`
+Patch SHA-256 (diff body): `912a1c489d42c6f9e902c246cb4233cb3da2be7267c5cc72cb0f9adbe883d00e`
+Authored receipt: `/tmp/404-cold-r1-receipt.md`
+Report: complete
+
+### Scope and governing rules
+
+I read the entire frozen authored diff, the receipt, affected surrounding implementation and tests, and all 47 touched files listed below. The review applies AGENTS.md GOVERNANCE (including scope/deferred work), Code Review Rules and writing standards, docs/agents/pull-requests.md in full, docs/engineering/dotnet.md, docs/engineering/code-comments.md, docs/blueprint.md ADRs, and docs/agents/factory.md in full for the two item files. The charter, frozen ordinary-host rules, diagnostic/scientific distinction, process boundary, evidence binding, test-retention rules and named-file architecture/rejection requirements were checked. These governing files and the skill do not change in the diff; their reviewed branch versions agree with the applicable comparison versions. No fallback authority was needed.
+
+Rubric mapping: every path matches "anything"; chart and phase paths additionally match "charts/, infra/scripts/, scripts/"; all C# paths match ".NET code or tests"; item receipt/state match "items/"; producer configuration and the receipt's configuration claims also received the Kafka-setting inventory/ADR checks. The architecture and protected diagnostic rejection tests were checked against the rules and approved plan that cite them by name. No Terraform, workflow, scenario, results, project, package or assembly-reference change is present.
+
+### Specification comparison
+
+Authority is execution part 1 Revision 6, `items/404/plan-b10-execution-loadgen.md` at `fc1a4f36452b2d302f1d73987e1ba5eb967b3d65`, exact-body SHA-256 `728351add854338a840433ab47f4aad540cd4690ea2fbe0a17cbb01ca898272a`. I read the pinned text and the source comments for approval 6776159640, newest exact-revision plan check 6776377996, amendment 6776685705, and the seven decisions adopted by the approval (6773282644, 6774480762, 6774981258, 6775474492, 6775679271, 6775792095, 6776084683), recognizing authority under factory "Item lifecycle" step 3.
+
+- Plan sections 2.1-2.3: the changed-path and ordinary-host freezes are respected. Program.cs changes only abrupt CLI/environment selection. The chart/schema/phase compatibility extension and one phase render-hook condition are within the later authorized scope. No new project, dependency, workflow, scientific result, scenario expectation or production scientific-verifier predicate is introduced.
+- Sections 3.1-3.5, R1-R3/R18-R19: the child journal, bounded callback queue, one-lock durable ordering, cut-set snapshot, report bindings, parent process observer, and retirement of stop/IPC mechanics are implemented. Shared-reader reconciliation is incomplete: prepared-only ambiguity is accepted, as the first finding shows.
+- Section 3.6, R4-R7: the five-original control, fixed cut, 120 s release, complete-control gate, cross arm, self-kill and no-kill paths are implemented, but actual invocation pacing and synchronous-rejection control completeness are incorrect. These are implementation defects in the approved policy, not requests to change it.
+- Sections 3.7-3.12, R8-R17: the parent observes fixed child identity and death, captures cgroup/OOM evidence, publishes authenticated members, and the successor validates inputs before producer construction, preserves payload/key/sequence with fresh IDs, and applies release timing. The C# parent/successor trust the incomplete shared-reader predicate in the first finding. Cold-read properties in section 8.3 hold for the implemented parent signal boundary, callback enqueue boundary, self-only kill, and absence of producer Flush/Dispose after cross-arm admission.
+- Sections 3.13-3.14 and amendment 6776685705: schema 3, the 14 exported members, new abrupt modes, diagnostic flag present/true requirement and four negative render cases, produced-byte bridge, per-collect successor invocation checks, architecture file inventory and protected scientific-rejection intent are implemented. The four apply-in-implementation plan-check requirements are represented in source and tests. The independent Python reader's prepared/accepted final reconciliation is stricter than the C# shared reader, exposing a cross-reader inconsistency.
+- Sections 2.4 and 8: the receipt supplies per-method keep/adapt/delete and predicate/mutation maps. Most retained subjects are preserved and the planned obsolete tests are retired; the delivered/error contradiction case is lost during one retained test's adaptation. The existing passing map does not cover the three reproduced behavioral cases below. The obsolete deletion is separately flagged exactly as section 2.4 and AGENTS.md require.
+- The unchanged two-Job trial orchestration and temporary superseded operations contract are deliberate, explicitly accepted boundaries of part 1 (plan sections 2.2-2.3; decisions 6774480762, 6774981258 and 6775474492). Part 2 still requires a separate approved plan; their deferred work is not treated as missing part 1 implementation. No scope creep was found.
+
+### Source and validation evidence
+
+I checked the new factual claims against the cited sources rather than memory: Confluent.Kafka v2.16.0 Config.cs/Producer.cs null-entry behavior; Linux v6.11 cgroup-v2, proc, proc-fd, kernfs and cgroup namespace source for the new capture proof; .NET runtime v10.0.13 TimeProvider, Task.Delay conversion and Process.Dispose/Close; Microsoft Environment.Exit and Generic Host shutdown/process API documentation; POSIX kill/write/sigaction; Kubernetes emptyDir/Pod lifecycle; and Azure Storage consistency. The receipt labels measured runtime/kernel/exit observations as local observations. I did not independently rerun its full 9977-test acceptance, 21-mutation campaign, container integration or deployed-image proof; those are authored evidence, not a clean-review substitute.
+
+For the three behavior findings I made a detached scratch worktree at the reviewed revision, added reviewer-only tests, built the LoadGen test project successfully with zero warnings/errors, and ran only those reproductions. The final scratch run has four expected assertion failures proving three distinct defects (two journal inputs), zero runner errors and zero skips in 0.470 s. The strengthened journal input starts with a production-generated complete control and removes only cross original 1's accepted record while repairing structural sequence references; it still produces `valid_control=True gaps= failures=0 successor_permitted=True`. The pacing reproduction prints `invocation_deltas_ticks=0,0,0,0,0`; the synchronous-rejection reproduction prints `exit=3 reason=b10_abrupt_control_incomplete`.
+
+Reproduction source: `/tmp/404-cold-repro/tests/Parchwell.LoadGen.Tests/Abrupt/ColdReviewReproductionTests.cs`. Logs: `/tmp/404-cold-repro-build-2.log`, `/tmp/404-cold-repro-tests-2.log`. Commands: `DOTNET_ROOT=/home/agent/.parchwell/dotnet /home/agent/.parchwell/dotnet/dotnet build tests/Parchwell.LoadGen.Tests -c Release` and the compiled test runner with `-class Parchwell.LoadGen.Tests.Abrupt.ColdReviewReproductionTests`. The authored checkout and frozen inputs were not changed.
+
+### Findings
+
+P1  src/Parchwell.LoadGen/Run/Abrupt/B10AbruptJournal.cs:227  rule: docs/blueprint.md ADR-021 protocol rules 3, 5 and 14; approved Revision 6 sections 3.5 and 3.11  The shared reader returns success without reconciling every prepared attempt to accepted or synchronous_rejection, allowing ambiguous attempts to disappear from the kill set and successor admission.  Evidence: from a production-generated journal with a complete control, remove only cross original 1's accepted frame and repair sequence/prepared_sequence references; Read returns Gaps=[] and Failures={}, and Classify with matching child/cgroup and observed 137 returns SuccessorPermitted=true. LoadSelectionAsync trusts that snapshot at B10AbruptPublisher.cs:161-164. The independent phase reader correctly rejects the same missing relation at infra/scripts/phase/b10_abrupt.py:678. The shared reader also lacks a final complete-control prerequisite, as the second scratch input demonstrates. Add final journal reconciliation and negative admission coverage before returning a usable snapshot.
+
+P1  src/Parchwell.LoadGen/Run/Abrupt/B10AbruptProducer.cs:115  rule: approved Revision 6 section 3.6 steps 2 and 5; docs/blueprint.md ADR-021 protocol rule 1  Pacing is based on a timestamp taken before ordinal 0's durable prepared/report writes, so setup latency lets later originals run earlier than their required offsets from ordinal 0's actual invocation.  Evidence: the invocation timestamp is recorded only at line 190, after those writes; a scratch flush seam advancing time 50 ms during ordinal 0 setup yields actual invocation deltas [0,0,0,0,0], instead of at least [0,10,20,30,40] ms. The retained pacing test checks prepared-frame timestamps rather than native invocation timestamps. Anchor pacing to ordinal 0's actual invocation and recheck the deadline after a delay, whose pinned runtime conversion can truncate sub-millisecond time.
+
+P1  src/Parchwell.LoadGen/Run/Abrupt/B10AbruptProducer.cs:147  rule: docs/blueprint.md ADR-021 protocol rule 3; approved Revision 6 section 3.6 steps 4 and 8  A synchronously rejected control attempt is permanently treated as missing a terminal, even though its durable synchronous_rejection is the attempt's terminal record.  Evidence: the catch at lines 193-196 appends that record and returns without setting ProbeAttempt.Terminal; the unconditional probes.Any(Terminal is null) check then forces b10_abrupt_control_incomplete. With original 1 synchronously rejected, all accepted control originals and the selected resend completed, and Flush returning zero, the scratch production runner exits 3 with that reason and never reaches kill_intent. Rejections of ordinals 0-3 are expressly required to let the arm continue; control completeness must recognize their terminal state.
+
+P1  tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptSupervisorTests.cs:156  rule: AGENTS.md Code Review Rules; docs/engineering/dotnet.md Testing; approved Revision 6 section 2.4 and decision 6775792095  Adapting the retained terminal-reconciliation test removes its independent delivered/error consistency assertion by forcing delivered = (code == 0) for every input.  Evidence: comparison revision lines 417-423 included (Local_MsgTimedOut, PossiblyPersisted, delivered=true, permitted=false); the new theory no longer accepts delivered as input, so that retained guard branch at B10AbruptJournal.cs:211 cannot fail this test. This is retained terminal reconciliation, outside the approved obsolete-protocol deletion, and the receipt's per-method adaptation does not preserve the old assertion. Restore an independently supplied contradictory delivered/error case.
+
+P1  tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptProcessTests.cs:16 (comparison revision, removed line)  rule: AGENTS.md Code Review Rules (flag deleted tests with their code); approved Revision 6 section 2.4  The PR deletes assertions of retired stop/resume/pipe/checkpoint/cohort machinery with the production code they tested; this is the mandatory deleted-test flag.  Evidence: Given_OwnedChild_When_StopResumeKill_Then_ObservesStoppedProgressExitAndEof and its assertions are removed with OwnedProducerProcess; the receipt inventories the other retired methods. These particular retirements are explicitly accepted by decision 6774981258 Q4 as narrowed by decision 6775792095 and the approved plan section 2.4. Answer this flag with those authorities as they require; it is separate from the unapproved retained-test loss above and does not request restoration of the obsolete protocol.
+
+Findings: 5 at P0 or P1
+
+Pre-existing (not blocking):
+
+None newly identified outside the explicitly accepted part 1/part 2 deferrals described above.
+
+### Every touched file
+
+- `charts/parchwell/templates/_helpers.tpl`
+- `charts/parchwell/templates/jobs.yaml`
+- `charts/parchwell/tests/test_b10_abrupt_chart.py`
+- `charts/parchwell/tests/test_b10_abrupt_host.py`
+- `charts/parchwell/values.schema.json`
+- `charts/parchwell/values.yaml`
+- `infra/scripts/phase/b10_abrupt.py`
+- `infra/scripts/phase/phase.py`
+- `infra/scripts/phase/tests/check_b10_abrupt_producers.py`
+- `infra/scripts/phase/tests/test_b10_abrupt.py`
+- `items/404/execution-loadgen-receipt.md`
+- `items/404/state.md`
+- `src/Parchwell.LoadGen/Program.cs`
+- `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptCgroup.cs`
+- `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptChildChannel.cs`
+- `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptDiagnostics.cs`
+- `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptHost.cs`
+- `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptJournal.cs`
+- `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptOptions.cs`
+- `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptParent.cs`
+- `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptProcess.cs`
+- `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptProducer.cs`
+- `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptPublisher.cs`
+- `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptSupervisor.cs`
+- `src/Parchwell.LoadGen/Run/Abrupt/B10AbruptWire.cs`
+- `src/Parchwell.LoadGen/Run/Abrupt/ChildCommand.cs`
+- `src/Parchwell.LoadGen/Run/Abrupt/OwnedProducerProcess.cs`
+- `tests/Parchwell.ArchitectureTests/B10AbruptFailureSiteTests.cs`
+- `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptDiagnosticsTests.cs`
+- `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptEndToEndTests.cs`
+- `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptFatalCaptureTests.cs`
+- `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptHostRegistrationTests.cs`
+- `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptJournalTests.cs`
+- `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptLocalCgroupCaptureTests.cs`
+- `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptOptionsTests.cs`
+- `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptParentProcessTests.cs`
+- `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptProcessHarness.cs`
+- `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptProcessTests.cs`
+- `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptProducerTests.cs`
+- `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptPublicationTests.cs`
+- `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptRealProcessTests.cs`
+- `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptSignalProcessTests.cs`
+- `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptSuccessorCompletionTests.cs`
+- `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptSupervisorTests.cs`
+- `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptWireProducerTests.cs`
+- `tests/Parchwell.LoadGen.Tests/Abrupt/PublishedApphostStartupHook.cs`
+- `tests/Parchwell.Verifier.Tests/Host/B10AbruptRejectionTests.cs`
