@@ -33,7 +33,7 @@ internal static class B10AbruptCgroup
         { throw Unavailable(exception); }
     }
 
-    private static Observation Capture(string directory, string boot)
+    internal static Observation Capture(string directory, string boot, Action<string>? validateDirectory = null)
     {
         if (B10AbruptProc.ReadBootId() != boot) throw Unavailable();
         // Linux v6.11 include/uapi/asm-generic/fcntl.h: O_DIRECTORY | O_CLOEXEC, read-only.
@@ -45,7 +45,10 @@ internal static class B10AbruptCgroup
         using var handle = new SafeFileHandle((IntPtr)descriptor, ownsHandle: true);
         var fdInfo = Encoding.ASCII.GetString(B10AbruptProc.ReadBounded("/proc/self/fdinfo/" + handle.DangerousGetHandle().ToInt64().ToString(CultureInfo.InvariantCulture)));
         var identity = ReadDirectoryIdentity(fdInfo);
-        var counter = ParseLocalCounter(Encoding.ASCII.GetString(B10AbruptProc.ReadBounded("/proc/self/fd/" + descriptor.ToString(CultureInfo.InvariantCulture) + "/memory.events.local")));
+        string descriptorPath = "/proc/self/fd/" + descriptor.ToString(CultureInfo.InvariantCulture);
+        validateDirectory?.Invoke(descriptorPath);
+        var counter = ParseLocalCounter(Encoding.ASCII.GetString(B10AbruptProc.ReadBounded(descriptorPath + "/memory.events.local")));
+        validateDirectory?.Invoke(descriptorPath);
         return new(boot, directory, identity, counter);
     }
 

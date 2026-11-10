@@ -27,6 +27,8 @@ internal static class B10AbruptHost
     internal static Action<IServiceCollection>? ConfigureTestServices { get; set; }
     internal static Func<ProducerConfig, Action<IProducer<byte[], byte[]>, string>, Action<IProducer<byte[], byte[]>, Error>, IProducer<byte[], byte[]>>? ProducerFactoryOverride { get; set; }
     internal static Func<(int ReturnValue, int Errno)>? SelfKillOverride { get; set; }
+    internal static Func<B10AbruptCgroup.Observation>? CaptureBeforeOverride { get; set; }
+    internal static Func<B10AbruptCgroup.Observation, B10AbruptCgroup.Observation>? CaptureAfterOverride { get; set; }
 
     internal static int ValidateConfiguration()
     {
@@ -69,7 +71,7 @@ internal static class B10AbruptHost
                     await B10AbruptStatistics.ValidateCapturedAsync(Path.Combine(options.OutputRoot, "capture", "statistics.jsonl"),
                         new KafkaStatisticsIdentity("B10", options.RunId, KafkaClientRole.LoadGenProducer, options.PodName),
                         await ReadExpectedBrokersAsync(options, token).ConfigureAwait(false), settings, settings, token).ConfigureAwait(false);
-                }, parentStartedTimestamp: processStarted);
+                }, parentStartedTimestamp: processStarted, captureBefore: CaptureBeforeOverride, captureAfter: CaptureAfterOverride);
                 await parent.RunAsync(lifetime.Token).ConfigureAwait(false);
                 return 0;
             }
