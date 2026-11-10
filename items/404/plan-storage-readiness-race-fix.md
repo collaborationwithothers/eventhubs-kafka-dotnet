@@ -1,6 +1,6 @@
 # Storage readiness race fix: contract-grade plan
 
-Revision 6. Issue 404. Plan branch `claude/404-plan`. Baseline: `main` at `0f769fb240d1de50192f4c8eefaf12698002efc7`. Revision 3 was posted as [pointer 6764508653](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6764508653) and checked in [6764643941](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6764643941). Revisions 4 (`9d64a2c2`) and 5 (`d5c11d68`) were not posted; their checks failed on the points sections 18.2 and 18.1 list. This revision is not posted yet; it awaits a fresh reproduction check.
+Revision 7. Issue 404. Plan branch `claude/404-plan`. Baseline: `main` at `0f769fb240d1de50192f4c8eefaf12698002efc7`. Revision 6 (`1cc5b38a`) was posted as [pointer 6766962854](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6766962854) and checked in [6767194659](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6767194659); Hari answered its eight open questions in decisions 6767436384 to 6767566226 (section 1). Revision 3 was posted as [pointer 6764508653](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6764508653) and checked in [6764643941](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6764643941). This revision is not posted yet.
 
 In trial 9 the first blob write of the run, about 20 seconds after the ephemeral apply ended, was answered `404 ResourceNotFound`, and the run failed before any producer started. Hari chose a fixed 2-minute wait after the ephemeral apply and before the first worker Job ([decision 6765011642](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6765011642)). This plan puts that wait at the end of the phase script's private DNS check, which every workflow job that applies the ephemeral layer and then runs Blob-writing work already calls immediately after the apply, so no workflow file changes.
 
@@ -9,7 +9,22 @@ In trial 9 the first blob write of the run, about 20 seconds after the ephemeral
 - [Decision 6761783572](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6761783572) items 3 and 4: plan the storage readiness race fix in its own pull request; state its effect on every scenario that uses the same phase path; every gate, timeout, failure name, protocol change and the implementing tool goes to Hari.
 - [Decision 6762516530](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6762516530) amends the trial gate: no further B10 trial until this fix merges and the B10 restart redesign is implemented. This plan authorizes no trial and no dispatch.
 - [Decision 6765011642](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6765011642) (Q1 of Revision 3): "After the ephemeral apply and before the first worker Job, wait a fixed 2 minutes for storage to be ready." Hari chose this over the retry Revision 3 recommended, having been told its costs: no documented basis for any length, the delay is paid on every run, and a run that would have hit the condition leaves no trace that it did. The retry questions fall away. "The 2-minute value is a policy value Hari set on 2026-11-10 without measurement; it is not a measured readiness time (AGENTS.md hard safety rule 11)."
-- Catch-up: `items/404/state.md` on `main` (covers comment 6756884940), then every later comment, read in full; newest read 6765011642 (created 2026-11-10T10:29:28Z), 197 comments, none edited or deleted since the previous read. Comments read for the first time in this revision: 6764508653 (Revision 3 pointer), 6764643941 (its plan check) and 6765011642.
+- Hari's answers to Revision 6's questions, each read in full:
+  - Q1, [6767436384](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6767436384): P1, the wait runs at the end of `Phase.check_dns`, after both names resolve; a DNS failure still fails at once; no workflow file changes.
+  - Q2, [6767449979](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6767449979): A, the planned line `storage_readiness_wait seconds=120 policy=decision-6765011642`, flushed at once.
+  - Q3, [6767459822](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6767459822): A, the named constant `STORAGE_READINESS_WAIT_SECONDS = 120` in `phase.py`, with a comment naming decision 6765011642.
+  - Q4, [6767479810](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6767479810): B, this pull request leaves `docs/operations/a01-workflow.md` unchanged, knowing that its lines 34, 55 and 59 then omit the wait.
+  - Q5, [6767506812](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6767506812): A, every workflow job that runs `check-dns`.
+  - Q6, [6767526008](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6767526008): DA1, DA2 and DA3 accepted by name.
+  - Q7, [6767543974](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6767543974): Codex implements; its branch starts with `codex/` and includes the issue number; Codex also reviews it (ADR-018).
+  - Q8, [6767566226](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6767566226): B, the implementing Codex session may merge its own pull request under AGENTS.md GOVERNANCE "Merge rule", in full; if it touches any protected path it waits for Hari. This is not plan approval.
+- Catch-up: `items/404/state.md` on `main` (covers comment 6756884940), then every later comment, read in full; newest read 6767566226 (created 2026-11-10T12:40:05Z), 207 comments, none edited or deleted since the previous read except the Revision 6 pointer 6766962854 (one edit by this session, at 12:12:51Z, to make its link work). Comments read for the first time in this revision: 6766962854, 6767194659 and the eight decisions above.
+- Check reports (plan-check N3): the fresh reproduction checks of Revisions 1 and 4 and the delta checks of Revisions 2, 3, 5 and 6 were run by sessions started by the #347 control session and reported to it by session message, not posted on GitHub, at Hari's instruction. Their verdicts and findings are summarized in section 18; the control session holds the reports. The formal plan checks are on the issue: [6764643941](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6764643941) (Revision 3) and [6767194659](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6767194659) (Revision 6).
+
+### 1.1 Implementer and merge
+
+- Implementing tool: Codex (decision 6767543974; AGENTS.md "Implementer and reviewer"). The branch starts with `codex/` and includes the issue number, for example `codex/404-storage-readiness-wait`. Every commit carries the `Co-Authored-By: Codex ...` trailer. Codex also reviews the pull request (ADR-018), and the planned merge workflow's `same-vendor-review` label rule applies.
+- Merge (decision 6767566226): the implementing Codex session may merge its own pull request under AGENTS.md GOVERNANCE "Merge rule", in full: every required status check passes; no protected path is touched; Codex has completed code and security reviews of the head commit with no unresolved P0 or P1 and no High security finding; through the REST merge route with the recorded head SHA. If the pull request touches any protected path, it waits for Hari. The scope of 5.1 touches none.
 
 ## 2. What this plan changes, in one paragraph
 
@@ -61,13 +76,7 @@ Inference, not verified: the storage front end did not yet serve the recreated a
 
 ## 4. Where the wait runs
 
-The wait must run after `Apply the saved ephemeral plan` and before the first worker Job. Three places can hold it:
-
-- P1, recommended: the end of `Phase.check_dns` (`infra/scripts/phase/phase.py`, not protected). In every workflow job that applies the ephemeral layer and runs Blob-writing work, `phase.sh check-dns` is the step immediately after the apply, under the same `if:` (section 12, test T6). No workflow changes. The wait runs only after the private endpoint names resolve, so a DNS failure still fails at once.
-- P2: `apply-ephemeral` in `infra/scripts/lifecycle/lifecycle.sh` (not protected). It would also delay `cluster-smoke.yml`, whose smoke Job writes no blob, and it mixes a readiness policy into the Terraform step.
-- P3: a new workflow step, for example `phase.sh wait-storage`, in each of the five jobs that call `check-dns` today. `.github/workflows/` is protected and each workflow has a committed copy under `docs/operations/workflows/` that must change byte for byte (AGENTS.md hard safety rule 8), so Hari merges, and the step's name and place become visible in each run's step list.
-
-Q1 asks Hari to choose. The rest of this plan specifies P1.
+Decided: P1 (decision 6767436384). The wait runs at the end of `Phase.check_dns` (`infra/scripts/phase/phase.py`, not protected). In every workflow job that applies the ephemeral layer and runs Blob-writing work, `phase.sh check-dns` is the step immediately after the apply, under the same `if:` (section 12, test T6). No workflow changes. The wait runs only after the private endpoint names resolve, so a DNS failure still fails at once. Options not taken: P2, `apply-ephemeral` in `infra/scripts/lifecycle/lifecycle.sh`; P3, a new workflow step (protected).
 
 ## 5. Scope
 
@@ -76,16 +85,15 @@ Q1 asks Hari to choose. The rest of this plan specifies P1.
 1. `infra/scripts/phase/phase.py`: one module constant, `STORAGE_READINESS_WAIT_SECONDS = 120`, with a comment that it is Hari's policy value from decision 6765011642 and not a measurement; and, at the end of `check_dns`, after the loop and before `return 0`, the E2 log line printed with `flush=True`, then `self.sleep(STORAGE_READINESS_WAIT_SECONDS)`.
 2. `infra/scripts/phase/tests/test_phase.py`: tests T1 to T5 in class `PhaseTests`, after `test_check_dns`; module constants for their expected values and job environments; and a small `io.StringIO` subclass that records what was flushed.
 3. New file `infra/scripts/phase/tests/test_storage_readiness_workflow.py`: test T6.
-4. Only if Hari answers Q4 with option (a): `docs/operations/a01-workflow.md` lines 34, 55 and 59, with the exact replacement text of Q4.
-5. `items/404/state.md` and a new receipt `items/404/storage-readiness-receipt.md`.
+4. `items/404/state.md` and a new receipt `items/404/storage-readiness-receipt.md`.
 
 ### 5.2 Paths and behaviour that must not change
 
 - `.github/workflows/**` and `docs/operations/workflows/**` (protected; P1 needs no change there).
 - `src/**`, `tests/Parchwell.*/**`, `charts/**`, `infra/ephemeral/**`, `infra/persistent/**`, `infra/cluster/**`, `infra/scripts/lifecycle/**`, `scenarios/**`, `results/**`, every `expected.yaml`, `docs/blueprint.md`.
 - `docs/operations/verifier-contract.md`: no change. Its line 470 ("Note/result uploads are create-only, with no application retry, overwrite, delete or container creation.") stays true, because no application retry is added.
-- `docs/operations/a01-runtime-limits.json`: no change unless Hari answers Q3 with that file.
-- `docs/operations/a01-workflow.md`: no change unless Hari answers Q4 with option (a).
+- `docs/operations/a01-runtime-limits.json`: no change (decision 6767459822).
+- `docs/operations/a01-workflow.md`: no change (decision 6767479810). After this change its line 34 describes `check-dns` without the wait, its line 55 bound row (DNS 30, row total 510 s) omits the 120 s, and its line 59 configured worst-case job totals (probe 34203, full-C0 32943, full-C3 34743 s) are each 120 s short. Hari chose this knowingly.
 - The existing test `test_check_dns` keeps its inputs and expected exit codes.
 - No other phase command, deadline, timeout, failure name or `phase-status.json` field changes.
 
@@ -94,13 +102,13 @@ Q1 asks Hari to choose. The rest of this plan specifies P1.
 - PR3b classification (paused at Revision 2 `37128767`): shares `items/404/state.md`; it changes `infra/scripts/phase/b10_abrupt.py` and phase tests, not `phase.py`'s `check_dns`.
 - Offline end-to-end test plan (`items/404/plan-offline-e2e-test.md`, Revision 1 at `f75d6ac`): shares `items/404/state.md` only; it lists `infra/**` as must-not-change.
 - B10 restart redesign (decision 6762516530): its later implementation may change `b10_abrupt.py` and the B10 Job sequence; section 12 depends on `b10-abrupt-trial.yml` keeping `check-dns` immediately after its apply, which T6 checks.
-- B10 restart redesign plan (`items/404/plan-b10-restart-redesign.md`, Revision 1 at `3b5e003`): its stop rule covers changes to `docs/blueprint.md`, `docs/operations/b10-abrupt-contract.md` and `docs/operations/b10-workflow.md`; this plan changes none of them.
+- B10 restart redesign plan (`items/404/plan-b10-restart-redesign.md`, Revision 7 at `4a6c172` on the plan branch when this revision was written; it was Revision 3 at the commit the Revision 6 check read): its stop rule covers changes to `docs/blueprint.md`, `docs/operations/b10-abrupt-contract.md` and `docs/operations/b10-workflow.md`; this plan changes none of them.
 - Whichever merges later rebases `items/404/state.md`.
 
 ## 6. External contracts
 
-- E1, value. `STORAGE_READINESS_WAIT_SECONDS = 120` in `infra/scripts/phase/phase.py`. Hari's policy value (decision 6765011642), not a measurement. Where the value lives is Q3. The wait is unconditional: `check_dns` reads no environment variable, input or phase file field to decide whether to wait or for how long. This is a reviewable property of the diff; the subtests of section 9 sample it, they cannot prove it.
-- E2, log line. When the DNS check passes, `check_dns` prints exactly one line to standard output, with `flush=True`, before the wait: `storage_readiness_wait seconds=120 policy=decision-6765011642`. The flush makes the line reach the piped job log when the wait starts, not at process exit; `phase.py`'s existing `::group::` and `::warning::` lines do the same (lines 694, 697 and 717). It appears in the public job log of the `Require private endpoint DNS answers` step. Whether to log, and its text, is Q2.
+- E1, value. `STORAGE_READINESS_WAIT_SECONDS = 120` in `infra/scripts/phase/phase.py`. Hari's policy value (decision 6765011642), not a measurement. It lives in `phase.py` as this named constant (decision 6767459822). The wait is unconditional: `check_dns` reads no environment variable, input or phase file field to decide whether to wait or for how long. This is a reviewable property of the diff; the subtests of section 9 sample it, they cannot prove it.
+- E2, log line. When the DNS check passes, `check_dns` prints exactly one line to standard output, with `flush=True`, before the wait: `storage_readiness_wait seconds=120 policy=decision-6765011642`. The flush makes the line reach the piped job log when the wait starts, not at process exit; `phase.py`'s existing `::group::` and `::warning::` lines do the same (lines 694, 697 and 717). It appears in the public job log of the `Require private endpoint DNS answers` step. The line and its text are decided (decision 6767449979).
 - E3, order. The wait runs once, after both names resolve as required and before `check_dns` returns 0. A DNS failure raises `Failure("private DNS check failed: <host>", 1)` as on `main`, with no log line and no wait.
 - E4, mechanism. The wait goes through `Phase.sleep`. `check_dns` sets no command deadline, so `Phase.sleep` passes the full 120 s to `time.sleep` (`phase.py` lines 350 to 354 on `main`).
 - E5, unchanged externals: every workflow file, step name, step order and `if:` condition (in every job that has it, `check-dns` stays the step immediately after `apply-ephemeral`, under the same `if:`); the `check-dns` step's exit codes; every `phase-status.json` field; the verifier, its failure names and its contract.
@@ -148,7 +156,7 @@ T1 and T4 run once per job environment, as `subTest`s, each inside its own `patc
 | T3 `test_storage_readiness_wait_is_the_policy_constant` | R4, E1 | none | `phase.STORAGE_READINESS_WAIT_SECONDS == 120` |
 | T4 `test_check_dns_storage_readiness_wait_reaches_the_process_sleep` (17 subtests) | R1, E4 | default answers; each job environment; `Phase.run` scripted; `phase.time.sleep` recorded, `Phase.sleep` real | in every subtest: exit 0; `time.sleep` called exactly once, with 120 |
 | T5 `test_check_dns_storage_readiness_line_is_flushed_before_the_wait` | R5, E2 | default answers; standard output is a `StringIO` subclass whose `flush()` records the text written so far; the recorded `Phase.sleep` reads that record | exit 0; one sleep; the flushed text at that moment contains `storage_readiness_wait seconds=120 policy=decision-6765011642` followed by a newline |
-| T6 `test_check_dns_immediately_follows_every_ephemeral_apply_with_the_same_condition` | R6, E5 | the real `.github/workflows/*.yml`, parsed with PyYAML | each job has at most one `lifecycle.sh apply-ephemeral` step; where it has any `phase.sh check-dns` step, it has exactly one, and that step is exactly the next step and its `if:` equals the apply step's `if:`; the observed map of `check-dns` conditions is exactly `{(b10-abrupt-trial.yml, trial): None, (cluster-smoke.yml, smoke): no wait, (scenario.yml, batch): None, (scenario.yml, full-C0): None, (scenario.yml, full-C3): "steps.allowed.outputs.workload == 'true'", (scenario.yml, probe): None}` |
+| T6 `test_check_dns_immediately_follows_every_ephemeral_apply_with_the_same_condition` | R6, E5 | the real `.github/workflows/*.yml`, parsed with PyYAML | each job has at most one `lifecycle.sh apply-ephemeral` step; where it has any `phase.sh check-dns` step, it has exactly one, and that step is exactly the next step and its `if:` equals the apply step's `if:`; the observed map of `check-dns` conditions (the value is the string `'no wait'` for a job without `check-dns`, and the step's `if:` otherwise, `None` when absent) is exactly `{(b10-abrupt-trial.yml, trial): None, (cluster-smoke.yml, smoke): 'no wait', (scenario.yml, batch): None, (scenario.yml, full-C0): None, (scenario.yml, full-C3): "steps.allowed.outputs.workload == 'true'", (scenario.yml, probe): None}` |
 | `test_check_dns` (existing) | R3 | unchanged | unchanged |
 
 T2, T6 and `test_check_dns` pass on `main` by design: they hold behaviour the change must keep. Their power is shown by the mutants they kill (W3, W9, W13 and W14 in 9.2).
@@ -204,9 +212,9 @@ Evidence: trials 7, 8 and 9 and the 38 job logs of section 3.3.
 
 ## 11. Deployment assumptions
 
-- DA1. Two minutes after the ephemeral apply, storage serves the first Blob write. Not verified: section 3.4 found no documented storage readiness time; the only documented figures are for role propagation (10 and 30 minutes), which are longer. The 120 s is Hari's policy choice, not a measurement. If it is wrong, a run fails as trial 9 did, after the wait. Needs Hari's acceptance by name (Q6).
-- DA2. The `check-dns` step on the private runner has no step timeout shorter than the wait. Checked in the workflow files: none of the five `check-dns` steps sets `timeout-minutes`, and each job's `timeout-minutes` is 360. That GitHub Actions applies no other per-step limit is not verified here (Q6).
-- DA3. Standard output of the `check-dns` step reaches the public job log, as the existing `::group::` and `::warning::` lines of `phase.py` do. Failure only loses the E2 line (Q6).
+- DA1. Two minutes after the ephemeral apply, storage serves the first Blob write. Not verified: section 3.4 found no documented storage readiness time; the only documented figures are for role propagation (10 and 30 minutes), which are longer. The 120 s is Hari's policy choice, not a measurement. If it is wrong, a run fails as trial 9 did, after the logged wait. Accepted by Hari by name (decision 6767526008).
+- DA2. The `check-dns` step on the private runner has no step timeout shorter than the wait. Checked in the workflow files: none of the five `check-dns` steps sets `timeout-minutes`, and each job's `timeout-minutes` is 360. That GitHub Actions applies no other per-step limit is not verified here. Accepted by Hari by name (decision 6767526008).
+- DA3. Standard output of the `check-dns` step reaches the public job log, as the existing `::group::` and `::warning::` lines of `phase.py` do. Failure only loses the E2 line. Accepted by Hari by name (decision 6767526008).
 
 ## 12. Effect on workflows and scenarios
 
@@ -224,7 +232,7 @@ Added time is 120 s of wall time per job that runs `check-dns`, plus that much m
 
 Every scenario that `scenario.yml` routes to one of its four jobs pays 120 s for each selected job. The first Jobs of section 3.3 name F04, B08, F06, A02, B06 and B10; the other start-line first Jobs there do not name their scenario. Which scenario reaches which job is decided by `scenario.yml`'s job conditions; this plan does not restate them, and the per-job wait does not depend on them.
 
-Deadline fit: the wait sits outside every Job's `activeDeadlineSeconds` (it runs before any Job exists) and outside every phase budget (I2). The only runtime deadline that contains it is each job's 360-minute `timeout-minutes`. The configured worst-case bounds that `docs/operations/a01-workflow.md` documents grow by 120 s: its row "DNS 30, credentials 120, namespace reset 360" goes from 510 to 630 s, and its job totals from probe 34203, full-C0 32943 and full-C3 34743 s to 34323, 33063 and 34863 s (configured bounds, not measurements; computed by script). On `main` these totals already exceed the 360-minute (21600 s) job timeout. That is allowed: `docs/operations/a01-workflow.md` line 64 says "The sums above are not required to fit that limit", under [decision 6388539631](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/163#issuecomment-6388539631) point 2 ("their worst-case sum is not required to fit within 21600 seconds"). This change adds 120 s to each sum without changing that relation.
+Deadline fit: the wait sits outside every Job's `activeDeadlineSeconds` (it runs before any Job exists) and outside every phase budget (I2). The only runtime deadline that contains it is each job's 360-minute `timeout-minutes`. The configured worst-case bounds that `docs/operations/a01-workflow.md` documents grow by 120 s, though that document stays unchanged (decision 6767479810): its row "DNS 30, credentials 120, namespace reset 360" goes from 510 to 630 s, and its job totals from probe 34203, full-C0 32943 and full-C3 34743 s to 34323, 33063 and 34863 s (configured bounds, not measurements; computed by script). On `main` these totals already exceed the 360-minute (21600 s) job timeout. That is allowed: `docs/operations/a01-workflow.md` line 64 says "The sums above are not required to fit that limit", under [decision 6388539631](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/163#issuecomment-6388539631) point 2 ("their worst-case sum is not required to fit within 21600 seconds"). This change adds 120 s to each sum without changing that relation.
 
 ## 13. Acceptance commands
 
@@ -248,7 +256,7 @@ Environment-fault reruns: if a command fails only because of the environment (a 
 
 ## 14. Sources
 
-- Decisions 6761783572, 6762516530 and 6765011642; the Revision 3 pointer 6764508653 and plan check 6764643941.
+- Decisions 6761783572, 6762516530, 6765011642 and 6767436384 to 6767566226; the Revision 3 pointer 6764508653 and plan check 6764643941; the Revision 6 pointer 6766962854 and plan check 6767194659.
 - On `main` at `0f769fb2`: `infra/scripts/phase/phase.py` lines 20 to 60, 337 to 354 (`run`, `sleep`), 604 to 615 (`check_dns`), 694, 697 and 717 (existing flushed log lines), 941 (`run_b10_repeats` B10 clock), 1126 to 1157 (`single_action_seed`; `start_batch_clock` call at 1152), 1528 (`check-dns` command entry); `infra/scripts/phase/b10_abrupt.py` lines 617 and 619 to 623; `idle_observation.py` line 155; `ledger_batch.py` line 76; `probe_v2.py` line 833; `infra/scripts/phase/tests/test_phase.py` lines 47 to 160, 690 to 694 and 1313 to 1320; `infra/scripts/tests/test_phase_bridge.py`; `.github/workflows/scenario.yml`, `b10-abrupt-trial.yml`, `cluster-smoke.yml` (steps and `timeout-minutes`), `dotnet-verification.yml` lines 55 to 81; `charts/smoke/`; `docs/operations/verifier-contract.md` line 470; `docs/operations/a01-workflow.md` lines 34, 55 and 59; `.github/CODEOWNERS`.
 - GitHub Actions job logs of the 38 jobs of section 3.3; artifacts 13742914191, 13742900343 and 13704155185.
 - The Microsoft pages of section 3.4, read 2026-11-10.
@@ -261,20 +269,11 @@ Environment-fault reruns: if a command fails only because of the environment (a 
 
 ## 16. Open questions for Hari
 
-- Q1. Where the wait runs. Options: P1, the end of `check_dns` in `phase.py`, no workflow change (recommended); P2, `apply-ephemeral` in `lifecycle.sh`; P3, a new workflow step in each job (protected, Hari merges, committed copies change). Strongest counterargument to P1: a wait hidden inside a step named "Require private endpoint DNS answers" is easy to miss when reading a run, and a later edit to `check_dns` could drop it; P3 makes it visible as its own step.
-- Q2. Log line. Options: E2 as written, `storage_readiness_wait seconds=120 policy=decision-6765011642` (recommended); a different name or text; no line. Counterargument: the line says only that the run waited, not whether storage was ready, so it adds a name without evidence.
-- Q3. Where the 120 s lives. Options: a constant in `phase.py` with a comment naming decision 6765011642 (recommended); a new key in `docs/operations/a01-runtime-limits.json` (not protected; holds other runtime policy values); a workflow environment variable (protected). Counterargument: the runtime-limits file is where other policy values are reviewed together, and a constant in a script is easier to change without noticing.
-- Q4. Documentation text. `docs/operations/verifier-contract.md` line 470 needs no change: no application retry is added. But `docs/operations/a01-workflow.md` (not protected) describes `check-dns` and its bound, and would become wrong. Options:
-  - (a), recommended: change three lines, with exactly this text.
-    - Line 34, from "| `check-dns` | Require Event Hubs and blob host answers to equal their private endpoint addresses. |" to "| `check-dns` | Require Event Hubs and blob host answers to equal their private endpoint addresses, then wait 120 seconds for storage readiness (decision 6765011642, a policy value, not a measurement). |".
-    - Line 55, from "| DNS 30, credentials 120, namespace reset 360 | 510 |" to "| DNS 30 plus storage readiness wait 120, credentials 120, namespace reset 360 | 630 |".
-    - Line 59, from "| Worst-case job totals | probe 34203, full-C0 32943, full-C3 34743 |" to "| Worst-case job totals | probe 34323, full-C0 33063, full-C3 34863 |".
-  - (b) leave the document as it is.
-  Counterargument to (a): it puts a policy value in a second place, which must change if Q3's value ever changes; (b) leaves a public operations document wrong about a step every run takes.
-- Q5. Which workflows and scenarios. Options: every job that calls `check-dns` (all of section 12 except cluster smoke; recommended, because trial 9's failure is not specific to B10); only B10 (`b10-abrupt-trial.yml` and B10 dispatches of `scenario.yml`), which needs a scenario condition in `check_dns`. Counterargument: in the 36 runs searched, no other run's first worker Job failed this way, and every A01, B04 and batch dispatch now pays 120 s per job.
-- Q6. Deployment assumptions, each to accept by name: DA1 (two minutes is enough; not measured, and shorter than the documented role propagation figures), DA2 (no step limit shorter than the wait) and DA3 (the log line reaches the job log).
-- Q7. Implementing tool: not named for this pull request.
-- Q8. Merge. This pull request is outside the four covered by 6752430614, so the control session cannot merge it, approve its plan or decide its questions under that decision. Options: Hari merges (recommended, because it adds 120 s to every Azure run); the implementing session merges its own pull request under AGENTS.md GOVERNANCE "Merge rule" (P1 touches only unprotected paths); or Hari extends 6752430614 to it. Counterargument to the recommendation: it adds a Hari step to a small change that the merge rule already lets the implementing agent merge.
+None. Hari answered Revision 6's Q1 to Q8 in decisions 6767436384 to 6767566226 (section 1).
+
+The options not taken would each have changed a contract or the scope (plan-check N4): P2 or P3 for Q1, no line for Q2, a key in `docs/operations/a01-runtime-limits.json` for Q3 (a file .NET tests and `charts/parchwell/tests/test_chart.py` read), and B10 only for Q5. Hari chose none of them, so that note is moot.
+
+Factory live-smoke rule (plan-check N5): docs/agents/factory.md "Item lifecycle" step 1 requires a live smoke run before approving "a plan that changes live infrastructure". This plan changes no Terraform, chart, identity, network or workflow file; it adds a fixed wait to a phase script. The plan reads the rule as not applying (inference); the approver decides.
 
 Non-blocking note, nothing decided: collecting the start-line Job's log into the public artifact is not needed for this fix; Container Insights holds it privately, and container logs carry tenant and client IDs.
 
@@ -283,10 +282,24 @@ Non-blocking note, nothing decided: collecting the start-line Job's log into the
 The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when any of these holds:
 - It would need to change a contract (E1 to E5), a requirement, the scope of 5.1 and 5.2, or a literal expected value of section 9.
 - A test on `main` or the branch gives a result other than section 9 states, or a mutant of 9.2 survives.
-- Before this pull request merges, another change on `main` or in a pull request about to merge changes `Phase.check_dns`, `Phase.sleep`, `Phase.run`, the `check-dns` command entry, the `PhaseTests` fixture, the step order or `if:` of `check-dns` or `apply-ephemeral` in any workflow file, the environment variables those jobs set, the start of the B10 or batch clocks, or lines 34, 55 or 59 of `docs/operations/a01-workflow.md`.
+- Before this pull request merges, another change on `main` or in a pull request about to merge changes `Phase.check_dns`, `Phase.sleep`, `Phase.run`, the `check-dns` command entry, the `PhaseTests` fixture, the step order or `if:` of `check-dns` or `apply-ephemeral` in any workflow file, the environment variables those jobs set, or the start of the B10 or batch clocks.
 - A change to `items/404/state.md` alone does not stop the work; the implementer rebases it.
 
 ## 18. Changes since Revision 3
+
+### 18.0 Revision 7, folding in Hari's answers and the Revision 6 plan check
+
+| Source | Change |
+|---|---|
+| Q1 to Q8 answered (decisions 6767436384 to 6767566226) | Section 1 lists them; section 4 records P1 as decided; E1 and E2 cite Q3 and Q2; 5.1 drops the conditional `a01-workflow.md` item (Q4 B) and 5.2 records what that document then omits; section 11 records DA1 to DA3 as accepted (Q6); section 16 reads None; new section 1.1 records Codex, the `codex/` prefix and the merge rule (Q7, Q8); the stop rule drops the `a01-workflow.md` lines |
+| Plan check [6767194659](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6767194659) N1 | 5.3 cites the redesign plan's current revision |
+| N2 | The header says Revision 6 was posted, and names its pointer and check |
+| N3 | Section 1 says where the reproduction and delta check reports are |
+| N4 | Section 16 says the options not taken would have changed a contract or the scope, and that the note is moot |
+| N5 | Section 16 has one line on the factory live-smoke rule |
+| P2-1 | T6 names the literal `'no wait'` for `('cluster-smoke.yml', 'smoke')` |
+
+No requirement, test, literal or acceptance command changed. Q5 A and Q4 B match the plan's existing scope, so no test changes.
 
 ### 18.1 Revision 6, from the delta check of Revision 5 (`d5c11d68`)
 
