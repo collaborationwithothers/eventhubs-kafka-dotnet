@@ -40,8 +40,9 @@ internal static class LateCaptureTestSupport
 }
 
 // Reads the session's private capture state so a test can tell that completion closed capture, and
-// briefly takes the session's gate to learn that no other thread holds it. Do not use it while a live
-// callback is running: holding the gate makes that callback record capture contention.
+// briefly takes the session's gate to learn that no other thread holds it. Only WaitUntilGateFree
+// holds the gate: use it only where no admitted callback can arrive meanwhile, because a callback that
+// finds the gate held records capture contention. The field read does not touch the gate.
 // A probe that cannot find what it reads fails the test; it never passes vacuously.
 internal static class SessionProbe
 {
