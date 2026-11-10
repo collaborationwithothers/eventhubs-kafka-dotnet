@@ -204,8 +204,11 @@ public sealed class B10AbruptPublicationTests
         try
         {
             string[] seen = new string[8];
+            JsonElement? diagnostic = null;
             var failure = await Assert.ThrowsAsync<IOException>(() => B10AbruptWireProducerTests.ProduceAsync(root, TestContext.Current.CancellationToken, supervisorErrors: stderr,
-                publicationStorage: context => new CohortUploadStorage(context, 250, failAtIndex: 1, seen, new object())));
+                captureFailure: value => diagnostic = value, publicationStorage: context => new CohortUploadStorage(context, 250, failAtIndex: 1, seen, new object())));
+            // The failure report carries the timeline snapshot, so no stage entry was dropped.
+            Assert.Equal(0, diagnostic!.Value.GetProperty("data").GetProperty("timeline").GetProperty("dropped").GetInt64());
             Assert.Equal("b10_abrupt_publication_ambiguous", failure.Message);
             JsonElement[] lines = CohortLines(stderr.ToString());
             Assert.Equal(2, lines.Length);
@@ -214,8 +217,9 @@ public sealed class B10AbruptPublicationTests
             Assert.Equal(1, failed.GetProperty("name_index").GetInt64());
             Assert.Equal(0, failed.GetProperty("upload_succeeded").GetInt64());
             Assert.Equal(30000, failed.GetProperty("elapsed_milliseconds").GetInt64());
-            // The failure line was already written when the abort path first read the child's exited state, which precedes any cleanup call.
+            // The first upload's line was already written when the second create started.
             Assert.Contains("\"name_index\":0,", seen[1]);
+            // The failure line was already written when the abort path first read the child's exited state, which precedes any cleanup call.
             Assert.NotNull(seen[7]);
             Assert.Contains("\"name_index\":1,", seen[7]);
             Assert.Contains("\"upload_succeeded\":0", seen[7]);

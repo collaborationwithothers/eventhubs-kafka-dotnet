@@ -253,7 +253,8 @@ internal static class B10AbruptHost
 
     // The first child's error callback also reaches the supervisor's journal (ADR-021 protocol rule 9), so an error the evidence
     // session still holds in its background writer is also in the journal. A message still queued in the channel when the child is
-    // stopped for the kill is not written; that is the unknown native tail. Only the first child has a channel.
+    // stopped for the kill is not written (the unknown native tail), and none is journaled once the channel has latched a gap,
+    // such as a full write queue. Only the first child has a channel.
     internal static Action<IProducer<byte[], byte[]>, Error> CreateErrorHandler(RunEvidenceSession evidence, B10AbruptChildChannel? channel, TimeProvider clock) =>
         (_, error) =>
         {
