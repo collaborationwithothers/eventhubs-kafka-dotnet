@@ -1,10 +1,16 @@
 # Capture-loss race fix contract-grade plan
 
-Revision 3. Issue #404. Implementing tool: Claude Code, under [standing decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614) point 3, which replaces Codex for this pull request. The state file on `main` (`items/404/state.md`, "Implementing tool") still names Codex; the implementing session updates it. Base: `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`.
+Revision 4. Issue #404. Implementing tool: Claude Code, under [standing decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614) point 3, which replaces Codex for this pull request. The state file on `main` (`items/404/state.md`, "Implementing tool") still names Codex; the implementing session updates it. Base: `main` at `f5cc496fa3cf845e68e400b5b65e557f121dd928`.
 
 A statistics callback that starts after the statistics session closes capture, and before completion seals its result, makes the completion incomplete on `main`. Such a report was never going to be written to evidence, so the failure hides nothing; it only fails a good run. This pull request makes the session ignore a callback that starts after capture closes, and keeps every outcome that marks a real capture gap. It changes no diagnostic code, public type, wire member, timeout, gate or failure name, and it authorizes no trial.
 
-Changes since Revision 2 (commit `e411fa3c`), from the fresh reproduction check relayed by the control session (findings F1 to F7, mutations M8 to M10) and its order ruling:
+Changes since Revision 3 (commit `e7fa6f6c`), from the reproduction check's rerun on Revision 2, relayed by the control session; wording only, no requirement, test input, expected value or scope changes:
+
+- F8: acceptance command 2's evidence names both failure forms on `main`.
+- 9.1 qualifies Revision 2's 50 of 50 runs as holding for the prototype's lock section; the checker made a legal close that holds the gate 20 ms after the state change fail T3 1 of 5 without the gate-free wait (now required, section 9).
+- The gate-free wait is stated as the third constraint of the capture-closed wait.
+
+Changes in Revision 3 (since Revision 2, commit `e411fa3c`), from the fresh reproduction check relayed by the control session (findings F1 to F7, mutations M8 to M10) and its order ruling:
 
 - F1 (blocking): T3 now also waits until the session's gate is free before resuming its admitted callback. Without that wait the callback could meet the close itself and take the contention path. The wait is a requirement, with fail-if-absent; reflection stays a permitted technique.
 - F2: a held sink write waits at most 5 s, then throws, so a failed test's disposal completes.
@@ -221,7 +227,8 @@ Common inputs:
 - Holding sink: a test `IKafkaStatisticsEvidenceSink` that blocks its first and second qualifying writes until the test releases each, then records the report. A held write waits for its release for at most 5 s, then throws, so a failed test's disposal completes. In T2 a write qualifies only when the report's native `ts` is above a threshold armed after `CompleteAsync` returns; in T1 and T3 every write qualifies.
 - Capture-closed wait. The test delivers its late callback only after it has observed that completion closed capture. The technique is the implementer's choice, with two constraints:
   - the observation must not run ahead of the E1 close point, or a callback "after close" could still be admitted before it;
-  - if the technique cannot find what it observes, the test fails; it never passes vacuously.
+  - if the technique cannot find what it observes, the test fails; it never passes vacuously;
+  - for T3, the test resumes the admitted call only after the close has released the session's gate (the gate-free wait below).
   - Permitted example, used by the prototype: poll every 1 ms, under a 5 s watchdog, a reflection read of the session's private capture-open state, with the fix closing admission before that state changes (I1). Another permitted example is an internal observation hook; the test then cannot run on `main`, and mutation M1 is the evidence that it catches `main`'s behaviour.
   - Permitted example for T1, reflection-free, from the reproduction check (not rerun by this planner): after held write 2, call `Capture` repeatedly 1 ms apart, at most 5 probes, and count the test clock's timestamp reads on the calling thread. A probe that reads no clock was refused at admission, so capture has closed; the test fails with "did not close within five probes" otherwise. It assumes admission precedes the clock read, as T3 already does. The check observed: `main` 40 of 40 fail, its prototype 20 of 20 pass, and it kills M1, M2, M3, M5 and M10. Probe k (k from 1) uses ts 10000002+k, and the first refused probe is T1's late callback; no separate late capture is sent. A probe accepted before the close is queued and written, so with this technique T1's expected written list is the two pinned values, then the ts of each probe accepted before the first refused probe, in order; the first refused probe and anything after it are not written, and the expected diagnostics stay `""`.
 - Gate-free wait, T3 only. After the capture-closed wait and before resuming its admitted callback, T3 waits until no other thread holds the session's state gate, bounded at 5 s; if the wait cannot find the gate or times out, the test fails. Without it, the resumed callback can find the gate still held by the close and take the contention path (`capture_contention,capture_loss`), which made T3 fail 3 of 20 and 3 of 25 runs under load in the reproduction check. Permitted example, used by the prototype: reflect the session's private gate object and acquire and release it with a 5 s timeout. No reflection-free way was found.
@@ -251,7 +258,7 @@ Revision 3 tests, counted by script; "under load" means 4 busy-loop processes on
 - `main`, `KafkaStatisticsNativeLateCaptureTests`, 20 runs: T2 failed 20 times with `capture_loss,late_capture`.
 - Prototype, `KafkaStatisticsLateCaptureTests`, 25 runs under load: all 3 passed every time.
 - Prototype, `KafkaStatisticsNativeLateCaptureTests`, 20 runs: T2 passed every time.
-- Earlier revisions, for the record: Revision 2's single class passed 50 of 50 runs on the prototype; T2 took 529 to 580 ms in the Revision 1 runs that printed a duration.
+- Earlier revisions, for the record: Revision 2's single class passed 50 of 50 runs on the prototype. That holds only for the prototype's short lock section: without the gate-free wait, a legal close that holds the gate 20 ms after the state change made T3 fail 1 of 5 (reproduction check); T2 took 529 to 580 ms in the Revision 1 runs that printed a duration.
 
 ### 9.2 Mutations
 
@@ -281,7 +288,7 @@ None. The change is in-process logic in one class. Which thread, library build o
 Run from the repository root with .NET SDK 10.0.402. Each was run in this planning session on the prototype unless marked `main`.
 
 1. `dotnet build Parchwell.slnx --configuration Release` (inside `./scripts/verify-dotnet.sh`). Evidence: 0 warnings, 0 errors.
-2. On `main` with only the new test files added, 25 times under load: `dotnet test --project tests/Parchwell.Kafka.Tests --configuration Release --no-build -- --filter-class Parchwell.Kafka.Tests.Statistics.KafkaStatisticsLateCaptureTests`, and 20 times the same with `KafkaStatisticsNativeLateCaptureTests`. Evidence, observed: as in 9.1; T1 and T2 fail every run with `IsComplete` false; T3 passes every run.
+2. On `main` with only the new test files added, 25 times under load: `dotnet test --project tests/Parchwell.Kafka.Tests --configuration Release --no-build -- --filter-class Parchwell.Kafka.Tests.Statistics.KafkaStatisticsLateCaptureTests`, and 20 times the same with `KafkaStatisticsNativeLateCaptureTests`. Evidence, observed: as in 9.1. Each failure shows `IsComplete` false, with `capture_loss,late_capture` or (T1 `inventory`) `capture_contention,capture_loss`; T3 passes every run.
 3. The same two commands on the branch, 25 and 20 times. Evidence, observed: every run `failed: 0`.
 4. `dotnet test --project tests/Parchwell.Kafka.Tests --configuration Release --no-build -- --filter-namespace Parchwell.Kafka.Tests.Statistics`. Evidence, observed on the Revision 3 tests: `total: 99`, `failed: 0`.
 5. `./scripts/verify-dotnet.sh`. Evidence: every step passes, on a workspace with a Docker daemon (CI has one). Observed in this session: section 11.1.
