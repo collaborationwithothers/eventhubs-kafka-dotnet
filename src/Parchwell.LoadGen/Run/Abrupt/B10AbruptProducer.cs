@@ -109,12 +109,20 @@ internal sealed class B10AbruptProducer
     }
     private async Task<ProbeAttempt> OriginalsAsync(string arm, CancellationToken cancellationToken)
     {
-        byte[] payload = ProbePayload(); long origin = clock.GetTimestamp(); ProbeAttempt? last = null;
+        byte[] payload = ProbePayload(); ProbeAttempt? first = null, last = null;
         for (int ordinal = 0; ordinal < B10AbruptOptions.OriginalCount; ordinal++)
         {
-            TimeSpan remaining = TimeSpan.FromMilliseconds(ordinal * 10) - clock.GetElapsedTime(origin);
-            if (remaining > TimeSpan.Zero) await Task.Delay(remaining, clock, cancellationToken).ConfigureAwait(false);
+            if (first is not null)
+            {
+                while (true)
+                {
+                    TimeSpan remaining = TimeSpan.FromMilliseconds(ordinal * 10) - clock.GetElapsedTime(first.InvokedTimestamp);
+                    if (remaining <= TimeSpan.Zero) break;
+                    await Task.Delay(TimeSpan.FromMilliseconds(Math.Ceiling(remaining.TotalMilliseconds)), clock, cancellationToken).ConfigureAwait(false);
+                }
+            }
             last = await InvokeProbe(arm, payload, null, ordinal, cancellationToken).ConfigureAwait(false);
+            first ??= last;
         }
         if (!last!.Accepted)
         {
@@ -192,7 +200,13 @@ internal sealed class B10AbruptProducer
         }
         catch (ProduceException<byte[], byte[]> exception)
         {
-            await journal.AppendAsync("synchronous_rejection", B10AbruptWire.Element(new { attempt_id = attemptId, prepared_sequence = prepared.Sequence, error_code = (int)exception.Error.Code, error_reason = exception.Error.Reason }), cancellationToken).ConfigureAwait(false);
+            JsonElement rejection = B10AbruptWire.Element(new { attempt_id = attemptId, prepared_sequence = prepared.Sequence, error_code = (int)exception.Error.Code, error_reason = exception.Error.Reason });
+            await journal.AppendAsync("synchronous_rejection", rejection, cancellationToken).ConfigureAwait(false);
+            lock (gate)
+            {
+                if (attempt.Terminal is not null) Fault(1);
+                else attempt.Terminal = rejection;
+            }
             return attempt;
         }
         await journal.AppendAsync("accepted", B10AbruptWire.Element(new { attempt_id = attemptId, prepared_sequence = prepared.Sequence }), cancellationToken).ConfigureAwait(false);

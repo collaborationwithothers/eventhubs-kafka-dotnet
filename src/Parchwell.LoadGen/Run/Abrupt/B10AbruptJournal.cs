@@ -172,6 +172,7 @@ internal sealed class B10AbruptJournal : IAsyncDisposable
             {
                 if (!prepared.TryAdd(id!,frame)) Gap("malformed_frame");
                 string arm = data.GetProperty("arm").GetString()!;
+                if (arm == "cross_restart" && !ControlCompleteBefore(frame.Sequence)) Gap("malformed_frame");
                 if (data.GetProperty("key").GetString() != $"B10/{frame.Identity.RunId}/C1/1/{arm}" || data.GetProperty("probe_id").GetString() != data.GetProperty("key").GetString()) Gap("malformed_frame");
                 long ordinal = data.GetProperty("ordinal").GetInt64();
                 var previous = prepared.Values.Where(item => item.Sequence < frame.Sequence && item.Data.GetProperty("arm").GetString() == arm).ToArray();
@@ -212,6 +213,7 @@ internal sealed class B10AbruptJournal : IAsyncDisposable
             if (frame.Kind == "native_error" && (data.GetProperty("is_error").GetBoolean() || data.GetProperty("is_fatal").GetBoolean())) failures.TryAdd("guards","b10_abrupt_guard_failed");
             if (frame.Kind is "cut" or "kill_intent")
             {
+                if (frame.Kind == "kill_intent" && !ControlCompleteBefore(frame.Sequence)) Gap("malformed_frame");
                 if (frame.Kind == "cut" ? cut : kill) Gap("malformed_frame");
                 DateTimeOffset observedUtc = DateTimeOffset.ParseExact(frame.ObservedUtc,"O",CultureInfo.InvariantCulture);
                 DateTimeOffset releaseUtc = DateTimeOffset.ParseExact(data.GetProperty("release_utc").GetString()!,"O",CultureInfo.InvariantCulture);
@@ -224,7 +226,32 @@ internal sealed class B10AbruptJournal : IAsyncDisposable
                 if (frame.Kind == "cut") { cut = true; control = Unconfirmed(records.Where(record=>record.Sequence < frame.Sequence),arm); if (!control.SequenceEqual(data.GetProperty("unconfirmed_attempt_ids").EnumerateArray().Select(item=>item.GetString()!),StringComparer.Ordinal)) Gap("malformed_frame"); } else kill = true;
             }
         }
+        if (prepared.Keys.Any(id => !accepted.Contains(id) && !rejected.Contains(id)) || terminal.Any(id => !accepted.Contains(id))) Gap("malformed_frame");
         return new(records, missing, failures, control, Unconfirmed(records,"cross_restart"));
+
+        bool ControlCompleteBefore(long sequence)
+        {
+            var prior = records.Where(record => record.Sequence < sequence).ToArray();
+            var attempts = prepared.Values.Where(record => record.Sequence < sequence && record.Data.GetProperty("arm").GetString() == "same_instance").ToArray();
+            var originals = attempts.Where(record => record.Data.GetProperty("role").GetString() == "original").ToArray();
+            var cuts = prior.Where(record => record.Kind == "cut").ToArray();
+            var drains = prior.Where(record => record.Kind == "control_drained").ToArray();
+            var postDrain = prior.Where(record => record.Kind == "post_drain_report").ToArray();
+            if (!originals.Select(record => record.Data.GetProperty("ordinal").GetInt32()).SequenceEqual(Enumerable.Range(0, 5))
+                || cuts.Length != 1 || control.Length == 0 || drains.Length != 1 || postDrain.Length != 1
+                || !drains[0].Data.GetProperty("flush_returned").GetBoolean() || drains[0].Data.GetProperty("out_queue_length").GetInt64() != 0
+                || drains[0].Sequence <= cuts[0].Sequence || postDrain[0].Sequence <= drains[0].Sequence) return false;
+            var resends = attempts.Where(record => record.Data.GetProperty("role").GetString() == "resend").ToArray();
+            DateTimeOffset release = DateTimeOffset.ParseExact(cuts[0].Data.GetProperty("release_utc").GetString()!, "O", CultureInfo.InvariantCulture);
+            if (!resends.Select(record => record.Data.GetProperty("predecessor_attempt_id").GetString()!).SequenceEqual(control, StringComparer.Ordinal)
+                || resends.Any(record => record.Sequence <= cuts[0].Sequence || record.Sequence >= drains[0].Sequence
+                    || DateTimeOffset.ParseExact(record.ObservedUtc, "O", CultureInfo.InvariantCulture) < release)) return false;
+            return attempts.All(record =>
+            {
+                string attempt = record.Data.GetProperty("attempt_id").GetString()!;
+                return rejected.Contains(attempt) || accepted.Contains(attempt) && terminal.Contains(attempt);
+            });
+        }
     }
     internal static string[] Unconfirmed(IEnumerable<B10AbruptWire.Frame> source, string arm)
     {

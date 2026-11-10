@@ -141,19 +141,20 @@ public sealed class B10AbruptSupervisorTests
     }
 
     [Theory]
-    [InlineData(0, 2, true)]
-    [InlineData(0, 0, true)]
-    [InlineData(0, 1, false)]
-    [InlineData(-192, 0, true)]
-    [InlineData(-192, 1, true)]
-    [InlineData(-192, 2, false)]
-    [InlineData(-195, 1, false)]
-    [InlineData(0, null, false)]
-    public void Given_TerminalPersistenceTuple_When_SupervisorCaptures_Then_OnlyPermittedTuplePasses(int code, int? status, bool permitted)
+    [InlineData(0, 2, true, true)]
+    [InlineData(0, 0, true, true)]
+    [InlineData(0, 1, true, false)]
+    [InlineData(-192, 0, false, true)]
+    [InlineData(-192, 1, false, true)]
+    [InlineData(-192, 1, true, false)]
+    [InlineData(-192, 2, false, false)]
+    [InlineData(-195, 1, false, false)]
+    [InlineData(0, null, true, false)]
+    public void Given_TerminalPersistenceTuple_When_SupervisorCaptures_Then_OnlyPermittedTuplePasses(int code, int? status, bool delivered, bool permitted)
     {
         var journal = new Records();
         journal.Prepare(); journal.Report(); journal.Accept();
-        journal.Add("terminal", B10AbruptWire.Element(new { attempt_id = "same_instance-original-0", completion_source = "callback", delivered = code == 0, error_code = code, persistence_status = status }));
+        journal.Add("terminal", B10AbruptWire.Element(new { attempt_id = "same_instance-original-0", completion_source = "callback", delivered, error_code = code, persistence_status = status }));
         var snapshot = journal.Read();
         Assert.Empty(snapshot.Gaps);
         if (permitted) Assert.Empty(snapshot.Failures);
