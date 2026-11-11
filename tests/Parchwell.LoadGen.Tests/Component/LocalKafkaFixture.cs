@@ -15,11 +15,12 @@ internal sealed class LocalKafkaFixture : IAsyncDisposable
     private readonly IContainer container;
     private bool started;
 
-    private LocalKafkaFixture()
+    private LocalKafkaFixture(IOutputConsumer? outputConsumer)
     {
         var docker = new BoundedDockerAuthentication(TestcontainersSettings.OS.DockerEndpointAuthConfig);
         container = new ContainerBuilder(Image)
             .WithDockerEndpoint(docker)
+            .WithOutputConsumer(outputConsumer ?? Consume.DoNotConsumeStdoutAndStderr())
             .WithNetworkAliases("loadgen-kafka")
             .WithPortBinding(KafkaPort, true)
             .WithCreateParameterModifier(parameters =>
@@ -58,9 +59,10 @@ internal sealed class LocalKafkaFixture : IAsyncDisposable
 
     internal string BootstrapServers => $"127.0.0.1:{container.GetMappedPublicPort(KafkaPort)}";
 
-    internal static async Task<LocalKafkaFixture> StartAsync(CancellationToken cancellationToken)
+    internal static async Task<LocalKafkaFixture> StartAsync(CancellationToken cancellationToken,
+        Action<string>? startupFailureOutput = null, IOutputConsumer? outputConsumer = null)
     {
-        var fixture = new LocalKafkaFixture();
+        var fixture = new LocalKafkaFixture(outputConsumer);
         try
         {
             await fixture.container.StartAsync(cancellationToken).ConfigureAwait(false);
@@ -69,12 +71,30 @@ internal sealed class LocalKafkaFixture : IAsyncDisposable
         }
         catch
         {
+            if (startupFailureOutput is not null)
+            {
+                try { startupFailureOutput(await fixture.OutputTailAsync().ConfigureAwait(false)); }
+                catch (Exception) { /* Diagnostics must not replace the startup failure or prevent cleanup. */ }
+            }
             using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             try { await fixture.container.DisposeAsync().AsTask().WaitAsync(cleanup.Token).ConfigureAwait(false); }
             catch (Exception) { /* Preserve the startup failure; cleanup has its own bound. */ }
             throw;
         }
     }
+
+    internal async Task<string> OutputTailAsync()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        try
+        {
+            (string stdout, string stderr) = await container.GetLogsAsync(timestampsEnabled: false, ct: timeout.Token).ConfigureAwait(false);
+            return "broker:" + container.Name + "\n" + TailOutput(stdout + stderr);
+        }
+        catch (Exception exception) { return "broker\ncontainer_output_unavailable:" + exception.Message; }
+    }
+
+    internal static string TailOutput(string value) => value.Length <= 16384 ? value : value[^16384..];
 
     public async ValueTask DisposeAsync()
     {

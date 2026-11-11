@@ -47,9 +47,13 @@ public sealed class B10AbruptOfflineImageTests(ITestOutputHelper output)
             observation = await run.ObserveAsync(cancellation);
             passed = true;
         }
-        catch (OperationCanceledException) when (deadline.IsCancellationRequested)
+        catch (Exception exception) when (deadline.IsCancellationRequested && exception is OperationCanceledException or TimeoutException)
         {
             Assert.Fail("b10_offline_image_bound_exceeded\n" + await run.OutputTailsAsync());
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            throw new InvalidOperationException(exception.Message + "\n" + await run.OutputTailsAsync(), exception);
         }
         finally
         {
@@ -76,6 +80,7 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
     private readonly DockerClient docker = TestcontainersSettings.OS.DockerEndpointAuthConfig.GetDockerClientBuilder()
         .WithTimeout(TimeSpan.FromMinutes(2)).Build();
     private LocalKafkaFixture? kafka;
+    private string brokerOutput = "";
     private string imageId = "";
     private string originalHookOwner = "";
     private bool restoreHookOwner;
@@ -108,8 +113,8 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
         foreach (string role in new[] { "parent", "successor" })
             foreach (string mount in new[] { "work/loadgen", "tmp", "bindings" })
                 Directory.CreateDirectory(Path.Combine(directory, role, mount));
-        kafka = await LocalKafkaFixture.StartAsync(cancellation);
-        using var admin = new AdminClientBuilder(new AdminClientConfig { BootstrapServers = kafka.BootstrapServers }).Build();
+        LocalKafkaFixture broker = await StartBrokerAsync(cancellation);
+        using var admin = new AdminClientBuilder(new AdminClientConfig { BootstrapServers = broker.BootstrapServers }).Build();
         await admin.CreateTopicsAsync([new TopicSpecification { Name = "document-events", NumPartitions = 1, ReplicationFactor = 1 }]);
         Metadata metadata = admin.GetMetadata(TimeSpan.FromSeconds(10));
         string[] brokerNames = metadata.Brokers.Select(broker => $"{broker.Host}:{broker.Port}/{broker.BrokerId}").ToArray();
@@ -123,7 +128,7 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
         }));
         foreach (string role in new[] { "parent", "successor" })
             File.WriteAllBytes(Path.Combine(directory, role, "work", "loadgen", "test-control.json"),
-                JsonSerializer.SerializeToUtf8Bytes(new B10AbruptProcessHarness.Control("image-kafka", "/storage", kafka.BootstrapServers, RealTime: true)));
+                JsonSerializer.SerializeToUtf8Bytes(new B10AbruptProcessHarness.Control("image-kafka", "/storage", broker.BootstrapServers, RealTime: true)));
         // Normalize the host's umask before ownership changes so both the runner and uid 1654 can read evidence.
         foreach (string path in Directory.EnumerateDirectories(directory, "*", SearchOption.AllDirectories))
             File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
@@ -426,9 +431,17 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
         catch (Exception exception) { return "container_output_unavailable:" + exception.Message; }
     }
 
+    internal async Task<LocalKafkaFixture> StartBrokerAsync(CancellationToken cancellation, IOutputConsumer? outputConsumer = null)
+    {
+        kafka = await LocalKafkaFixture.StartAsync(cancellation, tail => brokerOutput = tail, outputConsumer);
+        return kafka;
+    }
+
     internal async Task<string> OutputTailsAsync()
     {
         var tails = new StringBuilder();
+        if (kafka is not null) brokerOutput = await kafka.OutputTailAsync();
+        if (brokerOutput.Length != 0) tails.AppendLine(brokerOutput);
         foreach (IContainer container in containers)
             tails.AppendLine(container.Name + "\n" + await ContainerTailAsync(container));
         foreach ((string name, string id) in helpers)
@@ -440,6 +453,7 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
     internal async Task CleanupAsync(bool passed)
     {
         if (cleaned) return;
+        await OutputTailsAsync();
         List<Exception> failures = [];
         // Collect every removal failure so one unavailable container never prevents the others' cleanup.
         foreach (IContainer container in containers.ToArray())
@@ -514,5 +528,5 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
     }
 
     public async ValueTask DisposeAsync() => await CleanupAsync(passed: false);
-    private static string Tail(string value) => value.Length <= 16384 ? value : value[^16384..];
+    private static string Tail(string value) => LocalKafkaFixture.TailOutput(value);
 }
