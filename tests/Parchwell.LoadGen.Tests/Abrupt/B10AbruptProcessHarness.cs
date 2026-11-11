@@ -6,6 +6,7 @@ using System.Text.Json;
 using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Parchwell.Kafka.Statistics;
 using Parchwell.LoadGen.Run.Abrupt;
 
 namespace Parchwell.LoadGen.Tests.Abrupt;
@@ -197,7 +198,7 @@ internal static class B10AbruptProcessHarness
         private string directory = "";
         private Control control = null!;
         private readonly List<Action<DeliveryReport<byte[], byte[]>>> pending = [];
-        private readonly object statisticsGate = new();
+        private object statisticsGate = null!;
         private Timer? reports;
         private TimeProvider clock = TimeProvider.System;
         private long producerCreatedMicroseconds;
@@ -205,6 +206,14 @@ internal static class B10AbruptProcessHarness
             Action<IProducer<byte[], byte[]>, string> statistics, TimeProvider timeProvider)
         {
             directory = output; control = setup; clock = timeProvider;
+            // These lifecycle fixtures supply loss-free synthetic statistics. Serialize with the session worker;
+            // the accelerated periodic timer can otherwise make Capture reject a report for monitor contention.
+            object target = statistics.Target ?? throw new InvalidOperationException("synthetic_statistics_session_unavailable");
+            var session = target.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                .Single(field => field.FieldType == typeof(KafkaStatisticsSession)).GetValue(target) as KafkaStatisticsSession
+                ?? throw new InvalidOperationException("synthetic_statistics_session_unavailable");
+            statisticsGate = typeof(KafkaStatisticsSession).GetField("_gate", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(session)
+                ?? throw new InvalidOperationException("synthetic_statistics_gate_unavailable");
             producerCreatedMicroseconds = checked((long)((Int128)clock.GetTimestamp() * 1000000 / clock.TimestampFrequency));
             reports = new Timer(_ =>
             {
