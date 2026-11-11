@@ -1,6 +1,6 @@
 # B10 warm leader contract-grade plan
 
-Revision 2, issue #404. Short name: `B10 warm leader`. Baseline: `main` at `e74849ea716b6c4b8fa6c5143c6c4175c7038eea`, read 2026-11-11.
+Revision 3, issue #404. Short name: `B10 warm leader`. Baseline: `main` at `e74849ea716b6c4b8fa6c5143c6c4175c7038eea`, read 2026-11-11.
 
 This pull request makes the positive restart outcome reachable on Event Hubs. Each child arm first sends one warm-up record to its own partition. It then waits for that record's successful delivery and for a statistics report showing the partition leader `UP`, and only then sends its originals. The restart probe producers use the baseline `message.timeout.ms` 300000 instead of C1's 100; the child also sets `linger.ms` 0. The child gets one 690 s deadline, so every child path ends before the parent's 720 s death wait. The pull request carries the ADR-021 amendment, the LoadGen and phase-reader code, and the offline proof. `docs/blueprint.md` is protected, so Hari merges.
 
@@ -17,6 +17,14 @@ This pull request makes the positive restart outcome reachable on Event Hubs. Ea
   - P2-A: the implementing tool is Codex ([decision 6798381277](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6798381277)).
   - P2-B to P2-E are folded into sections 2.3, 3.1 and 2.1.
   - P2-F: [decision 6800669100](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6800669100) sets a 90 s warm-up delivery bound and a 690 s child deadline. Section 3.8 has the timing table.
+- Revision 2 (`fe59fdc0`), checked in [6801044256](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6801044256): one blocking finding (B1, the 30 s exit margin), P2-A to P2-D marked apply in implementation, P2-E not marked.
+- Revision 3 records [decision 6801095762](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6801095762) and that check's P2 findings:
+  - B1: LA6 is accepted by name and moves to section 7; the section 3.8 and section 7 sentences now say what the offline interval covers.
+  - P2-A and P2-C: the rule 7 text in section 3.1 takes the check's exact wording.
+  - P2-B: sections 3.5 and R4 pin the leader-report wait before the arm's ordinal-0 `prepared`; section 6 adds the check's reader and producer cases.
+  - P2-D: section 3.4 pins the integer ranges of `partition` and `offset`; section 6 adds the check's case.
+  - P2-E: section 2.1 allows the two `B10AbruptEndToEndTests` role bounds to rise to 300 s (decision 6801095762 point 2).
+  - None of these is design-changing under docs/agents/factory.md "Item lifecycle" step 1; the pointer comment gives the reason for each.
 
 ## 1. Goal and authority
 
@@ -38,6 +46,10 @@ Authority. The item state file `items/404/state.md` on `main` lists the decision
 - [6800669100](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6800669100):
   - Point 1: each arm's warm-up delivery wait is bounded by 90 s, fixed policy, not measured. The value is the documented `socket.connection.setup.timeout.ms` default 30000 plus the baseline `request.timeout.ms` 60000. Past that, the arm ends on the no-kill path with `b10_abrupt_warmup_failed`.
   - Point 2: the child has one deadline 690 s after its start: the parent's 720 s death wait less a 30 s margin for exit. On the no-kill path the final flush is bounded by the time remaining before that deadline, not a fresh 300 s.
+- [6801095762](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6801095762):
+  - Point 1: Hari accepts LA6 by name, for the next B10 diagnostic trial only (section 7). Option not taken: starting the child's deadline from the parent's start.
+  - Point 2: the parent-role bound (210 s) and the successor bound (160 s) in `B10AbruptEndToEndTests` may rise to 300 s each. This is an approved bound change, not a loosened assertion.
+  - Point 3: P2-A to P2-D of check 6801044256 are folded into the plan text as the check gives them.
 
 Decisions in force that this plan keeps:
 - Schema 3, the 120 s release, the control drain bound, the sticky torn-record gap and no-kill exit 3 ([6769057785](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6769057785)).
@@ -65,7 +77,7 @@ Implementing tool: Codex (6798381277).
 5. `infra/scripts/phase/tests/test_b10_abrupt.py`.
 6. `tests/Parchwell.LoadGen.Tests/Abrupt/*.cs`, existing and new files.
    - Existing tests may change their fixture journals, fake producers and fake statistics to supply the records this plan requires.
-   - `B10AbruptEndToEndTests.cs` may route its broker through the section 3.7 proxy.
+   - `B10AbruptEndToEndTests.cs` may route its broker through the section 3.7 proxy, and may raise its parent-role bound (210 s, line 38 at baseline) and its successor bound (160 s, line 77) to 300 s each (decision 6801095762 point 2). No other bound or assertion in it changes.
    - No existing assertion is loosened, skipped or deleted.
 7. `tests/Parchwell.LoadGen.Tests/Component/LocalKafkaFixture.cs`: one optional advertised-address input (section 3.7). Existing callers keep their behaviour.
 8. `tests/Parchwell.ArchitectureTests/B10AbruptFailureSiteTests.cs`, only if the new failure names require it.
@@ -126,12 +138,13 @@ The implementer writes these statements into the named rules of ADR-021 and keep
 - **Protocol rule 6**, after the kill unconfirmed set sentence: "Warm-up records belong to no unconfirmed set."
 - **Protocol rule 7**, after "No-kill path:":
   - "The child has one deadline, 690 s after its `child_started` record: the parent's 720 s death wait less a 30 s margin for exit, fixed policy ([decision 6800669100](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6800669100)). Every child wait before `kill_intent` is bounded by the time left before that deadline."
-  - "A warm-up not delivered within 90 s is `b10_abrupt_warmup_failed`."
+  - "A warm-up not delivered within 90 s, or before the deadline, is `b10_abrupt_warmup_failed`."
   - "No report captured after the warm-up within the statistics wait is `b10_abrupt_sample_missing`."
   - "Reports captured after the warm-up, none of which shows the leader `UP` within that wait, is `b10_abrupt_leader_not_up`."
-  - "Reaching the deadline before `kill_intent` is `b10_abrupt_deadline_exhausted`."
+  - "Reaching the deadline in any other wait before `kill_intent` is `b10_abrupt_deadline_exhausted`."
   - "Each ends the child on the no-kill path. The pre-admission `Flush` there is bounded by the time left before the deadline, not by `ProducerDrainTimeout`."
   - "A cross-restart warm-up does not admit the arm's first original."
+  - In the existing rule 7 sentence "If the cross-restart arm's first original has not been admitted, the child then calls the producer's `Flush` within the existing `ProducerDrainTimeout`, disposes the producer and exits with exit code 3", replace "within the existing `ProducerDrainTimeout`" with "within the time left before the child deadline", so the rule states one bound. The contract page's matching phrase "flush within the existing producer-drain budget" becomes "flush within the time left before the child deadline".
   - The kill immediately after the durable `kill_intent` is unchanged.
 - **Protocol rule 8**, after the resend sentence: "The successor sends no warm-up. Under rule 1's settings its resends wait for its leader connection instead of expiring at C1's 100 ms."
 - **"Classification" bullet**, after its first sentence: "Consumed warm-up records join their `warmup_prepared` journal records and form the separate `warmup` cohort; they enter no probe or timeout count."
@@ -181,7 +194,7 @@ Evidence of the settings:
 
 - `post_drain_report` keeps its existing members.
 - `warmup_prepared` is a producing kind; `warmup_terminal` is not.
-- `partition` and `offset` are integers. When `delivered` is true, both are at least 0.
+- `partition` is a JSON integer in the signed 32-bit range and `offset` a JSON integer in the signed 64-bit range (Confluent.Kafka v2.16.0: `Partition.Value` is `int`, `Offset.Value` is `long`). C# reads them with `TryGetInt32` and `TryGetInt64`; Python checks `-2147483648 <= v <= 2147483647` and `-9223372036854775808 <= v <= 9223372036854775807`. The existing 32-bit `Integer` helper is not used for `offset`. When `delivered` is true, both are at least 0.
 - A synchronous warm-up rejection (`Produce` throws) has no record of its own. The `no_kill` record with reason `b10_abrupt_warmup_failed` is its trace.
 
 Rules every reader enforces, in two groups.
@@ -210,6 +223,8 @@ A journal that ends on `no_kill` before an arm's ordinal-0 `prepared` gets no ga
 - that value's `state` is the string `UP`.
 
 Anything else is false: a missing topic, partition or field; L of -1; no matching broker or two; any other state, for example `INIT`, `CONNECT` or `DOWN`.
+
+Order in the child: the warm-up and this report selection both happen before the arm's ordinal-0 `prepared`. The selected report is bound after that `prepared` and before its `accepted` (R4). So a `b10_abrupt_leader_not_up` or `b10_abrupt_sample_missing` end leaves no `prepared` without `accepted`, which the existing reader would mark `malformed_frame`.
 
 Selection in the child: among parsed reports captured strictly after the arm's `warmup_terminal` `observed_utc`, take the first for which `LeaderUp` is true. The wait is bounded by the existing statistics wait (`StatisticsCompletionTimeout` 20 s in the abrupt host, or `CleanupTimeout` when unset) and by the child deadline. The phase reader applies `LeaderUp` again to the published report bytes.
 
@@ -285,7 +300,7 @@ Every end above is before 720 s on the child's clock. The parent's 720 s runs fr
 - the child's runtime start before `child_started`;
 - process exit.
 
-The 10 s dispose is outside the 690 s and inside the margin. The other parts are not measured. The offline test records `parent_registered_to_child_started_microseconds` (section 3.7). An arithmetic total that crosses 720 s ends as unknown termination, as today.
+The 10 s dispose is outside the 690 s and inside the margin. The other parts are LA6, accepted by name (decision 6801095762, section 7). One AKS reading supports it (trial run 43010596896, from that decision): the parent marked `child_started` 627 ms after its start and the child's own `child_started` record came 557 ms later on the shared monotonic clock, 1184 ms in total by script. The offline test's `parent_registered_to_child_started_microseconds` (section 3.7) covers only the parent's registration to its `Process.Start` mark (`B10AbruptParent.cs` line 62), on a GitHub runner; it does not cover parent start to registration or the child's start to its `child_started` record. A total that crosses 720 s ends as unknown termination, as today.
 
 ## 4. Requirements
 
@@ -295,7 +310,7 @@ The 10 s dispose is outside the 690 s and inside the margin. The other parts are
   - The producing thread waits until that record is durable, at most 90 s and at most until the deadline.
   - It continues only when `delivered` is true and `error_code` is 0.
   - Otherwise, or when `Produce` throws, or when either bound runs out, the child takes the no-kill path with `b10_abrupt_warmup_failed`.
-- R4. WHEN the warm-up has succeeded THEN the child selects a report as section 3.5 says.
+- R4. WHEN the warm-up has succeeded THEN, before the arm's ordinal-0 `prepared`, the child selects a report as section 3.5 says.
   - No report after the warm-up within the wait gives `b10_abrupt_sample_missing`.
   - Reports, none `UP`, give `b10_abrupt_leader_not_up`.
   - The selected report is the arm's pre-acceptance report. It is bound after ordinal 0's `prepared` and before its `accepted`, with the section 3.4 members.
@@ -338,10 +353,10 @@ Tests are in LoadGen unless marked Python.
 | R1 | Successor capabilities round-trip through `RunEvidenceReader` | `message.timeout.ms` entry: `value` "300000", `override` null, accepted. `max.in.flight` entry: `value` "5", `override` with `scenario_id` "B10" and `configuration_id` "C1". A hand-built entry with `value` "300000" and the C1 `override` is rejected by the reader. |
 | R2, R4 | Producer test, fake producer delivering every record | Journal kind order per arm: `warmup_prepared`, `warmup_terminal`, `prepared` (ordinal 0), `pre_acceptance_report` with `warmup_attempt_id` `first-same_instance-warmup` and the fake's partition, `accepted`. Warm-up message headers: `instance-id` "first", `attempt-id` `first-same_instance-warmup`, `sequence` "-1"; key equal to the arm key. |
 | R3 | Producer tests, four cases | `Produce` throws on the warm-up; warm-up delivered with error -192; warm-up never delivered with the clock advanced 90 s; warm-up never delivered with the deadline reached first. Each gives `no_kill` reason `b10_abrupt_warmup_failed` (section 3.6: the deadline reached during the warm-up wait is a warm-up failure, not `b10_abrupt_deadline_exhausted`), `cross_restart_admitted` false, and no ordinal-0 `prepared` for that arm. A cross-restart warm-up failure after a complete control arm gives `b10_abrupt_warmup_failed` and exit 3. |
-| R4 | Producer tests | One report after the warm-up with leader state `INIT`, then none: `b10_abrupt_leader_not_up`. One `INIT` report, then one `UP` report within the wait: proceeds and binds the `UP` report. No report within the wait: `b10_abrupt_sample_missing`. A report captured before `warmup_terminal`'s time is never selected. |
+| R4 | Producer tests | One report after the warm-up with leader state `INIT`, then none: `b10_abrupt_leader_not_up`, and the journal has no ordinal-0 `prepared` for that arm. One `INIT` report, then one `UP` report within the wait: proceeds and binds the `UP` report. No report within the wait: `b10_abrupt_sample_missing`. A report captured before `warmup_terminal`'s time is never selected. |
 | R3 | Callback test | The warm-up callback performs no journal write on the callback thread. The record arrives through the queue (the existing callback-isolation pattern). |
 | R5 | Deadline tests with the test clock | Control drain incomplete with 140 s left before the deadline: the no-kill flush is bounded by 140 s, not 300 s. Deadline reached during the release wait: `b10_abrupt_deadline_exhausted`, flush bound 0 s, exit 3. Failure after cross-restart admission: exit 3 with no `Flush` or `Dispose` call. |
-| R5, R6 | Existing producer and end-to-end tests, adapted | Unchanged assertions on cut, `kill_intent`, self-kill, nonempty control and kill sets, and no-kill exits pass with warm-ups present. `B10AbruptEndToEndTests` runs through the section 3.7 proxy. |
+| R5, R6 | Existing producer and end-to-end tests, adapted | Unchanged assertions on cut, `kill_intent`, self-kill, nonempty control and kill sets, and no-kill exits pass with warm-ups present. `B10AbruptEndToEndTests` runs through the section 3.7 proxy, with its parent-role and successor bounds at most 300 s each (section 2.1). |
 | R7 | Successor test | No `warmup_prepared` and no warm-up message from the successor; its invocations equal the kill set. |
 | 3.5 | `LeaderUp` table test, C# and Python with the same cases | True: partition "0", leader 1, one broker nodeid 1 `UP`. False: state `INIT`; `CONNECT`; `DOWN`; leader -1; partition missing; topic missing; leader 1 with two brokers nodeid 1, both `UP`; leader 1 with only nodeid 2 `UP`; `leader` not an integer. |
 | R8 | Journal reader tests on valid and mutated journals | Expectations follow this table. |
@@ -359,7 +374,10 @@ R8 journal reader expectations:
   - control `warmup_prepared` with no terminal, then `no_kill` (synchronous rejection or bound);
   - the same, with a late `warmup_terminal` after `no_kill`;
   - complete control arm, cross-restart warm-up failed, then `no_kill`;
-  - complete control arm, then `no_kill` with no cross-restart warm-up.
+  - complete control arm, then `no_kill` with no cross-restart warm-up;
+  - control `warmup_prepared`, `warmup_terminal` with `delivered` true and `error_code` 0, no ordinal-0 `prepared`, then `no_kill` with reason `b10_abrupt_leader_not_up`;
+  - the same with reason `b10_abrupt_sample_missing`.
+- A delivered warm-up terminal with `offset` 4294967296 and `partition` 0 is accepted.
 
 Image mutations. Each is applied once in a scratch worktree; the image is rebuilt and the test run once. Each is expected to fail. The count is fixed at 3, so no cap is needed.
 
@@ -389,7 +407,9 @@ The offline proof runs section 3.7 against a local Kafka broker, not Event Hubs:
 
 The offline test's accepted residuals still apply: DA-i to DA-iii and the resource-request omission (decisions 6787880185, 6788215099, 6788464379).
 
-The 30 s exit margin of section 3.8 is Hari's policy (6800669100). Its parts before `child_started` are recorded, not proven, by the offline test.
+- LA6. The parent's work before the child starts, the child's start before `child_started`, the child's dispose (at most 10 s) and process exit together take less than 30 s on AKS. Accepted by name for the next B10 diagnostic trial only by [decision 6801095762](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6801095762), point 1, with one AKS reading of about 1.2 s from parent start to the child's `child_started` (section 3.8). The offline test records only the parent's registration-to-spawn part, on a runner, so it does not prove LA6.
+
+The 30 s exit margin itself is Hari's policy (6800669100).
 
 ## 8. Acceptance commands
 
@@ -410,7 +430,7 @@ After Hari merges, Hari runs `b10-offline-image.yml` on `main`. No agent dispatc
 
 ## 9. Open questions for Hari
 
-None. LA1 to LA5 are accepted by name (6799006446). The warm-up bound and the child deadline are decided (6800669100).
+None. LA1 to LA5 are accepted by name (6799006446) and LA6 by 6801095762. The warm-up bound and the child deadline are decided (6800669100), and the end-to-end bounds by 6801095762.
 
 ## 10. Stop rule
 
@@ -435,7 +455,9 @@ In particular, it stops when:
   - R10's offline positive pair;
   - R10's assertion that no child terminal and no successor ledger row has `error_code` -192;
   - LA2's extension from the leader to its connection, which Hari accepted in 6799006446;
-  - the requirement that warm-up `persistence_status` lies in the set the reader already permits.
+  - the requirement that warm-up `persistence_status` lies in the set the reader already permits;
+  - the 20 s leader-report wait, which reuses the existing statistics wait as the bound for the decision's "wait for a report";
+  - R10's assertion that the proxy accepted a connection while each role ran.
 
   Each turns a decided step into a checked one; none changes a design rule. The leader gate itself now follows decision 6797974611's wording: the child waits for a report showing `UP` within the existing wait.
 - (c) Dependencies neither on `main` nor in the pull request:
@@ -444,7 +466,7 @@ In particular, it stops when:
   - Hari's post-merge run of `b10-offline-image.yml` on `main`;
   - the later verifier pull request, which will read the warm-up records and the successor's `capabilities.json`. Section 3.2 pins what it reads.
 
-  The parent's pre-child time inside the 30 s margin is recorded, not proven (section 3.8). librdkafka statements rest on the pinned v2.16.0 documents and source (section 12).
+  The 30 s exit margin's untested parts are LA6, accepted by name (6801095762). librdkafka statements rest on the pinned v2.16.0 documents and source (section 12).
 
 ## 12. Sources
 
@@ -453,7 +475,7 @@ In particular, it stops when:
   - [CONFIGURATION.md](https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md): `statistics.interval.ms` "The granularity is 1000ms"; `message.timeout.ms` default 300000; `linger.ms` default 5; `socket.connection.setup.timeout.ms` default 30000; `partitioner` `consistent_random`;
   - [STATISTICS.md](https://github.com/confluentinc/librdkafka/blob/v2.16.0/STATISTICS.md): `brokers.nodeid`, `brokers.state`, `partitions.leader`; partitions keyed by partition id;
   - [src/rdkafka_broker.c](https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_broker.c): `rd_kafka_broker_needs_connection` and the producer partition serve path.
-- Confluent.Kafka v2.16.0: [DeliveryResult.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/DeliveryResult.cs) (`Partition`, `Offset`, `Status`).
+- Confluent.Kafka v2.16.0: [DeliveryResult.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/DeliveryResult.cs) (`Partition`, `Offset`, `Status`); [Offset.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Offset.cs) (`Value` is `long`); [Partition.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Partition.cs) (`Value` is `int`).
 - Code on `main` at `e74849ea`:
   - `src/Parchwell.LoadGen/Run/Abrupt/`: `B10AbruptHost.cs` (lines 57 to 58, 191 to 193, 216 to 218), `B10AbruptParent.cs` (lines 51 and 63), `B10AbruptProducer.cs`, `B10AbruptWire.cs`, `B10AbruptJournal.cs`, `B10AbruptStatistics.cs`;
   - `src/Parchwell.LoadGen/Run/Evidence/RunEvidenceReader.cs` (`ValidateResolvedSetting`);
@@ -463,4 +485,4 @@ In particular, it stops when:
   - `tests/Parchwell.LoadGen.Tests/Component/LocalKafkaFixture.cs`;
   - `tests/Parchwell.Verifier.Tests/Host/B10AbruptRejectionTests.cs`;
   - `scenarios/B10/scenario.yaml`; `scripts/verify-dotnet.sh`; `.github/workflows/b10-offline-image.yml`; `.github/CODEOWNERS`.
-- Decisions and evidence of section 1; plan check 6798486853.
+- Decisions and evidence of section 1; plan checks 6798486853 and 6801044256.
