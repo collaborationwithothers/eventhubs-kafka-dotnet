@@ -10,7 +10,7 @@ This pull request implements the approved trial orchestration plan. It adds the 
 - Exact verification commands: `python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'`; `bash charts/parchwell/tests/check-loadgen-host.sh`; `./scripts/verify-dotnet.sh`; `bash infra/scripts/lifecycle/check-offline.sh`; `npm run check:docs`; `cmp .github/workflows/b10-abrupt-trial.yml docs/operations/workflows/b10-abrupt-trial.yml.txt && git diff --quiet origin/main -- .github src`.
 - Earliest authorized publication checkpoint: all applicable local acceptance checks pass and the complete authored diff has clean applicable cold-review coverage under pull-request rule 8. Publish then, with CI and hosted reviews allowed to run together.
 - Review budget: at most two comprehensive and two focused cold-review rounds cumulatively for this pull request, under [pull-request rule 8](../../docs/agents/pull-requests.md). Exhaustion or unsafe focus saves a backup branch and hands off to Hari. No earlier review exists for this new pull request.
-- Runtime-sized work: plan section 11(a) lists fixed synthetic inputs. Unplanned runtime-sized work follows AGENTS.md "Before opening a pull request" rule 11; no retry or finding-disposition allowance is invented here.
+- Runtime-sized work: plan section 11(a) lists fixed synthetic inputs. After the first verification failures, Hari directly instructed this run on 2026-11-11 to fix the incomplete implementation and continue instead of handing it off. That task authorization overrides rule 11's first-measurement handoff for the verification fixes in this run. Scope, external contracts, the cold-review budget and Hari's merge remain unchanged.
 - Predicate map: plan section 8, with the exact P2-A and P2-B test additions below. No verifier predicate changes.
 
 ## Implementation choices required by the plan check
@@ -23,7 +23,13 @@ The [exact-revision plan check](https://github.com/collaborationwithothers/event
 
 ## Verification and specification comparison
 
-Pending implementation and acceptance commands. Baseline: `3a4ee0b140a209c2cdeae0002a77c5349a6aabc7`.
+Baseline: `3a4ee0b140a209c2cdeae0002a77c5349a6aabc7`. Initial code commit: `b0e1bbc50550495efde957d316bcbbb72980e910`.
+
+The first `./scripts/verify-dotnet.sh` attempt restored successfully, then failed the build at the new export's two async file writes. Scripted counting found two sites of the same analyzer root, xUnit1051. Both now pass `TestContext.Current.CancellationToken`; no assertion or production behavior changed. Reports are retained outside the repository at `/tmp/parchwell-dotnet-verification.7bGVImXh`.
+
+The first phase-suite command ran 346 tests in 47.113 s and reported 38 failures and 103 errors. The controller omitted the installed tools from PATH. Scripted counting found 101 direct missing-helm errors and one each for actionlint and kubeconform; the assertion failures have not yet been independently attributed. The corrected invocation supplies the pinned tools and their Python virtual environment through PATH. No test expectation is changed to accommodate this setup failure.
+
+Remaining acceptance commands and reviews are pending.
 
 ## Cold-review inputs and record
 

@@ -32,7 +32,7 @@ public sealed class B10TimeoutEvidenceExportTests
         {
             string path = Path.Combine(output, item.name);
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            await File.WriteAllBytesAsync(path, item.bytes);
+            await File.WriteAllBytesAsync(path, item.bytes, TestContext.Current.CancellationToken);
         }
 
         byte[] manifest = JsonSerializer.SerializeToUtf8Bytes(new
@@ -44,7 +44,7 @@ public sealed class B10TimeoutEvidenceExportTests
                 sha256 = Convert.ToHexStringLower(SHA256.HashData(item.bytes))
             })
         });
-        await File.WriteAllBytesAsync(Path.Combine(output, "export.json"), manifest);
+        await File.WriteAllBytesAsync(Path.Combine(output, "export.json"), manifest, TestContext.Current.CancellationToken);
     }
 }
 #pragma warning restore CA1707
