@@ -83,7 +83,8 @@ public sealed class B10AbruptOfflineBrokerOutputTests(ITestOutputHelper output)
 
     private static async Task AssertBrokerRemovedAsync(string retained)
     {
-        string name = retained["broker:".Length..retained.IndexOf('\n', StringComparison.Ordinal)];
+        // Docker's inspection name has a leading slash, which would add a second path separator to the API request.
+        string name = retained["broker:".Length..retained.IndexOf('\n', StringComparison.Ordinal)].TrimStart('/');
         Assert.NotEmpty(name);
         using DockerClient docker = TestcontainersSettings.OS.DockerEndpointAuthConfig.GetDockerClientBuilder()
             .WithTimeout(TimeSpan.FromSeconds(15)).Build();
