@@ -21,6 +21,21 @@ The [exact-revision plan check](https://github.com/collaborationwithothers/event
 - P2-B: T-O4 includes `OSError` on the timeout pod read and expects outcome `unknown`, a safety stop, the timeout failure name and no restart.
 - P2-C: both affected operations pages use the exact producer-pod wording from the check, including retained finished Jobs until cleanup. This describes the enforced sequencing accurately.
 
+The phase implementation adds a private timeout-pod observer instead of changing the frozen restart observer. Only the ordinary pod's specified ownership, image, container/status and integer exit code are checked. Exceptions from the read become outcome `unknown` before the restart render. Existing collection mappings are reused.
+
+The export reuses the ordinary first-worker fixture by changing only the accessibility of its nested `Fixture` and `MemoryStore` types to internal. No existing C# test method or assertion changes. The Python checker reuses the existing phase-test setup, creates ordinary C1 state, and then freezes trial markers in `phase.json`; it resets candidate files and outputs for each guarded call. All four operations documents were compared with plan section 3.6, the pinned part 1 interfaces, current ADR-021 and their corresponding implementation sources. The Kubernetes terminal-condition source was fetched on 2026-11-11.
+
+| Requirements | Implementation and planned evidence |
+| --- | --- |
+| R1, R2 | Timeout-before-restart orchestration; T-O1 records both pod reads in the corrected event order |
+| R3, R4, R10 | Timeout outcome branching and direct pod observation; T-O2/T-O4 include wait/apply/render failures and read `OSError` |
+| R5 | Existing diagnostic collector extended to timeout mode; T-C1/T-C2 |
+| R6, R7 | Unchanged production host's exported bytes through the new checker; T-S1/T-S2/T-S3 |
+| R8 | Trial-only `b10d` prefix and existing scientific guard; T-P1/T-P2 |
+| R9 | Four scoped operations updates with required source citations; documentation checks |
+
+The plan section 8 predicate map, augmented by P2-A and P2-B, covers this change. No verifier predicate or production LoadGen file changes.
+
 ## Verification and specification comparison
 
 Baseline: `3a4ee0b140a209c2cdeae0002a77c5349a6aabc7`. Initial code commit: `b0e1bbc50550495efde957d316bcbbb72980e910`.
