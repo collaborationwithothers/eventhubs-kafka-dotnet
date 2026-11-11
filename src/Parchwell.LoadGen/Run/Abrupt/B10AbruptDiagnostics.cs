@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
 
 namespace Parchwell.LoadGen.Run.Abrupt;
@@ -34,20 +35,13 @@ internal enum B10AbruptFact
 
 internal enum B10AbruptStage
 {
-    SupervisorRegistered, ChildStarted, FramePrepared, FrameReport, FrameAccepted, AckSent, FrameTerminal, SealLoaded,
-    StopRequested, StopConfirmed, CheckpointWritten, ResumeRequested, ResumeConfirmed, KillIntent, KillRequested,
-    ExitObserved, EofComplete, SelectionFinalized, PublicationComplete, EventStreamEnded, GraceEnded,
-    FailureObserved, AbortComplete,
-    ProducerConstructed, TimeoutScheduleComplete, TimeoutDrained, PostDrainReport, CohortSealed, ProbePrepared, ProbeProduced, ProbeReportSelected, ProbeAccepted, ProbeTerminal, ReleaseRead, ReleaseReached, CohortDrained, SuccessorReady,
-    CohortFileUploaded,
+    ParentRegistered, ChildStarted, ExitObserved, JournalRead, PublicationComplete, FailureObserved,
+    ProducerConstructed, ProbePrepared, ProbeAccepted, CutWritten, ReleaseReached, ControlDrained,
+    KillIntentWritten, NoKillWritten, SuccessorReady,
+
 }
 
 internal readonly record struct B10AbruptFactValue(B10AbruptFact Key, long Value);
-internal readonly record struct B10AbruptSupervisorBurstMember(long BurstIndex, long PreparedTicks, long AcceptedTicks,
-    long AckSentTicks, long TerminalTicks);
-internal readonly record struct B10AbruptChildBurstMember(long BurstIndex, long ProduceTicks, long CallbackTicks,
-    long TerminalWrittenTicks);
-
 internal static class B10AbruptDiagnostics
 {
     internal const int MaximumChainDepth = 8, MaximumSiteFacts = 35, MaximumStageFacts = 8, MaximumTimelineEntries = 48;
@@ -130,6 +124,52 @@ internal static class B10AbruptDiagnostics
             ? Describe(exception, reduce: true) : full;
     }
 
+    internal static async Task<byte[]> WriteFailureAsync(B10AbruptOptions options, TimeProvider clock, Exception cause,
+        B10AbruptJournal.Snapshot snapshot, B10AbruptTimeline timeline, Exception? cleanupFailure = null,
+        Exception? cleanupCaptureFailure = null)
+    {
+        B10AbruptWire.Frame? started = snapshot.Frames.FirstOrDefault(frame => frame.Kind == "child_started");
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10), clock);
+        byte[] Build(int reduction) => B10AbruptWire.SerializeEnvelope("failed_diagnostic", options.Identity(), new
+        {
+            mechanical_status = "incomplete", failure = B10AbruptParent.FailureName(cause),
+            exception_type = cause.GetType().FullName ?? cause.GetType().Name,
+            diagnostic = Describe(cause, reduce: reduction >= 2),
+            process = started is null ? null : new
+            {
+                pid = started.Data.GetProperty("pid").GetInt32(), parent_pid = Environment.ProcessId,
+                boot_id = started.Data.GetProperty("boot_id").GetString(), start_identity = started.Data.GetProperty("start_time_ticks").GetInt64()
+            },
+            kill_requested = false, has_exited = (bool?)null,
+            capture_gaps = snapshot.Gaps, arm_failures = snapshot.Failures, fatal_capture_status = "journal",
+            signal_observation = (cause as B10AbruptProcess.SignalException)?.Observation,
+            cleanup = cleanupFailure is null && cleanupCaptureFailure is null ? null : new
+            {
+                arm = "cleanup", failure = cleanupFailure is null ? null : B10AbruptParent.FailureName(cleanupFailure),
+                signal_observation = (B10AbruptProcess.SignalObservation?)null,
+                capture_failure = cleanupCaptureFailure is null ? null : B10AbruptParent.FailureName(cleanupCaptureFailure),
+                failure_diagnostic = cleanupFailure is null ? null : Describe(cleanupFailure, reduce: reduction >= 2),
+                capture_diagnostic = cleanupCaptureFailure is null ? null : Describe(cleanupCaptureFailure, reduce: reduction >= 2)
+            },
+            startup_cleanup = (object?)null,
+            timeline = timeline.Snapshot(omitEntries: reduction >= 1)
+        });
+        byte[] diagnostic;
+        try { diagnostic = Build(0); }
+        catch (InvalidDataException first) when (first.Message == "b10_abrupt_capture_gap:frame_oversize")
+        {
+            try { diagnostic = Build(1); }
+            catch (InvalidDataException second) when (second.Message == "b10_abrupt_capture_gap:frame_oversize") { diagnostic = Build(2); }
+        }
+        Console.Error.WriteLine(Encoding.UTF8.GetString(diagnostic));
+        string directory = Path.Combine(options.OutputRoot, "abrupt");
+        Directory.CreateDirectory(directory);
+        await using var file = new FileStream(Path.Combine(directory, "failure.json"), FileMode.CreateNew, FileAccess.Write, FileShare.Read);
+        await file.WriteAsync(diagnostic, deadline.Token).ConfigureAwait(false);
+        file.Flush(true);
+        return diagnostic;
+    }
+
     internal static string PlainSuffix(Exception exception) => " diagnostic=" + JsonSerializer.Serialize(Bounded(exception), B10AbruptWire.JsonOptions);
 }
 
@@ -140,7 +180,6 @@ internal sealed class B10AbruptTimeline(TimeProvider clock, string role, TextWri
     private readonly long origin = clock.GetTimestamp();
     private readonly string startUtc = clock.GetUtcNow().ToString("O", CultureInfo.InvariantCulture);
     private readonly List<Entry> entries = [];
-    private string? heldBurstLine;
     private int printed;
     private long dropped;
 
@@ -148,46 +187,6 @@ internal sealed class B10AbruptTimeline(TimeProvider clock, string role, TextWri
     internal void Mark(B10AbruptStage stage, params B10AbruptFactValue[] facts) => Record(stage, facts, print: true);
     internal void Hold(B10AbruptStage stage, params B10AbruptFactValue[] facts) => Record(stage, facts, print: false);
     internal void Flush() { lock (gate) PrintHeld(); }
-
-    internal void HoldSupervisorBurst(int arm, long stopRequestTicks, IReadOnlyList<B10AbruptSupervisorBurstMember> members)
-    {
-        try
-        {
-            if (members.Count > B10AbruptOptions.ProbeBurstSize) return;
-            string line = "b10_abrupt_burst " + JsonSerializer.Serialize(new
-            {
-                role = "supervisor", arm, stop_request_ticks = stopRequestTicks,
-                members = members.Select(member => new
-                {
-                    burst_index = member.BurstIndex, prepared_ticks = member.PreparedTicks,
-                    accepted_ticks = member.AcceptedTicks, ack_sent_ticks = member.AckSentTicks,
-                    terminal_ticks = member.TerminalTicks,
-                    terminal_before_stop = member.TerminalTicks != -1 && member.TerminalTicks < stopRequestTicks ? 1 : 0
-                }).ToArray()
-            }, B10AbruptWire.JsonOptions);
-            lock (gate) heldBurstLine = line;
-        }
-        catch (Exception) { }
-    }
-
-    internal void WriteChildBurst(IReadOnlyList<B10AbruptChildBurstMember> members)
-    {
-        try
-        {
-            if (members.Count > B10AbruptOptions.ProbeBurstSize) return;
-            string line = "b10_abrupt_burst " + JsonSerializer.Serialize(new
-            {
-                role = "child", arm = 1,
-                members = members.Select(member => new
-                {
-                    burst_index = member.BurstIndex, produce_ticks = member.ProduceTicks,
-                    callback_ticks = member.CallbackTicks, terminal_written_ticks = member.TerminalWrittenTicks
-                }).ToArray()
-            }, B10AbruptWire.JsonOptions);
-            lock (gate) output?.WriteLine(line);
-        }
-        catch (Exception) { }
-    }
 
     private void Record(B10AbruptStage stage, B10AbruptFactValue[] facts, bool print)
     {
@@ -218,12 +217,6 @@ internal sealed class B10AbruptTimeline(TimeProvider clock, string role, TextWri
                     elapsed_ms = entry.ElapsedMilliseconds, ticks = entry.Ticks, facts = entry.Facts }, B10AbruptWire.JsonOptions));
             }
             catch (Exception) { }
-        }
-        if (heldBurstLine is not null)
-        {
-            try { output?.WriteLine(heldBurstLine); }
-            catch (Exception) { }
-            heldBurstLine = null;
         }
     }
 

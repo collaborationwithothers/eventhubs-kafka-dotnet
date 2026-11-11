@@ -128,19 +128,19 @@ public sealed class B10AbruptDiagnosticsTests
     {
         var clock = new ManualClock();
         using var writer = new StringWriter();
-        var timeline = new B10AbruptTimeline(clock, "supervisor", writer);
+        var timeline = new B10AbruptTimeline(clock, "parent", writer);
         clock.Advance(TimeSpan.FromMilliseconds(1500));
-        timeline.Hold(B10AbruptStage.StopRequested, Fact(B10AbruptFact.Arm, 1));
+        timeline.Hold(B10AbruptStage.ChildStarted, Fact(B10AbruptFact.Arm, 1));
         Assert.Equal("", writer.ToString());
-        timeline.Mark(B10AbruptStage.CheckpointWritten, Fact(B10AbruptFact.Arm, 1), Fact(B10AbruptFact.SelectedCount, 0));
-        Assert.Equal("b10_abrupt_stage {\"role\":\"supervisor\",\"stage\":\"stop_requested\",\"elapsed_ms\":1500,\"ticks\":15000000,\"facts\":{\"arm\":1}}" + Environment.NewLine +
-            "b10_abrupt_stage {\"role\":\"supervisor\",\"stage\":\"checkpoint_written\",\"elapsed_ms\":1500,\"ticks\":15000000,\"facts\":{\"arm\":1,\"selected_count\":0}}" + Environment.NewLine, writer.ToString());
-        for (int index = 0; index < 48; index++) timeline.Hold(B10AbruptStage.StopRequested);
+        timeline.Mark(B10AbruptStage.JournalRead, Fact(B10AbruptFact.Arm, 1), Fact(B10AbruptFact.SelectedCount, 0));
+        Assert.Equal("b10_abrupt_stage {\"role\":\"parent\",\"stage\":\"child_started\",\"elapsed_ms\":1500,\"ticks\":15000000,\"facts\":{\"arm\":1}}" + Environment.NewLine +
+            "b10_abrupt_stage {\"role\":\"parent\",\"stage\":\"journal_read\",\"elapsed_ms\":1500,\"ticks\":15000000,\"facts\":{\"arm\":1,\"selected_count\":0}}" + Environment.NewLine, writer.ToString());
+        for (int index = 0; index < 48; index++) timeline.Hold(B10AbruptStage.ChildStarted);
         timeline.Flush();
         Assert.Equal(48, writer.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Length);
         var snapshot = B10AbruptWire.Element(timeline.Snapshot());
         B10AbruptWire.ExactMembers(snapshot, "role", "start_utc", "origin_ticks", "timestamp_frequency", "entries", "dropped", "omitted_for_size");
-        Assert.Equal("supervisor", snapshot.GetProperty("role").GetString());
+        Assert.Equal("parent", snapshot.GetProperty("role").GetString());
         Assert.Equal(0, snapshot.GetProperty("origin_ticks").GetInt64());
         Assert.Equal(10000000, snapshot.GetProperty("timestamp_frequency").GetInt64());
         Assert.Equal(48, snapshot.GetProperty("entries").GetArrayLength());
@@ -157,7 +157,7 @@ public sealed class B10AbruptDiagnosticsTests
         Assert.Equal(facts.Length, facts.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(stages.Length, stages.Distinct(StringComparer.Ordinal).Count());
         Assert.All(facts.Concat(stages), name => Assert.InRange(name.Length, 1, 40));
-        Assert.Contains("ack_sent", stages);
+        Assert.Contains("kill_intent_written", stages);
     }
 
     internal static void AssertPlainReport(string report, string expectedPrefix)

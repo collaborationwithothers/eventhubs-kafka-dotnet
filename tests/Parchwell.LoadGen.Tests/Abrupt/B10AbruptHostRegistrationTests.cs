@@ -18,7 +18,7 @@ public sealed class B10AbruptHostRegistrationTests
     private const string SyntheticTelemetry = "InstrumentationKey=synthetic;IngestionEndpoint=https://example.invalid";
 
     [Theory]
-    [InlineData("supervisor")]
+    [InlineData("parent")]
     [InlineData("child")]
     [InlineData("successor")]
     public async Task Given_AbruptHostRegistration_When_B10IsResolved_Then_EveryDeclaredRoleResolves(string role)
@@ -43,12 +43,12 @@ public sealed class B10AbruptHostRegistrationTests
     }
 
     [Fact]
-    public async Task Given_SupervisorAndChildRegistrations_When_B10IsResolved_Then_ProducerSettingsAreEqual()
+    public async Task Given_ParentAndChildRegistrations_When_B10IsResolved_Then_ProducerSettingsAreEqual()
     {
-        Dictionary<string, string> supervisor = ProducerSettings(await ResolveAsync("supervisor"));
+        Dictionary<string, string> parent = ProducerSettings(await ResolveAsync("parent"));
         Dictionary<string, string> child = ProducerSettings(await ResolveAsync("child"));
         Assert.Equal(34, child.Count);
-        Assert.Equal(child.OrderBy(pair => pair.Key, StringComparer.Ordinal), supervisor.OrderBy(pair => pair.Key, StringComparer.Ordinal));
+        Assert.Equal(child.OrderBy(pair => pair.Key, StringComparer.Ordinal), parent.OrderBy(pair => pair.Key, StringComparer.Ordinal));
     }
 
     private static Dictionary<string, string> ProducerSettings(ResolvedScenario resolved) =>
@@ -80,17 +80,11 @@ public sealed class B10AbruptHostRegistrationTests
             ["Enabled"] = "true", ["Purpose"] = "diagnostic_trial", ["Role"] = role,
             ["RunId"] = "synthetic", ["ScenarioId"] = "B10", ["ConfigurationId"] = "C1", ["Phase"] = "C1", ["Repeat"] = "1",
             ["SourceCommit"] = new('a', 40), ["ImageReference"] = "registry.invalid/parchwell/loadgen@sha256:" + new string('b', 64),
-            ["JobName"] = "synthetic-c1-r1-loadgen" + (role == "successor" ? "2" : ""),
+            ["JobName"] = "synthetic-c1-r1-loadgen-" + (role == "successor" ? "successor" : "restart"),
             ["PodName"] = "synthetic-pod", ["PodUid"] = "synthetic-uid", ["NamespaceName"] = "synthetic-ns",
             ["BlobEndpoint"] = "https://storage.invalid/", ["ScenarioSourceRoot"] = AppContext.BaseDirectory, ["OutputRoot"] = "/work/loadgen",
             [role == "successor" ? "PredecessorBindingPath" : "StartLineBindingPath"] = "/bindings/not-mounted.json",
         };
-        if (role == "child")
-        {
-            values["EventsPipeHandle"] = "4";
-            values["AckPipeHandle"] = "5";
-            values["IdentityChallenge"] = new string('c', 64);
-        }
         foreach (var policy in B10AbruptOptions.Policy) values[policy.Key] = policy.Value.ToString(CultureInfo.InvariantCulture);
         return values.ToDictionary(pair => B10AbruptOptions.Prefix + pair.Key, pair => pair.Value, StringComparer.Ordinal);
     }

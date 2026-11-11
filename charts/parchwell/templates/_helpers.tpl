@@ -6,7 +6,7 @@ app.kubernetes.io/instance: {{ .Values.runtime.run_id | quote }}
 {{- $r := .Values.runtime -}}
 {{- if eq $r.mode "single-action" -}}{{ $r.action_role }}
 {{- else if eq $r.mode "single-action-seed" -}}enrichment-consumer
-{{- else if has $r.mode (list "loadgen" "loadgen2") -}}loadgen
+{{- else if has $r.mode (list "loadgen" "loadgen2" "loadgen-restart" "loadgen-successor") -}}loadgen
 {{- else -}}verifier{{- end -}}
 {{- end -}}
 {{- define "parchwell.worker" -}}

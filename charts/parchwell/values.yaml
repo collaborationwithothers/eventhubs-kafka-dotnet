@@ -3,17 +3,15 @@ runtime:
   b10_abrupt_diagnostic: false
   bounds:
     b10_abrupt:
-      MaxFrameBytes: 65536
+      MaxRecordBytes: 65536
       QueueCapacity: 256
       MaxJournalBytes: 16777216
       MaxJournalEntries: 4096
       MaxAuxiliaryBytes: 65536
       MaxJsonDepth: 32
-      ArmTimeoutSeconds: 30
-      KillTimeoutSeconds: 10
-      ReapTimeoutSeconds: 10
-      EofTimeoutSeconds: 10
       ReleaseDelaySeconds: 120
+      ProbeRate: 100
+      CutOrdinal: 4
     scenario_parsing:
       MaxDocumentCharacters: 1048576
       MaxNestingDepth: 32

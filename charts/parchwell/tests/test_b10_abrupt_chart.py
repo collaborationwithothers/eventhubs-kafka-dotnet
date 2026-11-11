@@ -10,16 +10,15 @@ import yaml
 from test_chart import CHART, DEFAULTS, FIXTURE, expected_environment, run, scalar, with_case
 
 POLICY = {
-    'MaxFrameBytes': 65536, 'QueueCapacity': 256, 'MaxJournalBytes': 16777216,
+    'MaxRecordBytes': 65536, 'QueueCapacity': 256, 'MaxJournalBytes': 16777216,
     'MaxJournalEntries': 4096, 'MaxAuxiliaryBytes': 65536, 'MaxJsonDepth': 32,
-    'ArmTimeoutSeconds': 30, 'KillTimeoutSeconds': 10, 'ReapTimeoutSeconds': 10,
-    'EofTimeoutSeconds': 10, 'ReleaseDelaySeconds': 120,
+    'ReleaseDelaySeconds': 120, 'ProbeRate': 100, 'CutOrdinal': 4,
 }
 
 
 def diagnostic_cases():
     cases = []
-    for mode, suffix in (('loadgen', 'first'), ('loadgen2', 'successor')):
+    for mode, suffix in (('loadgen-restart', 'first'), ('loadgen-successor', 'successor')):
         values = deepcopy(FIXTURE)
         values.update(scenario_id='B10', configuration_id='C1')
         runtime = values['runtime']
@@ -52,8 +51,8 @@ def verify(document, values):
     assert sorted(obj['kind'] for obj in objects) == ['Job', 'ServiceAccount', 'ServiceAccount']
     job = next(obj for obj in objects if obj['kind'] == 'Job')
     runtime = values['runtime']
-    first = runtime['mode'] == 'loadgen'
-    name = runtime['loadgen_job_name'] + ('' if first else '2')
+    first = runtime['mode'] == 'loadgen-restart'
+    name = runtime['loadgen_job_name'] + ('-restart' if first else '-successor')
     assert job['metadata']['name'] == name
     assert job['metadata']['namespace'] == 'parchwell'
     spec = job['spec']
@@ -71,7 +70,7 @@ def verify(document, values):
     assert len(pod['containers']) == 1
     container = pod['containers'][0]
     assert container['name'] == 'loadgen' and container['image'] == runtime['loadgen_image']
-    assert container['args'] == ['--b10-abrupt-supervisor' if first else '--b10-abrupt-successor']
+    assert container['args'] == ['--b10-abrupt-parent' if first else '--b10-abrupt-successor']
     assert container['command'] == ['/app/Parchwell.LoadGen']
     assert container['securityContext'] == {'allowPrivilegeEscalation': False, 'readOnlyRootFilesystem': True,
                                             'capabilities': {'drop': ['ALL']}}
@@ -84,9 +83,12 @@ def verify(document, values):
         {'name': 'work', 'emptyDir': {'sizeLimit': '8Gi'}}, {'name': 'tmp', 'emptyDir': {}},
         {'name': 'b10-abrupt-binding', 'configMap': {'name': runtime['b10_abrupt_binding_configmap'],
                                                    'items': [{'key': 'binding.json', 'path': filename}]}}]
-    ordinary = expected_environment(values)
+    ordinary_values = deepcopy(values)
+    ordinary_values['runtime']['mode'] = 'loadgen'
+    ordinary = expected_environment(ordinary_values)
+    ordinary['PARCHWELL_JOB_NAME'] = ('value', name)
     expected = {key: value for key, value in ordinary.items() if not key.startswith('LoadGen__')}
-    identity = {'Enabled': 'true', 'Purpose': 'diagnostic_trial', 'Role': 'supervisor' if first else 'successor',
+    identity = {'Enabled': 'true', 'Purpose': 'diagnostic_trial', 'Role': 'parent' if first else 'successor',
                 'RunId': runtime['run_id'], 'ScenarioId': 'B10', 'ConfigurationId': 'C1', 'Phase': 'C1',
                 'Repeat': '1', 'SourceCommit': runtime['source_commit'], 'ImageReference': runtime['loadgen_image'],
                 'JobName': name, 'NamespaceName': runtime['eventhubs']['namespace_name'],
@@ -119,14 +121,23 @@ def invalid_cases():
                        ('loadgen_job_name', 'unbound-loadgen')):
         case = deepcopy(first); case['runtime'][key] = value
         yield key + '-' + str(value).replace('/', '-'), case
-    for mode in ('start-line', 'verify', 'b10-sweep-line', 'b10-sweep', 'judge', 'single-action', 'idle-observation'):
+    for mode in ('loadgen', 'loadgen2', 'start-line', 'verify', 'b10-sweep-line', 'b10-sweep', 'judge', 'single-action', 'idle-observation'):
         case = deepcopy(first); case['runtime']['mode'] = mode
         yield 'mode-' + mode, case
-    for key in ('run_kind', 'repeat', 'b10_abrupt_binding_configmap'):
+    for key in ('run_kind', 'repeat', 'loadgen_job_name', 'b10_abrupt_binding_configmap'):
         case = deepcopy(first); del case['runtime'][key]
         yield 'missing-' + key, case
     case = deepcopy(successor); del case['runtime']['b10_abrupt_binding_configmap']
     yield 'successor-missing-binding', case
+    for original in diagnostic_cases():
+        for flag in (False, None):
+            case = deepcopy(original)
+            del case['runtime']['b10_abrupt_binding_configmap']
+            if flag is None:
+                del case['runtime']['b10_abrupt_diagnostic']
+            else:
+                case['runtime']['b10_abrupt_diagnostic'] = flag
+            yield case['runtime']['mode'] + '-flag-' + str(flag), case
     case = deepcopy(first); case['runtime']['b10_abrupt_diagnostic'] = False
     yield 'false-with-binding', case
     case = deepcopy(first); del case['runtime']['b10_abrupt_diagnostic']
@@ -151,6 +162,14 @@ def main():
         assert ordinary == render(explicit_false, directory, 'explicit-false')
         ordinary_job = next(obj for obj in yaml.safe_load_all(ordinary) if obj and obj['kind'] == 'Job')
         assert 'command' not in ordinary_job['spec']['template']['spec']['containers'][0]
+        for mode in ('loadgen', 'loadgen2'):
+            legacy = deepcopy(diagnostic_cases()[0])
+            legacy['runtime']['mode'] = mode
+            del legacy['runtime']['b10_abrupt_diagnostic']
+            del legacy['runtime']['b10_abrupt_binding_configmap']
+            implicit = render(legacy, directory, 'legacy-' + mode)
+            legacy['runtime']['b10_abrupt_diagnostic'] = False
+            assert implicit == render(legacy, directory, 'legacy-false-' + mode)
         for case_name, values in zip(('first', 'successor'), diagnostic_cases(), strict=True):
             verify(render(values, directory, case_name), values)
             proc = run(['kubeconform', '-strict', '-summary', '-kubernetes-version', '1.35.0',
@@ -159,7 +178,7 @@ def main():
         negatives = list(invalid_cases())
         for index, (case_name, values) in enumerate(negatives):
             render(values, directory, str(index) + '-' + case_name, valid=False)
-    print(f'b10 abrupt chart checks passed: 4 renders, {len(negatives)} invalid selections')
+    print(f'b10 abrupt chart checks passed: 8 renders, {len(negatives)} invalid selections')
 
 
 if __name__ == '__main__':

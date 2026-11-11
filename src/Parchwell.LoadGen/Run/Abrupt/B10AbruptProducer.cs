@@ -21,16 +21,14 @@ internal sealed class B10AbruptProducer
     private readonly Func<IProducer<byte[], byte[]>> producerFactory;
     private readonly TimeProvider clock;
     private readonly B10AbruptStatistics statistics;
-    private readonly Func<string, ILedgerStore> ledgerFactory;
-    private readonly Func<string, JsonElement, CancellationToken, Task<long>> sendDurable;
-    private readonly Func<JsonElement, bool> captureTerminal;
-    private readonly Func<string, CancellationToken, Task<ReleaseInfo>> waitForRelease;
-    private readonly Func<string, JsonElement, CancellationToken, Task> persistCohortSeal;
+    private readonly B10AbruptJournal? journal;
     private readonly RunEvidenceSession? evidence;
     private readonly B10AbruptWire.Identity? diagnosticIdentity;
     private readonly SuccessorCompletion? completion;
     private readonly B10AbruptTimeline timeline;
-    private readonly Func<long> nativeErrorCount;
+    private readonly Func<(int ReturnValue, int Errno)> selfKill;
+    private readonly Action<int> exit;
+    private static readonly TimeSpan ReleaseDelay = TimeSpan.FromSeconds(120);
     private readonly object gate = new();
     private readonly List<ProbeAttempt> probes = [];
     private IProducer<byte[], byte[]>? producer;
@@ -38,443 +36,216 @@ internal sealed class B10AbruptProducer
     private RunExecutionOptions options = null!;
     private WorkloadProfile profile = null!;
     private long started;
-    private bool timeoutSealed;
-    private bool controlSealed;
     private bool killAdmitted;
+    private bool controlComplete;
     private volatile bool faulted;
     private int faultReason;
     private long faultErrorCode;
     private static readonly string[] SuccessorNames = ["ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json"];
-
     internal B10AbruptProducer(Func<IProducer<byte[], byte[]>> producerFactory, TimeProvider clock,
-        B10AbruptStatistics statistics, Func<string, ILedgerStore> ledgerFactory,
-        Func<string, JsonElement, CancellationToken, Task<long>> sendDurable,
-        Func<JsonElement, bool> captureTerminal,
-        Func<string, CancellationToken, Task<ReleaseInfo>> waitForRelease,
-        Func<string, JsonElement, CancellationToken, Task> persistCohortSeal, RunEvidenceSession? evidence = null,
-        B10AbruptWire.Identity? diagnosticIdentity = null,
-        SuccessorCompletion? completion = null,
-        B10AbruptTimeline? timeline = null,
-        Func<long>? nativeErrorCount = null)
+        B10AbruptStatistics statistics, B10AbruptJournal? journal = null, RunEvidenceSession? evidence = null,
+        B10AbruptWire.Identity? diagnosticIdentity = null, SuccessorCompletion? completion = null,
+        B10AbruptTimeline? timeline = null, Func<(int ReturnValue, int Errno)>? selfKill = null,
+        Action<int>? exit = null)
     {
-        this.producerFactory = producerFactory;
-        this.clock = clock;
-        this.statistics = statistics;
-        this.ledgerFactory = ledgerFactory;
-        this.sendDurable = sendDurable;
-        this.captureTerminal = captureTerminal;
-        this.waitForRelease = waitForRelease;
-        this.persistCohortSeal = persistCohortSeal;
-        this.evidence = evidence;
-        this.diagnosticIdentity = diagnosticIdentity;
-        this.completion = completion;
+        this.producerFactory = producerFactory; this.clock = clock; this.statistics = statistics; this.journal = journal;
+        this.evidence = evidence; this.diagnosticIdentity = diagnosticIdentity; this.completion = completion;
         this.timeline = timeline ?? new B10AbruptTimeline(clock, "child", null);
-        this.nativeErrorCount = nativeErrorCount ?? (() => 0);
+        this.selfKill = selfKill ?? B10AbruptProcess.SelfKill; this.exit = exit ?? Environment.Exit;
     }
-
-    /// <summary>The highest native error sequence the first child has assigned so far; 0 when the child has no channel.</summary>
-    internal long NativeErrorCount => nativeErrorCount();
-
-    /// <summary>The successor's two completion steps. The producer runs them in order around native disposal.</summary>
-    internal sealed record SuccessorCompletion(
-        Func<CancellationToken, Task<KafkaStatisticsCompletion>> CompleteStatistics,
+    internal long NativeErrorCount => journal?.NativeErrorCount ?? 0;
+    internal sealed record SuccessorCompletion(Func<CancellationToken, Task<KafkaStatisticsCompletion>> CompleteStatistics,
         Func<KafkaStatisticsCompletion, CancellationToken, Task<IReadOnlyDictionary<string, string>>> CompleteEvidence);
-
-    internal async Task RunFirstAsync(WorkloadProfile workload, RunIdentity runIdentity,
+    internal async Task<int> RunFirstAsync(WorkloadProfile workload, RunIdentity runIdentity,
         RunExecutionOptions executionOptions, CancellationToken cancellationToken = default)
     {
-        Initialize(workload, runIdentity, executionOptions);
+        if (journal is null) throw Attach(new InvalidDataException("b10_abrupt_configuration_invalid"));
         try
         {
-            await RunTimeoutCohortAsync(cancellationToken).ConfigureAwait(false);
+            if (journal.Frames.Count == 0)
+                await journal.AppendAsync("child_started", B10AbruptWire.Element(new { pid = Environment.ProcessId, start_time_ticks = B10AbruptProc.ReadStartTimeTicks(B10AbruptProc.ReadBounded("/proc/self/stat")), boot_id = B10AbruptProc.ReadBootId() }), cancellationToken).ConfigureAwait(false);
+            timeline.Mark(B10AbruptStage.ChildStarted);
+            B10AbruptProcess.Preflight();
+            Initialize(workload, runIdentity, executionOptions);
+            await WaitForInitialReportAsync(cancellationToken).ConfigureAwait(false);
             await RunControlAsync(cancellationToken).ConfigureAwait(false);
             await AdmitKillOriginalAsync(cancellationToken).ConfigureAwait(false);
-            await Task.Delay(Timeout.InfiniteTimeSpan, clock, cancellationToken).ConfigureAwait(false);
+            var signal = selfKill();
+            try { await journal.AppendAsync("signal_failed", B10AbruptWire.Element(new { return_value = signal.ReturnValue, errno = signal.Errno }), CancellationToken.None).ConfigureAwait(false); }
+            finally { exit(4); }
+            return 4;
         }
-        finally
+        catch (Exception exception) when (!journal.Frames.Any(frame => frame.Kind == "kill_intent"))
         {
-            // Once a kill original reaches Produce, even error cleanup must not flush or dispose it.
-            if (!killAdmitted) await CleanupAsync().ConfigureAwait(false);
+            string reason = B10AbruptParent.FailureName(exception);
+            if (!B10AbruptWire.NoKillReasons.Contains(reason, StringComparer.Ordinal)) reason = "b10_abrupt_guard_failed";
+            try { await journal.AppendAsync("no_kill", B10AbruptWire.Element(new { reason, cross_restart_admitted = killAdmitted }), CancellationToken.None).ConfigureAwait(false); timeline.Mark(B10AbruptStage.NoKillWritten); }
+            catch (Exception) { }
+            if (killAdmitted) { exit(3); return 3; }
+            if (producer is not null)
+            {
+                try { producer.Flush(options.ProducerDrainTimeout); } catch (Exception) { }
+                await CleanupAsync().ConfigureAwait(false);
+            }
+            return 3;
         }
     }
-
     internal void Initialize(WorkloadProfile workload, RunIdentity runIdentity, RunExecutionOptions executionOptions)
     {
         if (producer is not null) throw Attach(new InvalidOperationException("b10_abrupt_configuration_invalid"));
-        executionOptions.Validate();
-        runIdentity.Validate();
-        if (runIdentity.ScenarioId != "B10" || runIdentity.ConfigurationId != "C1")
-            throw Attach(new InvalidDataException("b10_abrupt_configuration_invalid"));
-        profile = workload;
-        identity = runIdentity;
-        options = executionOptions;
+        executionOptions.Validate(); runIdentity.Validate();
+        if (runIdentity.ScenarioId != "B10" || runIdentity.ConfigurationId != "C1") throw Attach(new InvalidDataException("b10_abrupt_configuration_invalid"));
+        profile = workload; identity = runIdentity; options = executionOptions;
         _ = WorkloadGenerator.Generate(profile, options.MaxAttempts, options.MaxPayloadBytes).GetEnumerator();
-        Directory.CreateDirectory(Path.Combine(options.OutputRoot, "abrupt-child"));
-        producer = producerFactory();
-        statistics.MarkConstructed(clock.GetUtcNow());
-        started = clock.GetTimestamp();
+        producer = producerFactory(); statistics.MarkConstructed(clock.GetUtcNow()); started = clock.GetTimestamp();
         timeline.Mark(B10AbruptStage.ProducerConstructed);
     }
-
-    internal async Task RunTimeoutCohortAsync(CancellationToken cancellationToken = default)
+    private async Task WaitForInitialReportAsync(CancellationToken cancellationToken)
     {
-        if (timeoutSealed || probes.Count != 0) throw Attach(new InvalidDataException("b10_abrupt_guard_failed"),
-            [Fact(B10AbruptFact.TimeoutSealed, timeoutSealed), Fact(B10AbruptFact.ProbeCount, probes.Count)]);
-        long plannedCount = WorkloadGenerator.GetPlannedAttemptCount(profile);
-        var retryPolicy = options.ApplicationRetry ?? ApplicationRetryPolicy.ForScenario("B10");
-        if (checked(plannedCount * (1L + retryPolicy.MaxRetriesPerEvent)) > options.MaxAttempts)
-            throw Attach(new InvalidDataException("b10_abrupt_guard_failed"),
-                [Fact(B10AbruptFact.PlannedCount, plannedCount), Fact(B10AbruptFact.MaximumRetries, retryPolicy.MaxRetriesPerEvent),
-                 Fact(B10AbruptFact.MaximumAttempts, options.MaxAttempts)]);
-        var inventory = new AttemptInventory(identity, options.MaxAttempts);
-        var retryQueue = new ConcurrentQueue<PlannedEvent>();
-        var retryCounts = new Dictionary<long, int>();
-        var rows = new ConcurrentDictionary<string, LedgerRow>(StringComparer.Ordinal);
-        await using ILedgerStore ledger = ledgerFactory("timeout");
-        long admitted = 0, retryAdmitted = 0, delivered = 0, timedOut = 0, synchronousRejections = 0, other = 0;
-
-        void Invoke(PlannedEvent planned, bool scheduled)
-        {
-            CheckGuards();
-            cancellationToken.ThrowIfCancellationRequested();
-            long ordinal = admitted;
-            string attemptId = identity.InstanceId + "-timeout-" + ordinal.ToString(CultureInfo.InvariantCulture);
-            var entry = new AttemptEntry(identity.InstanceId, attemptId, ordinal, planned.TenantId,
-                planned.DocumentId, planned.Key, planned.Sequence, planned.EventType, planned.DueMicroseconds, planned.DueMicroseconds);
-            byte[] payload = WorkloadGenerator.GeneratePayload(planned, profile.Seed);
-            inventory.Reserve(entry);
-            long invoked = clock.GetTimestamp();
-            long elapsed = ElapsedMicroseconds(invoked);
-            if (scheduled && elapsed - planned.DueMicroseconds > options.MaxScheduleLateness.TotalMicroseconds)
-            {
-                inventory.CancelReservation();
-                throw Attach(new InvalidDataException("b10_abrupt_deadline_exhausted"),
-                    [Fact(B10AbruptFact.LatenessMicroseconds, elapsed - planned.DueMicroseconds),
-                     Fact(B10AbruptFact.MaximumLatenessMicroseconds, (long)options.MaxScheduleLateness.TotalMicroseconds),
-                     Fact(B10AbruptFact.AdmittedCount, admitted)]);
-            }
-            entry = inventory.CommitReservation(elapsed);
-            Interlocked.Increment(ref admitted);
-            int callbackSeen = 0;
-            try
-            {
-                var message = Message(planned.Key, payload, attemptId, planned.Sequence);
-                message.Headers.Add("tenant-id", Encoding.UTF8.GetBytes(planned.TenantId));
-                message.Headers.Add("document-id", Encoding.UTF8.GetBytes(planned.DocumentId));
-                message.Headers.Add("event-type", Encoding.UTF8.GetBytes(planned.EventType));
-                producer!.Produce(options.Topic, message, report =>
-                {
-                    try
-                    {
-                        if (Interlocked.Exchange(ref callbackSeen, 1) != 0) { Fault(1); return; }
-                        switch (report.Error.Code)
-                        {
-                            case ErrorCode.NoError: Interlocked.Increment(ref delivered); break;
-                            case ErrorCode.Local_MsgTimedOut: Interlocked.Increment(ref timedOut); break;
-                            default: Interlocked.Increment(ref other); break;
-                        }
-                        long completed = clock.GetTimestamp();
-                        int? status = Enum.IsDefined(report.Status) ? (int)report.Status : null;
-                        var row = new LedgerRow(1, identity, entry, "callback", !report.Error.IsError,
-                            (int)report.Error.Code, report.Error.Code.ToString(), status,
-                            status.HasValue ? "native_callback" : "missing", ElapsedMicroseconds(completed),
-                            clock.GetElapsedTime(invoked, completed).TotalMilliseconds, null);
-                        if (!ledger.TryAppend(row) || !rows.TryAdd(entry.AttemptId, row)) Fault(2);
-                        if (!IsPermittedTerminal(row.ErrorCode, status)) Fault(3, row.ErrorCode);
-                        if (ApplicationRetryPolicy.IsPermittedTimeout(row)) retryQueue.Enqueue(planned);
-                    }
-                    catch { Fault(4); }
-                });
-            }
-            catch (ProduceException<byte[], byte[]> exception) when (exception.Error.Code == ErrorCode.Local_QueueFull)
-            {
-                Interlocked.Increment(ref synchronousRejections);
-                long completed = clock.GetTimestamp();
-                var row = new LedgerRow(1, identity, entry, "synchronous_rejection", false,
-                    (int)exception.Error.Code, exception.Error.Code.ToString(), null, "pre_enqueue",
-                    ElapsedMicroseconds(completed), null, clock.GetElapsedTime(invoked, completed).TotalMilliseconds);
-                if (!ledger.TryAppend(row) || !rows.TryAdd(entry.AttemptId, row)) Fault(2);
-            }
-        }
-
-        void AdmitRetries()
-        {
-            while (retryQueue.TryDequeue(out PlannedEvent? retry))
-            {
-                int used = retryCounts.GetValueOrDefault(retry.Ordinal);
-                if (used >= retryPolicy.MaxRetriesPerEvent) continue;
-                retryCounts[retry.Ordinal] = used + 1;
-                Interlocked.Increment(ref retryAdmitted);
-                Invoke(retry, scheduled: false);
-            }
-        }
-
-        foreach (var planned in WorkloadGenerator.Generate(profile, options.MaxAttempts, options.MaxPayloadBytes, cancellationToken))
-        {
-            AdmitRetries();
-            await DelayUntilElapsedAsync(planned.DueMicroseconds, cancellationToken).ConfigureAwait(false);
-            Invoke(planned, scheduled: true);
-        }
-        timeline.Mark(B10AbruptStage.TimeoutScheduleComplete,
-            Fact(B10AbruptFact.PlannedCount, plannedCount), Fact(B10AbruptFact.AdmittedCount, admitted),
-            Fact(B10AbruptFact.RetryAdmittedCount, retryAdmitted));
-        long drainStart = clock.GetTimestamp();
-        DateTimeOffset drained;
-        do
-        {
-            await DrainAsync(options.ProducerDrainTimeout - clock.GetElapsedTime(drainStart), cancellationToken).ConfigureAwait(false);
-            drained = clock.GetUtcNow();
-            if (retryQueue.IsEmpty) break;
-            AdmitRetries();
-        } while (true);
-        timeline.Mark(B10AbruptStage.TimeoutDrained,
-            Fact(B10AbruptFact.ElapsedMilliseconds, clock.GetElapsedTime(drainStart)),
-            Fact(B10AbruptFact.BudgetMilliseconds, options.ProducerDrainTimeout),
-            Fact(B10AbruptFact.AdmittedCount, admitted), Fact(B10AbruptFact.DeliveredCount, Interlocked.Read(ref delivered)),
-            Fact(B10AbruptFact.TimedOutCount, Interlocked.Read(ref timedOut)),
-            Fact(B10AbruptFact.SynchronousRejectionCount, Interlocked.Read(ref synchronousRejections)),
-            Fact(B10AbruptFact.OtherErrorCount, Interlocked.Read(ref other)), Fact(B10AbruptFact.RetryAdmittedCount, retryAdmitted));
-        CheckGuards();
-        var entries = inventory.Seal();
-        var manifest = new RunManifest(1, identity, "1", plannedCount, admitted, entries,
-            clock.TimestampFrequency, started, "complete", true, null, [],
-            ImmutableDictionary<string, string>.Empty.Add("dotnet", Environment.Version.ToString()),
-            ImmutableDictionary<string, string>.Empty, []);
-        _ = LedgerValidator.Validate(rows.Values, manifest, identity);
-        await ledger.DrainAsync(cancellationToken).ConfigureAwait(false);
-        await ledger.SaveManifestAsync(manifest, cancellationToken).ConfigureAwait(false);
-        string directory = Path.Combine(options.OutputRoot, "timeout");
-        _ = await LedgerValidator.ReadValidatedAsync(Path.Combine(directory, "ledger.jsonl"),
-            Path.Combine(directory, "manifest.json"), identity, options.MaxAttempts, options.MaxRowBytes,
-            options.MaxLedgerReadbackBytes, options.MaxManifestBytes, cancellationToken).ConfigureAwait(false);
-        await WaitForPostDrainAsync(0, drained, cancellationToken).ConfigureAwait(false);
-        B10AbruptStatistics.NumberedReport report = statistics.SelectPostDrain(drained)!;
-        await WriteDurableAsync(Path.Combine(directory, "post-drain-report.json"), Encoding.UTF8.GetBytes(report.Report.RawJson), cancellationToken).ConfigureAwait(false);
-        await persistCohortSeal("timeout", JsonSerializer.SerializeToElement(new
-        {
-            cohort = "timeout", count = entries.Length, inventory = Describe(Path.Combine(directory, "manifest.json")),
-            ledger = Describe(Path.Combine(directory, "ledger.jsonl")), drain_complete = true,
-            guard_complete = true, post_drain_statistics = Describe(Path.Combine(directory, "post-drain-report.json")), fatal_capture_status = "journal",
-            native_error_count = nativeErrorCount()
-        }), cancellationToken).ConfigureAwait(false);
-        timeline.Mark(B10AbruptStage.CohortSealed, Fact(B10AbruptFact.Arm, 0), Fact(B10AbruptFact.EntryCount, entries.Length));
-        timeoutSealed = true;
+        using var deadline = new CancellationTokenSource(options.StatisticsCompletionTimeout ?? options.CleanupTimeout, clock);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token, cancellationToken);
+        try { while (statistics.SelectPreAcceptance(clock.GetUtcNow()) is null) await Task.Delay(TimeSpan.FromMilliseconds(10), clock, linked.Token).ConfigureAwait(false); }
+        catch (OperationCanceledException exception) { throw Attach(new InvalidDataException("b10_abrupt_sample_missing", exception)); }
     }
-
+    private async Task<ProbeAttempt> OriginalsAsync(string arm, CancellationToken cancellationToken)
+    {
+        byte[] payload = ProbePayload(); ProbeAttempt? first = null, last = null;
+        for (int ordinal = 0; ordinal < B10AbruptOptions.OriginalCount; ordinal++)
+        {
+            if (first is not null)
+            {
+                while (true)
+                {
+                    TimeSpan remaining = TimeSpan.FromMilliseconds(ordinal * 10) - clock.GetElapsedTime(first.InvokedTimestamp);
+                    if (remaining <= TimeSpan.Zero) break;
+                    await Task.Delay(TimeSpan.FromMilliseconds(Math.Ceiling(remaining.TotalMilliseconds)), clock, cancellationToken).ConfigureAwait(false);
+                }
+            }
+            last = await InvokeProbe(arm, payload, null, ordinal, cancellationToken).ConfigureAwait(false);
+            first ??= last;
+        }
+        if (!last!.Accepted)
+        {
+            bool any = probes.Any(attempt => attempt.Key.EndsWith("/" + arm, StringComparison.Ordinal) && attempt.Accepted);
+            throw Attach(new InvalidDataException(arm == "cross_restart" && !any ? "kill_too_early" : "b10_abrupt_cut_rejected"));
+        }
+        return last;
+    }
     internal async Task RunControlAsync(CancellationToken cancellationToken = default)
     {
-        if (!timeoutSealed || controlSealed) throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"),
-            [Fact(B10AbruptFact.TimeoutSealed, timeoutSealed), Fact(B10AbruptFact.ControlSealed, controlSealed)]);
-        byte[] payload = ProbePayload();
-        for (int i = 0; i < B10AbruptOptions.ProbeBurstSize; i++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            _ = await InvokeProbe("same_instance", payload, null, i, cancellationToken).ConfigureAwait(false);
-        }
-        ReleaseInfo info = await waitForRelease("same_instance", cancellationToken).ConfigureAwait(false);
-        ProbeAttempt? original;
-        lock (gate) original = probes.SingleOrDefault(attempt => attempt.AttemptId == info.SelectedAttemptId &&
-            attempt.PredecessorAttemptId is null && attempt.Key.EndsWith("/same_instance", StringComparison.Ordinal) && attempt.Accepted);
-        if (original is null) throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"));
-        DateTimeOffset release = info.Release;
-        timeline.Mark(B10AbruptStage.ReleaseRead, Fact(B10AbruptFact.Arm, 1), Fact(B10AbruptFact.RemainingMilliseconds, release - clock.GetUtcNow()));
+        if (journal is null || controlComplete) throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"));
+        ProbeAttempt last = await OriginalsAsync("same_instance", cancellationToken).ConfigureAwait(false);
+        var cut = await journal.AppendBoundaryAsync("cut", last.AttemptId, ReleaseDelay, cancellationToken).ConfigureAwait(false);
+        timeline.Mark(B10AbruptStage.CutWritten);
+        string[] selected = cut.Data.GetProperty("unconfirmed_attempt_ids").EnumerateArray().Select(item => item.GetString()!).ToArray();
+        if (selected.Length == 0) throw Attach(new InvalidDataException("b10_abrupt_exposure_inconclusive"));
+        DateTimeOffset release = DateTimeOffset.ParseExact(cut.Data.GetProperty("release_utc").GetString()!, "O", CultureInfo.InvariantCulture);
         await WaitForReleaseAsync(release, false, cancellationToken).ConfigureAwait(false);
         timeline.Mark(B10AbruptStage.ReleaseReached);
-        _ = await InvokeProbe("same_instance", payload, original.AttemptId, original.Sequence, cancellationToken).ConfigureAwait(false);
-        await DrainAsync(options.ProducerDrainTimeout, cancellationToken).ConfigureAwait(false);
-        MarkTerminals();
-        timeline.WriteChildBurst(probes.Where(attempt => attempt.PredecessorAttemptId is null &&
-            attempt.Key.EndsWith("/same_instance", StringComparison.Ordinal)).Select(attempt =>
-                new B10AbruptChildBurstMember(attempt.Sequence, attempt.InvokedTimestamp,
-                    attempt.Terminal is null ? -1 : attempt.CallbackTimestamp, attempt.TerminalWrittenTimestamp)).ToArray());
-        timeline.Mark(B10AbruptStage.CohortDrained);
+        foreach (string id in selected)
+        {
+            ProbeAttempt original = probes.Single(attempt => attempt.AttemptId == id);
+            _ = await InvokeProbe("same_instance", original.Payload, original.AttemptId, original.Sequence, cancellationToken).ConfigureAwait(false);
+        }
+        int outstanding = producer!.Flush(options.ProducerDrainTimeout);
         DateTimeOffset drained = clock.GetUtcNow();
+        await journal.DrainAvailable(cancellationToken).ConfigureAwait(false);
+        await journal.AppendAsync("control_drained", B10AbruptWire.Element(new { flush_returned = true, out_queue_length = outstanding }), cancellationToken).ConfigureAwait(false);
+        timeline.Mark(B10AbruptStage.ControlDrained);
+        if (outstanding != 0 || probes.Any(attempt => attempt.Terminal is null)) throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"));
         await WaitForPostDrainAsync(1, drained, cancellationToken).ConfigureAwait(false);
+        await BindReportAsync("same_instance", null, statistics.SelectPostDrain(drained)!, true, cancellationToken).ConfigureAwait(false);
         CheckGuards();
-        JsonElement seal = await SealProbeCohortAsync("same_instance", "control", drained, cancellationToken).ConfigureAwait(false);
-        await persistCohortSeal("control", seal, cancellationToken).ConfigureAwait(false);
-        timeline.Mark(B10AbruptStage.CohortSealed, Fact(B10AbruptFact.Arm, 1), Fact(B10AbruptFact.EntryCount, B10AbruptOptions.ProbeBurstSize + 1));
-        controlSealed = true;
+        var snapshot = B10AbruptJournal.Read(await B10AbruptPublisher.ReadFileAsync(journal.Path, 16777216, cancellationToken).ConfigureAwait(false));
+        if (snapshot.Gaps.Count != 0) throw B10AbruptWire.Gap(snapshot.Gaps[0]);
+        if (snapshot.Failures.Count != 0) throw Attach(new InvalidDataException(snapshot.Failures.Values.First()));
+        controlComplete = true;
     }
-
     internal async Task AdmitKillOriginalAsync(CancellationToken cancellationToken = default)
     {
-        if (!timeoutSealed || !controlSealed || killAdmitted) throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"),
-            [Fact(B10AbruptFact.TimeoutSealed, timeoutSealed), Fact(B10AbruptFact.ControlSealed, controlSealed),
-             Fact(B10AbruptFact.KillAdmitted, killAdmitted)]);
-        byte[] payload = ProbePayload();
-        for (int i = 0; i < B10AbruptOptions.ProbeBurstSize; i++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            _ = await InvokeProbe("cross_restart", payload, null, i, cancellationToken).ConfigureAwait(false);
-        }
+        if (!controlComplete || journal is null) throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"));
+        ProbeAttempt last = await OriginalsAsync("cross_restart", cancellationToken).ConfigureAwait(false);
+        await journal.AppendBoundaryAsync("kill_intent", last.AttemptId, ReleaseDelay, cancellationToken).ConfigureAwait(false);
+        timeline.Hold(B10AbruptStage.KillIntentWritten);
     }
-
-    internal async Task<ProbeAttempt> InvokeProbe(string arm, byte[] payload, string? predecessorAttemptId,
-        long sequence, CancellationToken cancellationToken = default)
+    internal async Task<ProbeAttempt> InvokeProbe(string arm, byte[] payload, string? predecessorAttemptId, long sequence, CancellationToken cancellationToken = default)
     {
         CheckGuards();
-        if (arm is not ("same_instance" or "cross_restart") || payload.Length > options.MaxPayloadBytes)
-            throw Attach(new InvalidDataException("b10_abrupt_guard_failed"),
-                [Fact(B10AbruptFact.ArmKnown, arm is "same_instance" or "cross_restart"), Fact(B10AbruptFact.PayloadLength, payload.Length),
-                 Fact(B10AbruptFact.MaximumPayloadBytes, options.MaxPayloadBytes)]);
-        int ordinal;
+        if (journal is null || arm is not ("same_instance" or "cross_restart") || sequence is < 0 or > 4 || payload.Length > options.MaxPayloadBytes) throw Attach(new InvalidDataException("b10_abrupt_guard_failed"));
         lock (gate)
         {
-            ProbeAttempt[] previous = probes.Where(entry => entry.Key.EndsWith("/" + arm, StringComparison.Ordinal)).ToArray();
-            ProbeAttempt? predecessor = previous.SingleOrDefault(entry => entry.AttemptId == predecessorAttemptId && entry.PredecessorAttemptId is null);
-            if (predecessorAttemptId is null ? sequence < 0 || sequence >= B10AbruptOptions.ProbeBurstSize ||
-                previous.Count(entry => entry.PredecessorAttemptId is null) != sequence :
-                arm != "same_instance" || predecessor is null || !predecessor.Accepted || predecessor.Sequence != sequence ||
-                previous.Any(entry => entry.PredecessorAttemptId is not null))
-                throw Attach(new InvalidDataException("b10_abrupt_guard_failed"),
-                    [Fact(B10AbruptFact.PreviousCount, previous.Length), Fact(B10AbruptFact.IsOriginal, predecessorAttemptId is null),
-                     Fact(B10AbruptFact.PredecessorMatches, predecessor is not null),
-                     Fact(B10AbruptFact.PreviousAccepted, previous.Length == 1 && previous[0].Accepted)]);
-            ordinal = probes.Count;
+            var previous = probes.Where(attempt => attempt.Key.EndsWith("/" + arm, StringComparison.Ordinal)).ToArray();
+            var predecessor = previous.SingleOrDefault(attempt => attempt.AttemptId == predecessorAttemptId && attempt.PredecessorAttemptId is null);
+            bool valid = predecessorAttemptId is null
+                ? previous.Count(attempt => attempt.PredecessorAttemptId is null) == sequence
+                : arm == "same_instance" && predecessor is not null && predecessor.Accepted && predecessor.Sequence == sequence && predecessor.Payload.AsSpan().SequenceEqual(payload) && !previous.Any(attempt => attempt.PredecessorAttemptId == predecessorAttemptId);
+            if (!valid) throw Attach(new InvalidDataException("b10_abrupt_guard_failed"));
         }
         string key = $"B10/{identity.RunId}/{identity.ConfigurationId}/1/{arm}";
-        string attemptId = identity.InstanceId + "-" + arm + "-" + ordinal.ToString(CultureInfo.InvariantCulture);
-        var attempt = new ProbeAttempt(attemptId, key, payload, predecessorAttemptId, ordinal) { Sequence = sequence };
-        var prepared = JsonSerializer.SerializeToElement(new
-        {
-            attempt_id = attemptId, invocation_ordinal = ordinal, cohort = arm, probe_id = key, key, sequence,
-            payload_length = payload.Length, payload_sha256 = Hash(payload), predecessor_attempt_id = predecessorAttemptId
-        });
-        long preparedSequence = await sendDurable("prepared", prepared, cancellationToken).ConfigureAwait(false);
-        bool recordStage = sequence == 0 || predecessorAttemptId is not null;
-        if (recordStage) timeline.Mark(B10AbruptStage.ProbePrepared);
+        string attemptId = identity.InstanceId + "-" + arm + "-" + probes.Count.ToString(CultureInfo.InvariantCulture);
+        var attempt = new ProbeAttempt(attemptId, key, payload, predecessorAttemptId, probes.Count) { Sequence = sequence };
+        var prepared = await journal.AppendAsync("prepared", B10AbruptWire.Element(new { attempt_id = attemptId, arm, role = predecessorAttemptId is null ? "original" : "resend", ordinal = sequence, probe_id = key, key, sequence, payload_length = payload.Length, payload_sha256 = Hash(payload), predecessor_attempt_id = predecessorAttemptId }), cancellationToken).ConfigureAwait(false);
+        timeline.Hold(B10AbruptStage.ProbePrepared);
         if (predecessorAttemptId is null && sequence == 0)
-            await WriteDurableAsync(Path.Combine(options.OutputRoot, "abrupt-child", arm + "-payload.bin"), payload, cancellationToken).ConfigureAwait(false);
+        {
+            var report = statistics.SelectPreAcceptance(clock.GetUtcNow()) ?? throw Attach(new InvalidDataException("b10_abrupt_sample_missing"));
+            await BindReportAsync(arm, attemptId, report, false, cancellationToken).ConfigureAwait(false);
+        }
         lock (gate) probes.Add(attempt);
         if (arm == "cross_restart") killAdmitted = true;
         try
         {
             attempt.InvokedTimestamp = clock.GetTimestamp();
             producer!.Produce(options.Topic, Message(key, payload, attemptId, sequence), report => RecordTerminal(attempt, report));
-            if (recordStage) timeline.Hold(B10AbruptStage.ProbeProduced);
         }
         catch (ProduceException<byte[], byte[]> exception)
         {
-            await sendDurable("synchronous_rejection", JsonSerializer.SerializeToElement(new
+            JsonElement rejection = B10AbruptWire.Element(new { attempt_id = attemptId, prepared_sequence = prepared.Sequence, error_code = (int)exception.Error.Code, error_reason = exception.Error.Reason });
+            await journal.AppendAsync("synchronous_rejection", rejection, cancellationToken).ConfigureAwait(false);
+            lock (gate)
             {
-                attempt_id = attemptId, prepared_sequence = preparedSequence,
-                error_code = (int)exception.Error.Code, error_reason = exception.Error.Reason
-            }), cancellationToken).ConfigureAwait(false);
-            throw Attach(new InvalidDataException("b10_abrupt_guard_failed", exception),
-                [Fact(B10AbruptFact.ErrorCode, (int)exception.Error.Code), Fact(B10AbruptFact.Arm, ArmCode(arm))]);
-        }
-        DateTimeOffset acceptance = clock.GetUtcNow();
-        if (predecessorAttemptId is null && sequence == 0)
-        {
-            B10AbruptStatistics.NumberedReport? selected = statistics.SelectPreAcceptance(acceptance);
-            timeline.Hold(B10AbruptStage.ProbeReportSelected, Fact(B10AbruptFact.Arm, ArmCode(arm)),
-                Fact(B10AbruptFact.ReportPresent, selected is not null));
-            if (selected is not null)
-            {
-                byte[] raw = Encoding.UTF8.GetBytes(selected.Report.RawJson);
-                await WriteDurableAsync(Path.Combine(options.OutputRoot, "abrupt-child", arm + "-pre-acceptance-report.json"), raw, cancellationToken).ConfigureAwait(false);
-                await sendDurable("pre_acceptance_report", JsonSerializer.SerializeToElement(new
-                {
-                    arm, attempt_id = attemptId, report_length = raw.Length, report_sha256 = Hash(raw),
-                    report_identity = selected.Identity(), report_sequence = selected.Sequence,
-                    report_capture_utc = selected.Report.ReceivedAt.ToString("O", CultureInfo.InvariantCulture)
-                }), cancellationToken).ConfigureAwait(false);
+                if (attempt.Terminal is not null) Fault(1);
+                else attempt.Terminal = rejection;
             }
+            return attempt;
         }
-        await sendDurable("accepted", JsonSerializer.SerializeToElement(new
-        {
-            attempt_id = attemptId, prepared_sequence = preparedSequence
-        }), cancellationToken).ConfigureAwait(false);
-        if (recordStage) timeline.Mark(B10AbruptStage.ProbeAccepted, Fact(B10AbruptFact.Arm, ArmCode(arm)),
-            Fact(B10AbruptFact.IsOriginal, predecessorAttemptId is null),
-            Fact(B10AbruptFact.ProduceToAcceptedMilliseconds, clock.GetElapsedTime(attempt.InvokedTimestamp)),
-            Fact(B10AbruptFact.ProduceTicks, attempt.InvokedTimestamp));
-        attempt.Accepted = true;
-        return attempt;
+        await journal.AppendAsync("accepted", B10AbruptWire.Element(new { attempt_id = attemptId, prepared_sequence = prepared.Sequence }), cancellationToken).ConfigureAwait(false);
+        attempt.Accepted = true; timeline.Hold(B10AbruptStage.ProbeAccepted); return attempt;
     }
-
+    private async Task BindReportAsync(string arm, string? attemptId, B10AbruptStatistics.NumberedReport selected, bool post, CancellationToken cancellationToken)
+    {
+        string name = post ? "control-post-drain-report.json" : arm + "-pre-acceptance-report.json";
+        byte[] raw = Encoding.UTF8.GetBytes(selected.Report.RawJson);
+        await WriteDurableAsync(Path.Combine(options.OutputRoot, "abrupt", name), raw, cancellationToken).ConfigureAwait(false);
+        await journal!.AppendAsync(post ? "post_drain_report" : "pre_acceptance_report", B10AbruptWire.Element(new { arm, attempt_id = attemptId, name, length = raw.Length, sha256 = Hash(raw), report_identity = selected.Identity(), report_sequence = selected.Sequence, report_capture_utc = selected.Report.ReceivedAt.ToString("O", CultureInfo.InvariantCulture) }), cancellationToken).ConfigureAwait(false);
+    }
     internal void RecordTerminal(ProbeAttempt attempt, DeliveryReport<byte[], byte[]> report)
     {
         try
         {
-            // Delivery-callback path: record the timestamp only. No timeline, file or stream I/O here (ADR-021 rule 4).
             attempt.CallbackTimestamp = clock.GetTimestamp();
             int? status = Enum.IsDefined(report.Status) ? (int)report.Status : null;
-            var terminal = JsonSerializer.SerializeToElement(new
-            {
-                attempt_id = attempt.AttemptId, completion_source = "callback", delivered = !report.Error.IsError,
-                error_code = (int)report.Error.Code, persistence_status = status
-            });
-            lock (gate)
-            {
-                if (attempt.Terminal is not null) { Fault(5); return; }
-                attempt.Terminal = terminal;
-                if (!IsPermittedTerminal((int)report.Error.Code, status)) Fault(3, (int)report.Error.Code);
-            }
-            if (!captureTerminal(terminal)) Fault(6);
+            JsonElement terminal = B10AbruptWire.Element(new { attempt_id = attempt.AttemptId, completion_source = "callback", delivered = !report.Error.IsError, error_code = (int)report.Error.Code, persistence_status = status });
+            lock (gate) { if (attempt.Terminal is not null) { Fault(1); return; } attempt.Terminal = terminal; }
+            if (journal is not null && !journal.TryCaptureTerminal(terminal)) Fault(2);
+            if (!IsPermittedTerminal((int)report.Error.Code, status)) Fault(3, (int)report.Error.Code);
         }
-        catch { Fault(4); }
+        catch (Exception) { Fault(4); }
     }
-
-    // Called from the child channel's writer loop after it writes a terminal frame, and after each probe cohort drain.
-    internal void MarkTerminals(string? writtenAttemptId = null)
+    internal static bool IsPermittedTerminal(int errorCode, int? persistenceStatus) => errorCode switch
     {
-        try
-        {
-            List<(ProbeAttempt Attempt, JsonElement Terminal)> ready = [];
-            lock (gate)
-                foreach (ProbeAttempt attempt in probes)
-                    if ((writtenAttemptId is null || attempt.AttemptId == writtenAttemptId) && attempt.Terminal is { } terminal)
-                    {
-                        if (writtenAttemptId is not null && attempt.TerminalWrittenTimestamp == -1)
-                            attempt.TerminalWrittenTimestamp = clock.GetTimestamp();
-                        if (attempt.TryClaimTerminalMark()) ready.Add((attempt, terminal));
-                    }
-            foreach ((ProbeAttempt attempt, JsonElement terminal) in ready)
-                if (attempt.Sequence == 0 || attempt.PredecessorAttemptId is not null) timeline.Mark(B10AbruptStage.ProbeTerminal,
-                    Fact(B10AbruptFact.Arm, ArmCode(attempt.Key[(attempt.Key.LastIndexOf('/') + 1)..])),
-                    Fact(B10AbruptFact.IsOriginal, attempt.PredecessorAttemptId is null),
-                    Fact(B10AbruptFact.ErrorCode, NumberOrMinusOne(terminal, "error_code")),
-                    Fact(B10AbruptFact.PersistenceStatus, NumberOrMinusOne(terminal, "persistence_status")),
-                    Fact(B10AbruptFact.Delivered, terminal.GetProperty("delivered").ValueKind == JsonValueKind.True),
-                    Fact(B10AbruptFact.ProduceToTerminalMilliseconds, clock.GetElapsedTime(attempt.InvokedTimestamp, attempt.CallbackTimestamp)),
-                    Fact(B10AbruptFact.ProduceTicks, attempt.InvokedTimestamp),
-                    Fact(B10AbruptFact.CallbackTicks, attempt.CallbackTimestamp));
-        }
-        catch (Exception) { }
-    }
-
-    internal static bool IsPermittedTerminal(int errorCode, int? persistenceStatus) =>
-        errorCode switch
-        {
-            (int)ErrorCode.NoError => persistenceStatus is (int)PersistenceStatus.NotPersisted or (int)PersistenceStatus.Persisted,
-            // This is the callback error/status combination admitted by ApplicationRetryPolicy.IsPermittedTimeout.
-            (int)ErrorCode.Local_MsgTimedOut => persistenceStatus is (int)PersistenceStatus.NotPersisted or (int)PersistenceStatus.PossiblyPersisted,
-            _ => false
-        };
-
+        (int)ErrorCode.NoError => persistenceStatus is (int)PersistenceStatus.NotPersisted or (int)PersistenceStatus.Persisted,
+        (int)ErrorCode.Local_MsgTimedOut => persistenceStatus is (int)PersistenceStatus.NotPersisted or (int)PersistenceStatus.PossiblyPersisted,
+        _ => false
+    };
     internal async Task<SuccessorArtifacts> RunSuccessorAsync(WorkloadProfile workload, RunIdentity runIdentity,
         RunExecutionOptions executionOptions, JsonElement selectedEntries, DateTimeOffset releaseUtc,
         CancellationToken cancellationToken = default)
     {
-        // Host validates the receipt and pod/source/image binding before invoking this method.
-        if (selectedEntries.ValueKind != JsonValueKind.Array || selectedEntries.GetArrayLength() != 1)
-            throw Attach(new InvalidDataException("b10_abrupt_successor_binding_invalid"),
-                [Fact(B10AbruptFact.ArrayLength, selectedEntries.ValueKind == JsonValueKind.Array ? selectedEntries.GetArrayLength() : -1)]);
-        var selected = selectedEntries[0];
-        string key = selected.GetProperty("key").GetString()!;
-        string originalId = selected.GetProperty("attempt_id").GetString()!;
-        byte[] payload = Convert.FromBase64String(selected.GetProperty("payload_base64").GetString()!);
-        long sequence = selected.GetProperty("sequence").GetInt64();
-        List<B10AbruptFactValue> facts = [];
-        if (!Check(facts, B10AbruptFact.KeyMatches, key == $"B10/{runIdentity.RunId}/{runIdentity.ConfigurationId}/1/cross_restart") ||
-            !Check(facts, B10AbruptFact.SequenceInBurst, sequence is >= 0 and < B10AbruptOptions.ProbeBurstSize) ||
-            !Check(facts, B10AbruptFact.LengthMatches, selected.GetProperty("payload_length").GetInt32() == payload.Length) ||
-            !Check(facts, B10AbruptFact.HashMatches, selected.GetProperty("payload_sha256").GetString() == Hash(payload)) ||
-            !Check(facts, B10AbruptFact.PayloadWithinLimit, payload.Length <= executionOptions.MaxPayloadBytes) ||
-            !Check(facts, B10AbruptFact.InstanceDistinct, !originalId.StartsWith(runIdentity.InstanceId + "-", StringComparison.Ordinal)))
-            throw Attach(new InvalidDataException("b10_abrupt_successor_binding_invalid"), [.. facts]);
+        if (selectedEntries.ValueKind != JsonValueKind.Array || selectedEntries.GetArrayLength() is < 1 or > 5) throw Attach(new InvalidDataException("b10_abrupt_successor_binding_invalid"));
+        byte[] payload = WorkloadGenerator.GeneratePayload(WorkloadGenerator.Generate(workload, executionOptions.MaxAttempts, executionOptions.MaxPayloadBytes, cancellationToken).First(), workload.Seed);
+        foreach (var selected in selectedEntries.EnumerateArray())
+            if (selected.GetProperty("key").GetString() != $"B10/{runIdentity.RunId}/C1/1/cross_restart" || selected.GetProperty("sequence").GetInt64() is < 0 or > 4 || selected.GetProperty("payload_length").GetInt64() != payload.Length || selected.GetProperty("payload_sha256").GetString() != Hash(payload) || selected.GetProperty("attempt_id").GetString()!.StartsWith(runIdentity.InstanceId + "-",StringComparison.Ordinal)) throw Attach(new InvalidDataException("b10_abrupt_successor_binding_invalid"));
         Initialize(workload, runIdentity, executionOptions);
         DateTimeOffset ready = clock.GetUtcNow();
         timeline.Mark(B10AbruptStage.SuccessorReady);
@@ -482,21 +253,24 @@ internal sealed class B10AbruptProducer
         {
             await WaitForReleaseAsync(releaseUtc, true, cancellationToken).ConfigureAwait(false);
             timeline.Mark(B10AbruptStage.ReleaseReached);
-            string attemptId = identity.InstanceId + "-replay-0";
-            var attempt = new ProbeAttempt(attemptId, key, payload, originalId, 0) { Sequence = sequence };
-            probes.Add(attempt);
-            DateTimeOffset invoked = clock.GetUtcNow();
-            long invocationTimestamp = clock.GetTimestamp();
-            attempt.InvokedTimestamp = invocationTimestamp;
-            producer!.Produce(options.Topic, Message(key, payload, attemptId, sequence), report => RecordTerminal(attempt, report));
+            List<object> invocations = [];
+            foreach (var selected in selectedEntries.EnumerateArray())
+            {
+                string key = selected.GetProperty("key").GetString()!, originalId = selected.GetProperty("attempt_id").GetString()!;
+                long sequence = selected.GetProperty("sequence").GetInt64();
+                string attemptId = identity.InstanceId + "-replay-" + probes.Count.ToString(CultureInfo.InvariantCulture);
+                var attempt = new ProbeAttempt(attemptId, key, payload, originalId, probes.Count) { Sequence = sequence };
+                probes.Add(attempt); DateTimeOffset invoked = clock.GetUtcNow(); long invocationTimestamp = clock.GetTimestamp();
+                attempt.InvokedTimestamp = invocationTimestamp;
+                producer!.Produce(options.Topic, Message(key, payload, attemptId, sequence), report => RecordTerminal(attempt, report));
+                invocations.Add(new { attempt_id = attemptId, predecessor_attempt_id = originalId, key, sequence, payload_sha256 = Hash(payload), invocation_utc = invoked.ToString("O",CultureInfo.InvariantCulture), monotonic_ticks = invocationTimestamp });
+            }
             await DrainAsync(options.ProducerDrainTimeout, cancellationToken).ConfigureAwait(false);
-            MarkTerminals();
-            timeline.Mark(B10AbruptStage.CohortDrained);
+            timeline.Mark(B10AbruptStage.ControlDrained);
             DateTimeOffset drained = clock.GetUtcNow();
             await WaitForPostDrainAsync(2, drained, cancellationToken).ConfigureAwait(false);
             CheckGuards();
             _ = await SealProbeCohortAsync("cross_restart", "successor", drained, cancellationToken).ConfigureAwait(false);
-            timeline.Mark(B10AbruptStage.CohortSealed, Fact(B10AbruptFact.Arm, 2), Fact(B10AbruptFact.EntryCount, 1));
             string directory = Path.Combine(options.OutputRoot, "successor");
             // Statistics completion needs the live client: it waits for a report after the completion boundary, which a disposed client never emits.
             // Disposal comes next so error callbacks it raises reach the evidence session before that session is completed.
@@ -532,9 +306,7 @@ internal sealed class B10AbruptProducer
             }), cancellationToken).ConfigureAwait(false);
             }
             return new SuccessorArtifacts(SuccessorNames.ToDictionary(name => name, name => Path.Combine(directory, name), StringComparer.Ordinal),
-                JsonSerializer.SerializeToElement(new[] { new { attempt_id = attemptId, predecessor_attempt_id = originalId,
-                    key, sequence, payload_sha256 = Hash(payload), invocation_utc = invoked.ToString("O", CultureInfo.InvariantCulture),
-                    monotonic_ticks = invocationTimestamp } }), ready, releaseUtc);
+                JsonSerializer.SerializeToElement(invocations), ready, releaseUtc);
         }
         finally { await CleanupAsync().ConfigureAwait(false); }
     }
@@ -543,10 +315,10 @@ internal sealed class B10AbruptProducer
     {
         ProbeAttempt[] entries;
         lock (gate) entries = probes.Where(probe => probe.Key.EndsWith("/" + arm, StringComparison.Ordinal)).ToArray();
-        if (entries.Length != (directoryName == "control" ? B10AbruptOptions.ProbeBurstSize + 1 : 1) || entries.Any(entry => entry.Terminal is null))
+        if (entries.Length == 0 || entries.Any(entry => entry.Terminal is null))
             throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"),
                 [Fact(B10AbruptFact.Arm, ArmCode(arm)), Fact(B10AbruptFact.EntryCount, entries.Length),
-                 Fact(B10AbruptFact.ExpectedCount, directoryName == "control" ? B10AbruptOptions.ProbeBurstSize + 1 : 1),
+                 Fact(B10AbruptFact.ExpectedCount, entries.Length),
                  Fact(B10AbruptFact.NoTerminalCount, entries.Count(entry => entry.Terminal is null))]);
         string directory = Path.Combine(options.OutputRoot, directoryName);
         Directory.CreateDirectory(directory);
@@ -570,7 +342,7 @@ internal sealed class B10AbruptProducer
             cohort = arm, count = entries.Length, inventory = Describe(Path.Combine(directory, "manifest.json")),
             ledger = Describe(Path.Combine(directory, "ledger.jsonl")), drain_complete = true,
             guard_complete = true, post_drain_statistics = Describe(Path.Combine(directory, "post-drain-report.json")), fatal_capture_status = "journal",
-            native_error_count = nativeErrorCount()
+            native_error_count = NativeErrorCount
         });
     }
 
@@ -593,8 +365,7 @@ internal sealed class B10AbruptProducer
             [Fact(B10AbruptFact.ElapsedMilliseconds, clock.GetElapsedTime(waitBegin)),
              Fact(B10AbruptFact.BudgetMilliseconds, options.StatisticsCompletionTimeout ?? options.CleanupTimeout),
              .. statistics.PostDrainFacts(drained)]); }
-        timeline.Mark(B10AbruptStage.PostDrainReport, Fact(B10AbruptFact.Arm, arm),
-            Fact(B10AbruptFact.ElapsedMilliseconds, clock.GetElapsedTime(waitBegin)), Fact(B10AbruptFact.ReportCount, statistics.ReportCount));
+
     }
 
     private async Task DrainAsync(TimeSpan budget, CancellationToken cancellationToken)
@@ -720,7 +491,6 @@ internal sealed class B10AbruptProducer
         internal bool TryClaimTerminalMark() => Interlocked.Exchange(ref terminalMarked, 1) == 0;
     }
 
-    internal sealed record ReleaseInfo(DateTimeOffset Release, string? SelectedAttemptId);
 
     internal sealed record SuccessorArtifacts(IReadOnlyDictionary<string, string> Paths, JsonElement Invocations,
         DateTimeOffset ReadyUtc, DateTimeOffset ReleaseUtc);

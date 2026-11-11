@@ -1,4 +1,3 @@
-using System.Buffers.Binary;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
@@ -23,409 +22,127 @@ internal static class B10AbruptWire
     internal sealed record Descriptor(string Name, long Length, string Sha256);
     internal sealed record Frame(Identity Identity, long Sequence, string ObservedUtc, long MonotonicTicks,
         long ClockFrequency, string Kind, JsonElement Data);
-    internal sealed record Message(string Kind, long Sequence, JsonElement Data);
-    internal sealed record Checkpoint(Identity Identity, JsonElement Data);
-    internal sealed record Selection(Identity Identity, JsonElement Data);
-    internal sealed record CohortSeal(Identity Identity, JsonElement Data);
-    internal sealed record AbruptManifest(Identity Identity, JsonElement Data);
-    internal sealed record TerminationReceipt(Identity Identity, JsonElement Data);
-    internal sealed record SuccessorReceipt(Identity Identity, JsonElement Data);
-
     private static readonly Dictionary<string, string[]> DataMembers = new(StringComparer.Ordinal)
     {
         ["registration"] = ["registered_utc"],
         ["cohort_inventory"] = ["instance_id", "cohort", "inventory_count", "inventory", "bookkeeping_complete"],
         ["capabilities"] = ["request_capture", "fatal_capture_status"],
-        ["hello"] = ["challenge", "pid", "start_time_ticks", "boot_id"],
-        ["ack"] = ["acknowledged_sequence"],
-        ["prepared"] = ["attempt_id", "invocation_ordinal", "cohort", "probe_id", "key", "sequence", "payload_length", "payload_sha256", "predecessor_attempt_id"],
+        ["child_started"] = ["pid", "start_time_ticks", "boot_id"],
+        ["prepared"] = ["attempt_id", "arm", "role", "ordinal", "probe_id", "key", "sequence", "payload_length", "payload_sha256", "predecessor_attempt_id"],
         ["accepted"] = ["attempt_id", "prepared_sequence"],
         ["synchronous_rejection"] = ["attempt_id", "prepared_sequence", "error_code", "error_reason"],
         ["terminal"] = ["attempt_id", "completion_source", "delivered", "error_code", "persistence_status"],
         ["native_error"] = ["capture_sequence", "error_code", "error_name", "is_error", "is_fatal", "callback_monotonic_ticks"],
-        ["capture_gap"] = ["reason", "first_missing_sequence", "capture_status"],
         ["gap"] = ["reason", "first_missing_sequence", "capture_status"],
-        ["pre_acceptance_report"] = ["arm", "attempt_id", "report_length", "report_sha256", "report_identity", "report_sequence", "report_capture_utc"],
-        ["checkpoint"] = ["arm", "accepted_attempt_ids", "selected_attempt_ids", "last_complete_sequence", "pre_acceptance_report", "process", "checkpoint_utc", "checkpoint_monotonic_ticks", "release_utc"],
-        ["signal"] = ["arm", "requested_signal", "process", "intent_sequence", "request_utc", "request_monotonic_ticks", "return_value", "errno"],
-        ["exit"] = ["process", "wait_for_exit_observed", "observed_utc", "monotonic_ticks", "exit_code_local_observation", "runtime_version"],
-        ["selection"] = ["checkpoint", "checkpoint_descriptor", "candidate_attempt_ids", "terminal_exclusions", "entries"],
-        ["cohort_seal"] = ["cohort", "inventory", "count", "ledger", "drain_complete", "post_drain_statistics", "guard_complete", "fatal_capture_status", "native_error_count"],
-        ["abrupt_manifest"] = ["journal", "journal_entry_count", "timeout_seal", "control_seal", "selection", "gaps", "registration", "cohort_files"],
-        ["termination"] = ["manifest", "process", "signals", "exit", "cgroup_before", "cgroup_after", "eof_complete", "mechanical_status", "fatal_capture_status", "native_tail", "native_error_count", "native_fatal_count"],
-        ["successor_receipt"] = ["first_termination", "selection", "registration", "artifacts", "ready_utc", "release_utc", "invocations", "cleanup_completed", "cross_host_timing"],
+        ["pre_acceptance_report"] = ["arm", "attempt_id", "name", "length", "sha256", "report_identity", "report_sequence", "report_capture_utc"],
+        ["post_drain_report"] = ["arm", "attempt_id", "name", "length", "sha256", "report_identity", "report_sequence", "report_capture_utc"],
+        ["cut"] = ["arm", "cut_attempt_id", "release_utc", "unconfirmed_attempt_ids"],
+        ["kill_intent"] = ["arm", "cut_attempt_id", "release_utc"],
+        ["control_drained"] = ["flush_returned", "out_queue_length"],
+        ["signal_failed"] = ["return_value", "errno"],
+        ["no_kill"] = ["reason", "cross_restart_admitted"],
+        ["abrupt_manifest"] = ["journal", "journal_records", "report_files", "gaps"],
+        ["termination"] = ["termination", "outcome", "detail", "signal_observation", "successor_permitted", "child", "exit_observed", "exit_code_local_observation", "runtime_version", "wait_bound_milliseconds", "cgroup_before", "cgroup_after", "control_unconfirmed_attempt_ids", "kill_unconfirmed_attempt_ids", "capture_gaps", "native_error_count", "native_fatal_count", "native_tail", "manifest"],
+        ["successor_receipt"] = ["first_termination", "journal", "kill_unconfirmed_attempt_ids", "registration", "artifacts", "ready_utc", "release_utc", "invocations", "cleanup_completed", "cross_host_timing"],
     };
-
+    internal static bool IsProducingKind(string kind) => kind is "child_started" or "prepared" or "pre_acceptance_report" or "accepted" or "synchronous_rejection" or "cut" or "control_drained" or "post_drain_report" or "kill_intent" or "signal_failed" or "no_kill";
     internal static JsonElement Element(object value) => JsonSerializer.SerializeToElement(value, JsonOptions);
     internal static byte[] SerializeEnvelope(string kind, Identity identity, object data)
     {
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(new { schema_version = 2, dialect = "b10_abrupt", purpose = "diagnostic_trial",
-            synthetic = true, scientific_admissible = false, kind, identity, data }, JsonOptions);
+        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(new { schema_version = 3, dialect = "b10_abrupt", purpose = "diagnostic_trial", synthetic = true, scientific_admissible = false, kind, identity, data }, JsonOptions);
         if (bytes.Length > MaximumBodyBytes) throw Gap("frame_oversize");
         return bytes;
     }
-
     internal static JsonElement ReadEnvelope(ReadOnlyMemory<byte> bytes, string kind, params string[] extraMembers)
     {
-        var root = Parse(bytes);
-        ExactMembers(root, ["schema_version", "dialect", "purpose", "synthetic", "scientific_admissible", "kind", "identity", "data", .. extraMembers]);
-        if (Nonnegative(root.GetProperty("schema_version")) != 2 || RequiredString(root.GetProperty("dialect")) != "b10_abrupt" ||
-            RequiredString(root.GetProperty("purpose")) != "diagnostic_trial" || root.GetProperty("synthetic").ValueKind != JsonValueKind.True ||
-            root.GetProperty("scientific_admissible").ValueKind != JsonValueKind.False || RequiredString(root.GetProperty("kind")) != kind)
-            throw Gap("malformed_frame");
-        ValidateIdentity(root.GetProperty("identity"));
-        ValidateData(kind, root.GetProperty("data"));
-        return root;
+        JsonElement root = Parse(bytes);
+        ExactMembers(root, ["schema_version", "dialect", "purpose", "synthetic", "scientific_admissible", "kind", "identity", "data", ..extraMembers]);
+        ValidateEnvelope(root, kind); return root;
     }
-
-    internal static byte[] WriteFrame(Frame frame)
+    private static void ValidateEnvelope(JsonElement root, string kind)
     {
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(new { schema_version = 2, dialect = "b10_abrupt", purpose = "diagnostic_trial",
-            synthetic = true, scientific_admissible = false, frame.Kind, frame.Identity, frame.Sequence, frame.ObservedUtc,
-            frame.MonotonicTicks, frame.ClockFrequency, frame.Data }, JsonOptions);
-        return bytes;
+        if (Nonnegative(root.GetProperty("schema_version")) != 3 || RequiredString(root.GetProperty("dialect")) != "b10_abrupt" || RequiredString(root.GetProperty("purpose")) != "diagnostic_trial" || root.GetProperty("synthetic").ValueKind != JsonValueKind.True || root.GetProperty("scientific_admissible").ValueKind != JsonValueKind.False || RequiredString(root.GetProperty("kind")) != kind) throw Gap("malformed_frame");
+        ValidateIdentity(root.GetProperty("identity")); ValidateData(kind, root.GetProperty("data"));
     }
-
+    internal static byte[] WriteFrame(Frame frame) => JsonSerializer.SerializeToUtf8Bytes(new { schema_version = 3, dialect = "b10_abrupt", purpose = "diagnostic_trial", synthetic = true, scientific_admissible = false, frame.Kind, frame.Identity, frame.Sequence, frame.ObservedUtc, frame.MonotonicTicks, frame.ClockFrequency, frame.Data }, JsonOptions);
     internal static Frame ReadFrame(ReadOnlyMemory<byte> bytes)
     {
-        var parsed = Parse(bytes, 16777216);
-        if (parsed.ValueKind != JsonValueKind.Object || !parsed.TryGetProperty("kind", out var tag)) throw Gap("malformed_frame");
-        var kind = RequiredString(tag);
-        if (kind is not ("prepared" or "accepted" or "synchronous_rejection" or "terminal" or "native_error" or "checkpoint" or "signal" or "exit" or "gap")) throw Gap("malformed_frame");
-        var root = ReadEnvelopeCore(parsed, kind);
-        var sequence = Nonnegative(root.GetProperty("sequence"));
-        var frequency = Nonnegative(root.GetProperty("clock_frequency"));
-        if (sequence == 0 || frequency == 0) throw Gap("malformed_frame");
-        var utc = RequiredString(root.GetProperty("observed_utc"));
-        if (!IsUtc(utc)) throw Gap("malformed_frame");
-        return new(root.GetProperty("identity").Deserialize<Identity>(JsonOptions)!, sequence, utc,
-            Nonnegative(root.GetProperty("monotonic_ticks")), frequency, kind, root.GetProperty("data").Clone());
-    }
-
-    private static JsonElement ReadEnvelopeCore(JsonElement root, string kind)
-    {
+        JsonElement root = Parse(bytes);
         ExactMembers(root, "schema_version", "dialect", "purpose", "synthetic", "scientific_admissible", "kind", "identity", "sequence", "observed_utc", "monotonic_ticks", "clock_frequency", "data");
-        if (Nonnegative(root.GetProperty("schema_version")) != 2 || RequiredString(root.GetProperty("dialect")) != "b10_abrupt" ||
-            RequiredString(root.GetProperty("purpose")) != "diagnostic_trial" || root.GetProperty("synthetic").ValueKind != JsonValueKind.True ||
-            root.GetProperty("scientific_admissible").ValueKind != JsonValueKind.False) throw Gap("malformed_frame");
-        ValidateIdentity(root.GetProperty("identity"));
-        ValidateData(kind, root.GetProperty("data"));
-        return root;
+        string kind = RequiredString(root.GetProperty("kind"));
+        if (!IsProducingKind(kind) && kind is not ("terminal" or "native_error" or "gap")) throw Gap("malformed_frame");
+        ValidateEnvelope(root, kind);
+        long sequence = Nonnegative(root.GetProperty("sequence")), frequency = Nonnegative(root.GetProperty("clock_frequency"));
+        string utc = RequiredString(root.GetProperty("observed_utc"));
+        if (sequence == 0 || frequency == 0 || !IsUtc(utc)) throw Gap("malformed_frame");
+        return new(root.GetProperty("identity").Deserialize<Identity>(JsonOptions)!, sequence, utc, Nonnegative(root.GetProperty("monotonic_ticks")), frequency, kind, root.GetProperty("data").Clone());
     }
-
     internal static void ValidateData(string kind, JsonElement data)
     {
-        if (!DataMembers.TryGetValue(kind, out var members)) throw Gap("malformed_frame");
+        if (!DataMembers.TryGetValue(kind, out string[]? members)) throw Gap("malformed_frame");
         ExactMembers(data, members);
-        foreach (var property in data.EnumerateObject())
+        switch (kind)
         {
-            if (property.Name is "sequence" or "invocation_ordinal" or "payload_length" or "prepared_sequence" or "acknowledged_sequence" or "start_time_ticks" or "last_complete_sequence" or "checkpoint_monotonic_ticks" or "request_monotonic_ticks" or "monotonic_ticks")
-                _ = Nonnegative(property.Value);
-        }
-        if (kind is "prepared" or "accepted" or "synchronous_rejection" or "terminal") _ = RequiredString(data.GetProperty("attempt_id"));
-        if (kind == "prepared")
-        {
-            if (RequiredString(data.GetProperty("cohort")) is not ("timeout" or "same_instance" or "cross_restart")) throw Gap("malformed_frame");
-            _ = RequiredString(data.GetProperty("probe_id"));
-            _ = RequiredString(data.GetProperty("key"));
-            var hash = RequiredString(data.GetProperty("payload_sha256"));
-            if (hash.Length != 64 || hash.Any(c => c is not (>= '0' and <= '9' or >= 'a' and <= 'f')) || Nonnegative(data.GetProperty("payload_length")) > 900000) throw Gap("malformed_frame");
-            if (data.GetProperty("predecessor_attempt_id").ValueKind != JsonValueKind.Null) _ = RequiredString(data.GetProperty("predecessor_attempt_id"));
-        }
-        if (kind == "terminal")
-        {
-            _ = RequiredString(data.GetProperty("completion_source"));
-            if (data.GetProperty("delivered").ValueKind is not (JsonValueKind.True or JsonValueKind.False)) throw Gap("malformed_frame");
-        }
-        if (kind is "checkpoint" or "signal" or "exit") ValidateProcess(data.GetProperty("process"));
-        if (kind == "checkpoint")
-        {
-            if (RequiredString(data.GetProperty("arm")) is not ("same_instance" or "cross_restart")) throw Gap("malformed_frame");
-            ValidateStringArray(data.GetProperty("accepted_attempt_ids"));
-            ValidateStringArray(data.GetProperty("selected_attempt_ids"));
-            ValidateReportDescriptor(data.GetProperty("pre_acceptance_report"));
-            if (!IsUtc(RequiredString(data.GetProperty("checkpoint_utc"))) || !IsUtc(RequiredString(data.GetProperty("release_utc")))) throw Gap("malformed_frame");
-        }
-        if (kind == "selection")
-        {
-            ValidateDescriptor(data.GetProperty("checkpoint_descriptor"));
-            ValidateStringArray(data.GetProperty("candidate_attempt_ids"));
-            if (data.GetProperty("terminal_exclusions").ValueKind != JsonValueKind.Array || data.GetProperty("entries").ValueKind != JsonValueKind.Array) throw Gap("malformed_frame");
-            foreach (var exclusion in data.GetProperty("terminal_exclusions").EnumerateArray())
-            {
-                ExactMembers(exclusion, "attempt_id", "terminal_sequence");
-                _ = RequiredString(exclusion.GetProperty("attempt_id"));
-                if (Nonnegative(exclusion.GetProperty("terminal_sequence")) == 0) throw Gap("malformed_frame");
-            }
-            foreach (var entry in data.GetProperty("entries").EnumerateArray())
-            {
-                ExactMembers(entry, "attempt_id", "key", "sequence", "payload_length", "payload_sha256", "payload_base64");
-                _ = RequiredString(entry.GetProperty("attempt_id"));
-                _ = RequiredString(entry.GetProperty("key"));
-                _ = Nonnegative(entry.GetProperty("sequence"));
-                _ = Nonnegative(entry.GetProperty("payload_length"));
-                ValidateHash(entry.GetProperty("payload_sha256"));
-                _ = RequiredString(entry.GetProperty("payload_base64"));
-            }
-        }
-        if (kind == "cohort_seal")
-        {
-            foreach (string name in new[] { "inventory", "ledger", "post_drain_statistics" }) ValidateDescriptor(data.GetProperty(name));
-            _ = Nonnegative(data.GetProperty("count"));
-            if (RequiredString(data.GetProperty("cohort")) is not ("timeout" or "same_instance" or "cross_restart")) throw Gap("malformed_frame");
-            Boolean(data.GetProperty("drain_complete")); Boolean(data.GetProperty("guard_complete"));
-            _ = Nonnegative(data.GetProperty("native_error_count"));
-        }
-        if (kind == "abrupt_manifest")
-        {
-            foreach (string name in new[] { "journal", "timeout_seal", "control_seal", "selection", "registration" }) ValidateDescriptor(data.GetProperty(name));
-            if (Nonnegative(data.GetProperty("journal_entry_count")) > MaximumEntries) throw Gap("malformed_frame");
-            ValidateStringArray(data.GetProperty("gaps"));
-            JsonElement cohortFiles = data.GetProperty("cohort_files");
-            if (cohortFiles.ValueKind != JsonValueKind.Array || cohortFiles.GetArrayLength() != B10AbruptPublisher.CohortMembers.Length) throw Gap("malformed_frame");
-            int cohortIndex = 0;
-            foreach (var descriptor in cohortFiles.EnumerateArray())
-            {
-                ValidateDescriptor(descriptor);
-                if (RequiredString(descriptor.GetProperty("name")) != B10AbruptPublisher.CohortMembers[cohortIndex++]) throw Gap("malformed_frame");
-            }
-        }
-        if (kind == "termination")
-        {
-            ValidateDescriptor(data.GetProperty("manifest"));
-            ValidateProcess(data.GetProperty("process"));
-            if (data.GetProperty("signals").ValueKind != JsonValueKind.Array) throw Gap("malformed_frame");
-            foreach (var signal in data.GetProperty("signals").EnumerateArray()) ValidateData("signal", signal);
-            ExactMembers(data.GetProperty("exit"), "wait_for_exit_observed", "exit_code_local_observation", "runtime_version");
-            foreach (string name in new[] { "cgroup_before", "cgroup_after" })
-            {
-                var observation = data.GetProperty(name);
-                ExactMembers(observation, "boot_id", "cgroup_path", "directory_identity", "oom_kill");
-                _ = RequiredString(observation.GetProperty("boot_id"));
-                _ = RequiredString(observation.GetProperty("cgroup_path"));
-                _ = RequiredString(observation.GetProperty("directory_identity"));
-                _ = Nonnegative(observation.GetProperty("oom_kill"));
-            }
-            Boolean(data.GetProperty("eof_complete"));
-            if (RequiredString(data.GetProperty("mechanical_status")) is not ("complete" or "incomplete")) throw Gap("malformed_frame");
-            _ = Nonnegative(data.GetProperty("native_error_count"));
-            _ = Nonnegative(data.GetProperty("native_fatal_count"));
-        }
-        if (kind == "native_error")
-        {
-            if (Nonnegative(data.GetProperty("capture_sequence")) == 0) throw Gap("malformed_frame");
-            JsonElement code = data.GetProperty("error_code");
-            if (code.ValueKind != JsonValueKind.Number || !code.TryGetInt32(out _)) throw Gap("malformed_frame");
-            if (RequiredString(data.GetProperty("error_name")).Length > 128) throw Gap("malformed_frame");
-            Boolean(data.GetProperty("is_error")); Boolean(data.GetProperty("is_fatal"));
-            _ = Nonnegative(data.GetProperty("callback_monotonic_ticks"));
-        }
-        if (kind == "successor_receipt")
-        {
-            foreach (string name in new[] { "first_termination", "selection", "registration" }) ValidateDescriptor(data.GetProperty(name));
-            if (data.GetProperty("artifacts").ValueKind != JsonValueKind.Array || data.GetProperty("invocations").ValueKind != JsonValueKind.Array) throw Gap("malformed_frame");
-            foreach (var artifact in data.GetProperty("artifacts").EnumerateArray()) ValidateDescriptor(artifact);
-            if (!IsUtc(RequiredString(data.GetProperty("ready_utc"))) || !IsUtc(RequiredString(data.GetProperty("release_utc"))) ||
-                RequiredString(data.GetProperty("cross_host_timing")) != "not_verified") throw Gap("malformed_frame");
-            Boolean(data.GetProperty("cleanup_completed"));
-            foreach (var invocation in data.GetProperty("invocations").EnumerateArray())
-            {
-                ExactMembers(invocation, "attempt_id", "predecessor_attempt_id", "key", "sequence", "payload_sha256", "invocation_utc", "monotonic_ticks");
-                _ = RequiredString(invocation.GetProperty("attempt_id")); _ = RequiredString(invocation.GetProperty("predecessor_attempt_id"));
-                _ = RequiredString(invocation.GetProperty("key")); _ = Nonnegative(invocation.GetProperty("sequence"));
-                _ = Nonnegative(invocation.GetProperty("monotonic_ticks")); ValidateHash(invocation.GetProperty("payload_sha256"));
-                if (!IsUtc(RequiredString(invocation.GetProperty("invocation_utc")))) throw Gap("malformed_frame");
-            }
-        }
-        if (kind == "cohort_inventory")
-        {
-            _ = RequiredString(data.GetProperty("instance_id"));
-            if (RequiredString(data.GetProperty("cohort")) is not ("same_instance" or "cross_restart") || data.GetProperty("inventory").ValueKind != JsonValueKind.Array ||
-                Nonnegative(data.GetProperty("inventory_count")) != data.GetProperty("inventory").GetArrayLength()) throw Gap("malformed_frame");
-            Boolean(data.GetProperty("bookkeeping_complete"));
-            foreach (var entry in data.GetProperty("inventory").EnumerateArray())
-            {
-                ExactMembers(entry, "attempt_id", "invocation_ordinal", "predecessor_attempt_id", "key", "sequence", "payload_length", "payload_sha256");
-                _ = RequiredString(entry.GetProperty("attempt_id")); _ = RequiredString(entry.GetProperty("key"));
-                _ = Nonnegative(entry.GetProperty("invocation_ordinal")); _ = Nonnegative(entry.GetProperty("sequence"));
-                _ = Nonnegative(entry.GetProperty("payload_length")); ValidateHash(entry.GetProperty("payload_sha256"));
-                if (entry.GetProperty("predecessor_attempt_id").ValueKind != JsonValueKind.Null) _ = RequiredString(entry.GetProperty("predecessor_attempt_id"));
-            }
-        }
-        if (kind == "registration" && !IsUtc(RequiredString(data.GetProperty("registered_utc")))) throw Gap("malformed_frame");
-        // A seal's status literal is compared by the supervisor's seal load, which names a wrong one b10_abrupt_control_incomplete.
-        if (kind == "cohort_seal") _ = RequiredString(data.GetProperty("fatal_capture_status"));
-        if (kind is "termination" or "capabilities")
-        {
-            string expectedStatus = kind == "termination" ? "journal_through_eof" : "not_implemented_pr3";
-            if (RequiredString(data.GetProperty("fatal_capture_status")) != expectedStatus) throw Gap("malformed_frame");
-        }
-        if (kind is "gap" or "capture_gap")
-        {
-            if (RequiredString(data.GetProperty("reason")) is not ("frame_oversize" or "queue_full" or "journal_bytes_exceeded" or "journal_entries_exceeded" or "writer_failed" or "malformed_frame" or "sequence_gap")) throw Gap("malformed_frame");
-            if (data.GetProperty("first_missing_sequence").ValueKind != JsonValueKind.Null) _ = Nonnegative(data.GetProperty("first_missing_sequence"));
-            _ = RequiredString(data.GetProperty("capture_status"));
+            case "child_started": Positive(data.GetProperty("pid")); _ = Nonnegative(data.GetProperty("start_time_ticks")); _ = RequiredString(data.GetProperty("boot_id")); break;
+            case "prepared":
+                Attempt(data); Arm(data); if (RequiredString(data.GetProperty("role")) is not ("original" or "resend")) throw Gap("malformed_frame");
+                long ordinal = Nonnegative(data.GetProperty("ordinal")); if (ordinal > 4 || Nonnegative(data.GetProperty("sequence")) != ordinal || Nonnegative(data.GetProperty("payload_length")) > 900000) throw Gap("malformed_frame");
+                _ = RequiredString(data.GetProperty("key")); _ = RequiredString(data.GetProperty("probe_id")); ValidateHash(data.GetProperty("payload_sha256"));
+                bool original = data.GetProperty("role").GetString() == "original";
+                if (original != (data.GetProperty("predecessor_attempt_id").ValueKind == JsonValueKind.Null)) throw Gap("malformed_frame");
+                if (!original) _ = RequiredString(data.GetProperty("predecessor_attempt_id")); break;
+            case "accepted": Attempt(data); Positive(data.GetProperty("prepared_sequence")); break;
+            case "synchronous_rejection": Attempt(data); Positive(data.GetProperty("prepared_sequence")); Integer(data.GetProperty("error_code")); _ = RequiredString(data.GetProperty("error_reason")); break;
+            case "terminal": Attempt(data); if (RequiredString(data.GetProperty("completion_source")) != "callback") throw Gap("malformed_frame"); Boolean(data.GetProperty("delivered")); Integer(data.GetProperty("error_code")); if (data.GetProperty("persistence_status").ValueKind != JsonValueKind.Null) Integer(data.GetProperty("persistence_status")); break;
+            case "native_error": Positive(data.GetProperty("capture_sequence")); Integer(data.GetProperty("error_code")); if (RequiredString(data.GetProperty("error_name")).Length > 128) throw Gap("malformed_frame"); Boolean(data.GetProperty("is_error")); Boolean(data.GetProperty("is_fatal")); _ = Nonnegative(data.GetProperty("callback_monotonic_ticks")); break;
+            case "pre_acceptance_report": case "post_drain_report": ValidateReportDescriptor(data, kind); break;
+            case "cut": case "kill_intent": Arm(data); if (data.GetProperty("arm").GetString() != (kind == "cut" ? "same_instance" : "cross_restart")) throw Gap("malformed_frame"); _ = RequiredString(data.GetProperty("cut_attempt_id")); Utc(data.GetProperty("release_utc")); if (kind == "cut") ValidateStringArray(data.GetProperty("unconfirmed_attempt_ids")); break;
+            case "control_drained": Boolean(data.GetProperty("flush_returned")); _ = Nonnegative(data.GetProperty("out_queue_length")); break;
+            case "signal_failed": Integer(data.GetProperty("return_value")); Integer(data.GetProperty("errno")); break;
+            case "no_kill": if (!NoKillReasons.Contains(RequiredString(data.GetProperty("reason")), StringComparer.Ordinal)) throw Gap("malformed_frame"); Boolean(data.GetProperty("cross_restart_admitted")); break;
+            case "gap": if (B10AbruptDiagnostics.GapReasonCode(RequiredString(data.GetProperty("reason"))) < 0 || RequiredString(data.GetProperty("capture_status")) != "invalid") throw Gap("malformed_frame"); if (data.GetProperty("first_missing_sequence").ValueKind != JsonValueKind.Null) Positive(data.GetProperty("first_missing_sequence")); break;
+            case "registration": Utc(data.GetProperty("registered_utc")); break;
+            case "abrupt_manifest": ValidateDescriptor(data.GetProperty("journal")); if (Nonnegative(data.GetProperty("journal_records")) > MaximumEntries) throw Gap("malformed_frame"); ValidateStringArray(data.GetProperty("gaps")); Descriptors(data.GetProperty("report_files")); break;
+            case "termination": ValidateTermination(data); break;
+            case "successor_receipt": foreach (string name in new[] { "first_termination", "journal", "registration" }) ValidateDescriptor(data.GetProperty(name)); ValidateStringArray(data.GetProperty("kill_unconfirmed_attempt_ids")); Descriptors(data.GetProperty("artifacts")); Utc(data.GetProperty("ready_utc")); Utc(data.GetProperty("release_utc")); Boolean(data.GetProperty("cleanup_completed")); if (RequiredString(data.GetProperty("cross_host_timing")) != "not_verified" || data.GetProperty("invocations").ValueKind != JsonValueKind.Array) throw Gap("malformed_frame"); foreach (var invocation in data.GetProperty("invocations").EnumerateArray()) { ExactMembers(invocation,"attempt_id","predecessor_attempt_id","key","sequence","payload_sha256","invocation_utc","monotonic_ticks"); Attempt(invocation); _ = RequiredString(invocation.GetProperty("predecessor_attempt_id")); _ = RequiredString(invocation.GetProperty("key")); _ = Nonnegative(invocation.GetProperty("sequence")); _ = Nonnegative(invocation.GetProperty("monotonic_ticks")); ValidateHash(invocation.GetProperty("payload_sha256")); Utc(invocation.GetProperty("invocation_utc")); } break;
+            case "cohort_inventory": _ = RequiredString(data.GetProperty("instance_id")); if (RequiredString(data.GetProperty("cohort")) != "cross_restart" || data.GetProperty("inventory").ValueKind != JsonValueKind.Array || Nonnegative(data.GetProperty("inventory_count")) != data.GetProperty("inventory").GetArrayLength()) throw Gap("malformed_frame"); Boolean(data.GetProperty("bookkeeping_complete")); foreach (var entry in data.GetProperty("inventory").EnumerateArray()) { ExactMembers(entry,"attempt_id","invocation_ordinal","predecessor_attempt_id","key","sequence","payload_length","payload_sha256"); Attempt(entry); _ = RequiredString(entry.GetProperty("predecessor_attempt_id")); _ = RequiredString(entry.GetProperty("key")); _ = Nonnegative(entry.GetProperty("invocation_ordinal")); _ = Nonnegative(entry.GetProperty("sequence")); _ = Nonnegative(entry.GetProperty("payload_length")); ValidateHash(entry.GetProperty("payload_sha256")); } break;
+            case "capabilities": _ = RequiredString(data.GetProperty("request_capture")); _ = RequiredString(data.GetProperty("fatal_capture_status")); break;
         }
     }
-
-    private static void Boolean(JsonElement value)
+    internal static readonly string[] NoKillReasons = ["b10_abrupt_exposure_inconclusive", "b10_abrupt_control_incomplete", "kill_too_early", "b10_abrupt_cut_rejected", "b10_abrupt_sample_missing", "b10_abrupt_report_binding_invalid", "b10_abrupt_guard_failed", "b10_abrupt_signal_preflight_failed", "b10_abrupt_deadline_exhausted", "b10_abrupt_capture_gap"];
+    private static void ValidateTermination(JsonElement data)
     {
-        if (value.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) throw Gap("malformed_frame");
+        if (RequiredString(data.GetProperty("termination")) is not ("intended_self_kill" or "no_kill" or "unexpected_exit" or "unknown")) throw Gap("malformed_frame");
+        foreach (string name in new[] { "outcome", "detail", "native_tail" }) if (data.GetProperty(name).ValueKind != JsonValueKind.Null) _ = RequiredString(data.GetProperty(name));
+        Boolean(data.GetProperty("successor_permitted")); Boolean(data.GetProperty("exit_observed"));
+        if (data.GetProperty("exit_code_local_observation").ValueKind != JsonValueKind.Null) Integer(data.GetProperty("exit_code_local_observation"));
+        _ = RequiredString(data.GetProperty("runtime_version")); _ = Nonnegative(data.GetProperty("wait_bound_milliseconds"));
+        foreach (string name in new[] { "control_unconfirmed_attempt_ids", "kill_unconfirmed_attempt_ids", "capture_gaps" }) ValidateStringArray(data.GetProperty(name));
+        _ = Nonnegative(data.GetProperty("native_error_count")); _ = Nonnegative(data.GetProperty("native_fatal_count")); ValidateDescriptor(data.GetProperty("manifest"));
+        if (data.GetProperty("signal_observation").ValueKind != JsonValueKind.Null) ValidateData("signal_failed", data.GetProperty("signal_observation"));
+        JsonElement child = data.GetProperty("child"); if (child.ValueKind != JsonValueKind.Null) { ExactMembers(child,"pid","start_time_ticks","boot_id","parent_observed_start_time_ticks"); Positive(child.GetProperty("pid")); foreach (string key in new[] { "start_time_ticks", "parent_observed_start_time_ticks" }) if (child.GetProperty(key).ValueKind != JsonValueKind.Null) _ = Nonnegative(child.GetProperty(key)); _ = RequiredString(child.GetProperty("boot_id")); }
+        foreach (string name in new[] { "cgroup_before", "cgroup_after" }) { JsonElement observation = data.GetProperty(name); if (observation.ValueKind == JsonValueKind.Null) continue; ExactMembers(observation,"boot_id","cgroup_path","directory_identity","oom_kill"); foreach (string key in new[] { "boot_id", "cgroup_path", "directory_identity" }) _ = RequiredString(observation.GetProperty(key)); _ = Nonnegative(observation.GetProperty("oom_kill")); }
     }
-
-    private static void ValidateStringArray(JsonElement value)
+    private static void ValidateReportDescriptor(JsonElement data, string kind)
     {
-        if (value.ValueKind != JsonValueKind.Array || value.GetArrayLength() > MaximumEntries) throw Gap("malformed_frame");
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var item in value.EnumerateArray()) if (!seen.Add(RequiredString(item))) throw Gap("malformed_frame");
+        Arm(data); bool post = kind == "post_drain_report";
+        if (post ? data.GetProperty("attempt_id").ValueKind != JsonValueKind.Null : string.IsNullOrEmpty(RequiredString(data.GetProperty("attempt_id")))) throw Gap("malformed_frame");
+        string name = post ? "control-post-drain-report.json" : data.GetProperty("arm").GetString() + "-pre-acceptance-report.json";
+        if (RequiredString(data.GetProperty("name")) != name || Nonnegative(data.GetProperty("length")) is 0 or > 1048576 || post && data.GetProperty("arm").GetString() != "same_instance") throw Gap("malformed_frame");
+        ValidateHash(data.GetProperty("sha256")); Positive(data.GetProperty("report_sequence")); Utc(data.GetProperty("report_capture_utc"));
+        var report = data.GetProperty("report_identity"); ExactMembers(report,"scenario_id","run_id","role","client_id"); if (RequiredString(report.GetProperty("scenario_id")) != "B10" || RequiredString(report.GetProperty("role")) != "LoadGenProducer") throw Gap("malformed_frame"); _ = RequiredString(report.GetProperty("run_id")); _ = RequiredString(report.GetProperty("client_id"));
     }
-
-    private static void ValidateProcess(JsonElement process)
-    {
-        ExactMembers(process, "pid", "parent_pid", "boot_id", "start_identity");
-        if (Nonnegative(process.GetProperty("pid")) is 0 or > int.MaxValue || Nonnegative(process.GetProperty("parent_pid")) is 0 or > int.MaxValue) throw Gap("malformed_frame");
-        _ = RequiredString(process.GetProperty("boot_id"));
-        _ = Nonnegative(process.GetProperty("start_identity"));
-    }
-
-    private static void ValidateHash(JsonElement value)
-    {
-        string hash = RequiredString(value);
-        if (hash.Length != 64 || hash.Any(c => c is not (>= '0' and <= '9' or >= 'a' and <= 'f'))) throw Gap("malformed_frame");
-    }
-
-    internal static void ValidateDescriptor(JsonElement descriptor)
-    {
-        ExactMembers(descriptor, "name", "length", "sha256");
-        string name = RequiredString(descriptor.GetProperty("name"));
-        if (System.IO.Path.IsPathRooted(name) || name.Contains('\\') || name.Split('/').Any(part => part is ".." or "." or "")) throw Gap("malformed_frame");
-        _ = Nonnegative(descriptor.GetProperty("length"));
-        ValidateHash(descriptor.GetProperty("sha256"));
-    }
-
-    private static void ValidateReportDescriptor(JsonElement descriptor)
-    {
-        ExactMembers(descriptor, "name", "length", "sha256", "report_identity", "report_sequence", "report_capture_utc");
-        if (RequiredString(descriptor.GetProperty("name")) is not ("abrupt-child/same_instance-pre-acceptance-report.json" or "abrupt-child/cross_restart-pre-acceptance-report.json") ||
-            Nonnegative(descriptor.GetProperty("length")) is 0 or > 1048576 || Nonnegative(descriptor.GetProperty("report_sequence")) == 0 ||
-            !IsUtc(RequiredString(descriptor.GetProperty("report_capture_utc")))) throw Gap("malformed_frame");
-        ValidateHash(descriptor.GetProperty("sha256"));
-        var report = descriptor.GetProperty("report_identity");
-        ExactMembers(report, "scenario_id", "run_id", "role", "client_id");
-        if (RequiredString(report.GetProperty("scenario_id")) != "B10" || RequiredString(report.GetProperty("role")) != "LoadGenProducer") throw Gap("malformed_frame");
-        _ = RequiredString(report.GetProperty("run_id")); _ = RequiredString(report.GetProperty("client_id"));
-    }
-
-    private static string RequiredString(JsonElement value)
-    {
-        if (value.ValueKind != JsonValueKind.String || string.IsNullOrEmpty(value.GetString())) throw Gap("malformed_frame");
-        return value.GetString()!;
-    }
-
-    internal static async Task WriteMessageAsync(Stream stream, Message message, CancellationToken cancellationToken = default)
-    {
-        ValidateData(message.Kind, message.Data);
-        if (message.Sequence <= 0) throw Gap("sequence_gap");
-        var body = JsonSerializer.SerializeToUtf8Bytes(message, JsonOptions);
-        if (body.Length > MaximumBodyBytes) throw Gap("frame_oversize");
-        var prefix = new byte[4];
-        BinaryPrimitives.WriteUInt32BigEndian(prefix, checked((uint)body.Length));
-        await stream.WriteAsync(prefix, cancellationToken).ConfigureAwait(false);
-        await stream.WriteAsync(body, cancellationToken).ConfigureAwait(false);
-        await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    internal static async Task<Message?> ReadMessageAsync(Stream stream, long expectedSequence, CancellationToken cancellationToken = default)
-    {
-        var header = new byte[4];
-        var first = await stream.ReadAsync(header.AsMemory(0, 1), cancellationToken).ConfigureAwait(false);
-        if (first == 0) return null;
-        try { await stream.ReadExactlyAsync(header.AsMemory(1), cancellationToken).ConfigureAwait(false); }
-        catch (EndOfStreamException) { throw Gap("malformed_frame"); }
-        var length = BinaryPrimitives.ReadUInt32BigEndian(header);
-        if (length > MaximumBodyBytes) throw Gap("frame_oversize");
-        if (length == 0) throw Gap("malformed_frame");
-        var body = new byte[(int)length];
-        try { await stream.ReadExactlyAsync(body, cancellationToken).ConfigureAwait(false); }
-        catch (EndOfStreamException) { throw Gap("malformed_frame"); }
-        return ReadMessageBody(body, expectedSequence);
-    }
-
-    private static Message ReadMessageBody(ReadOnlyMemory<byte> body, long expectedSequence)
-    {
-        var root = Parse(body);
-        ExactMembers(root, "kind", "sequence", "data");
-        var sequence = Nonnegative(root.GetProperty("sequence"));
-        if (sequence != expectedSequence || sequence == 0) throw Gap("sequence_gap");
-        var kind = RequiredString(root.GetProperty("kind"));
-        if (kind is not ("hello" or "prepared" or "accepted" or "synchronous_rejection" or "terminal" or "native_error" or "capture_gap" or "pre_acceptance_report" or "ack")) throw Gap("malformed_frame");
-        ValidateData(kind, root.GetProperty("data"));
-        return new(kind, sequence, root.GetProperty("data").Clone());
-    }
-
-    internal sealed class AvailableMessageReader(Stream stream, Func<bool> canRead, Action<Message> capture, long expectedSequence = 2) : IDisposable
-    {
-        private readonly SemaphoreSlim readerGate = new(1, 1);
-        private readonly byte[] header = new byte[4];
-        private int headerCount;
-        private byte[]? body;
-        private int bodyCount;
-        private long sequence = expectedSequence;
-        private bool eof;
-        private System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure;
-
-        internal async Task<bool> DrainAvailableAsync(CancellationToken cancellationToken, bool requireCompleteFrame = false)
-        {
-            await readerGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-            try
-            {
-                failure?.Throw();
-                while (!eof && canRead())
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    int count = body is null ? stream.Read(header, headerCount, header.Length - headerCount) :
-                        stream.Read(body, bodyCount, body.Length - bodyCount);
-                    if (count == 0)
-                    {
-                        if (headerCount != 0 || body is not null) throw Gap("malformed_frame");
-                        eof = true;
-                        break;
-                    }
-                    if (body is null)
-                    {
-                        headerCount += count;
-                        if (headerCount != header.Length) continue;
-                        uint length = BinaryPrimitives.ReadUInt32BigEndian(header);
-                        if (length > MaximumBodyBytes) throw Gap("frame_oversize");
-                        if (length == 0) throw Gap("malformed_frame");
-                        body = new byte[(int)length];
-                    }
-                    else
-                    {
-                        bodyCount += count;
-                        if (bodyCount != body.Length) continue;
-                        Message message = ReadMessageBody(body, sequence);
-                        sequence = checked(sequence + 1);
-                        capture(message);
-                        headerCount = 0;
-                        body = null;
-                        bodyCount = 0;
-                    }
-                }
-                if (requireCompleteFrame && (headerCount != 0 || body is not null)) throw Gap("malformed_frame");
-                return eof;
-            }
-            catch (Exception exception) when (exception is not OperationCanceledException)
-            {
-                failure ??= System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception);
-                throw;
-            }
-            finally { readerGate.Release(); }
-        }
-
-        public void Dispose() => readerGate.Dispose();
-    }
-
+    private static void Attempt(JsonElement data) => _ = RequiredString(data.GetProperty("attempt_id"));
+    private static void Arm(JsonElement data) { if (RequiredString(data.GetProperty("arm")) is not ("same_instance" or "cross_restart")) throw Gap("malformed_frame"); }
+    private static void Utc(JsonElement value) { if (!IsUtc(RequiredString(value))) throw Gap("malformed_frame"); }
+    private static void Integer(JsonElement value) { if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out _)) throw Gap("malformed_frame"); }
+    private static void Positive(JsonElement value) { if (Nonnegative(value) == 0) throw Gap("malformed_frame"); }
+    private static void Boolean(JsonElement value) { if (value.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) throw Gap("malformed_frame"); }
+    private static string RequiredString(JsonElement value) { if (value.ValueKind != JsonValueKind.String || string.IsNullOrEmpty(value.GetString())) throw Gap("malformed_frame"); return value.GetString()!; }
+    private static void ValidateHash(JsonElement value) { string hash = RequiredString(value); if (hash.Length != 64 || hash.Any(c => c is not (>= '0' and <= '9' or >= 'a' and <= 'f'))) throw Gap("malformed_frame"); }
+    internal static void ValidateDescriptor(JsonElement value) { ExactMembers(value,"name","length","sha256"); string name = RequiredString(value.GetProperty("name")); if (name.Contains("..",StringComparison.Ordinal) || Path.IsPathRooted(name) || name.Contains('\\')) throw Gap("malformed_frame"); _ = Nonnegative(value.GetProperty("length")); ValidateHash(value.GetProperty("sha256")); }
+    private static void Descriptors(JsonElement value) { if (value.ValueKind != JsonValueKind.Array) throw Gap("malformed_frame"); foreach (var descriptor in value.EnumerateArray()) ValidateDescriptor(descriptor); }
+    private static void ValidateStringArray(JsonElement value) { if (value.ValueKind != JsonValueKind.Array) throw Gap("malformed_frame"); HashSet<string> seen = new(StringComparer.Ordinal); foreach (var item in value.EnumerateArray()) if (!seen.Add(RequiredString(item))) throw Gap("malformed_frame"); }
     internal static JsonElement Parse(ReadOnlyMemory<byte> bytes, int maximum = MaximumBodyBytes)
     {
         if (bytes.Length > maximum) throw Gap("frame_oversize");

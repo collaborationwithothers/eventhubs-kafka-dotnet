@@ -41,7 +41,7 @@ internal static class Program
         {
             switch (args[0])
             {
-                case "--b10-abrupt-supervisor": return await Run.Abrupt.B10AbruptHost.RunSupervisorAsync().ConfigureAwait(false);
+                case "--b10-abrupt-parent": return await Run.Abrupt.B10AbruptHost.RunParentAsync().ConfigureAwait(false);
                 case "--b10-abrupt-child": return await Run.Abrupt.B10AbruptHost.RunChildAsync().ConfigureAwait(false);
                 case "--b10-abrupt-successor": return await Run.Abrupt.B10AbruptHost.RunSuccessorAsync().ConfigureAwait(false);
                 case "--validate-b10-abrupt-configuration": return Run.Abrupt.B10AbruptHost.ValidateConfiguration();
