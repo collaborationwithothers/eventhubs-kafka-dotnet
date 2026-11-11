@@ -73,6 +73,11 @@ public sealed class B10AbruptOfflineBrokerOutputTests(ITestOutputHelper output)
         Assert.Contains("Transitioning from RECOVERY to RUNNING", run.LastOutput, StringComparison.Ordinal);
         Assert.DoesNotContain("container_output_unavailable:", run.LastOutput, StringComparison.Ordinal);
         await AssertBrokerRemovedAsync(run.LastOutput);
+        string snapshot = run.LastOutput;
+        string retained = run.RetainHelperFailureOutput("cleanup-helper", "synthetic_helper_failure");
+        Assert.StartsWith(snapshot, retained, StringComparison.Ordinal);
+        Assert.EndsWith("\ncleanup-helper\nsynthetic_helper_failure", retained, StringComparison.Ordinal);
+        Assert.Equal(retained, run.LastOutput);
         output.WriteLine("successful_startup_output_tail=" + run.LastOutput);
     }
 

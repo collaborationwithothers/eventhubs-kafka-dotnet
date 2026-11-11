@@ -397,14 +397,20 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
         }
         catch (OperationCanceledException exception)
         {
-            LastOutput = await HelperTailAsync(name);
-            throw new OperationCanceledException("b10_offline_image_bound_exceeded:" + suffix + "\n" + LastOutput, exception, cancellation);
+            string retained = RetainHelperFailureOutput(name, await HelperTailAsync(name));
+            throw new OperationCanceledException("b10_offline_image_bound_exceeded:" + suffix + "\n" + retained, exception, cancellation);
         }
         catch (Exception exception)
         {
-            LastOutput = await HelperTailAsync(name);
-            throw new InvalidOperationException("b10_offline_image_helper_exit:" + suffix + "\n" + LastOutput, exception);
+            string retained = RetainHelperFailureOutput(name, await HelperTailAsync(name));
+            throw new InvalidOperationException("b10_offline_image_helper_exit:" + suffix + "\n" + retained, exception);
         }
+    }
+
+    internal string RetainHelperFailureOutput(string name, string tail)
+    {
+        LastOutput += "\n" + name + "\n" + tail;
+        return LastOutput;
     }
 
     private async Task<string> HelperTailAsync(string id)
