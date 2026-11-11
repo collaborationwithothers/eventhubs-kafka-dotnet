@@ -56,7 +56,7 @@ public sealed class B10AbruptHostRegistrationTests
     [InlineData("successor", "5")]
     public async Task Given_ProbeRole_When_SettingsAreApplied_Then_UsesBaselineTimeoutWithScenarioIdempotence(string role, string linger)
     {
-        var scenario = (await ResolveAsync(role)).Configurations["C1"].Roles[KafkaClientRole.LoadGenProducer];
+        var scenario = (await ResolveAsync(role, commonInputs: true)).Configurations["C1"].Roles[KafkaClientRole.LoadGenProducer];
         var probe = B10AbruptHost.ProbeSettings(scenario, role == "child");
         var config = new Confluent.Kafka.ProducerConfig();
         foreach (var setting in probe.Settings) config.Set(setting.Key, setting.Value.Value);
@@ -74,11 +74,11 @@ public sealed class B10AbruptHostRegistrationTests
     [Fact]
     public async Task Given_SuccessorSettings_When_CapabilitiesRoundTrip_Then_BaselineTimeoutHasNoOverride()
     {
-        var scenario = (await ResolveAsync("successor")).Configurations["C1"].Roles[KafkaClientRole.LoadGenProducer];
+        var scenario = (await ResolveAsync("successor", commonInputs: true)).Configurations["C1"].Roles[KafkaClientRole.LoadGenProducer];
         var selected = B10AbruptHost.ProbeSettings(scenario, false);
         var expectations = Parchwell.LoadGen.Run.Evidence.RunEvidenceExpectations.CaptureOnly(selected, false);
         string root = Path.Combine(Path.GetTempPath(), "abrupt-settings-" + Guid.NewGuid().ToString("N"));
-        var identity = new Parchwell.LoadGen.Run.Contracts.RunIdentity("B10", "C1", "b10d-1-1", "synthetic-pod", "synthetic-pod", "synthetic-pod");
+        var identity = new Parchwell.LoadGen.Run.Contracts.RunIdentity("B10", "C1", "b10d-1-1", "first", "first", "first");
         try
         {
             await using (var session = new Parchwell.LoadGen.Run.Evidence.RunEvidenceSession(identity,
@@ -91,6 +91,10 @@ public sealed class B10AbruptHostRegistrationTests
             var timeout = bytes["resolved_configuration"]!["settings"]!["message.timeout.ms"]!;
             Assert.Equal("300000", timeout["value"]!.GetValue<string>());
             Assert.Null(timeout["override"]);
+            var inFlight = bytes["resolved_configuration"]!["settings"]!["max.in.flight"]!;
+            Assert.Equal("5", inFlight["value"]!.GetValue<string>());
+            Assert.Equal("B10", inFlight["override"]!["scenario_id"]!.GetValue<string>());
+            Assert.Equal("C1", inFlight["override"]!["configuration_id"]!.GetValue<string>());
             timeout["override"] = System.Text.Json.JsonSerializer.SerializeToNode(scenario.Settings["message.timeout.ms"].Override,
                 B10AbruptWire.JsonOptions);
             await File.WriteAllTextAsync(path, bytes.ToJsonString(), TestContext.Current.CancellationToken);
@@ -104,13 +108,20 @@ public sealed class B10AbruptHostRegistrationTests
         resolved.Configurations["C1"].Roles[KafkaClientRole.LoadGenProducer].Settings
             .ToDictionary(pair => pair.Key, pair => pair.Value.Value, StringComparer.Ordinal);
 
-    private static async Task<ResolvedScenario> ResolveAsync(string role)
+    private static async Task<ResolvedScenario> ResolveAsync(string role, bool commonInputs = false)
     {
         string? previous = Environment.GetEnvironmentVariable(TelemetryVariable);
         Environment.SetEnvironmentVariable(TelemetryVariable, SyntheticTelemetry);
         try
         {
-            B10AbruptOptions options = B10AbruptOptions.Read(Valid(role));
+            var values = Valid(role);
+            if (commonInputs)
+            {
+                values[B10AbruptOptions.Prefix + "RunId"] = "b10d-1-1";
+                values[B10AbruptOptions.Prefix + "PodName"] = "first";
+                values[B10AbruptOptions.Prefix + "JobName"] = "b10d-1-1-c1-r1-loadgen-" + (role == "successor" ? "successor" : "restart");
+            }
+            B10AbruptOptions options = B10AbruptOptions.Read(values);
             using IHost host = B10AbruptHost.BuildServices(options);
             LoadedScenario loaded = await host.Services.GetRequiredService<ScenarioLoader>()
                 .LoadAsync("B10", TestContext.Current.CancellationToken);

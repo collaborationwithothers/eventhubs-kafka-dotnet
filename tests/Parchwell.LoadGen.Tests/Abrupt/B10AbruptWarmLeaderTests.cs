@@ -17,14 +17,14 @@ public sealed class B10AbruptWarmLeaderTests
     [Fact]
     public async Task Given_BothArms_When_Warmed_Then_DurableDeliveryAndLeaderReportPrecedeOriginals()
     {
-        await using var fixture = new B10AbruptProducerTests.Fixture();
+        await using var fixture = Fixture();
         fixture.ConfigureControl(); fixture.StartReports();
         await Assert.ThrowsAsync<B10AbruptProducerTests.SimulatedDeathException>(() => fixture.Runner.RunFirstAsync(
             B10AbruptProducerTests.Profile(), fixture.Identity, fixture.Options, TestContext.Current.CancellationToken));
         Assert.Equal(2, fixture.Native.WarmupCalls.Count);
         foreach (string arm in new[] { "same_instance", "cross_restart" })
         {
-            string id = fixture.Identity.InstanceId + "-" + arm + "-warmup";
+            string id = arm == "same_instance" ? "first-same_instance-warmup" : "first-cross_restart-warmup";
             var prepared = Assert.Single(fixture.Journal.Frames, frame => frame.Kind == "warmup_prepared" && frame.Data.GetProperty("arm").GetString() == arm);
             var terminal = Assert.Single(fixture.Journal.Frames, frame => frame.Kind == "warmup_terminal" && frame.Data.GetProperty("attempt_id").GetString() == id);
             var original = fixture.Journal.Frames.First(frame => frame.Kind == "prepared" && frame.Data.GetProperty("arm").GetString() == arm);
@@ -37,9 +37,10 @@ public sealed class B10AbruptWarmLeaderTests
             Assert.Equal(terminal.Data.GetProperty("partition").GetInt32(), report.Data.GetProperty("partition").GetInt32());
             Assert.True(DateTimeOffset.Parse(report.Data.GetProperty("report_capture_utc").GetString()!, CultureInfo.InvariantCulture) > DateTimeOffset.Parse(terminal.ObservedUtc, CultureInfo.InvariantCulture));
             var message = Assert.Single(fixture.Native.WarmupCalls, call => Encoding.UTF8.GetString(call.Headers.GetLastBytes("attempt-id")) == id);
-            Assert.Equal(fixture.Identity.InstanceId, Encoding.UTF8.GetString(message.Headers.GetLastBytes("instance-id")));
+            Assert.Equal("first", Encoding.UTF8.GetString(message.Headers.GetLastBytes("instance-id")));
             Assert.Equal("-1", Encoding.UTF8.GetString(message.Headers.GetLastBytes("sequence")));
-            Assert.Equal(prepared.Data.GetProperty("key").GetString(), Encoding.UTF8.GetString(message.Key));
+            Assert.Equal("B10/b10d-1-1/C1/1/" + arm, prepared.Data.GetProperty("key").GetString());
+            Assert.Equal("B10/b10d-1-1/C1/1/" + arm, Encoding.UTF8.GetString(message.Key));
         }
     }
 
@@ -51,7 +52,7 @@ public sealed class B10AbruptWarmLeaderTests
     [InlineData("late_success")]
     public async Task Given_WarmupFailure_When_FirstArmRuns_Then_NoKillWithoutOriginalOrAdmission(string failure)
     {
-        await using var fixture = new B10AbruptProducerTests.Fixture();
+        await using var fixture = Fixture();
         fixture.Native.OnWarmup = (_, callback) =>
         {
             switch (failure)
@@ -74,7 +75,7 @@ public sealed class B10AbruptWarmLeaderTests
     [Fact]
     public async Task Given_CrossRestartWarmupFailure_When_ControlIsComplete_Then_NoKillWithoutAdmission()
     {
-        await using var fixture = new B10AbruptProducerTests.Fixture(); fixture.ConfigureControl();
+        await using var fixture = Fixture(); fixture.ConfigureControl();
         fixture.Native.OnWarmup = (message, callback) => callback(B10AbruptProducerTests.Report(
             Encoding.UTF8.GetString(message.Key).EndsWith("cross_restart", StringComparison.Ordinal) ? ErrorCode.Local_MsgTimedOut : ErrorCode.NoError,
             PersistenceStatus.NotPersisted));
@@ -91,7 +92,7 @@ public sealed class B10AbruptWarmLeaderTests
     [InlineData(true, "b10_abrupt_sample_missing")]
     public async Task Given_NoLeaderReportAfterWarmup_When_WaitExpires_Then_NoOriginalIsPrepared(bool missing, string reason)
     {
-        await using var fixture = new B10AbruptProducerTests.Fixture();
+        await using var fixture = Fixture();
         fixture.TransformReport = report => WithState(report, "INIT");
         fixture.Native.OnWarmup = (_, callback) => { callback(B10AbruptProducerTests.Report()); fixture.SuppressReports = missing; };
         fixture.StartReports();
@@ -103,7 +104,7 @@ public sealed class B10AbruptWarmLeaderTests
     [Fact]
     public async Task Given_InitThenUpReport_When_SelectingLeader_Then_FirstUpReportIsBound()
     {
-        await using var fixture = new B10AbruptProducerTests.Fixture(); fixture.ConfigureControl();
+        await using var fixture = Fixture(); fixture.ConfigureControl();
         int afterWarmup = 0;
         fixture.Native.OnWarmup = (_, callback) => { afterWarmup = 1; callback(B10AbruptProducerTests.Report()); };
         fixture.TransformReport = report => WithState(report, afterWarmup != 0 && Interlocked.Increment(ref afterWarmup) < 5 ? "INIT" : "UP");
@@ -117,7 +118,7 @@ public sealed class B10AbruptWarmLeaderTests
     [Fact]
     public async Task Given_ControlDrainFailsWith140SecondsLeft_When_CleaningUp_Then_FlushUsesRemainingDeadline()
     {
-        await using var fixture = new B10AbruptProducerTests.Fixture(); fixture.ConfigureControl();
+        await using var fixture = Fixture(); fixture.ConfigureControl();
         bool drained = false;
         fixture.Native.FlushResult = 1;
         fixture.Native.OnFlush = () =>
@@ -139,7 +140,7 @@ public sealed class B10AbruptWarmLeaderTests
     [Fact]
     public async Task Given_DeadlineReachedDuringRelease_When_Running_Then_NoKillFlushGetsZeroTime()
     {
-        await using var fixture = new B10AbruptProducerTests.Fixture(); fixture.ConfigureControl();
+        await using var fixture = Fixture(); fixture.ConfigureControl();
         fixture.ReleaseTarget = _ => DateTimeOffset.Parse(fixture.Journal.Frames[0].ObservedUtc, CultureInfo.InvariantCulture).AddSeconds(690);
         fixture.StartReports();
         Assert.Equal(3, await fixture.Runner.RunFirstAsync(B10AbruptProducerTests.Profile(), fixture.Identity, fixture.Options, TestContext.Current.CancellationToken));
@@ -151,7 +152,7 @@ public sealed class B10AbruptWarmLeaderTests
     [Fact]
     public async Task Given_FailureAfterCrossRestartAdmission_When_Running_Then_ExitsWithoutFlushOrDispose()
     {
-        await using var fixture = new B10AbruptProducerTests.Fixture(); fixture.ConfigureControl();
+        await using var fixture = Fixture(); fixture.ConfigureControl();
         var invoke = fixture.Native.OnProduce;
         fixture.Native.OnProduce = (message, callback) =>
         {
@@ -167,7 +168,7 @@ public sealed class B10AbruptWarmLeaderTests
     [Fact]
     public async Task Given_BlockedJournalWriter_When_WarmupCallbackRuns_Then_CallbackReturnsBeforeDurableWrite()
     {
-        await using var fixture = new B10AbruptProducerTests.Fixture(); fixture.Initialize(warm: false);
+        await using var fixture = Fixture(); fixture.Initialize(warm: false);
         Action<DeliveryReport<byte[], byte[]>>? callback = null;
         fixture.Native.OnWarmup = (_, value) => callback = value;
         Task preparation = fixture.Runner.PrepareArmAsync("same_instance", TestContext.Current.CancellationToken);
@@ -195,16 +196,16 @@ public sealed class B10AbruptWarmLeaderTests
     [InlineData("UP", 1, 2, false)]
     public void Given_LeaderAndBroker_When_CheckingLeaderUp_Then_RequiresOneMatchingUpBroker(string state, int leader, int node, bool expected)
     {
-        string raw = JsonSerializer.Serialize(new { topics = new { topic = new { partitions = new Dictionary<string, object> { ["0"] = new { leader } } } }, brokers = new { broker = new { nodeid = node, state } } });
-        Assert.Equal(expected, B10AbruptStatistics.LeaderUp(raw, "topic", 0));
+        string raw = JsonSerializer.Serialize(new { topics = new Dictionary<string, object> { ["document-events"] = new { partitions = new Dictionary<string, object> { ["0"] = new { leader } } } }, brokers = new { broker = new { nodeid = node, state } } });
+        Assert.Equal(expected, B10AbruptStatistics.LeaderUp(raw, "document-events", 0));
     }
 
     [Theory]
     [InlineData("{}")]
-    [InlineData("{\"topics\":{\"topic\":{\"partitions\":{}}},\"brokers\":{}}")]
-    [InlineData("{\"topics\":{\"topic\":{\"partitions\":{\"0\":{\"leader\":\"1\"}}}},\"brokers\":{\"one\":{\"nodeid\":1,\"state\":\"UP\"}}}")]
-    [InlineData("{\"topics\":{\"topic\":{\"partitions\":{\"0\":{\"leader\":1}}}},\"brokers\":{\"one\":{\"nodeid\":1,\"state\":\"UP\"},\"two\":{\"nodeid\":1,\"state\":\"UP\"}}}")]
-    public void Given_MissingOrAmbiguousLeader_When_CheckingLeaderUp_Then_Rejects(string raw) => Assert.False(B10AbruptStatistics.LeaderUp(raw, "topic", 0));
+    [InlineData("{\"topics\":{\"document-events\":{\"partitions\":{}}},\"brokers\":{}}")]
+    [InlineData("{\"topics\":{\"document-events\":{\"partitions\":{\"0\":{\"leader\":\"1\"}}}},\"brokers\":{\"one\":{\"nodeid\":1,\"state\":\"UP\"}}}")]
+    [InlineData("{\"topics\":{\"document-events\":{\"partitions\":{\"0\":{\"leader\":1}}}},\"brokers\":{\"one\":{\"nodeid\":1,\"state\":\"UP\"},\"two\":{\"nodeid\":1,\"state\":\"UP\"}}}")]
+    public void Given_MissingOrAmbiguousLeader_When_CheckingLeaderUp_Then_Rejects(string raw) => Assert.False(B10AbruptStatistics.LeaderUp(raw, "document-events", 0));
 
     [Fact]
     public void Given_PreWarmupAndLaterReports_When_SelectingLeader_Then_OnlyFirstUpAfterTerminalQualifies()
@@ -225,6 +226,10 @@ public sealed class B10AbruptWarmLeaderTests
         clock.Advance(TimeSpan.FromMicroseconds(1)); statistics.Observe(B10AbruptProducerTests.StatisticsReport(identity, clock));
         Assert.Equal(up, statistics.SelectLeaderReport(terminal, "document-events", 0, out bool upSeen)!.Report); Assert.True(upSeen);
     }
+
+    private static B10AbruptProducerTests.Fixture Fixture() => new(diagnosticIdentity: new B10AbruptWire.Identity(
+        "b10d-1-1", "B10", "C1", "C1", 1, new string('a', 40), "image@sha256:" + new string('b', 64),
+        "b10d-1-1-c1-r1-loadgen-restart", "first", "uid-1", "first", null));
 
     private static KafkaStatisticsReport WithState(KafkaStatisticsReport report, string state)
     {
