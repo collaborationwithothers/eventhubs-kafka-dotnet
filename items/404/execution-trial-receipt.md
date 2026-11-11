@@ -59,8 +59,9 @@ The tool environment for phase, lifecycle and chart-host checks uses `PARCHWELL_
 | V1 | xUnit1051 at two asynchronous export writes | Both now pass the current test cancellation token; corrected build passes |
 | V2 | Controller PATH omitted the pinned tools: 101 missing-helm errors and one each for actionlint and kubeconform, with downstream assertions | Supply the pinned tool directory and virtual environment in PATH; all 346 phase tests pass |
 | V3 | Existing chart-host apphost guard exited 131 because custom .NET runtime discovery had no `DOTNET_ROOT` | Supply the observed runtime root; the full chart-host bridge passes without a code change |
+| R1 | Cold-review P2: the abrupt contract attributed run-ID separation to the production-byte checker | Correct the prose to attribute separation to T-P1's phase test |
 
-Current distinct verification roots: 3 of 20. Current review-finding roots: 0 of 20. The counts cover this session from its initial attempts, not just attempts after the amendment. These caps do not replace pull-request rule 8's cumulative cold-review limits.
+Current distinct verification roots: 3 of 20. Current review-finding roots: 1 of 20. The counts cover this session from its initial attempts, not just attempts after the amendment. These caps do not replace pull-request rule 8's cumulative cold-review limits.
 
 ## Acceptance results
 
@@ -79,6 +80,10 @@ A separate static comparison found all 12 changed paths permitted, all seven fro
 
 ## Cold-review inputs and record
 
-Round 1 is a fresh-context comprehensive review of the entire authored diff against baseline `3a4ee0b140a209c2cdeae0002a77c5349a6aabc7`. The review diff filename identifies the frozen input commit. It includes this receipt and the item state; the originating specification and recognized amendment are linked above. Cumulative completed comprehensive/focused counts before that round: 0/0. The pull request self-review record will identify the frozen commit and hold the complete report, dispositions, final-head CI and hosted review evidence, so the report is not added to its own reviewed receipt.
+Round 1 was a fresh-context comprehensive review of `ad269dba65c6f4630cf53a7f07b928f54a9253d2` against baseline `3a4ee0b140a209c2cdeae0002a77c5349a6aabc7`. Its complete report found no P0 or P1 and no missing requirement or scope creep. It found one P2: `b10-abrupt-contract.md` attributed run-ID separation to the production-byte checker instead of the phase test. That prose correction is applied. The reviewer independently checked all changed paths, the frozen methods and fixture differences, retained verification reports and the official Kubernetes terminal-condition source.
+
+The next round is the single focused P2-correction review required by pull-request rule 8 after a first clean comprehensive review. Its comparison revision is R1's `ad269dba65c6f4630cf53a7f07b928f54a9253d2`; the full PR diff against the baseline remains context. Its input revision is identified by the full SHA in both diff filenames. It reviews the prose correction, updated evidence/state records and affected surrounding contracts, reporting only P0 or P1. It does not repeat the comprehensive review. If it reports P0 or P1, revert the post-clean P2 changes and apply rule 8's remaining instructions.
+
+Cumulative completed comprehensive/focused counts before the focused round: 1/0. The pull request self-review record holds the complete reports, dispositions, final-head CI and hosted review evidence, so the final report is not added to its own reviewed receipt. Runtime code and the passing acceptance evidence remain unchanged after R1.
 
 Authoring used this Codex control session and fresh-context subagents at high effort. Their exclusive areas were phase orchestration/tests, C# export, Python checker/host bridge, and operations documents. The cold reviewer also runs with fresh context at high effort. Exact model identifiers are not exposed here.
