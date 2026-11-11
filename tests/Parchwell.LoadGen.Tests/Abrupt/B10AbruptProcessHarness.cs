@@ -179,8 +179,9 @@ internal static class B10AbruptProcessHarness
         internal void Advance(TimeSpan elapsed) => Interlocked.Add(ref offset, elapsed.Ticks);
         public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
         {
-            // Only the synthetic process tests advance release time. The Kafka run keeps the real 120 s release.
-            if (dueTime >= TimeSpan.FromSeconds(100))
+            // Only one-shot release waits advance synthetic time; the child deadline remains scheduled normally.
+            // The Kafka run keeps the real 120 s release.
+            if (period == Timeout.InfiniteTimeSpan && dueTime >= TimeSpan.FromSeconds(100) && dueTime <= TimeSpan.FromSeconds(120))
             {
                 Advance(dueTime);
                 dueTime = TimeSpan.FromMilliseconds(1);
