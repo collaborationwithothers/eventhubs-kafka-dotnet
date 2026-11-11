@@ -1,12 +1,26 @@
 # B10 restart execution part 2 (trial orchestration) contract-grade plan
 
-Revision 1. This plan makes one B10 diagnostic trial runnable end to end on the merged part 1 code. The phase script runs the start line, the C1 timeout Job, the first restart Job and the successor Job in that order, and collects all of their evidence into the diagnostic artifact. A new test proves that the timeout Job's ordinary evidence cannot be admitted as a scientific result. The operations documents are rewritten to the protocol that `main` now implements. No workflow file changes, no verifier file changes, and Hari merges the pull request.
+Revision 2. This plan makes one B10 diagnostic trial runnable end to end on the merged part 1 code. The phase script runs the start line, the C1 timeout Job, the first restart Job and the successor Job in that order, and collects all of their evidence into the diagnostic artifact. A new test proves that the timeout Job's ordinary evidence cannot be admitted as a scientific result. The operations documents are rewritten to the protocol that `main` now implements. No workflow file changes, no verifier file changes, and Hari merges the pull request.
+
+## 0. Changes since Revision 1
+
+Revision 1 was `a23fb5a142dbb05651602751ca8a4f28a76b3ac8`, checked in [6788183364](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6788183364).
+- B1, by [decision 6788215099](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6788215099) point 3: after the timeout Job's wait returns `complete` or `failed`, the trial reads its pods once and requires exactly one terminated pod. Any other result is outcome `unknown` (sections 3.1, 3.2, R10, T-O4).
+- P2-1: T-S2 and R7 split zero-length files from nonzero-length ones.
+- P2-2: T-F1 pins the 26 names on `main` plus the new name, 27 in all.
+- P2-3: T-P1 adds the scientific prepare under the trial's environment.
+- P2-4: the timeout-Job step sets boundary `timeout_job` with fallback `b10_abrupt_publication_failed` (section 3.2, T-O2).
+- P2-5: the `b10-workflow.md` rewrite keeps the line-59 facts that stay true (section 3.6).
+- P2-6: section 8.1 states which tests run through acceptance command 2.
+- P2-7: no third test file for the moved fixture types (section 2.1 item 5).
+- P2-8: every place that says one producer Job runs at a time cites the Kubernetes Job page and `infra/cluster/variables.tf` (sections 3.1 and 3.6).
+- Wording: section 10 no longer says this pull request delivers DA7's binding, which is already on `main`.
 
 ## 1. Goal and authority
 
 Goal: deliver part 2 of the execution split, as decision 6775474492 leaves it after part 1 merged in pull request 430 (`3a4ee0b1`).
 
-Authority, in creation order. Catch-up on 2026-11-11: 243 comments on issue 404, listed by script across three pages. The state file on `main` (`items/404/state.md`) covers comments up to 6777482103. Every decision and approval comment listed there, and every comment created after it, was read in full. Parent items 347 and 348 have no comment created or edited after the state file's read time.
+Authority, in creation order. Catch-up on 2026-11-11: 246 comments on issue 404, listed by script across three pages. The state file on `main` (`items/404/state.md`) covers comments up to 6777482103. Every decision and approval comment listed there, and every comment created after it, was read in full. Parent items 347 and 348 have no comment created or edited after the state file's read time.
 
 1. The issue body and every decision listed in `items/404/state.md` "Decisions in force", in their order there. These are not restated here.
 2. [Decision 6769742939](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6769742939): deployment assumptions. The offline end-to-end test owns DA1, DA5 and the acceptance-to-kill time before the trial. DA2 to DA4 are accepted by name for the one trial only.
@@ -17,6 +31,7 @@ Authority, in creation order. Catch-up on 2026-11-11: 243 comments on issue 404,
 7. [Decision 6787849492](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6787849492): Hari's answers to this plan's shape questions. Q1 A: the verifier is unchanged, and the start line keeps two names. Hari accepts by name the gap against ADR-021 "Consequences" until the verifier classification pull request. Q2 A: no workflow change unless planning finds one is needed, and Hari merges. Q3 A: a phase-layer test. Defaults: Codex implements; the order of section 3.1; the timeout-Job outcome rule of section 3.2; collection with no ordinary verify; the four documents of section 3.6.
 8. [Decision 6787880185](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6787880185): the offline end-to-end test's shape (a separate `workflow_dispatch` workflow that Hari runs on `main` before each B10 trial). It changes no file of this plan. It restates the trial gate that section 10 cites.
 9. [Decision 6787982173](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6787982173): Q4 A, the trial run-ID prefix `b10d` (section 3.4). Q5 A, the timeout-Job outcome rule and the new failure name `b10_abrupt_timeout_job_unknown` (sections 3.2 and 3.3). Whether a trial stopped before the restart Job counts toward the one-trial cap is left for Hari if it happens.
+10. [Decision 6788215099](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6788215099): point 3, option A, the timeout pod's termination check (section 3.1 item 2). Points 1 and 2 concern the offline test plan only. Both planning sessions fold in their checks' non-blocking findings.
 
 ADR-021 in `docs/blueprint.md` on `main` governs. Where this plan and ADR-021 differ, ADR-021 wins and the stop rule applies, except for the start-line gap accepted in item 7.
 
@@ -32,7 +47,7 @@ Not authority: the held offline end-to-end test plan and the paused classificati
 2. `infra/scripts/phase/tests/test_b10_abrupt.py`: new tests of section 8, and the existing tests that section 8.3 lists, adapted to the new order and prefix. No assertion is removed or loosened.
 3. `infra/scripts/phase/tests/check_b10_timeout_evidence.py`: new. It is the point 3 checker of section 3.7.
 4. `charts/parchwell/tests/test_b10_abrupt_host.py`: one added export-and-check step after the existing wire bridge, and its final line (section 3.7).
-5. `tests/Parchwell.LoadGen.Tests/Host/B10TimeoutEvidenceExportTests.cs`: new, the export of section 3.7. It may reuse code moved out of `tests/Parchwell.LoadGen.Tests/Host/B10SecondWorkerTests.cs`. If it does, that file may change only by moving its private fixture types to a shared internal location, with no change to any test method or assertion.
+5. `tests/Parchwell.LoadGen.Tests/Host/B10TimeoutEvidenceExportTests.cs`: new, the export of section 3.7. It may reuse code moved out of `tests/Parchwell.LoadGen.Tests/Host/B10SecondWorkerTests.cs`. If it does, that file may change only by moving its private fixture types to internal types inside one of these two files, with no change to any test method or assertion. No third test file is added.
 6. `docs/operations/b10-abrupt-contract.md`, `docs/operations/b10-workflow.md`, `docs/operations/loadgen-contract.md`, `docs/operations/verifier-contract.md`, at the places section 3.6 names.
 7. `items/404/state.md`, under docs/agents/factory.md "Item state file", and a new receipt `items/404/execution-trial-receipt.md`. The implementing tool is Codex (decision 6787849492, point 4). The branch therefore starts with `codex/` and includes the issue number, and every commit carries the Codex trailer (AGENTS.md "Implementer and reviewer").
 
@@ -64,20 +79,20 @@ Every literal here is pinned. "Policy" marks a value fixed by Hari's decisions, 
 `phase.sh run-b10-abrupt-trial` runs, under the one 18000-second orchestration deadline that `b10_deadline` already sets:
 
 1. The start-line Job, `{run}-c1-r1-start-line`, and its metadata check, both unchanged.
-2. The C1 timeout Job: chart mode `loadgen`, Job `{run}-c1-r1-loadgen`. It is rendered by `Phase.render('loadgen', 1)` from the ordinary `Phase.values`. The render hook does not run for it (`phase.py` line 660 selects only the two abrupt modes), so it receives no `b10_abrupt_diagnostic` value, no `B10Abrupt__` setting and no binding configmap. It is applied and waited for exactly as the trial's other Jobs are. It is not collected during `run`, so that no log collection delays the successor's release (the existing order test asserts no `collect-job` call during `run`).
+2. The C1 timeout Job: chart mode `loadgen`, Job `{run}-c1-r1-loadgen`. It is rendered by `Phase.render('loadgen', 1)` from the ordinary `Phase.values`. The render hook does not run for it (`phase.py` line 660 selects only the two abrupt modes), so it receives no `b10_abrupt_diagnostic` value, no `B10Abrupt__` setting and no binding configmap. It is applied and waited for exactly as the trial's other Jobs are. When the wait gives outcome `complete` or `failed`, the trial then reads the Job's pods once, before any later render (decision 6788215099, point 3): `kubectl get pods -n parchwell -l job-name={run}-c1-r1-loadgen -o json --request-timeout=30s`, with a 30 s bound, output saved to `b10-abrupt-diagnostic/loadgen-pods.json`. It requires all of these, as `observe_first_termination` does for the restart pod: command exit 0; the output decodes; exactly one pod; exactly one controller owner, of kind `Job` and named `{run}-c1-r1-loadgen`; exactly one container and one container status named `loadgen`; the container image equal to the phase's `loadgen` image reference; `state.terminated` present with an integer `exitCode`. Any other result, including an exception while reading, sets the record's `outcome` to `unknown` and takes the `unknown` row of section 3.2. It is not collected during `run`, so that no log collection delays the successor's release (the existing order test asserts no `collect-job` call during `run`).
 3. The first restart Job, `{run}-c1-r1-loadgen-restart`, and everything after it, unchanged from part 1: first-pod termination, first publication, `accept_diagnostic_publication` (which requires `successor_permitted` true), and the successor Job `{run}-c1-r1-loadgen-successor` only through `release_successor`.
 
-At most one producer Job exists at a time. Each Job is waited for before the next is applied.
+At most one producer Job exists at a time. Each Job is waited for before the next is applied, and the timeout and restart pods are each observed terminated before the next Job is rendered. The [Kubernetes Job page](https://kubernetes.io/docs/concepts/workloads/controllers/job/), "Terminal Job conditions", states that from v1.31 the terminal conditions are added only after all pods have terminated, and `infra/cluster/variables.tf` requires `kubernetes_version` 1.35.0 or later. The pod check above does not rely on that statement.
 
 ### 3.2 Timeout-Job outcome rule (decision 6787849492, point 4; decision 6787982173, Q5)
 
-The trial branches on the timeout Job record's `outcome`:
+Before the timeout-Job step, `run` sets `boundary, failure = 'timeout_job', 'b10_abrupt_publication_failed'`, as the restart-Job step does at `first_job`. An exception in that step is recorded at boundary `timeout_job` with reason `b10_abrupt_publication_failed`, and no later Job runs. The trial branches on the timeout Job record's `outcome`, after the pod check of section 3.1:
 
 | `outcome` | Action | `phase-status.json` | Return |
 |---|---|---|---|
-| `complete` | go on to the restart Job | record kept | per later Jobs |
-| `failed` | go on to the restart Job | record kept | per later Jobs |
-| `unknown` | no further Job; `safety_stop` true | `b10_abrupt_gaps` gains `b10_abrupt_timeout_job_unknown`, boundary `timeout_job` | 1 |
+| `complete`, pod check passed | go on to the restart Job | record kept | per later Jobs |
+| `failed`, pod check passed | go on to the restart Job | record kept | per later Jobs |
+| `unknown`, including a failed pod check | no further Job; `safety_stop` true | `b10_abrupt_gaps` gains `b10_abrupt_timeout_job_unknown`, boundary `timeout_job` | 1 |
 | `apply_failed` | as `unknown` | as `unknown` | 1 |
 | `render_failed` | no further Job; `safety_stop` unchanged | `b10_abrupt_gaps` gains `b10_abrupt_configuration_invalid`, boundary `timeout_job` | 1 |
 
@@ -102,7 +117,7 @@ The start-line record (mode `start-line`) is not copied. That is unchanged from 
 Each page states these facts and cites ADR-021 and the part 1 plan sections that own them. No page restates a scientific rule.
 
 - `docs/operations/b10-abrupt-contract.md`: replace the whole superseded-protocol text, including its status line 5, its PR1, PR2 and PR3 paragraph (line 7), and the dangling link at line 174, with the protocol on `main`. It names: the three processes, flags and exit codes (part 1 section 3.1); the configuration keys and fixed policy values (3.2); the three Job names (3.3); the schema-3 envelope (3.4); the journal record kinds (3.5); the probe sequence (3.6); the parent (3.7); the termination classes and `successor_permitted` (3.8); the failure names, with `b10_abrupt_timeout_job_unknown` (3.9 and this plan's 3.3); the first publication (3.10); the successor (3.11); and this plan's sections 3.1, 3.2, 3.4 and 3.5.
-- `docs/operations/b10-workflow.md`: replace lines 59 and 61 ("Diagnostic trial (inactive for science)") with this plan's sections 3.1, 3.2 and 3.5. It states that the start line keeps the two names `{run}-c1-r1-loadgen` and `{run}-c1-r1-loadgen2`, that the second name is a Job the trial never runs, and that the three-name start line belongs to the verifier classification pull request, as decision 6787849492 point 1 accepts. Line 5 keeps its meaning.
+- `docs/operations/b10-workflow.md`: in lines 59 and 61 ("Diagnostic trial (inactive for science)"), replace only the supervisor and checkpoint sentences, with this plan's sections 3.1, 3.2 and 3.5 and the citations of section 3.1. Keep these line-59 facts: Hari dispatches `.github/workflows/b10-abrupt-trial.yml` on main with `confirm_diagnostic_trial` true and approves the `parchwell-scenarios` environment; the three phase commands; B10, C1 and repeat 1 only; cross-host timing `not_verified`; cleanup, ephemeral destruction and the dispatch-end AKS stop always run; the one-trial cap of decision 6769760685, noting that decision 6787982173 leaves to Hari whether a trial stopped before the restart Job counts; and the sentence on what the trial cannot test. The release is the `kill_intent` UTC plus 120 s. It states that the start line keeps the two names `{run}-c1-r1-loadgen` and `{run}-c1-r1-loadgen2`, that the second name is a Job the trial never runs, and that the three-name start line belongs to the verifier classification pull request, as decision 6787849492 point 1 accepts. Line 5 keeps its meaning.
 - `docs/operations/loadgen-contract.md`: line 65 names `--b10-abrupt-parent`, `--b10-abrupt-child`, `--b10-abrupt-successor` and `--validate-b10-abrupt-configuration`, in place of `--b10-abrupt-supervisor`. It states that the C1 timeout Job is an ordinary `loadgen` Job that publishes under `producer/`, and that point 3's test proves no scientific path admits it. Lines 81 and 102 say that the restart of ADR-021's redesign is in the B10 abrupt diagnostic contract, in place of naming the legacy section as that restart.
 - `docs/operations/verifier-contract.md`: line 5 names `schema_version 3` in place of `schema_version 2`. It says the verifier support ADR-021 requires, including the start line's three C1 Job names, is planned for the verifier classification pull request, in place of "its third pull request".
 
@@ -124,9 +139,10 @@ R3. WHEN the timeout Job's outcome is `unknown` or `apply_failed`, THEN no furth
 R4. WHEN the timeout Job's outcome is `render_failed`, THEN no further Job is rendered or applied, `safety_stop` is unchanged, the gap is `b10_abrupt_configuration_invalid` at boundary `timeout_job`, and `run` returns 1.
 R5. WHEN `collect-b10-abrupt-trial` runs after an applied timeout Job, THEN its logs are collected and copied to `b10-abrupt-diagnostic/{run}-c1-r1-loadgen/`, with the failure mapping of section 3.5, and no successor check runs for it.
 R6. WHEN a frozen trial `phase.json` (purpose `diagnostic_trial`, `b10_abrupt_diagnostic` true) exists, with no diagnostic environment variable set, and any scientific phase entry receives the timeout Job's exported bytes or runs, THEN it raises `Failure('b10_abrupt_diagnostic_not_scientific')` before any command, removes `candidate.json` and `candidate.json.partial`, and writes `full_allowed=false`.
-R7. WHEN the same bytes reach `check_candidate` under an ordinary B10 C1 `phase.json` with no diagnostic marker and no diagnostic environment, THEN it raises `Failure('candidate contract invalid')` and not the diagnostic failure. This shows the bytes carry no marker, so R6's rejection comes from the trial state.
+R7. WHEN the same bytes, for each file of nonzero length, reach `check_candidate` under an ordinary B10 C1 `phase.json` with no diagnostic marker and no diagnostic environment, THEN it raises `Failure('candidate contract invalid')` and not the diagnostic failure. A zero-length file raises `Failure('candidate size invalid')`. This shows the bytes carry no marker, so R6's rejection comes from the trial state.
 R8. WHEN a scientific B10 prepare and a trial prepare run with any `GITHUB_RUN_ID` and `GITHUB_RUN_ATTEMPT`, THEN their run IDs differ: the scientific one starts `b10-` and the trial one starts `b10d-`. WHEN the scientific prepare runs with the trial's diagnostic environment, THEN it raises the diagnostic failure and writes no `phase.json`.
 R9. WHEN the documents of section 3.6 are checked, THEN each states the facts listed there, and `npm run check:docs` reports no new warning in them.
+R10. WHEN the timeout Job's wait gives `complete` or `failed` and its pod read fails any condition of section 3.1 item 2, THEN the record's outcome is `unknown`, no further Job is rendered or applied, `safety_stop` is true, the gap is `b10_abrupt_timeout_job_unknown` at boundary `timeout_job`, and `run` returns 1.
 
 ## 5. Invariants and safety rules
 
@@ -153,25 +169,28 @@ These stages have never run on Azure: the timeout Job inside the trial, the thre
 
 Inputs are synthetic. Expected values are literal.
 
-### 8.1 Phase tests (`infra/scripts/phase/tests/test_b10_abrupt.py`, run by the required "Verify lifecycle with stub commands" step through `infra/scripts/tests/test_phase_bridge.py`)
+### 8.1 Phase tests (`infra/scripts/phase/tests/test_b10_abrupt.py`)
+
+Tests in `ByteIndependentCases` run in acceptance command 1, through `infra/scripts/tests/test_phase_bridge.py`. T-O1 and the adapted `ProducedBytesCases` tests run only through `check_b10_abrupt_producers.py` in acceptance command 2, whose output shows `b10_abrupt_produced_bytes_checked`.
 
 | Test | Requirement | Inputs | Expected |
 |---|---|---|---|
 | T-O1 `test_trial_runs_timeout_job_before_restart` | R1, R2 | produced-bytes trial, every command stubbed as in `test_trial_order_and_delayed_logs_outside_release_path` | apply order `['loadgen', 'loadgen-restart', 'loadgen-successor']`; event order `['metadata', 'loadgen', 'loadgen-restart', 'termination', 'publication', 'loadgen-successor']`; state modes `['loadgen', 'loadgen-restart', 'loadgen-successor']`; no `collect-job` call during `run`; return 0. This is that existing test, adapted. It lives in `ProducedBytesCases` and runs through the bridge. |
-| T-O2 `test_timeout_job_outcome_rule` | R2, R3, R4 | wait exit 0, 1, 124 and 2; apply exit 1; render returning None | 0 and 1: restart applied. 124, 2 and apply 1: outcome `unknown`, `unknown`, `apply_failed`; no restart render or apply; `safety_stop` true; gaps `['b10_abrupt_timeout_job_unknown']`; boundary `timeout_job`; return 1. Render None: no apply of any producer Job; `safety_stop` false; gaps `['b10_abrupt_configuration_invalid']`; return 1. |
+| T-O2 `test_timeout_job_outcome_rule` | R2, R3, R4 | wait exit 0, 1, 124 and 2; apply exit 1; render returning None | 0 and 1: restart applied. 124, 2 and apply 1: outcome `unknown`, `unknown`, `apply_failed`; no restart render or apply; `safety_stop` true; gaps `['b10_abrupt_timeout_job_unknown']`; boundary `timeout_job`; return 1. Render None: no apply of any producer Job; `safety_stop` false; gaps `['b10_abrupt_configuration_invalid']`; return 1. `self.p.run` raising `OSError` on the timeout Job's `kubectl apply`: diagnostic boundary `timeout_job`, reason `b10_abrupt_publication_failed`, no restart render, return 1. Wait exit 0 and 1 use a passing pod read. |
+| T-O4 `test_timeout_pod_must_be_observed_terminated` | R10, section 3.1 item 2 | wait exit 0, then the pod read gives: kubectl exit 1; non-JSON output; `{"items": []}`; two pods; one pod with `state` `{"running": {}}`; `exitCode` `"0"` (a string); controller owner named `other`; image different from the phase's; and a valid terminated pod with `exitCode` 0. Also wait exit 1 with a valid terminated pod with `exitCode` 1 | every invalid case: record outcome `unknown`; no restart render or apply; `safety_stop` true; gaps `['b10_abrupt_timeout_job_unknown']`; boundary `timeout_job`; return 1. Both valid cases: the restart Job is applied next; `b10-abrupt-diagnostic/loadgen-pods.json` exists. |
 | T-O3 `test_timeout_job_render_is_ordinary` | section 3.1 item 2 | trial phase with stubbed helm | the render hook is not called for `loadgen`; the values written for `{run}-c1-r1-loadgen` have no `b10_abrupt_diagnostic` and no `b10_abrupt_binding_configmap`. |
 | T-C1 `test_collection_copies_timeout_job_into_diagnostic_artifact` | R5 | state modes `start-line`, `loadgen`, `loadgen-restart` (all applied), `collect-job` exit 0, an artifact tree per Job | `collect-job` called for `{run}-c1-r1-loadgen` and `{run}-c1-r1-loadgen-restart` only; `b10-abrupt-diagnostic/{run}-c1-r1-loadgen/` exists with the copied file; no start-line copy. |
 | T-C2 `test_collection_command_and_copy_failures_record_named_gaps` (existing, extended) | R5 | the existing cases repeated with mode `loadgen` | exit 1: `b10_abrupt_publication_ambiguous`; exit 124: `b10_abrupt_deadline_exhausted`; copy OSError: `b10_abrupt_publication_failed`; boundary `job_collection`. |
-| T-P1 `test_trial_and_science_run_ids_never_collide` | R8 | `GITHUB_RUN_ID` in `1`, `42925777839`, and 22 nines; attempt `1` | trial run ID `b10d-<id>-1`; science B10 C1 run ID `b10-<id>-1`; never equal. Trial with 22 nines: accepted (29 characters). Trial with 23 nines: `invalid run or source commit`. |
+| T-P1 `test_trial_and_science_run_ids_never_collide` | R8 | `GITHUB_RUN_ID` in `1`, `42925777839`, and 22 nines; attempt `1` | trial run ID `b10d-<id>-1`; science B10 C1 run ID `b10-<id>-1`; never equal. Trial with 22 nines: accepted (29 characters). Trial with 23 nines: `invalid run or source commit`. With `PARCHWELL_SCENARIO=B10`, `PARCHWELL_PURPOSE=diagnostic_trial`, `PARCHWELL_B10_ABRUPT_DIAGNOSTIC=true` and no `phase.json` in the private directory, `Phase().prepare('C1')` raises `Failure` with message `b10_abrupt_diagnostic_not_scientific`, `prepare_shared` is not called, and no `phase.json` exists afterwards. |
 | T-P2 `test_prepare_requires_explicit_full_selector_and_confirmation` (existing, adapted) | R8 | as on `main` | `prepare_shared` called once with `('B10', 'C1', 'C1', 'b10d', purpose='diagnostic_trial', run_kind='smoke', b10_abrupt_diagnostic=True)`. |
-| T-F1 `test_timeout_failure_name_is_closed` | 3.3 | `FAILURE_NAMES` | contains `b10_abrupt_timeout_job_unknown`; set size is the `main` size plus 1 (computed by the test, not written as a literal). |
+| T-F1 `test_timeout_failure_name_is_closed` | 3.3 | `FAILURE_NAMES` | `FAILURE_NAMES == MAIN_NAMES \| {'b10_abrupt_timeout_job_unknown'}`, where `MAIN_NAMES` is the literal set of the 26 names at `b10_abrupt.py` lines 48 to 73 on `main` at `3a4ee0b1` (counted by script), and `len(FAILURE_NAMES) == 27`. |
 
 ### 8.2 Point 3 cases on produced bytes (`check_b10_timeout_evidence.py`, run by the required chart-host step)
 
 | Case | Requirement | Inputs | Expected |
 |---|---|---|---|
 | T-S1 frozen trial state rejects | R6 | trial `phase.json`; `PARCHWELL_PURPOSE`, `PARCHWELL_B10_ABRUPT_DIAGNOSTIC` and every `B10Abrupt__` variable unset; each exported file | for each file, `check_candidate(<bytes>)`; and once each, `prepare('C1')`, `validate_scenario()`, `run_repeats()`, `judge()`, `candidate()`, `candidate_download()`: `Failure` with message `b10_abrupt_diagnostic_not_scientific`; `Phase.run` not called; both candidate files absent afterwards; `full_allowed=false` in `GITHUB_OUTPUT`. |
-| T-S2 the bytes are ordinary | R7 | ordinary B10 C1 `phase.json`, same unset environment, each exported JSON or JSONL file | no exported document has `dialect`, `purpose`, `scientific_admissible` or `b10_abrupt_diagnostic` at any depth; `check_candidate(<bytes>)` raises `Failure('candidate contract invalid')`. |
+| T-S2 the bytes are ordinary | R7 | ordinary B10 C1 `phase.json`, same unset environment, each exported JSON or JSONL file | no exported document has `dialect`, `purpose`, `scientific_admissible` or `b10_abrupt_diagnostic` at any depth; for each exported file of nonzero length, `check_candidate(<bytes>)` raises `Failure('candidate contract invalid')`; for a zero-length file it raises `Failure('candidate size invalid')`. |
 | T-S3 export integrity | 3.7 | the export directory | listing equals files; descriptors match; the five required names are present. A missing directory or `export.json` exits 1. |
 
 ### 8.3 Existing tests that change
@@ -190,8 +209,8 @@ Adapted to the order of section 3.1, and kept otherwise: `test_unfinished_first_
 
 Each command's output, exit code and source commit go in the receipt.
 
-1. `python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'`: exit 0, with T-O2, T-O3, T-C1, T-C2, T-P1, T-P2 and T-F1 in the run.
-2. `bash charts/parchwell/tests/check-loadgen-host.sh` with the pinned tools: exit 0, with the final line of section 3.7 in its output and the checker's exact output asserted.
+1. `python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'`: exit 0, with T-O2, T-O3, T-O4, T-C1, T-C2, T-P1, T-P2 and T-F1 in the run.
+2. `bash charts/parchwell/tests/check-loadgen-host.sh` with the pinned tools: exit 0, with the final line of section 3.7 in its output, the checker's exact output asserted, and `b10_abrupt_produced_bytes_checked` showing that T-O1 and the adapted `ProducedBytesCases` tests passed.
 3. `./scripts/verify-dotnet.sh`: exit 0, zero warnings. The report shows `B10TimeoutEvidenceExportTests` passed and not skipped.
 4. `bash infra/scripts/lifecycle/check-offline.sh`: exit 0, including the workflow byte-equality check.
 5. `npm run check:docs`: no warning in the four documents of section 3.6. Other warnings take one blanket line under pull-request rule 8.
@@ -199,8 +218,9 @@ Each command's output, exit code and source commit go in the receipt.
 
 ## 10. Deployment assumptions
 
+- Terminal Job conditions. The trial does not assume that a Job's `Complete` or `Failed` condition implies its pod has terminated: the pod check of section 3.1 item 2 verifies it (decision 6788215099, point 3; T-O4).
 - DA-P1. The ordinary B10 C1 `loadgen` Job renders and runs inside the trial namespace as it does in science, because its values come from the same `Phase.values` call (T-O3 shows no diagnostic value enters). Covered offline by T-O3 and by the existing host check of B10 first-Job environments (`test_loadgen_host.py`). No new deployed-runtime assumption.
-- Part 1's deployment assumptions keep their status, with the offline test's shape and its own two accepted assumptions in decision 6787880185: DA1, DA5 and the acceptance-to-kill time stay with the offline end-to-end test before the trial; DA2 to DA4 are accepted for the one trial only (decision 6769742939); DA6 and DA7 as decision 6774981258 states. This pull request delivers DA7's binding and Job names. It does not settle DA1, DA5 or DA6. The trial still waits for the offline end-to-end test (decision 6769742939).
+- Part 1's deployment assumptions keep their status, with the offline test's shape and its own two accepted assumptions in decision 6787880185: DA1, DA5 and the acceptance-to-kill time stay with the offline end-to-end test before the trial; DA2 to DA4 are accepted for the one trial only (decision 6769742939); DA6 and DA7 as decision 6774981258 states. DA7's binding and Job names are on `main` from part 1; this pull request adds the timeout Job to the trial. It does not settle DA1, DA5 or DA6. The trial still waits for the offline end-to-end test (decision 6769742939).
 
 ## 11. Plan-check questions (factory.md "Item lifecycle" step 1)
 
