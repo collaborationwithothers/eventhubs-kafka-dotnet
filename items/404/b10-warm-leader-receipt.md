@@ -1,6 +1,6 @@
 # B10 warm leader implementation receipt
 
-This change implements the approved warm leader plan for issue #404, including per-arm warm-up, leader readiness, bounded child lifetime and offline proof. The implementation is committed locally, but the mandatory full .NET gate has not passed and managed Docker recovery is needed. No pull request, hosted review, workflow dispatch or trial has been produced.
+This change implements the approved warm leader plan for issue #404, including per-arm warm-up, leader readiness, bounded child lifetime and offline proof. The continuation restored the saved implementation and passed the mandatory full .NET gate without source changes. Publication still requires the qualifying cold review and final-head hosted gates; Hari merges the protected blueprint amendment.
 
 ## Execution card
 
@@ -139,7 +139,33 @@ The second finding identifies legacy run identity in the newly added journal vec
 Cumulative cold-review budget: one comprehensive pass complete, zero focused passes. Two distinct review roots are recorded: common test inputs and premature review sequencing. Limit: two comprehensive and two focused passes across sessions; exhaustion or unsafe focus hands off to Hari. The full R1 report, dispositions, final-head CI and hosted code/security review evidence belong to the pull request's self-review record; the final report is not added to its own reviewed receipt.
 
 
-## Current verification checkpoint
+## Continuation acceptance and qualifying review
+
+The continuation restored `codex/404-b10-warm-leader` from backup commit `9dbbe951a3abc8e0d6a9b0ca4c46c0ae6f443011`. The managed local Docker socket reported server version 28.4.0. No daemon restart, source correction, test relaxation or acceptance-procedure change was made. Authority catch-up read handoff [6806815301](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6806815301); the pinned plan, approval and retained check still identify the same revision. Refreshes included the issue and both listed parents.
+
+All commands below tested clean source `9dbbe951a3abc8e0d6a9b0ca4c46c0ae6f443011`, whose C# content is unchanged from `ff399b7c2e8f0896bd76fe74748dcb753256fc7e`. The full command used the existing build-only processor workaround recorded above; tests and descendants used the default runtime. Exact scripts and generated reports remain outside the repository under `/tmp/404-recovered-verification/`.
+
+| Check | Measured result |
+| --- | --- |
+| Locked restore and Release build of the Verifier test project | Exit 0; zero warnings and errors. |
+| Unchanged focused `VerifierWindowComponentTests.Given_CorruptRecordAppendedAfterFixedEnd_When_RealHandlerDrains_Then_LaterRecordIsExcluded` | One passed, zero failed or skipped; `ValidateReport` passed. |
+| First `./scripts/verify-dotnet.sh` | Exit 2; Architecture 17 and Enrichment 56 passed and validated; Kafka 490 passed, one failed, zero skipped. Later projects and warning control were not reached. |
+| Unchanged focused `PhantomSpikeTests.Given_ApprovedFaultMatrix_When_RealClientAttemptsAreObserved_Then_ExperimentalIntegrityIsEstablished` | One passed, zero failed or skipped; `PublishSpikeEvidence` and `ValidateReport` passed. All 40 trials executed and all 40 target scans completed; no trial or experiment failures; cleanup succeeded. |
+| Second `./scripts/verify-dotnet.sh`, completed 2026-11-11T21:55:35Z | Exit 0; all six project reports validated: Architecture 17, Enrichment 56, Kafka 491, LoadGen 1808, Scenarios 340 and Verifier 7389. Scripted total: 10101 passed, zero failed or skipped. Warning control built its valid counterpart and rejected the intended CS1030 diagnostic. `B10AbruptRejectionTests.cs` and every other Verifier path are unchanged. |
+
+The first full run is retained at `/tmp/parchwell-dotnet-verification.iCMTZpRm`; the passing full run is at `/tmp/parchwell-dotnet-verification.MK9Tx07i`. Its exact command is still `./scripts/verify-dotnet.sh`. The focused results do not substitute for that successful whole invocation.
+
+The two observed Kafka failures are conservatively counted as two verification roots in this continuation's 20-root budget. They differ from the preceding session's V15: all 40 trials executed and all 10 initial controls passed, but two fault trials lacked complete observation. Trial `7ec5a2731df240fabb7a4774869d6845` (retries 0, Timeout, repeat 3) failed its initial direct watermark query with all broker connections down, before warm-up and fault activation. Trial `6c4409284f474241b586e5f3f5773ca6` (retries 0, ResetPeer, repeat 3) failed the target end-watermark query with `Local_UnknownPartition`. Cleanup succeeded for the experiment and every trial. Retained broker logs show fencing and overloaded-controller heartbeat messages; their underlying cause is unconfirmed. No assertion or frozen fixture was changed to obtain the later pass.
+
+The single focused rerun also retained 31 read-only resource samples across 240.463386 s. It recorded no OOM event. Sampling misses short spikes, adds some load and has no time-correlated failure-run baseline; it does not prove a repair or a CPU, storage or heap cause. Raw logs, scripts, trial records and sampling limits remain in the external evidence directory. The verification and diagnostic subagents were fresh contexts at high effort; the verification model was `gpt-6.1-sol`, and the diagnostic agent inherited the control model, whose exact identifier is not exposed.
+
+The earlier image, mutation, Python and chart evidence above is retained: the executed image paths are unchanged, and the full gate covers the later C# fixture corrections. No workflow, trial or merge ran in this continuation. The nine unchanged-file documentation warnings take one blanket disposition in the pull request; the final documentation scan is run after these authored updates.
+
+Qualifying R2 is comprehensive, comparing the full frozen authored diff with `origin/main` at `e74849ea716b6c4b8fa6c5143c6c4175c7038eea`. Its input revision is the frozen committed head after this continuation's receipt/state update on `9dbbe951a3abc8e0d6a9b0ca4c46c0ae6f443011`; the exact reviewed SHA and complete report will be recorded in the pull request self-review record. R2 starts only after the successful full command and final documentation scan. Budget entering R2: one comprehensive review used, zero focused. The cumulative limit remains two comprehensive and two focused reviews across sessions; the prior premature R1 still counts. Review results and any correction-round counts belong in the pull request, not a receipt-only commit to include its own head.
+
+## Previous session checkpoint
+
+The following checkpoint records the earlier environment blocker and handoff. The continuation's successful whole-command result above supersedes its pending acceptance status; its failure evidence and R1 report remain historical evidence.
 
 The implementation is not at the publication checkpoint. The C# source is committed at `ff399b7c2e8f0896bd76fe74748dcb753256fc7e` on the local `codex/404-b10-warm-leader` branch; the backup destination is `codex/404-b10-warm-leader-wip`. No pull request or hosted final-head CI/code/security review exists. The required full command has not exited 0, and qualifying comprehensive R2 has not started. No workflow was dispatched and nothing was merged.
 
