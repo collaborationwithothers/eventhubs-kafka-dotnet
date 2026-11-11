@@ -840,7 +840,7 @@ class ProducedBytesCases(Setup):
         files['journal.jsonl'] = b'\n'.join(lines) + b'\n'
 
     def terminal_publication(self, edit):
-        """Edit one completed control original without changing either selected set."""
+        """Edit terminal evidence and keep the receipt's kill set bound to the journal."""
         def change(_objects, lines):
             frames = [abrupt.decode(line) for line in lines]
             original = next(frame for frame in frames if frame['kind'] == 'prepared'
@@ -852,6 +852,13 @@ class ProducedBytesCases(Setup):
             self.assertNotIn(attempt, _objects['termination.json']['data']['control_unconfirmed_attempt_ids'])
             self.assertNotIn(attempt, _objects['termination.json']['data']['kill_unconfirmed_attempt_ids'])
             edit(frames, terminal, accepted)
+            accepted_ids = {frame['data']['attempt_id'] for frame in frames if frame['kind'] == 'accepted'}
+            completed_ids = {frame['data']['attempt_id'] for frame in frames
+                             if frame['kind'] in ('terminal', 'synchronous_rejection')}
+            _objects['termination.json']['data']['kill_unconfirmed_attempt_ids'] = [
+                frame['data']['attempt_id'] for frame in frames if frame['kind'] == 'prepared'
+                and frame['data']['arm'] == 'cross_restart' and frame['data']['role'] == 'original'
+                and frame['data']['attempt_id'] in accepted_ids - completed_ids]
             prepared = {frame['data']['attempt_id']: sequence for sequence, frame in enumerate(frames, 1)
                         if frame['kind'] == 'prepared'}
             for sequence, frame in enumerate(frames, 1):
@@ -927,8 +934,19 @@ class ProducedBytesCases(Setup):
             frames.remove(terminal)
             frames.insert(frames.index(prepared), terminal)
 
-        cases = [('unknown prepared attempt', lambda _frames, terminal, _accepted:
-                    terminal['data'].update(attempt_id='synthetic-unprepared'), 'terminal binding'),
+        def unknown_prepared(frames, terminal, _accepted):
+            frames.append(dict(frames[-1], kind='terminal',
+                               data=dict(terminal['data'], attempt_id='synthetic-unprepared')))
+
+        def missing_acceptance(frames, _terminal, _accepted):
+            # Preserve the completed control arm required by the cross-restart warm-up.
+            original = next(frame for frame in frames if frame['kind'] == 'prepared'
+                            and frame['data']['arm'] == 'cross_restart' and frame['data']['role'] == 'original'
+                            and frame['data']['ordinal'] == 0)
+            frames.remove(next(frame for frame in frames if frame['kind'] == 'accepted'
+                               and frame['data']['attempt_id'] == original['data']['attempt_id']))
+
+        cases = [('unknown prepared attempt', unknown_prepared, 'terminal binding'),
                  ('terminal before prepared', before_prepared, 'terminal binding'),
                  ('duplicate terminal', lambda frames, terminal, _accepted:
                     frames.insert(frames.index(terminal) + 1, abrupt.decode(abrupt.encode(terminal))), 'terminal binding'),
@@ -936,8 +954,7 @@ class ProducedBytesCases(Setup):
                     reject(frames, terminal, accepted, True), 'terminal binding'),
                  ('rejection after terminal', lambda frames, terminal, accepted:
                     reject(frames, terminal, accepted, False), 'terminal binding'),
-                 ('missing acceptance', lambda frames, _terminal, accepted:
-                    frames.remove(accepted), 'prepared acceptance binding')]
+                 ('missing acceptance', missing_acceptance, 'prepared acceptance binding')]
         for label, edit, error in cases:
             files = self.terminal_publication(edit)
             with self.subTest(label=label), self.assertRaisesRegex(ValueError, '^' + error + '$'):

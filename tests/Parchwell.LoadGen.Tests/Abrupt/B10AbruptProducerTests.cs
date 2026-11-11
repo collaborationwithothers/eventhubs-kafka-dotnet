@@ -833,14 +833,17 @@ public sealed class B10AbruptProducerTests
         internal List<int> Exits { get; } = [];
         internal Func<Task> FlushHook { get; set; } = () => Task.CompletedTask;
         private readonly bool advancesReports;
+        private readonly bool warmupOnSuppliedClock;
         private readonly CancellationTokenSource reportStop = new();
         private Task? reportTask;
         private readonly KafkaStatisticsIdentity statisticsIdentity;
-        internal Fixture(long sequence = 0, TimeProvider? clock = null, B10AbruptTimeline? timeline = null, B10AbruptWire.Identity? diagnosticIdentity = null)
+        internal Fixture(long sequence = 0, TimeProvider? clock = null, B10AbruptTimeline? timeline = null, B10AbruptWire.Identity? diagnosticIdentity = null,
+            Action<TimeSpan>? advanceWarmupClock = null)
         {
             Advancing.EnterManual();
             Clock = new ReleaseWindowClock(clock ?? Advancing);
             advancesReports = clock is null;
+            warmupOnSuppliedClock = clock is not null && advanceWarmupClock is not null;
             Directory.CreateDirectory(Root);
             Options = new RunExecutionOptions(8, 256, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1),
                 16384, 1048576, 1048576, Root, "document-events", ["broker"], false, ApplicationRetry: ApplicationRetryPolicy.ForScenario("B10"));
@@ -852,6 +855,16 @@ public sealed class B10AbruptProducerTests
             Journal = new(Path.Combine(Root, "abrupt", "journal.jsonl"), wireIdentity, Clock, _ => FlushHook());
             var native = DispatchProxy.Create<IProducer<byte[], byte[]>, NativeProducer>();
             Native = (NativeProducer)(object)native;
+            if (warmupOnSuppliedClock)
+                Native.OnWarmup = (message, callback) =>
+                {
+                    callback(Report());
+                    string attemptId = Encoding.UTF8.GetString(message.Headers.GetLastBytes("attempt-id"));
+                    Assert.True(SpinWait.SpinUntil(() => Journal.Frames.Any(frame => frame.Kind == "warmup_terminal" &&
+                        frame.Data.GetProperty("attempt_id").GetString() == attemptId), TimeSpan.FromSeconds(5)));
+                    advanceWarmupClock!(TimeSpan.FromMilliseconds(1));
+                    Observe();
+                };
             Native.OnFlush = () => Observe();
             Runner = new(() => { Constructions++; return native; }, Clock, Statistics, Journal, diagnosticIdentity: wireIdentity,
                 timeline: timeline, selfKill: () => { AtKill(); throw new SimulatedDeathException(); }, exit: code => Exits.Add(code));
@@ -864,17 +877,20 @@ public sealed class B10AbruptProducerTests
                 ? DateTimeOffset.Parse(cut.Data.GetProperty("release_utc").GetString()!, CultureInfo.InvariantCulture) : null;
             return fixture;
         }
-        internal void Initialize(bool warm = true)
+        internal void Initialize(bool warm = true, string arm = "same_instance")
         {
             Journal.AppendAsync("child_started", B10AbruptWire.Element(new { pid = Environment.ProcessId, start_time_ticks = B10AbruptProc.ReadStartTimeTicks(B10AbruptProc.ReadBounded("/proc/self/stat")), boot_id = B10AbruptProc.ReadBootId() })).GetAwaiter().GetResult();
             Runner.Initialize(Profile(), Identity, Options);
             Advancing.Advance(TimeSpan.FromMilliseconds(1)); Observe(); Advancing.Advance(TimeSpan.FromMilliseconds(1));
             if (warm)
             {
-                Task preparation = Runner.PrepareArmAsync("same_instance", TestContext.Current.CancellationToken);
-                Journal.DrainAvailable().GetAwaiter().GetResult();
-                Observe();
-                Advancing.Advance(TimeSpan.FromMilliseconds(10));
+                Task preparation = Runner.PrepareArmAsync(arm, TestContext.Current.CancellationToken);
+                if (!warmupOnSuppliedClock)
+                {
+                    Journal.DrainAvailable().GetAwaiter().GetResult();
+                    Observe();
+                    Advancing.Advance(TimeSpan.FromMilliseconds(10));
+                }
                 preparation.GetAwaiter().GetResult();
             }
         }
