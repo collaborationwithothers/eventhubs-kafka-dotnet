@@ -73,6 +73,7 @@ public sealed class B10AbruptOfflineImageTests(ITestOutputHelper output)
 /// <summary>Runs the image gate's parent and fresh successor against one local broker and shared file storage.</summary>
 internal sealed class B10OfflineImageRun(string image, string commit, ITestOutputHelper output) : IAsyncDisposable
 {
+    private static readonly int[] SuccessfulPersistenceStatuses = [0, 2];
     private readonly string directory = Path.Combine(Path.GetTempPath(), "b10-offline-image-" + Guid.NewGuid().ToString("N"));
     private readonly string containerPrefix = "b10-offline-image-" + Guid.NewGuid().ToString("N");
     private readonly List<IContainer> containers = [];
@@ -80,6 +81,7 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
     private readonly DockerClient docker = TestcontainersSettings.OS.DockerEndpointAuthConfig.GetDockerClientBuilder()
         .WithTimeout(TimeSpan.FromMinutes(2)).Build();
     private LocalKafkaFixture? kafka;
+    private readonly B10AbruptKafkaProxy proxy = new();
     private string brokerOutput = "";
     private string imageId = "";
     private string originalHookOwner = "";
@@ -113,8 +115,8 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
         foreach (string role in new[] { "parent", "successor" })
             foreach (string mount in new[] { "work/loadgen", "tmp", "bindings" })
                 Directory.CreateDirectory(Path.Combine(directory, role, mount));
-        LocalKafkaFixture broker = await StartBrokerAsync(cancellation);
-        using var admin = new AdminClientBuilder(new AdminClientConfig { BootstrapServers = broker.BootstrapServers }).Build();
+        await StartBrokerAsync(cancellation);
+        using var admin = new AdminClientBuilder(new AdminClientConfig { BootstrapServers = proxy.BootstrapServers }).Build();
         await admin.CreateTopicsAsync([new TopicSpecification { Name = "document-events", NumPartitions = 1, ReplicationFactor = 1 }]);
         Metadata metadata = admin.GetMetadata(TimeSpan.FromSeconds(10));
         string[] brokerNames = metadata.Brokers.Select(broker => $"{broker.Host}:{broker.Port}/{broker.BrokerId}").ToArray();
@@ -128,7 +130,7 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
         }));
         foreach (string role in new[] { "parent", "successor" })
             File.WriteAllBytes(Path.Combine(directory, role, "work", "loadgen", "test-control.json"),
-                JsonSerializer.SerializeToUtf8Bytes(new B10AbruptProcessHarness.Control("image-kafka", "/storage", broker.BootstrapServers, RealTime: true)));
+                JsonSerializer.SerializeToUtf8Bytes(new B10AbruptProcessHarness.Control("image-kafka", "/storage", proxy.BootstrapServers, RealTime: true)));
         // Normalize the host's umask before ownership changes so both the runner and uid 1654 can read evidence.
         foreach (string path in Directory.EnumerateDirectories(directory, "*", SearchOption.AllDirectories))
             File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
@@ -183,6 +185,8 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
         Assert.Empty(snapshot.Gaps);
         Assert.Empty(snapshot.Failures);
         Assert.Equal(killSet, snapshot.KillUnconfirmedAttemptIds);
+        await AssertWarmupsAsync(snapshot, cancellation);
+        Assert.DoesNotContain(snapshot.Frames, frame => frame.Kind == "terminal" && frame.Data.GetProperty("error_code").GetInt32() == -192);
         B10AbruptWire.Frame intent = Assert.Single(snapshot.Frames, frame => frame.Kind == "kill_intent");
         Assert.Equal(intent, snapshot.Frames.Last(frame => B10AbruptWire.IsProducingKind(frame.Kind)));
         JsonElement[] stages = parentLogs.Stderr.Split('\n')
@@ -203,13 +207,43 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
         decimal killToExit = ((decimal)observedExit.GetProperty("ticks").GetInt64() - intent.MonotonicTicks) * 1000000 / intent.ClockFrequency;
         Assert.True(acceptedToKill >= 0, "b10_offline_image_negative_accepted_to_kill");
         Assert.True(killToExit >= 0, "b10_offline_image_negative_kill_to_exit");
+        JsonElement parentRegistered = Assert.Single(stages, stage => stage.GetProperty("stage").GetString() == "parent_registered");
+        JsonElement childStarted = Assert.Single(stages, stage => stage.GetProperty("stage").GetString() == "child_started");
+        decimal registeredToStarted = ((decimal)childStarted.GetProperty("ticks").GetInt64() - parentRegistered.GetProperty("ticks").GetInt64()) * 1000000 / intent.ClockFrequency;
+        Assert.True(registeredToStarted >= 0, "b10_offline_image_negative_registered_to_started");
         await WritePredecessorAsync(terminationBytes, intent, cancellation);
         // The successor binding is created after setup, so give this new file the same mount ownership.
         await HelperAsync("successor-ownership", "0:0", true,
             "chown -R 1654:1654 /owned/successor", cancellation);
         await RunRoleAsync("successor", cancellation);
-        int consumed = await AssertResendsAsync(snapshot, killSet, cancellation);
-        return $"b10_offline_image source_commit={commit} image_id={imageId} runtime={data.GetProperty("runtime_version").GetString()} kernel={File.ReadAllText("/proc/sys/kernel/osrelease").Trim()} parent_exit=0 exit_code_local_observation=137 termination=intended_self_kill journal_records={snapshot.Frames.Count} kill_unconfirmed={killSet.Length} cut_accepted_to_kill_intent_microseconds={acceptedToKill.ToString(CultureInfo.InvariantCulture)} kill_intent_to_exit_observed_microseconds={killToExit.ToString(CultureInfo.InvariantCulture)} successor_exit=0 consumed_resends={consumed}";
+        (int consumed, int originals) = await AssertResendsAsync(snapshot, killSet, cancellation);
+        int warmups = snapshot.Frames.Count(frame => frame.Kind == "warmup_terminal");
+        return $"b10_offline_image source_commit={commit} image_id={imageId} runtime={data.GetProperty("runtime_version").GetString()} kernel={File.ReadAllText("/proc/sys/kernel/osrelease").Trim()} parent_exit=0 exit_code_local_observation=137 termination=intended_self_kill journal_records={snapshot.Frames.Count} kill_unconfirmed={killSet.Length} cut_accepted_to_kill_intent_microseconds={acceptedToKill.ToString(CultureInfo.InvariantCulture)} kill_intent_to_exit_observed_microseconds={killToExit.ToString(CultureInfo.InvariantCulture)} successor_exit=0 consumed_resends={consumed} warmup_records={warmups} kill_originals_consumed={originals} parent_registered_to_child_started_microseconds={registeredToStarted.ToString(CultureInfo.InvariantCulture)} connect_delay_ms=500 response_delay_ms=500";
+    }
+
+    private async Task AssertWarmupsAsync(B10AbruptJournal.Snapshot snapshot, CancellationToken cancellation)
+    {
+        foreach (string arm in new[] { "same_instance", "cross_restart" })
+        {
+            B10AbruptWire.Frame prepared = Assert.Single(snapshot.Frames, frame => frame.Kind == "warmup_prepared" && frame.Data.GetProperty("arm").GetString() == arm);
+            string attempt = prepared.Data.GetProperty("attempt_id").GetString()!;
+            B10AbruptWire.Frame terminal = Assert.Single(snapshot.Frames, frame => frame.Kind == "warmup_terminal" && frame.Data.GetProperty("attempt_id").GetString() == attempt);
+            B10AbruptWire.Frame original = Assert.Single(snapshot.Frames, frame => frame.Kind == "prepared" && frame.Data.GetProperty("arm").GetString() == arm && frame.Data.GetProperty("role").GetString() == "original" && frame.Data.GetProperty("ordinal").GetInt32() == 0);
+            string originalAttempt = original.Data.GetProperty("attempt_id").GetString()!;
+            B10AbruptWire.Frame report = Assert.Single(snapshot.Frames, frame => frame.Kind == "pre_acceptance_report" && frame.Data.GetProperty("arm").GetString() == arm);
+            B10AbruptWire.Frame accepted = Assert.Single(snapshot.Frames, frame => frame.Kind == "accepted" && frame.Data.GetProperty("attempt_id").GetString() == originalAttempt);
+            Assert.True(prepared.Sequence < terminal.Sequence && terminal.Sequence < original.Sequence && original.Sequence < report.Sequence && report.Sequence < accepted.Sequence,
+                "b10_offline_image_warmup_order:" + arm);
+            Assert.True(terminal.Data.GetProperty("delivered").GetBoolean());
+            Assert.Equal(0, terminal.Data.GetProperty("error_code").GetInt32());
+            Assert.Contains(terminal.Data.GetProperty("persistence_status").GetInt32(), SuccessfulPersistenceStatuses);
+            Assert.Equal(attempt, report.Data.GetProperty("warmup_attempt_id").GetString());
+            int partition = terminal.Data.GetProperty("partition").GetInt32();
+            Assert.Equal(partition, report.Data.GetProperty("partition").GetInt32());
+            Assert.True(report.Data.GetProperty("report_capture_utc").GetDateTimeOffset() > DateTimeOffset.Parse(terminal.ObservedUtc, CultureInfo.InvariantCulture));
+            string raw = await File.ReadAllTextAsync(Path.Combine(FirstPublication, report.Data.GetProperty("name").GetString()!), cancellation);
+            Assert.True(B10AbruptStatistics.LeaderUp(raw, "document-events", partition), "b10_offline_image_leader_not_up:" + arm);
+        }
     }
 
     private void AssertHooks()
@@ -251,27 +285,35 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
             File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead);
     }
 
-    private async Task<int> AssertResendsAsync(B10AbruptJournal.Snapshot snapshot, string[] killSet, CancellationToken cancellation)
+    private async Task<(int Resends, int Originals)> AssertResendsAsync(B10AbruptJournal.Snapshot snapshot, string[] killSet, CancellationToken cancellation)
     {
         string completion = Path.Combine(Storage, "offline-image", "C1", "r1", "b10-abrupt-diagnostic", "successor", "completion.json");
         JsonElement receipt = B10AbruptWire.ReadEnvelope(await File.ReadAllBytesAsync(completion, cancellation), "successor_receipt").GetProperty("data");
         JsonElement[] invocations = receipt.GetProperty("invocations").EnumerateArray().ToArray();
         Assert.Equal(killSet, invocations.Select(invocation => invocation.GetProperty("predecessor_attempt_id").GetString()!));
+        string ledger = Path.Combine(Path.GetDirectoryName(completion)!, "ledger.jsonl");
+        foreach (string row in await File.ReadAllLinesAsync(ledger, cancellation))
+            Assert.NotEqual(-192, JsonDocument.Parse(row).RootElement.GetProperty("error_code").GetInt32());
         using var consumer = new ConsumerBuilder<byte[], byte[]>(new ConsumerConfig
         {
-            BootstrapServers = kafka!.BootstrapServers, GroupId = "synthetic-b10-image-" + Guid.NewGuid().ToString("N"),
+            BootstrapServers = proxy.BootstrapServers, GroupId = "synthetic-b10-image-" + Guid.NewGuid().ToString("N"),
             EnableAutoCommit = false, AutoOffsetReset = AutoOffsetReset.Earliest
         }).Build();
         consumer.Assign(new TopicPartitionOffset("document-events", new Partition(0), Offset.Beginning));
         var observed = new Dictionary<string, Message<byte[], byte[]>>(StringComparer.Ordinal);
+        var offsets = new Dictionary<string, Offset>(StringComparer.Ordinal);
         var readTime = Stopwatch.StartNew();
-        while (readTime.Elapsed < TimeSpan.FromSeconds(20) && invocations.Any(invocation => !observed.ContainsKey(invocation.GetProperty("attempt_id").GetString()!)))
+        while (readTime.Elapsed < TimeSpan.FromSeconds(60) &&
+            (invocations.Any(invocation => !observed.ContainsKey(invocation.GetProperty("attempt_id").GetString()!)) || !killSet.Any(observed.ContainsKey)))
         {
             cancellation.ThrowIfCancellationRequested();
             ConsumeResult<byte[], byte[]>? record = consumer.Consume(TimeSpan.FromMilliseconds(100));
             if (record?.Message.Headers is null) continue;
-            observed.TryAdd(Encoding.UTF8.GetString(record.Message.Headers.GetLastBytes("attempt-id")), record.Message);
+            string attempt = Encoding.UTF8.GetString(record.Message.Headers.GetLastBytes("attempt-id"));
+            observed.TryAdd(attempt, record.Message);
+            offsets.TryAdd(attempt, record.Offset);
         }
+        int originals = 0;
         foreach (JsonElement invocation in invocations)
         {
             string predecessor = invocation.GetProperty("predecessor_attempt_id").GetString()!;
@@ -284,8 +326,18 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
             Assert.Equal(original.GetProperty("payload_sha256").GetString(), Convert.ToHexStringLower(SHA256.HashData(resend.Value)));
             Assert.Equal("successor", Encoding.UTF8.GetString(resend.Headers.GetLastBytes("instance-id")));
             if (observed.TryGetValue(predecessor, out Message<byte[], byte[]>? originalMessage)) Assert.Equal(originalMessage.Value, resend.Value);
+            if (originalMessage is not null)
+            {
+                Assert.Equal("first", Encoding.UTF8.GetString(originalMessage.Headers.GetLastBytes("instance-id")));
+                Assert.NotEqual(offsets[predecessor], offsets[attempt]);
+                Assert.Equal(originalMessage.Key, resend.Key);
+                Assert.Equal(originalMessage.Headers.GetLastBytes("sequence"), resend.Headers.GetLastBytes("sequence"));
+                Assert.Equal(Convert.ToHexStringLower(SHA256.HashData(originalMessage.Value)), Convert.ToHexStringLower(SHA256.HashData(resend.Value)));
+                originals++;
+            }
         }
-        return invocations.Length;
+        Assert.True(originals > 0, "b10_offline_image_kill_original_not_consumed");
+        return (invocations.Length, originals);
     }
 
     private async Task<(string Stdout, string Stderr)> RunRoleAsync(string role, CancellationToken cancellation)
@@ -308,7 +360,9 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
                 parameters.HostConfig.Init = false;
                 parameters.HostConfig.PidMode = "";
             }).Build();
+        int connectionsBefore = proxy.AcceptedConnections;
         await RunContainerAsync(container, role, cancellation);
+        Assert.True(proxy.AcceptedConnections > connectionsBefore, "b10_offline_image_no_proxy_connection:" + role);
         return await container.GetLogsAsync(timestampsEnabled: false, ct: cancellation);
     }
 
@@ -439,7 +493,8 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
 
     internal async Task<LocalKafkaFixture> StartBrokerAsync(CancellationToken cancellation, IOutputConsumer? outputConsumer = null)
     {
-        kafka = await LocalKafkaFixture.StartAsync(cancellation, tail => brokerOutput = tail, outputConsumer);
+        kafka = await LocalKafkaFixture.StartAsync(cancellation, tail => brokerOutput = tail, outputConsumer, proxy.BootstrapServers);
+        proxy.SetUpstream(kafka.BootstrapServers);
         return kafka;
     }
 
@@ -473,6 +528,8 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
             try { await kafka.DisposeAsync(); }
             catch (Exception exception) { failures.Add(exception); }
         }
+        try { await proxy.DisposeAsync(); }
+        catch (Exception exception) { failures.Add(exception); }
         if (restoreHookOwner)
         {
             try

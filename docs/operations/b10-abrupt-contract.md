@@ -2,7 +2,7 @@
 
 The B10 diagnostic trial runs an ordinary timeout producer, a parent with a self-killing producer child, and a fresh successor in sequence. The child records its probes in a local journal; the parent publishes that journal after observing the child's death. This execution is diagnostic-only, inactive for scientific publication.
 
-[ADR-021](../blueprint.md#adr-021-b10-accepts-timed-out-sends-application-retries-and-one-producer-restart-in-a-second-job-and-classifies-late-appends-up-to-a-sweep-line) owns the restart protocol and scientific rules. The [approved part 1 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/fc1a4f36452b2d302f1d73987e1ba5eb967b3d65/items/404/plan-b10-execution-loadgen.md), section 3, owns the LoadGen and schema-3 interfaces below. The [approved part 2 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/0c73e5139e1670d5b675a51fc52dbd99c4b1af49/items/404/plan-b10-execution-trial.md), section 3, owns trial orchestration and collection. These replace the stop/checkpoint/pipe protocol; the [workflow page](b10-workflow.md#diagnostic-trial-inactive-for-science) records dispatch and trial limits.
+[ADR-021](../blueprint.md#adr-021-b10-accepts-timed-out-sends-application-retries-and-one-producer-restart-in-a-second-job-and-classifies-late-appends-up-to-a-sweep-line) owns the restart protocol and scientific rules. The [approved part 1 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/fc1a4f36452b2d302f1d73987e1ba5eb967b3d65/items/404/plan-b10-execution-loadgen.md), section 3, owns the LoadGen and schema-3 interfaces below. The [approved part 2 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/0c73e5139e1670d5b675a51fc52dbd99c4b1af49/items/404/plan-b10-execution-trial.md), section 3, owns trial orchestration and collection. The [approved warm-leader plan, Revision 3](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/34aae8485053429a5b183e86a5f2c39dda570d25/items/404/plan-b10-warm-leader.md), section 3, amends the probe settings, warm-up records, leader gate and child deadline. This page owns their wire formats and reader details; ADR-021 owns the design rules. These replace the stop/checkpoint/pipe protocol; the [workflow page](b10-workflow.md#diagnostic-trial-inactive-for-science) records dispatch and trial limits.
 
 ## Processes and configuration
 
@@ -34,6 +34,8 @@ These fixed policy values are not measurements. A different value is rejected wi
 | `CutOrdinal` | 4 |
 
 Removed keys are rejected with `SettingNameOrDuplicate`: `EventsPipeHandle`, `AckPipeHandle`, `IdentityChallenge`, `ArmTimeoutSeconds`, `KillTimeoutSeconds`, `ReapTimeoutSeconds`, `EofTimeoutSeconds` and `MaxFrameBytes`.
+
+ADR-021 protocol rule 1 owns the child and successor producer settings and preserves the C1 timeout Job's settings. The probe values are constants in abrupt code, with no new `B10Abrupt__` key or scenario setting. The child's statistics expected-settings dictionary holds its effective configuration, including its `linger.ms`; the child writes no `capabilities.json`. The successor's `capabilities.json` entry for `message.timeout.ms` has `value` "300000", unchanged baseline metadata and `override` null. Its selected configuration is built the same way for `RunEvidenceReader`. The `max.in.flight` and `enable.idempotence` entries retain their C1 values and scenario `override` provenance. Every other key is unchanged.
 
 ## Trial order and Job identities
 
@@ -74,21 +76,35 @@ Only the child writes `<OutputRoot>/abrupt/journal.jsonl` (`/work/loadgen/abrupt
 | Kind | Writer and `data` |
 | --- | --- |
 | `child_started` | Producing thread, first record: `pid`, `start_time_ticks`, `boot_id` |
+| `warmup_prepared` | Producing thread, before the warm-up `Produce`: `attempt_id`, `arm`, `key`, `payload_length`, `payload_sha256` |
+| `warmup_terminal` | Journal writer thread, from the warm-up delivery callback through the existing bounded queue: `attempt_id`, `completion_source` (`callback`), `delivered`, `error_code`, `persistence_status`, `partition`, `offset` |
 | `prepared` | Producing thread, before `Produce`: `attempt_id`, `arm`, `role`, `ordinal`, `probe_id`, `key`, `sequence`, `payload_length`, `payload_sha256`, `predecessor_attempt_id` |
-| `pre_acceptance_report` | Producing thread, after ordinal 0's `prepared` and before its `accepted`: `arm`, `attempt_id`, `name`, `length`, `sha256`, `report_identity`, `report_sequence`, `report_capture_utc` |
+| `pre_acceptance_report` | Producing thread, after ordinal 0's `prepared` and before its `accepted`: `arm`, `attempt_id`, `name`, `length`, `sha256`, `report_identity`, `report_sequence`, `report_capture_utc`, `warmup_attempt_id`, `partition` |
 | `accepted` | Producing thread, after `Produce` returns: `attempt_id`, `prepared_sequence` |
 | `synchronous_rejection` | Producing thread, when `Produce` throws: `attempt_id`, `prepared_sequence`, `error_code`, `error_reason` |
 | `terminal` | Journal writer thread: `attempt_id`, `completion_source`, `delivered`, `error_code`, `persistence_status` |
 | `native_error` | Journal writer thread: `capture_sequence`, `error_code`, `error_name`, `is_error`, `is_fatal`, `callback_monotonic_ticks` |
 | `cut` | Producing thread, control arm after ordinal 4's `accepted`: `arm`, `cut_attempt_id`, `release_utc`, `unconfirmed_attempt_ids` |
 | `control_drained` | Producing thread: `flush_returned`, `out_queue_length` |
-| `post_drain_report` | Producing thread, after `control_drained`: same descriptor fields as `pre_acceptance_report`, with arm `same_instance`, null attempt ID and name `control-post-drain-report.json` |
+| `post_drain_report` | Producing thread, after `control_drained`: the original descriptor fields (`arm`, `attempt_id`, `name`, `length`, `sha256`, `report_identity`, `report_sequence`, `report_capture_utc`), with arm `same_instance`, null attempt ID and name `control-post-drain-report.json` |
 | `kill_intent` | Producing thread, cross-restart arm after ordinal 4's `accepted`: `arm`, `cut_attempt_id`, `release_utc` |
 | `signal_failed` | Producing thread, only when the kill call returns after `kill_intent`: `return_value`, `errno` |
 | `no_kill` | Producing thread: `reason`, `cross_restart_admitted` |
 | `gap` | Either thread when writing remains possible: `reason`, `first_missing_sequence` (nullable), `capture_status` |
 
 Arms are `same_instance` and `cross_restart`; roles are `original` and `resend`. Original ordinals run from 0 to 4, with sequence equal to ordinal; a resend keeps its original's ordinal. Original predecessor attempt IDs are null. Pre-acceptance report names are `<arm>-pre-acceptance-report.json`. Report identity, sequence, capture time, length and hash use part 1 section 3.5's descriptor contract: report identity has `scenario_id`, `run_id`, `role` and `client_id`, with role `LoadGenProducer`; report length is 1 to 1048576 bytes and report sequence is positive. Native-error `capture_sequence` starts at 1 without gaps.
+
+Warm-up wire records use topic `document-events`, the arm key and the arm's probe payload bytes. Their headers, in order, are `instance-id` equal to the instance ID, `attempt-id` equal to `{instance_id}-{arm}-warmup`, and `sequence` equal to `-1`. The caller sets no partition. ADR-021 protocol rule 1 owns the partitioner and cohort rules.
+
+`warmup_prepared` is a producing kind; `warmup_terminal` is not. `partition` is a JSON integer in the signed 32-bit range, and `offset` is a JSON integer in the signed 64-bit range ([Confluent.Kafka v2.16.0 Partition.Value](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Partition.cs), [Offset.Value](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Offset.cs)). C# reads them with `TryGetInt32` and `TryGetInt64`; Python checks `-2147483648 <= v <= 2147483647` and `-9223372036854775808 <= v <= 9223372036854775807`. The existing 32-bit `Integer` helper is not used for `offset`. When `delivered` is true, both are at least 0. A synchronous warm-up rejection has no record of its own; `no_kill` with reason `b10_abrupt_warmup_failed` is its trace.
+
+Every journal, including a no-kill journal, enforces these warm-up rules:
+
+- At most one `warmup_prepared` per arm, with `attempt_id` `{instance_id}-{arm}-warmup` and the arm key.
+- Cross-restart `warmup_prepared` comes only after the control arm is complete, under the existing control-completeness condition for cross-restart `prepared`.
+- At most one `warmup_terminal` per `warmup_prepared`, after it, with a matching attempt ID. It may follow `no_kill`, because a no-kill flush can complete it late.
+
+Only when the arm's ordinal-0 `prepared` exists, exactly one warm-up preparation and terminal must both precede it. The terminal must have `delivered` true and `error_code` 0, with `persistence_status` 0 or 2, as the existing reader permits for error code 0. The arm's `pre_acceptance_report` must bind that warm-up's attempt ID and delivered partition, with `report_capture_utc` strictly later than the terminal's `observed_utc`. A no-kill journal ending before that ordinal-0 preparation gets no gap or failure from these conditional rules, whatever its warm-up records show. Other breaches of these journal rules give capture gap `malformed_frame`; a report's failed warm-up fields or capture time give `b10_abrupt_report_binding_invalid`.
 
 The control set is computed and appended atomically with `cut`, under the journal lock: accepted control originals without a terminal or synchronous rejection before `cut`, in invocation order. A terminal appended after that lock is released cannot remove a member. Readers recompute the set from journal order and require equality with `unconfirmed_attempt_ids`.
 
@@ -100,14 +116,47 @@ Limits are charged before writing: record JSON at most 65536 bytes excluding its
 
 Part 1 section 3.6 owns this fixed policy sequence. The workload is synthetic; the rate is policy, not a measurement.
 
-1. Write `child_started`, construct the B10 C1 producer and wait for a parsed statistics report.
-2. Invoke control originals 0 to 4. Invocation `i` is no earlier than `i * 10 ms` after ordinal 0's invocation (100 originals per second). After ordinal 4's acceptance, write `cut` atomically with its control set; release is that record's UTC plus 120 s. An empty set takes `no_kill` with `b10_abrupt_exposure_inconclusive`.
+1. Write `child_started`, construct the child producer with ADR-021 protocol rule 1's settings and wait for a parsed statistics report.
+2. Complete the control warm-up and leader gate under ADR-021 protocol rules 1 and 5, then invoke control originals 0 to 4. Invocation `i` is no earlier than `i * 10 ms` after ordinal 0's invocation (100 originals per second). After ordinal 4's acceptance, write `cut` atomically with its control set; release is that record's UTC plus 120 s. An empty set takes `no_kill` with `b10_abrupt_exposure_inconclusive`.
 3. At control release, resend each member once in invocation order with a new attempt ID and the same instance, key, sequence and payload bytes, even if it has since completed.
 4. Flush within the existing 300 s producer-drain budget, write `control_drained`, then bind the first parsed statistics report captured after drain. Continue only with `flush_returned=true`, queue length 0, a terminal for every control original and resend, and that report. Otherwise take `no_kill` with `b10_abrupt_control_incomplete`.
-5. Invoke cross-restart originals 0 to 4 at the same pacing. After ordinal 4's acceptance, write `kill_intent` and call `kill(getpid(), 9)` once. Its release is that record's UTC plus 120 s. After this arm's first original is admitted, call no `Flush` or `Dispose`. A kill call that returns writes `signal_failed` with return value and errno, then exits 4.
-6. Failure before `kill_intent` writes `no_kill` best effort. Before cross-restart admission, flush within the existing producer-drain budget, dispose and exit 3; after admission, use `Environment.Exit(3)` without flush or disposal.
+5. Complete the cross-restart warm-up and leader gate under the same rules, then invoke cross-restart originals 0 to 4 at the same pacing. After ordinal 4's acceptance, write `kill_intent` and call `kill(getpid(), 9)` once. Its release is that record's UTC plus 120 s. After this arm's first original is admitted, call no `Flush` or `Dispose`. A kill call that returns writes `signal_failed` with return value and errno, then exits 4.
+6. Failure before `kill_intent` writes `no_kill` best effort. Before cross-restart admission, flush within the time left before the child deadline, dispose and exit 3; after admission, use `Environment.Exit(3)` without flush or disposal.
 
 The keys/probe IDs are `B10/{run_id}/C1/1/same_instance` and `B10/{run_id}/C1/1/cross_restart`. Each arm uses the first generated profile event's payload bytes for every attempt. If ordinal 4 is synchronously rejected, no cut is written: the cross-restart arm with no accepted original gives `kill_too_early`; otherwise `b10_abrupt_cut_rejected`. Rejections of ordinals 0 to 3 are recorded and execution continues.
+
+## Leader report selection and child timing
+
+ADR-021 protocol rules 5 and 7 own the leader gate, wait failures and child deadline. `LeaderUp(report, topic, partition)` reads the raw statistics JSON: `topics[topic].partitions[decimal string of partition].leader` must be an integer L at least 0; exactly one value in `brokers` must have `nodeid` equal to L; and that value's `state` must be the string `UP`. Missing fields, no matching broker, multiple matches or any other state return false. The field meanings come from [STATISTICS.md v2.16.0](https://github.com/confluentinc/librdkafka/blob/v2.16.0/STATISTICS.md).
+
+Warm-up and report selection happen before the arm's ordinal-0 `prepared`; the selected report is bound after that preparation and before its `accepted`. Among parsed reports captured strictly after `warmup_terminal.observed_utc`, select the first satisfying `LeaderUp`. The statistics wait is `StatisticsCompletionTimeout` 20 s in the abrupt host, or `CleanupTimeout` when unset, limited by the child deadline. The phase reader rechecks `LeaderUp` on the published report bytes. Failed warm-up binding, capture time or `LeaderUp` gives `b10_abrupt_report_binding_invalid`, and the phase reader rejects the first publication through its existing report-binding failure path without releasing the successor.
+
+The deadline in ADR-021 protocol rule 7 uses the child's monotonic clock. The control drain retains `ProducerDrainTimeout` 300 s; no-kill disposal retains `CleanupTimeout` 10 s. The following are policy-path bounds computed by the approved plan's timing script, in seconds after `child_started`, not measured latencies:
+
+| Path | Latest path entry | Latest end |
+| --- | --- | --- |
+| Successful `kill_intent` and self-kill | 680 | 680 |
+| No initial report | 20 | 700 |
+| Control warm-up not delivered | 110 | 700 |
+| Control report missing or leader not `UP` | 130 | 700 |
+| Control drain incomplete | 550 | 700 |
+| Post-drain report missing | 570 | 700 |
+| Cross-restart warm-up not delivered | 660 | 700 |
+| Cross-restart report missing or leader not `UP` | 680 | 700 |
+| Failure after cross-restart admission | 680 | 680 |
+| Deadline reached before `kill_intent` | 690 | 700 |
+
+At deadline expiry, ADR-021 protocol rule 7's remaining-time flush bound is 0 s. That rule also owns admission, disposal and exit behavior.
+
+The parent's death wait starts at its own start, earlier than `child_started`. Disposal is outside the child deadline and inside its exit margin. Parent work before child start, child start before `child_started`, disposal and process exit together fitting in that margin is live-only assumption LA6, accepted for the next diagnostic trial by [decision 6801095762, point 1](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6801095762). The decision records parent `child_started` at 627 ms and the child's record 557 ms later, totaling 1184 ms by script in trial run 43010596896. The offline interval below covers only registration to the parent's `Process.Start` mark on a runner; it does not prove LA6. Exceeding the parent's wait still gives unknown termination.
+
+## Offline proof
+
+Warm-leader plan section 3.7 owns the offline test mechanism. Its local TCP proxy listens at `127.0.0.1` on an ephemeral port, which the optional `LocalKafkaFixture` advertised-address input supplies to the broker's `PLAINTEXT` listener. Every client in those tests bootstraps through that proxy. Existing fixture callers retain their behavior.
+
+For each accepted connection, the proxy delays upstream connection by 500 ms. It forwards client-to-broker bytes without added delay and forwards each broker-to-client chunk, in order, no earlier than 500 ms after reading it. On client close it still forwards already-read client bytes upstream before closing upstream. It counts accepted connections. These delays are test policy, not Event Hubs measurements.
+
+The offline image test retains its method, class, 900 s bound, container settings and existing assertions. Its consumer read window is 60 s. Its observation line retains existing keys and order, then appends after `consumed_resends`: `warmup_records=<count of warmup_terminal records> kill_originals_consumed=<count> parent_registered_to_child_started_microseconds=<decimal> connect_delay_ms=500 response_delay_ms=500`. The interval uses the parent's `parent_registered` and `child_started` stage ticks. `B10AbruptEndToEndTests` uses the same proxy and delays with unchanged assertions; its parent-role and successor bounds may each be 300 s under [decision 6801095762, point 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6801095762).
 
 ## Parent, termination and first publication
 
@@ -128,7 +177,7 @@ Publication uses container `ledger`, prefix `<run_id>/C1/r1/b10-abrupt-diagnosti
 
 ## Successor
 
-Part 1 section 3.11 owns successor admission and publication. The phase checks first-pod termination and accepts its publication before `release_successor` creates the successor binding configmap. Binding has exactly `first_pod`, `termination`, `start_line_binding`, `release_utc`, `runner_utc`, `runner_monotonic_ticks` and `cross_host_timing`. `first_pod` holds `job_name`, `pod_name`, `pod_uid`, `image_reference`, `source_commit` and `finished_utc`; `termination` is the termination-file descriptor. Cross-host timing remains `not_verified`.
+Part 1 section 3.11 owns successor admission and publication; ADR-021 protocol rule 8 owns its no-warm-up behavior. The phase checks first-pod termination and accepts its publication before `release_successor` creates the successor binding configmap. Binding has exactly `first_pod`, `termination`, `start_line_binding`, `release_utc`, `runner_utc`, `runner_monotonic_ticks` and `cross_host_timing`. `first_pod` holds `job_name`, `pod_name`, `pod_uid`, `image_reference`, `source_commit` and `finished_utc`; `termination` is the termination-file descriptor. Cross-host timing remains `not_verified`.
 
 The successor downloads `termination.json`, `abrupt-manifest.json` and `journal.jsonl` from the first pod's Blob prefix. It checks the hash/length chain, exact identities and `successor_permitted=true`, recomputes the kill unconfirmed set and requires equality with the termination receipt. It requires predecessor Job `{run}-c1-r1-loadgen-restart` and binding release equal to `kill_intent.data.release_utc`; stale selection or release gives binding detail `selection_stale`.
 
@@ -136,7 +185,7 @@ After registration with the first pod as predecessor, it waits for that release 
 
 ## Failure names and collection
 
-Part 1 section 3.9 owns the retained names and outcomes; part 2 section 3.3 adds only `b10_abrupt_timeout_job_unknown`:
+Part 1 section 3.9 owns the retained names and outcomes; warm-leader plan section 3.6 adds the warm-up and leader names, whose conditions ADR-021 protocol rule 7 defines. The warm-up failure also covers a synchronous `Produce` exception or a terminal with `delivered` false or a nonzero `error_code`. Part 2 section 3.3 adds only `b10_abrupt_timeout_job_unknown`:
 
 ```text
 b10_abrupt_diagnostic_not_scientific
@@ -150,6 +199,8 @@ b10_abrupt_exit_unobserved
 b10_abrupt_unexpected_exit
 b10_abrupt_capture_gap
 b10_abrupt_sample_missing
+b10_abrupt_warmup_failed
+b10_abrupt_leader_not_up
 b10_abrupt_report_binding_invalid
 b10_abrupt_guard_failed
 b10_abrupt_control_incomplete
@@ -168,7 +219,7 @@ b10_abrupt_deadline_exhausted
 b10_abrupt_timeout_job_unknown
 ```
 
-Retired names are `b10_abrupt_target_invalid`, `b10_abrupt_stop_unconfirmed`, `b10_abrupt_resume_unconfirmed` and `b10_abrupt_eof_incomplete`. The closed `no_kill.reason` set is `b10_abrupt_exposure_inconclusive`, `b10_abrupt_control_incomplete`, `kill_too_early`, `b10_abrupt_cut_rejected`, `b10_abrupt_sample_missing`, `b10_abrupt_report_binding_invalid`, `b10_abrupt_guard_failed`, `b10_abrupt_signal_preflight_failed`, `b10_abrupt_deadline_exhausted` and `b10_abrupt_capture_gap`. A returned kill call is not a no-kill reason.
+Retired names are `b10_abrupt_target_invalid`, `b10_abrupt_stop_unconfirmed`, `b10_abrupt_resume_unconfirmed` and `b10_abrupt_eof_incomplete`. The closed `no_kill.reason` set is `b10_abrupt_exposure_inconclusive`, `b10_abrupt_control_incomplete`, `kill_too_early`, `b10_abrupt_cut_rejected`, `b10_abrupt_sample_missing`, `b10_abrupt_warmup_failed`, `b10_abrupt_leader_not_up`, `b10_abrupt_report_binding_invalid`, `b10_abrupt_guard_failed`, `b10_abrupt_signal_preflight_failed`, `b10_abrupt_deadline_exhausted` and `b10_abrupt_capture_gap`. A returned kill call is not a no-kill reason.
 
 Part 2 section 3.5 owns collection. For each applied `loadgen`, `loadgen-restart` and `loadgen-successor` state record, `collect-b10-abrupt-trial` runs `collect-job` and copies `artifacts/<job>/` to `artifacts/b10-abrupt-diagnostic/<job>/`. The start-line record is not copied. The workflow uploads only `b10-abrupt-diagnostic`. The timeout Job receives no successor-receipt check, ordinary verify or evidence check beyond its recorded outcome. Collection exit 124 records `b10_abrupt_deadline_exhausted`; other nonzero exits record `b10_abrupt_publication_ambiguous`; copy exceptions record `b10_abrupt_publication_failed`, all at `job_collection`.
 

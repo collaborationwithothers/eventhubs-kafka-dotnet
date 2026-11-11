@@ -36,6 +36,10 @@ internal sealed class B10AbruptProducer
     private RunExecutionOptions options = null!;
     private WorkloadProfile profile = null!;
     private long started;
+    private long? childStarted;
+    private static readonly TimeSpan ChildBudget = TimeSpan.FromSeconds(690);
+    private static readonly TimeSpan WarmupBudget = TimeSpan.FromSeconds(90);
+    private readonly Dictionary<string, WarmArm> warmArms = new(StringComparer.Ordinal);
     private bool killAdmitted;
     private bool controlComplete;
     private volatile bool faulted;
@@ -64,6 +68,10 @@ internal sealed class B10AbruptProducer
         {
             if (journal.Frames.Count == 0)
                 await journal.AppendAsync("child_started", B10AbruptWire.Element(new { pid = Environment.ProcessId, start_time_ticks = B10AbruptProc.ReadStartTimeTicks(B10AbruptProc.ReadBounded("/proc/self/stat")), boot_id = B10AbruptProc.ReadBootId() }), cancellationToken).ConfigureAwait(false);
+            childStarted = journal.Frames[0].MonotonicTicks;
+            using var childDeadline = new CancellationTokenSource(Bound(TimeSpan.MaxValue), clock);
+            using var childCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, childDeadline.Token);
+            cancellationToken = childCancellation.Token;
             timeline.Mark(B10AbruptStage.ChildStarted);
             B10AbruptProcess.Preflight();
             Initialize(workload, runIdentity, executionOptions);
@@ -84,8 +92,8 @@ internal sealed class B10AbruptProducer
             if (killAdmitted) { exit(3); return 3; }
             if (producer is not null)
             {
-                try { producer.Flush(options.ProducerDrainTimeout); } catch (Exception) { }
-                await CleanupAsync().ConfigureAwait(false);
+                try { producer.Flush(Bound(TimeSpan.MaxValue)); } catch (Exception) { }
+                try { await CleanupAsync().ConfigureAwait(false); } catch (Exception) { }
             }
             return 3;
         }
@@ -105,10 +113,11 @@ internal sealed class B10AbruptProducer
         using var deadline = new CancellationTokenSource(options.StatisticsCompletionTimeout ?? options.CleanupTimeout, clock);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token, cancellationToken);
         try { while (statistics.SelectPreAcceptance(clock.GetUtcNow()) is null) await Task.Delay(TimeSpan.FromMilliseconds(10), clock, linked.Token).ConfigureAwait(false); }
-        catch (OperationCanceledException exception) { throw Attach(new InvalidDataException("b10_abrupt_sample_missing", exception)); }
+        catch (OperationCanceledException exception) { CheckDeadline(); throw Attach(new InvalidDataException("b10_abrupt_sample_missing", exception)); }
     }
     private async Task<ProbeAttempt> OriginalsAsync(string arm, CancellationToken cancellationToken)
     {
+        await PrepareArmAsync(arm, cancellationToken).ConfigureAwait(false);
         byte[] payload = ProbePayload(); ProbeAttempt? first = null, last = null;
         for (int ordinal = 0; ordinal < B10AbruptOptions.OriginalCount; ordinal++)
         {
@@ -116,6 +125,7 @@ internal sealed class B10AbruptProducer
             {
                 while (true)
                 {
+                    CheckDeadline();
                     TimeSpan remaining = TimeSpan.FromMilliseconds(ordinal * 10) - clock.GetElapsedTime(first.InvokedTimestamp);
                     if (remaining <= TimeSpan.Zero) break;
                     await Task.Delay(TimeSpan.FromMilliseconds(Math.Ceiling(remaining.TotalMilliseconds)), clock, cancellationToken).ConfigureAwait(false);
@@ -147,7 +157,9 @@ internal sealed class B10AbruptProducer
             ProbeAttempt original = probes.Single(attempt => attempt.AttemptId == id);
             _ = await InvokeProbe("same_instance", original.Payload, original.AttemptId, original.Sequence, cancellationToken).ConfigureAwait(false);
         }
-        int outstanding = producer!.Flush(options.ProducerDrainTimeout);
+        CheckDeadline();
+        int outstanding = producer!.Flush(Bound(options.ProducerDrainTimeout));
+        CheckDeadline();
         DateTimeOffset drained = clock.GetUtcNow();
         await journal.DrainAvailable(cancellationToken).ConfigureAwait(false);
         await journal.AppendAsync("control_drained", B10AbruptWire.Element(new { flush_returned = true, out_queue_length = outstanding }), cancellationToken).ConfigureAwait(false);
@@ -165,11 +177,13 @@ internal sealed class B10AbruptProducer
     {
         if (!controlComplete || journal is null) throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"));
         ProbeAttempt last = await OriginalsAsync("cross_restart", cancellationToken).ConfigureAwait(false);
+        CheckDeadline();
         await journal.AppendBoundaryAsync("kill_intent", last.AttemptId, ReleaseDelay, cancellationToken).ConfigureAwait(false);
         timeline.Hold(B10AbruptStage.KillIntentWritten);
     }
     internal async Task<ProbeAttempt> InvokeProbe(string arm, byte[] payload, string? predecessorAttemptId, long sequence, CancellationToken cancellationToken = default)
     {
+        CheckDeadline();
         CheckGuards();
         if (journal is null || arm is not ("same_instance" or "cross_restart") || sequence is < 0 or > 4 || payload.Length > options.MaxPayloadBytes) throw Attach(new InvalidDataException("b10_abrupt_guard_failed"));
         lock (gate)
@@ -181,6 +195,11 @@ internal sealed class B10AbruptProducer
                 : arm == "same_instance" && predecessor is not null && predecessor.Accepted && predecessor.Sequence == sequence && predecessor.Payload.AsSpan().SequenceEqual(payload) && !previous.Any(attempt => attempt.PredecessorAttemptId == predecessorAttemptId);
             if (!valid) throw Attach(new InvalidDataException("b10_abrupt_guard_failed"));
         }
+        if (predecessorAttemptId is null && sequence == 0 && !warmArms.ContainsKey(arm))
+        {
+            _ = statistics.SelectPreAcceptance(clock.GetUtcNow()) ?? throw Attach(new InvalidDataException("b10_abrupt_sample_missing"));
+            throw Attach(new InvalidDataException("b10_abrupt_guard_failed"));
+        }
         string key = $"B10/{identity.RunId}/{identity.ConfigurationId}/1/{arm}";
         string attemptId = identity.InstanceId + "-" + arm + "-" + probes.Count.ToString(CultureInfo.InvariantCulture);
         var attempt = new ProbeAttempt(attemptId, key, payload, predecessorAttemptId, probes.Count) { Sequence = sequence };
@@ -188,8 +207,8 @@ internal sealed class B10AbruptProducer
         timeline.Hold(B10AbruptStage.ProbePrepared);
         if (predecessorAttemptId is null && sequence == 0)
         {
-            var report = statistics.SelectPreAcceptance(clock.GetUtcNow()) ?? throw Attach(new InvalidDataException("b10_abrupt_sample_missing"));
-            await BindReportAsync(arm, attemptId, report, false, cancellationToken).ConfigureAwait(false);
+            if (!warmArms.TryGetValue(arm, out var warm)) throw Attach(new InvalidDataException("b10_abrupt_guard_failed"));
+            await BindReportAsync(arm, attemptId, warm.Report, false, cancellationToken).ConfigureAwait(false);
         }
         lock (gate) probes.Add(attempt);
         if (arm == "cross_restart") killAdmitted = true;
@@ -217,8 +236,76 @@ internal sealed class B10AbruptProducer
         string name = post ? "control-post-drain-report.json" : arm + "-pre-acceptance-report.json";
         byte[] raw = Encoding.UTF8.GetBytes(selected.Report.RawJson);
         await WriteDurableAsync(Path.Combine(options.OutputRoot, "abrupt", name), raw, cancellationToken).ConfigureAwait(false);
-        await journal!.AppendAsync(post ? "post_drain_report" : "pre_acceptance_report", B10AbruptWire.Element(new { arm, attempt_id = attemptId, name, length = raw.Length, sha256 = Hash(raw), report_identity = selected.Identity(), report_sequence = selected.Sequence, report_capture_utc = selected.Report.ReceivedAt.ToString("O", CultureInfo.InvariantCulture) }), cancellationToken).ConfigureAwait(false);
+        object binding = post
+            ? new { arm, attempt_id = attemptId, name, length = raw.Length, sha256 = Hash(raw), report_identity = selected.Identity(), report_sequence = selected.Sequence, report_capture_utc = selected.Report.ReceivedAt.ToString("O", CultureInfo.InvariantCulture) }
+            : new { arm, attempt_id = attemptId, name, length = raw.Length, sha256 = Hash(raw), report_identity = selected.Identity(), report_sequence = selected.Sequence, report_capture_utc = selected.Report.ReceivedAt.ToString("O", CultureInfo.InvariantCulture), warmup_attempt_id = warmArms[arm].AttemptId, partition = warmArms[arm].Partition };
+        await journal!.AppendAsync(post ? "post_drain_report" : "pre_acceptance_report", B10AbruptWire.Element(binding), cancellationToken).ConfigureAwait(false);
     }
+    internal async Task PrepareArmAsync(string arm, CancellationToken cancellationToken = default)
+    {
+        if (warmArms.ContainsKey(arm)) return;
+        CheckDeadline();
+        CheckGuards();
+        if (journal is null || arm is not ("same_instance" or "cross_restart") || arm == "cross_restart" && !controlComplete)
+            throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"));
+        string attemptId = identity.InstanceId + "-" + arm + "-warmup";
+        string key = $"B10/{identity.RunId}/{identity.ConfigurationId}/1/{arm}";
+        byte[] payload = ProbePayload();
+        await journal.AppendAsync("warmup_prepared", B10AbruptWire.Element(new { attempt_id = attemptId, arm, key, payload_length = payload.Length, payload_sha256 = Hash(payload) }), cancellationToken).ConfigureAwait(false);
+        long begin = clock.GetTimestamp();
+        B10AbruptWire.Frame terminal;
+        try
+        {
+            producer!.Produce(options.Topic, Message(key, payload, attemptId, -1), report => RecordWarmupTerminal(attemptId, report));
+            while (true)
+            {
+                TimeSpan remaining = Bound(WarmupBudget - clock.GetElapsedTime(begin));
+                if (remaining <= TimeSpan.Zero) throw new TimeoutException();
+                var captured = journal.Frames.SingleOrDefault(frame => frame.Kind == "warmup_terminal" && frame.Data.GetProperty("attempt_id").GetString() == attemptId);
+                if (captured is not null) { terminal = captured; break; }
+                await Task.Delay(remaining < TimeSpan.FromMilliseconds(10) ? remaining : TimeSpan.FromMilliseconds(10), clock, cancellationToken).ConfigureAwait(false);
+            }
+            if (!terminal.Data.GetProperty("delivered").GetBoolean() || terminal.Data.GetProperty("error_code").GetInt32() != 0)
+                throw new InvalidDataException();
+        }
+        catch (Exception exception) { throw Attach(new InvalidDataException("b10_abrupt_warmup_failed", exception)); }
+        DateTimeOffset terminalUtc = DateTimeOffset.ParseExact(terminal.ObservedUtc, "O", CultureInfo.InvariantCulture);
+        int partition = terminal.Data.GetProperty("partition").GetInt32();
+        begin = clock.GetTimestamp();
+        bool seen = false;
+        while (true)
+        {
+            CheckDeadline();
+            TimeSpan remaining = Bound((options.StatisticsCompletionTimeout ?? options.CleanupTimeout) - clock.GetElapsedTime(begin));
+            if (remaining <= TimeSpan.Zero) throw Attach(new InvalidDataException(seen ? "b10_abrupt_leader_not_up" : "b10_abrupt_sample_missing"));
+            var report = statistics.SelectLeaderReport(terminalUtc, options.Topic, partition, out bool any);
+            seen |= any;
+            if (report is not null) { warmArms.Add(arm, new(attemptId, partition, report)); return; }
+            await Task.Delay(remaining < TimeSpan.FromMilliseconds(10) ? remaining : TimeSpan.FromMilliseconds(10), clock, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private void RecordWarmupTerminal(string attemptId, DeliveryReport<byte[], byte[]> report)
+    {
+        try
+        {
+            int? status = Enum.IsDefined(report.Status) ? (int)report.Status : null;
+            var terminal = B10AbruptWire.Element(new { attempt_id = attemptId, completion_source = "callback", delivered = !report.Error.IsError,
+                error_code = (int)report.Error.Code, persistence_status = status, partition = report.Partition.Value, offset = report.Offset.Value });
+            if (journal is null || !journal.TryCaptureWarmupTerminal(terminal)) Fault(2);
+        }
+        catch (Exception) { Fault(4); }
+    }
+
+    private sealed record WarmArm(string AttemptId, int Partition, B10AbruptStatistics.NumberedReport Report);
+
+    private TimeSpan TimeLeft() => childStarted is { } start ? ChildBudget - clock.GetElapsedTime(start) : TimeSpan.MaxValue;
+    private TimeSpan Bound(TimeSpan budget) => TimeSpan.FromTicks(Math.Max(0, Math.Min(budget.Ticks, TimeLeft().Ticks)));
+    private void CheckDeadline()
+    {
+        if (TimeLeft() <= TimeSpan.Zero) throw Attach(new InvalidDataException("b10_abrupt_deadline_exhausted"));
+    }
+
     internal void RecordTerminal(ProbeAttempt attempt, DeliveryReport<byte[], byte[]> report)
     {
         try
@@ -356,12 +443,13 @@ internal sealed class B10AbruptProducer
         {
             while (statistics.SelectPostDrain(drained) is null)
             {
+                CheckDeadline();
                 CheckGuards();
                 await Task.Delay(TimeSpan.FromMilliseconds(10), clock, linked.Token).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) when (deadline.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
-        { throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"),
+        { CheckDeadline(); throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"),
             [Fact(B10AbruptFact.ElapsedMilliseconds, clock.GetElapsedTime(waitBegin)),
              Fact(B10AbruptFact.BudgetMilliseconds, options.StatisticsCompletionTimeout ?? options.CleanupTimeout),
              .. statistics.PostDrainFacts(drained)]); }
@@ -390,15 +478,17 @@ internal sealed class B10AbruptProducer
 
     private async Task WaitForReleaseAsync(DateTimeOffset release, bool successor, CancellationToken cancellationToken)
     {
+        CheckDeadline();
         TimeSpan remaining = release - clock.GetUtcNow();
         if (remaining < TimeSpan.Zero) throw Attach(new InvalidDataException(successor ? "b10_abrupt_successor_late" : "b10_abrupt_control_incomplete"),
             [Fact(B10AbruptFact.RemainingMilliseconds, remaining), Fact(B10AbruptFact.Arm, successor ? 2 : 1)]);
         long begin = clock.GetTimestamp();
         while (true)
         {
+            CheckDeadline();
             TimeSpan delay = remaining - clock.GetElapsedTime(begin);
             if (delay <= TimeSpan.Zero) return;
-            await Task.Delay(delay, clock, cancellationToken).ConfigureAwait(false);
+            await Task.Delay(Bound(delay), clock, cancellationToken).ConfigureAwait(false);
         }
     }
 

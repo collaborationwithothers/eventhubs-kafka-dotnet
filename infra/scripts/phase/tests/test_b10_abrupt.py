@@ -1,6 +1,7 @@
 """Offline trial contracts; produced-byte cases run only through the required exporter."""
 import ast
 import copy
+from datetime import datetime, timedelta, timezone
 import importlib.util
 import json
 import os
@@ -91,8 +92,8 @@ class ByteIndependentCases(Setup, unittest.TestCase):
             b10_abrupt_first_termination_unknown b10_abrupt_successor_binding_invalid
             b10_abrupt_successor_late b10_abrupt_deadline_exhausted
         '''.split())
-        self.assertEqual(main_names | {'b10_abrupt_timeout_job_unknown'}, abrupt.FAILURE_NAMES)
-        self.assertEqual(27, len(abrupt.FAILURE_NAMES))
+        self.assertEqual(main_names | {'b10_abrupt_timeout_job_unknown', 'b10_abrupt_warmup_failed', 'b10_abrupt_leader_not_up'}, abrupt.FAILURE_NAMES)
+        self.assertEqual(29, len(abrupt.FAILURE_NAMES))
 
     def test_trial_and_science_run_ids_never_collide(self):
         diagnostic_environment = dict(PARCHWELL_SCENARIO='B10', PARCHWELL_PHASE='C1', PARCHWELL_CONFIGURATION='C1',
@@ -434,6 +435,291 @@ class ByteIndependentCases(Setup, unittest.TestCase):
                 else:
                     hook.assert_called_once()
                     self.assertEqual(mode, hook.call_args.args[0])
+
+
+class WarmupJournalCases(Setup, unittest.TestCase):
+    """Synthetic journal vectors exercise the phase gate independently of Kafka."""
+
+    def setUp(self):
+        super().setUp()
+        self.diagnostic()
+        document = self.p.read('phase.json')
+        document['run_id'] = 'b10d-1-1'
+        phase.write_json(self.private / 'phase.json', document)
+        phase.write_json(self.private / 'b10-abrupt-start-line-binding.json', {'synthetic': True})
+        self.observation = dict(job_name='b10d-1-1-c1-r1-loadgen-restart', pod_name='first', pod_uid='uid',
+                                source_commit=document['source_commit'], image_reference=document['images']['loadgen']['reference'])
+        self.identity = dict(run_id='b10d-1-1', scenario_id='B10', configuration_id='C1', phase='C1', repeat=1,
+                             instance_id='first', predecessor_instance_id=None, **self.observation)
+        self.frames = []
+        self.report_bytes = abrupt.encode({'topics': {'document-events': {'partitions': {'0': {'leader': 1}}}},
+                                          'brokers': {'one': {'nodeid': 1, 'state': 'UP'}}})
+        self.append('child_started', dict(pid=1, start_time_ticks=1, boot_id='boot'))
+        self.arm('same_instance', 0)
+        self.append('cut', dict(arm='same_instance', cut_attempt_id='same_instance-4', release_utc=self.utc(120),
+                               unconfirmed_attempt_ids=['same_instance-' + str(n) for n in range(1, 5)]))
+        for n in range(1, 5):
+            self.original('same_instance', n, 120, resend=True)
+        for n in range(1, 5):
+            self.terminal('same_instance-' + str(n), 121)
+        self.append('control_drained', dict(flush_returned=True, out_queue_length=0), 121)
+        self.report('same_instance', 122, post=True)
+        self.control_end = len(self.frames)
+        self.arm('cross_restart', 123)
+        self.append('kill_intent', dict(arm='cross_restart', cut_attempt_id='cross_restart-4', release_utc=self.utc(243)), 123)
+
+    @staticmethod
+    def utc(seconds=0, tick=0):
+        value = datetime(2030, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=seconds)
+        return value.strftime('%Y-%m-%dT%H:%M:%S.') + str(tick).zfill(7) + '+00:00'
+
+    def append(self, kind, data, seconds=0):
+        frame = dict(schema_version=3, dialect='b10_abrupt', purpose='diagnostic_trial', synthetic=True,
+                     scientific_admissible=False, identity=self.identity, kind=kind, data=data,
+                     sequence=len(self.frames) + 1, observed_utc=self.utc(seconds), monotonic_ticks=1, clock_frequency=1)
+        self.frames.append(frame)
+        return frame
+
+    def arm(self, arm, seconds):
+        self.append('warmup_prepared', dict(attempt_id='first-' + arm + '-warmup', arm=arm,
+                    key='B10/b10d-1-1/C1/1/' + arm, payload_length=1, payload_sha256='a' * 64), seconds)
+        self.append('warmup_terminal', dict(attempt_id='first-' + arm + '-warmup', completion_source='callback',
+                    delivered=True, error_code=0, persistence_status=2, partition=0, offset=0), seconds)
+        for n in range(5):
+            self.original(arm, n, seconds)
+            if n == 0 and arm == 'same_instance':
+                self.terminal(arm + '-0', seconds)
+
+    def original(self, arm, ordinal, seconds, resend=False):
+        attempt = arm + '-' + str(ordinal) + ('-resend' if resend else '')
+        prepared = self.append('prepared', dict(attempt_id=attempt, arm=arm, role='resend' if resend else 'original',
+            ordinal=ordinal, probe_id='B10/b10d-1-1/C1/1/' + arm, key='B10/b10d-1-1/C1/1/' + arm,
+            sequence=ordinal, payload_length=1, payload_sha256='a' * 64,
+            predecessor_attempt_id=arm + '-' + str(ordinal) if resend else None), seconds)
+        if not resend and ordinal == 0:
+            self.report(arm, seconds)
+        self.append('accepted', dict(attempt_id=attempt, prepared_sequence=prepared['sequence']), seconds)
+        if resend:
+            self.terminal(attempt, seconds)
+
+    def terminal(self, attempt, seconds):
+        self.append('terminal', dict(attempt_id=attempt, completion_source='callback', delivered=True,
+                                    error_code=0, persistence_status=2), seconds)
+
+    def report(self, arm, seconds, post=False):
+        name = 'control-post-drain-report.json' if post else arm + '-pre-acceptance-report.json'
+        data = dict(arm=arm, attempt_id=None if post else arm + '-0', **abrupt.descriptor(name, self.report_bytes),
+                    report_identity=dict(scenario_id='B10', run_id='b10d-1-1', role='LoadGenProducer', client_id='client'),
+                    report_sequence=2 if post else 1 if arm == 'same_instance' else 3,
+                    report_capture_utc=self.utc(seconds, tick=1))
+        if not post:
+            data.update(warmup_attempt_id='first-' + arm + '-warmup', partition=0)
+        self.append('post_drain_report' if post else 'pre_acceptance_report', data, seconds)
+
+    @staticmethod
+    def journal(frames):
+        prepared = {}
+        for sequence, frame in enumerate(frames, 1):
+            frame['sequence'] = sequence
+            if frame['kind'] == 'prepared':
+                prepared[frame['data']['attempt_id']] = sequence
+            elif frame['kind'] in ('accepted', 'synchronous_rejection'):
+                frame['data']['prepared_sequence'] = prepared[frame['data']['attempt_id']]
+        return b''.join(abrupt.encode(frame) + b'\n' for frame in frames)
+
+    def publication(self, frames, reports=None):
+        """Keep every other binding valid so the changed journal or report is decisive."""
+        def envelope(kind, data):
+            return abrupt.encode({key: value for key, value in dict(self.frames[0], kind=kind, data=data).items()
+                                  if key in abrupt.ENVELOPE_FIELDS})
+        reports = reports or {name: self.report_bytes for name in abrupt.REPORT_FILES}
+        files = dict(reports, **{'journal.jsonl': self.journal(frames)})
+        report_files = []
+        for frame in frames:
+            if frame['kind'] in ('pre_acceptance_report', 'post_drain_report'):
+                descriptor = abrupt.descriptor(frame['data']['name'], files[frame['data']['name']])
+                frame['data'].update(descriptor)
+                report_files.append(descriptor)
+        files['journal.jsonl'] = self.journal(frames)
+        files['registration.json'] = envelope('registration', dict(registered_utc=self.utc()))
+        files['abrupt-manifest.json'] = envelope('abrupt_manifest', dict(
+            journal=abrupt.descriptor('journal.jsonl', files['journal.jsonl']), journal_records=len(frames), report_files=report_files, gaps=[]))
+        cgroup = dict(boot_id='boot', cgroup_path='/synthetic', directory_identity='directory', oom_kill=0)
+        files['termination.json'] = envelope('termination', dict(termination='intended_self_kill', outcome=None, detail=None,
+            signal_observation=None, successor_permitted=True, child=dict(pid=1, start_time_ticks=1, boot_id='boot', parent_observed_start_time_ticks=1),
+            exit_observed=True, exit_code_local_observation=137, runtime_version='synthetic', wait_bound_milliseconds=720000,
+            cgroup_before=cgroup, cgroup_after=cgroup, control_unconfirmed_attempt_ids=['same_instance-' + str(n) for n in range(1, 5)],
+            kill_unconfirmed_attempt_ids=['cross_restart-' + str(n) for n in range(5)], capture_gaps=[], native_error_count=0,
+            native_fatal_count=0, native_tail='unknown_due_to_intended_kill', manifest=abrupt.descriptor('abrupt-manifest.json', files['abrupt-manifest.json'])))
+        return files
+
+    def test_valid_warmups_leave_unconfirmed_sets_unchanged(self):
+        self.trial.accept_diagnostic_publication(self.observation, self.publication(copy.deepcopy(self.frames)))
+        def unconfirmed(frames, arm):
+            accepted = {frame['data']['attempt_id'] for frame in frames if frame['kind'] == 'accepted'}
+            terminal = {frame['data']['attempt_id'] for frame in frames if frame['kind'] in ('terminal', 'synchronous_rejection')}
+            return [frame['data']['attempt_id'] for frame in frames if frame['kind'] == 'prepared'
+                    and frame['data']['role'] == 'original' and frame['data']['arm'] == arm
+                    and frame['data']['attempt_id'] in accepted - terminal]
+        for arm, boundary in [('same_instance', next(i + 1 for i, frame in enumerate(self.frames) if frame['kind'] == 'cut')),
+                              ('cross_restart', len(self.frames))]:
+            frames = self.frames[:boundary]
+            without = [frame for frame in frames if not frame['kind'].startswith('warmup_')]
+            self.assertEqual(unconfirmed(without, arm), unconfirmed(frames, arm))
+            self.assertTrue(unconfirmed(frames, arm))
+
+    def test_invalid_warmup_journals_reject_first_publication(self):
+        def missing(frames):
+            frames[:] = [frame for frame in frames if not (frame['kind'] == 'warmup_prepared' and frame['data']['arm'] == 'cross_restart')]
+        def late(frames):
+            terminal = next(frame for frame in frames if frame['kind'] == 'warmup_terminal')
+            frames.remove(terminal)
+            frames.insert(next(i + 1 for i, frame in enumerate(frames) if frame['kind'] == 'prepared'), terminal)
+        def duplicate(frames):
+            frames.insert(2, copy.deepcopy(frames[1]))
+        def failed(frames):
+            next(frame for frame in frames if frame['kind'] == 'warmup_terminal')['data'].update(delivered=False, error_code=-192)
+        for label, edit in [('missing cross warmup', missing), ('late terminal', late),
+                            ('duplicate control warmup', duplicate), ('failed warmup before ordinal zero', failed)]:
+            frames = copy.deepcopy(self.frames)
+            edit(frames)
+            with self.subTest(label=label), self.assertRaisesRegex(ValueError, '^journal malformed_frame$'):
+                self.trial.accept_diagnostic_publication(self.observation, self.publication(frames))
+
+    def test_report_warmup_binding_and_strict_capture_time(self):
+        for field, value in [('warmup_attempt_id', 'other'), ('partition', 1), ('report_capture_utc', self.utc())]:
+            frames = copy.deepcopy(self.frames)
+            next(frame for frame in frames if frame['kind'] == 'pre_acceptance_report')['data'][field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, '^b10_abrupt_report_binding_invalid$'):
+                self.trial.accept_diagnostic_publication(self.observation, self.publication(frames))
+        # The valid fixture binds exactly one 100 ns tick after the warm-up terminal.
+        self.trial.accept_diagnostic_publication(self.observation, self.publication(copy.deepcopy(self.frames)))
+
+    def test_warmup_always_rules(self):
+        def change(frames, index, **data):
+            frames[index]['data'].update(data)
+        def terminal_first(frames):
+            frames[1], frames[2] = frames[2], frames[1]
+        def early_cross(frames):
+            warmup = frames.pop(self.control_end)
+            frames.insert(3, warmup)
+        for label, edit in [
+                ('attempt ID', lambda frames: change(frames, 1, attempt_id='other')),
+                ('arm key', lambda frames: change(frames, 1, key='other')),
+                ('terminal attempt ID', lambda frames: change(frames, 2, attempt_id='other')),
+                ('terminal before prepared', terminal_first),
+                ('duplicate terminal', lambda frames: frames.insert(3, copy.deepcopy(frames[2]))),
+                ('cross warmup before control complete', early_cross),
+                ('extra warmup member', lambda frames: change(frames, 1, extra=True)),
+                ('missing warmup member', lambda frames: frames[2]['data'].pop('offset'))]:
+            frames = copy.deepcopy(self.frames)
+            edit(frames)
+            with self.subTest(label=label), self.assertRaisesRegex(ValueError, '^journal malformed_frame$'):
+                self.trial.accept_diagnostic_publication(self.observation, self.publication(frames))
+
+    def test_no_kill_warmup_journals_are_valid(self):
+        control = copy.deepcopy(self.frames[:self.control_end])
+        cases = []
+        failed = copy.deepcopy(self.frames[:3])
+        failed[-1]['data'].update(delivered=False, error_code=-192, persistence_status=0, partition=-1, offset=-1)
+        cases.append(('failed control', failed, 'b10_abrupt_warmup_failed', False))
+        cases.append(('missing terminal', copy.deepcopy(self.frames[:2]), 'b10_abrupt_warmup_failed', False))
+        cases.append(('late terminal', copy.deepcopy(self.frames[:2]), 'b10_abrupt_warmup_failed', True))
+        failed_cross = copy.deepcopy(self.frames[:self.control_end + 2])
+        failed_cross[-1]['data'].update(delivered=False, error_code=-192)
+        cases.append(('failed cross', failed_cross, 'b10_abrupt_warmup_failed', False))
+        cases.append(('no cross warmup', control, 'b10_abrupt_deadline_exhausted', False))
+        for reason in ('b10_abrupt_leader_not_up', 'b10_abrupt_sample_missing'):
+            cases.append((reason, copy.deepcopy(self.frames[:3]), reason, False))
+        for label, frames, reason, late in cases:
+            no_kill = copy.deepcopy(self.frames[-1])
+            no_kill.update(kind='no_kill', data=dict(reason=reason, cross_restart_admitted=False))
+            frames.append(no_kill)
+            if late:
+                frames.append(copy.deepcopy(self.frames[2]))
+            with self.subTest(label=label):
+                self.assertEqual(len(frames), len(self.trial.read_journal(self.journal(frames), self.observation)))
+                self.assertIn(reason, abrupt.FAILURE_NAMES)
+
+    def test_warmup_partition_and_offset_ranges(self):
+        for field, valid, invalid in [
+                ('partition', [0, 2147483647], [-1, -2147483649, 2147483648, True, 0.0, '0']),
+                ('offset', [0, 4294967296, 9223372036854775807], [-1, -9223372036854775809, 9223372036854775808, True, 0.0, '0'])]:
+            for value in valid + invalid:
+                frames = copy.deepcopy(self.frames)
+                frames[2]['data'][field] = value
+                if field == 'partition' and value in valid and type(value) is int:
+                    next(frame for frame in frames if frame['kind'] == 'pre_acceptance_report')['data']['partition'] = value
+                with self.subTest(field=field, value=value):
+                    if type(value) is int and value in valid:
+                        self.trial.read_journal(self.journal(frames), self.observation)
+                    else:
+                        with self.assertRaisesRegex(ValueError, '^journal malformed_frame$'):
+                            self.trial.read_journal(self.journal(frames), self.observation)
+        for partition, offset in [(-2147483648, -9223372036854775808), (2147483647, 9223372036854775807)]:
+            frames = copy.deepcopy(self.frames[:3])
+            frames[2]['data'].update(delivered=False, error_code=-192, partition=partition, offset=offset)
+            no_kill = copy.deepcopy(self.frames[-1])
+            no_kill.update(kind='no_kill', data=dict(reason='b10_abrupt_warmup_failed', cross_restart_admitted=False))
+            frames.append(no_kill)
+            self.trial.read_journal(self.journal(frames), self.observation)
+
+    def test_leader_up_table(self):
+        base = abrupt.decode(self.report_bytes)
+        cases = [('UP', base, True)]
+        for state in ('INIT', 'CONNECT', 'DOWN'):
+            report = copy.deepcopy(base)
+            report['brokers']['one']['state'] = state
+            cases.append((state, report, False))
+        for leader in (-1, '1', 1.0, True):
+            report = copy.deepcopy(base)
+            report['topics']['document-events']['partitions']['0']['leader'] = leader
+            cases.append(('leader ' + repr(leader), report, False))
+        for label, edit in [('partition missing', lambda r: r['topics']['document-events']['partitions'].clear()),
+                            ('topic missing', lambda r: r['topics'].clear()),
+                            ('leader missing', lambda r: r['topics']['document-events']['partitions']['0'].clear()),
+                            ('nodeid missing', lambda r: r['brokers']['one'].pop('nodeid')),
+                            ('state missing', lambda r: r['brokers']['one'].pop('state')),
+                            ('duplicate broker', lambda r: r['brokers'].update(two=dict(nodeid=1, state='UP'))),
+                            ('wrong broker', lambda r: r['brokers']['one'].update(nodeid=2))]:
+            report = copy.deepcopy(base)
+            edit(report)
+            cases.append((label, report, False))
+        for label, report, expected in cases:
+            with self.subTest(label=label):
+                self.assertEqual(expected, abrupt.leader_up(abrupt.encode(report), 'document-events', 0))
+        for raw in (b'null', b'[]', b'{', b'{}'):
+            with self.subTest(raw=raw):
+                self.assertFalse(abrupt.leader_up(raw, 'document-events', 0))
+
+    def test_published_report_bytes_must_show_leader_up(self):
+        for name in (abrupt.REPORT_FILES[0], abrupt.REPORT_FILES[2]):
+            report = abrupt.decode(self.report_bytes)
+            report['brokers']['one']['state'] = 'INIT'
+            reports = {entry: self.report_bytes for entry in abrupt.REPORT_FILES}
+            reports[name] = abrupt.encode(report)
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, '^b10_abrupt_report_binding_invalid$'):
+                self.trial.accept_diagnostic_publication(self.observation, self.publication(copy.deepcopy(self.frames), reports))
+
+    def test_bad_leader_binding_blocks_successor_in_trial(self):
+        reports = {name: self.report_bytes for name in abrupt.REPORT_FILES}
+        report = abrupt.decode(self.report_bytes)
+        report['brokers']['one']['state'] = 'INIT'
+        reports[abrupt.REPORT_FILES[0]] = abrupt.encode(report)
+        files = self.publication(copy.deepcopy(self.frames), reports)
+        with patch.object(self.p, 'b10_deadline', return_value=time.monotonic() + 18000), \
+             patch.object(self.p, 'run_mode', return_value={'outcome': 'complete'}), \
+             patch.object(self.trial, 'metadata', return_value=None), \
+             patch.object(self.trial, 'job', side_effect=lambda mode, _deadline:
+                          self.timeout_record() if mode == 'loadgen' else {'outcome': 'complete'}), \
+             patch.object(self.trial, '_observe_timeout_termination', return_value=None), \
+             patch.object(self.trial, 'observe_first_termination', return_value=self.observation), \
+             patch.object(self.trial, 'download', return_value=files), \
+             patch.object(self.trial, 'release_successor') as release:
+            self.assertEqual(1, self.trial.run())
+            release.assert_not_called()
+        self.assertEqual(['b10_abrupt_report_binding_invalid'], self.p.state()['b10_abrupt_gaps'])
+        self.assertEqual('first_publication', self.p.state()['b10_abrupt_diagnostics'][0]['boundary'])
 
 
 class ProducedBytesCases(Setup):

@@ -122,7 +122,7 @@ internal sealed class B10AbruptParent(B10AbruptOptions options, TimeProvider clo
         return value is "b10_abrupt_configuration_invalid" or "b10_abrupt_platform_unsupported" or
             "b10_abrupt_signal_preflight_failed" or "b10_abrupt_child_start_failed" or "b10_abrupt_child_identity_mismatch" or
             "b10_abrupt_signal_failed" or "b10_abrupt_exit_unobserved" or "b10_abrupt_unexpected_exit" or
-            "b10_abrupt_capture_gap" or "b10_abrupt_sample_missing" or "b10_abrupt_report_binding_invalid" or
+            "b10_abrupt_warmup_failed" or "b10_abrupt_leader_not_up" or "b10_abrupt_capture_gap" or "b10_abrupt_sample_missing" or "b10_abrupt_report_binding_invalid" or
             "b10_abrupt_guard_failed" or "b10_abrupt_control_incomplete" or "b10_abrupt_exposure_inconclusive" or
             "kill_too_early" or "kill_too_late" or "b10_abrupt_cgroup_unavailable" or "b10_abrupt_oom_conflict" or
             "b10_abrupt_publication_failed" or "b10_abrupt_publication_ambiguous" or "b10_abrupt_successor_binding_invalid" or

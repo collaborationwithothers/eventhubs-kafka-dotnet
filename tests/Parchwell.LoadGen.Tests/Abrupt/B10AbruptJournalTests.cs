@@ -189,6 +189,26 @@ public sealed class B10AbruptJournalTests
     }
 
     [Fact]
+    public async Task Given_WarmupCallbackWhileWriterBlocked_When_Captured_Then_OnlyQueueIsTouched()
+    {
+        using var temporary = new Temporary();
+        var reached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var journal = new B10AbruptJournal(temporary.Path, Identity, TimeProvider.System,
+            async token => { reached.TrySetResult(); await release.Task.WaitAsync(token); });
+        var start = Task.Run(() => journal.AppendAsync("child_started", Started, TestContext.Current.CancellationToken), TestContext.Current.CancellationToken);
+        await reached.Task;
+        long length = new FileInfo(temporary.Path).Length;
+        bool captured = journal.TryCaptureWarmupTerminal(WarmupTerminal("same_instance"));
+        Assert.True(captured);
+        Assert.Equal(length, new FileInfo(temporary.Path).Length);
+        release.TrySetResult(); await start;
+        await journal.DrainAvailable(TestContext.Current.CancellationToken);
+        Assert.Single(journal.Frames, frame => frame.Kind == "warmup_terminal");
+        Assert.Empty(journal.Gaps);
+    }
+
+    [Fact]
     public async Task Given_JournalEntryBoundary_When_Append_Then_4097thEntryCannotBecomeClean()
     {
         using var temporary = new Temporary();
@@ -369,6 +389,157 @@ public sealed class B10AbruptJournalTests
         Assert.False(Classify(snapshot).SuccessorPermitted);
     }
 
+    [Fact]
+    public void Given_CompleteWarmups_When_Read_Then_WarmupsNeverEnterUnconfirmedSets()
+    {
+        var frames = CompleteJournal();
+        var snapshot = ReadReindexed(frames);
+        AssertUsable(frames);
+        var originals = frames.Where(frame => frame.Kind is not ("warmup_prepared" or "warmup_terminal")).ToArray();
+        Assert.Equal(B10AbruptJournal.Unconfirmed(originals.TakeWhile(frame => frame.Kind != "cut"), "same_instance"), snapshot.ControlUnconfirmedAttemptIds);
+        Assert.Equal(B10AbruptJournal.Unconfirmed(originals, "cross_restart"), snapshot.KillUnconfirmedAttemptIds);
+    }
+
+    [Theory]
+    [InlineData("missing-cross-prepared")]
+    [InlineData("terminal-after-original")]
+    [InlineData("duplicate-prepared")]
+    [InlineData("duplicate-terminal")]
+    [InlineData("terminal-before-prepared")]
+    [InlineData("wrong-attempt")]
+    [InlineData("wrong-key")]
+    [InlineData("early-cross-warmup")]
+    [InlineData("failed-terminal")]
+    [InlineData("nonzero-terminal")]
+    [InlineData("invalid-status")]
+    [InlineData("null-status")]
+    public void Given_InvalidWarmupOrderOrDelivery_When_OriginalExists_Then_MalformedFrame(string fault)
+    {
+        var frames = CompleteJournal();
+        int prepared = frames.FindIndex(frame => frame.Kind == "warmup_prepared");
+        int terminal = frames.FindIndex(frame => frame.Kind == "warmup_terminal");
+        switch (fault)
+        {
+            case "missing-cross-prepared": frames.RemoveAll(frame => frame.Kind == "warmup_prepared" && frame.Data.GetProperty("arm").GetString() == "cross_restart"); break;
+            case "terminal-after-original":
+                var late = frames[terminal]; frames.RemoveAt(terminal); frames.Insert(frames.FindIndex(frame => frame.Kind == "prepared") + 1, late); break;
+            case "duplicate-prepared": frames.Insert(prepared, frames[prepared]); break;
+            case "duplicate-terminal": frames.Insert(terminal, frames[terminal]); break;
+            case "terminal-before-prepared": (frames[prepared], frames[terminal]) = (frames[terminal], frames[prepared]); break;
+            case "early-cross-warmup":
+                var cross = frames.Single(frame => frame.Kind == "warmup_prepared" && frame.Data.GetProperty("arm").GetString() == "cross_restart");
+                frames.Remove(cross); frames.Insert(1, cross); break;
+            default:
+                int position = fault is "wrong-attempt" or "wrong-key" ? prepared : terminal;
+                JsonObject data = JsonNode.Parse(frames[position].Data.GetRawText())!.AsObject();
+                switch (fault)
+                {
+                    case "wrong-attempt": data["attempt_id"] = "another-warmup"; break;
+                    case "wrong-key": data["key"] = "another-key"; break;
+                    case "failed-terminal": data["delivered"] = false; data["error_code"] = -192; break;
+                    case "nonzero-terminal": data["error_code"] = -192; break;
+                    case "invalid-status": data["persistence_status"] = 1; break;
+                    case "null-status": data["persistence_status"] = null; break;
+                }
+                frames[position] = frames[position] with { Data = B10AbruptWire.Element(data) }; break;
+        }
+        Assert.Contains("malformed_frame", ReadReindexed(frames).Gaps);
+    }
+
+    [Theory]
+    [InlineData("attempt", false)]
+    [InlineData("partition", false)]
+    [InlineData("before", false)]
+    [InlineData("equal", false)]
+    [InlineData("one-tick-after", true)]
+    public void Given_WarmupReportBinding_When_Read_Then_RequiresMatchingFieldsAndStrictUtcOrder(string fault, bool valid)
+    {
+        var frames = CompleteJournal();
+        int report = frames.FindIndex(frame => frame.Kind == "pre_acceptance_report");
+        var terminal = frames.First(frame => frame.Kind == "warmup_terminal");
+        JsonObject data = JsonNode.Parse(frames[report].Data.GetRawText())!.AsObject();
+        if (fault == "attempt") data["warmup_attempt_id"] = "another-warmup";
+        else if (fault == "partition") data["partition"] = 1;
+        else data["report_capture_utc"] = DateTimeOffset.ParseExact(terminal.ObservedUtc, "O", CultureInfo.InvariantCulture)
+            .AddTicks(fault == "before" ? -1 : fault == "equal" ? 0 : 1).ToString("O", CultureInfo.InvariantCulture);
+        frames[report] = frames[report] with { Data = B10AbruptWire.Element(data) };
+        var snapshot = ReadReindexed(frames);
+        Assert.Empty(snapshot.Gaps);
+        if (valid) Assert.Empty(snapshot.Failures);
+        else Assert.Equal("b10_abrupt_report_binding_invalid", Assert.Single(snapshot.Failures).Value);
+    }
+
+    [Theory]
+    [InlineData("failed-control")]
+    [InlineData("missing-terminal")]
+    [InlineData("late-terminal")]
+    [InlineData("failed-cross")]
+    [InlineData("no-cross")]
+    [InlineData("leader-not-up")]
+    [InlineData("sample-missing")]
+    public void Given_NoKillBeforeArmOriginal_When_Read_Then_WarmupNeedsNoSuccessfulCompletion(string ending)
+    {
+        var complete = CompleteJournal();
+        bool cross = ending is "failed-cross" or "no-cross";
+        string arm = cross ? "cross_restart" : "same_instance";
+        var frames = cross
+            ? complete.TakeWhile(frame => frame.Kind != "warmup_prepared" || frame.Data.GetProperty("arm").GetString() != "cross_restart").ToList()
+            : complete.Take(1).ToList();
+        var template = complete.First(frame => frame.Kind == "warmup_prepared" && frame.Data.GetProperty("arm").GetString() == arm);
+        if (ending != "no-cross") frames.Add(template);
+        if (ending is "failed-control" or "failed-cross" or "leader-not-up" or "sample-missing")
+            frames.Add(template with { Kind = "warmup_terminal", Data = WarmupTerminal(arm, delivered: ending is "leader-not-up" or "sample-missing") });
+        string reason = ending == "leader-not-up" ? "b10_abrupt_leader_not_up" : ending == "sample-missing" ? "b10_abrupt_sample_missing" : "b10_abrupt_warmup_failed";
+        frames.Add(template with { Kind = "no_kill", Data = B10AbruptWire.Element(new { reason, cross_restart_admitted = false }) });
+        if (ending == "late-terminal") frames.Add(template with { Kind = "warmup_terminal", Data = WarmupTerminal(arm) });
+        var snapshot = ReadReindexed(frames);
+        Assert.Empty(snapshot.Gaps); Assert.Empty(snapshot.Failures);
+    }
+
+    [Fact]
+    public void Given_DeliveredWarmupWith64BitOffset_When_Read_Then_AcceptsWithoutNarrowing()
+    {
+        var frames = CompleteJournal();
+        int index = frames.FindIndex(frame => frame.Kind == "warmup_terminal");
+        frames[index] = frames[index] with { Data = WarmupTerminal("same_instance", offset: 4294967296) };
+        AssertUsable(frames);
+    }
+
+    [Theory]
+    [InlineData("partition", "-2147483649", false)]
+    [InlineData("partition", "-2147483648", true)]
+    [InlineData("partition", "2147483647", true)]
+    [InlineData("partition", "2147483648", false)]
+    [InlineData("offset", "-9223372036854775809", false)]
+    [InlineData("offset", "-9223372036854775808", true)]
+    [InlineData("offset", "9223372036854775807", true)]
+    [InlineData("offset", "9223372036854775808", false)]
+    [InlineData("offset", "1.5", false)]
+    public void Given_WarmupNumericBoundary_When_Read_Then_EnforcesSignedFieldWidth(string field, string value, bool valid)
+    {
+        JsonObject data = JsonNode.Parse(WarmupTerminal("same_instance", delivered: false).GetRawText())!.AsObject();
+        data[field] = JsonNode.Parse(value);
+        var frame = Line(1, "warmup_terminal", B10AbruptWire.Element(data));
+        if (valid) Assert.Equal("warmup_terminal", B10AbruptWire.ReadFrame(frame.AsMemory(0, frame.Length - 1)).Kind);
+        else Assert.Equal("b10_abrupt_capture_gap:malformed_frame", Assert.Throws<InvalidDataException>(() => B10AbruptWire.ReadFrame(frame.AsMemory(0, frame.Length - 1))).Message);
+    }
+
+    [Theory]
+    [InlineData("partition", -1, false)]
+    [InlineData("partition", 0, true)]
+    [InlineData("partition", 1, true)]
+    [InlineData("offset", -1, false)]
+    [InlineData("offset", 0, true)]
+    [InlineData("offset", 1, true)]
+    public void Given_DeliveredWarmupCoordinate_When_Read_Then_RequiresNonnegativeValue(string field, int value, bool valid)
+    {
+        JsonObject data = JsonNode.Parse(WarmupTerminal("same_instance").GetRawText())!.AsObject();
+        data[field] = value;
+        var frame = Line(1, "warmup_terminal", B10AbruptWire.Element(data));
+        if (valid) Assert.Equal("warmup_terminal", B10AbruptWire.ReadFrame(frame.AsMemory(0, frame.Length - 1)).Kind);
+        else Assert.Equal("b10_abrupt_capture_gap:malformed_frame", Assert.Throws<InvalidDataException>(() => B10AbruptWire.ReadFrame(frame.AsMemory(0, frame.Length - 1))).Message);
+    }
+
     private static bool IsControl(B10AbruptWire.Frame frame) => frame.Kind is "cut" or "control_drained" or "post_drain_report"
         || frame.Data.TryGetProperty("arm", out var arm) && arm.GetString() == "same_instance"
         || frame.Data.TryGetProperty("attempt_id", out var attempt) && attempt.GetString()!.StartsWith("same_instance", StringComparison.Ordinal);
@@ -409,23 +580,47 @@ public sealed class B10AbruptJournalTests
             if (ordinal == 0 && !resend) Report(arm, attempt, false);
             Add("accepted", new { attempt_id = attempt, prepared_sequence = sequence });
         }
-        void Report(string arm, string? attempt, bool post) => Add(post ? "post_drain_report" : "pre_acceptance_report", new
+        void Report(string arm, string? attempt, bool post)
         {
+            var data = B10AbruptWire.Element(new
+            {
             arm, attempt_id = attempt, name = post ? "control-post-drain-report.json" : $"{arm}-pre-acceptance-report.json", length = 1, sha256 = new string('a', 64),
             report_identity = new { scenario_id = "B10", run_id = "test", role = "LoadGenProducer", client_id = "first" }, report_sequence = 1,
-            report_capture_utc = post ? observed : "2026-11-07T00:00:01.0000000+00:00"
-        });
+            report_capture_utc = post ? observed : DateTimeOffset.ParseExact(observed, "O", CultureInfo.InvariantCulture).AddTicks(-1).ToString("O", CultureInfo.InvariantCulture)
+            });
+            if (!post)
+            {
+                JsonObject fields = JsonNode.Parse(data.GetRawText())!.AsObject();
+                fields["warmup_attempt_id"] = $"first-{arm}-warmup"; fields["partition"] = 0;
+                data = B10AbruptWire.Element(fields);
+            }
+            Add(post ? "post_drain_report" : "pre_acceptance_report", data);
+        }
+        void Warmup(string arm)
+        {
+            string originalObserved = observed;
+            observed = DateTimeOffset.ParseExact(observed, "O", CultureInfo.InvariantCulture).AddTicks(-2).ToString("O", CultureInfo.InvariantCulture);
+            Add("warmup_prepared", WarmupPrepared(arm)); Add("warmup_terminal", WarmupTerminal(arm));
+            observed = originalObserved;
+        }
         Add("child_started", new { pid = 1, start_time_ticks = 1L, boot_id = "boot" });
+        Warmup("same_instance");
         for (int ordinal = 0; ordinal < 5; ordinal++) { Prepare("same_instance", ordinal); if (ordinal < 4) Add("terminal", Terminal($"same_instance-original-{ordinal}")); }
         Add("cut", new { arm = "same_instance", cut_attempt_id = "same_instance-original-4", release_utc = "2026-11-07T00:02:02.0000000+00:00", unconfirmed_attempt_ids = (string[])["same_instance-original-4"] });
         observed = "2026-11-07T00:02:02.0000000+00:00";
         Prepare("same_instance", 4, true);
         Add("terminal", Terminal("same_instance-original-4")); Add("terminal", Terminal("same_instance-resend-4"));
         Add("control_drained", new { flush_returned = true, out_queue_length = 0 }); Report("same_instance", null, true);
+        Warmup("cross_restart");
         for (int ordinal = 0; ordinal < 5; ordinal++) Prepare("cross_restart", ordinal);
         Add("kill_intent", new { arm = "cross_restart", cut_attempt_id = "cross_restart-original-4", release_utc = "2026-11-07T00:04:02.0000000+00:00" });
         return frames;
     }
+
+    private static JsonElement WarmupPrepared(string arm) => B10AbruptWire.Element(new
+    { attempt_id = $"first-{arm}-warmup", arm, key = $"B10/test/C1/1/{arm}", payload_length = 0, payload_sha256 = new string('a', 64) });
+    private static JsonElement WarmupTerminal(string arm, bool delivered = true, long offset = 1) => B10AbruptWire.Element(new
+    { attempt_id = $"first-{arm}-warmup", completion_source = "callback", delivered, error_code = delivered ? 0 : -192, persistence_status = 2, partition = 0, offset });
 
     internal static byte[] Line(long sequence, string kind, JsonElement data) => [.. B10AbruptWire.WriteFrame(new(Identity, sequence, "2026-11-07T00:00:00.0000000+00:00", 0, TimeSpan.TicksPerSecond, kind, data)), 10];
     private sealed class FixedClock : TimeProvider

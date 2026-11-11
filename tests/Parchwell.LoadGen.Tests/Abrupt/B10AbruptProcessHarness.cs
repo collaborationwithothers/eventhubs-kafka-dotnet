@@ -221,6 +221,7 @@ internal static class B10AbruptProcessHarness
                     string attempt = Encoding.UTF8.GetString(message.Headers.GetLastBytes("attempt-id"));
                     int ordinal = int.Parse(Encoding.UTF8.GetString(message.Headers.GetLastBytes("sequence")), CultureInfo.InvariantCulture);
                     bool cross = key.EndsWith("/cross_restart", StringComparison.Ordinal);
+                    if (ordinal == -1) { callback(Delivered()); return null; }
                     Record(cross ? "cross_produce" : "control_produce");
                     if (cross && control.Mode == "host-cross-failure" && ordinal == 4)
                         throw new ProduceException<byte[], byte[]>(new Error(ErrorCode.Local_QueueFull), new DeliveryResult<byte[], byte[]>());
@@ -274,6 +275,7 @@ internal static class B10AbruptProcessHarness
             {
                 name = "synthetic-native", client_id = Environment.GetEnvironmentVariable("B10Abrupt__PodName"), type = "producer",
                 ts = micros, time = clock.GetUtcNow().ToUnixTimeSeconds(), age = micros - producerCreatedMicroseconds,
+                topics = new Dictionary<string, object> { ["document-events"] = new { partitions = new Dictionary<string, object> { ["0"] = new { leader = 0 } } } },
                 brokers = new Dictionary<string, object>
                 {
                     ["broker"] = new { name = "broker", nodeid = 0, source = "learned", state = "UP", stateage = 0,
@@ -282,6 +284,6 @@ internal static class B10AbruptProcessHarness
                 }
             });
         }
-        private static DeliveryReport<byte[], byte[]> Delivered() => new() { Error = new Error(ErrorCode.NoError), Status = PersistenceStatus.Persisted };
+        private static DeliveryReport<byte[], byte[]> Delivered() => new() { Error = new Error(ErrorCode.NoError), Status = PersistenceStatus.Persisted, Partition = 0, Offset = 1 };
     }
 }

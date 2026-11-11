@@ -23,19 +23,21 @@ public sealed class B10AbruptEndToEndTests(ITestOutputHelper output)
     public async Task Given_RealKafka_When_ParentChildAndSuccessorRunOnce_Then_ConfirmedJournalMembersAreResentWithIdenticalBytes()
     {
         CancellationToken cancellation = TestContext.Current.CancellationToken;
-        await using var kafka = await LocalKafkaFixture.StartAsync(cancellation);
-        using var admin = new AdminClientBuilder(new AdminClientConfig { BootstrapServers = kafka.BootstrapServers }).Build();
+        await using var proxy = new B10AbruptKafkaProxy();
+        await using var kafka = await LocalKafkaFixture.StartAsync(cancellation, advertisedAddress: proxy.BootstrapServers);
+        proxy.SetUpstream(kafka.BootstrapServers);
+        using var admin = new AdminClientBuilder(new AdminClientConfig { BootstrapServers = proxy.BootstrapServers }).Build();
         await admin.CreateTopicsAsync([new TopicSpecification { Name = "document-events", NumPartitions = 1, ReplicationFactor = 1 }]);
         Metadata metadata = admin.GetMetadata(TimeSpan.FromSeconds(10));
         string[] brokerNames = metadata.Brokers.Select(broker => $"{broker.Host}:{broker.Port}/{broker.BrokerId}").ToArray();
         Assert.NotEmpty(brokerNames);
-        using var first = new B10AbruptProcessFixture("real-kafka", kafka.BootstrapServers, realTime: true) { PreserveArtifacts = true };
+        using var first = new B10AbruptProcessFixture("real-kafka", proxy.BootstrapServers, realTime: true) { PreserveArtifacts = true };
         WriteBrokerBinding(first, brokerNames);
         var loader = new ScenarioLoader(new FileSystemScenarioSource(first.Options.ScenarioSourceRoot), Options.Create(new ScenarioLoadOptions { MaxDocumentCharacters = 1048576, MaxNestingDepth = 32, MaxScalarCharacters = 65536, MaxParserEvents = 100000 }));
         LoadedScenario loaded = await loader.LoadAsync("B10", cancellation);
         byte[] expectedPayload = WorkloadGenerator.GeneratePayload(WorkloadGenerator.Generate(loaded.Profile, 186000, 900000, cancellation).First(), loaded.Profile.Seed);
-        // This is one real run, with the policy's unchanged 120 s release and unmodified C1 producer settings.
-        int parentExit = await first.RunRoleAsync("parent", TimeSpan.FromSeconds(210));
+        // This is one real run with the policy's unchanged 120 s release and the probe producer settings.
+        int parentExit = await first.RunRoleAsync("parent", TimeSpan.FromSeconds(300));
         Assert.Equal(0, parentExit);
         string firstPrefix = Path.Combine(first.StorageRoot, "test", "C1", "r1", "b10-abrupt-diagnostic", "first");
         byte[] terminationBytes = await File.ReadAllBytesAsync(Path.Combine(firstPrefix, "termination.json"), cancellation);
@@ -60,7 +62,7 @@ public sealed class B10AbruptEndToEndTests(ITestOutputHelper output)
         decimal elapsedMicroseconds = (decimal)(intent.MonotonicTicks - accepted.MonotonicTicks) * 1000000 / intent.ClockFrequency;
         output.WriteLine($"local_observation parent_exit=0 exit_code_local_observation=137 runtime={Environment.Version} kernel={File.ReadAllText("/proc/sys/kernel/osrelease").Trim()} cut_accepted_to_kill_intent_microseconds={elapsedMicroseconds.ToString(CultureInfo.InvariantCulture)}");
 
-        using var successor = new B10AbruptProcessFixture("real-kafka", kafka.BootstrapServers, realTime: true, storageRoot: first.StorageRoot) { PreserveArtifacts = true };
+        using var successor = new B10AbruptProcessFixture("real-kafka", proxy.BootstrapServers, realTime: true, storageRoot: first.StorageRoot) { PreserveArtifacts = true };
         successor.EnvironmentValues["B10Abrupt__PodName"] = "successor";
         successor.EnvironmentValues["B10Abrupt__PodUid"] = "successor-uid";
         successor.EnvironmentValues["B10Abrupt__JobName"] = "test-c1-r1-loadgen-successor";
@@ -74,7 +76,7 @@ public sealed class B10AbruptEndToEndTests(ITestOutputHelper output)
             termination = B10AbruptPublisher.Describe("termination.json", terminationBytes), start_line_binding = startLine,
             release_utc = intent.Data.GetProperty("release_utc").GetString(), runner_utc = B10AbruptPublisher.Utc(TimeProvider.System.GetUtcNow()), runner_monotonic_ticks = Stopwatch.GetTimestamp(), cross_host_timing = "not_verified"
         }, B10AbruptWire.JsonOptions), cancellation);
-        int successorExit = await successor.RunRoleAsync("successor", TimeSpan.FromSeconds(160));
+        int successorExit = await successor.RunRoleAsync("successor", TimeSpan.FromSeconds(300));
         Assert.Equal(0, successorExit);
         string completionPath = Path.Combine(first.StorageRoot, "test", "C1", "r1", "b10-abrupt-diagnostic", "successor", "completion.json");
         JsonElement receipt = B10AbruptWire.ReadEnvelope(await File.ReadAllBytesAsync(completionPath, cancellation), "successor_receipt").GetProperty("data");
@@ -82,7 +84,7 @@ public sealed class B10AbruptEndToEndTests(ITestOutputHelper output)
         Assert.Equal(snapshot.KillUnconfirmedAttemptIds, invocations.Select(invocation => invocation.GetProperty("predecessor_attempt_id").GetString()!));
         using var consumer = new ConsumerBuilder<byte[], byte[]>(new ConsumerConfig
         {
-            BootstrapServers = kafka.BootstrapServers, GroupId = "synthetic-b10-" + Guid.NewGuid().ToString("N"), EnableAutoCommit = false, AutoOffsetReset = AutoOffsetReset.Earliest
+            BootstrapServers = proxy.BootstrapServers, GroupId = "synthetic-b10-" + Guid.NewGuid().ToString("N"), EnableAutoCommit = false, AutoOffsetReset = AutoOffsetReset.Earliest
         }).Build();
         consumer.Assign(new TopicPartitionOffset("document-events", new Partition(0), Offset.Beginning));
         var observed = new Dictionary<string, Message<byte[], byte[]>>(StringComparer.Ordinal);

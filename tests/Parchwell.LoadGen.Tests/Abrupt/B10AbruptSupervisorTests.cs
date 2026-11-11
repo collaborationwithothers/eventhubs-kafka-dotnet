@@ -397,18 +397,27 @@ public sealed class B10AbruptSupervisorTests
             var frame = new B10AbruptWire.Frame(Identity, sequence, new DateTimeOffset(2026, 11, 7, 0, 0, 1, TimeSpan.Zero).AddTicks(sequence).ToString("O", CultureInfo.InvariantCulture), sequence, TimeSpan.TicksPerSecond, kind, data);
             Frames.Add(frame); return frame;
         }
-        internal B10AbruptWire.Frame Prepare(int ordinal = 0, string arm = "same_instance") => Add("prepared", B10AbruptWire.Element(new
+        internal B10AbruptWire.Frame Prepare(int ordinal = 0, string arm = "same_instance")
+        {
+            if (ordinal == 0)
+            {
+                Add("warmup_prepared", B10AbruptWire.Element(new { attempt_id = $"{Identity.InstanceId}-{arm}-warmup", arm, key = "B10/synthetic/C1/1/" + arm, payload_length = 1, payload_sha256 = B10AbruptPublisher.Hash([1]) }));
+                Add("warmup_terminal", B10AbruptWire.Element(new { attempt_id = $"{Identity.InstanceId}-{arm}-warmup", completion_source = "callback", delivered = true, error_code = 0, persistence_status = 2, partition = 0, offset = 1L }));
+            }
+            return Add("prepared", B10AbruptWire.Element(new
         {
             attempt_id = arm + "-original-" + ordinal, arm, role = "original", ordinal, probe_id = "B10/synthetic/C1/1/" + arm,
             key = "B10/synthetic/C1/1/" + arm, sequence = ordinal, payload_length = 1, payload_sha256 = B10AbruptPublisher.Hash([1]), predecessor_attempt_id = (string?)null
         }));
+        }
         internal void Accept(int ordinal = 0, string arm = "same_instance") => Add("accepted", B10AbruptWire.Element(new
         { attempt_id = arm + "-original-" + ordinal, prepared_sequence = Frames.Single(frame => frame.Kind == "prepared" && frame.Data.GetProperty("attempt_id").GetString() == arm + "-original-" + ordinal).Sequence }));
         internal JsonElement ReportData(int ordinal = 0, string arm = "same_instance") => B10AbruptWire.Element(new
         {
             arm, attempt_id = arm + "-original-" + ordinal, name = arm + "-pre-acceptance-report.json", length = 1, sha256 = B10AbruptPublisher.Hash([1]),
             report_identity = new { scenario_id = "B10", run_id = "synthetic", role = "LoadGenProducer", client_id = Identity.InstanceId },
-            report_sequence = 1, report_capture_utc = "2026-11-07T00:00:00.0000000+00:00"
+            report_sequence = 1, report_capture_utc = Frames.FirstOrDefault(frame => frame.Kind == "prepared" && frame.Data.GetProperty("arm").GetString() == arm)?.ObservedUtc ?? "2026-11-07T00:00:00.0000000+00:00",
+            warmup_attempt_id = $"{Identity.InstanceId}-{arm}-warmup", partition = 0
         });
         internal void Report(int ordinal = 0, string arm = "same_instance") => Add("pre_acceptance_report", ReportData(ordinal, arm));
         internal void Terminal(int ordinal = 0, string arm = "same_instance") => Add("terminal", B10AbruptWire.Element(new

@@ -86,7 +86,7 @@ public sealed class B10AbruptProducerTests
         };
         var attempt = await fixture.Runner.InvokeProbe("same_instance", [1], null, 0, TestContext.Current.CancellationToken);
         Assert.NotNull(attempt.Terminal);
-        Assert.Equal(["child_started", "prepared", "pre_acceptance_report", "terminal", "accepted"], fixture.Journal.Frames.Select(frame => frame.Kind));
+        Assert.Equal(["child_started", "warmup_prepared", "warmup_terminal", "prepared", "pre_acceptance_report", "terminal", "accepted"], fixture.Journal.Frames.Select(frame => frame.Kind));
         Assert.Equal(2, attempt.Terminal.Value.GetProperty("persistence_status").GetInt32());
     }
 
@@ -163,7 +163,7 @@ public sealed class B10AbruptProducerTests
         Assert.Null(attempt.Terminal); Assert.NotNull(recorded);
         recorded(Report()); await fixture.Journal.DrainAvailable(TestContext.Current.CancellationToken);
         Assert.NotNull(attempt.Terminal);
-        Assert.Equal(["child_started", "prepared", "pre_acceptance_report", "accepted", "terminal"], fixture.Journal.Frames.Select(frame => frame.Kind));
+        Assert.Equal(["child_started", "warmup_prepared", "warmup_terminal", "prepared", "pre_acceptance_report", "accepted", "terminal"], fixture.Journal.Frames.Select(frame => frame.Kind));
     }
 
     [Fact]
@@ -177,7 +177,7 @@ public sealed class B10AbruptProducerTests
         Assert.Equal("run-1", handoff.GetProperty("report_identity").GetProperty("run_id").GetString());
         Assert.Equal("LoadGenProducer", handoff.GetProperty("report_identity").GetProperty("role").GetString());
         Assert.Equal("pod-1", handoff.GetProperty("report_identity").GetProperty("client_id").GetString());
-        Assert.Equal(1, handoff.GetProperty("report_sequence").GetInt64());
+        Assert.Equal(2, handoff.GetProperty("report_sequence").GetInt64());
         Assert.Equal(report.ReceivedAt.ToString("O", CultureInfo.InvariantCulture), handoff.GetProperty("report_capture_utc").GetString());
         byte[] bytes = await File.ReadAllBytesAsync(Path.Combine(fixture.Root, "abrupt", "same_instance-pre-acceptance-report.json"), TestContext.Current.CancellationToken);
         Assert.Equal(Encoding.UTF8.GetBytes(report.RawJson), bytes);
@@ -339,14 +339,14 @@ public sealed class B10AbruptProducerTests
         fixture.Native.OnProduce = (_, _) => throw new ProduceException<byte[], byte[]>(new Error(ErrorCode.Local_QueueFull), new DeliveryResult<byte[], byte[]>());
         var attempt = await fixture.Runner.InvokeProbe("same_instance", [1], null, 0, TestContext.Current.CancellationToken);
         Assert.False(attempt.Accepted);
-        Assert.Equal(["child_started", "prepared", "pre_acceptance_report", "synchronous_rejection"], fixture.Journal.Frames.Select(frame => frame.Kind));
+        Assert.Equal(["child_started", "warmup_prepared", "warmup_terminal", "prepared", "pre_acceptance_report", "synchronous_rejection"], fixture.Journal.Frames.Select(frame => frame.Kind));
         Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind == "accepted");
     }
 
     [Fact]
     public async Task Given_OverflowedCounter_When_Invoking_Then_EarlierReportCannotRepairMissingSample()
     {
-        await using var fixture = new Fixture(long.MaxValue - 1); fixture.Initialize(); fixture.Observe();
+        await using var fixture = new Fixture(long.MaxValue - 1); fixture.Initialize(warm: false); fixture.Observe();
         Assert.Equal("b10_abrupt_sample_missing", (await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Runner.InvokeProbe("same_instance", [1], null, 0, TestContext.Current.CancellationToken))).Message);
         Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind is "pre_acceptance_report" or "accepted");
         Assert.Empty(fixture.Native.Calls);
@@ -446,6 +446,8 @@ public sealed class B10AbruptProducerTests
         } });
         var artifacts = await fixture.Runner.RunSuccessorAsync(Profile(), fixture.Identity, fixture.Options, selection, fixture.Clock.GetUtcNow().AddSeconds(1), TestContext.Current.CancellationToken);
         Assert.Single(fixture.Native.Calls); Assert.Equal(payload, fixture.Native.Calls[0].Value); Assert.Equal(1, fixture.Native.Disposals);
+        Assert.Empty(fixture.Native.WarmupCalls);
+        Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind == "warmup_prepared");
         Assert.Equal(5, artifacts.Paths.Count); Assert.All(artifacts.Paths.Values, path => Assert.True(File.Exists(path)));
         using var manifest = JsonDocument.Parse(await File.ReadAllBytesAsync(artifacts.Paths["manifest.json"], TestContext.Current.CancellationToken));
         Assert.Equal(3, manifest.RootElement.GetProperty("schema_version").GetInt32()); Assert.Equal("b10_abrupt", manifest.RootElement.GetProperty("dialect").GetString());
@@ -781,7 +783,7 @@ public sealed class B10AbruptProducerTests
     }
 
     internal static DeliveryReport<byte[], byte[]> Report(ErrorCode code = ErrorCode.NoError, PersistenceStatus? status = PersistenceStatus.Persisted) => new()
-    { Error = new Error(code), Status = status ?? (PersistenceStatus)(-1) };
+    { Error = new Error(code), Status = status ?? (PersistenceStatus)(-1), Partition = 0, Offset = 1 };
 
     internal static KafkaStatisticsReport StatisticsReport(KafkaStatisticsIdentity identity, TimeProvider? clock = null)
     {
@@ -790,6 +792,7 @@ public sealed class B10AbruptProducerTests
         return new(identity, "session", clock.GetUtcNow(), JsonSerializer.Serialize(new
         {
             name = "native", client_id = identity.ClientId, type = "producer", ts = timestamp, time = 100, age = timestamp,
+            topics = new Dictionary<string, object> { ["document-events"] = new { partitions = new Dictionary<string, object> { ["0"] = new { leader = 0 } } } },
             brokers = new Dictionary<string, object>
             {
                 ["broker"] = new { name = "broker", nodeid = 0, source = "learned", state = "UP", stateage = 0,
@@ -821,6 +824,9 @@ public sealed class B10AbruptProducerTests
         internal B10AbruptJournal Journal { get; }
         internal NativeProducer Native { get; }
         internal KafkaStatisticsReport? LastReport { get; private set; }
+        internal Func<KafkaStatisticsReport, KafkaStatisticsReport> TransformReport { get; set; } = report => report;
+        internal bool SuppressReports { get; set; }
+        internal bool AdvanceReportClock { get; set; } = true;
         internal int Constructions { get; private set; }
         internal Action AtKill { get; set; } = () => { };
         internal List<Action<DeliveryReport<byte[], byte[]>>> CrossCallbacks { get; } = [];
@@ -858,18 +864,27 @@ public sealed class B10AbruptProducerTests
                 ? DateTimeOffset.Parse(cut.Data.GetProperty("release_utc").GetString()!, CultureInfo.InvariantCulture) : null;
             return fixture;
         }
-        internal void Initialize()
+        internal void Initialize(bool warm = true)
         {
             Journal.AppendAsync("child_started", B10AbruptWire.Element(new { pid = Environment.ProcessId, start_time_ticks = B10AbruptProc.ReadStartTimeTicks(B10AbruptProc.ReadBounded("/proc/self/stat")), boot_id = B10AbruptProc.ReadBootId() })).GetAwaiter().GetResult();
             Runner.Initialize(Profile(), Identity, Options);
             Advancing.Advance(TimeSpan.FromMilliseconds(1)); Observe(); Advancing.Advance(TimeSpan.FromMilliseconds(1));
+            if (warm)
+            {
+                Task preparation = Runner.PrepareArmAsync("same_instance", TestContext.Current.CancellationToken);
+                Journal.DrainAvailable().GetAwaiter().GetResult();
+                Observe();
+                Advancing.Advance(TimeSpan.FromMilliseconds(10));
+                preparation.GetAwaiter().GetResult();
+            }
         }
         internal Task StartJournalAsync() => Journal.AppendAsync("child_started", B10AbruptWire.Element(new { pid = Environment.ProcessId, start_time_ticks = B10AbruptProc.ReadStartTimeTicks(B10AbruptProc.ReadBounded("/proc/self/stat")), boot_id = B10AbruptProc.ReadBootId() }), TestContext.Current.CancellationToken);
         internal KafkaStatisticsReport Observe()
         {
+            if (SuppressReports && LastReport is not null) return LastReport;
             if (advancesReports) Advancing.Advance(TimeSpan.FromMicroseconds(1));
-            LastReport = StatisticsReport(statisticsIdentity, Clock);
-            Statistics.Observe(LastReport);
+            LastReport = TransformReport(StatisticsReport(statisticsIdentity, Clock));
+            if (!SuppressReports) Statistics.Observe(LastReport);
             return LastReport;
         }
         internal void ConfigureControl(bool terminalAfterCut = false, bool missingResendTerminal = false)
@@ -893,6 +908,7 @@ public sealed class B10AbruptProducerTests
                 BeforeAdvanceRelease = () => { pending!(Report()); originalCompleted = true; Journal.DrainAvailable().GetAwaiter().GetResult(); };
         }
         private Action? BeforeAdvanceRelease { get; set; }
+        internal Func<DateTimeOffset, DateTimeOffset> ReleaseTarget { get; set; } = release => release;
         internal void StartReports(bool advanceClock = true) => reportTask = Task.Run(async () =>
         {
             try
@@ -900,13 +916,13 @@ public sealed class B10AbruptProducerTests
                 bool released = false;
                 while (!reportStop.IsCancellationRequested)
                 {
-                    if (advanceClock) Advancing.Advance(TimeSpan.FromMilliseconds(10));
+                    if (advanceClock && AdvanceReportClock) Advancing.Advance(TimeSpan.FromMilliseconds(10));
                     Observe();
                     B10AbruptWire.Frame? cut = Journal.Frames.LastOrDefault(frame => frame.Kind == "cut");
                     if (advanceClock && !released && cut is not null)
                     {
                         released = true; BeforeAdvanceRelease?.Invoke();
-                        Advancing.AdvanceTo(DateTimeOffset.Parse(cut.Data.GetProperty("release_utc").GetString()!, CultureInfo.InvariantCulture));
+                        Advancing.AdvanceTo(ReleaseTarget(DateTimeOffset.Parse(cut.Data.GetProperty("release_utc").GetString()!, CultureInfo.InvariantCulture)));
                         Advancing.Advance(TimeSpan.Zero);
                     }
                     await Task.Delay(1, reportStop.Token);
@@ -1041,7 +1057,11 @@ public sealed class B10AbruptProducerTests
 
     public class NativeProducer : DispatchProxy
     {
+        // Original and resend counts keep their probe-only meaning; warm-up invocations are checked separately.
         internal List<Message<byte[], byte[]>> Calls { get; } = [];
+        internal List<Message<byte[], byte[]>> WarmupCalls { get; } = [];
+        internal Action<Message<byte[], byte[]>, Action<DeliveryReport<byte[], byte[]>>> OnWarmup { get; set; } = (_, callback) => callback(Report());
+        internal List<TimeSpan> FlushBudgets { get; } = [];
         internal Action<Message<byte[], byte[]>, Action<DeliveryReport<byte[], byte[]>>> OnProduce { get; set; } = (_, _) => { };
         internal Action OnFlush { get; set; } = () => { };
         internal Action OnDispose { get; set; } = () => { };
@@ -1055,11 +1075,18 @@ public sealed class B10AbruptProducerTests
             {
                 case "Produce":
                     var message = (Message<byte[], byte[]>)args![1]!;
+                    if (Encoding.UTF8.GetString(message.Headers.GetLastBytes("sequence")) == "-1")
+                    {
+                        WarmupCalls.Add(message);
+                        OnWarmup(message, (Action<DeliveryReport<byte[], byte[]>>)args[2]!);
+                        return null;
+                    }
                     Calls.Add(message);
                     killed |= Encoding.UTF8.GetString(message.Key).EndsWith("cross_restart", StringComparison.Ordinal);
                     OnProduce(message, (Action<DeliveryReport<byte[], byte[]>>)args[2]!);
                     return null;
                 case "Flush":
+                    FlushBudgets.Add((TimeSpan)args![0]!);
                     if (killed) FlushAfterKill++;
                     OnFlush();
                     return FlushResult;
