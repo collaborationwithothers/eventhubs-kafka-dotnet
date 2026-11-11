@@ -2,7 +2,7 @@
 
 The production C5 worker supports `start-line`, `verify`, `b10-sweep`, `judge`, and the separate `single-action-judge` mode. A successful object write alone never authorizes a result or a successful process exit. Receipt publication follows the mode-specific completion rules below.
 
-B10 abrupt diagnostic artifacts (`schema_version 2`, `dialect b10_abrupt`, `purpose diagnostic_trial`) are rejected by every verifier reader. The verifier support that ADR-021 requires for them is not implemented yet; issue 404 plans it as its third pull request. See the [B10 abrupt diagnostic contract](b10-abrupt-contract.md).
+B10 abrupt diagnostic artifacts (`schema_version 3`, `dialect b10_abrupt`, `purpose diagnostic_trial`) are rejected by every verifier reader. The verifier support that [ADR-021](../blueprint.md#adr-021-b10-accepts-timed-out-sends-application-retries-and-one-producer-restart-in-a-second-job-and-classifies-late-appends-up-to-a-sweep-line) requires, including the start line's three C1 Job names, is planned for the verifier classification pull request under [decision 6787849492, point 1](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6787849492). The [approved part 1 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/fc1a4f36452b2d302f1d73987e1ba5eb967b3d65/items/404/plan-b10-execution-loadgen.md), sections 3.3, 3.4 and 3.12, owns the schema and Job interfaces. See the [B10 abrupt diagnostic contract](b10-abrupt-contract.md).
 
 ## Single-action judgement
 

@@ -1,5 +1,6 @@
 """Offline trial contracts; produced-byte cases run only through the required exporter."""
 import ast
+import copy
 import importlib.util
 import json
 import os
@@ -39,6 +40,17 @@ class Setup:
     main = support.PhaseTests.main
     prepare = support.PhaseTests.prepare
 
+    def timeout_pod(self, exit_code=0):
+        document = self.p.read('phase.json')
+        return {'items': [{'metadata': {'ownerReferences': [
+            {'controller': True, 'kind': 'Job', 'name': document['run_id'] + '-c1-r1-loadgen'}]},
+            'spec': {'containers': [{'name': 'loadgen', 'image': document['images']['loadgen']['reference']}]},
+            'status': {'containerStatuses': [{'name': 'loadgen', 'state': {'terminated': {'exitCode': exit_code}}}]}}]}
+
+    def timeout_record(self):
+        return {'job': self.p.read('phase.json')['run_id'] + '-c1-r1-loadgen',
+                'mode': 'loadgen', 'outcome': 'complete'}
+
     def diagnostic(self):
         os.environ['PARCHWELL_SCENARIO'] = 'B10'
         self.prepare('C1')
@@ -64,7 +76,192 @@ class ByteIndependentCases(Setup, unittest.TestCase):
                 PARCHWELL_B10_ABRUPT_DIAGNOSTIC='true', PARCHWELL_CONFIRM_DIAGNOSTIC_TRIAL='true')
             shared.return_value = 0
             self.assertEqual(0, self.main('prepare-b10-abrupt-trial'))
-            shared.assert_called_once_with('B10', 'C1', 'C1', 'b10', purpose='diagnostic_trial', run_kind='smoke', b10_abrupt_diagnostic=True)
+            shared.assert_called_once_with('B10', 'C1', 'C1', 'b10d', purpose='diagnostic_trial', run_kind='smoke', b10_abrupt_diagnostic=True)
+
+    def test_timeout_failure_name_is_closed(self):
+        main_names = set('''
+            b10_abrupt_diagnostic_not_scientific b10_abrupt_configuration_invalid
+            b10_abrupt_platform_unsupported b10_abrupt_signal_preflight_failed
+            b10_abrupt_child_start_failed b10_abrupt_child_identity_mismatch
+            b10_abrupt_signal_failed b10_abrupt_exit_unobserved b10_abrupt_unexpected_exit
+            b10_abrupt_capture_gap b10_abrupt_sample_missing b10_abrupt_report_binding_invalid
+            b10_abrupt_guard_failed b10_abrupt_control_incomplete b10_abrupt_exposure_inconclusive
+            b10_abrupt_cut_rejected kill_too_early kill_too_late b10_abrupt_cgroup_unavailable
+            b10_abrupt_oom_conflict b10_abrupt_publication_failed b10_abrupt_publication_ambiguous
+            b10_abrupt_first_termination_unknown b10_abrupt_successor_binding_invalid
+            b10_abrupt_successor_late b10_abrupt_deadline_exhausted
+        '''.split())
+        self.assertEqual(main_names | {'b10_abrupt_timeout_job_unknown'}, abrupt.FAILURE_NAMES)
+        self.assertEqual(27, len(abrupt.FAILURE_NAMES))
+
+    def test_trial_and_science_run_ids_never_collide(self):
+        diagnostic_environment = dict(PARCHWELL_SCENARIO='B10', PARCHWELL_PHASE='C1', PARCHWELL_CONFIGURATION='C1',
+            PARCHWELL_REPEAT='1', PARCHWELL_RUN_KIND='smoke', PARCHWELL_PURPOSE='diagnostic_trial',
+            PARCHWELL_B10_ABRUPT_DIAGNOSTIC='true', PARCHWELL_CONFIRM_DIAGNOSTIC_TRIAL='true')
+        for identifier in ('1', '42925777839', '9' * 22):
+            with self.subTest(identifier=identifier), patch.dict(os.environ, GITHUB_RUN_ID=identifier, GITHUB_RUN_ATTEMPT='1'):
+                os.environ['PARCHWELL_SCENARIO'] = 'B10'
+                self.prepare('C1')
+                scientific_run = phase.Phase().read('phase.json')['run_id']
+                with patch.dict(os.environ, diagnostic_environment):
+                    self.assertEqual(0, abrupt.Trial(phase.Phase(), phase.Failure).prepare())
+                trial_environment = dict(line.split('=', 1) for line in self.env_file.read_text().splitlines())
+                with patch.dict(os.environ, trial_environment):
+                    trial_run = phase.Phase().read('phase.json')['run_id']
+                self.assertEqual('b10-' + identifier + '-1', scientific_run)
+                self.assertEqual('b10d-' + identifier + '-1', trial_run)
+                self.assertNotEqual(scientific_run, trial_run)
+        with patch.dict(os.environ, {**diagnostic_environment, 'GITHUB_RUN_ID': '9' * 23}):
+            with self.assertRaisesRegex(phase.Failure, '^invalid run or source commit$'):
+                abrupt.Trial(phase.Phase(), phase.Failure).prepare()
+        (self.private / 'phase.json').unlink()
+        with patch.dict(os.environ, {**diagnostic_environment, 'PARCHWELL_PRIVATE_DIRECTORY': str(self.private)}), \
+             patch.object(phase.Phase, 'prepare_shared') as shared:
+            with self.assertRaisesRegex(phase.Failure, '^b10_abrupt_diagnostic_not_scientific$'):
+                phase.Phase().prepare('C1')
+            shared.assert_not_called()
+            self.assertFalse((self.private / 'phase.json').exists())
+
+    def run_timeout_case(self, wait=0, apply=0, render_failed=False, payload=None, pod_code=0, pod_error=False):
+        state = self.p.state()
+        state.pop('b10_abrupt_started', None)
+        state.update(modes=[], safety_stop=False, b10_abrupt_gaps=[], b10_abrupt_diagnostics=[])
+        self.p.save_state(state)
+        calls = []
+        job_name = self.run_id + '-c1-r1-loadgen'
+        def command(args, seconds, output=None, maximum=4 * 1024 * 1024):
+            calls.append((args, seconds, output))
+            if args[:2] == ['kubectl', 'apply'] and args[3].endswith('rendered-' + job_name + '.yaml'):
+                if isinstance(apply, Exception):
+                    raise apply
+                return apply
+            if 'wait-job' in args and args[3] == job_name:
+                return wait
+            if args[:3] == ['kubectl', 'get', 'pods'] and 'job-name=' + job_name in args:
+                if pod_error:
+                    raise OSError('synthetic timeout pod read failure')
+                output.write_bytes(payload if isinstance(payload, bytes) else abrupt.encode(
+                    self.timeout_pod(exit_code=wait) if payload is None else payload))
+                return pod_code
+            return self.fake(self.p, args, seconds, output, maximum)
+        original_render = self.p.render
+        def render(mode, repeat):
+            if render_failed and mode == 'loadgen':
+                self.p.render_code = 1
+                return None
+            return original_render(mode, repeat)
+        with patch.dict(support.DEADLINES, {'loadgen-restart': 1140, 'loadgen-successor': 1140}), \
+             patch.object(self.p, 'b10_deadline', return_value=time.monotonic() + 18000), \
+             patch.object(self.p, 'run_mode', return_value={'outcome': 'complete'}), \
+             patch.object(self.trial, 'metadata', return_value=None), \
+             patch.object(self.trial, 'observe_first_termination', return_value={}), \
+             patch.object(self.trial, 'download', side_effect=ValueError('synthetic publication stop')), \
+             patch.object(self.p, 'render', side_effect=render) as rendered, \
+             patch.object(self.p, 'run', side_effect=command):
+            result = self.trial.run()
+        applied = [args[3] for args, _, _ in calls if args[:2] == ['kubectl', 'apply']]
+        return result, rendered, applied, calls
+
+    def test_timeout_job_outcome_rule(self):
+        self.diagnostic()
+        for wait, apply, render_failed, outcome, gap, safety in (
+                (0, 0, False, 'complete', None, False), (1, 0, False, 'failed', None, False),
+                (124, 0, False, 'unknown', 'b10_abrupt_timeout_job_unknown', True),
+                (2, 0, False, 'unknown', 'b10_abrupt_timeout_job_unknown', True),
+                (0, 1, False, 'apply_failed', 'b10_abrupt_timeout_job_unknown', True),
+                (0, 0, True, 'render_failed', 'b10_abrupt_configuration_invalid', False)):
+            with self.subTest(wait=wait, apply=apply, render_failed=render_failed):
+                result, rendered, applied, calls = self.run_timeout_case(wait, apply, render_failed)
+                self.assertEqual(outcome, self.p.state()['modes'][0]['outcome'])
+                self.assertEqual(safety, self.p.state()['safety_stop'])
+                if gap is None:
+                    self.assertEqual(['loadgen', 'loadgen-restart'], [call.args[0] for call in rendered.call_args_list])
+                    self.assertTrue(applied[-1].endswith('-loadgen-restart.yaml'))
+                else:
+                    self.assertEqual(1, result)
+                    self.assertEqual(['loadgen'], [call.args[0] for call in rendered.call_args_list])
+                    self.assertFalse(any('-loadgen-restart.yaml' in path for path in applied))
+                    self.assertEqual([gap], self.p.state()['b10_abrupt_gaps'])
+                    self.assertEqual('timeout_job', self.p.state()['b10_abrupt_diagnostics'][0]['boundary'])
+                    self.assertEqual(0 if render_failed else 1, len(applied))
+                reads = [args for args, _, _ in calls if args[:3] == ['kubectl', 'get', 'pods']]
+                self.assertEqual(1 if gap is None else 0, len(reads))
+        result, rendered, applied, _ = self.run_timeout_case(apply=OSError('synthetic apply failure'))
+        self.assertEqual(1, result)
+        self.assertEqual(['loadgen'], [call.args[0] for call in rendered.call_args_list])
+        self.assertFalse(any('-loadgen-restart.yaml' in path for path in applied))
+        self.assertEqual(['b10_abrupt_publication_failed'], self.p.state()['b10_abrupt_gaps'])
+        self.assertEqual('timeout_job', self.p.state()['b10_abrupt_diagnostics'][0]['boundary'])
+        self.assertFalse(self.p.state()['safety_stop'])
+
+    def test_timeout_pod_must_be_observed_terminated(self):
+        self.diagnostic()
+        ordinary = self.timeout_pod()
+        running = copy.deepcopy(ordinary)
+        running['items'][0]['status']['containerStatuses'][0]['state'] = {'running': {}}
+        string_exit = copy.deepcopy(ordinary)
+        string_exit['items'][0]['status']['containerStatuses'][0]['state']['terminated']['exitCode'] = '0'
+        wrong_owner = copy.deepcopy(ordinary)
+        wrong_owner['items'][0]['metadata']['ownerReferences'][0]['name'] = 'other'
+        wrong_image = copy.deepcopy(ordinary)
+        wrong_image['items'][0]['spec']['containers'][0]['image'] = 'other'
+        invalid = [dict(pod_code=1), dict(payload=b'not-json'), dict(payload={'items': []}),
+                   dict(payload={'items': ordinary['items'] * 2}), dict(payload=running), dict(payload=string_exit),
+                   dict(payload=wrong_owner), dict(payload=wrong_image), dict(pod_error=True)]
+        for case in invalid:
+            with self.subTest(case=case):
+                result, rendered, applied, calls = self.run_timeout_case(**case)
+                self.assertEqual(1, result)
+                self.assertEqual('unknown', self.p.state()['modes'][0]['outcome'])
+                self.assertEqual(['loadgen'], [call.args[0] for call in rendered.call_args_list])
+                self.assertFalse(any('-loadgen-restart.yaml' in path for path in applied))
+                self.assertTrue(self.p.state()['safety_stop'])
+                self.assertEqual(['b10_abrupt_timeout_job_unknown'], self.p.state()['b10_abrupt_gaps'])
+                self.assertEqual('timeout_job', self.p.state()['b10_abrupt_diagnostics'][0]['boundary'])
+                self.assertEqual(1, len([args for args, _, _ in calls if args[:3] == ['kubectl', 'get', 'pods']]))
+        for wait in (0, 1):
+            with self.subTest(valid_exit=wait):
+                _, rendered, applied, calls = self.run_timeout_case(wait=wait)
+                self.assertEqual(['loadgen', 'loadgen-restart'], [call.args[0] for call in rendered.call_args_list])
+                self.assertTrue(applied[-1].endswith('-loadgen-restart.yaml'))
+                self.assertTrue((self.trial.directory / 'loadgen-pods.json').exists())
+                reads = [(args, seconds, output) for args, seconds, output in calls if args[:3] == ['kubectl', 'get', 'pods']]
+                self.assertEqual([(['kubectl', 'get', 'pods', '-n', 'parchwell', '-l',
+                    'job-name=' + self.run_id + '-c1-r1-loadgen', '-o', 'json', '--request-timeout=30s'],
+                    30, self.trial.directory / 'loadgen-pods.json')], reads)
+
+    def test_timeout_job_render_is_ordinary(self):
+        self.diagnostic()
+        with patch.object(self.p, 'run', side_effect=lambda *args, **kwargs: self.fake(self.p, *args, **kwargs)), \
+             patch.object(self.p, 'b10_abrupt', return_value=self.trial), patch.object(self.trial, 'values') as hook:
+            self.assertEqual(1140, self.p.render('loadgen', 1))
+            hook.assert_not_called()
+        values = abrupt.decode((self.private / ('values-' + self.run_id + '-c1-r1-loadgen.json')).read_bytes())
+        self.assertNotIn('b10_abrupt_diagnostic', values['runtime'])
+        self.assertNotIn('b10_abrupt_binding_configmap', values['runtime'])
+
+    def test_collection_copies_timeout_job_into_diagnostic_artifact(self):
+        self.diagnostic()
+        modes = ('start-line', 'loadgen', 'loadgen-restart')
+        records = [{'mode': mode, 'job': self.run_id + '-c1-r1-' + mode, 'apply': 0} for mode in modes]
+        state = self.p.state()
+        state['modes'] = records
+        self.p.save_state(state)
+        for record in records:
+            directory = self.p.artifacts / record['job']
+            directory.mkdir()
+            (directory / 'synthetic.log').write_bytes(b'synthetic timeout diagnostics')
+        with patch.object(self.p, 'run', return_value=0) as run, \
+             patch.object(self.trial, 'observe_first_termination') as observe, \
+             patch.object(self.trial, 'collect', wraps=self.trial.collect) as collect:
+            self.assertEqual(0, collect())
+            self.assertEqual([['bash', 'infra/scripts/lifecycle/lifecycle.sh', 'collect-job', record['job']]
+                              for record in records[1:]], [call.args[0] for call in run.call_args_list])
+            observe.assert_not_called()
+            collect.assert_called_once_with()
+        self.assertEqual(b'synthetic timeout diagnostics',
+            (self.trial.directory / records[1]['job'] / 'synthetic.log').read_bytes())
+        self.assertFalse((self.trial.directory / records[0]['job']).exists())
 
     def test_every_scientific_entry_rejects_before_work_and_removes_candidate(self):
         self.diagnostic()
@@ -131,35 +328,36 @@ class ByteIndependentCases(Setup, unittest.TestCase):
 
     def test_collection_command_and_copy_failures_record_named_gaps(self):
         self.diagnostic()
-        record = {'mode': 'loadgen-restart', 'job': self.run_id + '-c1-r1-loadgen-restart', 'apply': 0}
-        for code, expected in [(1, 'b10_abrupt_publication_ambiguous'), (124, 'b10_abrupt_deadline_exhausted')]:
-            state = self.p.state()
-            state.update(modes=[record], b10_abrupt_gaps=[], b10_abrupt_diagnostics=[])
+        for mode in ('loadgen-restart', 'loadgen'):
+            record = {'mode': mode, 'job': self.run_id + '-c1-r1-' + mode, 'apply': 0}
+            for code, expected in [(1, 'b10_abrupt_publication_ambiguous'), (124, 'b10_abrupt_deadline_exhausted')]:
+                state = self.p.state()
+                state.update(modes=[record], b10_abrupt_gaps=[], b10_abrupt_diagnostics=[])
+                self.p.save_state(state)
+                with self.subTest(code=code), patch.object(self.p, 'run', return_value=code):
+                    self.assertEqual(1, self.trial.collect())
+                self.assertEqual([expected], self.p.state()['b10_abrupt_gaps'])
+                self.assertEqual('job_collection', self.p.state()['b10_abrupt_diagnostics'][0]['boundary'])
+                diagnostic = self.p.state()['b10_abrupt_diagnostics'][0]
+                self.assertEqual({'file': 'b10_abrupt.py', 'function': 'collect',
+                                  'line': source_line("self.record_failure(ValueError(reason), reason, 'job_collection')")},
+                                 site(diagnostic))
+                self.assertIsNone(diagnostic['site']['origin_line'])
+            state.update(b10_abrupt_gaps=[], b10_abrupt_diagnostics=[])
             self.p.save_state(state)
-            with self.subTest(code=code), patch.object(self.p, 'run', return_value=code):
+            (self.p.artifacts / record['job']).mkdir()
+            with patch.object(self.p, 'run', return_value=0), \
+                 patch.object(abrupt.shutil, 'copytree', side_effect=OSError('synthetic copy failure')):
                 self.assertEqual(1, self.trial.collect())
-            self.assertEqual([expected], self.p.state()['b10_abrupt_gaps'])
-            self.assertEqual('job_collection', self.p.state()['b10_abrupt_diagnostics'][0]['boundary'])
+            self.assertEqual(['b10_abrupt_publication_failed'], self.p.state()['b10_abrupt_gaps'])
+            self.assertEqual('synthetic copy failure', self.p.state()['b10_abrupt_diagnostics'][0]['validation_detail'])
             diagnostic = self.p.state()['b10_abrupt_diagnostics'][0]
             self.assertEqual({'file': 'b10_abrupt.py', 'function': 'collect',
-                              'line': source_line("self.record_failure(ValueError(reason), reason, 'job_collection')")},
-                             site(diagnostic))
-            self.assertIsNone(diagnostic['site']['origin_line'])
-        state.update(b10_abrupt_gaps=[], b10_abrupt_diagnostics=[])
-        self.p.save_state(state)
-        (self.p.artifacts / record['job']).mkdir()
-        with patch.object(self.p, 'run', return_value=0), \
-             patch.object(abrupt.shutil, 'copytree', side_effect=OSError('synthetic copy failure')):
-            self.assertEqual(1, self.trial.collect())
-        self.assertEqual(['b10_abrupt_publication_failed'], self.p.state()['b10_abrupt_gaps'])
-        self.assertEqual('synthetic copy failure', self.p.state()['b10_abrupt_diagnostics'][0]['validation_detail'])
-        diagnostic = self.p.state()['b10_abrupt_diagnostics'][0]
-        self.assertEqual({'file': 'b10_abrupt.py', 'function': 'collect',
-                          'line': source_line('shutil.copytree(source, self.directory')}, site(diagnostic))
-        self.assertEqual(SITE_MEMBERS, set(diagnostic['site']))
-        self.assertNotEqual('b10_abrupt.py', diagnostic['site']['origin_file'])
-        self.assertNotIn('synthetic copy failure', json.dumps(diagnostic['site']))
-        self.assertIsNone(diagnostic['cause_type'])
+                              'line': source_line('shutil.copytree(source, self.directory')}, site(diagnostic))
+            self.assertEqual(SITE_MEMBERS, set(diagnostic['site']))
+            self.assertNotEqual('b10_abrupt.py', diagnostic['site']['origin_file'])
+            self.assertNotIn('synthetic copy failure', json.dumps(diagnostic['site']))
+            self.assertIsNone(diagnostic['cause_type'])
 
     def test_named_admission_failure_is_recorded_once(self):
         self.diagnostic()
@@ -198,7 +396,8 @@ class ByteIndependentCases(Setup, unittest.TestCase):
         with patch.object(self.p, 'b10_deadline', return_value=time.monotonic() + 18000), \
              patch.object(self.p, 'run_mode', return_value={'outcome': 'complete'}), \
              patch.object(self.trial, 'metadata', return_value=None), \
-             patch.object(self.trial, 'job', return_value=record), \
+             patch.object(self.trial, 'job', side_effect=lambda mode, _deadline: self.timeout_record() if mode == 'loadgen' else record), \
+             patch.object(self.trial, '_observe_timeout_termination', return_value=None), \
              patch.object(self.trial, 'observe_first_termination', return_value={}), \
              patch.object(self.trial, 'download') as download:
             self.assertEqual(1, self.trial.run())
@@ -523,7 +722,8 @@ class ProducedBytesCases(Setup):
                  patch.object(self.p, 'b10_deadline', return_value=time.monotonic() + 18000), \
                  patch.object(self.p, 'run_mode', return_value={'outcome': 'complete'}), \
                  patch.object(self.trial, 'metadata', return_value=None), \
-                 patch.object(self.trial, 'job', return_value={**self.record, 'outcome': 'complete'}), \
+                 patch.object(self.trial, 'job', side_effect=lambda mode, _deadline: self.timeout_record() if mode == 'loadgen' else {**self.record, 'outcome': 'complete'}), \
+                 patch.object(self.trial, '_observe_timeout_termination', return_value=None), \
                  patch.object(self.trial, 'observe_first_termination', return_value=self.observation), \
                  patch.object(self.trial, 'download', return_value=files), \
                  patch.object(self.trial, 'release_successor') as release:
@@ -597,7 +797,8 @@ class ProducedBytesCases(Setup):
                  patch.object(self.p, 'b10_deadline', return_value=time.monotonic() + 18000), \
                  patch.object(self.p, 'run_mode', return_value={'outcome': 'complete'}), \
                  patch.object(self.trial, 'metadata', return_value=None), \
-                 patch.object(self.trial, 'job', return_value={**self.record, 'outcome': 'complete'}), \
+                 patch.object(self.trial, 'job', side_effect=lambda mode, _deadline: self.timeout_record() if mode == 'loadgen' else {**self.record, 'outcome': 'complete'}), \
+                 patch.object(self.trial, '_observe_timeout_termination', return_value=None), \
                  patch.object(self.trial, 'observe_first_termination', return_value=self.observation), \
                  patch.object(self.trial, 'download', return_value=files), \
                  patch.object(self.trial, 'release_successor') as release:
@@ -638,7 +839,8 @@ class ProducedBytesCases(Setup):
                  patch.object(self.p, 'b10_deadline', return_value=time.monotonic() + 18000), \
                  patch.object(self.p, 'run_mode', return_value={'outcome': 'complete'}), \
                  patch.object(self.trial, 'metadata', return_value=None), \
-                 patch.object(self.trial, 'job', return_value={**self.record, 'outcome': 'complete'}), \
+                 patch.object(self.trial, 'job', side_effect=lambda mode, _deadline: self.timeout_record() if mode == 'loadgen' else {**self.record, 'outcome': 'complete'}), \
+                 patch.object(self.trial, '_observe_timeout_termination', return_value=None), \
                  patch.object(self.trial, 'observe_first_termination', return_value=self.observation), \
                  patch.object(self.trial, 'download', return_value=files), \
                  patch.object(self.trial, 'release_successor') as release:
@@ -664,7 +866,8 @@ class ProducedBytesCases(Setup):
                  patch.object(self.p, 'b10_deadline', return_value=time.monotonic() + 18000), \
                  patch.object(self.p, 'run_mode', return_value={'outcome': 'complete'}), \
                  patch.object(self.trial, 'metadata', return_value=None), \
-                 patch.object(self.trial, 'job', return_value={**self.record, 'outcome': 'complete'}), \
+                 patch.object(self.trial, 'job', side_effect=lambda mode, _deadline: self.timeout_record() if mode == 'loadgen' else {**self.record, 'outcome': 'complete'}), \
+                 patch.object(self.trial, '_observe_timeout_termination', return_value=None), \
                  patch.object(self.trial, 'observe_first_termination', return_value=self.observation), \
                  patch.object(self.trial, 'download', return_value=self.first), \
                  patch.object(self.trial, 'release_successor', return_value=result):
@@ -709,7 +912,7 @@ class ProducedBytesCases(Setup):
             exported = abrupt.decode((self.trial.directory / 'phase-status.json').read_bytes())
             self.assertEqual([expected], exported['b10_abrupt_gaps'])
 
-    def test_trial_order_and_delayed_logs_outside_release_path(self):
+    def test_trial_runs_timeout_job_before_restart(self):
         self.produced()
         order = []
         identity = abrupt.decode(self.first['termination.json'])['identity']
@@ -724,11 +927,16 @@ class ProducedBytesCases(Setup):
         self.fake.blobs.update({prefix + name: raw for name, raw in self.first.items()})
         def command(args, seconds, output=None, maximum=4 * 1024 * 1024):
             if args[:3] == ['kubectl', 'get', 'pods']:
+                if 'job-name=' + identity['run_id'] + '-c1-r1-loadgen' in args:
+                    order.append('timeout-termination')
+                    output.write_bytes(abrupt.encode(self.timeout_pod()))
+                    return 0
                 order.append('termination')
                 output.write_bytes(abrupt.encode(payload))
                 return 0
             if args[:2] == ['kubectl', 'apply']:
-                order.append('loadgen-successor' if 'loadgen-successor' in args[3] else 'loadgen-restart')
+                order.append('loadgen-successor' if 'loadgen-successor' in args[3] else
+                             'loadgen-restart' if 'loadgen-restart' in args[3] else 'loadgen')
             if 'collect-job' in args:
                 # Any slow collection before successor admission fails immediately.
                 self.assertIn('loadgen-successor', order)
@@ -745,9 +953,11 @@ class ProducedBytesCases(Setup):
              patch.object(abrupt.time, 'time', return_value=0), \
              patch.object(self.p, 'run', side_effect=command):
             self.assertEqual(0, self.trial.run())
-        self.assertEqual(['metadata', 'loadgen-restart', 'termination', 'publication', 'loadgen-successor'], order)
+        self.assertEqual(['metadata', 'loadgen', 'timeout-termination', 'loadgen-restart', 'termination', 'publication', 'loadgen-successor'], order)
+        self.assertEqual(['loadgen', 'loadgen-restart', 'loadgen-successor'],
+                         [event for event in order if event in ('loadgen', 'loadgen-restart', 'loadgen-successor')])
         modes = [record['mode'] for record in self.p.state()['modes']]
-        self.assertEqual(['loadgen-restart', 'loadgen-successor'], modes)
+        self.assertEqual(['loadgen', 'loadgen-restart', 'loadgen-successor'], modes)
         self.assertFalse((self.candidate_dir / 'candidate.json').exists())
         self.assertFalse(any('collect-job' in call[0] for call in self.fake.calls))
 
