@@ -1,0 +1,60 @@
+name: B10 offline image test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-image:
+    name: B10 offline image test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up pinned .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Build LoadGen image
+        run: |
+          dotnet publish src/Parchwell.LoadGen/Parchwell.LoadGen.csproj --configuration Release \
+            -p:RestoreLockedMode=true -p:NuGetLockFilePath=packages.linux-x64.lock.json \
+            -r linux-x64 --self-contained false /t:PublishContainer \
+            "-p:ContainerImageTag=offline-$GITHUB_SHA" \
+            "-p:ContainerArchiveOutputPath=$RUNNER_TEMP/b10-offline-image.tar"
+          docker load --input "$RUNNER_TEMP/b10-offline-image.tar"
+          docker image inspect --format '{{.Id}}' "parchwell/loadgen:offline-$GITHUB_SHA"
+      - name: Build tests
+        run: >-
+          dotnet build tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj
+          --configuration Release -p:RestoreLockedMode=true
+      - name: Run offline image test
+        env:
+          PARCHWELL_B10_OFFLINE_IMAGE: parchwell/loadgen:offline-${{ github.sha }}
+          PARCHWELL_B10_OFFLINE_SOURCE_COMMIT: ${{ github.sha }}
+          PARCHWELL_B10_OFFLINE_EVIDENCE: ${{ runner.temp }}/b10-offline-image-evidence.txt
+        run: |
+          dotnet test --project tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj \
+            --configuration Release --no-build --minimum-expected-tests 1 \
+            --results-directory "$RUNNER_TEMP/b10-offline-image-results" -- \
+            --filter-method 'Parchwell.LoadGen.Tests.Abrupt.B10AbruptOfflineImageTests.Given_BuiltImage_When_ParentChildAndSuccessorRunInContainers_Then_JournalExitAndResendsAreObserved' \
+            --report-xunit-xml --report-xunit-xml-filename results.xml
+          dotnet msbuild scripts/dotnet-verification.proj -t:ValidateReport \
+            "-p:Report=$RUNNER_TEMP/b10-offline-image-results/results.xml" \
+            -p:ExpectedAssembly=Parchwell.LoadGen.Tests -nologo
+          python3 - "$RUNNER_TEMP/b10-offline-image-results/results.xml" <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          tests = ET.parse(sys.argv[1]).getroot().findall('./assembly/collection/test')
+          if len(tests) != 1 or tests[0].get('result') != 'Pass':
+              raise SystemExit('Expected exactly one passed offline image test.')
+          PY
+      - name: Print observation
+        run: cat "$RUNNER_TEMP/b10-offline-image-evidence.txt"
