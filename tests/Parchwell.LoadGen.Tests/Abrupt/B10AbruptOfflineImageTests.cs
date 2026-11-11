@@ -6,6 +6,7 @@ using System.Text.Json;
 using Confluent.Kafka;
 using Confluent.Kafka.Admin;
 using Docker.DotNet;
+using DockerModels = Docker.DotNet.Models;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
@@ -71,6 +72,7 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
     private readonly string directory = Path.Combine(Path.GetTempPath(), "b10-offline-image-" + Guid.NewGuid().ToString("N"));
     private readonly string containerPrefix = "b10-offline-image-" + Guid.NewGuid().ToString("N");
     private readonly List<IContainer> containers = [];
+    private readonly List<(string Name, string Id)> helpers = [];
     private readonly DockerClient docker = TestcontainersSettings.OS.DockerEndpointAuthConfig.GetDockerClientBuilder()
         .WithTimeout(TimeSpan.FromMinutes(2)).Build();
     private LocalKafkaFixture? kafka;
@@ -92,6 +94,10 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
             imageId[7..].All(character => character is >= '0' and <= '9' or >= 'a' and <= 'f'), "b10_offline_image_image_id_invalid");
         Directory.CreateDirectory(directory);
         if (!OperatingSystem.IsLinux()) throw new InvalidOperationException("b10_offline_image_linux_required");
+        File.SetUnixFileMode(AppContext.BaseDirectory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+            UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+        File.SetUnixFileMode(typeof(B10AbruptProcessHarness).Assembly.Location,
+            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead);
         // Keep the runner as owner so it can remove the empty directory after uid 1654 cleans its contents.
         File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
             UnixFileMode.GroupRead | UnixFileMode.GroupWrite | UnixFileMode.GroupExecute |
@@ -116,6 +122,15 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
         foreach (string role in new[] { "parent", "successor" })
             File.WriteAllBytes(Path.Combine(directory, role, "work", "loadgen", "test-control.json"),
                 JsonSerializer.SerializeToUtf8Bytes(new B10AbruptProcessHarness.Control("image-kafka", "/storage", kafka.BootstrapServers, RealTime: true)));
+        // Normalize the host's umask before ownership changes so both the runner and uid 1654 can read evidence.
+        foreach (string path in Directory.EnumerateDirectories(directory, "*", SearchOption.AllDirectories))
+            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+                UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+        foreach (string path in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead);
+        File.SetUnixFileMode(Path.Combine(directory, "successor", "bindings"), UnixFileMode.UserRead | UnixFileMode.UserWrite |
+            UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupWrite | UnixFileMode.GroupExecute |
+            UnixFileMode.OtherRead | UnixFileMode.OtherWrite | UnixFileMode.OtherExecute);
         await HelperAsync("ownership", "0:0", true,
             "chown -R 1654:1654 /owned/parent /owned/successor /owned/storage", cancellation);
     }
@@ -342,16 +357,50 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
 
     private async Task HelperAsync(string suffix, string user, bool chown, string command, CancellationToken cancellation)
     {
-        IContainer container = BaseContainer(suffix, user)
-            .WithEntrypoint("/bin/sh")
-            .WithCommand("-c", "set -e; " + command + "; echo b10_offline_image_helper_complete")
-            .WithNetwork("none")
-            .WithBindMount(directory, "/owned")
-            .WithCreateParameterModifier(parameters => parameters.HostConfig!.CapAdd = chown ? ["CHOWN"] : [])
-            .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("b10_offline_image_helper_complete",
-                strategy => strategy.WithMode(WaitStrategyMode.OneShot)))
-            .Build();
-        await RunContainerAsync(container, suffix, cancellation);
+        string name = containerPrefix + "-" + suffix;
+        // Track the name before create so cancellation of the response cannot hide a created container.
+        helpers.Add((name, name));
+        try
+        {
+            DockerModels.CreateContainerResponse created = await docker.Containers.CreateContainerAsync(new DockerModels.CreateContainerParameters
+            {
+                Name = name, Image = image, User = user, Entrypoint = ["/bin/sh"], Cmd = ["-c", "set -e; " + command],
+                HostConfig = new DockerModels.HostConfig
+                {
+                    ReadonlyRootfs = true, CapDrop = ["ALL"], CapAdd = chown ? ["CHOWN"] : [],
+                    SecurityOpt = ["no-new-privileges"], NetworkMode = "none",
+                    Mounts = [new DockerModels.Mount { Type = "bind", Source = directory, Target = "/owned" }]
+                }
+            }, cancellation);
+            if (!await docker.Containers.StartContainerAsync(created.ID, new DockerModels.ContainerStartParameters(), cancellation))
+                throw new InvalidOperationException("b10_offline_image_helper_start_failed");
+            DockerModels.ContainerWaitResponse result = await docker.Containers.WaitContainerAsync(created.ID, cancellation);
+            if (result.StatusCode != 0)
+                throw new InvalidOperationException("b10_offline_image_helper_exit_code:" + result.StatusCode.ToString(CultureInfo.InvariantCulture));
+        }
+        catch (OperationCanceledException exception)
+        {
+            LastOutput = await HelperTailAsync(name);
+            throw new OperationCanceledException("b10_offline_image_bound_exceeded:" + suffix + "\n" + LastOutput, exception, cancellation);
+        }
+        catch (Exception exception)
+        {
+            LastOutput = await HelperTailAsync(name);
+            throw new InvalidOperationException("b10_offline_image_helper_exit:" + suffix + "\n" + LastOutput, exception);
+        }
+    }
+
+    private async Task<string> HelperTailAsync(string id)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        try
+        {
+            using MultiplexedStream logs = await docker.Containers.GetContainerLogsAsync(id,
+                new DockerModels.ContainerLogsParameters { ShowStdout = true, ShowStderr = true }, timeout.Token);
+            (string stdout, string stderr) = await logs.ReadOutputToEndAsync(timeout.Token);
+            return Tail(stdout + stderr);
+        }
+        catch (Exception exception) { return "container_output_unavailable:" + exception.Message; }
     }
 
     private static async Task<string> ContainerTailAsync(IContainer container)
@@ -370,6 +419,8 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
         var tails = new StringBuilder();
         foreach (IContainer container in containers)
             tails.AppendLine(container.Name + "\n" + await ContainerTailAsync(container));
+        foreach ((string name, string id) in helpers)
+            tails.AppendLine(name + "\n" + await HelperTailAsync(id));
         LastOutput = tails.ToString();
         return LastOutput;
     }
@@ -384,6 +435,7 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
             try { await DisposeContainerAsync(container); }
             catch (Exception exception) { failures.Add(exception); }
         }
+        await RemoveHelpersAsync(failures);
         if (kafka is not null)
         {
             try { await kafka.DisposeAsync(); }
@@ -400,14 +452,28 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
             catch (Exception exception) { failures.Add(exception); }
             finally
             {
-                try { await DisposeContainerAsync(containers[^1]); }
-                catch (Exception exception) { failures.Add(exception); }
+                await RemoveHelpersAsync(failures);
             }
         }
         else output.WriteLine("preserved_directory=" + directory);
         cleaned = true;
         docker.Dispose();
         if (failures.Count != 0) throw new AggregateException("b10_offline_image_cleanup", failures);
+    }
+
+    private async Task RemoveHelpersAsync(List<Exception> failures)
+    {
+        foreach ((string name, string id) in helpers.ToArray())
+        {
+            try
+            {
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                await docker.Containers.RemoveContainerAsync(id, new DockerModels.ContainerRemoveParameters { Force = true, RemoveVolumes = true }, timeout.Token);
+                helpers.Remove((name, id));
+            }
+            catch (DockerContainerNotFoundException) { helpers.Remove((name, id)); }
+            catch (Exception exception) { failures.Add(exception); }
+        }
     }
 
     private static async Task DisposeContainerAsync(IContainer container)
