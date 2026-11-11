@@ -77,6 +77,8 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
         .WithTimeout(TimeSpan.FromMinutes(2)).Build();
     private LocalKafkaFixture? kafka;
     private string imageId = "";
+    private string originalHookOwner = "";
+    private bool restoreHookOwner;
     private bool cleaned;
     internal string LastOutput { get; private set; } = "";
     private string Storage => Path.Combine(directory, "storage");
@@ -131,8 +133,13 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
         File.SetUnixFileMode(Path.Combine(directory, "successor", "bindings"), UnixFileMode.UserRead | UnixFileMode.UserWrite |
             UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupWrite | UnixFileMode.GroupExecute |
             UnixFileMode.OtherRead | UnixFileMode.OtherWrite | UnixFileMode.OtherExecute);
+        originalHookOwner = (await HelperAsync("hook-owner", "0:0", false, "stat -c '%u:%g' /hook", cancellation)).Trim();
+        string[] owner = originalHookOwner.Split(':');
+        Assert.True(owner.Length == 2 && owner.All(value => uint.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out _)),
+            "b10_offline_image_hook_owner_invalid");
+        restoreHookOwner = true;
         await HelperAsync("ownership", "0:0", true,
-            "chown -R 1654:1654 /owned/parent /owned/successor /owned/storage", cancellation);
+            "chown -R 1654:1654 /owned/parent /owned/successor /owned/storage; chown 1654:1654 /hook", cancellation);
     }
 
     internal async Task<string> ObserveAsync(CancellationToken cancellation)
@@ -278,7 +285,6 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
         IContainer container = BaseContainer(role, "1654:1654")
             .WithEntrypoint("/app/Parchwell.LoadGen")
             .WithCommand("--b10-abrupt-" + role)
-            .WithNetwork("host")
             .WithEnvironment(EnvironmentValues(role))
             .WithBindMount(Path.Combine(directory, role, "work"), "/work")
             .WithBindMount(Path.Combine(directory, role, "tmp"), "/tmp")
@@ -288,6 +294,7 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
             .WithCreateParameterModifier(parameters =>
             {
                 parameters.HostConfig!.NanoCPUs = 3000000000;
+                parameters.HostConfig.NetworkMode = "host";
                 parameters.HostConfig.Memory = 12L * 1024 * 1024 * 1024;
                 parameters.HostConfig.CgroupnsMode = "private";
                 parameters.HostConfig.Init = false;
@@ -355,7 +362,7 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
         return values;
     }
 
-    private async Task HelperAsync(string suffix, string user, bool chown, string command, CancellationToken cancellation)
+    private async Task<string> HelperAsync(string suffix, string user, bool chown, string command, CancellationToken cancellation)
     {
         string name = containerPrefix + "-" + suffix;
         // Track the name before create so cancellation of the response cannot hide a created container.
@@ -369,7 +376,8 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
                 {
                     ReadonlyRootfs = true, CapDrop = ["ALL"], CapAdd = chown ? ["CHOWN"] : [],
                     SecurityOpt = ["no-new-privileges"], NetworkMode = "none",
-                    Mounts = [new DockerModels.Mount { Type = "bind", Source = directory, Target = "/owned" }]
+                    Mounts = [new DockerModels.Mount { Type = "bind", Source = directory, Target = "/owned" },
+                        new DockerModels.Mount { Type = "bind", Source = AppContext.BaseDirectory, Target = "/hook" }]
                 }
             }, cancellation);
             if (!await docker.Containers.StartContainerAsync(created.ID, new DockerModels.ContainerStartParameters(), cancellation))
@@ -377,6 +385,7 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
             DockerModels.ContainerWaitResponse result = await docker.Containers.WaitContainerAsync(created.ID, cancellation);
             if (result.StatusCode != 0)
                 throw new InvalidOperationException("b10_offline_image_helper_exit_code:" + result.StatusCode.ToString(CultureInfo.InvariantCulture));
+            return await HelperTailAsync(created.ID);
         }
         catch (OperationCanceledException exception)
         {
@@ -440,6 +449,17 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
         {
             try { await kafka.DisposeAsync(); }
             catch (Exception exception) { failures.Add(exception); }
+        }
+        if (restoreHookOwner)
+        {
+            try
+            {
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                await HelperAsync("restore-hook-owner", "0:0", true, "chown " + originalHookOwner + " /hook", timeout.Token);
+                restoreHookOwner = false;
+            }
+            catch (Exception exception) { failures.Add(exception); }
+            finally { await RemoveHelpersAsync(failures); }
         }
         if (passed && failures.Count == 0)
         {
