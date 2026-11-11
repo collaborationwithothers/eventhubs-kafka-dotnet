@@ -10,7 +10,7 @@ This pull request implements the approved trial orchestration plan. It adds the 
 - Exact verification commands: `python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'`; `bash charts/parchwell/tests/check-loadgen-host.sh`; `./scripts/verify-dotnet.sh`; `bash infra/scripts/lifecycle/check-offline.sh`; `npm run check:docs`; `cmp .github/workflows/b10-abrupt-trial.yml docs/operations/workflows/b10-abrupt-trial.yml.txt && git diff --quiet origin/main -- .github src`.
 - Earliest authorized publication checkpoint: all applicable local acceptance checks pass and the complete authored diff has clean applicable cold-review coverage under pull-request rule 8. Publish then, with CI and hosted reviews allowed to run together.
 - Review budget: at most two comprehensive and two focused cold-review rounds cumulatively for this pull request, under [pull-request rule 8](../../docs/agents/pull-requests.md). Exhaustion or unsafe focus saves a backup branch and hands off to Hari. No earlier review exists for this new pull request.
-- Runtime-sized work: plan section 11(a) lists fixed synthetic inputs. After the first verification failures, Hari directly instructed this run on 2026-11-11 to fix the incomplete implementation and continue instead of handing it off. That task authorization overrides rule 11's first-measurement handoff for the verification fixes in this run. Scope, external contracts, the cold-review budget and Hari's merge remain unchanged.
+- Runtime-sized work: [amendment 6788754429](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6788754429), read in full, adds per-session caps of 20 verification-failure root causes and 20 review-finding root causes. Each exhaustion action is `push -wip and hand off to the next session`. A continuation session starts its own count. Scope, frozen paths, external contracts, the cumulative cold-review budget and Hari's merge remain unchanged. Before the recorded amendment, Hari directly instructed this run to fix the incomplete implementation and continue instead of handing it off at the first failure.
 - Predicate map: plan section 8, with the exact P2-A and P2-B test additions below. No verifier predicate changes.
 
 ## Implementation choices required by the plan check
@@ -44,8 +44,41 @@ The first `./scripts/verify-dotnet.sh` attempt restored successfully, then faile
 
 The first phase-suite command ran 346 tests in 47.113 s and reported 38 failures and 103 errors. The controller omitted the installed tools from PATH. Scripted counting found 101 direct missing-helm errors and one each for actionlint and kubeconform; the assertion failures have not yet been independently attributed. The corrected invocation supplies the pinned tools and their Python virtual environment through PATH. No test expectation is changed to accommodate this setup failure.
 
-Remaining acceptance commands and reviews are pending.
+The corrected phase-suite invocation passed all 346 tests in 60.275 s without a phase-code change between attempts. The corrected full .NET verification completed with zero build warnings/errors; its checked reports and a separate XML aggregation both show 10021 passed tests, zero failed, errors, skips or not-run cases. The new `B10TimeoutEvidenceExportTests` case passed and was not skipped. Reports are retained outside the repository at `/tmp/parchwell-dotnet-verification.En354LNR`.
+
+The initial documentation scan passed with nine advisory warnings, all in unchanged files; no warning was reported in the four changed operations documents. The scan checks local links, not external URLs. Offline lifecycle/chart verification completed its workflow mirror, lint, rendering and schema checks; the command exit is recorded with the final results below.
+
+The initial chart-host attempt passed the ordinary host groups, then failed the existing apphost guard with exit 131 because the controller had not supplied `DOTNET_ROOT` for the custom SDK installation. Setting it to the observed installation at `/home/agent/.parchwell/dotnet` fixes that setup. The unchanged command then exited 0, including the exact final timeout-evidence rejection line and the bridge's asserted producer/checker outputs.
+
+The tool environment for phase, lifecycle and chart-host checks uses `PARCHWELL_TOOLS_DIRECTORY=/tmp/404-tools` and prepends that directory and its `venv/bin` to PATH. The repository installer verified the pinned tools and PyYAML 6.0.3; .NET SDK 10.0.402 was already installed.
+
+## Per-session failure and finding ledger
+
+| Root | Measured failure | Disposition |
+| --- | --- | --- |
+| V1 | xUnit1051 at two asynchronous export writes | Both now pass the current test cancellation token; corrected build passes |
+| V2 | Controller PATH omitted the pinned tools: 101 missing-helm errors and one each for actionlint and kubeconform, with downstream assertions | Supply the pinned tool directory and virtual environment in PATH; all 346 phase tests pass |
+| V3 | Existing chart-host apphost guard exited 131 because custom .NET runtime discovery had no `DOTNET_ROOT` | Supply the observed runtime root; the full chart-host bridge passes without a code change |
+
+Current distinct verification roots: 3 of 20. Current review-finding roots: 0 of 20. The counts cover this session from its initial attempts, not just attempts after the amendment. These caps do not replace pull-request rule 8's cumulative cold-review limits.
+
+## Acceptance results
+
+Runtime code was tested from `d224f33d9ca2eaf0af7228c5231e1aac5fdb3a40`. Documentation and host/lifecycle checks used `8753c175a066e2371d6a020f1a8052e5e3f4abcc`, whose runtime code is identical. Later authored edits record evidence and current item state only.
+
+| Command from plan section 9 | Result |
+| --- | --- |
+| `python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'` | Exit 0; 346 tests passed, including the added byte-independent phase cases |
+| `bash charts/parchwell/tests/check-loadgen-host.sh` | Exit 0 with the exact required final line; producer-byte bridge and timeout checker outputs asserted |
+| `./scripts/verify-dotnet.sh` | Exit 0; 10021 passed tests; zero build warnings/errors and no failed/skipped/not-run tests; new exporter passed |
+| `bash infra/scripts/lifecycle/check-offline.sh` | Exit 0; workflow byte equality, lint, chart and schema checks passed |
+| `npm run check:docs` | Exit 0; nine advisory warnings in unchanged files; none in the changed operations documents |
+| `cmp .github/workflows/b10-abrupt-trial.yml docs/operations/workflows/b10-abrupt-trial.yml.txt && git diff --quiet origin/main -- .github src` | Exit 0 |
+
+A separate static comparison found all 12 changed paths permitted, all seven frozen `Trial` methods unchanged, and the existing C# test file identical except for the two allowed fixture-type accessibility changes. No program output is committed. No trial or workflow was dispatched. No verifier production code, expected outcome, verdict, result, workflow, chart template or package changed.
 
 ## Cold-review inputs and record
 
-No cold review started. Cumulative comprehensive/focused counts: 0/0. Complete reports and dispositions will be linked from the pull request self-review record.
+Round 1 is a fresh-context comprehensive review of the entire authored diff against baseline `3a4ee0b140a209c2cdeae0002a77c5349a6aabc7`. The review diff filename identifies the frozen input commit. It includes this receipt and the item state; the originating specification and recognized amendment are linked above. Cumulative completed comprehensive/focused counts before that round: 0/0. The pull request self-review record will identify the frozen commit and hold the complete report, dispositions, final-head CI and hosted review evidence, so the report is not added to its own reviewed receipt.
+
+Authoring used this Codex control session and fresh-context subagents at high effort. Their exclusive areas were phase orchestration/tests, C# export, Python checker/host bridge, and operations documents. The cold reviewer also runs with fresh context at high effort. Exact model identifiers are not exposed here.
