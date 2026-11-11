@@ -233,7 +233,8 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
     private async Task WritePredecessorAsync(byte[] termination, B10AbruptWire.Frame intent, CancellationToken cancellation)
     {
         using JsonDocument start = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(directory, "parent", "bindings", "start-line.json"), cancellation));
-        await File.WriteAllBytesAsync(Path.Combine(directory, "successor", "bindings", "predecessor.json"), JsonSerializer.SerializeToUtf8Bytes(new
+        string path = Path.Combine(directory, "successor", "bindings", "predecessor.json");
+        await File.WriteAllBytesAsync(path, JsonSerializer.SerializeToUtf8Bytes(new
         {
             first_pod = new { job_name = "offline-image-c1-r1-loadgen-restart", pod_name = "first", pod_uid = "first-uid",
                 image_reference = "parchwell/loadgen@" + imageId, source_commit = commit, finished_utc = B10AbruptPublisher.Utc(TimeProvider.System.GetUtcNow()) },
@@ -241,6 +242,8 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
             release_utc = intent.Data.GetProperty("release_utc").GetString(), runner_utc = B10AbruptPublisher.Utc(TimeProvider.System.GetUtcNow()),
             runner_monotonic_ticks = Stopwatch.GetTimestamp(), cross_host_timing = "not_verified"
         }, B10AbruptWire.JsonOptions), cancellation);
+        if (OperatingSystem.IsLinux())
+            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead);
     }
 
     private async Task<int> AssertResendsAsync(B10AbruptJournal.Snapshot snapshot, string[] killSet, CancellationToken cancellation)
@@ -301,7 +304,7 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
                 parameters.HostConfig.PidMode = "";
             }).Build();
         await RunContainerAsync(container, role, cancellation);
-        return await container.GetLogsAsync(ct: cancellation);
+        return await container.GetLogsAsync(timestampsEnabled: false, ct: cancellation);
     }
 
     private ContainerBuilder BaseContainer(string suffix, string user) => new ContainerBuilder(image)
@@ -334,7 +337,7 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
             string tail = await ContainerTailAsync(container);
             throw new InvalidOperationException("b10_offline_image_container_exit:" + role + "\n" + tail, exception);
         }
-        (string stdout, string stderr) = await container.GetLogsAsync(ct: cancellation);
+        (string stdout, string stderr) = await container.GetLogsAsync(timestampsEnabled: false, ct: cancellation);
         LastOutput = Tail(stdout + stderr);
         output.WriteLine(role + "_output_tail=" + LastOutput);
         long exitCode = await container.GetExitCodeAsync(cancellation);
@@ -417,7 +420,7 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         try
         {
-            (string stdout, string stderr) = await container.GetLogsAsync(ct: timeout.Token);
+            (string stdout, string stderr) = await container.GetLogsAsync(timestampsEnabled: false, ct: timeout.Token);
             return Tail(stdout + stderr);
         }
         catch (Exception exception) { return "container_output_unavailable:" + exception.Message; }
