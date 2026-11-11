@@ -916,7 +916,8 @@ public sealed class B10AbruptProducerTests
                 bool released = false;
                 while (!reportStop.IsCancellationRequested)
                 {
-                    if (advanceClock && AdvanceReportClock) Advancing.Advance(TimeSpan.FromMilliseconds(10));
+                    if (advanceClock && AdvanceReportClock && !Journal.Frames.Any(frame => frame.Kind == "no_kill"))
+                        Advancing.Advance(TimeSpan.FromMilliseconds(10));
                     Observe();
                     B10AbruptWire.Frame? cut = Journal.Frames.LastOrDefault(frame => frame.Kind == "cut");
                     if (advanceClock && !released && cut is not null)
