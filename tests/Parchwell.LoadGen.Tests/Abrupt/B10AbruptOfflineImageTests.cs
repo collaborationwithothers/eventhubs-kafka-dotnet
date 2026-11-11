@@ -145,11 +145,11 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
     internal async Task<string> ObserveAsync(CancellationToken cancellation)
     {
         (string Stdout, string Stderr) parentLogs = await RunRoleAsync("parent", cancellation);
-        AssertHooks();
         byte[] terminationBytes = await File.ReadAllBytesAsync(Path.Combine(FirstPublication, "termination.json"), cancellation);
         JsonElement data = B10AbruptWire.ReadEnvelope(terminationBytes, "termination").GetProperty("data");
         output.WriteLine("termination=" + data.GetRawText());
         Assert.True(data.GetProperty("exit_observed").GetBoolean(), "b10_offline_image_exit_unobserved");
+        AssertHooks();
         JsonElement exit = data.GetProperty("exit_code_local_observation");
         Assert.True(exit.ValueKind == JsonValueKind.Number && exit.GetInt32() == 137,
             "b10_offline_image_exit_code:" + exit.GetRawText());
