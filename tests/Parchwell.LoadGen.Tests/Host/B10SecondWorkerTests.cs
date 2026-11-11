@@ -162,7 +162,7 @@ public sealed class B10SecondWorkerTests
         return (sources.Sum(source => source.Length) + index.LongLength, index);
     }
 
-    private sealed class Fixture(string phase) : IDisposable
+    internal sealed class Fixture(string phase) : IDisposable
     {
         private readonly string _output = Path.Combine(Path.GetTempPath(), "b10-workers-" + Guid.NewGuid().ToString("N"));
         public MemoryStore Store { get; } = new();
@@ -275,7 +275,7 @@ public sealed class B10SecondWorkerTests
         }
     }
 
-    private sealed class MemoryStore : IRunArtifactPublisher, IProducerRunLifecycle, IPredecessorEvidenceSource
+    internal sealed class MemoryStore : IRunArtifactPublisher, IProducerRunLifecycle, IPredecessorEvidenceSource
     {
         public bool IsAvailable => true;
         public Dictionary<string, byte[]> Objects { get; } = new(StringComparer.Ordinal);

@@ -71,6 +71,7 @@ b10_abrupt_first_termination_unknown
 b10_abrupt_successor_binding_invalid
 b10_abrupt_successor_late
 b10_abrupt_deadline_exhausted
+b10_abrupt_timeout_job_unknown
 '''.split())
 
 
@@ -240,7 +241,7 @@ class Trial:
         if (any(os.environ.get(key) != value for key, value in expected.items())
                 or any(key.lower().startswith('b10abrupt__') for key in os.environ)):
             raise self.failure('b10_abrupt_configuration_invalid')
-        return self.p.prepare_shared('B10', 'C1', 'C1', 'b10', purpose='diagnostic_trial',
+        return self.p.prepare_shared('B10', 'C1', 'C1', 'b10d', purpose='diagnostic_trial',
                                      run_kind='smoke', b10_abrupt_diagnostic=True)
 
     def phase(self):
@@ -345,6 +346,35 @@ class Trial:
             state['safety_stop'] = True
         self.p.save_state(state)
         return record
+
+    def _observe_timeout_termination(self, record):
+        """Keep an uncertain ordinary producer from overlapping the restart producer."""
+        try:
+            path = self.directory / 'loadgen-pods.json'
+            code = self.p.run(['kubectl', 'get', 'pods', '-n', 'parchwell', '-l',
+                'job-name=' + record['job'], '-o', 'json', '--request-timeout=30s'], 30, output=path)
+            if code:
+                raise ValueError('timeout pod observation failed')
+            pods = decode(path.read_bytes(), 4 * 1024 * 1024)['items']
+            if len(pods) != 1:
+                raise ValueError('timeout pod count')
+            pod = pods[0]
+            owners = [owner for owner in pod['metadata']['ownerReferences'] if owner.get('controller') is True]
+            if len(owners) != 1 or owners[0].get('kind') != 'Job' or owners[0].get('name') != record['job']:
+                raise ValueError('timeout pod owner')
+            containers = pod['spec']['containers']
+            statuses = pod['status']['containerStatuses']
+            if (len(containers) != 1 or len(statuses) != 1
+                    or containers[0]['name'] != 'loadgen' or statuses[0]['name'] != 'loadgen'
+                    or containers[0]['image'] != self.phase()['images']['loadgen']['reference']):
+                raise ValueError('timeout pod image')
+            if type(statuses[0]['state']['terminated']['exitCode']) is not int:
+                raise ValueError('timeout pod termination')
+        except Exception:
+            record['outcome'] = 'unknown'
+            state = self.p.state()
+            state['modes'][-1] = record
+            self.p.save_state(state)
 
     def observe_first_termination(self, record):
         """Query pod state directly, before log collection can spend the release window."""
@@ -767,6 +797,16 @@ class Trial:
             if metadata['outcome'] != 'complete' or self.p.state()['safety_stop']:
                 raise ValueError('b10_abrupt_publication_failed')
             self.metadata(metadata, deadline)
+            boundary, failure = 'timeout_job', 'b10_abrupt_publication_failed'
+            timeout = self.job('loadgen', deadline)
+            if timeout['outcome'] in ('complete', 'failed'):
+                self._observe_timeout_termination(timeout)
+            if timeout['outcome'] in ('unknown', 'apply_failed'):
+                self.record_failure(ValueError('b10_abrupt_timeout_job_unknown'),
+                                    'b10_abrupt_timeout_job_unknown', boundary, safety=True)
+                return 1
+            if timeout['outcome'] == 'render_failed':
+                raise ValueError('b10_abrupt_configuration_invalid')
             boundary, failure = 'first_job', 'b10_abrupt_publication_failed'
             first = self.job('loadgen-restart', deadline)
             boundary, failure = 'first_termination', 'b10_abrupt_first_termination_unknown'
@@ -842,7 +882,7 @@ class Trial:
             return receipt
         failed = False
         for record in self.p.state()['modes']:
-            if record['mode'] not in ('loadgen-restart', 'loadgen-successor') or record['apply'] is None:
+            if record['mode'] not in ('loadgen', 'loadgen-restart', 'loadgen-successor') or record['apply'] is None:
                 continue
             boundary, failure = 'successor_termination', 'b10_abrupt_first_termination_unknown'
             try:

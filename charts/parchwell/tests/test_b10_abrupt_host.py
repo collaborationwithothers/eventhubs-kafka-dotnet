@@ -110,4 +110,19 @@ def b10_abrupt_host_acceptance(td, publish):
     require_file(output, 'b10_abrupt_check_output_missing')
     assert proc.returncode == 0, proc.stderr
     assert output.read_bytes() == b'b10_abrupt_produced_bytes_checked\n', output.read_bytes()
-    print('b10 abrupt host checks passed: 2 rendered environments, 7 rejected inputs, production-byte bridge')
+    export = td / 'b10-timeout-evidence'
+    export.mkdir()
+    env = host_environment({}, td)
+    env['PARCHWELL_B10_TIMEOUT_EVIDENCE_OUTPUT'] = str(export)
+    output = td / 'b10-timeout-evidence-export.out'
+    proc = bounded(120, ['dotnet', str(assembly), '-class',
+                         'Parchwell.LoadGen.Tests.Host.B10TimeoutEvidenceExportTests'], output, env)
+    require_file(output, 'b10_timeout_evidence_export_output_missing')
+    assert proc.returncode == 0, output.read_text()[-4000:] + proc.stderr[-4000:]
+    require_file(export / 'export.json', 'b10_timeout_evidence_export_missing')
+    output = td / 'b10-timeout-evidence-check.out'
+    proc = bounded(120, [sys.executable, 'infra/scripts/phase/tests/check_b10_timeout_evidence.py', str(export)], output)
+    require_file(output, 'b10_timeout_evidence_check_output_missing')
+    assert proc.returncode == 0, proc.stderr
+    assert output.read_bytes() == b'b10_timeout_evidence_rejected\n', output.read_bytes()
+    print('b10 abrupt host checks passed: 2 rendered environments, 7 rejected inputs, production-byte bridge, timeout-evidence rejection')
