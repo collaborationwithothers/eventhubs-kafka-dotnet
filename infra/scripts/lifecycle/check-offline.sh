@@ -74,6 +74,7 @@ def check_workflows(repository):
         'b10-abrupt-trial.yml': {'workflow_dispatch': {'inputs': {
             'confirm_diagnostic_trial': {'description': 'Confirm the single diagnostic-only B10 restart trial',
                                          'type': 'boolean', 'required': 'true', 'default': 'false'}}}},
+        'b10-offline-image.yml': {'workflow_dispatch': ''},
         'cluster-smoke.yml': {'workflow_dispatch': ''},
         'scenario.yml': {'workflow_dispatch': {'inputs': {
             'scenario': {'description': 'Scenario definition to run', 'type': 'choice', 'required': 'true', 'default': 'A01', 'options': ['A01', 'B04', 'B10', 'probe-batch', 'probe-batch-2', 'idle-observation', 'ledger-batch']},

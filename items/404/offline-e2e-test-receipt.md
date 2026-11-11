@@ -1,0 +1,375 @@
+# Offline image test implementation receipt
+
+This pull request implements the approved offline end-to-end image test for issue 404. It tests the real parent, self-killing child and successor against local Kafka, and adds the workflow Hari runs before a diagnostic trial. It authorizes no dispatch or trial.
+
+Current correction status: the user-authorized broker-output P1 fix received comprehensive R2 and hosted code/security reviews at `ade5192fa2e551e52aec35035cc3fe302ff35f31`. Its CI failed in both new broker-removal regressions. The narrow lookup correction at `c6966128909e42bf97c02eeae30ba318da3619ce` passes all eight focused cases and awaits focused R3, publication and new-head CI/reviews. The full verification gate remains failed; the historical green full-suite result and failed local runs below retain their measured source identities.
+
+## Execution card
+
+- Deliverable and contracts: [Revision 4](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/66517e9a9f28dae97d93c37d007b7feef5e362f3/items/404/plan-offline-e2e-test.md), sections 2 to 8; exact-body SHA-256 `d83bc0d509fe3d4a6de118a32a565842132275d38b19cdea4ad37bcd8d7496d1` verified before implementation.
+- Authorization: [plan pointer](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6788002493), [Hari's approval](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6788501730), and decisions [6787880185](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6787880185), [6788215099](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6788215099), [6788464379](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6788464379) and their cited decisions, amended by [6788754429](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6788754429). Their sources are read in full by the control session.
+- Plan check: [6788423093](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6788423093), on Revision 3, stands for Revision 4 under the approval. Decision 6788464379 resolves B1; N3 applies below.
+- Models: the control session uses Codex; its exact model identifier is not exposed. Fresh-context implementation subagents inherit the Codex model with requested high effort.
+- Branch: `codex/404-offline-e2e-test`; original acceptance base `3a4ee0b140a209c2cdeae0002a77c5349a6aabc7`. The broker-output correction below rebases onto merged execution part 2; classification remains separate work.
+- Mandatory gates: plan section 8's three image runs and three separate scratch mutation runs, full .NET verification with the variables unset, lifecycle checks, documentation checks, cold review, final-head CI, hosted Codex code and security reviews. Hari merges the protected workflow; no agent dispatches it.
+- Earliest publication: after the prescribed local acceptance evidence, documentation check and applicable complete cold review. Publish then and run CI and hosted reviews together.
+- Review budget: two comprehensive passes and two focused correction rounds under `docs/agents/pull-requests.md` rule 8. Exhaustion or unsafe focus means push `-wip` and hand off to Hari. At preparation of the first cold-review input, completed cold-review counts are 0 comprehensive and 0 focused.
+- Failure and finding budgets: amendment 6788754429 allows this implementing session 20 verification-failure root causes and 20 review-finding root causes. Each exhaustion action is `push -wip and hand off to the next session`; a continuation session starts its own count. All subagents share this implementing session's counts. The cold-review budget and scope/contract stop rules still apply. A surviving prescribed mutation still triggers plan section 8's stop.
+- Predicate map: not applicable; this is not verifier work. Plan section 6 maps the test's requirements and the three mutations.
+
+## Verification commands
+
+The exact commands and results below are recorded as they run. The approved fixed workload is three baseline image runs and one run of each of the three mutations. Amendment 6788754429 permits fixes within the frozen scope under the root-cause caps; it does not change the prescribed workload or the surviving-mutation stop.
+
+The control session records the committed acceptance source as `offline_source_commit` before building; the image tag, test environment and observation all use that value. The build commands are:
+
+```sh
+offline_source_commit="$(git rev-parse HEAD)"
+dotnet publish src/Parchwell.LoadGen/Parchwell.LoadGen.csproj --configuration Release -p:RestoreLockedMode=true -p:NuGetLockFilePath=packages.linux-x64.lock.json -r linux-x64 --self-contained false /t:PublishContainer "-p:ContainerImageTag=offline-$offline_source_commit" "-p:ContainerArchiveOutputPath=/tmp/issue404-control/loadgen-$offline_source_commit.tar"
+docker load --input "/tmp/issue404-control/loadgen-$offline_source_commit.tar"
+docker image inspect --format '{{.Id}}' "parchwell/loadgen:offline-$offline_source_commit"
+dotnet build tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj --configuration Release -p:RestoreLockedMode=true -m:1
+```
+
+Each baseline attempt uses a fresh numbered results directory and evidence file through `offline_run`. The three completed passing runs are recorded below; failed setup attempts supply no deployment-assumption evidence. The targeted command and both report checks match the workflow:
+
+```sh
+PARCHWELL_B10_OFFLINE_IMAGE="parchwell/loadgen:offline-$offline_source_commit" \
+PARCHWELL_B10_OFFLINE_SOURCE_COMMIT="$offline_source_commit" \
+PARCHWELL_B10_OFFLINE_EVIDENCE="/tmp/issue404-control/baseline-accepted-$offline_run-evidence.txt" \
+dotnet test --project tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj \
+  --configuration Release --no-build --minimum-expected-tests 1 \
+  --results-directory "/tmp/issue404-control/baseline-accepted-$offline_run-results" -- \
+  --filter-method 'Parchwell.LoadGen.Tests.Abrupt.B10AbruptOfflineImageTests.Given_BuiltImage_When_ParentChildAndSuccessorRunInContainers_Then_JournalExitAndResendsAreObserved' \
+  --report-xunit-xml --report-xunit-xml-filename results.xml
+dotnet msbuild scripts/dotnet-verification.proj -t:ValidateReport \
+  "-p:Report=/tmp/issue404-control/baseline-accepted-$offline_run-results/results.xml" \
+  -p:ExpectedAssembly=Parchwell.LoadGen.Tests -nologo
+python3 - "/tmp/issue404-control/baseline-accepted-$offline_run-results/results.xml" <<'PYTHON'
+import sys
+import xml.etree.ElementTree as ET
+
+tests = ET.parse(sys.argv[1]).getroot().findall('./assembly/collection/test')
+if len(tests) != 1 or tests[0].get('result') != 'Pass':
+    raise SystemExit('Expected exactly one passed offline image test.')
+PYTHON
+cat "/tmp/issue404-control/baseline-accepted-$offline_run-evidence.txt"
+```
+
+The existing runner's help confirms the filter and XML-report flags (`/tmp/issue404-control/runner-help.txt`). Local tool installation completed with exit 0; its log is `/tmp/issue404-control/install-tools.log`. These are setup checks, not image-run acceptance evidence. Each scratch mutation uses a separate worktree, rebuilt image, fresh report path and fresh evidence path. The exact preparation and one-shot test commands are recorded below before the first mutation test.
+
+The local gate commands are:
+
+```sh
+env -u PARCHWELL_B10_OFFLINE_IMAGE -u PARCHWELL_B10_OFFLINE_SOURCE_COMMIT -u PARCHWELL_B10_OFFLINE_EVIDENCE ./scripts/verify-dotnet.sh
+PARCHWELL_TOOLS_DIRECTORY=/tmp/issue404-tools bash infra/scripts/lifecycle/check-offline.sh
+npm run check:docs
+```
+
+## Implementation choices and gate evidence
+
+Source locations below refer to baseline `3a4ee0b140a209c2cdeae0002a77c5349a6aabc7`.
+
+The producer-factory override (`B10AbruptHost.cs` lines 212 to 213) replaces the production producer builder: the OAuth session is still created (line 209) but is not attached to the producer, and the `SetLogHandler` librdkafka log capture is not installed; neither bears on DA1, DA5 or DA6.
+
+Existing control modes are unchanged except for the `hook-loaded.jsonl` append that plan section 4.4 requires in every mode. The test manages containers through the existing Testcontainers and Docker.DotNet APIs to preserve the ADR-020 process boundary. Private helper structure and directory ownership/cleanup follow the implementation choices allowed in plan sections 2.1, 4.2, 4.5 and R12. The ownership mechanism captures the generated hook mount root's numeric uid/gid through `stat`, marks restoration required before changing ownership, normalizes it to uid/gid 1654 through the helper, and restores the exact original uid/gid during cleanup on pass or failure; hook files remain readable at mode 644. This meets the mounted-directory contract without copying the hook or changing its dependencies.
+
+Initial verification source: `35dfba2f24a27d01596564bb8bf40db6540c7afc`. Its built image ID is `sha256:da7fa5cb60972417598fdf10809ef890b0224429ddb3ee6a328b7a70e5107660`. The final locked Release test build above exited 0 with 0 warnings and 0 errors in 9.76 s (`/tmp/issue404-control/image-test-build-final.log`). The earlier parallel build failed with MSB4166 child-node exits (`/tmp/issue404-control/image-test-build.log`); the local build uses `-m:1` to avoid that infrastructure failure. No source contract changed for this adjustment.
+
+Baseline attempt 1 at the initial verification source failed before the parent started. The ownership helper exited 1: `chown: cannot read directory '/owned/parent': Permission denied`, with the same failure for the successor and storage directories. The host temporary directories had mode 700 under the workspace umask; the helper's dropped capabilities could not traverse them. The saved diagnostics are in `/tmp/issue404-control/baseline-1-ownership-helper.log`; `/tmp/issue404-control/baseline-1.log` preserves the canceled runner session. The CLI exited 130 after SIGINT, the test host exited, and all containers, including the broker, ownership helper and Ryuk, were removed. No XML report or evidence line was produced. This is setup failure evidence, not DA1, DA5 or DA6 evidence. The in-scope correction sets directory and file modes explicitly before ownership transfer. The exited helper's readiness wait also failed to return before cancellation (V6); a race in Testcontainers' default running-state wait is the code agent's inference. Ownership and cleanup helpers use the existing Docker client's create/start/wait/remove APIs so a short-lived helper's exit is observed directly; parent, successor and broker retain Testcontainers.
+
+Second verification source: `ec1a6c7b145a8d1c4f6e3aa5e182283f8209087c`. Its image publish and load pass with image ID `sha256:03ee120b5ec3ad8d36cd2b1333f0db781548c449b438778eae5939c521f1842a` (`/tmp/issue404-control/baseline-corrected-image-build.log`, `baseline-corrected-image-load.log` and `baseline-corrected-image-id.txt`). Its `baseline-corrected-1` attempt failed before the parent executed: Docker rejected the Testcontainers host-network attachment because `HostConfig.NetworkMode` was not set to `host`. The ownership helper succeeded. `/tmp/issue404-control/baseline-corrected-1-results/results.xml` has exactly 1 failed test in 26.165 s; the runner exited 2 (`baseline-corrected-1.log`). No observation line or DA proof was produced. The in-scope V8 correction sets `NetworkMode = "host"` in the shared role-container modifier and removes `WithNetwork("host")`. Owned test containers were removed; the resource reaper briefly remained for test-process cleanup. The V8 locked Release build with `-m:1` passed with 0 warnings and 0 errors in 16.81 s (`/tmp/issue404-control/image-test-host-network-build.log`). A subsequent static audit found the generated `/hook` mount root still owned by host uid 1000; its normalization to uid/gid 1654 and restoration joins the V5 ownership correction before the next freeze. No hook had executed.
+
+Third verification source: `c36ced24511ed0fc81fde181f95e731bb67a27fb`. The locked Release build with `-m:1` passed with 0 warnings and 0 errors in 10.94 s (`/tmp/issue404-control/image-test-hook-owner-build-final.log`). Its `baseline-final-1` attempt failed at R7: the stage parser received Docker log lines prefixed by timestamps, so its expected stage collection was empty. `/tmp/issue404-control/baseline-final-1-results/results.xml` records exactly 1 failed test in 182.488 s; the CLI exited 2 (`baseline-final-1.log`). The code agent reports that R4, R5 and R6 assertions had passed before this failure: real image hooks, intended self-kill with exit 137, equal non-null cgroup observations with no capture gaps, and journal byte/hash equality. These are partial diagnostics from a failed run; they are not completed gate evidence. No successor assertion or observation line completed. V9 disables Docker log timestamps in role and tail calls; assertions stay unchanged.
+
+Passing runs 1 and 2 use source `19d5f783cbf1010bb1d3b127b4c07ad140003f20`. The locked Release build with `-m:1` passed with 0 warnings and 0 errors in 9.82 s (`/tmp/issue404-control/image-test-late-binding-mode-build-final.log`). All three Docker role/tail log calls now request raw lines. The V5 late-file audit sets the predecessor binding file to mode 644 explicitly; the existing ownership helper already changes this new file to uid/gid 1654. The three prescribed `baseline-accepted` runs pass below, with two runs before the assertion-order change and one after it.
+
+The helper correction initially failed to compile because its `GetContainerLogsAsync` call used an overload absent from the installed Docker.DotNet.Enhanced package. `/tmp/issue404-control/image-test-mode-fix-build.log` records 0 warnings and 2 CS1503 errors in 14.05 s, one root cause (V7). The call now uses the installed signature. The corrected locked Release build with `-m:1` exited 0 with 0 warnings and 0 errors in 11.14 s (`/tmp/issue404-control/image-test-mode-fix-build-final.log`); the later three complete image runs verify the corrected helper path.
+
+The lifecycle offline check passed at `c36ced24511ed0fc81fde181f95e731bb67a27fb`: exit 0 in 104.848366 s, from 2026-11-11T06:47:07.044576Z to 2026-11-11T06:48:51.892936Z. The command is the lifecycle command above. Its log and machine summary are `/tmp/issue404-acceptance-c36ced24/check-offline.log` and `check-offline-summary.json`.
+
+The full .NET verification command above passed at `859bec754671cb6e7120acb0f2b3f04763d6ee76`: exit 0 in 1111.307367 s, from 2026-11-11T07:15:51.873551Z to 2026-11-11T07:34:23.180874Z. All three offline variables were explicitly unset. Independent XML aggregation finds 10021 passed tests across six assemblies, with 0 failed, skipped, not-run or errors: Architecture 17, Enrichment 56, Kafka 491, LoadGen 1728, Scenarios 340 and Verifier 7389. The new image test returns and passes in 0.002 s. Evidence: `/tmp/issue404-acceptance-859bec75/verify-dotnet.log`, `verify-dotnet-summary.json`, `verify-dotnet-xml-summary.json` and raw reports `/tmp/parchwell-dotnet-verification.vG9ekSrv/`. The control session's independent summary also matches (`/tmp/issue404-control/full-suite-independent-summary.json`).
+
+All prescribed image and mutation runs, full .NET verification and lifecycle checks are complete. `npm run check:docs` exits 0 with 10 warnings across 6 unchanged files and 0 warnings in changed files (`/tmp/issue404-control/check-docs.log`, `check-docs-summary.json`). The warnings in unchanged files are retained as existing advisory warnings outside this diff. Publication review records remain separate gates. The cold reviewer compares the implementation with the approved plan and recognized decisions; complete reports and dispositions belong to the PR self-review record. The passing local runs below are workspace evidence; Hari's post-merge workflow on `main` remains the trial gate.
+
+The author's pre-mutation audit found that M3's zero exit-wait can return before the child writes its hook record. Checking hooks first could mask the required R5 failure with R4. The implementation places the `exit_observed` assertion before the hook assertions, retaining every assertion and literal value. This is an assertion-order choice within the approved scope, not an observed failure or a cold-review finding. This change is frozen at `859bec754671cb6e7120acb0f2b3f04763d6ee76`; its locked Release build with `-m:1` passes with 0 warnings and 0 errors in 15.92 s (`/tmp/issue404-control/image-test-failure-precedence-build-final.log`). The diff only moves the existing hook assertions after `exit_observed`. The first two passing runs retain their unchanged happy-path coverage, and the third prescribed run uses this final driver. Its image publish/load pass with image ID `sha256:b19b25eb8f2a8cad7d40786811036d7cd82517abfd4f9b9fe4e1b629b0862906` (`/tmp/issue404-control/baseline-accepted-3-image-build.log`, `baseline-accepted-3-image-load.log` and `baseline-accepted-3-image-id.txt`). All three mutation preparations are rebased, the prescribed faults reapplied and images rebuilt for this driver before their one test each. These builds verify changed negative-case behavior under pull-request rule 13; no extra verification or review root is counted. Mutation execution results are recorded below.
+
+## Passing local image runs
+
+All observations below are local to this workspace's Docker runner. They do not establish Event Hubs or AKS behavior and do not replace Hari's workflow run on `main`. Runs 1 and 2 use source `19d5f783cbf1010bb1d3b127b4c07ad140003f20` and image `sha256:bcc1cad442b7b16dff423a2ce5371649dc6fa3c79f4927dfa5cd12f44f83eafa`; each observation line pins its own source and image.
+
+| Run | Result and evidence |
+|---|---|
+| `baseline-accepted-1` | CLI 0; exactly 1 passed, 0 failed, 0 skipped/not-run/errors; XML test 331.474 s (runner summary 332.624 s). `ValidateReport` and the exact-one-pass check succeed. Logs/report/line: `/tmp/issue404-control/baseline-accepted-1.log`, `baseline-accepted-1-results/results.xml`, `baseline-accepted-1-validation.log`, `baseline-accepted-1-evidence.txt`. All containers removed; hook mount's original uid/gid restored. |
+| `baseline-accepted-2` | CLI 0; exactly 1 passed, 0 failed, 0 skipped/not-run/errors; XML test 325.024 s (runner summary 326.091 s). `ValidateReport` and the exact-one-pass check succeed. Logs/report/line: `/tmp/issue404-control/baseline-accepted-2.log`, `baseline-accepted-2-results/results.xml`, `baseline-accepted-2-validation.log`, `baseline-accepted-2-evidence.txt`. All owned containers removed; hook mount's original uid/gid restored. |
+| `baseline-accepted-3` | Source `859bec754671cb6e7120acb0f2b3f04763d6ee76`, image `sha256:b19b25eb8f2a8cad7d40786811036d7cd82517abfd4f9b9fe4e1b629b0862906`; CLI 0; exactly 1 passed, 0 failed, 0 skipped/not-run/errors; XML test 340.137 s (runner summary 341.141 s). `ValidateReport` and the exact-one-pass check succeed. Logs/report/line: `/tmp/issue404-control/baseline-accepted-3.log`, `baseline-accepted-3-results/results.xml`, `baseline-accepted-3-validation.log`, `baseline-accepted-3-evidence.txt`. All containers removed; hook mount's original uid/gid restored. |
+
+Run 1's exact observation line:
+
+```text
+b10_offline_image source_commit=19d5f783cbf1010bb1d3b127b4c07ad140003f20 image_id=sha256:bcc1cad442b7b16dff423a2ce5371649dc6fa3c79f4927dfa5cd12f44f83eafa runtime=10.0.13 kernel=6.18.57 parent_exit=0 exit_code_local_observation=137 termination=intended_self_kill journal_records=39 kill_unconfirmed=1 cut_accepted_to_kill_intent_microseconds=2850.641 kill_intent_to_exit_observed_microseconds=8994.247 successor_exit=0 consumed_resends=1
+```
+
+Run 2's exact observation line:
+
+```text
+b10_offline_image source_commit=19d5f783cbf1010bb1d3b127b4c07ad140003f20 image_id=sha256:bcc1cad442b7b16dff423a2ce5371649dc6fa3c79f4927dfa5cd12f44f83eafa runtime=10.0.13 kernel=6.18.57 parent_exit=0 exit_code_local_observation=137 termination=intended_self_kill journal_records=51 kill_unconfirmed=1 cut_accepted_to_kill_intent_microseconds=2447.052 kill_intent_to_exit_observed_microseconds=8477.007 successor_exit=0 consumed_resends=1
+```
+
+Run 3's exact observation line:
+
+```text
+b10_offline_image source_commit=859bec754671cb6e7120acb0f2b3f04763d6ee76 image_id=sha256:b19b25eb8f2a8cad7d40786811036d7cd82517abfd4f9b9fe4e1b629b0862906 runtime=10.0.13 kernel=6.18.57 parent_exit=0 exit_code_local_observation=137 termination=intended_self_kill journal_records=51 kill_unconfirmed=1 cut_accepted_to_kill_intent_microseconds=1827.569 kill_intent_to_exit_observed_microseconds=7821.183 successor_exit=0 consumed_resends=1
+```
+
+## Prescribed scratch mutations
+
+The three isolated worktrees use base `859bec754671cb6e7120acb0f2b3f04763d6ee76` plus exactly one approved fault: M1 changes `exitCode == 137` to `exitCode == 138`; M2 deletes `file.Flush();`; M3 changes `WaitForExit(milliseconds)` to `WaitForExit(0)`. The patches are saved as `/tmp/issue404-acceptance-859bec75/m{1,2,3}/mutation.diff`. The main implementation's `src/` is unchanged.
+
+Preparation summaries in each mutation directory record successful image publish, load, inspect and test build. These are build/preparation results, not mutation-test results.
+
+| Mutation | Worktree | Rebuilt image ID |
+|---|---|---|
+| M1 | `/tmp/issue404-mutation-m1-859bec75` | `sha256:dbeccd375207f447e3b2eedc514850f2b5de8aa5059afbe745f08b5dd67b0833` |
+| M2 | `/tmp/issue404-mutation-m2-859bec75` | `sha256:a873ea2518cfe5d6e3c5f96f54e4c901b24a3af24508441f4177108870f56188` |
+| M3 | `/tmp/issue404-mutation-m3-859bec75` | `sha256:25401256d10c4b0c8d7fdb56d07ad96904a744fd0192ab91df28d8e786832a60` |
+
+The following block records the exact commands, with `mutation` set to `m1`, `m2` or `m3` for its corresponding worktree. Preparation ran before the final `dotnet test`, which ran once per mutation, sequentially after the full .NET suite. These commands were authored before the first mutation test.
+
+```sh
+mutation=m1
+offline_mutation_source=859bec754671cb6e7120acb0f2b3f04763d6ee76
+cd "/tmp/issue404-mutation-$mutation-859bec75"
+dotnet publish src/Parchwell.LoadGen/Parchwell.LoadGen.csproj --configuration Release -p:RestoreLockedMode=true -p:NuGetLockFilePath=packages.linux-x64.lock.json -r linux-x64 --self-contained false /t:PublishContainer "-p:ContainerImageTag=offline-$offline_mutation_source-$mutation" "-p:ContainerArchiveOutputPath=/tmp/issue404-acceptance-859bec75/$mutation/image.tar" -m:1
+docker load --input "/tmp/issue404-acceptance-859bec75/$mutation/image.tar"
+docker image inspect --format '{{.Id}}' "parchwell/loadgen:offline-$offline_mutation_source-$mutation"
+dotnet build tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj --configuration Release -p:RestoreLockedMode=true -m:1
+env PARCHWELL_B10_OFFLINE_IMAGE="parchwell/loadgen:offline-$offline_mutation_source-$mutation" \
+  PARCHWELL_B10_OFFLINE_SOURCE_COMMIT="$offline_mutation_source" \
+  PARCHWELL_B10_OFFLINE_EVIDENCE="/tmp/issue404-acceptance-859bec75/$mutation/evidence.txt" \
+  dotnet test --project tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj \
+  --configuration Release --no-build --minimum-expected-tests 1 \
+  --results-directory "/tmp/issue404-acceptance-859bec75/$mutation/results" -- \
+  --filter-method 'Parchwell.LoadGen.Tests.Abrupt.B10AbruptOfflineImageTests.Given_BuiltImage_When_ParentChildAndSuccessorRunInContainers_Then_JournalExitAndResendsAreObserved' \
+  --report-xunit-xml --report-xunit-xml-filename results.xml \
+  > "/tmp/issue404-acceptance-859bec75/$mutation/test.log" 2>&1
+```
+
+The validator reads each fresh `results/results.xml`, requires exactly one failed test, and compares the full failure text with the named requirement: M1 R5 (`unexpected_exit`), M2 R5 or R6, M3 R5 (`exit_observed` false) or R7. A survivor or unexpected failure stops execution for the plan's handoff; no retry or assertion change is included. All three prescribed mutations are killed by R5, exactly one test invocation each, with no survivor, retry or assertion change. Expected negative-control failures do not add verification-failure or review-finding roots.
+
+| Mutation | One-shot result |
+|---|---|
+| M1 | Killed by R5: expected `termination` `intended_self_kill`, actual `unexpected_exit`, at driver line 156. CLI 2; XML exactly 1 failed, 0 passed/skipped/not-run/errors. XML test 195.117 s; invocation wall 196.998256 s. No observation file. `/tmp/issue404-acceptance-859bec75/m1/test-summary.json`, `results/results.xml` and `test.log` retain full command, environment, timings and failure. |
+| M2 | One invocation; CLI 2; XML exactly 1 failed, 0 passed/skipped/not-run/errors. R5 fails with `b10_offline_image_exit_code:3` at driver line 154. XML test 192.001 s; invocation wall 194.007186 s. No observation file. `/tmp/issue404-acceptance-859bec75/m2/test-summary.json`, `results/results.xml` and `test.log` preserve the full evidence. Killed by R5, which the approved mutation table permits. This is an expected rejection of a deliberately altered image; all three unmutated runs record 137. It supplies no baseline proof and does not change the candidate exit-code stop. Exit 3 may be a no-kill path; the mechanism was not investigated, so no post-kill journal-tail loss is claimed. No assertion was loosened and no rerun occurred. |
+| M3 | Killed by R5: `b10_offline_image_exit_unobserved` at driver line 151. One invocation; CLI 2; XML exactly 1 failed, 0 passed/skipped/not-run/errors. XML test 44.505 s; invocation wall 46.346152 s. No observation file. `/tmp/issue404-acceptance-859bec75/m3/test-summary.json`, `results/results.xml` and `test.log` retain the full evidence. |
+
+## Contract comparison
+
+The implementation at `859bec754671cb6e7120acb0f2b3f04763d6ee76` was compared with the pinned Revision 4 plan, the retained check's N3 and amendment 6788754429. Source inspection and executed evidence are distinguished below; no extra negative-case test run is claimed.
+
+| Plan requirement | Implementation and evidence |
+|---|---|
+| R1 | The Fact returns immediately when the image variable is null/empty, before reading the other variables or constructing the Docker client. The full suite records its passing no-op path. |
+| R2 | Source guards require 40 lowercase hex, a nonempty/nonexistent evidence file, reachable Docker and a present local image, with named failures. The invalid-value paths were inspected; no separate invalid-input executions are claimed. |
+| R3 | `InitializeAsync` uses the existing pinned `LocalKafkaFixture`, creates `document-events` with 1 partition and replication factor 1, reads metadata broker names and writes the bound source commit. Exercised by all three complete runs. |
+| R4 to R6 | `AssertHooks` checks the real image apphost/assembly paths, uid and parent/child PIDs. `ObserveAsync` checks the intended termination fields, cgroup equality, nonempty kill set, journal byte/length/hash equality, parsed frames, gaps/failures and final producing `kill_intent`. All three complete runs pass these checks; M1/M2 reject through R5 as recorded. |
+| R7 and R8 | Raw parent stderr is filtered by role; the single `exit_observed` and first-occurrence stage order are checked without requiring a single publication marker. The cut acceptance and kill/exit tick intervals use the intent frequency and reject negative values. All three complete runs pass; each exact observation is retained above. |
+| R9 | A fresh successor work directory shares only storage/image inputs. The predecessor receipt order equals the kill set; read-back checks attempt/instance headers, key, sequence and payload hash against each prepared predecessor. All three complete runs consume 1 resend. |
+| R10 and R11 | The method stopwatch starts after the enable switch, its 900 s cancellation covers initialization/execution, and the final elapsed check follows cleanup. A successful observation is written using `FileMode.CreateNew` in the pinned key order/invariant decimals. All complete runs finish below 900 s and produce the exact line; no forced-over-bound execution is claimed. |
+| R12 and R13 | At the measured acceptance revision, `finally` invokes cleanup, tracks/removes role/helper containers, disposes the broker, restores hook ownership and removes passing temporary directories. Role/helper failure paths and bounds attach output tails capped at 16384 characters. Passing runs and mutation failures leave no owned container. Comprehensive R1 later found R13 partial: broker startup failure disposes the broker before its output is retained. The correction and its evidence are recorded below; the original image runs did not exercise that failure. |
+| Workflow/checker | The new protected workflow has only `workflow_dispatch`, a `main` guard, pinned setup actions, 60 minute timeout, contents-read permission, separate image/test builds, the exact single-test/report gates and printed observation. The lifecycle checker adds only the approved trigger entry. The lifecycle pass includes this workflow. |
+
+The initial authored diff contained the six paths allowed by plan section 2.1. The user subsequently authorized the narrow broker-output correction in `tests/Parchwell.LoadGen.Tests/Component/LocalKafkaFixture.cs` and the new `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptOfflineBrokerOutputTests.cs`, as recorded below. Production `src/`, other tests/workflows, projects/packages, chart, scientific outputs and expected outcomes remain outside this correction. The permitted process-harness change adds the hook record in every mode and ensures `image-kafka` keeps real time; its existing storage and PLAINTEXT producer override are reused, with no cgroup override for this mode. Scope was checked against the diff; the acceptance aggregate confirms the main production diff is empty and each scratch worktree retains only its prescribed fault.
+
+The accepted residual assumptions remain those in plan section 7: separately built trial image bytes, Docker-mounted runner storage versus AKS `emptyDir`, Docker/containerd seccomp and kernel differences, and omitted resource requests. They are not closed by these local observations. DA2 to DA4 remain accepted only for the diagnostic trial, and part 2's bindings remain separate. No trial or dispatch has run. The validator's aggregate is `/tmp/issue404-acceptance-859bec75/acceptance-summary.json`; the control session independently confirms all three one-shot rejections in `/tmp/issue404-control/mutation-independent-summary.json`.
+
+## Failure and review root-cause ledgers
+
+Amendment 6788754429 caps each ledger at 20 root causes per implementing session. The control session consolidates shared causes before recording the cumulative count. Cold-review pass counts are separate and cumulative across sessions.
+
+| Verification root | Evidence and disposition |
+|---|---|
+| V1: ambiguous `Metadata` (CS0104) | Docker models collided with Confluent.Kafka; qualified `Confluent.Kafka.Metadata`. Evidence is the code agent's compiler transcript; no saved log exists. |
+| V2: missing `PullPolicy` namespace (CS0103) | Imported the existing `DotNet.Testcontainers.Images` namespace. Evidence is the code agent's compiler transcript; no saved log exists. |
+| V3: nullable `HostConfig` (CS8602) | Initialized `HostConfig` in both affected container-create modifiers. Evidence is the code agent's compiler transcript; no saved log exists. |
+| V4: parallel MSBuild child-node failure (MSB4166) | `image-test-build.log`; serial `-m:1` build succeeds in `image-test-build-final.log`. No contract change. |
+| V5: ownership helper cannot traverse host directories | Baseline attempt 1: mode 700 directories deny the helper traversal with dropped capabilities. Explicit directory and file modes before `chown` are the in-scope correction, verified by the later complete image runs. The same audit found generated hook-output directories at 700 and the test DLL at 600; generated directories/files are normalized to 755/644 before any hook attempt. No hook failure was observed. The same audit requires uid/gid 1654 on the generated hook mount root with original-owner restoration during cleanup. |
+| V6: exited helper readiness wait does not return | Baseline attempt 1 required cancellation after the ownership helper exited. Existing Docker client create/start/wait/remove APIs replace the helper readiness path; the default-wait race diagnosis remains inferred. |
+| V7: unsupported container-log API overload (CS1503) | `image-test-mode-fix-build.log` records two argument errors from one call. The installed `GetContainerLogsAsync(id, parameters, cancellationToken)` signature is the correction; the 11.14 s corrected build passes. |
+| V8: host network attachment without host network mode | `baseline-corrected-1` fails before parent execution. Set `HostConfig.NetworkMode` to `host` in the shared parent/successor modifier and remove `WithNetwork("host")`; the 16.81 s corrected build passes and `baseline-final-1` reaches real execution. |
+| V9: timestamped Docker log lines do not match stage parser | `baseline-final-1` fails at R7 with an empty parsed stage collection. Set `timestampsEnabled: false` in all role/tail log calls; assertions unchanged. The 9.82 s corrected build passes; all three subsequent full runs pass. |
+| V10: external XML aggregation helper compares paths with simple names | The control tool transcript records its assertion failure despite valid suite reports. Normalize `Path(assembly.name).stem`; the independent summary verifies all six reports. No implementation or suite change. Counted conservatively as a verification root. |
+| V11: extracted startup loses nullable field proof (CS8602) | During the broker-output correction, two immediate setup dereferences rely on the asynchronously assigned nullable field. Return a non-null fixture from `StartBrokerAsync` and use that local at both sites. The failed compiler evidence is `/tmp/issue404-broker-tail/build.log` and the code agent's transcript. The corrected locked Release build passes with 0 warnings and 0 errors in 11.42 s (`/tmp/issue404-broker-tail/build-final.log`). One shared cause is counted for both sites. |
+| V12: new cancellation regression assumes only `OperationCanceledException` | The first eight-case run records 7 passed and 1 failed because the pinned Testcontainers wait strategy surfaced `TimeoutException` after cancellation (`/tmp/issue404-broker-tail/focused-test.log`, `results/results.xml`, [pinned wait strategy](https://raw.githubusercontent.com/testcontainers/testcontainers-dotnet/df0f931ea92111ddd96f96fce22ff85b69a58f64/src/Testcontainers/Configurations/WaitStrategies/WaitStrategy.cs) lines 213 to 222, saved as `WaitStrategy-4.16.0.cs`). The new test accepts only those two exception surfaces and still requires actual cancellation, observed nonempty broker output, retained output and broker removal. The image deadline handler recognizes either surface only when its deadline is canceled; the fixture still rethrows the original startup failure. No existing published assertion is loosened. The corrected build and fixed eight-case rerun pass, as recorded below. |
+| V13: existing producer-test cleanup times out in full LoadGen verification | At committed correction `c1ed066438acb573c655d72d98a9da2f8e2b5640`, the existing `Given_AllMembersConfirmed_When_ControlCheckpoints_Then_ExposureInconclusive` fails with `TimeoutException` in production `B10AbruptProducer.CleanupAsync` line 420, reached from test line 229. Full-run XML and log are `/tmp/issue404-broker-tail/full-loadgen/results.xml` and `test.log`. Root inspection finds no broker-fixture use in that test; a synthetic-clock/scheduling race is an inference, not a verified cause. The one authorized isolated rerun passes once on the frozen binary; the one final full-project repeat reproduces the same failure, without adding another root; no existing test, production timeout or assertion change is authorized. |
+| V14: broker-removal lookup includes a leading path separator | CI run `42994642482` on `ade5192fa2e551e52aec35035cc3fe302ff35f31` records 1735 passed and 2 failed LoadGen cases. Both new broker regressions reach the shared removal check and receive `DockerApiException` with HTTP 400 instead of the required exact `DockerContainerNotFoundException`. Normalize only the lookup name with `TrimStart('/')`; retain every assertion and all diagnostic bytes. The eight-case run at `c6966128909e42bf97c02eeae30ba318da3619ce` passes. The request-path evidence and remaining CI gate are recorded below. Both cases count as one shared root. |
+
+At first cold-review preparation, the control session consolidated V1 to V10 in `/tmp/issue404-control/verification-failure-ledger.json`: 10 verification roots. At R2 preparation, the same continuing ledger included V11 to V13 from correction verification: 13 of the 20 permitted verification roots. V14 now raises the continuing count to 14 of 20. Both ledgers retain amendment 6788754429's exhaustion action: `push -wip and hand off to the next session`; the review-root count remains 1 of 20, counting the duplicate cold/hosted P1 once. Cold-review exhaustion or unsafe focus separately hands off to Hari under pull-request rule 8. The initial final build's 0 warnings and 0 errors verify V1 to V3; the corrected build verifies V7. The second attempt's successful ownership helper verifies V5 and V6 at setup; the later three complete image runs verify their runtime and cleanup paths. At preparation of the first cold-review input, the review-finding root count is 0 and completed cold-review counts are 0 comprehensive and 0 focused. Later complete reports, dispositions and cumulative counts belong to the PR self-review record.
+
+## First cold-review input
+
+Mode: comprehensive R1, the entire authored PR diff against `origin/main` at `3a4ee0b140a209c2cdeae0002a77c5349a6aabc7`. The reviewed input revision is the final frozen commit containing this receipt and is identified in the frozen-diff metadata and PR self-review record. Under pull-request rule 8, this receipt need not describe its own containing commit.
+
+The reviewer receives only the frozen full authored diff and this authored receipt, with revision metadata outside the receipt copy. Review inputs stay frozen until all started reviews return complete reports. Corrections are consolidated before another applicable review. No review result is claimed here; the last cold-review round, complete reports/dispositions, cumulative cold-review and hosted-review counts, final-head CI and hosted code/security review results are recorded in the PR description and final handoff. The earliest authorized publication checkpoint remains the tested, documentation-checked diff with applicable cold-review coverage. Hari merges the protected workflow; no agent dispatch is authorized.
+
+## Broker-output correction execution card
+
+Direct authorization: on 2026-11-11 the user instructed this control session to fix PR 432's broker-startup output P1, capture output before startup cleanup disposes the broker, add a regression test, push, request code and security reviews on the new head, resolve merge conflicts, and never merge. This authorizes the narrow fixture/test scope needed for R13, including `tests/Parchwell.LoadGen.Tests/Component/LocalKafkaFixture.cs`; the original approved plan file/hash remains unchanged. No further scope permission is pending.
+
+The same root was found by comprehensive cold R1 and [hosted code-review finding](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/432#discussion_r4535434974) on `b049fca6c14c19d2ff44375a8a4a138a548fc451`. The [complete R1 report and disposition](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/432) are preserved in the PR self-review record. R1 compared that head with `3a4ee0b140a209c2cdeae0002a77c5349a6aabc7` and reported one P1, no other findings. Both hosted reviews completed before corrections began; security found no issue. Those reports cover their recorded old head, not the forthcoming correction. It counts once toward the review-finding cap: 1 of 20, with 10 verification roots at correction authorization. The continuing verification count is updated below as correction work runs. Cumulative cold counts remain 1 comprehensive and 0 focused; one comprehensive and two focused rounds remain. These counts do not reset after the rebase.
+
+The branch rebased onto merged execution part 2 at `095e4df1231312033cb9b97677c372c24bddba03`; pre-correction head is `5282251c7dfce1d65f3ee4d5cc7f90d985bf17f4`. Only the shared item state conflicted. Offline implementation and main-only files retain their prior bytes; original measured revisions above remain historical measurement identities.
+
+Correction deliverable: retain broker output before startup disposal and return its last 16384 characters for deadline and broker failures, including failures after successful startup. Preserve existing fixture defaults, pinned image, container configuration, cleanup, all existing assertions, and the enabled test's real-time behavior. Regression work is fixed: six output-tail inputs (empty, one character, 16383, 16384, 16385, and multibyte text), one actual startup canceled by observed output, and one successful startup with retained diagnostics through cleanup. No workflow is dispatched.
+
+Planned verification before the next review: locked Release build with `-m:1`; the eight `B10AbruptOfflineBrokerOutputTests` cases with XML/report validation; the affected LoadGen test project with the three image variables unset; documentation checks and whitespace/scope checks. Earlier baseline image, mutation and unrelated project evidence retains coverage where behavior is unchanged. Exact commands and source-specific results will be recorded as they run. The consolidated correction receives comprehensive R2 before a non-backup push, followed by CI and both hosted reviews on the new head. Exhaustion actions remain those in the execution card above.
+
+## Consolidated correction review input
+
+Mode: comprehensive R2, pending; the entire authored PR diff against merged execution part 2 at `095e4df1231312033cb9b97677c372c24bddba03`. The frozen input revision will be identified in the review metadata and PR self-review record. The pre-correction rebased revision is `5282251c7dfce1d65f3ee4d5cc7f90d985bf17f4`; R1's original reviewed and comparison revisions stay as recorded above.
+
+The control session's authority catch-up read at 2026-11-11T08:16:50.296198Z covers [handoff comment 6790675342](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6790675342), created 2026-11-11T08:10:38Z. That handoff requested the fixture scope exception; the user's direct instruction in this chat supplies it. The approved Revision 4 plan and its pinned hash remain unchanged. The root control session owns further authority refreshes and publication.
+
+The cancellation-surface correction build and all eight focused regressions at the recorded c1ed source pass, including report validation; evidence is recorded below. The first full LoadGen run at committed correction source `c1ed066438acb573c655d72d98a9da2f8e2b5640` failed in one existing producer cleanup test, while all eight new regressions passed. The failed run, isolated pass and completed diagnostic-retention follow-up are recorded below; the one full-project repeat at final code source `e89e9eecd70b6e15267f804056f84a9047ddb6af` also fails in that same unchanged unit test. The full-project gate remains failed and will be disclosed in publication. No complete correction-review, final-head CI or new-head hosted-review result is claimed by this preparation record. The fixed regression set and affected-project verification are the correction's local gates; the earlier three baseline image runs, three one-shot mutations and unrelated-project gates retain their original revision-specific evidence. Rebase proof records identical offline implementation blobs and identical merged-only files, with only item-state conflicts resolved; the restart pod template blob is unchanged across the old base, merged base and rebased head.
+
+At this preparation point, the continuing ledgers are 13 verification roots and 1 review root. Completed cold reviews are 1 comprehensive and 0 focused; R2 will use the remaining comprehensive pass. The final complete R2 report, its dispositions, cumulative cold-review counts and final-head CI/hosted reviews belong to the PR description, not to this receipt's own reviewed text. All started reviews must complete before further edits.
+
+
+## Correction verification commands
+
+The following affected-project commands were recorded before execution. The first full LoadGen result is recorded below; the full-project gate is not yet passing. The run uses committed correction source `c1ed066438acb573c655d72d98a9da2f8e2b5640`; the focused-test source comparison below confirms that commit contains the tested correction bytes.
+
+```sh
+dotnet publish src/Parchwell.LoadGen/Parchwell.LoadGen.csproj --configuration Release --no-build --no-restore --output /tmp/issue404-broker-tail/full-loadgen/publish
+env -u PARCHWELL_B10_OFFLINE_IMAGE -u PARCHWELL_B10_OFFLINE_SOURCE_COMMIT -u PARCHWELL_B10_OFFLINE_EVIDENCE \
+  PARCHWELL_REPOSITORY_ROOT=/workspace/eventhubs-kafka-dotnet \
+  PARCHWELL_B10_ABRUPT_PUBLISHED_APPHOST=/tmp/issue404-broker-tail/full-loadgen/publish/Parchwell.LoadGen \
+  dotnet test --project tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj \
+  --configuration Release --no-build --minimum-expected-tests 1 \
+  --results-directory /tmp/issue404-broker-tail/full-loadgen -- \
+  --report-xunit-xml --report-xunit-xml-filename results.xml
+dotnet msbuild scripts/dotnet-verification.proj -t:ValidateReport \
+  -p:Report=/tmp/issue404-broker-tail/full-loadgen/results.xml \
+  -p:ExpectedAssembly=Parchwell.LoadGen.Tests -nologo
+```
+
+Planned evidence is `/tmp/issue404-broker-tail/full-loadgen/publish.log`, `test.log`, `report.log` and `results.xml`. The test run must retain the eight new regression cases and the existing published-apphost fact, while the image fact takes its intentional passing no-op path with all three image variables unset. No new image-run observation is implied by that path.
+
+
+## Broker-output correction results
+
+The exact build and focused-test commands are:
+
+```sh
+dotnet build tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj --configuration Release -p:RestoreLockedMode=true -m:1
+dotnet test --project tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj \
+  --configuration Release --no-build --minimum-expected-tests 8 \
+  --results-directory /tmp/issue404-broker-tail/results-cancellation-types -- \
+  --filter-class Parchwell.LoadGen.Tests.Abrupt.B10AbruptOfflineBrokerOutputTests \
+  --report-xunit-xml --report-xunit-xml-filename results.xml
+dotnet msbuild scripts/dotnet-verification.proj -t:ValidateReport \
+  -p:Report=/tmp/issue404-broker-tail/results-cancellation-types/results.xml \
+  -p:ExpectedAssembly=Parchwell.LoadGen.Tests
+```
+
+Build history remains evidence: `build.log` and `build-corrected.log` failed for V11's same nullability cause; `build-final.log` passed with 0 warnings and 0 errors. The first focused invocation used the same filter and minimum count, with results directory `/tmp/issue404-broker-tail/results`; it exited 2 with 7 passed and 1 failed because of V12's new-test exception assumption. Its log and report are preserved; no existing assertion was removed or weakened.
+
+After the consolidated V12 correction, `build-cancellation-types.log` records exit 0, 0 warnings and 0 errors in 10.03 s. The focused invocation records exit 0 and exactly 8 passed, with 0 failed, skipped, not-run or errors. XML assembly time is 36.544 s; the actual canceled-startup case is 6.836 s and the successful-startup/cleanup case is 29.541 s. The six tail inputs cover lengths 0, 1, 16383, 16384 and 16385 plus multibyte text of length 16385; exact suffix and character-count assertions pass. The canceled-startup case verifies observed output survives failed fixture cleanup and the broker is removed; the successful-startup case verifies later diagnostics survive cleanup and broker removal. `ValidateReport` exits 0, and independent XML parsing confirms exactly eight passing cases. Evidence: `/tmp/issue404-broker-tail/focused-test-cancellation-types.log`, `results-cancellation-types/results.xml`, `validate-report.log` and `focused-summary.json`.
+
+The focused run tested the dirty correction on rebased HEAD `5282251c7dfce1d65f3ee4d5cc7f90d985bf17f4`. Its `/tmp/issue404-broker-tail/tested-source-cancellation-types.json` and `source-cancellation-types/` copies identify the three source files. Independent SHA-256 comparison confirms their bytes equal committed correction `c1ed066438acb573c655d72d98a9da2f8e2b5640` at that correction's freeze:
+
+| Source | SHA-256 |
+|---|---|
+| `tests/Parchwell.LoadGen.Tests/Component/LocalKafkaFixture.cs` | `aea7a912a5ade0e68560cdada339747e618a2312c8eb7fc1486a8d60893e523c` |
+| `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptOfflineImageTests.cs` | `b6582d3adc61eceba04d1281f6d0697f15479bcbad5e38c2ca2ccb1626f89ba2` |
+| `tests/Parchwell.LoadGen.Tests/Abrupt/B10AbruptOfflineBrokerOutputTests.cs` | `3008a5473f719f8af0f5c318e4d5fd3d81a8d1bd1e8638234f751d5c29c5ebca` |
+
+These bytes were frozen for the first affected-project run. Comprehensive R2 remains pending; its complete report belongs to the PR description. No full LoadGen pass, new image observation or new-head hosted review is claimed here.
+
+
+## First correction full-project run and author audit
+
+At committed correction `c1ed066438acb573c655d72d98a9da2f8e2b5640`, the affected-project publish command above exits 0. The full LoadGen test command exits 2 after measured wall time 622.3527382780012 s, from 2026-11-11T08:33:46.369653Z to 2026-11-11T08:44:08.722321Z. XML records 1737 total: 1736 passed, 1 failed, and 0 skipped, not-run or errors. All eight new broker-output regressions pass. The sole failure is the existing producer unit test `B10AbruptProducerTests.Given_AllMembersConfirmed_When_ControlCheckpoints_Then_ExposureInconclusive`, XML time 0.052 s, with the V13 cleanup timeout above. `ValidateReport` is not run after the failed test command. Evidence: `/tmp/issue404-broker-tail/full-loadgen/commands.txt`, `source.json`, `execution.json`, `publish.log`, `test.log` and `results.xml`.
+
+The control session authorizes one fixed isolated rerun of that exact existing method on the frozen `c1ed066438acb573c655d72d98a9da2f8e2b5640` binary before code edits. The command retains the full-run environment and published apphost, uses `--minimum-expected-tests 1`, results directory `/tmp/issue404-broker-tail/isolated-cleanup-race`, and `--filter-method Parchwell.LoadGen.Tests.Abrupt.B10AbruptProducerTests.Given_AllMembersConfirmed_When_ControlCheckpoints_Then_ExposureInconclusive`. It exits 0 in measured wall time 2.32352620599886 s, with exactly 1 passed and 0 failed, skipped, not-run or errors; assembly time is 0.360 s and case time is 0.202 s. Exact command, source, timing and XML are retained as `commands.txt`, `source.json`, `execution.json`, `test.log` and `results.xml` in that directory. This single isolated pass does not reproduce the failure and does not establish its cause. No existing test or production assertion, timeout, or behavior is changed. A passing affected-project run remains a required gate.
+
+Separately, a read-only author audit of the same R1 diagnostic-retention class finds that a helper failure after broker cleanup can replace the cached aggregate `LastOutput`. No runtime failure or new review round is claimed. The authorized diagnostic-only follow-up consolidates both helper-failure paths through `RetainHelperFailureOutput(name, tail)`, appending a labeled helper tail to the retained aggregate. The existing successful-startup regression will verify the whole real broker snapshot remains after broker disposal and after adding a fixed synthetic helper-failure line. This extends the same eight-case set without removing assertions. The minimal follow-up is implemented and its same eight cases pass, as recorded below. The control session authorizes one full-project repeat in fresh `/tmp/issue404-broker-tail/full-loadgen-final` paths because the first full-project gate failed; it has completed at committed final code source `e89e9eecd70b6e15267f804056f84a9047ddb6af`, with the same unchanged producer-unit failure recorded below. The first full-project result retains its own source identity. The root-finding count remains one.
+
+
+## Final diagnostic-retention source and pending gates
+
+Both `HelperAsync` catch paths now call the shared append method. The successful-startup regression asserts that the complete prior real-broker output snapshot survives broker disposal and appending a fixed synthetic helper-failure tail. The fixed case count remains eight, and no existing assertion is removed or loosened. This is the same R1 retention root, found during the author's source audit; it adds no verification-failure root or cold-review round.
+
+The locked Release build command above exits 0 with 0 warnings and 0 errors in 16.83 s (`/tmp/issue404-broker-tail/build-helper-retention.log`). The same focused command runs with results directory `/tmp/issue404-broker-tail/results-helper-retention`; it exits 0 with exactly 8 passed and 0 failed, skipped, not-run or errors. XML assembly time is 32.707 s; actual canceled-startup time is 6.511 s and successful-startup/retention time is 26.031 s. The same `ValidateReport` command with report `/tmp/issue404-broker-tail/results-helper-retention/results.xml` exits 0 (`validate-report-helper-retention.log`). Independent XML parsing confirms all eight pass. Full evidence is `/tmp/issue404-broker-tail/focused-test-helper-retention.log`, `focused-summary-helper-retention.json`, `tested-source-helper-retention.json` and `source-helper-retention/`.
+
+The manifest records the dirty follow-up on c1ed source. Independent SHA-256 comparison confirms all three tested source files match committed final code `e89e9eecd70b6e15267f804056f84a9047ddb6af` and the current source. The fixture hash remains `aea7a912a5ade0e68560cdada339747e618a2312c8eb7fc1486a8d60893e523c`; the image-test hash is `2e54c1f3c66420e0a55185617aa1ed6be56ce6b10b436e15c58d8714bd273d48`; the regression hash is `6b51b61f7808c083ef74ac0a1876e5887ec18f287a22e24812f6eb2ed2f3a1d3`.
+
+The single authorized full-project repeat uses these commands, recorded before the run, at that committed source. Its publish step succeeds; the test exits 2 and `ValidateReport` is not run after that failure.
+
+```sh
+dotnet publish src/Parchwell.LoadGen/Parchwell.LoadGen.csproj --configuration Release --no-build --no-restore --output /tmp/issue404-broker-tail/full-loadgen-final/publish
+env -u PARCHWELL_B10_OFFLINE_IMAGE -u PARCHWELL_B10_OFFLINE_SOURCE_COMMIT -u PARCHWELL_B10_OFFLINE_EVIDENCE \
+  PARCHWELL_REPOSITORY_ROOT=/workspace/eventhubs-kafka-dotnet \
+  PARCHWELL_B10_ABRUPT_PUBLISHED_APPHOST=/tmp/issue404-broker-tail/full-loadgen-final/publish/Parchwell.LoadGen \
+  dotnet test --project tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj \
+  --configuration Release --no-build --minimum-expected-tests 1 \
+  --results-directory /tmp/issue404-broker-tail/full-loadgen-final -- \
+  --report-xunit-xml --report-xunit-xml-filename results.xml
+dotnet msbuild scripts/dotnet-verification.proj -t:ValidateReport \
+  -p:Report=/tmp/issue404-broker-tail/full-loadgen-final/results.xml \
+  -p:ExpectedAssembly=Parchwell.LoadGen.Tests -nologo
+```
+
+Fresh final-run commands, source identity, timing, logs and XML remain under `/tmp/issue404-broker-tail/full-loadgen-final/`. The repeated failure is detailed below. Documentation checks for this correction and comprehensive R2 are pending. The final R2 report belongs to the PR description, followed by final-head CI and hosted code/security reviews after the applicable cold-review coverage. Continuing ledgers remain 13 verification roots and one review root; completed cold counts remain one comprehensive and zero focused. The correction is implemented and awaits review; the affected-project verification gate remains failed. No final full-project pass or publication-gate pass is claimed here.
+
+The post-failure resource snapshot and bounded final-run resource samples are diagnostic context (`/tmp/issue404-broker-tail/resource-summary.json`, `full-loadgen-final/resource-window.jsonl`). They do not establish the cause of the earlier unit-test timeout. No resource-limit change is part of this correction.
+
+
+## Final affected-project verification gap
+
+The final publish step exits 0 in 1.8184110040001542 s. The full-project test at `e89e9eecd70b6e15267f804056f84a9047ddb6af` exits 2 after measured wall time 623.080000801001 s, from 2026-11-11T08:51:24.141796Z to 2026-11-11T09:01:47.221768Z. XML records 1737 total: 1736 passed, 1 failed, and 0 skipped, not-run or errors; assembly time is 621.575 s. The sole failure again is `Parchwell.LoadGen.Tests.Abrupt.B10AbruptProducerTests.Given_AllMembersConfirmed_When_ControlCheckpoints_Then_ExposureInconclusive`, with `TimeoutException` at production `B10AbruptProducer.CleanupAsync` line 420 and test line 229. Its XML case time is 0.058 s, starting at 2026-11-11T08:59:40.7690967Z. `ValidateReport` is not run because the test command fails first. This is V13 again, not a fourteenth verification root.
+
+All eight new broker-output regressions pass in both full-project runs. The existing published-apphost fact and the image fact's intentional unset-variable passing no-op also pass in both runs. These passes verify their specific paths; neither full-project run passes overall. The failed full reports, the isolated one-case pass and the final unchanged-source proof are consolidated in `/tmp/issue404-broker-tail/validation-summary.json`; raw final evidence is `full-loadgen-final/results.xml`, `test.log`, `execution.json`, `commands.txt` and `source.json` under the same evidence root.
+
+The control session's source inspection finds that the existing test's reporting loop can advance its synthetic clock while cleanup waits for a one-second synthetic-time disposal budget. An interleaving with that clock is inferred; it is not a confirmed root cause. The bounded resource sample window covers the final failure and records no CPU throttling, OOM or memory-limit events. It supplies no evidence of resource exhaustion in that window and does not prove the inferred clock explanation. No existing producer test, timeout, production behavior or assertion is changed, and no further full-project rerun is included.
+
+Remaining verification gap: the unchanged producer cleanup test above prevents a green affected-project gate. The broker-output correction is implemented with passing focused and integrated regressions, awaiting comprehensive R2. Publication must disclose the failed gate and preserve the historical full-suite result at its measured old source. The user-authorized push and new-head hosted code/security review requests remain with the root control session after documentation checks and applicable cold-review coverage; this receipt claims neither a green current full suite nor completed final-head reviews. No merge or workflow dispatch is authorized. Continuing counts are 13 verification roots, one review root, one completed comprehensive cold review and zero focused rounds; comprehensive R2 remains the last available comprehensive pass.
+
+Correction documentation check: `npm run check:docs` exits 0 on the final code and authored correction record. The control script counts nine advisory warnings in five unchanged files, with zero warnings in changed files (`/tmp/issue404-broker-tail/check-docs.log` and `check-docs-summary.json`). The unchanged-file warnings retain one blanket disposition under pull-request rule 8; no unrelated document is edited. The earlier ten-warning result above belongs to its original base before execution part 2 merged. The authority refresh at 2026-11-11T09:09:48.666474Z reports no changes, with `origin/main` still `095e4df1231312033cb9b97677c372c24bddba03`. Source code remains the tested `e89e9eecd70b6e15267f804056f84a9047ddb6af` bytes; only this record and the item-state read watermark change before the R2 freeze.
+
+## CI broker-removal correction execution card
+
+The preceding pending-review statements describe preparation of comprehensive R2. R2 completed on `ade5192fa2e551e52aec35035cc3fe302ff35f31`, comparing with `095e4df1231312033cb9b97677c372c24bddba03`, with no findings. Hosted code and security reviews also completed on that head. Their reports and dispositions remain in the [PR self-review record](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/432); they cover that head only. The saved R2 report is `/tmp/issue404-broker-tail/cold-r2-report.md`.
+
+The [.NET CI run](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/42994642482) on that source fails: LoadGen records 1737 total, 1735 passed, 2 failed and 0 skipped, with exit 2. Both failures are the new broker regressions at `AssertBrokerRemovedAsync`: the exact expected `DockerContainerNotFoundException` is replaced by `DockerApiException`, HTTP 400 Bad Request. The earlier unchanged producer cleanup test does not fail in this run; its two local failures above remain measured evidence without a verified cause. Terraform, lifecycle and documentation jobs pass. The CI transcript is `/tmp/issue404-broker-tail/new-head-dotnet-ci-connector.log`; the two complete failures are extracted in `ci-inspect-fix/ci-failure-excerpt.log` under that evidence root. No green full verification gate is claimed.
+
+Authorization remains the user's direct broker-output P1 fix/regression, push and new-head review request. The deliverable is a request correction in the new regression helper only: strip leading slash characters from the broker-name lookup copy before Docker inspection. Preserve the retained output, exact not-found assertion, all other assertions, fixture/image behavior and approved plan. Both callers share this helper. No new package, production change, existing-test change, workflow dispatch or merge is included.
+
+Mandatory correction gates are one locked Release build, the existing eight focused cases, `ValidateReport`, documentation checks, whitespace/scope checks and focused R3 before a non-backup push. New-head CI then supplies full-suite verification alongside exact-head hosted code/security reviews. No third local full-project retry is included. Prior image/mutation evidence and unrelated-project coverage retain their original source identities.
+
+Review mode: focused R3, pending. Comparison revision: `ade5192fa2e551e52aec35035cc3fe302ff35f31`. The frozen input revision will be recorded in review metadata and the PR description. Review the correction, its evidence and affected surrounding code/contracts, with the full PR diff as context. Completed cumulative counts are 2 comprehensive and 0 focused; R3 uses the first of 2 focused rounds. The full R3 report and final-head CI/review results belong to the PR description, not to their own reviewed receipt. An exhausted budget or unsafe focus means push `-wip` and hand off to Hari under pull-request rule 8. Continuing failure/finding counts are 14 verification roots and 1 review root out of the 20 allowed for each; their exhaustion action remains push `-wip` and hand off to the next session.
+
+## CI lookup diagnosis and correction results
+
+Prior regression XML retains broker names with a leading slash. Pinned [Testcontainers `DockerContainer.Name`](https://raw.githubusercontent.com/testcontainers/testcontainers-dotnet/df0f931ea92111ddd96f96fce22ff85b69a58f64/src/Testcontainers/Containers/DockerContainer.cs), lines 112 to 118, returns the inspect name unchanged. Pinned [Docker.DotNet `InspectContainerAsync`](https://raw.githubusercontent.com/testcontainers/Docker.DotNet/1e4015a84fa48cbcfe9002ecc4e2cf14177edc2d/src/Docker.DotNet/Endpoints/ContainerOperations.cs), lines 56 to 64, interpolates the supplied value into `containers/{id}/json`; its [URI builder](https://raw.githubusercontent.com/testcontainers/Docker.DotNet/1e4015a84fa48cbcfe9002ecc4e2cf14177edc2d/src/Docker.DotNet/HttpUtility.cs), lines 15 to 24, appends this path without normalizing separators. The old lookup therefore supplies `containers//name/json`. The correction applies `TrimStart('/')` only to the lookup copy. All retained broker output and assertions, including exact `DockerContainerNotFoundException`, remain unchanged.
+
+A local socket probe records HTTP 301 for `/v1.44/containers//issue404-does-not-exist/json` and HTTP 404 directly for its normalized path. Evidence is `/tmp/issue404-broker-tail/ci-inspect-fix/socket-probe.log`. This verifies the local path difference; the exact redirect-to-400 chain in CI remains an inference because the CI log contains no wire requests. The source audit and pinned source hashes are `diagnosis.md`, `pinned-source-refs.json` and `sources/` in the same directory. Corrected final-head CI remains required.
+
+The exact fixed-workload commands are recorded in `/tmp/issue404-broker-tail/ci-inspect-fix/commands.txt`:
+
+```sh
+dotnet build tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj --configuration Release -p:RestoreLockedMode=true -m:1
+env -u PARCHWELL_B10_OFFLINE_IMAGE -u PARCHWELL_B10_OFFLINE_SOURCE_COMMIT -u PARCHWELL_B10_OFFLINE_EVIDENCE \
+  dotnet test --project tests/Parchwell.LoadGen.Tests/Parchwell.LoadGen.Tests.csproj \
+  --configuration Release --no-build --minimum-expected-tests 8 \
+  --results-directory /tmp/issue404-broker-tail/ci-inspect-fix/results -- \
+  --filter-class Parchwell.LoadGen.Tests.Abrupt.B10AbruptOfflineBrokerOutputTests \
+  --report-xunit-xml --report-xunit-xml-filename results.xml
+dotnet msbuild scripts/dotnet-verification.proj -t:ValidateReport \
+  -p:Report=/tmp/issue404-broker-tail/ci-inspect-fix/results/results.xml \
+  -p:ExpectedAssembly=Parchwell.LoadGen.Tests -nologo
+```
+
+The build exits 0 with 0 warnings and 0 errors in MSBuild time 17.63 s (`build.log`; command wall time 17.90607201199964 s in `build-execution.json`). Its precommit source copies are proven equal to committed correction `c6966128909e42bf97c02eeae30ba318da3619ce` by `tested-source.json`. The test executes once at that committed source and exits 0, with exactly 8 passed, 0 failed, skipped, not-run or errors. XML assembly time is 32.151 s; canceled startup is 6.208 s and successful startup/retention is 25.792 s. `ValidateReport` exits 0. Independent XML parsing confirms the eight passes; independent SHA-256 and Git-blob comparison confirms all three tested source files match the committed source. Evidence is `focused-test.log`, `test-execution.json`, `focused-summary.json`, `results/results.xml` and `validate-report.log` in that directory. No further failure, rerun or full-project invocation is claimed.
+
+The root control session refreshed authority at 2026-11-11T09:44:42.068535+00:00 and found no change to the latest covered issue comment `6790675342`. Documentation check exits 0 with 9 advisory warnings confined to 5 unchanged files and no warning in a changed file (`/tmp/issue404-broker-tail/ci-inspect-fix/check-docs.log` and `check-docs-summary.json`). The unchanged-file warnings retain their blanket disposition. Focused R3 is pending for this consolidated correction record. The root session owns publication and exact new-head hosted code/security review requests; no merge, dispatch or trial is authorized.

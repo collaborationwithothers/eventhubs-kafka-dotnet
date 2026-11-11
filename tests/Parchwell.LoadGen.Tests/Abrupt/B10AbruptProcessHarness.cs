@@ -15,6 +15,14 @@ internal static class B10AbruptProcessHarness
     internal sealed record Control(string Mode, string StorageRoot, string BootstrapServers = "", bool RealTime = false);
     internal static void Install(string directory)
     {
+        string uid = File.ReadLines("/proc/self/status").Single(line => line.StartsWith("Uid:", StringComparison.Ordinal))
+            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)[1];
+        File.AppendAllText(Path.Combine(directory, "hook-loaded.jsonl"), JsonSerializer.Serialize(new
+        {
+            role = Environment.GetEnvironmentVariable("B10Abrupt__Role"), pid = Environment.ProcessId,
+            uid = int.Parse(uid, CultureInfo.InvariantCulture), process_path = Environment.ProcessPath,
+            loadgen_assembly = typeof(B10AbruptHost).Assembly.Location
+        }) + "\n");
         if (Environment.GetEnvironmentVariable("B10Abrupt__Role") == "child")
             File.AppendAllText(Path.Combine(directory, "child-pids.txt"), Environment.ProcessId.ToString(CultureInfo.InvariantCulture) + "\n");
         Control control = JsonSerializer.Deserialize<Control>(File.ReadAllBytes(Path.Combine(directory, "test-control.json")))!;
@@ -39,7 +47,7 @@ internal static class B10AbruptProcessHarness
             {
                 services.RemoveAll<IB10AbruptStorage>();
                 services.AddSingleton<IB10AbruptStorage>(new FileStorage(control.StorageRoot));
-                if (!control.RealTime)
+                if (!control.RealTime && control.Mode != "image-kafka")
                 {
                     services.RemoveAll<TimeProvider>();
                     services.AddSingleton<TimeProvider>(clock);
