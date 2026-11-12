@@ -69,8 +69,8 @@ public sealed class B10AbruptVerifyKafkaFixture : IAsyncLifetime
                 }
                 last = topic is null ? "topic absent" : "partition leader unavailable";
             }
-            catch (KafkaException exception) when (exception.Error.Code is ErrorCode.NotLeaderForPartition or ErrorCode.Local_UnknownPartition or ErrorCode.UnknownTopicOrPart or ErrorCode.LeaderNotAvailable)
-            { last = exception.Error.Code.ToString(); }
+            catch (KafkaException exception)
+            { last = exception.Error.Code + ":" + exception.Error.Reason; }
             await Task.Delay(100, TestContext.Current.CancellationToken);
         }
         throw new TimeoutException("synthetic_partition_readiness_failed:" + last);
