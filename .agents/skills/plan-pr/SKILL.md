@@ -25,7 +25,7 @@ Apply factory.md "Item lifecycle" step 3 for authority, decision recognition, de
 Each rule applies when the plan has the case it names. The plan-check skill verifies them.
 
 1. **External behaviour.** Verify any Kafka, librdkafka, Confluent.Kafka or Azure Event Hubs behaviour the plan relies on against official documentation, with the documentation tools your session has, under AGENTS.md GOVERNANCE "Truth and verification". The plan names the tool used and cites the source for each behaviour. With no documentation tool, list each such behaviour under "Open questions for Hari" as unverified.
-2. **Existing tests.** When the plan adds or tightens a check, it includes a standing fixture rule for each existing test whose fixture the new check rejects. The implementer does exactly one of:
+2. **Existing tests.** When the plan adds or tightens a check, it includes a standing fixture rule: when an existing test's fixture is rejected by a new check, the implementer does exactly one of:
    - (a) changes the fixture so it passes the new checks, keeping every assertion and the boundary the test exercises;
    - (b) where invalid input is the test's purpose, keeps the input and changes the expected values to exactly what the plan's checks produce.
 
