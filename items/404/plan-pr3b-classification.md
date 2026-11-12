@@ -1,10 +1,25 @@
 # PR3b classification contract-grade plan
 
-Revision 3. Issue 404, pull request short name `PR3b classification`. Status: not approved. Implementing tool: Codex ([6761524200](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6761524200) point 1, kept by [6816117386](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6816117386) point 4). Hari merges.
+Revision 4. Issue 404, pull request short name `PR3b classification`. Status: not approved. Implementing tool: Codex ([6761524200](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6761524200) point 1, kept by [6816117386](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6816117386) point 4). Hari merges.
 
 This pull request adds a diagnostic-only verifier mode, `b10-abrupt-verify`, and runs it in the B10 diagnostic trial before the ephemeral layer is destroyed. For each unconfirmed probe message, it reports how many copies `document-events` holds and which instance and attempt wrote each copy. It selects no verdict, computes no eligibility and makes nothing admissible to science.
 
-## 0. Changes since Revision 2
+## 0. Changes
+
+Since Revision 3 (`35fdefae`), after plan check [6816525517](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6816525517) and decision [6816733258](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6816733258):
+- B1: check 2 keeps the two start-line names under 6816733258 point 1, which extends the gap of 6787849492 point 1 to the later full-reconciliation pull request of this mode. The authority line for 6787849492 is corrected. 2.1 item 8 pins the new text for contract line 66 and verifier-contract.md line 5.
+- B2: LA-V2 to LA-V5 are accepted by name for the next diagnostic trial only (6816733258 point 2). Open questions: none.
+- B3: the LA-V2 and LA-V5 evidence now cites the A01 final run, read on `main`.
+- P2-A: R4 names every `cross_restart` field for problems 3 and 4; T6 and T7 assert them.
+- P2-B: the ledger double uses `IProducerArtifactStore`.
+- P2-C: T8 gains subcases for checks 5, 8, 9 and 10.
+- P2-D: R1 and T13 pin exit code 1.
+- P2-E: check 3 names the result of an incomplete listing; answer (a) adds the listing bound.
+- P2-F: three citations corrected.
+- P2-G: 11.1 states Q7.
+- P2-H: the pointer comment link is fixed.
+
+Since Revision 2:
 
 Revision 2 (`37128767`) was written for the superseded stop/checkpoint protocol and was paused by [6762516530](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6762516530). It was never posted. Revision 3 replaces it in full:
 - Inputs follow the redesign on `main`. They are the journal, abrupt manifest, termination receipt and successor files, not seals, cohort files or `kill-selection.json`.
@@ -21,12 +36,13 @@ Authority, in creation order, under docs/agents/factory.md "Item lifecycle" step
 - [6750021224](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6750021224) item 2: PR3b is the verifier slice. 6816117386 point 1 narrows it for this pull request.
 - [6761524200](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6761524200) and [6761542603](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6761542603): Revision 1 answers. Section 11.1 records which still apply.
 - [6762055013](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6762055013), then 6762516530, which found 6762055013's question misframed. 6816117386 point 2 now answers it.
-- [6787849492](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6787849492) point 1: the trial ran no verify Job. 6815988248 point 2 narrows that point for this reader only.
+- [6787849492](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6787849492) point 1: the trial start line keeps the two names `{run}-c1-r1-loadgen` and `{run}-c1-r1-loadgen2`, a gap against ADR-021 "Consequences" accepted "until the verifier classification pull request (PR3b) carries the three names". 6816733258 corrects the summary in 6815988248 point 2 and extends that gap (below).
 - [6815212407](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6815212407): one trial, now run. It authorizes no further trial.
 - 6815988248: resume and revise this plan, and wire the reader into the trial.
 - 6816117386: Q1 B, Q2 A, Q3 as recorded, and the defaults.
+- [6816733258](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6816733258): point 1 extends the two-name gap to the later full-reconciliation pull request of `b10-abrupt-verify`, before any science; point 2 accepts LA-V2 to LA-V5 by name for the next diagnostic trial only.
 
-Catch-up: 278 comments, 3 pages, at the last refresh. New since the state file: 6814884415, 6815212407, 6815641800, 6815918816, 6815988248 and 6816117386, each read in full. No comment the state file lists was edited or deleted. Issue `updated_at` 2026-11-12T06:07:49Z. Baseline: `main` at `08da10a6`.
+Catch-up: 281 comments, 3 pages, at the last refresh. New since the state file: 6814884415, 6815212407, 6815641800, 6815918816, 6815988248, 6816117386, 6816316853 (this plan's pointer), 6816525517 (its check) and 6816733258, each read in full. No comment the state file lists was edited or deleted. Issue `updated_at` 2026-11-12T06:07:49Z. Baseline: `main` at `a5c2403271a65d0bf53d4747631ff8cebae4ec89`; since `08da10a6` it changes only AGENTS.md (one rule under "Truth and verification"), so every cited line is unchanged.
 
 ## 2. Scope
 
@@ -39,7 +55,9 @@ Catch-up: 278 comments, 3 pages, at the last refresh. New since the state file: 
 5. New tests under `tests/Parchwell.Verifier.Tests/Component/`, each class prefixed `B10AbruptVerify`. They go there because the mutation-only build already removes `Component/**/*.cs` (`Parchwell.Verifier.Tests.csproj` line 21), so no csproj change is needed.
 6. `infra/scripts/phase/b10_abrupt.py` and `infra/scripts/phase/tests/test_b10_abrupt.py`.
 7. `charts/parchwell/templates/jobs.yaml`, `charts/parchwell/values.schema.json`, `charts/parchwell/tests/test_chart.py` and `charts/parchwell/tests/test_b10_abrupt_chart.py`.
-8. `docs/operations/b10-abrupt-contract.md`, which owns the formats of 3.3 and 3.4. Also `docs/operations/verifier-contract.md` line 5 and `docs/operations/b10-workflow.md` lines 59 and 65, which cite that contract.
+8. `docs/operations/b10-abrupt-contract.md`, which owns the formats of 3.3 and 3.4. Also `docs/operations/verifier-contract.md` line 5 and `docs/operations/b10-workflow.md` lines 59 and 65, which cite that contract. Pinned text:
+   - Contract line 66, last sentence, becomes: "[Decision 6787849492, point 1](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6787849492) accepted that gap until the verifier classification pull request; [decision 6816733258, point 1](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6816733258) extends it to the later full-reconciliation pull request of mode `b10-abrupt-verify`, before any science."
+   - verifier-contract.md line 5, first two sentences, become: "B10 abrupt diagnostic artifacts (`schema_version 3`, `dialect b10_abrupt`, `purpose diagnostic_trial`) are rejected by every verifier reader except mode `b10-abrupt-verify`, which reads them for a nonfinal diagnostic result only. The rest of the verifier support that ADR-021 requires, including the start line's three C1 Job names, is planned for the later full-reconciliation pull request of that mode under decision 6787849492, point 1, as extended by decision 6816733258, point 1."
 9. `items/404/state.md` and a new receipt `items/404/pr3b-receipt.md`.
 
 ### 2.2 Paths that must not change
@@ -82,18 +100,18 @@ Inputs are fixed on `main`: `docs/operations/b10-abrupt-contract.md` lines 68 to
 
 Enforced checks, numbered. Each failure maps to the problem of 3.4 shown in brackets.
 1. Options as in 3.1. Failure exits nonzero and writes no output.
-2. Start line: the checks the `verify` mode applies to `PhasePaths.StartLineCompletion`, `PhasePaths.StartLine` and `PhasePaths.BrokerInventory` for `(RunId, C1, 1)`, with expected job names exactly `[{RunId}-c1-r1-loadgen, {RunId}-c1-r1-loadgen2]` (contract line 66; `RunWindow.cs` lines 48 to 67). [1]
-3. Listing: list the ledger prefix `<RunId>/C1/r1/b10-abrupt-diagnostic/`. The first pod is the only directory whose `registration.json` passes check 4 with job `{RunId}-c1-r1-loadgen-restart`. Zero or more than one such directory gives [2]. Of the remaining directories, none gives [3]. Exactly one that passes check 4 with job `{RunId}-c1-r1-loadgen-successor` and predecessor equal to the first pod is the successor. Anything else gives [4].
+2. Start line: the checks the `verify` mode applies to `PhasePaths.StartLineCompletion`, `PhasePaths.StartLine` and `PhasePaths.BrokerInventory` for `(RunId, C1, 1)`, with expected job names exactly `[{RunId}-c1-r1-loadgen, {RunId}-c1-r1-loadgen2]` (contract line 66; `RunWindow.cs` lines 48 to 67). The two names stay under 6816733258 point 1. [1]
+3. Listing: list the ledger prefix `<RunId>/C1/r1/b10-abrupt-diagnostic/`. The first pod is the only directory whose `registration.json` passes check 4 with job `{RunId}-c1-r1-loadgen-restart`. Zero or more than one such directory gives [2]. Of the remaining directories, none gives [3]. Exactly one that passes check 4 with job `{RunId}-c1-r1-loadgen-successor` and predecessor equal to the first pod is the successor. Anything else gives [4]. A listing that `BoundedBlobListing` reports incomplete (`listing_incomplete`, at 1024 entries, its name-byte bound or beyond 16 pages; `BlobVerifierArtifactStore.cs` lines 57 to 84, used by `BlobProducerArtifactStore.cs` line 9) gives [2].
 4. Envelope: exact members, `schema_version` 3, `dialect` `b10_abrupt`, `purpose` `diagnostic_trial`, `synthetic` true and `scientific_admissible` false. No duplicate or unknown member, no trailing content, depth at most 32. Identity has the 12 members, with `run_id` RunId, `B10`, `C1`, `C1`, repeat 1, `source_commit` VerifierCommit, `image_reference` LoadGenImage, the expected `job_name`, `pod_name` equal to the directory name and `instance_id` equal to `pod_name`. `predecessor_instance_id` is null for the first pod and the first pod's name for the successor. `pod_uid` is nonempty, equal across one pod's objects, and different between the two pods. [2] for the first pod, [4] for the successor.
 5. Read limits, as `b10_abrupt.py` lines 577 to 583 set them: `journal.jsonl` 16777216, `ledger.jsonl` 268435456, `manifest.json` 67108864, `statistics.jsonl` and `request-lifecycle.jsonl` 134217728 each, report files 1048576, every other member 65536 bytes. At most 1073741824 bytes per pod. Only `request-lifecycle.jsonl` may be empty. [2] or [4]
-6. First hash chain: `termination.data.manifest` binds `abrupt-manifest.json`; `manifest.journal` binds `journal.jsonl`; each `manifest.report_files` descriptor binds its file. The object set is the four first files plus the listed report names, each one of the three names at `b10_abrupt.py` line 16. [2]
+6. First hash chain: `termination.data.manifest` binds `abrupt-manifest.json`; `manifest.journal` binds `journal.jsonl`; each `manifest.report_files` descriptor binds its file. The object set is the four first files plus the listed report names, each one of the three names at `b10_abrupt.py` lines 16 to 17. [2]
 7. Termination: `termination` `intended_self_kill`, `exit_observed` true, `exit_code_local_observation` 137, `capture_gaps` [], manifest `gaps` [] and `successor_permitted` true. [2]
 8. Journal: ends with byte 0x0A and has at most 4096 records. Each record is an envelope whose kind and `data` members are exactly those of contract lines 76 to 93. Sequence runs 1..n with no gap, `journal_records` equals n, and there is no `gap` record. [2]
 9. Attempt binding: every `accepted`, `synchronous_rejection` and `terminal` follows its attempt's `prepared`, at most one each. Per arm, originals have ordinals 0 to 4, `sequence` equal to ordinal, key `B10/{RunId}/C1/1/{arm}` and one shared `payload_sha256`. [2]
 10. Control set: recomputed under contract line 109. It equals `cut.unconfirmed_attempt_ids` and `termination.control_unconfirmed_attempt_ids` and is nonempty. Exactly one `same_instance` resend follows per member, in invocation order, with the member's key, sequence and `payload_sha256`. [2]
-11. Kill set: recomputed under contract line 111. It equals `termination.kill_unconfirmed_attempt_ids` and is nonempty. The last producing-thread record (`b10_abrupt.py` line 44) is `kill_intent`. [2]
+11. Kill set: recomputed under contract line 111. It equals `termination.kill_unconfirmed_attempt_ids` and is nonempty. The last producing-thread record (`b10_abrupt.py` lines 45 to 46) is `kill_intent`. [2]
 12. Successor chain: all seven files of `b10_abrupt.py` line 18 are present. `completion.json` (kind `successor_receipt`) binds `registration` and the five artifacts, and `first_termination` and `journal` bind the first pod's `termination.json` and `journal.jsonl` bytes. `cleanup_completed` is true and `kill_unconfirmed_attempt_ids` equals check 11's set. There is one invocation per member, in order, with `predecessor_attempt_id` equal to the member, a unique `attempt_id` different from the member's, and the member's key, sequence and `payload_sha256`. [4]
-13. Successor ledger: each `ledger.jsonl` row ends in 0x0A and has exactly `attempt_id`, `completion_source`, `delivered`, `error_code` and `persistence_status` (`B10AbruptProducer.cs` line 414 writes the terminal objects). There is exactly one row per invocation attempt and no other row. [4]
+13. Successor ledger: each `ledger.jsonl` row ends in 0x0A and has exactly `attempt_id`, `completion_source`, `delivered`, `error_code` and `persistence_status` (`B10AbruptProducer.cs` line 415 writes the terminal objects). There is exactly one row per invocation attempt and no other row. [4]
 14. Window: high watermarks are read once at verify start for every start-line partition. The drain completes within `SafetyStop` and the consumed-record budget (`WindowConsumer.cs` lines 33 to 37; `ConsumedRecordBudget`). [5]
 15. Probe record identity: a window record whose key is an arm key and that has any `MessageIdentityReader` problem, or a null value, counts as malformed. [6]
 
@@ -169,7 +187,7 @@ In this order:
 
 Verifier requirements are observed at the real handler through the entry point of 3.1, reading the object it writes.
 
-- R1. WHEN an option of 3.1 is wrong, THEN the host exits nonzero, reads no blob and writes no object.
+- R1. WHEN an option of 3.1 is wrong, THEN the host exits 1, reads no blob and writes no object.
 - R2. WHEN every check passes, THEN `problems` is `[]`, both arms carry all members, and the counts follow 3.3.
 - R3. WHEN check 2 fails, THEN problem 1 is recorded and checks 3 to 13 still run. With first evidence valid, `arms` lists members with `copy_count`, the role counts, `pair_count`, `copies`, `originals_seen`, `resends_seen` and `witness` null. `start_line`, `end_line` and `window_complete` are null, null and false.
 - R4. Field rules by problem:
@@ -177,7 +195,7 @@ Verifier requirements are observed at the real handler through the entry point o
 | Problem | `arms` | Member copies and counts | Window |
 |---|---|---|---|
 | 2 | null | none | not drained; `start_line` per check 2, `end_line` null, `window_complete` false |
-| 3 or 4 | present | `cross_restart` resend fields, `resend_invoked` and `resends_seen` null; successor-headed copies have role `other`; original copies counted | drained |
+| 3 or 4 | present | In `cross_restart`: each member's `resend_attempt_id`, `resend_terminal`, `resend_copies` and `pair_count` are null; the arm's `resend_invoked`, `resends_seen`, `pair_count` and `witness` are null; `copy_count`, `original_copies`, `other_copies`, `copies`, `copies_truncated` and `originals_seen` are computed, with successor-headed copies counted in `other_copies` | drained |
 | 5 | present | all copy fields and the counts derived from them null | `window_complete` false; `end_line` as read, or null |
 | 6 | present | the record is counted when its sequence and value hash parse, with null headers and role `other` | drained |
 
@@ -205,7 +223,7 @@ Phase requirements (`b10_abrupt.py` `run()` and `collect()`):
 
 ## 6. Test map
 
-Verifier component tests. They use the existing `LocalKafkaFixture` (topic `document-events`) and in-memory doubles of the ledger and verifier stores at the existing `ILedgerArtifactSource` and `IVerifierArtifactStore` seams. Two evidence sources:
+Verifier component tests. They use the existing `LocalKafkaFixture` (topic `document-events`) and in-memory doubles of the ledger and verifier stores at the existing `IProducerArtifactStore` (lists and reads the ledger container; registered at `Program.cs` lines 215 to 219) and `IVerifierArtifactStore` seams. Two evidence sources:
 - E: real bytes from `B10AbruptWireProducerTests` run through `PARCHWELL_B10_ABRUPT_WIRE_OUTPUT`, as `B10AbruptRejectionTests.ProduceExportAsync` does. Run ID `synthetic`, pods `synthetic-first` and `synthetic-second`.
 - B: a test builder that writes the same formats with chosen payload bytes. E carries hashes only, so copies need B. T0 pins B to E.
 
@@ -217,14 +235,14 @@ Verifier component tests. They use the existing `LocalKafkaFixture` (topic `docu
 | T3 original absent | B, only (p0,o12) successor/r4 | `copy_count` 1, `original_copies` 0, `pair_count` 0, witness null |
 | T4 product (Q12) | B, two originals (p1,o5) and (p0,o9), one resend (p0,o12) | `pair_count` 2, witness original `{0,9}` |
 | T5 control pair, exclusions | B. Control member s4: original (p2,o3), resend (p2,o4). Same key: warm-up seq -1, confirmed original seq 3 | `same_instance` `pair_count` 1. Warm-up and seq 3 are not copies |
-| T6 successor absent | B, no successor directory, plus record successor/r4 | `problems` [3]. Cross resend fields null; the successor record has role `other`; the original is counted |
-| T7 successor invalid | B, one change per subcase: completion `journal` hash; invocation count 2 for a 1-member set; ledger row missing; predecessor wrong; extra file | `problems` [4], same shape as T6, `successor_instance_id` null |
-| T8 first invalid | B, one change per subcase: class `no_kill`; exit 136; kill set differs from termination list with the chain rehashed; sequence gap; manifest hash; image differs from LoadGenImage; two restart directories | `problems` [2], `arms` null, `end_line` null, `window_complete` false, exit 0 |
+| T6 successor absent | B, no successor directory, plus record successor/r4 | `problems` [3]. The R4 row for 3 or 4, field by field: member `resend_attempt_id`, `resend_terminal`, `resend_copies`, `pair_count` null; arm `resend_invoked`, `resends_seen`, `pair_count`, `witness` null; `copy_count` 2, `original_copies` 1, `other_copies` 1, `originals_seen` 1 |
+| T7 successor invalid | B, one change per subcase: completion `journal` hash; invocation count 2 for a 1-member set; ledger row missing; predecessor wrong; extra file | `problems` [4], the same literals as T6, `successor_instance_id` null |
+| T8 first invalid | B, one change per subcase: class `no_kill`; exit 136; kill set differs from termination list with the chain rehashed; sequence gap; manifest hash; image differs from LoadGenImage; two restart directories; a `journal.jsonl` of 16777217 bytes; a journal of 4097 records; an `accepted` whose attempt has no earlier `prepared`; `cut.unconfirmed_attempt_ids` without its first member. Each is rehashed so that only the named predicate fails. The receipt records the rest of the predicate map (below, at and above each boundary) | `problems` [2], `arms` null, `end_line` null, `window_complete` false, exit 0 |
 | T9 start line invalid | B, completion receipt missing | `problems` [1], members present, copy fields null |
 | T10 window incomplete | B, 2 in-window records, `MaxConsumedRecords` 1; at the boundary, budget 2 | `problems` [5] with copy fields null; at budget 2, `problems` [] |
 | T11 malformed | B, a copy with a duplicate `attempt-id` header; another arm-key record with a null value | `problems` [6]. The first is counted with role `other` and `attempt_id` null; the second is not a copy |
 | T12 window bounds (R9) | B, records at start-1, start, end-1, end | Only start and end-1 are counted |
-| T13 options (R1) | each of ScenarioId `B04`, ConfigurationId `C0`, Phase `C0`, Repeat `2`, VerifierCommit mismatch | Nonzero exit, no store read, no object |
+| T13 options (R1) | each of ScenarioId `B04`, ConfigurationId `C0`, Phase `C0`, Repeat `2`, VerifierCommit mismatch | Exit code 1, no store read, no object |
 | T14 output (R7, R8) | T2 output; then a pre-existing object | Envelope literals of 3.3. The existing readers reject the bytes. A second run with the object present exits nonzero |
 | T15 copies cap (R6) | B, 101 matching copies, `MaxDiagnosticsPerCheck` 100 | 100 entries, `copies_truncated` true, `copy_count` 101 |
 | T16 value hash (W1) | Records with key k (value "abc"), key j, key k with null value | New overload with {k}: SHA-256 `ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad`, then null, then null. The old overload gives null for all three |
@@ -247,13 +265,13 @@ Chart tests:
 
 | ID | Assumption | Evidence |
 |---|---|---|
-| LA-V1 | The verifier identity can list and read the abrupt ledger prefix | Accepted by name in 6761524200 point 4 (same container and prefix). Never exercised live |
-| LA-V2 | The verifier pod can assign and consume `document-events` over the private endpoint | Partial and cold: the start-line Job (verifier image and identity) read metadata and watermarks in run 43159084941. A consume has never run live |
-| LA-V3 | The trial's records remain readable when the verify Job runs | `message_retention = 7` (`infra/ephemeral/eventhubs.tf` line 15). Run 43159084941's trial step ended 05:25:47Z and destroy started 05:26:06Z (jobs API), so the verify Job runs before destroy. No live read yet |
-| LA-V4 | A resend reported delivered before the successor Job ends is below the high watermark read afterwards | Inferred, not verified on Event Hubs. If false, `resend_copies` undercounts, and `window_limit` states the limit |
-| LA-V5 | The verify Job finishes within 750 s | Not measured. If exceeded, the Job fails, `b10_abrupt_verify_failed` is recorded and cleanup still runs |
+| LA-V1 | The verifier identity can list and read the abrupt ledger prefix | Accepted by name in 6761524200 point 4 (same container and prefix). Never exercised live in this mode |
+| LA-V2 | The verifier pod can assign and consume `document-events` over the private endpoint | Accepted by name, next trial only (6816733258 point 2). Cold: the B10 start-line Job read metadata and watermarks in run 43159084941. A01 final run 40227770436 at source `fa417d78` (`results/A01/2026-10-25.md` line 11) recorded 930000 `ok` outcomes (line 26); `ok` means delivered and seen in the topic (`docs/blueprint.md` line 397). That the A01 `verify` Jobs consumed `document-events` live is inferred from those outcomes. Earlier source, other mode and scenario |
+| LA-V3 | The trial's records remain readable when the verify Job runs | Accepted by name, next trial only (6816733258 point 2). `message_retention = 7` (`infra/ephemeral/eventhubs.tf` line 15). Run 43159084941's trial step ended 05:25:47Z and destroy started 05:26:06Z (jobs API), so the verify Job runs before destroy. No live read yet |
+| LA-V4 | A resend reported delivered before the successor Job ends is below the high watermark read afterwards | Accepted by name, next trial only (6816733258 point 2). Inferred, not verified on Event Hubs. If false, `resend_copies` undercounts, and `window_limit` states the limit |
+| LA-V5 | The verify Job finishes within 750 s | Accepted by name, next trial only (6816733258 point 2). Not measured for this mode. The A01 verify Jobs of run 40227770436 each read a window of 186000 attempts (`results/A01/2026-10-25.md` line 17) and completed within that run's verify Job deadline, inferred from the valid repeats; this plan did not read that deadline's value at that source. If exceeded, the Job fails, `b10_abrupt_verify_failed` is recorded and cleanup still runs |
 
-LA-V2 to LA-V5 have no offline test, so they are Q1 in section 11.
+LA-V2 to LA-V5 have no offline test. Their acceptance covers the next diagnostic trial only.
 
 ## 8. Acceptance commands
 
@@ -273,6 +291,7 @@ Caps per implementing session: 20 verification-failure root causes and 20 review
 - Window records: bounded by `MaxConsumedRecords` 372000 and `MaxConsumedBytes` (a01-runtime-limits.json lines 67 and 68). Check 14 and problem 5 apply.
 - Copies per member: capped at `MaxDiagnosticsPerCheck` 100 (R6).
 - Journal records: at most 4096 (check 8).
+- Ledger listing: at most 1024 entries, its name-byte bound and 16 pages (`BlobVerifierArtifactStore.cs` lines 57 to 84); beyond that, problem 2 (check 3).
 - Implementer root causes: the caps above.
 
 (b) Where this plan is stricter than its parent (item plan [Revision 5](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6705594392) and ADR-021):
@@ -295,13 +314,14 @@ Caps per implementing session: 20 verification-failure root causes and 20 review
 
 ## 11. Open questions for Hari
 
-Q1. Accept LA-V2, LA-V3, LA-V4 and LA-V5 (section 7) by name for the next diagnostic trial only? None has an offline test. Until accepted, each is a blocking deployment assumption under docs/agents/factory.md "Item lifecycle" step 1.
+None.
 
 ### 11.1 Earlier answers (decision 6761542603 rule)
 
 - Still apply, with unchanged choices: Q1 (Codex), Q5 (Drain overload with key set), Q10 (mode name, output path, exit rule, envelope identity, no `WorkerReceipt`) and Q12 (pair product, smallest witness). Under Q10, `schema_version` becomes 3, as ADR-021 protocol rule 14 and contract line 70 require. That is not a choice.
 - Void, because their subject is outside this slice (6816117386 point 1): Q2 (eligibility reasons), Q3 (eligibility values), Q6 (selected-original counting) and Q8 (native-error eligibility).
 - Void, because their subject is gone: Q9 (the contract sentence no longer exists), Q11 (no native-error export is needed) and Q4 (now LA-V1, accepted).
+- Q7 applies in part: check 6 verifies each bound report's hash and length; no statistics content or guard result is read in this slice; guard re-evaluation stays required before any scientific admission.
 - Revision 2's Q13 is answered by 6816117386 point 2.
 
 ## 12. Stop rule
