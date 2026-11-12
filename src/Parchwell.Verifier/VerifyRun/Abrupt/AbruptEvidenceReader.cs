@@ -15,6 +15,7 @@ internal sealed record AbruptFirstEvidence(string Pod, string Uid,
     internal IReadOnlySet<int> Reasons { get; init; } = new HashSet<int>();
     internal bool Invalid { get; init; }
     internal IReadOnlySet<string> Accepted { get; init; } = new HashSet<string>(StringComparer.Ordinal);
+    internal IReadOnlySet<string> Rejected { get; init; } = new HashSet<string>(StringComparer.Ordinal);
     internal IReadOnlyDictionary<string, AbruptWarmup> Warmups { get; init; } = new Dictionary<string, AbruptWarmup>(StringComparer.Ordinal);
     internal AbruptNativeErrors NativeErrors { get; init; } = new(0, 0, "unknown_due_to_intended_kill");
     internal IReadOnlyList<JsonElement> Frames { get; init; } = [];
@@ -53,7 +54,7 @@ internal sealed class AbruptEvidenceReader(VerifierHostOptions options,
         catch (Exception exception) when (IsMalformed(exception))
         {
             if (exception is AbruptEvidenceException) throw;
-            throw new AbruptEvidenceException(exception.Message, new HashSet<int> { 3 });
+            throw new AbruptEvidenceException(exception.Message, new HashSet<int> { exception is InvalidDataException ? 2 : 3 });
         }
     }
 
@@ -162,7 +163,7 @@ internal sealed class AbruptEvidenceReader(VerifierHostOptions options,
         Require(kill.Length > 0 && kill.SequenceEqual(Strings(termination.GetProperty("kill_unconfirmed_attempt_ids")), StringComparer.Ordinal) &&
             lastProducing == "kill_intent", "kill_set");
         var evidence = new AbruptFirstEvidence(pod, uid, attempts, control!, kill, controlResends, terminals, journal, files["termination.json"])
-        { Accepted = accepted, Frames = frames, Files = files };
+        { Accepted = accepted, Rejected = rejected, Frames = frames, Files = files };
         return AbruptReconciliation.First(evidence, termination);
 
         string[] Select(string arm) => attempts.Values.Where(attempt => attempt.Arm == arm && attempt.Role == "original" &&
@@ -268,7 +269,7 @@ internal sealed class AbruptEvidenceReader(VerifierHostOptions options,
         return bytes!;
     }
     private static bool IsMalformed(Exception exception) => exception is FormatException or JsonException or
-        InvalidOperationException or KeyNotFoundException or OverflowException;
+        InvalidOperationException or InvalidDataException or KeyNotFoundException or OverflowException;
     private static void RequireEvidence(bool condition, string detail, int reason)
     {
         if (!condition) throw new AbruptEvidenceException(detail, new HashSet<int> { reason });

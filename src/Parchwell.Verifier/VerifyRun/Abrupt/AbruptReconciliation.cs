@@ -95,7 +95,8 @@ internal static class AbruptReconciliation
             Bind(Descriptor(descriptor), "control-post-drain-report.json", first.Files["control-post-drain-report.json"]);
             return true;
         });
-        if (first.Attempts.Values.Any(attempt => attempt.Arm == "same_instance" && first.Accepted.Contains(attempt.Id) && !first.Terminals.ContainsKey(attempt.Id)))
+        if (first.Attempts.Values.Any(attempt => attempt.Arm == "same_instance" && first.Accepted.Contains(attempt.Id) &&
+            !first.Terminals.ContainsKey(attempt.Id) && !first.Rejected.Contains(attempt.Id)))
         { reasons.Add(3); reasons.Add(8); }
         return first with
         {
@@ -121,7 +122,8 @@ internal static class AbruptReconciliation
             if (first.Attempts.Values.Any(attempt => attempt.Arm == "same_instance" && attempt.Role == "resend" &&
                 (attempt.JournalSequence >= Sequence(drains[0]) || Utc(Text(first.Frames.Single(frame => Sequence(frame) == attempt.JournalSequence), "observed_utc")) < release))) return false;
             return first.Attempts.Values.Where(attempt => attempt.Arm == "same_instance").All(attempt =>
-                !first.Accepted.Contains(attempt.Id) || prior.Any(frame => Text(frame, "kind") == "terminal" && Text(Data(frame), "attempt_id") == attempt.Id));
+                !first.Accepted.Contains(attempt.Id) || prior.Any(frame => Text(frame, "kind") is "terminal" or "synchronous_rejection" &&
+                    Text(Data(frame), "attempt_id") == attempt.Id));
         }
     }
 

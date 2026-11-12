@@ -61,7 +61,7 @@ internal static class AbruptClassification
                 .ThenBy(item => item.ResendAttemptId, StringComparer.Ordinal).ThenBy(item => item.Original.Partition)
                 .ThenBy(item => item.Original.Offset).ThenBy(item => item.Resend.Partition).ThenBy(item => item.Resend.Offset).FirstOrDefault();
             string[] unreported = first.Attempts.Values.Where(attempt => attempt.Arm == arm &&
-                first.Accepted.Contains(attempt.Id) && !first.Terminals.ContainsKey(attempt.Id))
+                first.Accepted.Contains(attempt.Id) && !first.Terminals.ContainsKey(attempt.Id) && !first.Rejected.Contains(attempt.Id))
                 .Select(attempt => attempt.Id).ToArray();
             long unreportedSeen = unreported.LongCount(id => records.Any(record => record.InstanceId == first.Pod && record.AttemptId == id));
             return new(arm, first.Attempts[originals[0]].Key, originals.Count,
