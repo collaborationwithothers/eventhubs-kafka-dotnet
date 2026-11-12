@@ -13,6 +13,7 @@ using Xunit;
 namespace Parchwell.Verifier.Tests.Component;
 
 #pragma warning disable CA1707 // Repository test naming convention.
+[Trait("Tier", "Docker")]
 public sealed class VerifierOAuthComponentTests
 {
     private static readonly JsonSerializerOptions EvidenceJsonOptions = new() { WriteIndented = true };

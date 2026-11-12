@@ -45,6 +45,34 @@ npm run check:docs
 
 Those commands check documentation. They are not the .NET build entry point. Documentation warnings remain advisory and must be fixed or explained before cold review under [AGENTS.md](../../AGENTS.md#before-opening-a-pull-request).
 
+## Tiers, partial runs and failure reporting
+
+`./scripts/verify-dotnet.sh` with no options is the full gate: every test project and every test. Hosted CI runs exactly that. These options exist for quicker feedback and never replace it:
+
+```bash
+./scripts/verify-dotnet.sh --tier fast
+./scripts/verify-dotnet.sh --project Parchwell.Verifier.Tests --project Parchwell.Kafka.Tests
+PARCHWELL_BUILD_MAX_CPU=1 ./scripts/verify-dotnet.sh
+```
+
+`--tier fast` passes `--filter-not-trait Tier=Docker Tier=Slow Tier=Host` to every test project. The option names were read from `dotnet test --help` on SDK 10.0.402 on 2026-11-12, and one run showed the fast tier removing exactly the marked tests. A filtered-out test is not reported as skipped, so the report check that rejects skips still holds. The fast tier also leaves out the spike-evidence publication, because the Docker spike test produces that evidence. `--project` runs only the named test project and repeats. A run with either option prints `Partial verification passed` and states that it is not the full gate. Cite a partial run as a partial run, never as the gate.
+
+Three values of the xUnit trait `Tier` mark tests that the fast tier leaves out:
+
+| Trait | Mark a test with it when |
+|---|---|
+| `Docker` | It needs a Docker daemon, directly or through Testcontainers. |
+| `Slow` | One run of the test took more than 30 s in the measured session of 2026-11-12 (4 cores). The 30 s threshold is a policy choice, not a measurement. |
+| `Host` | It needs a host kernel facility that managed cloud sandboxes may not provide, such as the cgroup membership the abrupt-exit capture reads. |
+
+Put the trait on the class when every test in it qualifies, and on the method otherwise. A test that needs Docker but carries no trait still runs in the full gate and in the fast tier. On a machine without Docker it fails in the fast tier, which is visible and safe. It does not disappear.
+
+The script stops at once only for stages that every later stage depends on: restore, build, the Kafka XML inventory check, project evaluation and the scaffold inventory. After those, a failing test project or the warning control is recorded and the run continues, so one run reports every failing project. The script then prints a stage timing table, lists each failed stage, and exits with the exit status of the first failure. It writes the same table to `stage-timing.tsv` in its results directory.
+
+`PARCHWELL_BUILD_MAX_CPU` adds `-maxcpucount:<n>` to restore, build, project evaluation and the warning control. It leaves the test processes alone. Do not set `DOTNET_PROCESSOR_COUNT` for the whole script: that changes the processor count that tests observe, and a Codex session recorded eight failures after doing so, with the cause not proved to be that setting (`items/404/b10-warm-leader-receipt.md`, V11). Whether the cap stops the MSBuild worker exits recorded there (V2) is not verified; it was not reproduced.
+
+`./scripts/test-verify-dotnet.sh` checks the option handling and fail-late behaviour of the script against a stub `dotnet`. It needs no SDK and no Docker, and takes about a second.
+
 ## Enforced gates
 
 `Directory.Build.props` sets `net10.0`, nullable references, warnings as errors, `latest-recommended` analysis, enabled .NET analyzers and analyzer execution during build. The script collects evaluated MSBuild configuration, declared project references and compile items in Release. The architecture suite reads those evaluated manifests, rather than treating the presence of root declarations as proof that every project inherits them.

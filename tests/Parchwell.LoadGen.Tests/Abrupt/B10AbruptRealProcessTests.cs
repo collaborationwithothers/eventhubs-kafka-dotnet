@@ -92,6 +92,7 @@ public sealed class B10AbruptRealProcessTests(ITestOutputHelper output)
         Assert.DoesNotContain(records, record => record.GetProperty("kind").GetString() == "no_kill");
     }
 
+    [Trait("Tier", "Slow")]
     [Fact]
     public async Task Given_ProductionHostAfterCrossAdmission_When_NoKillExits_Then_ProcessExitHandlersDoNotFlushOrDisposeProducer()
     {

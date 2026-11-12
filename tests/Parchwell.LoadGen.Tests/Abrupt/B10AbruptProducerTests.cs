@@ -268,6 +268,7 @@ public sealed class B10AbruptProducerTests
         Assert.Equal(reason, fixture.Journal.Frames[^1].Data.GetProperty("reason").GetString());
         Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind == "kill_intent");
     }
+    [Trait("Tier", "Slow")]
     [Fact]
     public async Task Given_LastControlTerminalRacesWithCut_When_RunRepeatedly_Then_JournalOrderAndStoredSetAgree()
     {

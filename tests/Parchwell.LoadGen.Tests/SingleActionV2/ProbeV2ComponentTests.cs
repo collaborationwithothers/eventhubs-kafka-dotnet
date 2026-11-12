@@ -124,6 +124,7 @@ public sealed class ProbeV2ComponentTests
         Assert.Empty(consumer.Assignment);
     }
 
+    [Trait("Tier", "Docker")]
     [Fact]
     public async Task Given_LocalKafka_When_ProducingEmptyAndNull_Then_IndependentAssignedReadsPreserveWireValuesAndLocation()
     {
@@ -164,6 +165,7 @@ public sealed class ProbeV2ComponentTests
         }
     }
 
+    [Trait("Tier", "Docker")]
     [Fact]
     public async Task Given_LocalKafka_When_SameClientsProduceAndSeekReread_ThenRawHandlerDiagnosticRetainsServiceOperations()
     {

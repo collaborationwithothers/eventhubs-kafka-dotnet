@@ -18,6 +18,7 @@ public sealed class VerifyInputCapacityTests
     private static readonly string[] PublicationReadOrder =
         ["index.json", "ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json"];
 
+    [Trait("Tier", "Slow")]
     [Fact]
     public async Task Given_FullA01AttemptInventory_When_UsingDeployedInputCapacity_Then_PublishesExactCompleteCounts()
     {
