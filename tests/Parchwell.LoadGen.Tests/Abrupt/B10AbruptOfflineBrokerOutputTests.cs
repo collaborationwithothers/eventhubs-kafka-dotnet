@@ -30,6 +30,7 @@ public sealed class B10AbruptOfflineBrokerOutputTests(ITestOutputHelper output)
         Assert.Equal(expected, tail);
     }
 
+    [Trait("Tier", "Docker")]
     [Fact]
     public async Task Given_BrokerStartupOutput_When_StartupIsCanceled_Then_OutputSurvivesFixtureFailureCleanup()
     {
@@ -54,6 +55,7 @@ public sealed class B10AbruptOfflineBrokerOutputTests(ITestOutputHelper output)
         output.WriteLine("canceled_startup_output_tail=" + retained);
     }
 
+    [Trait("Tier", "Docker")]
     [Fact]
     public async Task Given_StartedBroker_When_LaterFailureCollectsOutputAndCleanupRuns_Then_BrokerTailRemainsAvailable()
     {

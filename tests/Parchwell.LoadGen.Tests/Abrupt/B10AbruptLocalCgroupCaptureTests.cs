@@ -9,6 +9,7 @@ namespace Parchwell.LoadGen.Tests.Abrupt;
 
 public sealed class B10AbruptLocalCgroupCaptureTests
 {
+    [Trait("Tier", "Host")]
     [Fact]
     public void Given_ActualLocalMembership_When_CapturedBeforeAndAfter_Then_RealIdentityAndCounterAgree()
     {

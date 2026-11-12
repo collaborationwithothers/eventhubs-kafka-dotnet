@@ -35,6 +35,7 @@ public sealed class BlobPublicationIntegrationTests
     ["ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json"];
     private static readonly string[] EventTypes = ["uploaded", "ocr-started", "ocr-finished", "classified", "indexed"];
 
+    [Trait("Tier", "Docker")]
     [Fact]
     public async Task Given_RealLocalKafkaRun_When_PublishingThroughBlobSdk_Then_IndependentReaderAcceptsExactIdentityAndArtifacts()
     {
