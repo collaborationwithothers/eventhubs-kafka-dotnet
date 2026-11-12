@@ -15,7 +15,7 @@ internal sealed class LocalKafkaFixture : IAsyncDisposable
     private readonly IContainer container;
     private bool started;
 
-    private LocalKafkaFixture(IOutputConsumer? outputConsumer)
+    private LocalKafkaFixture(IOutputConsumer? outputConsumer, string? advertisedAddress)
     {
         var docker = new BoundedDockerAuthentication(TestcontainersSettings.OS.DockerEndpointAuthConfig);
         container = new ContainerBuilder(Image)
@@ -48,7 +48,7 @@ internal sealed class LocalKafkaFixture : IAsyncDisposable
             .WithCommand("while [ ! -f /testcontainers.sh ]; do sleep 0.1; done; /testcontainers.sh")
             .WithStartupCallback((instance, cancellationToken) =>
             {
-                var external = $"127.0.0.1:{instance.GetMappedPublicPort(KafkaPort)}";
+                var external = advertisedAddress ?? $"127.0.0.1:{instance.GetMappedPublicPort(KafkaPort)}";
                 var listeners = $"PLAINTEXT://{external},BROKER://loadgen-kafka:9094";
                 var script = "#!/bin/bash\nexport KAFKA_ADVERTISED_LISTENERS='" + listeners + "'\nexec /etc/confluent/docker/run\n";
                 return instance.CopyAsync(Encoding.UTF8.GetBytes(script), "/testcontainers.sh", fileMode: Unix.FileMode755, ct: cancellationToken);
@@ -60,9 +60,9 @@ internal sealed class LocalKafkaFixture : IAsyncDisposable
     internal string BootstrapServers => $"127.0.0.1:{container.GetMappedPublicPort(KafkaPort)}";
 
     internal static async Task<LocalKafkaFixture> StartAsync(CancellationToken cancellationToken,
-        Action<string>? startupFailureOutput = null, IOutputConsumer? outputConsumer = null)
+        Action<string>? startupFailureOutput = null, IOutputConsumer? outputConsumer = null, string? advertisedAddress = null)
     {
-        var fixture = new LocalKafkaFixture(outputConsumer);
+        var fixture = new LocalKafkaFixture(outputConsumer, advertisedAddress);
         try
         {
             await fixture.container.StartAsync(cancellationToken).ConfigureAwait(false);

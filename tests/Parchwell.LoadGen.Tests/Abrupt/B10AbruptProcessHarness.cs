@@ -6,6 +6,7 @@ using System.Text.Json;
 using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Parchwell.Kafka.Statistics;
 using Parchwell.LoadGen.Run.Abrupt;
 
 namespace Parchwell.LoadGen.Tests.Abrupt;
@@ -179,8 +180,9 @@ internal static class B10AbruptProcessHarness
         internal void Advance(TimeSpan elapsed) => Interlocked.Add(ref offset, elapsed.Ticks);
         public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
         {
-            // Only the synthetic process tests advance release time. The Kafka run keeps the real 120 s release.
-            if (dueTime >= TimeSpan.FromSeconds(100))
+            // Only one-shot release waits advance synthetic time; the child deadline remains scheduled normally.
+            // The Kafka run keeps the real 120 s release.
+            if (period == Timeout.InfiniteTimeSpan && dueTime >= TimeSpan.FromSeconds(100) && dueTime <= TimeSpan.FromSeconds(120))
             {
                 Advance(dueTime);
                 dueTime = TimeSpan.FromMilliseconds(1);
@@ -196,7 +198,7 @@ internal static class B10AbruptProcessHarness
         private string directory = "";
         private Control control = null!;
         private readonly List<Action<DeliveryReport<byte[], byte[]>>> pending = [];
-        private readonly object statisticsGate = new();
+        private object statisticsGate = null!;
         private Timer? reports;
         private TimeProvider clock = TimeProvider.System;
         private long producerCreatedMicroseconds;
@@ -204,6 +206,14 @@ internal static class B10AbruptProcessHarness
             Action<IProducer<byte[], byte[]>, string> statistics, TimeProvider timeProvider)
         {
             directory = output; control = setup; clock = timeProvider;
+            // These lifecycle fixtures supply loss-free synthetic statistics. Serialize with the session worker;
+            // the accelerated periodic timer can otherwise make Capture reject a report for monitor contention.
+            object target = statistics.Target ?? throw new InvalidOperationException("synthetic_statistics_session_unavailable");
+            var session = target.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                .Single(field => field.FieldType == typeof(KafkaStatisticsSession)).GetValue(target) as KafkaStatisticsSession
+                ?? throw new InvalidOperationException("synthetic_statistics_session_unavailable");
+            statisticsGate = typeof(KafkaStatisticsSession).GetField("_gate", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(session)
+                ?? throw new InvalidOperationException("synthetic_statistics_gate_unavailable");
             producerCreatedMicroseconds = checked((long)((Int128)clock.GetTimestamp() * 1000000 / clock.TimestampFrequency));
             reports = new Timer(_ =>
             {
@@ -221,6 +231,7 @@ internal static class B10AbruptProcessHarness
                     string attempt = Encoding.UTF8.GetString(message.Headers.GetLastBytes("attempt-id"));
                     int ordinal = int.Parse(Encoding.UTF8.GetString(message.Headers.GetLastBytes("sequence")), CultureInfo.InvariantCulture);
                     bool cross = key.EndsWith("/cross_restart", StringComparison.Ordinal);
+                    if (ordinal == -1) { callback(Delivered()); return null; }
                     Record(cross ? "cross_produce" : "control_produce");
                     if (cross && control.Mode == "host-cross-failure" && ordinal == 4)
                         throw new ProduceException<byte[], byte[]>(new Error(ErrorCode.Local_QueueFull), new DeliveryResult<byte[], byte[]>());
@@ -274,6 +285,7 @@ internal static class B10AbruptProcessHarness
             {
                 name = "synthetic-native", client_id = Environment.GetEnvironmentVariable("B10Abrupt__PodName"), type = "producer",
                 ts = micros, time = clock.GetUtcNow().ToUnixTimeSeconds(), age = micros - producerCreatedMicroseconds,
+                topics = new Dictionary<string, object> { ["document-events"] = new { partitions = new Dictionary<string, object> { ["0"] = new { leader = 0 } } } },
                 brokers = new Dictionary<string, object>
                 {
                     ["broker"] = new { name = "broker", nodeid = 0, source = "learned", state = "UP", stateage = 0,
@@ -282,6 +294,6 @@ internal static class B10AbruptProcessHarness
                 }
             });
         }
-        private static DeliveryReport<byte[], byte[]> Delivered() => new() { Error = new Error(ErrorCode.NoError), Status = PersistenceStatus.Persisted };
+        private static DeliveryReport<byte[], byte[]> Delivered() => new() { Error = new Error(ErrorCode.NoError), Status = PersistenceStatus.Persisted, Partition = 0, Offset = 1 };
     }
 }

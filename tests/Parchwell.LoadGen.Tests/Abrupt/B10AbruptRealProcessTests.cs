@@ -60,7 +60,7 @@ public sealed class B10AbruptRealProcessTests(ITestOutputHelper output)
     [InlineData("incomplete", "b10_abrupt_control_incomplete")]
     public async Task Given_RealChildBeforeCrossAdmission_When_ControlCannotContinue_Then_NoKillExitsThreeAndDisposes(string mode, string reason)
     {
-        using var fixture = new B10AbruptProcessFixture(mode);
+        using var fixture = new B10AbruptProcessFixture(mode) { PreserveArtifacts = true };
         JsonElement termination = await fixture.RunParentAsync();
         JsonElement data = termination.GetProperty("data");
         Assert.Equal("no_kill", data.GetProperty("termination").GetString());

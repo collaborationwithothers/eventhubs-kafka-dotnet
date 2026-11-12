@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Globalization;
+using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -258,6 +259,42 @@ internal sealed class B10AbruptStatistics : IKafkaStatisticsEvidenceSink
             return reports.LastOrDefault(report => report.Report.Snapshot is not null &&
                 report.Report.ReceivedAt > constructed && report.Report.ReceivedAt < acceptance);
         }
+    }
+
+    internal NumberedReport? SelectLeaderReport(DateTimeOffset terminalUtc, string topic, int partition, out bool reportSeen)
+    {
+        lock (gate)
+        {
+            AssertAvailableGuards();
+            var after = reports.Where(report => report.Report.Snapshot is not null && report.Report.ReceivedAt > terminalUtc).ToArray();
+            reportSeen = after.Length != 0;
+            return overflow ? null : after.FirstOrDefault(report => LeaderUp(report.Report.RawJson, topic, partition));
+        }
+    }
+
+    internal static bool LeaderUp(string raw, string topic, int partition)
+    {
+        try
+        {
+            using var parsed = JsonDocument.Parse(raw);
+            var root = parsed.RootElement;
+            var leader = root.GetProperty("topics").GetProperty(topic).GetProperty("partitions")
+                .GetProperty(partition.ToString(CultureInfo.InvariantCulture)).GetProperty("leader");
+            if (leader.ValueKind != JsonValueKind.Number || !BigInteger.TryParse(leader.GetRawText(), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var node) || node < 0) return false;
+            var brokers = root.GetProperty("brokers");
+            if (brokers.ValueKind != JsonValueKind.Object) return false;
+            int matches = 0;
+            bool up = false;
+            foreach (var broker in brokers.EnumerateObject())
+            {
+                if (broker.Value.ValueKind != JsonValueKind.Object || !broker.Value.TryGetProperty("nodeid", out var id) ||
+                    id.ValueKind != JsonValueKind.Number || !BigInteger.TryParse(id.GetRawText(), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var value) || value != node) continue;
+                matches++;
+                up = broker.Value.TryGetProperty("state", out var state) && state.ValueKind == JsonValueKind.String && state.GetString() == "UP";
+            }
+            return matches == 1 && up;
+        }
+        catch (Exception exception) when (exception is JsonException or KeyNotFoundException or InvalidOperationException) { return false; }
     }
 
     internal void MarkDrainBoundary(DateTimeOffset drained, long timestamp, long frequency)

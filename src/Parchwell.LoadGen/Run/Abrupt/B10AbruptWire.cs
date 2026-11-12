@@ -28,13 +28,15 @@ internal static class B10AbruptWire
         ["cohort_inventory"] = ["instance_id", "cohort", "inventory_count", "inventory", "bookkeeping_complete"],
         ["capabilities"] = ["request_capture", "fatal_capture_status"],
         ["child_started"] = ["pid", "start_time_ticks", "boot_id"],
+        ["warmup_prepared"] = ["attempt_id", "arm", "key", "payload_length", "payload_sha256"],
+        ["warmup_terminal"] = ["attempt_id", "completion_source", "delivered", "error_code", "persistence_status", "partition", "offset"],
         ["prepared"] = ["attempt_id", "arm", "role", "ordinal", "probe_id", "key", "sequence", "payload_length", "payload_sha256", "predecessor_attempt_id"],
         ["accepted"] = ["attempt_id", "prepared_sequence"],
         ["synchronous_rejection"] = ["attempt_id", "prepared_sequence", "error_code", "error_reason"],
         ["terminal"] = ["attempt_id", "completion_source", "delivered", "error_code", "persistence_status"],
         ["native_error"] = ["capture_sequence", "error_code", "error_name", "is_error", "is_fatal", "callback_monotonic_ticks"],
         ["gap"] = ["reason", "first_missing_sequence", "capture_status"],
-        ["pre_acceptance_report"] = ["arm", "attempt_id", "name", "length", "sha256", "report_identity", "report_sequence", "report_capture_utc"],
+        ["pre_acceptance_report"] = ["arm", "attempt_id", "name", "length", "sha256", "report_identity", "report_sequence", "report_capture_utc", "warmup_attempt_id", "partition"],
         ["post_drain_report"] = ["arm", "attempt_id", "name", "length", "sha256", "report_identity", "report_sequence", "report_capture_utc"],
         ["cut"] = ["arm", "cut_attempt_id", "release_utc", "unconfirmed_attempt_ids"],
         ["kill_intent"] = ["arm", "cut_attempt_id", "release_utc"],
@@ -45,7 +47,7 @@ internal static class B10AbruptWire
         ["termination"] = ["termination", "outcome", "detail", "signal_observation", "successor_permitted", "child", "exit_observed", "exit_code_local_observation", "runtime_version", "wait_bound_milliseconds", "cgroup_before", "cgroup_after", "control_unconfirmed_attempt_ids", "kill_unconfirmed_attempt_ids", "capture_gaps", "native_error_count", "native_fatal_count", "native_tail", "manifest"],
         ["successor_receipt"] = ["first_termination", "journal", "kill_unconfirmed_attempt_ids", "registration", "artifacts", "ready_utc", "release_utc", "invocations", "cleanup_completed", "cross_host_timing"],
     };
-    internal static bool IsProducingKind(string kind) => kind is "child_started" or "prepared" or "pre_acceptance_report" or "accepted" or "synchronous_rejection" or "cut" or "control_drained" or "post_drain_report" or "kill_intent" or "signal_failed" or "no_kill";
+    internal static bool IsProducingKind(string kind) => kind is "child_started" or "warmup_prepared" or "prepared" or "pre_acceptance_report" or "accepted" or "synchronous_rejection" or "cut" or "control_drained" or "post_drain_report" or "kill_intent" or "signal_failed" or "no_kill";
     internal static JsonElement Element(object value) => JsonSerializer.SerializeToElement(value, JsonOptions);
     internal static byte[] SerializeEnvelope(string kind, Identity identity, object data)
     {
@@ -70,7 +72,7 @@ internal static class B10AbruptWire
         JsonElement root = Parse(bytes);
         ExactMembers(root, "schema_version", "dialect", "purpose", "synthetic", "scientific_admissible", "kind", "identity", "sequence", "observed_utc", "monotonic_ticks", "clock_frequency", "data");
         string kind = RequiredString(root.GetProperty("kind"));
-        if (!IsProducingKind(kind) && kind is not ("terminal" or "native_error" or "gap")) throw Gap("malformed_frame");
+        if (!IsProducingKind(kind) && kind is not ("terminal" or "warmup_terminal" or "native_error" or "gap")) throw Gap("malformed_frame");
         ValidateEnvelope(root, kind);
         long sequence = Nonnegative(root.GetProperty("sequence")), frequency = Nonnegative(root.GetProperty("clock_frequency"));
         string utc = RequiredString(root.GetProperty("observed_utc"));
@@ -84,6 +86,14 @@ internal static class B10AbruptWire
         switch (kind)
         {
             case "child_started": Positive(data.GetProperty("pid")); _ = Nonnegative(data.GetProperty("start_time_ticks")); _ = RequiredString(data.GetProperty("boot_id")); break;
+            case "warmup_prepared":
+                Attempt(data); Arm(data); _ = RequiredString(data.GetProperty("key"));
+                if (Nonnegative(data.GetProperty("payload_length")) > 900000) throw Gap("malformed_frame");
+                ValidateHash(data.GetProperty("payload_sha256")); break;
+            case "warmup_terminal":
+                Integer(data.GetProperty("partition"));
+                if (data.GetProperty("offset").ValueKind != JsonValueKind.Number || !data.GetProperty("offset").TryGetInt64(out long offset) || data.GetProperty("delivered").ValueKind == JsonValueKind.True && (data.GetProperty("partition").GetInt32() < 0 || offset < 0)) throw Gap("malformed_frame");
+                goto case "terminal";
             case "prepared":
                 Attempt(data); Arm(data); if (RequiredString(data.GetProperty("role")) is not ("original" or "resend")) throw Gap("malformed_frame");
                 long ordinal = Nonnegative(data.GetProperty("ordinal")); if (ordinal > 4 || Nonnegative(data.GetProperty("sequence")) != ordinal || Nonnegative(data.GetProperty("payload_length")) > 900000) throw Gap("malformed_frame");
@@ -109,7 +119,7 @@ internal static class B10AbruptWire
             case "capabilities": _ = RequiredString(data.GetProperty("request_capture")); _ = RequiredString(data.GetProperty("fatal_capture_status")); break;
         }
     }
-    internal static readonly string[] NoKillReasons = ["b10_abrupt_exposure_inconclusive", "b10_abrupt_control_incomplete", "kill_too_early", "b10_abrupt_cut_rejected", "b10_abrupt_sample_missing", "b10_abrupt_report_binding_invalid", "b10_abrupt_guard_failed", "b10_abrupt_signal_preflight_failed", "b10_abrupt_deadline_exhausted", "b10_abrupt_capture_gap"];
+    internal static readonly string[] NoKillReasons = ["b10_abrupt_exposure_inconclusive", "b10_abrupt_control_incomplete", "kill_too_early", "b10_abrupt_cut_rejected", "b10_abrupt_sample_missing", "b10_abrupt_warmup_failed", "b10_abrupt_leader_not_up", "b10_abrupt_report_binding_invalid", "b10_abrupt_guard_failed", "b10_abrupt_signal_preflight_failed", "b10_abrupt_deadline_exhausted", "b10_abrupt_capture_gap"];
     private static void ValidateTermination(JsonElement data)
     {
         if (RequiredString(data.GetProperty("termination")) is not ("intended_self_kill" or "no_kill" or "unexpected_exit" or "unknown")) throw Gap("malformed_frame");
@@ -130,6 +140,7 @@ internal static class B10AbruptWire
         string name = post ? "control-post-drain-report.json" : data.GetProperty("arm").GetString() + "-pre-acceptance-report.json";
         if (RequiredString(data.GetProperty("name")) != name || Nonnegative(data.GetProperty("length")) is 0 or > 1048576 || post && data.GetProperty("arm").GetString() != "same_instance") throw Gap("malformed_frame");
         ValidateHash(data.GetProperty("sha256")); Positive(data.GetProperty("report_sequence")); Utc(data.GetProperty("report_capture_utc"));
+        if (!post) { _ = RequiredString(data.GetProperty("warmup_attempt_id")); Integer(data.GetProperty("partition")); }
         var report = data.GetProperty("report_identity"); ExactMembers(report,"scenario_id","run_id","role","client_id"); if (RequiredString(report.GetProperty("scenario_id")) != "B10" || RequiredString(report.GetProperty("role")) != "LoadGenProducer") throw Gap("malformed_frame"); _ = RequiredString(report.GetProperty("run_id")); _ = RequiredString(report.GetProperty("client_id"));
     }
     private static void Attempt(JsonElement data) => _ = RequiredString(data.GetProperty("attempt_id"));

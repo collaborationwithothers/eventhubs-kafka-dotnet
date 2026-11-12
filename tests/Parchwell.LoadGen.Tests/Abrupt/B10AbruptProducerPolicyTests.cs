@@ -17,18 +17,20 @@ public sealed class B10AbruptProducerPolicyTests
     public async Task Given_FirstOriginalSetupTakes50Milliseconds_When_InvokingOriginals_Then_OffsetsStartAtItsNativeInvocation(string arm)
     {
         var clock = new PacingClock();
-        await using var fixture = new B10AbruptProducerTests.Fixture(clock: clock);
-        fixture.Initialize();
+        await using var fixture = new B10AbruptProducerTests.Fixture(clock: clock, advanceWarmupClock: clock.Advance);
+        InitializeOriginalsArm(fixture, arm);
+        long setupEpoch = clock.GetTimestamp();
+        int journalBeforeOriginals = fixture.Journal.Frames.Count;
         clock.Advance(TimeSpan.FromMilliseconds(1));
         fixture.Observe();
         clock.Advance(TimeSpan.FromMilliseconds(1));
         fixture.FlushHook = () =>
         {
-            if (fixture.Journal.Frames.Count == 2) clock.Advance(TimeSpan.FromMilliseconds(50));
+            if (fixture.Journal.Frames.Count == journalBeforeOriginals + 1) clock.Advance(TimeSpan.FromMilliseconds(50));
             return Task.CompletedTask;
         };
         var invocations = new List<long>();
-        fixture.Native.OnProduce = (_, _) => invocations.Add(clock.GetTimestamp());
+        fixture.Native.OnProduce = (_, _) => invocations.Add(clock.GetTimestamp() - setupEpoch);
 
         await InvokeOriginalsAsync(fixture.Runner, arm);
 
@@ -46,16 +48,18 @@ public sealed class B10AbruptProducerPolicyTests
     public async Task Given_EarlyOrQuantizedTimerWake_When_InvokingOriginals_Then_EachNativeInvocationHonorsItsExactLowerBound(string arm, bool earlyWake)
     {
         var clock = new PacingClock(earlyWake);
-        await using var fixture = new B10AbruptProducerTests.Fixture(clock: clock);
-        fixture.Initialize();
+        await using var fixture = new B10AbruptProducerTests.Fixture(clock: clock, advanceWarmupClock: clock.Advance);
+        InitializeOriginalsArm(fixture, arm);
+        long setupEpoch = clock.GetTimestamp();
+        int journalBeforeOriginals = fixture.Journal.Frames.Count;
         clock.Advance(TimeSpan.FromMilliseconds(1));
         fixture.Observe();
         clock.Advance(TimeSpan.FromMilliseconds(1));
         var invocations = new List<long>();
-        fixture.Native.OnProduce = (_, _) => invocations.Add(clock.GetTimestamp());
+        fixture.Native.OnProduce = (_, _) => invocations.Add(clock.GetTimestamp() - setupEpoch);
         fixture.FlushHook = () =>
         {
-            if (fixture.Journal.Frames.Count == 4) clock.Advance(TimeSpan.FromMicroseconds(250));
+            if (fixture.Journal.Frames.Count == journalBeforeOriginals + 3) clock.Advance(TimeSpan.FromMicroseconds(250));
             return Task.CompletedTask;
         };
 
@@ -120,6 +124,14 @@ public sealed class B10AbruptProducerPolicyTests
         Assert.Equal(11, fixture.Native.Calls.Count);
         Assert.Equal(0, fixture.Native.Disposals);
         Assert.Equal(0, fixture.Native.FlushAfterKill);
+    }
+
+    // These pacing tests isolate one originals burst after its required warm-up; the control protocol has separate coverage.
+    private static void InitializeOriginalsArm(B10AbruptProducerTests.Fixture fixture, string arm)
+    {
+        if (arm == "cross_restart")
+            typeof(B10AbruptProducer).GetField("controlComplete", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(fixture.Runner, true);
+        fixture.Initialize(arm: arm);
     }
 
     private static Task InvokeOriginalsAsync(B10AbruptProducer runner, string arm) =>

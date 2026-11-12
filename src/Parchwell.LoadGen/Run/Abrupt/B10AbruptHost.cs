@@ -66,7 +66,7 @@ internal static class B10AbruptHost
                 var parent = new B10AbruptParent(options, clock, publisher, validateCapturedStatistics: async token =>
                 {
                     LoadedScenario loaded = await host.Services.GetRequiredService<ScenarioLoader>().LoadAsync("B10", token).ConfigureAwait(false);
-                    var resolved = host.Services.GetRequiredService<ScenarioResolver>().Resolve(loaded).Configurations["C1"].Roles[KafkaClientRole.LoadGenProducer];
+                    var resolved = ProbeSettings(host.Services.GetRequiredService<ScenarioResolver>().Resolve(loaded).Configurations["C1"].Roles[KafkaClientRole.LoadGenProducer], true);
                     var settings = resolved.Settings.ToDictionary(pair => pair.Key, pair => pair.Value.Value, StringComparer.Ordinal);
                     await B10AbruptStatistics.ValidateCapturedAsync(Path.Combine(options.OutputRoot, "capture", "statistics.jsonl"),
                         new KafkaStatisticsIdentity("B10", options.RunId, KafkaClientRole.LoadGenProducer, options.PodName),
@@ -183,12 +183,20 @@ internal static class B10AbruptHost
         { value.NamespaceName = options.NamespaceName; value.ClientId = "b10-abrupt-unused-verifier"; });
     }
 
+    internal static ResolvedRoleConfiguration ProbeSettings(ResolvedRoleConfiguration role, bool child)
+    {
+        var timeout = role.Settings["message.timeout.ms"];
+        var settings = role.Settings.SetItem("message.timeout.ms", timeout with { Value = "300000", Override = null });
+        if (child) settings = settings.SetItem("linger.ms", settings["linger.ms"] with { Value = "0" });
+        return role with { Settings = settings };
+    }
+
     private static async Task<ProducerRuntime> CreateProducerAsync(IServiceProvider services, B10AbruptOptions options,
         B10AbruptJournal? journal, B10AbruptPublisher.SuccessorInput? input, CancellationToken cancellationToken)
     {
         TimeProvider clock = services.GetRequiredService<TimeProvider>();
         LoadedScenario loaded = await services.GetRequiredService<ScenarioLoader>().LoadAsync("B10", cancellationToken).ConfigureAwait(false);
-        ResolvedRoleConfiguration role = services.GetRequiredService<ScenarioResolver>().Resolve(loaded).Configurations["C1"].Roles[KafkaClientRole.LoadGenProducer];
+        ResolvedRoleConfiguration role = ProbeSettings(services.GetRequiredService<ScenarioResolver>().Resolve(loaded).Configurations["C1"].Roles[KafkaClientRole.LoadGenProducer], options.Role == "child");
         ProducerConfig config = services.GetRequiredService<KafkaConfigurationFactory>().CreateLoadGenProducer().Configuration;
         foreach (var setting in role.Settings) config.Set(setting.Key, setting.Value.Value);
         string[] brokers = await ReadExpectedBrokersAsync(options, cancellationToken).ConfigureAwait(false);

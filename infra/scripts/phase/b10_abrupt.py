@@ -24,7 +24,9 @@ DATA_FIELDS = {key: set(value.split()) for key, value in {
     'registration': 'registered_utc',
     'child_started': 'pid start_time_ticks boot_id',
     'prepared': 'attempt_id arm role ordinal probe_id key sequence payload_length payload_sha256 predecessor_attempt_id',
-    'pre_acceptance_report': 'arm attempt_id name length sha256 report_identity report_sequence report_capture_utc',
+    'warmup_prepared': 'attempt_id arm key payload_length payload_sha256',
+    'warmup_terminal': 'attempt_id completion_source delivered error_code persistence_status partition offset',
+    'pre_acceptance_report': 'arm attempt_id name length sha256 report_identity report_sequence report_capture_utc warmup_attempt_id partition',
     'post_drain_report': 'arm attempt_id name length sha256 report_identity report_sequence report_capture_utc',
     'accepted': 'attempt_id prepared_sequence',
     'synchronous_rejection': 'attempt_id prepared_sequence error_code error_reason',
@@ -40,7 +42,7 @@ DATA_FIELDS = {key: set(value.split()) for key, value in {
     'termination': 'termination outcome detail signal_observation successor_permitted child exit_observed exit_code_local_observation runtime_version wait_bound_milliseconds cgroup_before cgroup_after control_unconfirmed_attempt_ids kill_unconfirmed_attempt_ids capture_gaps native_error_count native_fatal_count native_tail manifest',
     'successor_receipt': 'first_termination journal kill_unconfirmed_attempt_ids registration artifacts ready_utc release_utc invocations cleanup_completed cross_host_timing',
 }.items()}
-PRODUCING_KINDS = frozenset(('child_started', 'prepared', 'pre_acceptance_report', 'accepted',
+PRODUCING_KINDS = frozenset(('child_started', 'warmup_prepared', 'prepared', 'pre_acceptance_report', 'accepted',
     'synchronous_rejection', 'cut', 'control_drained', 'post_drain_report', 'kill_intent', 'signal_failed', 'no_kill'))
 
 # Emitted outcomes are the closed list in the approved diagnostic contract.
@@ -56,6 +58,8 @@ b10_abrupt_exit_unobserved
 b10_abrupt_unexpected_exit
 b10_abrupt_capture_gap
 b10_abrupt_sample_missing
+b10_abrupt_warmup_failed
+b10_abrupt_leader_not_up
 b10_abrupt_report_binding_invalid
 b10_abrupt_guard_failed
 b10_abrupt_control_incomplete
@@ -167,6 +171,21 @@ def bound(reference, name, raw):
 
 def nonnegative(value):
     return type(value) is int and 0 <= value <= 9223372036854775807
+
+
+def leader_up(raw, topic, partition):
+    """Check the selected partition's unique leader in the published native report."""
+    try:
+        report = decode(raw, 1048576)
+        leader = report['topics'][topic]['partitions'][str(partition)]['leader']
+        brokers = report['brokers']
+        if type(leader) is not int or leader < 0 or not isinstance(brokers, dict):
+            return False
+        matching = [broker for broker in brokers.values() if isinstance(broker, dict)
+                    and type(broker.get('nodeid')) is int and broker['nodeid'] == leader]
+        return len(matching) == 1 and matching[0].get('state') == 'UP'
+    except (ValueError, LookupError, TypeError, AttributeError):
+        return False
 
 
 def required_string(value):
@@ -430,11 +449,30 @@ class Trial:
         if not isinstance(identity, dict) or set(identity) != IDENTITY_FIELDS or identity != expected or type(identity['repeat']) is not int:
             raise ValueError('diagnostic identity')
         if kind not in DATA_FIELDS or not isinstance(value['data'], dict) or set(value['data']) != DATA_FIELDS[kind]:
+            if kind in ('warmup_prepared', 'warmup_terminal'):
+                raise ValueError('journal malformed_frame')
             raise ValueError('diagnostic data members')
         self.validate_data(kind, value['data'])
         return value
 
     def validate_data(self, kind, data):
+        if kind == 'warmup_prepared':
+            if (data['arm'] not in ('same_instance', 'cross_restart')
+                    or not all(required_string(data[key]) for key in ('attempt_id', 'key'))
+                    or not nonnegative(data['payload_length']) or data['payload_length'] > 900000
+                    or not isinstance(data['payload_sha256'], str)
+                    or not re.fullmatch('[0-9a-f]{64}', data['payload_sha256'])):
+                raise ValueError('journal malformed_frame')
+        if kind == 'warmup_terminal':
+            if (not required_string(data['attempt_id']) or data['completion_source'] != 'callback'
+                    or type(data['delivered']) is not bool
+                    or any(type(data[key]) is not int or not -2147483648 <= data[key] <= 2147483647
+                           for key in ('error_code', 'partition'))
+                    or data['persistence_status'] is not None and (type(data['persistence_status']) is not int
+                        or not -2147483648 <= data['persistence_status'] <= 2147483647)
+                    or type(data['offset']) is not int or not -9223372036854775808 <= data['offset'] <= 9223372036854775807
+                    or data['delivered'] and (data['partition'] < 0 or data['offset'] < 0)):
+                raise ValueError('journal malformed_frame')
         integer_fields = {
             'child_started': ('pid', 'start_time_ticks'),
             'prepared': ('ordinal', 'sequence', 'payload_length'),
@@ -492,6 +530,9 @@ class Trial:
                     or kind == 'pre_acceptance_report' and not required_string(data['attempt_id'])
                     or kind == 'post_drain_report' and (data['arm'] != 'same_instance' or data['attempt_id'] is not None)):
                 raise ValueError('report binding')
+        if kind == 'pre_acceptance_report' and (not required_string(data['warmup_attempt_id'])
+                or type(data['partition']) is not int or not -2147483648 <= data['partition'] <= 2147483647):
+            raise ValueError('b10_abrupt_report_binding_invalid')
         if kind in ('registration', 'pre_acceptance_report', 'post_drain_report'):
             self.utc_ticks(data['registered_utc'] if kind == 'registration' else data['report_capture_utc'])
         if kind in ('abrupt_manifest', 'termination', 'successor_receipt'):
@@ -567,7 +608,7 @@ class Trial:
                    for key in ('monotonic_ticks', 'clock_frequency')) or frame['clock_frequency'] == 0:
                 raise ValueError('journal clock')
             self.utc_ticks(frame['observed_utc'])
-            if frame['kind'] not in PRODUCING_KINDS | {'terminal', 'native_error', 'gap'}:
+            if frame['kind'] not in PRODUCING_KINDS | {'terminal', 'warmup_terminal', 'native_error', 'gap'}:
                 raise ValueError('journal record kind')
             self.envelope(encode({key: frame[key] for key in ENVELOPE_FIELDS}), frame['kind'], observation, maximum=JOURNAL_MAXIMUM)
             if frame['kind'] == 'gap':
@@ -575,7 +616,63 @@ class Trial:
             frames.append(frame)
         if frames[0]['kind'] != 'child_started' or sum(frame['kind'] == 'child_started' for frame in frames) != 1:
             raise ValueError('journal child identity')
+        self.validate_warmups(frames)
         return frames
+
+    def validate_warmups(self, frames):
+        prepared, terminals = {}, {}
+        for frame in frames:
+            kind, data = frame['kind'], frame['data']
+            if kind == 'warmup_prepared':
+                arm = data['arm']
+                if (arm in prepared
+                        or data['attempt_id'] != frame['identity']['instance_id'] + '-' + arm + '-warmup'
+                        or data['key'] != 'B10/' + self.phase()['run_id'] + '/C1/1/' + arm
+                        or arm == 'cross_restart' and not self.control_complete_before(frames, frame['sequence'])):
+                    raise ValueError('journal malformed_frame')
+                prepared[arm] = frame
+            elif kind == 'warmup_terminal':
+                warmup = next((item for item in prepared.values()
+                               if item['data']['attempt_id'] == data['attempt_id']), None)
+                if warmup is None or data['attempt_id'] in terminals:
+                    raise ValueError('journal malformed_frame')
+                terminals[data['attempt_id']] = frame
+            elif kind == 'prepared' and data['role'] == 'original' and data['ordinal'] == 0:
+                warmup = prepared.get(data['arm'])
+                terminal = terminals.get(warmup['data']['attempt_id']) if warmup else None
+                if (terminal is None or terminal['data']['delivered'] is not True
+                        or terminal['data']['error_code'] != 0 or terminal['data']['persistence_status'] not in (0, 2)):
+                    raise ValueError('journal malformed_frame')
+            elif kind == 'pre_acceptance_report':
+                warmup = prepared.get(data['arm'])
+                terminal = terminals.get(warmup['data']['attempt_id']) if warmup else None
+                if (terminal is None or data['warmup_attempt_id'] != warmup['data']['attempt_id']
+                        or data['partition'] != terminal['data']['partition']
+                        or self.utc_ticks(data['report_capture_utc']) <= self.utc_ticks(terminal['observed_utc'])):
+                    raise ValueError('b10_abrupt_report_binding_invalid')
+
+    def control_complete_before(self, frames, sequence):
+        prior = [frame for frame in frames if frame['sequence'] < sequence]
+        attempts = [frame for frame in prior if frame['kind'] == 'prepared' and frame['data']['arm'] == 'same_instance']
+        originals = [frame['data']['ordinal'] for frame in attempts if frame['data']['role'] == 'original']
+        cuts = [frame for frame in prior if frame['kind'] == 'cut']
+        drains = [frame for frame in prior if frame['kind'] == 'control_drained']
+        reports = [frame for frame in prior if frame['kind'] == 'post_drain_report']
+        if (originals != list(range(5)) or len(cuts) != 1 or not cuts[0]['data']['unconfirmed_attempt_ids']
+                or len(drains) != 1 or len(reports) != 1 or drains[0]['data']['flush_returned'] is not True
+                or drains[0]['data']['out_queue_length'] != 0
+                or not cuts[0]['sequence'] < drains[0]['sequence'] < reports[0]['sequence']):
+            return False
+        resends = [frame for frame in attempts if frame['data']['role'] == 'resend']
+        if ([frame['data']['predecessor_attempt_id'] for frame in resends] != cuts[0]['data']['unconfirmed_attempt_ids']
+                or any(not cuts[0]['sequence'] < frame['sequence'] < drains[0]['sequence']
+                       or self.utc_ticks(frame['observed_utc']) < self.utc_ticks(cuts[0]['data']['release_utc']) for frame in resends)):
+            return False
+        accepted = {frame['data']['attempt_id'] for frame in prior if frame['kind'] == 'accepted'}
+        terminal = {frame['data']['attempt_id'] for frame in prior if frame['kind'] == 'terminal'}
+        rejected = {frame['data']['attempt_id'] for frame in prior if frame['kind'] == 'synchronous_rejection'}
+        return all(frame['data']['attempt_id'] in rejected
+                   or frame['data']['attempt_id'] in accepted & terminal for frame in attempts)
 
     def accept_diagnostic_publication(self, observation, files):
         if not set(FIRST_FILES) <= set(files) <= set(FIRST_FILES + REPORT_FILES):
@@ -705,6 +802,8 @@ class Trial:
                 if name not in files:
                     raise ValueError('b10_abrupt_publication_ambiguous')
                 bound(report, name, files[name])
+                if kind == 'pre_acceptance_report' and not leader_up(files[name], 'document-events', data['partition']):
+                    raise ValueError('b10_abrupt_report_binding_invalid')
                 reports.append(report)
             if kind in PRODUCING_KINDS:
                 last_producing = frame

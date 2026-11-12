@@ -86,6 +86,7 @@ internal sealed class B10AbruptJournal : IAsyncDisposable
     }
     internal static bool FitsByteBudget(long existing, long added) => existing >= 0 && added >= 0 && existing <= MaximumBytes && added <= MaximumBytes - existing;
     internal bool TryCaptureTerminal(JsonElement data) => Enqueue("terminal", data);
+    internal bool TryCaptureWarmupTerminal(JsonElement data) => Enqueue("warmup_terminal", data);
     internal bool TryCaptureNativeError(int errorCode, string errorName, bool isError, bool isFatal, long monotonicTicks)
     {
         lock (pending)
@@ -163,11 +164,24 @@ internal sealed class B10AbruptJournal : IAsyncDisposable
             start += length + 1;
         }
         Dictionary<string,B10AbruptWire.Frame> prepared = new(StringComparer.Ordinal); HashSet<string> accepted = new(StringComparer.Ordinal), rejected = new(StringComparer.Ordinal), terminal = new(StringComparer.Ordinal); Dictionary<string,List<B10AbruptWire.Frame>> reports = new(StringComparer.Ordinal);
+        Dictionary<string, B10AbruptWire.Frame> warmups = new(StringComparer.Ordinal), warmupTerminals = new(StringComparer.Ordinal);
         string[] control = []; bool cut = false, kill = false;
         foreach (var frame in records)
         {
             var data = frame.Data;
             string? id = data.TryGetProperty("attempt_id", out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+            if (frame.Kind == "warmup_prepared")
+            {
+                string arm = data.GetProperty("arm").GetString()!;
+                if (!warmups.TryAdd(arm, frame) || id != $"{frame.Identity.InstanceId}-{arm}-warmup"
+                    || data.GetProperty("key").GetString() != $"B10/{frame.Identity.RunId}/C1/1/{arm}"
+                    || arm == "cross_restart" && !ControlCompleteBefore(frame.Sequence)) Gap("malformed_frame");
+            }
+            if (frame.Kind == "warmup_terminal")
+            {
+                if (!warmups.Values.Any(warmup => warmup.Data.GetProperty("attempt_id").GetString() == id)
+                    || !warmupTerminals.TryAdd(id!, frame)) Gap("malformed_frame");
+            }
             if (frame.Kind == "prepared")
             {
                 if (!prepared.TryAdd(id!,frame)) Gap("malformed_frame");
@@ -175,6 +189,12 @@ internal sealed class B10AbruptJournal : IAsyncDisposable
                 if (arm == "cross_restart" && !ControlCompleteBefore(frame.Sequence)) Gap("malformed_frame");
                 if (data.GetProperty("key").GetString() != $"B10/{frame.Identity.RunId}/C1/1/{arm}" || data.GetProperty("probe_id").GetString() != data.GetProperty("key").GetString()) Gap("malformed_frame");
                 long ordinal = data.GetProperty("ordinal").GetInt64();
+                if (ordinal == 0 && data.GetProperty("role").GetString() == "original"
+                    && (!warmups.TryGetValue(arm, out var warmup)
+                        || !warmupTerminals.TryGetValue(warmup.Data.GetProperty("attempt_id").GetString()!, out var completion)
+                        || !completion.Data.GetProperty("delivered").GetBoolean() || completion.Data.GetProperty("error_code").GetInt32() != 0
+                        || completion.Data.GetProperty("persistence_status").ValueKind != JsonValueKind.Number
+                        || completion.Data.GetProperty("persistence_status").GetInt32() is not (0 or 2))) Gap("malformed_frame");
                 var previous = prepared.Values.Where(item => item.Sequence < frame.Sequence && item.Data.GetProperty("arm").GetString() == arm).ToArray();
                 if (data.GetProperty("role").GetString() == "original")
                 {
@@ -190,6 +210,10 @@ internal sealed class B10AbruptJournal : IAsyncDisposable
             {
                 string arm = data.GetProperty("arm").GetString()!; if (!reports.TryGetValue(arm,out var list)) reports[arm] = list = [];
                 list.Add(frame); if (list.Count > 1) failures.TryAdd(arm,"b10_abrupt_report_binding_invalid");
+                if (!warmups.TryGetValue(arm, out var warmup) || data.GetProperty("warmup_attempt_id").GetString() != warmup.Data.GetProperty("attempt_id").GetString()
+                    || !warmupTerminals.TryGetValue(warmup.Data.GetProperty("attempt_id").GetString()!, out var completion)
+                    || data.GetProperty("partition").GetInt32() != completion.Data.GetProperty("partition").GetInt32()
+                    || DateTimeOffset.ParseExact(data.GetProperty("report_capture_utc").GetString()!, "O", CultureInfo.InvariantCulture) <= DateTimeOffset.ParseExact(completion.ObservedUtc, "O", CultureInfo.InvariantCulture)) failures.TryAdd(arm, "b10_abrupt_report_binding_invalid");
                 if (!prepared.TryGetValue(id!,out var original) || original.Data.GetProperty("ordinal").GetInt32() != 0 || original.Data.GetProperty("role").GetString() != "original" || original.Data.GetProperty("arm").GetString() != arm || data.GetProperty("report_identity").GetProperty("run_id").GetString() != frame.Identity.RunId || data.GetProperty("report_identity").GetProperty("client_id").GetString() != frame.Identity.InstanceId || DateTimeOffset.Parse(data.GetProperty("report_capture_utc").GetString()!,CultureInfo.InvariantCulture) >= DateTimeOffset.Parse(frame.ObservedUtc,CultureInfo.InvariantCulture)) failures.TryAdd(arm,"b10_abrupt_report_binding_invalid");
             }
             if (frame.Kind == "post_drain_report")
