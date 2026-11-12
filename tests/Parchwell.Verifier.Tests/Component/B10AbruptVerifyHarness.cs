@@ -128,7 +128,7 @@ internal sealed class B10AbruptVerifyHarness : IDisposable, IVerifierArtifactSto
             ["RunId"] = "synthetic", ["VerifierCommit"] = B10AbruptVerifyEvidence.Commit, ["SourceCommit"] = B10AbruptVerifyEvidence.Commit,
             ["RepeatPrefix"] = "synthetic/C1/r1/", ["ExpectedInstanceId"] = "synthetic-c1-r1-loadgen",
             ["JobName"] = "synthetic-c1-r1-b10-abrupt-verify", ["PodName"] = "synthetic-verifier", ["PodUid"] = "synthetic-verifier-uid",
-            ["VerifierClientId"] = "synthetic-verifier", ["NamespaceName"] = "synthetic", ["BlobServiceUri"] = "https://synthetic.blob.core.windows.net/",
+            ["VerifierClientId"] = "synthetic-verifier", ["NamespaceName"] = "synthetic-namespace", ["BlobServiceUri"] = "https://synthetic.blob.core.windows.net/",
             ["VerifierContainer"] = "verifier", ["LedgerContainer"] = "ledger", ["TenantId"] = "synthetic-tenant", ["WorkloadIdentityClientId"] = "synthetic-client",
             ["FederatedTokenFilePath"] = "/tmp/synthetic-token", ["LoadGenImage"] = B10AbruptVerifyEvidence.Image,
             ["VerifierImage"] = "registry.invalid/verifier@sha256:" + new string('c', 64),
@@ -240,7 +240,8 @@ internal sealed class B10AbruptVerifyHarness : IDisposable, IVerifierArtifactSto
     public Task<BlobListing> ListAsync(string prefix, CancellationToken cancellationToken)
     {
         Listings++; string[] names = Ledger.Keys.Where(name => name.StartsWith(prefix, StringComparison.Ordinal)).ToArray();
-        return Task.FromResult(IncompleteListing ? new BlobListing(names, 17, false, "listing_incomplete") : new BlobListing(names, 1, true));
+        return Task.FromResult(IncompleteListing && prefix.Contains("/b10-abrupt-diagnostic/", StringComparison.Ordinal)
+            ? new BlobListing(names, 17, false, "listing_incomplete") : new BlobListing(names, 1, true));
     }
     public Task CreateAsync(string name, byte[] content, CancellationToken cancellationToken)
     { cancellationToken.ThrowIfCancellationRequested(); Creates++; Verifier.Add(name, content); return Task.CompletedTask; }

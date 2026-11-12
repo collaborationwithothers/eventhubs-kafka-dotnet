@@ -82,7 +82,9 @@ public sealed class B10AbruptVerifyTests(B10AbruptVerifyKafkaFixture kafka) : IC
         Dictionary<string, byte[]> timeout = await B10AbruptVerifyEvidence.ExportTimeoutAsync();
         B10AbruptVerifyEvidence combined = B10AbruptVerifyEvidence.FromExports(real, timeout);
         using var run = new B10AbruptVerifyHarness(kafka.Bootstrap, combined.Files);
+        run.Configuration["Verifier:NamespaceName"] = "unit-test";
         await SuccessAsync(run);
+        Assert.Empty(run.Data["eligibility_reasons"]!.AsArray());
         JsonObject termination = JsonNode.Parse(real["first/termination.json"])!["data"]!.AsObject();
         JsonArray invocations = JsonNode.Parse(real["successor/completion.json"])!["data"]!["invocations"]!.AsArray();
         foreach ((string armName, string set) in new[] { ("same_instance", "control_unconfirmed_attempt_ids"), ("cross_restart", "kill_unconfirmed_attempt_ids") })
@@ -260,7 +262,13 @@ public sealed class B10AbruptVerifyTests(B10AbruptVerifyKafkaFixture kafka) : IC
         await kafka.ResetAsync(); using var run = NewRun(); await run.ProduceAsync(0, 0);
         run.CaptureStart(); await run.ProduceAsync(0, 1); await run.ProduceAsync(0, 2);
         run.AfterEndQuery = () => run.ProduceAsync(0, 3).GetAwaiter().GetResult();
-        await SuccessAsync(run);
+        await SuccessAsync(run, 9);
+        Assert.Empty(run.Data["eligibility_reasons"]!.AsArray());
+        foreach (JsonNode? arm in run.Data["arms"]!.AsArray())
+        {
+            Assert.Null(arm!["lost_resends"]);
+            Assert.All(arm["members"]!.AsArray(), member => Assert.Null(member!["resend_lost"]));
+        }
         Assert.Equal(new long[] { 1, 2 }, Member(Arm(run, "cross_restart"))["copies"]!.AsArray().Select(copy => Count(copy!, "offset")));
     }
 

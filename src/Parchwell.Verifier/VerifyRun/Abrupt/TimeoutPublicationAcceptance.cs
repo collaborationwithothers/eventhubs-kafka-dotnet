@@ -41,11 +41,11 @@ internal static class TimeoutPublicationAcceptance
         {
             if(!payloads.TryGetValue(name,out byte[]? bytes)||bytes is null){rejected.Add("publication_object_missing");incomplete=true;continue;}
             total=checked(total+bytes.LongLength);
-            if(bytes.LongLength>Math.Min(MaximumObjectBytes,configuredObjectLimit))rejected.Add("publication_object_oversized");
+            if(!FitsObjectBytes(bytes.LongLength,configuredObjectLimit))rejected.Add("publication_object_oversized");
             string hash=Convert.ToHexStringLower(SHA256.HashData(bytes));
             objectRefs.Add(new("ledger",expectedPublication+name,bytes.LongLength,hash));
         }
-        if(total>Math.Min(MaximumAggregateBytes,configuredAggregateLimit))rejected.Add("publication_aggregate_oversized");
+        if(!FitsAggregateBytes(total,configuredAggregateLimit))rejected.Add("publication_aggregate_oversized");
         if(index is null) {rejected.Add("publication_index_unavailable");incomplete=true;}
         else
         {
@@ -98,6 +98,12 @@ internal static class TimeoutPublicationAcceptance
         var snapshot=new PublicationAcceptanceSnapshot(producerPrefix,registration.Identity,sourceCommit,startReference,inventoryReference,producerReference,objectRefs);
         return new(snapshot,payloads,[],false);
     }
+
+    internal static bool FitsObjectBytes(long byteLength,long configuredLimit)=>
+        byteLength<=Math.Min(MaximumObjectBytes,configuredLimit);
+
+    internal static bool FitsAggregateBytes(long byteLength,long configuredLimit)=>
+        byteLength<=Math.Min(MaximumAggregateBytes,configuredLimit);
 
     private static bool Matches(ProducerCompletionReceipt receipt,ProducerRegistration registration)=>
         receipt.SchemaVersion==registration.SchemaVersion&&receipt.Identity==registration.Identity&&receipt.Phase==registration.Phase&&

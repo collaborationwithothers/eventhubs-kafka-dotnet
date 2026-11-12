@@ -1,6 +1,9 @@
-using System.Globalization;
 using System.Text;
 using System.Text.Json.Nodes;
+using Parchwell.Verifier.Common.Phase;
+using Parchwell.Verifier.Common.Results;
+using Parchwell.Verifier.Common.Serialization;
+using Parchwell.Verifier.VerifyRun.Input;
 using Xunit;
 
 namespace Parchwell.Verifier.Tests.Component;
@@ -82,14 +85,18 @@ public sealed class B10AbruptVerifyClassificationTests(B10AbruptVerifyKafkaFixtu
     [InlineData("consumed")]
     public async Task Given_ResendLossCandidate_When_WatermarksAreChecked_Then_LossRequiresStableEndLine_T9_T24_T25_T26(string state)
     {
-        await kafka.ResetAsync(); using var run = NewRun();
+        await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence();
+        if (state == "consumed") SetT2Rows(evidence);
+        using var run = NewRun(evidence);
+        if (state == "consumed") await ProduceT2Async(run);
         // The control resend is consumed so the only possible missing resend belongs to cross_restart.
-        await run.ProduceAsync(1, 0, "same_instance", attempt: "t4");
-        if (state == "consumed") await run.ProduceAsync(0, 0, instance: B10AbruptVerifyEvidence.Second, attempt: "r4");
+        await run.ProduceAsync(2, 0, "same_instance", attempt: "t4");
+        if (state == "consumed") await run.ProduceAsync(2, 1, instance: B10AbruptVerifyEvidence.Second, attempt: "r4");
         run.BeforeReRead = () => { if (state == "advanced") run.ProduceAsync(0, 0).GetAwaiter().GetResult(); };
         run.FailReRead = state == "timeout";
         await AssertResult(run, state is "advanced" or "timeout" ? [9] : [], []);
         Assert.Equal(state == "consumed" ? 0 : 1, run.ReReads);
+        if (state == "consumed") AssertT2Counts(run);
         JsonNode member = Arm(run, "cross_restart")["members"]![0]!;
         if (state is "advanced" or "timeout") { Assert.Null(member["resend_lost"]); Assert.Null(Arm(run, "cross_restart")["lost_resends"]); }
         else Assert.Equal(state != "consumed", member["resend_lost"]!.GetValue<bool>());
@@ -209,9 +216,39 @@ public sealed class B10AbruptVerifyClassificationTests(B10AbruptVerifyKafkaFixtu
     [InlineData("registration", 2)]
     public async Task Given_UnavailableFirstEvidence_When_HostRuns_Then_TimeoutStillClassifiesAndNoAbsentCheckAddsReasons_T23(string defect, int reason)
     {
-        await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence();
+        await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence(); SetT2Rows(evidence);
         if (defect == "hash") evidence.Change("first/termination.json", root => root["data"]!["manifest"]!["sha256"] = new string('f', 64)); else evidence.Files.Remove("first/registration.json");
-        using var run = NewRun(evidence); await AssertResult(run, [2], [reason]); Assert.Null(run.Data["arms"]); Assert.NotNull(run.Data["timeout"]); Assert.NotNull(run.Data["end_line"]); Assert.True(run.Data["window_complete"]!.GetValue<bool>());
+        using var run = NewRun(evidence); await ProduceT2Async(run); await AssertResult(run, [2], [reason]); Assert.Null(run.Data["arms"]); AssertT2Counts(run); Assert.NotNull(run.Data["end_line"]); Assert.True(run.Data["window_complete"]!.GetValue<bool>()); Assert.Equal("unavailable", run.Data["comparison"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task Given_ValidTimeoutCounts_When_HostPublishes_Then_ClosedDiagnosticOutputIsRejectedByScientificReaders_T19()
+    {
+        await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence(); SetT2Rows(evidence);
+        using var run = NewRun(evidence); await ProduceT2Async(run); await AssertResult(run, [], []); AssertT2Counts(run);
+        byte[] bytes = run.Verifier[B10AbruptVerifyHarness.Output];
+        AssertNames(run.Result, "data", "dialect", "identity", "kind", "purpose", "schema_version", "scientific_admissible", "synthetic");
+        AssertNames(run.Result["identity"]!, "configuration_id", "image_reference", "instance_id", "job_name", "phase", "pod_name", "pod_uid", "predecessor_instance_id", "repeat", "run_id", "scenario_id", "source_commit");
+        AssertNames(run.Data, "arms", "comparison", "eligibility", "eligibility_reasons", "end_line", "finality", "first_instance_id", "native_errors", "problem_details", "problems", "start_line", "successor_instance_id", "timeout", "timeout_instance_id", "window_complete", "window_limit");
+        AssertNames(run.Data["timeout"]!, TimeoutFields);
+        AssertNames(run.Data["native_errors"]!, "count", "fatal_count", "tail");
+        foreach (JsonNode? arm in run.Data["arms"]!.AsArray())
+        {
+            AssertNames(arm!, "arm", "key", "lost_resends", "members", "originals_seen", "pair_count", "resend_invoked", "resends_seen", "unconfirmed_count", "unreported_attempts", "unreported_seen", "unreported_unseen", "witness");
+            foreach (JsonNode? member in arm!["members"]!.AsArray())
+            {
+                AssertNames(member!, "copies", "copies_truncated", "copy_count", "original_attempt_id", "original_copies", "other_copies", "pair_count", "payload_sha256", "resend_attempt_id", "resend_copies", "resend_lost", "resend_terminal", "sequence");
+                AssertNames(member!["resend_terminal"]!, "delivered", "error_code", "persistence_status");
+                foreach (JsonNode? copy in member["copies"]!.AsArray()) AssertNames(copy!, "attempt_id", "instance_id", "offset", "partition", "role");
+            }
+        }
+        foreach (string line in new[] { "start_line", "end_line" })
+            foreach (JsonNode? coordinate in run.Data[line]!.AsArray()) AssertNames(coordinate!, "offset", "partition");
+        Assert.True(run.Result["synthetic"]!.GetValue<bool>()); Assert.False(run.Result["scientific_admissible"]!.GetValue<bool>());
+        var limits = new InputLimits(32, 268435456, 2147483648, 65536, 4096, 10000, 4096);
+        Assert.ThrowsAny<FormatException>(() => PhaseWireCodec.ReadRegistration(bytes)); Assert.ThrowsAny<FormatException>(() => PhaseWireCodec.ReadReceipt(bytes));
+        Assert.False(VerifierResultCodec.Read(bytes, "diagnostic", limits, 100).IsSuccess);
+        Assert.ThrowsAny<FormatException>(() => B10SweepEvidenceCodec.ReadFinalization(bytes, limits));
     }
 
     [Fact]
@@ -250,6 +287,15 @@ public sealed class B10AbruptVerifyClassificationTests(B10AbruptVerifyKafkaFixtu
         Assert.Equal(1, await run.RunAsync()); Assert.Equal(0, run.Reads); Assert.Equal(0, run.Listings); Assert.Equal(0, run.Creates);
     }
 
+    private static void SetT2Rows(B10AbruptVerifyEvidence evidence) => evidence.SetTimeoutRows(B10AbruptVerifyEvidence.TimeoutRow("t1", "k1", 0), B10AbruptVerifyEvidence.TimeoutRow("t2", "k2", 1, false), B10AbruptVerifyEvidence.TimeoutRow("t3", "k2", 2));
+    private static async Task ProduceT2Async(B10AbruptVerifyHarness run)
+    {
+        await run.ProduceAsync(0, 0, instance: B10AbruptVerifyEvidence.Timeout, attempt: "t1", key: "k1", sequence: 0);
+        await run.ProduceAsync(1, 0, instance: B10AbruptVerifyEvidence.Timeout, attempt: "t2", key: "k2", sequence: 0);
+        await run.ProduceAsync(1, 1, instance: B10AbruptVerifyEvidence.Timeout, attempt: "t3", key: "k2", sequence: 0);
+    }
+    private static void AssertT2Counts(B10AbruptVerifyHarness run) => Assert.Equal(new long[] { 2, 0, 1, 0, 1, 0 }, TimeoutFields.Select(field => Number(run.Data["timeout"]!, field)));
+    private static void AssertNames(JsonNode node, params string[] names) => Assert.Equal(names.Order(StringComparer.Ordinal), node.AsObject().Select(pair => pair.Key).Order(StringComparer.Ordinal));
     private B10AbruptVerifyHarness NewRun(B10AbruptVerifyEvidence? evidence = null) => new(kafka.Bootstrap, (evidence ?? new()).Files);
     private static async Task AssertResult(B10AbruptVerifyHarness run, int[] problems, int[] reasons)
     {
@@ -261,7 +307,18 @@ public sealed class B10AbruptVerifyClassificationTests(B10AbruptVerifyKafkaFixtu
     }
     private static JsonObject Arm(B10AbruptVerifyHarness run, string arm) => run.Data["arms"]!.AsArray().Single(node => node!["arm"]!.GetValue<string>() == arm)!.AsObject();
     private static long Number(JsonNode node, string field) => node[field]!.GetValue<long>();
-    private static void Resequence(B10AbruptVerifyEvidence evidence) { for (int index = 0; index < evidence.Frames.Count; index++) evidence.Frames[index]["sequence"] = index + 1; }
+    private static void Resequence(B10AbruptVerifyEvidence evidence)
+    {
+        var prepared = new Dictionary<string, long>(StringComparer.Ordinal);
+        for (int index = 0; index < evidence.Frames.Count; index++)
+        {
+            JsonObject frame = evidence.Frames[index]; frame["sequence"] = index + 1L;
+            string kind = frame["kind"]!.GetValue<string>(); JsonObject data = frame["data"]!.AsObject();
+            string? id = data["attempt_id"]?.GetValue<string>();
+            if (kind == "prepared") prepared[id!] = index + 1L;
+            else if (kind is "accepted" or "synchronous_rejection" && id is not null && prepared.TryGetValue(id, out long sequence)) data["prepared_sequence"] = sequence;
+        }
+    }
     private static void RefreshReport(B10AbruptVerifyEvidence evidence, JsonObject frame)
     {
         byte[] bytes = evidence.Files["first/" + frame["data"]!["name"]!.GetValue<string>()]; frame["data"]!["length"] = bytes.Length; frame["data"]!["sha256"] = B10AbruptVerifyEvidence.Hash(bytes);

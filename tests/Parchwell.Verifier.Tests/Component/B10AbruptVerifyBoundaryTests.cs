@@ -17,6 +17,7 @@ public sealed class B10AbruptVerifyBoundaryTests(B10AbruptVerifyKafkaFixture kaf
 {
     private const string FirstProblem = "b10_abrupt_verify_first_evidence_invalid";
     private const string SuccessorProblem = "b10_abrupt_verify_successor_evidence_invalid";
+    private static readonly string[] GuardReasons = ["b10_restart_guard_failed"];
     private static readonly string[] TwoKillOriginalIds = ["z3", "a4"];
     private static readonly string[] TwoKillResendIds = ["r3", "r4"];
     private static readonly string[] JournalAttemptFields = ["attempt_id", "cut_attempt_id"];
@@ -98,6 +99,7 @@ public sealed class B10AbruptVerifyBoundaryTests(B10AbruptVerifyKafkaFixture kaf
     {
         VerifierHostOptions options = VerifierHostTestOptions.ValidOptions("b10-abrupt-verify");
         options.ScenarioId = "B10"; options.ConfigurationId = "C1"; options.Phase = "C1"; options.Repeat = 1;
+        options.ArtifactPrefix = "run-1/C1/r1/producer/";
         options.JobName = "run-1-c1-r1-b10-abrupt-verify";
         options.LoadGenImage = B10AbruptVerifyEvidence.Image; options.VerifierImage = B10AbruptVerifyEvidence.Image;
         var validator = new VerifierHostOptionsValidator();
@@ -117,7 +119,8 @@ public sealed class B10AbruptVerifyBoundaryTests(B10AbruptVerifyKafkaFixture kaf
     {
         await kafka.ResetAsync(); using var run = NewRun(new());
         string first = B10AbruptVerifyEvidence.Prefix + B10AbruptVerifyEvidence.First + "/";
-        if (defect == "empty") run.Ledger.Clear();
+        if (defect == "empty")
+            foreach (string name in run.Ledger.Keys.Where(name => name.StartsWith(B10AbruptVerifyEvidence.Prefix, StringComparison.Ordinal)).ToArray()) run.Ledger.Remove(name);
         else if (defect == "no-first")
             foreach (string name in run.Ledger.Keys.Where(name => name.StartsWith(first, StringComparison.Ordinal)).ToArray()) run.Ledger.Remove(name);
         else if (defect == "unknown-directory") run.Ledger[B10AbruptVerifyEvidence.Prefix + "unknown/unknown.json"] = [123, 125];
@@ -287,6 +290,8 @@ public sealed class B10AbruptVerifyBoundaryTests(B10AbruptVerifyKafkaFixture kaf
         }
         using var run = NewRun(evidence); Assert.Equal(0, await run.RunAsync());
         AssertProblems(run, valid ? [] : [file.StartsWith("first/", StringComparison.Ordinal) ? FirstProblem : SuccessorProblem]);
+        if (valid && file is "successor/statistics.jsonl" or "successor/request-lifecycle.jsonl")
+            Assert.Equal(GuardReasons, run.Data["eligibility_reasons"]!.AsArray().Select(Text));
     }
 
     [Theory]

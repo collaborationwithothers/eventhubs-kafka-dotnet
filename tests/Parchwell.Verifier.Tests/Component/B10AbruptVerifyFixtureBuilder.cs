@@ -25,6 +25,8 @@ internal sealed partial class B10AbruptVerifyEvidence
             Files["timeout/publication/" + name] = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(bytes!).Replace("synthetic-c5", Run, StringComparison.Ordinal));
         foreach ((string path, byte[] bytes) in ordinary.LedgerObjects.Where(pair => pair.Key.EndsWith("/registration.json", StringComparison.Ordinal) || pair.Key.EndsWith("/completion.json", StringComparison.Ordinal)))
             Files["timeout/" + Path.GetFileName(path)] = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(bytes).Replace("synthetic-c5", Run, StringComparison.Ordinal));
+        foreach (string name in new[] { "registration.json", "completion.json" })
+            Change("timeout/" + name, root => root["pod_name"] = Timeout);
         SetTimeoutRows();
         foreach (string name in new[] { "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json" })
             Files["successor/" + name] = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(Files["timeout/publication/" + name]).Replace(Timeout, Second, StringComparison.Ordinal));
@@ -48,7 +50,11 @@ internal sealed partial class B10AbruptVerifyEvidence
     {
         var evidence = new B10AbruptVerifyEvidence(); evidence.Files.Clear(); evidence.Frames.Clear();
         foreach ((string name, byte[] bytes) in files)
-            evidence.Files[name] = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(bytes).Replace(Run, run, StringComparison.Ordinal));
+        {
+            string json = Encoding.UTF8.GetString(bytes);
+            evidence.Files[name] = Encoding.UTF8.GetBytes(name.EndsWith(".jsonl", StringComparison.Ordinal)
+                ? string.Join('\n', json.Split('\n').Select(RemapDocument)) : RemapDocument(json));
+        }
         foreach (string line in Encoding.UTF8.GetString(evidence.Files["first/journal.jsonl"]).Split('\n', StringSplitOptions.RemoveEmptyEntries))
             evidence.Frames.Add(JsonNode.Parse(line)!.AsObject());
         foreach (JsonObject frame in evidence.Frames.Where(frame => frame["kind"]!.GetValue<string>() is "pre_acceptance_report" or "post_drain_report"))
@@ -57,16 +63,44 @@ internal sealed partial class B10AbruptVerifyEvidence
             frame["data"]!["length"] = bytes.Length; frame["data"]!["sha256"] = Hash(bytes);
         }
         evidence.RehashTimeout(); evidence.Rehash(); return evidence.Files;
+
+        string RemapDocument(string json) => string.IsNullOrWhiteSpace(json) ? json : Remap(JsonNode.Parse(json))!.ToJsonString();
+        JsonNode? Remap(JsonNode? node) => node switch
+        {
+            JsonObject value => new JsonObject(value.Select(pair => new KeyValuePair<string, JsonNode?>(pair.Key, Remap(pair.Value)))),
+            JsonArray value => new JsonArray(value.Select(Remap).ToArray()),
+            JsonValue value when value.TryGetValue(out string? text) && text is not null => JsonValue.Create(text.Replace(Run, run, StringComparison.Ordinal)),
+            _ => node?.DeepClone()
+        };
     }
 
     internal static B10AbruptVerifyEvidence FromExports(Dictionary<string, byte[]> abrupt, Dictionary<string, byte[]> timeout)
     {
         var evidence = new B10AbruptVerifyEvidence(); evidence.Files.Clear(); evidence.Frames.Clear();
         foreach ((string name, byte[] bytes) in abrupt)
-            evidence.Files[name] = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(bytes).Replace("broker-1", Broker, StringComparison.Ordinal));
+            evidence.Files[name] = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(bytes)
+                .Replace("broker-1", Broker, StringComparison.Ordinal).Replace("\"broker\"", "\"" + Broker + "\"", StringComparison.Ordinal));
         foreach ((string name, byte[] bytes) in timeout)
             evidence.Files["timeout/" + name["producer/pod-first/".Length..]] = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(bytes)
                 .Replace("run-1", Run, StringComparison.Ordinal).Replace("pod-first", Timeout, StringComparison.Ordinal).Replace("broker-1", Broker, StringComparison.Ordinal));
+        var normalizedStatistics = new List<string>();
+        foreach (string line in Encoding.UTF8.GetString(evidence.Files["timeout/publication/statistics.jsonl"]).Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            JsonObject envelope = JsonNode.Parse(line)!.AsObject();
+            JsonObject native = JsonNode.Parse(envelope["raw_json"]!.GetValue<string>())!.AsObject();
+            foreach (KeyValuePair<string, JsonNode?> broker in native["brokers"]!.AsObject())
+                if (!broker.Value!.AsObject().ContainsKey("source")) broker.Value["source"] = "learned";
+            envelope["raw_json"] = native.ToJsonString(); normalizedStatistics.Add(envelope.ToJsonString());
+        }
+        evidence.Files["timeout/publication/statistics.jsonl"] = Encoding.UTF8.GetBytes(string.Join('\n', normalizedStatistics) + "\n");
+        foreach (string name in new[] { "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json" })
+            evidence.Files["successor/" + name] = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(evidence.Files["timeout/publication/" + name])
+                .Replace(Timeout, Second, StringComparison.Ordinal));
+        evidence.Change("successor/capabilities.json", root =>
+        {
+            JsonNode timeoutSetting = root["resolved_configuration"]!["settings"]!["message.timeout.ms"]!;
+            timeoutSetting["value"] = "300000"; timeoutSetting["override"] = null;
+        });
         foreach (string line in Encoding.UTF8.GetString(evidence.Files["first/journal.jsonl"]).Split('\n', StringSplitOptions.RemoveEmptyEntries))
             evidence.Frames.Add(JsonNode.Parse(line)!.AsObject());
         foreach (JsonObject frame in evidence.Frames.Where(frame => frame["kind"]!.GetValue<string>() is "pre_acceptance_report" or "post_drain_report"))
