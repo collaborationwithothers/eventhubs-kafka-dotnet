@@ -13,6 +13,77 @@ public sealed class B10AbruptVerifyCoverageTests(B10AbruptVerifyKafkaFixture kaf
     private const string SuccessorProblem = "b10_abrupt_verify_successor_evidence_invalid";
 
     [Theory]
+    [InlineData("schema_version")]
+    [InlineData("source_commit")]
+    [InlineData("pod_uid")]
+    public async Task Given_InvalidCompletionBoundRegistrationAndValidLaterRead_When_HostRuns_Then_SuccessorAuthenticationUsesBoundBytes(string field)
+    {
+        await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence();
+        const string file = "successor/registration.json";
+        byte[] validRegistration = evidence.Files[file];
+        evidence.Change(file, root =>
+        {
+            if (field == "schema_version") root[field] = 2;
+            else root["identity"]![field] = "different";
+        });
+        evidence.RehashSuccessor(); using var run = NewRun(evidence);
+        string registration = B10AbruptVerifyEvidence.Prefix + B10AbruptVerifyEvidence.Second + "/registration.json";
+        int registrationReads = 0;
+        bool boundRegistrationRead = false;
+        run.BeforeRead = name =>
+        {
+            if (name != registration) return;
+            registrationReads++;
+            if (registrationReads == 2) boundRegistrationRead = true;
+            if (registrationReads >= 3) run.Ledger[name] = validRegistration;
+        };
+
+        await AssertRunAsync(run, SuccessorProblem);
+        Assert.True(boundRegistrationRead);
+        Assert.Equal(B10AbruptVerifyEvidence.First, Text(run.Data["first_instance_id"]));
+        Assert.Null(run.Data["successor_instance_id"]);
+        Assert.True(run.Data["window_complete"]!.GetValue<bool>());
+        Assert.NotNull(run.Data["arms"]);
+        Assert.Null(run.Data["arms"]![1]!["resend_invoked"]);
+    }
+
+    [Theory]
+    [InlineData("schema_version")]
+    [InlineData("source_commit")]
+    [InlineData("pod_uid")]
+    public async Task Given_FirstRegistrationChangesAfterCandidateSelection_When_HostRuns_Then_LoadedRegistrationIsReauthenticated(string field)
+    {
+        await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence();
+        const string file = "first/registration.json";
+        byte[] candidateRegistration = evidence.Files[file];
+        evidence.Change(file, root =>
+        {
+            if (field == "schema_version") root[field] = 2;
+            else root["identity"]![field] = "different";
+        });
+        byte[] changedRegistration = evidence.Files[file];
+        evidence.Files[file] = candidateRegistration;
+        using var run = NewRun(evidence);
+        string registration = B10AbruptVerifyEvidence.Prefix + B10AbruptVerifyEvidence.First + "/registration.json";
+        int registrationReads = 0;
+        bool registrationSwapped = false;
+        run.BeforeRead = name =>
+        {
+            if (name != registration || ++registrationReads != 2) return;
+            run.Ledger[name] = changedRegistration;
+            registrationSwapped = true;
+        };
+
+        await AssertRunAsync(run, FirstProblem);
+        Assert.True(registrationSwapped);
+        Assert.Null(run.Data["first_instance_id"]);
+        Assert.Null(run.Data["successor_instance_id"]);
+        Assert.Null(run.Data["arms"]);
+        Assert.Null(run.Data["end_line"]);
+        Assert.False(run.Data["window_complete"]!.GetValue<bool>());
+    }
+
+    [Theory]
     [InlineData("schema-2")]
     [InlineData("schema-3")]
     [InlineData("schema-4")]

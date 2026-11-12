@@ -138,7 +138,8 @@ internal sealed class AbruptEvidenceReader(VerifierHostOptions options,
     {
         Dictionary<string, byte[]> files = await ReadFilesAsync(prefix, pod, names, ct).ConfigureAwait(false);
         Require(files.Keys.ToHashSet(StringComparer.Ordinal).SetEquals(SuccessorFiles), "successor_files");
-        string uid = (await ReadRegistrationAsync(prefix, pod, first.Pod, ct).ConfigureAwait(false))!;
+        JsonElement registration = Envelope(files["registration.json"], "registration", options, pod, first.Pod);
+        string uid = Text(registration.GetProperty("identity"), "pod_uid");
         Require(uid != first.Uid, "pod_uid_duplicate");
         Envelope(files["manifest.json"], "cohort_inventory", options, pod, first.Pod, uid);
         JsonElement completion = Envelope(files["completion.json"], "successor_receipt", options, pod, first.Pod, uid).GetProperty("data");
