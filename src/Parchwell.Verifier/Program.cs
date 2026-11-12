@@ -193,6 +193,11 @@ internal static partial class Program
         }
         if (mode == "b10-abrupt-verify")
         {
+            services.AddParchwellScenarios(options =>
+                configuration.GetSection("Verifier:ScenarioLoadOptions").Bind(options));
+            services.AddSingleton<IScenarioSource>(provider => new FileSystemScenarioSource(
+                provider.GetRequiredService<IOptions<VerifierHostOptions>>().Value.ScenarioRoot!));
+            services.AddSingleton<RegisteredProducerConfigurationResolver>();
             services.AddSingleton<IProducerArtifactStore>(provider =>
             {
                 var options = provider.GetRequiredService<IOptions<VerifierHostOptions>>().Value;

@@ -253,6 +253,17 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         RequirePositive(options.MaxTotalInputBytes, "Verifier:MaxTotalInputBytes", errors);
         RequirePositive(options.MaxPartitions, "Verifier:MaxPartitions", errors);
         RequirePositive(options.MaxInputDepth, "Verifier:MaxInputDepth", errors);
+        RequireText(options.ScenarioRoot, "Verifier:ScenarioRoot", errors);
+        RequireText(options.ArtifactPrefix, "Verifier:ArtifactPrefix", errors);
+        if (options.ArtifactPrefix != $"{options.RunId}/C1/r1/producer/")
+            errors.Add("Verifier:ArtifactPrefix must equal the derived abrupt timeout producer prefix.");
+        RequirePositive(options.MaxRowBytes, "Verifier:MaxRowBytes", errors);
+        RequirePositive(options.MaxRowsPerArtifact, "Verifier:MaxRowsPerArtifact", errors);
+        RequirePositive(options.MaxInventoryEntries, "Verifier:MaxInventoryEntries", errors);
+        RequirePositive(options.MaxInputEntries, "Verifier:MaxInputEntries", errors);
+        RequirePositive(options.MaxNativeReportBytes, "Verifier:MaxNativeReportBytes", errors);
+        RequirePositive(options.MaxBrokerEntries, "Verifier:MaxBrokerEntries", errors);
+        ValidateScenarioLoadOptions(options.ScenarioLoadOptions, errors);
         return errors.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(errors);
     }
 

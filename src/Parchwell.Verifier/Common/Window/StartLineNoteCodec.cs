@@ -42,10 +42,11 @@ internal static class StartLineNoteCodec
 
         if (note.Identity.ScenarioId == "B10")
         {
-            if (note.ExpectedJobNames is not { Count: 2 } || note.ExpectedJobNames.Any(name =>
+            int expectedCount = VerifierHostOptions.IsB10TrialRunId(note.Identity.RunId) ? 3 : 2;
+            if (note.ExpectedJobNames?.Count != expectedCount || note.ExpectedJobNames.Any(name =>
                 string.IsNullOrWhiteSpace(name) || name.Length > 253 ||
                 name.Any(c => char.IsControl(c) || c is '/' or '\\')))
-                throw new ArgumentException("B10 start-line notes require two bounded expected Job names.", nameof(note));
+                throw new ArgumentException($"B10 start-line notes require {expectedCount} bounded expected Job names.", nameof(note));
         }
         else if (note.ExpectedJobNames is not null)
             throw new ArgumentException("Expected Job names are only supported for B10 start-line notes.", nameof(note));
