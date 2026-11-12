@@ -61,6 +61,7 @@ A session that stops for any reason ends with exactly one comment on its issue o
 
 - Before writing any Azure capability, limit, SKU, price, Kafka or librdkafka behaviour into code or docs, verify it against current official documentation and cite it. If it cannot be verified, it does not ship.
 - If you do not know, say so in the pull request. A stalled issue is recoverable; a confident wrong public claim is not.
+- Before stating a fact about this repository's code, configuration, infrastructure or workflows, in a chat reply, an issue or pull request comment, a plan or a review, read the source on the current `main`, or on the branch under discussion, in the same session, and cite the file and line. A summary, an earlier session's report or memory is not a source. If the source was not read, say so instead of stating the fact.
 
 ## Implementer and reviewer
 
