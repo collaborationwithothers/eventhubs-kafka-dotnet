@@ -55,14 +55,14 @@ Those commands check documentation. They are not the .NET build entry point. Doc
 PARCHWELL_BUILD_MAX_CPU=1 ./scripts/verify-dotnet.sh
 ```
 
-`--tier fast` passes `--filter-not-trait Tier=Docker Tier=Slow Tier=Host` to every test project. The option names were read from `dotnet test --help` on SDK 10.0.402 on 2026-11-12, and one run showed the fast tier removing exactly the marked tests. In the recorded fast-tier run (`items/435/receipt.md`) the filtered-out tests were absent from the reports and every report passed the check that rejects skips. No cited source states how the runner reports filtered-out tests, so treat that as observed, not documented. The fast tier also leaves out the spike-evidence publication, because the Docker spike test produces that evidence. `--project` runs only the named test project; give the option more than once to run several. A run with either option prints `Partial verification passed` and states that it is not the full gate. Cite a partial run as a partial run, never as the gate.
+`--tier fast` passes `--filter-not-trait Tier=Docker Tier=Slow Tier=Host` to every test project. The option names were read from `dotnet test --help` on SDK 10.0.402 on 2026-11-12, and one run showed the fast tier removing exactly the marked tests. In the recorded fast-tier run (`items/435/receipt.md`) every report passed the check that rejects skips, and the number of removed tests equalled the number of marked tests. From that I infer that the runner leaves filtered-out tests out of the report. No cited source states it. The fast tier also leaves out the spike-evidence publication, because the Docker spike test produces that evidence. `--project` runs only the named test project; give the option more than once to run several. A run with either option prints `Partial verification passed` and states that it is not the full gate. Cite a partial run as a partial run, never as the gate.
 
 Three values of the xUnit trait `Tier` mark tests that the fast tier leaves out:
 
 | Trait | Mark a test with it when |
 |---|---|
 | `Docker` | It needs a Docker daemon, directly or through Testcontainers. |
-| `Slow` | One run of the test took more than 30 s in the baseline run of 2026-11-12 (4 cores; 142.2 s, 121.1 s and 41.2 s for the three marked tests, listed in `items/435/receipt.md`). The 30 s threshold is a policy choice, not a measurement. |
+| `Slow` | One run of the test takes more than 30 s on a 4-core machine. The 30 s threshold is a policy choice, not a measurement. The three current marks come from the baseline run of 2026-11-12 (142.2 s, 121.1 s and 41.2 s, listed in `items/435/receipt.md`). |
 | `Host` | It needs a host kernel facility that managed cloud sandboxes may not provide, such as the cgroup membership the abrupt-exit capture reads. |
 
 Put the trait on the class when every test in it qualifies, and on the method otherwise. A test that needs Docker but carries no trait still runs in the full gate and in the fast tier. On a machine without Docker it fails in the fast tier, which is visible and safe. It does not disappear.

@@ -23,7 +23,7 @@ Must not change: any assertion, expected value, test body or fixture; `.github/`
 ## 3. External contracts
 
 - `./scripts/verify-dotnet.sh` with no arguments behaves as before for a passing run: the same stages, the same pass line `Verification passed. Per-project reports identify the tests executed.`, exit 0. Hosted CI (`.github/workflows/dotnet-verification.yml`, line 27) calls it that way.
-- Option names: `--tier fast|all` (the issue text also lists `docker`; it is dropped, see open question 3), `--project <name>` (repeatable), `-h`/`--help`. Environment variable: `PARCHWELL_BUILD_MAX_CPU` (positive integer).
+- Option names: `--tier fast|all` (the issue text listed `docker`; Hari decided in chat on 2026-11-12 to leave it out, and the issue text is corrected), `--project <name>` (repeatable), `-h`/`--help`. Environment variable: `PARCHWELL_BUILD_MAX_CPU` (positive integer).
 - xUnit trait key `Tier` with values `Docker`, `Slow`, `Host`.
 - Exit status: 0 on success; 2 for an unusable option or environment value; otherwise the exit status of the first failed stage.
 
@@ -95,8 +95,8 @@ Boundaries not covered by an automated test: `PARCHWELL_BUILD_MAX_CPU=1` (run on
 
 1. The guard you were offered with traits, an architecture test that fails when a class uses Testcontainers without `Tier=Docker`, is not in this pull request. It needs the architecture project to load the test assemblies, which adds an assembly reference (a P1 under "Code Review Rules"). The omission is safe, because an unmarked Docker test still runs in the full gate and fails visibly in a fast run without Docker. Do you want the guard as a separate pull request?
 2. `B10AbruptOfflineImageTests` returns at once and passes when `PARCHWELL_B10_OFFLINE_IMAGE` is unset. In the full gate it therefore counts as a passing test without testing anything. Outside this item's scope; reported here so you can decide.
-3. The issue text lists `--tier fast|docker|all`. This pull request provides only `fast` and `all`. A tier that runs only the marked tests (`docker` or `heavy`) was dropped because projects with no marked tests would fail the minimum-expected-tests check. You chose the traits method after being offered `fast|docker|all`; the drop is mine and needs your agreement. Say if CI should split on such a tier later.
-4. The session harness fixed the branch name `claude/modest-allen-wcadc4`, which lacks the issue number that AGENTS.md "Implementer and reviewer" and CLAUDE.md "Identity" require. Do you want the work published from a branch named `claude/435-...`?
+3. Answered by Hari in chat on 2026-11-12: leave the `docker` tier out. This pull request provides `fast` and `all`. A tier that runs only the marked tests would fail the minimum-expected-tests check in projects with no marked tests, and nothing needs it while CI runs `all`.
+4. Answered by Hari in chat on 2026-11-12: publish from a branch named `claude/435-verification-tiers`, which carries the issue number. The session branch `claude/modest-allen-wcadc4` holds the same commits.
 5. factory.md "Item state file" has the first implementation pull request of an issue create `items/<issue>/state.md`. This pull request adds none because it is directly authorized work, not an `implement-plan` session. Do you want one?
 
 ## 13. Stop rule

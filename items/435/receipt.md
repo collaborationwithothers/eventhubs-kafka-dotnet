@@ -1,6 +1,6 @@
 # Receipt: shorten the verification loop, pull request 1
 
-Issue [#435](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/435). Plan: `items/435/plan-verification-tiers.md` (this pull request). Authorization: directly authorized governance work, Hari's chat instruction of 2026-11-12; no approved item plan and no plan approval is claimed. Implementing tool: Claude Code, branch `claude/modest-allen-wcadc4` (the session harness fixed the branch name, so it does not carry the issue number that CLAUDE.md "Identity" asks for).
+Issue [#435](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/435). Plan: `items/435/plan-verification-tiers.md` (this pull request). Authorization: directly authorized governance work, Hari's chat instruction of 2026-11-12; no approved item plan and no plan approval is claimed. Implementing tool: Claude Code, published from branch `claude/435-verification-tiers`; the session branch `claude/modest-allen-wcadc4` holds the same commits.
 
 ## Execution card
 
@@ -40,7 +40,7 @@ Negative controls for `scripts/test-verify-dotnet.sh`, each applied to a copy of
 
 ## Round 1 corrections
 
-The first comprehensive cold review (5 findings at P1, 5 at P2) led to commit `c846c37`: `--project` validation moved before restore with a stub-log check that no `dotnet` call happens before an option error (negative control: validation disabled, script test failed); explicit `|| return` on the remaining fail-late steps and a corrected comment; documentation claims reworded as observed; the cross-reference to rule 12 corrected; the dropped `--tier docker` value, the branch name and the state file raised as plan questions 3 to 5. Not changed: the branch name, which the session harness fixed, awaiting Hari's answer to plan question 4. The pre-existing `while read` loop that gives `dotnet test` the project list as standard input is left as on `main`.
+The first comprehensive cold review (5 findings at P1, 5 at P2) led to commit `c846c37`: `--project` validation moved before restore with a stub-log check that no `dotnet` call happens before an option error (negative control: validation disabled, script test failed); explicit `|| return` on the remaining fail-late steps and a corrected comment; documentation claims reworded as observed; the cross-reference to rule 12 corrected; the dropped `--tier docker` value, the branch name and the state file raised as plan questions 3 to 5. Branch name: Hari gave permission in chat on 2026-11-12 to publish from `claude/435-verification-tiers`; `--tier docker` is left out by his decision in chat the same day (plan questions 3 and 4). The pre-existing `while read` loop that gives `dotnet test` the project list as standard input is left as on `main`.
 
 ## Review record
 
