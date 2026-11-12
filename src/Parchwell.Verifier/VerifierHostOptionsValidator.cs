@@ -17,7 +17,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         var errors = new List<string>();
         if (!VerifierModeParser.TryParse(options.Mode, out var mode))
         {
-            errors.Add("Verifier:Mode must be exactly start-line, verify, judge, probe-gate, single-action-judge, b10-sweep-line, or b10-sweep.");
+            errors.Add("Verifier:Mode must be exactly start-line, verify, judge, probe-gate, single-action-judge, b10-sweep-line, b10-sweep, or b10-abrupt-verify.");
             return ValidateOptionsResult.Fail(errors);
         }
 
@@ -25,6 +25,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
             (options.B10LastVerifierCompletedUtc is not null || options.B10LastLoadgenTerminatedUtc is not null))
             return ValidateOptionsResult.Fail("B10 lifecycle timestamps are only accepted by b10-sweep-line mode.");
         if(mode==VerifierMode.SingleActionJudge)return ValidateSingleAction(options);
+        if(mode==VerifierMode.B10AbruptVerify)return ValidateAbrupt(options);
 
         RequireText(options.ScenarioId, "Verifier:ScenarioId", errors);
         if (mode is VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.Judge or VerifierMode.B10SweepLine or VerifierMode.B10Sweep && !ScenarioPhases.IsExecutableScenario(options.ScenarioId))
@@ -216,6 +217,42 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         }
 
         ValidateBudgetSum(requiredBudgets, options.ProcessLifetime, errors);
+        return errors.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(errors);
+    }
+
+    private static ValidateOptionsResult ValidateAbrupt(VerifierHostOptions options)
+    {
+        var errors = new List<string>();
+        if (options.ScenarioId != "B10" || options.ConfigurationId != "C1" || options.Phase != "C1" || options.Repeat != 1)
+            errors.Add("Abrupt diagnostic verification requires B10/C1/C1/1.");
+        RequireText(options.SourceCommit, "PARCHWELL_SOURCE_COMMIT", errors);
+        RequireText(options.VerifierCommit, "Verifier:VerifierCommit", errors);
+        if (options.VerifierCommit != options.SourceCommit)
+            errors.Add("Verifier:VerifierCommit must equal PARCHWELL_SOURCE_COMMIT.");
+        RequireText(options.JobName, "Verifier:JobName", errors);
+        RequireText(options.RepeatPrefix, "Verifier:RepeatPrefix", errors);
+        RequireText(options.ExpectedInstanceId, "Verifier:ExpectedInstanceId", errors);
+        RequireText(options.Phase, "Verifier:Phase", errors);
+        RequireText(options.PodUid, "Verifier:PodUid", errors);
+        var budgets = new List<TimeSpan>();
+        AddKafkaInputs(options, errors, budgets);
+        AddPositive(options.IoTimeout, "Verifier:IoTimeout", errors, budgets);
+        AddPositive(options.CleanupTimeout, "Verifier:CleanupTimeout", errors, budgets);
+        AddPositive(options.SafetyStop, "Verifier:SafetyStop", errors, budgets);
+        AddPositive(options.ProcessLifetime, "Verifier:ProcessLifetime", errors, null);
+        ValidateContainerName(options.LedgerContainer, "Verifier:LedgerContainer", errors);
+        RequireText(options.StartLineInputName, "Verifier:StartLineInputName", errors);
+        ValidateImageReference(options.LoadGenImage, "Verifier:LoadGenImage", errors);
+        ValidateImageReference(options.VerifierImage, "Verifier:VerifierImage", errors);
+        RequirePositive(options.MaxOutputBytes, "Verifier:MaxOutputBytes", errors);
+        RequirePositive(options.MaxDiagnosticsPerCheck, "Verifier:MaxDiagnosticsPerCheck", errors);
+        RequirePositive(options.MaxDiagnosticBytes, "Verifier:MaxDiagnosticBytes", errors);
+        RequirePositive(options.MaxConsumedRecords, "Verifier:MaxConsumedRecords", errors);
+        RequirePositive(options.MaxConsumedBytes, "Verifier:MaxConsumedBytes", errors);
+        RequirePositive(options.MaxArtifactBytes, "Verifier:MaxArtifactBytes", errors);
+        RequirePositive(options.MaxTotalInputBytes, "Verifier:MaxTotalInputBytes", errors);
+        RequirePositive(options.MaxPartitions, "Verifier:MaxPartitions", errors);
+        RequirePositive(options.MaxInputDepth, "Verifier:MaxInputDepth", errors);
         return errors.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(errors);
     }
 

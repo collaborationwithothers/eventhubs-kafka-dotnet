@@ -37,6 +37,7 @@ VERIFIER_REQUIRED={
   'start-line':VERIFIER_COMMON+VERIFIER_REPEAT+('StartLineOutputName','BrokerInventoryOutputName','MaxPartitions','MaxInputDepth'),
   'verify':VERIFIER_COMMON+VERIFIER_REPEAT+('IoTimeout','ResultOutputName','ScenarioRoot','MaxConsumedRecords','MaxConsumedBytes','MaxArtifactBytes','MaxTotalInputBytes','MaxRowBytes','MaxRowsPerArtifact','MaxInventoryEntries','MaxInputEntries','MaxPartitions','MaxInputDepth','MaxNativeReportBytes','MaxBrokerEntries','SafetyStop','StartLineInputName','ArtifactPrefix')+VERIFIER_SCENARIO,
   'judge':VERIFIER_COMMON+('IoTimeout','CandidateOutputName','LoadGenImage','VerifierImage','MaxArtifactBytes','MaxTotalInputBytes')+VERIFIER_SCENARIO}
+VERIFIER_REQUIRED['b10-abrupt-verify']=VERIFIER_COMMON+VERIFIER_REPEAT+('IoTimeout','SafetyStop','MaxConsumedRecords','MaxConsumedBytes','MaxArtifactBytes','MaxTotalInputBytes','MaxPartitions','MaxInputDepth','StartLineInputName','LoadGenImage','VerifierImage')
 VERIFIER_PHASE_KAFKA=('VerifierClientId','NamespaceName','TokenTimeout','MetadataTimeout','WatermarkTimeout','PollSlice','BlobIoTimeout','MaxPartitions','MaxInputDepth')
 VERIFIER_REQUIRED['b10-sweep-line']=VERIFIER_COMMON+VERIFIER_PHASE_KAFKA+('IoTimeout','B10LastVerifierCompletedUtc','B10LastLoadgenTerminatedUtc','B10SettleIntervalMilliseconds')
 VERIFIER_REQUIRED['b10-sweep']=VERIFIER_COMMON+VERIFIER_PHASE_KAFKA+('IoTimeout','B10SettleIntervalMilliseconds','MaxConsumedRecords','MaxConsumedBytes','MaxArtifactBytes','MaxTotalInputBytes','MaxRowBytes','MaxRowsPerArtifact','MaxInputEntries','SafetyStop')

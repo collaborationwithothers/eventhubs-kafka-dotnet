@@ -97,6 +97,7 @@
             "loadgen-restart",
             "loadgen-successor",
             "verify",
+            "b10-abrupt-verify",
             "judge",
             "b10-sweep-line",
             "b10-sweep",
@@ -925,13 +926,17 @@
     }
   },
   "allOf": [
+    {
+      "if": {"properties": {"runtime": {"properties": {"mode": {"const": "b10-abrupt-verify"}}, "required": ["mode"]}}, "required": ["runtime"]},
+      "then": {"properties": {"scenario_id": {"const": "B10"}, "configuration_id": {"const": "C1"}, "runtime": {"required": ["phase", "repeat", "run_id"], "properties": {"phase": {"const": "C1"}, "repeat": {"const": 1}, "run_id": {"pattern": "^b10d-[0-9]+-[0-9]+$"}}, "not": {"anyOf": [{"required": ["b10_abrupt_diagnostic"]}, {"required": ["b10_abrupt_binding_configmap"]}]}}}}
+    },
     {"if": {"properties": {"runtime": {"properties": {"b10_abrupt_diagnostic": {"const": true}}, "required": ["b10_abrupt_diagnostic"]}}, "required": ["runtime"]}, "then": {"properties": {"scenario_id": {"const": "B10"}, "configuration_id": {"const": "C1"}}}},
     {
       "if": { "properties": { "scenario_id": { "const": "B10" } }, "required": ["scenario_id"] },
       "then": {
         "properties": {
           "configuration_id": { "enum": ["C0", "C1"] },
-          "runtime": { "properties": { "phase": { "enum": ["C0", "C1"] }, "mode": { "enum": ["start-line", "loadgen", "loadgen2", "loadgen-restart", "loadgen-successor", "verify", "b10-sweep-line", "b10-sweep", "judge"] } } }
+          "runtime": { "properties": { "phase": { "enum": ["C0", "C1"] }, "mode": { "enum": ["start-line", "loadgen", "loadgen2", "loadgen-restart", "loadgen-successor", "verify", "b10-abrupt-verify", "b10-sweep-line", "b10-sweep", "judge"] } } }
         }
       }
     },

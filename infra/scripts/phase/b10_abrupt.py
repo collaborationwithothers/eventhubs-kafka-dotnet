@@ -76,6 +76,7 @@ b10_abrupt_successor_binding_invalid
 b10_abrupt_successor_late
 b10_abrupt_deadline_exhausted
 b10_abrupt_timeout_job_unknown
+b10_abrupt_verify_failed
 '''.split())
 
 
@@ -339,6 +340,27 @@ class Trial:
             'broker_inventory': files['broker-inventory.json'].decode(),
             'completion': files['start-line-completion.json'].decode()})
 
+    def render_verify(self):
+        phase = self.phase()
+        name = self.p.mode_job(phase, 'b10-abrupt-verify', 1)
+        values = self.p.values('b10-abrupt-verify', 1)
+        # Helm removes a default key when its override is null. The merged verifier
+        # values must omit the producer-only flag, whose chart default is false.
+        # https://helm.sh/docs/chart_template_guide/values_files/#deleting-a-default-key
+        values['runtime']['b10_abrupt_diagnostic'] = None
+        source = self.p.private / ('values-' + name + '.json')
+        rendered = self.p.private / ('rendered-' + name + '.yaml')
+        source.write_bytes(encode(values))
+        self.p.render_code = self.p.run(['helm', 'template', 'parchwell', 'charts/parchwell',
+                                        '--values', str(source)], 120, output=rendered, maximum=4 * 1024 * 1024)
+        if self.p.render_code:
+            return None
+        text = rendered.read_text()
+        deadlines = re.findall(r'^  activeDeadlineSeconds: ([1-9][0-9]*)$', text, re.MULTILINE)
+        if text.splitlines().count('kind: Job') != 1 or text.splitlines().count('  name: "' + name + '"') != 1 or len(deadlines) != 1:
+            return None
+        return int(deadlines[0])
+
     def job(self, mode, deadline):
         phase = self.phase()
         name = self.p.mode_job(phase, mode, 1)
@@ -347,7 +369,7 @@ class Trial:
         state = self.p.state()
         state['modes'].append(record)
         self.p.save_state(state)
-        budget = self.p.render(mode, 1)
+        budget = self.render_verify() if mode == 'b10-abrupt-verify' else self.p.render(mode, 1)
         record['render'] = self.p.render_code
         if budget is None:
             record['outcome'] = 'render_failed'
@@ -361,7 +383,7 @@ class Trial:
                 record['outcome'] = 'complete' if record['wait'] == 0 else 'failed' if record['wait'] == 1 else 'unknown'
         state = self.p.state()
         state['modes'][-1] = record
-        if record['outcome'] in ('unknown', 'apply_failed'):
+        if mode != 'b10-abrupt-verify' and record['outcome'] in ('unknown', 'apply_failed'):
             state['safety_stop'] = True
         self.p.save_state(state)
         return record
@@ -891,6 +913,7 @@ class Trial:
         deadline = self.p.b10_deadline(start=True)
         self.p.command_deadline = deadline
         boundary, failure = 'metadata', 'b10_abrupt_publication_failed'
+        binding, result = None, 1
         try:
             metadata = self.p.run_mode('start-line', 1, absolute_deadline=deadline)
             if metadata['outcome'] != 'complete' or self.p.state()['safety_stop']:
@@ -927,13 +950,24 @@ class Trial:
                 reason = ('b10_abrupt_deadline_exhausted' if successor.get('wait') == 124
                           else 'b10_abrupt_publication_ambiguous')
                 self.record_failure(ValueError(reason), reason, 'successor_job')
-                return 1
-            return 0
+            else:
+                result = 0
         except (ValueError, OSError, LookupError, TypeError, AttributeError, self.failure) as error:
             self.record_failure(error, failure, boundary)
-            return 1
         finally:
-            self.p.command_deadline = previous
+            try:
+                if binding is not None:
+                    try:
+                        verify = self.job('b10-abrupt-verify', deadline)
+                        if verify['outcome'] != 'complete':
+                            raise ValueError('b10_abrupt_verify_failed')
+                    except (ValueError, OSError, LookupError, TypeError, AttributeError, self.failure) as error:
+                        self.record_failure(ValueError('b10_abrupt_verify_failed'),
+                                            'b10_abrupt_verify_failed', 'verify_job', cause=error)
+                        result = 1
+            finally:
+                self.p.command_deadline = previous
+        return result
 
     def collect(self, files=None, observation=None):
         self.phase()
@@ -981,7 +1015,19 @@ class Trial:
             return receipt
         failed = False
         for record in self.p.state()['modes']:
-            if record['mode'] not in ('loadgen', 'loadgen-restart', 'loadgen-successor') or record['apply'] is None:
+            if record['mode'] not in ('loadgen', 'loadgen-restart', 'loadgen-successor', 'b10-abrupt-verify'):
+                continue
+            if record['mode'] == 'b10-abrupt-verify' and record['outcome'] == 'complete':
+                try:
+                    name = self.phase()['run_id'] + '/C1/r1/b10-abrupt-diagnostic/nonfinal-result.json'
+                    if self.p.download_blob(name, self.directory / 'nonfinal-result.json',
+                                            16777216, self.p.b10_deadline(), container='verifier') is None:
+                        raise ValueError('b10_abrupt_verify_failed')
+                except (ValueError, OSError, LookupError, TypeError, AttributeError, self.failure) as error:
+                    self.record_failure(ValueError('b10_abrupt_verify_failed'),
+                                        'b10_abrupt_verify_failed', 'verify_collection', cause=error)
+                    failed = True
+            if record['apply'] is None:
                 continue
             boundary, failure = 'successor_termination', 'b10_abrupt_first_termination_unknown'
             try:

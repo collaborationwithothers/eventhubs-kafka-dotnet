@@ -7,7 +7,8 @@ import tempfile
 
 import yaml
 
-from test_chart import CHART, DEFAULTS, FIXTURE, expected_environment, run, scalar, with_case
+from test_chart import (CHART, DEFAULTS, FIXTURE, VERIFIER_REQUIRED, expected_environment,
+                        run, scalar, with_case, worker_setting_errors)
 
 POLICY = {
     'MaxRecordBytes': 65536, 'QueueCapacity': 256, 'MaxJournalBytes': 16777216,
@@ -150,6 +151,51 @@ def invalid_cases():
     yield 'unknown-policy', case
 
 
+
+def verify_reader_case():
+    values = deepcopy(FIXTURE)
+    values.update(scenario_id='B10', configuration_id='C1')
+    values['runtime'].update(mode='b10-abrupt-verify', phase='C1', repeat=1,
+        run_id='b10d-1-1', loadgen_job_name='b10d-1-1-c1-r1-loadgen',
+        b10_abrupt_diagnostic=None, bounds=deepcopy(DEFAULTS))
+    return values
+
+
+def verify_reader(document, values):
+    jobs = [obj for obj in yaml.safe_load_all(document) if obj['kind'] == 'Job']
+    assert len(jobs) == 1
+    job = jobs[0]
+    assert job['metadata']['name'] == 'b10d-1-1-c1-r1-b10-abrupt-verify'
+    assert job['metadata']['labels']['parchwell.io/role'] == 'verifier'
+    assert job['spec']['activeDeadlineSeconds'] == 750
+    pod = job['spec']['template']['spec']
+    assert pod['serviceAccountName'] == 'verifier'
+    assert pod['nodeSelector'] == {'workload': 'workload'}
+    assert all(volume['name'] != 'b10-abrupt-binding' for volume in pod['volumes'])
+    container = pod['containers'][0]
+    assert container['name'] == 'verifier' and container['image'] == values['runtime']['verifier_image']
+    assert all(mount['name'] != 'b10-abrupt-binding' for mount in container['volumeMounts'])
+    names = [entry['name'] for entry in container['env']]
+    assert len(names) == len(set(names))
+    assert {'Verifier__' + key for key in VERIFIER_REQUIRED['b10-abrupt-verify']} <= set(names)
+    assert worker_setting_errors('b10-abrupt-verify', names) == []
+    env = {entry['name']: entry.get('value') for entry in container['env']}
+    assert env['Verifier__Mode'] == 'b10-abrupt-verify'
+    assert env['Verifier__LoadGenImage'] == values['runtime']['loadgen_image']
+    assert env['Verifier__VerifierImage'] == values['runtime']['verifier_image']
+    assert env['Verifier__StartLineInputName'] == 'b10d-1-1/C1/r1/start-line.json'
+
+
+def invalid_reader_cases():
+    for key, value in [('scenario_id', 'B04'), ('configuration_id', 'C0')]:
+        case = verify_reader_case(); case[key] = value
+        yield key, case
+    for key, value in [('phase', 'C0'), ('repeat', 2), ('run_id', 'b10-1-1'),
+                       ('b10_abrupt_diagnostic', True), ('b10_abrupt_diagnostic', False),
+                       ('b10_abrupt_binding_configmap', 'binding')]:
+        case = verify_reader_case(); case['runtime'][key] = value
+        yield key + '-' + str(value), case
+
 def main():
     schema = json.loads((CHART / 'values.schema.json').read_text())
     assert DEFAULTS['b10_abrupt'] == POLICY
@@ -175,10 +221,18 @@ def main():
             proc = run(['kubeconform', '-strict', '-summary', '-kubernetes-version', '1.35.0',
                         str(directory / (case_name + '.rendered.yaml'))])
             assert proc.returncode == 0, proc.stdout + proc.stderr
+        reader = verify_reader_case()
+        verify_reader(render(reader, directory, 'reader'), reader)
+        proc = run(['kubeconform', '-strict', '-summary', '-kubernetes-version', '1.35.0',
+                    str(directory / 'reader.rendered.yaml')])
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        reader_negatives = list(invalid_reader_cases())
+        for case_name, values in reader_negatives:
+            render(values, directory, 'reader-invalid-' + case_name, valid=False)
         negatives = list(invalid_cases())
         for index, (case_name, values) in enumerate(negatives):
             render(values, directory, str(index) + '-' + case_name, valid=False)
-    print(f'b10 abrupt chart checks passed: 8 renders, {len(negatives)} invalid selections')
+    print(f'b10 abrupt chart checks passed: 9 renders, {len(negatives) + len(reader_negatives)} invalid selections')
 
 
 if __name__ == '__main__':

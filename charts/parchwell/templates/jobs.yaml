@@ -26,7 +26,7 @@
 {{- end -}}
 {{- if ne $r.eventhubs.bootstrap_servers (printf "%s.servicebus.windows.net:9093" $r.eventhubs.namespace_name) }}{{ fail "bootstrap_servers must match namespace_name" }}{{ end -}}
 {{- $deadline := int $r.bounds.execution.gate_job_seconds -}}
-{{- if eq $role "loadgen" }}{{ $deadline = int $r.bounds.execution.loadgen_job_seconds }}{{ else if has $mode (list "verify" "b10-sweep") }}{{ $deadline = int $r.bounds.execution.verify_job_seconds }}{{ else if has $mode (list "start-line" "b10-sweep-line") }}{{ $deadline = int $r.bounds.execution.start_line_job_seconds }}{{ end }}
+{{- if eq $role "loadgen" }}{{ $deadline = int $r.bounds.execution.loadgen_job_seconds }}{{ else if has $mode (list "verify" "b10-sweep" "b10-abrupt-verify") }}{{ $deadline = int $r.bounds.execution.verify_job_seconds }}{{ else if has $mode (list "start-line" "b10-sweep-line") }}{{ $deadline = int $r.bounds.execution.start_line_job_seconds }}{{ end }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -189,6 +189,12 @@ spec:
             - name: {{ printf "Verifier__%s" $key | quote }}
               value: {{ $value | quote }}
             {{- end }}
+            {{- end }}
+            {{- if eq $mode "b10-abrupt-verify" }}
+            - name: Verifier__LoadGenImage
+              value: {{ $r.loadgen_image | quote }}
+            - name: Verifier__VerifierImage
+              value: {{ $r.verifier_image | quote }}
             {{- end }}
             {{- if has $mode (list "start-line" "b10-sweep-line") }}{{ range $key, $value := $r.bounds.verifier_start_line }}
             - name: {{ printf "Verifier__%s" $key | quote }}

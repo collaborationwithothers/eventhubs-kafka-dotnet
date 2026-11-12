@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 using Confluent.Kafka;
 using Parchwell.Verifier.Common.Serialization;
@@ -10,7 +11,7 @@ internal static class MessageIdentityReader
 {
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
 
-    internal static ConsumedRecord Read(ConsumeResult<byte[], byte[]> record)
+    internal static ConsumedRecord Read(ConsumeResult<byte[], byte[]> record, IReadOnlySet<string>? valueHashKeys = null)
     {
         var problems = new List<StructuralProblem>();
         string? key = Decode(record.Message?.Key, "key", problems);
@@ -25,7 +26,9 @@ internal static class MessageIdentityReader
                 sequence = value;
             else problems.Add(Problem("sequence", "noncanonical_sequence"));
         }
-        return new(record.Topic, record.Partition.Value, record.Offset.Value, key, instance, attempt, sequence, problems);
+        string? hash = key is not null && valueHashKeys?.Contains(key) == true && record.Message?.Value is { } bytes
+            ? Convert.ToHexStringLower(SHA256.HashData(bytes)) : null;
+        return new(record.Topic, record.Partition.Value, record.Offset.Value, key, instance, attempt, sequence, problems, hash);
     }
 
     private static string? Header(Headers? headers, string name, List<StructuralProblem> problems)
