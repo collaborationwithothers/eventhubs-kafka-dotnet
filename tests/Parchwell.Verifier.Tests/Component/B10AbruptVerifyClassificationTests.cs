@@ -54,7 +54,9 @@ public sealed class B10AbruptVerifyClassificationTests(B10AbruptVerifyKafkaFixtu
     [InlineData("foreign")]
     public async Task Given_UnjoinedRecord_When_HostRuns_Then_ReconciliationAddsOnlyIdentityReason_T5_T6(string defect)
     {
-        await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence(); using var run = NewRun(evidence);
+        await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence();
+        evidence.SetTimeoutRows(B10AbruptVerifyEvidence.TimeoutRow(defect == "unknown-attempt" ? "known" : "x", defect == "arm-key" ? B10AbruptVerifyEvidence.Key("cross_restart") : "ordinary", 0));
+        using var run = NewRun(evidence);
         await run.ProduceAsync(0, 0, instance: defect == "foreign" ? "foreign" : B10AbruptVerifyEvidence.Timeout, attempt: "x", key: defect == "arm-key" ? B10AbruptVerifyEvidence.Key("cross_restart") : "ordinary", sequence: 0);
         await AssertResult(run, [8], [3]); Assert.NotNull(run.Data["timeout"]);
         foreach (JsonNode? arm in run.Data["arms"]!.AsArray()) Assert.Equal(0, Number(arm!, "pair_count"));

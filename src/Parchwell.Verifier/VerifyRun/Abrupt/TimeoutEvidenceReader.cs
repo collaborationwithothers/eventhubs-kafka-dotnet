@@ -29,17 +29,22 @@ internal sealed class TimeoutEvidenceReader(VerifierHostOptions options,
     Func<string, long, CancellationToken, Task<byte[]?>> readLedger,
     Func<string, CancellationToken, Task<BlobListing>> listLedger, InputLimits limits, InputBudget budget)
 {
-    internal string? DirectoryInstanceId { get; private set; }
+    internal IReadOnlySet<string> DirectoryInstanceIds { get; private set; } = new HashSet<string>(StringComparer.Ordinal);
 
     internal async Task<TimeoutRegistration> ReadListingAsync(CancellationToken cancellationToken)
     {
         string root = PhasePaths.ProducersPrefix(options.RunId!, "C1", 1);
         BlobListing listing = await listLedger(root, cancellationToken).ConfigureAwait(false);
-        Require(listing.IsComplete && listing.Pages is >= 0 and <= BoundedBlobListing.MaximumPages &&
-            listing.Names.Count <= BoundedBlobListing.MaximumEntries, "timeout_listing_incomplete");
+        Require(listing.Names.Count <= BoundedBlobListing.MaximumEntries, "timeout_listing_incomplete");
         long nameBytes = listing.Names.Sum(name => (long)Encoding.UTF8.GetByteCount(name));
         if (nameBytes > BoundedBlobListing.MaximumNameBytes)
             throw new InputLimitExceededException("Timeout registration listing exceeds its name-byte limit.");
+        // Listed directory identities only reserve records for the timeout checks.
+        // They do not authenticate an instance or permit timeout classification.
+        DirectoryInstanceIds = listing.Names.Select(name => DirectoryInstance(name, root))
+            .OfType<string>().ToHashSet(StringComparer.Ordinal);
+        Require(listing.IsComplete && listing.Pages is >= 0 and <= BoundedBlobListing.MaximumPages,
+            "timeout_listing_incomplete");
         budget.ConsumeEntries(listing.Names.Count);
         string? instance = null;
         foreach (string name in listing.Names)
@@ -54,7 +59,6 @@ internal sealed class TimeoutEvidenceReader(VerifierHostOptions options,
             instance = candidate;
         }
         Require(instance is not null, "timeout_registration_count");
-        DirectoryInstanceId = instance;
         string registrationName = PhasePaths.Registration(options.RunId!, "C1", 1, instance!);
         Require(listing.Names.Count(name => name == registrationName) == 1 &&
             listing.Names.Count(name => name.EndsWith("/registration.json", StringComparison.Ordinal)) == 1,
@@ -152,6 +156,18 @@ internal sealed class TimeoutEvidenceReader(VerifierHostOptions options,
     private async Task<byte[]> ReadRequired(string name, CancellationToken cancellationToken) =>
         await readLedger(name, options.MaxArtifactBytes!.Value, cancellationToken).ConfigureAwait(false)
             ?? throw new InvalidDataException("timeout_object_missing");
+
+    private string? DirectoryInstance(string name, string root)
+    {
+        if (!name.StartsWith(root, StringComparison.Ordinal)) return null;
+        string tail = name[root.Length..];
+        int separator = tail.IndexOf('/', StringComparison.Ordinal);
+        if (separator <= 0 || separator == tail.Length - 1) return null;
+        string instance = tail[..separator];
+        try { _ = PhasePaths.ProducerPrefix(options.RunId!, "C1", 1, instance); }
+        catch (ArgumentException) { return null; }
+        return instance;
+    }
 
     private static ArtifactReference Reference(string container, string name, byte[] bytes) =>
         new(container, name, bytes.LongLength, Convert.ToHexStringLower(SHA256.HashData(bytes)));

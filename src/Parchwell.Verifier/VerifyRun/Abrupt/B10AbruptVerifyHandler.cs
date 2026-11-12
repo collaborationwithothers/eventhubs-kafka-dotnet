@@ -221,7 +221,7 @@ internal sealed class B10AbruptVerifyHandler(IOptions<VerifierHostOptions> confi
             }
             if (first is not null && !problems.Contains(1) &&
                 AbruptRecordJoin.HasUnjoined(first, problems.Contains(3) ? null : successor, records,
-                    timeoutRegistration?.InstanceId ?? timeoutReader.DirectoryInstanceId, successorDirectory))
+                    timeoutReader.DirectoryInstanceIds, successorDirectory))
                 Problem(7, "probe_record_identity");
         }
         if (start is not null && first is not null)

@@ -19,6 +19,343 @@ namespace Parchwell.Verifier.Tests.Component;
 public sealed class B10AbruptVerifyPredicateBoundaryTests(B10AbruptVerifyKafkaFixture kafka) : IClassFixture<B10AbruptVerifyKafkaFixture>
 {
     private static readonly string[] MixedPublicationFailures = ["producer_completion_unavailable", "publication_membership_invalid"];
+    private static readonly string[] TimeoutCountFields = ["ok", "loss", "phantom", "reported_failure", "duplicate", "reorder"];
+
+    [Theory]
+    [InlineData("valid")]
+    [InlineData("same-arm-key")]
+    [InlineData("cross-arm-key")]
+    [InlineData("key")]
+    [InlineData("attempt")]
+    [InlineData("sequence-below")]
+    [InlineData("sequence-above")]
+    public async Task Given_UniquelyMatchedTimeoutRow_When_OneRecordBindingChanges_Then_OnlyThatRecordIsHeldOut(string field)
+    {
+        await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence();
+        string key = field == "same-arm-key" ? B10AbruptVerifyEvidence.Key("same_instance") : field == "cross-arm-key" ? B10AbruptVerifyEvidence.Key("cross_restart") : "ordinary";
+        JsonObject row = B10AbruptVerifyEvidence.TimeoutRow("t1", key, 0); row["attempt"]!["sequence"] = 1;
+        evidence.SetTimeoutRows(row); using var run = NewRun(evidence);
+        await run.ProduceAsync(0, 0, instance: B10AbruptVerifyEvidence.Timeout, attempt: field == "attempt" ? "unknown" : "t1", key: field == "key" ? "different" : key,
+            sequence: field == "sequence-below" ? 0 : field == "sequence-above" ? 2 : 1);
+        await AssertOnly(run, field == "valid", "b10_abrupt_verify_record_unjoined", "b10_restart_identity_unauthenticated");
+        Assert.NotNull(run.Data["timeout"]); Assert.NotNull(run.Data["arms"]);
+        Assert.Equal(field == "valid" ? new long[] { 1, 0, 0, 0, 0, 0 } : [0, 1, 0, 0, 0, 0],
+            TimeoutCountFields.Select(name => run.Data["timeout"]![name]!.GetValue<long>()));
+    }
+
+    [Theory]
+    [InlineData("child-boot")]
+    [InlineData("cgroup-boot")]
+    [InlineData("cgroup-path")]
+    [InlineData("cgroup-directory")]
+    [InlineData("cgroup-child-boot")]
+    [InlineData("before-missing")]
+    [InlineData("after-missing")]
+    [InlineData("child-missing")]
+    [InlineData("child-duplicate")]
+    [InlineData("child-not-first")]
+    [InlineData("valid")]
+    public async Task Given_ChildAndCgroupIdentity_When_OneBindingChanges_Then_OnlyTerminationReasonChanges(string field)
+    {
+        await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence();
+        evidence.Change("first/termination.json", root =>
+        {
+            JsonNode data = root["data"]!;
+            switch (field)
+            {
+                case "child-boot": data["child"]!["boot_id"] = "foreign"; data["cgroup_before"]!["boot_id"] = "foreign"; data["cgroup_after"]!["boot_id"] = "foreign"; break;
+                case "cgroup-boot": data["cgroup_after"]!["boot_id"] = "foreign"; break;
+                case "cgroup-path": data["cgroup_after"]!["cgroup_path"] = "/foreign"; break;
+                case "cgroup-directory": data["cgroup_after"]!["directory_identity"] = "2:3"; break;
+                case "cgroup-child-boot": data["cgroup_before"]!["boot_id"] = "foreign"; data["cgroup_after"]!["boot_id"] = "foreign"; break;
+                case "before-missing": data["cgroup_before"] = null; break;
+                case "after-missing": data["cgroup_after"] = null; break;
+            }
+        });
+        JsonObject child = evidence.Frames.Single(frame => Kind(frame) == "child_started");
+        if (field == "child-missing") evidence.Frames.Remove(child);
+        if (field == "child-duplicate") evidence.Frames.Insert(0, child.DeepClone().AsObject());
+        if (field == "child-not-first") { evidence.Frames.Remove(child); evidence.Frames.Insert(1, child); }
+        Resequence(evidence); evidence.Rehash();
+        using var run = NewRun(evidence);
+        await AssertOnly(run, field == "valid", "b10_abrupt_verify_first_evidence_invalid", "b10_restart_termination_unverified");
+        Assert.NotNull(run.Data["timeout"]);
+    }
+
+    [Theory]
+    [InlineData("same_instance", "valid")]
+    [InlineData("same_instance", "prepared-missing")]
+    [InlineData("same_instance", "prepared-duplicate")]
+    [InlineData("same_instance", "terminal-missing")]
+    [InlineData("same_instance", "terminal-duplicate")]
+    [InlineData("same_instance", "prepared-extra")]
+    [InlineData("same_instance", "terminal-extra")]
+    [InlineData("same_instance", "report-missing")]
+    [InlineData("same_instance", "report-duplicate")]
+    [InlineData("same_instance", "report-name")]
+    [InlineData("same_instance", "attempt")]
+    [InlineData("same_instance", "key")]
+    [InlineData("same_instance", "report-attempt")]
+    [InlineData("same_instance", "terminal-before-prepared")]
+    [InlineData("same_instance", "terminal-after-original")]
+    [InlineData("cross_restart", "valid")]
+    [InlineData("cross_restart", "prepared-missing")]
+    [InlineData("cross_restart", "prepared-duplicate")]
+    [InlineData("cross_restart", "terminal-missing")]
+    [InlineData("cross_restart", "terminal-duplicate")]
+    [InlineData("cross_restart", "report-missing")]
+    [InlineData("cross_restart", "report-duplicate")]
+    [InlineData("cross_restart", "report-name")]
+    [InlineData("cross_restart", "attempt")]
+    [InlineData("cross_restart", "key")]
+    [InlineData("cross_restart", "report-attempt")]
+    [InlineData("cross_restart", "terminal-before-prepared")]
+    [InlineData("cross_restart", "terminal-after-original")]
+    public async Task Given_OneArmsWarmupEvidence_When_Reconciled_Then_CountIdentityAndStrictOrderAreIndependent(string arm, string field)
+    {
+        await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence();
+        string id = B10AbruptVerifyEvidence.First + "-" + arm + "-warmup";
+        JsonObject prepared = evidence.Frames.Single(frame => Kind(frame) == "warmup_prepared" && frame["data"]!["arm"]!.GetValue<string>() == arm);
+        JsonObject terminal = evidence.Frames.Single(frame => Kind(frame) == "warmup_terminal" && frame["data"]!["attempt_id"]!.GetValue<string>() == id);
+        switch (field)
+        {
+            case "prepared-missing": evidence.Frames.Remove(prepared); break;
+            case "prepared-duplicate": evidence.Frames.Insert(evidence.Frames.IndexOf(prepared), prepared.DeepClone().AsObject()); break;
+            case "terminal-missing": evidence.Frames.Remove(terminal); break;
+            case "terminal-duplicate": evidence.Frames.Insert(evidence.Frames.IndexOf(terminal), terminal.DeepClone().AsObject()); break;
+            case "prepared-extra": JsonObject extraPrepared = prepared.DeepClone().AsObject(); extraPrepared["data"]!["arm"] = "foreign"; evidence.Frames.Insert(evidence.Frames.IndexOf(prepared), extraPrepared); break;
+            case "terminal-extra": JsonObject extraTerminal = terminal.DeepClone().AsObject(); extraTerminal["data"]!["attempt_id"] = "foreign"; evidence.Frames.Insert(evidence.Frames.IndexOf(terminal), extraTerminal); break;
+            case "attempt": prepared["data"]!["attempt_id"] = "foreign"; break;
+            case "key": prepared["data"]!["key"] = "foreign"; break;
+            case "report-missing": evidence.Frames.Remove(evidence.Frames.Single(frame => Kind(frame) == "pre_acceptance_report" && frame["data"]!["arm"]!.GetValue<string>() == arm)); break;
+            case "report-duplicate":
+                JsonObject duplicateReport = evidence.Frames.Single(frame => Kind(frame) == "pre_acceptance_report" && frame["data"]!["arm"]!.GetValue<string>() == arm);
+                evidence.Frames.Insert(evidence.Frames.IndexOf(duplicateReport), duplicateReport.DeepClone().AsObject()); break;
+            case "report-name":
+                JsonObject report = evidence.Frames.Single(frame => Kind(frame) == "pre_acceptance_report" && frame["data"]!["arm"]!.GetValue<string>() == arm);
+                report["data"]!["name"] = "control-post-drain-report.json"; RefreshReport(evidence, report); break;
+            case "report-attempt": evidence.Frames.Single(frame => Kind(frame) == "pre_acceptance_report" && frame["data"]!["arm"]!.GetValue<string>() == arm)["data"]!["warmup_attempt_id"] = "foreign"; break;
+            case "terminal-before-prepared": evidence.Frames.Remove(terminal); evidence.Frames.Insert(evidence.Frames.IndexOf(prepared), terminal); break;
+            case "terminal-after-original":
+                JsonObject original = evidence.Frames.First(frame => Kind(frame) == "prepared" && frame["data"]!["arm"]!.GetValue<string>() == arm);
+                evidence.Frames.Remove(terminal); evidence.Frames.Insert(evidence.Frames.IndexOf(original) + 1, terminal); break;
+        }
+        Resequence(evidence); evidence.Rehash(); using var run = NewRun(evidence);
+        await AssertOnly(run, field == "valid", "b10_abrupt_verify_first_evidence_invalid", "b10_restart_identity_unauthenticated");
+        Assert.NotNull(run.Data["timeout"]);
+    }
+
+    [Theory]
+    [InlineData("delivered", 0, false)]
+    [InlineData("delivered", 1, true)]
+    [InlineData("error_code", -1, false)]
+    [InlineData("error_code", 0, true)]
+    [InlineData("error_code", 1, false)]
+    [InlineData("persistence_status", -1, false)]
+    [InlineData("persistence_status", 0, true)]
+    [InlineData("persistence_status", 1, false)]
+    [InlineData("persistence_status", 2, true)]
+    [InlineData("persistence_status", 3, false)]
+    [InlineData("partition", -1, false)]
+    [InlineData("partition", 0, true)]
+    [InlineData("partition", 1, true)]
+    [InlineData("offset", -1, false)]
+    [InlineData("offset", 0, true)]
+    [InlineData("offset", 1, true)]
+    public async Task Given_WarmupTerminalValueAroundItsBoundary_When_HostRuns_Then_OnlyWarmupValidityChanges(string field, int value, bool valid)
+    {
+        await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence();
+        JsonObject terminal = evidence.Frames.First(frame => Kind(frame) == "warmup_terminal");
+        if (field == "delivered") terminal["data"]![field] = value == 1; else terminal["data"]![field] = value;
+        if (field == "partition")
+        {
+            JsonObject report = evidence.Frames.First(frame => Kind(frame) == "pre_acceptance_report");
+            report["data"]!["partition"] = value;
+            evidence.Change("first/same_instance-pre-acceptance-report.json", root =>
+            {
+                JsonObject partitions = root["topics"]!["document-events"]!["partitions"]!.AsObject();
+                JsonNode partition = partitions["0"]!.DeepClone(); partitions.Clear(); partitions[value.ToString(CultureInfo.InvariantCulture)] = partition;
+            });
+            RefreshReport(evidence, report);
+        }
+        evidence.Rehash(); using var run = NewRun(evidence);
+        await AssertOnly(run, valid, "b10_abrupt_verify_first_evidence_invalid", "b10_restart_identity_unauthenticated");
+    }
+
+    [Theory]
+    [InlineData("valid")]
+    [InlineData("leader-node")]
+    [InlineData("leader-state")]
+    [InlineData("post-name")]
+    [InlineData("post-missing")]
+    [InlineData("post-duplicate")]
+    [InlineData("drain-missing")]
+    [InlineData("drain-duplicate")]
+    public async Task Given_ValidReportBytes_When_ReportBindingOrLeaderChanges_Then_OnlyIdentityReasonChanges(string field)
+    {
+        await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence();
+        JsonObject report = evidence.Frames.First(frame => Kind(frame) == "pre_acceptance_report");
+        if (field is "leader-node" or "leader-state")
+        {
+            evidence.Change("first/same_instance-pre-acceptance-report.json", root =>
+            {
+                JsonNode broker = root["brokers"]![B10AbruptVerifyEvidence.Broker]!;
+                if (field == "leader-node") broker["nodeid"] = 2; else broker["state"] = "DOWN";
+            });
+            RefreshReport(evidence, report);
+        }
+        if (field == "post-name")
+        {
+            JsonObject post = evidence.Frames.Single(frame => Kind(frame) == "post_drain_report");
+            post["data"]!["name"] = "same_instance-pre-acceptance-report.json"; RefreshReport(evidence, post);
+        }
+        if (field is "post-missing" or "post-duplicate" or "drain-missing" or "drain-duplicate")
+        {
+            JsonObject frame = evidence.Frames.Single(frame => Kind(frame) == (field.StartsWith("post", StringComparison.Ordinal) ? "post_drain_report" : "control_drained"));
+            if (field.EndsWith("missing", StringComparison.Ordinal)) evidence.Frames.Remove(frame);
+            else evidence.Frames.Insert(evidence.Frames.IndexOf(frame), frame.DeepClone().AsObject());
+        }
+        Resequence(evidence); evidence.Rehash(); using var run = NewRun(evidence);
+        await AssertOnly(run, field == "valid", "b10_abrupt_verify_first_evidence_invalid", "b10_restart_identity_unauthenticated");
+    }
+
+    [Theory]
+    [InlineData("valid")]
+    [InlineData("before-post-report")]
+    [InlineData("drain-before-cut")]
+    [InlineData("resend-after-drain")]
+    [InlineData("terminal-after-warmup")]
+    public async Task Given_CrossRestartWarmup_When_ControlCompletionOrderChanges_Then_OnlyIdentityReasonChanges(string field)
+    {
+        await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence();
+        JsonObject warmup = evidence.Frames.Single(frame => Kind(frame) == "warmup_prepared" && frame["data"]!["arm"]!.GetValue<string>() == "cross_restart");
+        JsonObject drain = evidence.Frames.Single(frame => Kind(frame) == "control_drained");
+        if (field == "before-post-report") MoveBefore(warmup, evidence.Frames.Single(frame => Kind(frame) == "post_drain_report"));
+        if (field == "drain-before-cut") MoveBefore(drain, evidence.Frames.Single(frame => Kind(frame) == "cut"));
+        if (field == "resend-after-drain") MoveBefore(drain, evidence.Frames.Single(frame => Kind(frame) == "prepared" && frame["data"]!["attempt_id"]!.GetValue<string>() == "t4"));
+        if (field == "terminal-after-warmup")
+        {
+            JsonObject terminal = evidence.Frames.Single(frame => Kind(frame) == "terminal" && frame["data"]!["attempt_id"]!.GetValue<string>() == "t4");
+            evidence.Frames.Remove(terminal); evidence.Frames.Insert(evidence.Frames.IndexOf(warmup) + 1, terminal);
+        }
+        Resequence(evidence); evidence.Rehash(); using var run = NewRun(evidence);
+        await AssertOnly(run, field == "valid", "b10_abrupt_verify_first_evidence_invalid", "b10_restart_identity_unauthenticated");
+
+        void MoveBefore(JsonObject frame, JsonObject target) { evidence.Frames.Remove(frame); evidence.Frames.Insert(evidence.Frames.IndexOf(target), frame); }
+    }
+
+    [Theory]
+    [InlineData("valid")]
+    [InlineData("instance_id")]
+    [InlineData("cohort")]
+    [InlineData("bookkeeping_complete")]
+    [InlineData("attempt_id")]
+    [InlineData("predecessor_attempt_id")]
+    [InlineData("payload_sha256")]
+    [InlineData("empty-inventory")]
+    [InlineData("duplicate-entry")]
+    [InlineData("entry-member-missing")]
+    [InlineData("entry-member-extra")]
+    public async Task Given_ValidSuccessorInvocations_When_OnlyInventoryMemberChanges_Then_OnlySuccessorEvidenceReasonChanges(string field)
+    {
+        await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence();
+        evidence.Change("successor/manifest.json", root =>
+        {
+            JsonNode manifest = root["data"]!;
+            if (field is "instance_id" or "cohort") manifest[field] = "foreign";
+            if (field == "bookkeeping_complete") manifest[field] = false;
+            if (field is "attempt_id" or "predecessor_attempt_id") manifest["inventory"]![0]![field] = "foreign";
+            if (field == "payload_sha256") manifest["inventory"]![0]![field] = new string('f', 64);
+            if (field == "empty-inventory") manifest["inventory"] = new JsonArray();
+            if (field == "duplicate-entry") manifest["inventory"]!.AsArray().Add(manifest["inventory"]![0]!.DeepClone());
+            if (field == "entry-member-missing") manifest["inventory"]![0]!.AsObject().Remove("payload_length");
+            if (field == "entry-member-extra") manifest["inventory"]![0]!["foreign"] = true;
+        });
+        evidence.RehashSuccessor(); using var run = NewRun(evidence);
+        await AssertOnly(run, field == "valid", "b10_abrupt_verify_successor_evidence_invalid", "b10_restart_successor_evidence_unavailable");
+        Assert.NotNull(run.Data["timeout"]); Assert.NotNull(run.Data["arms"]);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Given_TwoValidSuccessorInvocations_When_InventoryOrderAloneChanges_Then_OnlyMatchingOrderAuthenticates(bool reverse)
+    {
+        await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence();
+        evidence.Frames.Remove(evidence.Frames.Single(frame => Kind(frame) == "terminal" && frame["data"]!["attempt_id"]!.GetValue<string>() == "c3"));
+        evidence.Change("first/termination.json", root => root["data"]!["kill_unconfirmed_attempt_ids"] = new JsonArray("c3", "c4"));
+        evidence.Change("successor/completion.json", root =>
+        {
+            root["data"]!["kill_unconfirmed_attempt_ids"] = new JsonArray("c3", "c4");
+            JsonArray invocations = root["data"]!["invocations"]!.AsArray();
+            JsonNode invocation = invocations[0]!.DeepClone(); invocation["attempt_id"] = "r3"; invocation["predecessor_attempt_id"] = "c3"; invocation["sequence"] = 3;
+            invocations.Insert(0, invocation);
+        });
+        JsonObject terminal = JsonNode.Parse(evidence.Files["successor/ledger.jsonl"])!.AsObject(); terminal["attempt_id"] = "r3";
+        evidence.Files["successor/ledger.jsonl"] = Encoding.UTF8.GetBytes(terminal.ToJsonString() + "\n" + Encoding.UTF8.GetString(evidence.Files["successor/ledger.jsonl"]));
+        evidence.Change("successor/manifest.json", root =>
+        {
+            root["data"]!["inventory_count"] = 2;
+            JsonArray inventory = root["data"]!["inventory"]!.AsArray();
+            JsonNode entry = inventory[0]!.DeepClone(); entry["attempt_id"] = "r3"; entry["predecessor_attempt_id"] = "c3"; entry["sequence"] = 3;
+            inventory.Insert(0, entry);
+            if (reverse) { JsonNode first = inventory[0]!; inventory.RemoveAt(0); inventory.Add(first); }
+            for (int index = 0; index < inventory.Count; index++) inventory[index]!["invocation_ordinal"] = index;
+        });
+        Resequence(evidence); evidence.Rehash(); using var run = NewRun(evidence);
+        await AssertOnly(run, !reverse, "b10_abrupt_verify_successor_evidence_invalid", "b10_restart_successor_evidence_unavailable");
+        Assert.NotNull(run.Data["timeout"]); Assert.NotNull(run.Data["arms"]);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(0)]
+    [InlineData(1)]
+    public async Task Given_ControlResendTimeAroundRelease_When_HostRuns_Then_OnlyEarlierInvocationFailsWarmupReadiness(int ticks)
+    {
+        await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence();
+        evidence.Frames.Single(frame => Kind(frame) == "prepared" && frame["data"]!["attempt_id"]!.GetValue<string>() == "t4")["observed_utc"] =
+            DateTimeOffset.Parse(B10AbruptVerifyEvidence.Utc, CultureInfo.InvariantCulture).AddTicks(ticks).ToString("O", CultureInfo.InvariantCulture);
+        evidence.Rehash(); using var run = NewRun(evidence);
+        await AssertOnly(run, ticks >= 0, "b10_abrupt_verify_first_evidence_invalid", "b10_restart_identity_unauthenticated");
+    }
+
+    [Theory]
+    [InlineData("queue", -1)]
+    [InlineData("queue", 0)]
+    [InlineData("queue", 1)]
+    [InlineData("report-partition", -1)]
+    [InlineData("report-partition", 0)]
+    [InlineData("report-partition", 1)]
+    public async Task Given_ControlQueueOrReportPartitionAroundExactBinding_When_HostRuns_Then_OnlyEqualityPasses(string field, int value)
+    {
+        await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence();
+        JsonObject frame = evidence.Frames.First(frame => Kind(frame) == (field == "queue" ? "control_drained" : "pre_acceptance_report"));
+        frame["data"]![field == "queue" ? "out_queue_length" : "partition"] = value;
+        evidence.Rehash(); using var run = NewRun(evidence);
+        await AssertOnly(run, value == 0, "b10_abrupt_verify_first_evidence_invalid", "b10_restart_identity_unauthenticated");
+    }
+
+    [Theory]
+    [InlineData("pre_acceptance_report", "length", -1)]
+    [InlineData("pre_acceptance_report", "length", 0)]
+    [InlineData("pre_acceptance_report", "length", 1)]
+    [InlineData("pre_acceptance_report", "hash", 0)]
+    [InlineData("pre_acceptance_report", "hash", 1)]
+    [InlineData("post_drain_report", "length", -1)]
+    [InlineData("post_drain_report", "length", 0)]
+    [InlineData("post_drain_report", "length", 1)]
+    [InlineData("post_drain_report", "hash", 0)]
+    [InlineData("post_drain_report", "hash", 1)]
+    public async Task Given_ValidManifestReportDescriptor_When_OnlyJournalBindingChanges_Then_OnlyExactReportBytesAuthenticate(string kind, string field, int delta)
+    {
+        await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence();
+        JsonNode descriptor = evidence.Frames.First(frame => Kind(frame) == kind)["data"]!;
+        if (field == "length") descriptor["length"] = descriptor["length"]!.GetValue<int>() + delta;
+        else if (delta != 0) descriptor["sha256"] = new string('f', 64);
+        evidence.Rehash(); using var run = NewRun(evidence);
+        await AssertOnly(run, delta == 0, "b10_abrupt_verify_first_evidence_invalid", "b10_restart_identity_unauthenticated");
+    }
 
     [Theory]
     [InlineData("capture", 0)]
@@ -508,6 +845,23 @@ public sealed class B10AbruptVerifyPredicateBoundaryTests(B10AbruptVerifyKafkaFi
         else Assert.Null(run.Data["timeout"]);
     }
 
+    private static string Kind(JsonObject frame) => frame["kind"]!.GetValue<string>();
+    private static void Resequence(B10AbruptVerifyEvidence evidence)
+    {
+        var prepared = new Dictionary<string, long>(StringComparer.Ordinal);
+        for (int index = 0; index < evidence.Frames.Count; index++)
+        {
+            JsonObject frame = evidence.Frames[index]; frame["sequence"] = index + 1L;
+            JsonNode data = frame["data"]!; string? id = data["attempt_id"]?.GetValue<string>();
+            if (Kind(frame) == "prepared") prepared[id!] = index + 1L;
+            else if (Kind(frame) is "accepted" or "synchronous_rejection" && id is not null && prepared.TryGetValue(id, out long sequence)) data["prepared_sequence"] = sequence;
+        }
+    }
+    private static void RefreshReport(B10AbruptVerifyEvidence evidence, JsonObject frame)
+    {
+        byte[] bytes = evidence.Files["first/" + frame["data"]!["name"]!.GetValue<string>()];
+        frame["data"]!["length"] = bytes.Length; frame["data"]!["sha256"] = B10AbruptVerifyEvidence.Hash(bytes);
+    }
     private const string TimeoutRoot = "synthetic/C1/r1/producer/";
     private static TimeoutEvidenceReader ListingReader(B10AbruptVerifyEvidence evidence, BlobListing listing)
     {

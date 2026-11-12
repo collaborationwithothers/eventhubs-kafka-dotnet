@@ -32,12 +32,12 @@ internal static class AbruptDiagnostics
 internal static class AbruptRecordJoin
 {
     internal static bool HasUnjoined(AbruptFirstEvidence first, AbruptSuccessorEvidence? successor,
-        IReadOnlyList<ConsumedRecord> records, string? timeoutInstance, string? successorDirectory)
+        IReadOnlyList<ConsumedRecord> records, IReadOnlySet<string> timeoutInstances, string? successorDirectory)
     {
         HashSet<string> keys = first.Attempts.Values.Select(attempt => attempt.Key).ToHashSet(StringComparer.Ordinal);
         foreach (ConsumedRecord record in records)
         {
-            if (record.InstanceId == timeoutInstance && timeoutInstance is not null) continue;
+            if (record.InstanceId is not null && timeoutInstances.Contains(record.InstanceId)) continue;
             if (successor is null && successorDirectory is not null && record.InstanceId == successorDirectory) continue;
             // Malformed arm records belong to check 6, including absent identity
             // headers. Their copies still reach classification unchanged.
