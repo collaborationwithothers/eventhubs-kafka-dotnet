@@ -20,6 +20,7 @@ namespace Parchwell.LoadGen.Tests.Abrupt;
 #pragma warning disable CA1707 // Binding engineering standards require Given_When_Then names.
 
 // The image gate observes the real self-kill and production cgroup capture with both real release delays.
+[Trait("Tier", "Docker")]
 public sealed class B10AbruptOfflineImageTests(ITestOutputHelper output)
 {
     [Fact]

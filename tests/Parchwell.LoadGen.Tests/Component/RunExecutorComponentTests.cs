@@ -18,6 +18,7 @@ namespace Parchwell.LoadGen.Tests.Component;
 public sealed class RunExecutorComponentTests
 {
     private static readonly string[] ExpectedHeaderNames = ["tenant-id", "document-id", "sequence", "event-type", "instance-id", "attempt-id"];
+    [Trait("Tier", "Docker")]
     [Fact]
     public async Task Given_LocalKafka_When_RunExecutorProduces_Then_IndependentConsumerAndLedgerJoinOnExactIdentityAndHeaders()
     {

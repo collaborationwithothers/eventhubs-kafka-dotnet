@@ -11,6 +11,7 @@ public sealed class PhantomSpikeGrouping;
 /// Runs the phantom mechanism spike: the approved fault matrix against a real Kafka broker behind
 /// Toxiproxy in Docker. Scope, recipe and findings: docs/operations/phantom-spike/README.md.
 /// </summary>
+[Trait("Tier", "Docker")]
 [Collection("Phantom spike")]
 public sealed class PhantomSpikeTests(ITestOutputHelper output)
 {
