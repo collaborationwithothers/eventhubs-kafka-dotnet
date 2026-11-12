@@ -8,14 +8,15 @@ internal sealed record AbruptWitness(string OriginalAttemptId, string ResendAtte
     AbruptCoordinate Original, AbruptCoordinate Resend);
 internal sealed record AbruptMember(string OriginalAttemptId, long Sequence, string PayloadSha256,
     string? ResendAttemptId, AbruptTerminal? ResendTerminal, long? CopyCount, long? OriginalCopies,
-    long? ResendCopies, long? OtherCopies, long? PairCount, IReadOnlyList<AbruptCopy>? Copies, bool? CopiesTruncated);
+    long? ResendCopies, long? OtherCopies, long? PairCount, IReadOnlyList<AbruptCopy>? Copies, bool? CopiesTruncated, bool? ResendLost);
 internal sealed record AbruptArm(string Arm, string Key, long UnconfirmedCount, long? ResendInvoked,
-    long? OriginalsSeen, long? ResendsSeen, long? PairCount, AbruptWitness? Witness, IReadOnlyList<AbruptMember> Members);
+    long? OriginalsSeen, long? ResendsSeen, long? PairCount, AbruptWitness? Witness, IReadOnlyList<AbruptMember> Members,
+    long UnreportedAttempts, long? UnreportedSeen, long? UnreportedUnseen, long? LostResends);
 
 internal static class AbruptClassification
 {
     internal static IReadOnlyList<AbruptArm> Evaluate(AbruptFirstEvidence first, AbruptSuccessorEvidence? successor,
-        IReadOnlyList<ConsumedRecord> records, bool complete, int maximumCopies)
+        IReadOnlyList<ConsumedRecord> records, bool complete, int maximumCopies, bool lossVerified = true)
     {
         return new[] { Arm("same_instance", first.Control), Arm("cross_restart", first.Kill) };
 
@@ -52,15 +53,24 @@ internal static class AbruptClassification
                     complete ? copies.LongLength : null, complete ? originalCopies : null,
                     complete && authenticated ? resendCopies : null, complete ? copies.LongCount(copy => copy.Role == "other") : null,
                     complete && authenticated ? pairCount : null, complete ? copies.Take(maximumCopies).ToArray() : null,
-                    complete ? copies.Length > maximumCopies : null));
+                    complete ? copies.Length > maximumCopies : null,
+                    !complete || !authenticated || terminal is null ? null :
+                    terminal.Delivered && resendCopies == 0 ? lossVerified ? true : null : false));
             }
             AbruptWitness? witness = witnesses.OrderBy(item => item.OriginalAttemptId, StringComparer.Ordinal)
                 .ThenBy(item => item.ResendAttemptId, StringComparer.Ordinal).ThenBy(item => item.Original.Partition)
                 .ThenBy(item => item.Original.Offset).ThenBy(item => item.Resend.Partition).ThenBy(item => item.Resend.Offset).FirstOrDefault();
+            string[] unreported = first.Attempts.Values.Where(attempt => attempt.Arm == arm &&
+                first.Accepted.Contains(attempt.Id) && !first.Terminals.ContainsKey(attempt.Id) && !first.Rejected.Contains(attempt.Id))
+                .Select(attempt => attempt.Id).ToArray();
+            long unreportedSeen = unreported.LongCount(id => records.Any(record => record.InstanceId == first.Pod && record.AttemptId == id));
             return new(arm, first.Attempts[originals[0]].Key, originals.Count,
                 authenticated ? originals.Count : null, complete ? originalsSeen : null,
                 complete && authenticated ? resendsSeen : null, complete && authenticated ? pairs : null,
-                complete && authenticated ? witness : null, members);
+                complete && authenticated ? witness : null, members, unreported.LongLength,
+                complete ? unreportedSeen : null, complete ? unreported.LongLength - unreportedSeen : null,
+                complete && authenticated && members.All(member => member.ResendLost.HasValue)
+                    ? members.LongCount(member => member.ResendLost == true) : null);
         }
     }
 }

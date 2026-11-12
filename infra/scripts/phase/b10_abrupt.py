@@ -332,7 +332,8 @@ class Trial:
                 raise ValueError('start-line producer identity')
             if name == 'start-line.json':
                 if (document.get('verifier_commit') != phase['source_commit'] or document.get('expected_job_names') !=
-                        [first_job, self.p.mode_job(phase, 'loadgen2', 1)]):
+                        [first_job, self.p.mode_job(phase, 'loadgen-restart', 1),
+                         self.p.mode_job(phase, 'loadgen-successor', 1)]):
                     raise ValueError('start-line source or jobs')
             elif document.get('source_commit') != phase['source_commit'] or document.get('source') != 'kafka_metadata':
                 raise ValueError('broker inventory source')

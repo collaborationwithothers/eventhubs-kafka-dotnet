@@ -63,6 +63,67 @@ class Setup:
         self.trial.directory.mkdir()
 
 
+class StartLineMetadataCases(Setup, unittest.TestCase):
+    """R1/R12: authenticate all start-line bytes before any producer Job can start."""
+
+    def metadata_files(self, legacy=False):
+        self.diagnostic()
+        document = self.p.read('phase.json')
+        self.run_id = document['run_id'] = 'b10d-1-1'
+        phase.write_json(self.private / 'phase.json', document)
+        prefix = self.run_id + '/C1/r1/'
+        first = self.p.mode_job(document, 'loadgen', 1)
+        identity = {'scenario_id': 'B10', 'configuration_id': 'C1', 'run_id': self.run_id,
+                    'instance_id': first, 'expected_instance_id': first, 'client_id': first}
+        jobs = ([first, first + '2'] if legacy else
+                [first, self.p.mode_job(document, 'loadgen-restart', 1),
+                 self.p.mode_job(document, 'loadgen-successor', 1)])
+        files = {
+            'start-line.json': abrupt.encode({'identity': identity, 'verifier_commit': document['source_commit'],
+                                              'expected_job_names': jobs}),
+            'broker-inventory.json': abrupt.encode({'identity': identity, 'source_commit': document['source_commit'],
+                                                    'source': 'kafka_metadata'})}
+        record = {'job': self.p.mode_job(document, 'start-line', 1), 'outcome': 'complete'}
+        receipt = {'schema_version': 1, 'mode': 'start-line', 'scenario_id': 'B10',
+                   'configuration_id': 'C1', 'run_id': self.run_id, 'phase': 'C1', 'repeat': 1,
+                   'source_commit': document['source_commit'], 'job_name': record['job'],
+                   'handler_exit_code': 0, 'cleanup_completed': True,
+                   'artifacts': [{'container': 'verifier', **abrupt.descriptor(prefix + name, raw)}
+                                 for name, raw in files.items()]}
+        files['start-line-completion.json'] = abrupt.encode(receipt)
+        return record, files
+
+    def test_three_start_line_names_return_first_configmap(self):
+        record, files = self.metadata_files()
+        expected = {'synthetic_first_configmap': True}
+        with patch.object(self.p, 'download_blob', side_effect=lambda name, *_: files[name.rsplit('/', 1)[-1]]), \
+             patch.object(self.trial, 'configmap', return_value=expected) as configmap:
+            self.assertEqual(expected, self.trial.metadata(record, time.monotonic() + 30))
+        configmap.assert_called_once_with('first', {
+            'start_line': files['start-line.json'].decode(),
+            'broker_inventory': files['broker-inventory.json'].decode(),
+            'completion': files['start-line-completion.json'].decode()})
+
+    def test_legacy_start_line_fails_metadata_and_run_before_any_producer(self):
+        record, files = self.metadata_files(legacy=True)
+        with patch.object(self.p, 'download_blob', side_effect=lambda name, *_: files[name.rsplit('/', 1)[-1]]), \
+             patch.object(self.trial, 'configmap') as configmap:
+            with self.assertRaisesRegex(ValueError, '^start-line source or jobs$'):
+                self.trial.metadata(record, time.monotonic() + 30)
+            with patch.object(self.p, 'run_mode', return_value=record), \
+                 patch.object(self.p, 'b10_deadline', return_value=time.monotonic() + 30), \
+                 patch.object(self.trial, 'job') as job, patch.object(self.p, 'run') as run:
+                self.assertEqual(1, self.trial.run())
+                job.assert_not_called()
+                run.assert_not_called()
+            configmap.assert_not_called()
+        state = self.p.state()
+        self.assertEqual(['b10_abrupt_publication_failed'], state['b10_abrupt_gaps'])
+        self.assertEqual('metadata', state['b10_abrupt_diagnostics'][0]['boundary'])
+        self.assertEqual('start-line source or jobs', state['b10_abrupt_diagnostics'][0]['validation_detail'])
+        self.assertFalse(any(record['mode'] == 'loadgen' for record in state['modes']))
+
+
 class ByteIndependentCases(Setup, unittest.TestCase):
     def test_c0_has_only_ordinary_loadgen(self):
         self.assertEqual(('loadgen',), abrupt.execution_modes('C0'))

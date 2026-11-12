@@ -17,15 +17,15 @@ namespace Parchwell.Verifier.Tests.Component;
 public sealed class B10AbruptVerifyTests(B10AbruptVerifyKafkaFixture kafka) : IClassFixture<B10AbruptVerifyKafkaFixture>
 {
     private static readonly string[] Problems = ["b10_abrupt_verify_start_line_invalid", "b10_abrupt_verify_first_evidence_invalid",
-        "b10_abrupt_verify_successor_absent", "b10_abrupt_verify_successor_evidence_invalid", "b10_abrupt_verify_window_incomplete", "b10_abrupt_verify_probe_record_malformed"];
+        "b10_abrupt_verify_successor_absent", "b10_abrupt_verify_successor_evidence_invalid", "b10_abrupt_verify_window_incomplete", "b10_abrupt_verify_probe_record_malformed", "b10_abrupt_verify_timeout_evidence_invalid", "b10_abrupt_verify_record_unjoined", "b10_abrupt_verify_end_line_advanced"];
     private static readonly InputLimits Limits = new(32, 268435456, 2147483648, 65536, 4096, 10000, 4096);
     private static readonly string[] CopyCounts = ["copy_count", "original_copies", "resend_copies", "other_copies", "pair_count"];
     private static readonly string[] OriginalAndOther = ["original", "other"];
     private static readonly string[] EnvelopeMembers = ["data", "dialect", "identity", "kind", "purpose", "schema_version", "scientific_admissible", "synthetic"];
     private static readonly string[] IdentityMembers = ["configuration_id", "image_reference", "instance_id", "job_name", "phase", "pod_name", "pod_uid", "predecessor_instance_id", "repeat", "run_id", "scenario_id", "source_commit"];
-    private static readonly string[] DataMembers = ["arms", "end_line", "finality", "first_instance_id", "problem_details", "problems", "start_line", "successor_instance_id", "window_complete", "window_limit"];
-    private static readonly string[] ArmMembers = ["arm", "key", "members", "originals_seen", "pair_count", "resend_invoked", "resends_seen", "unconfirmed_count", "witness"];
-    private static readonly string[] MemberFields = ["copies", "copies_truncated", "copy_count", "original_attempt_id", "original_copies", "other_copies", "pair_count", "payload_sha256", "resend_attempt_id", "resend_copies", "resend_terminal", "sequence"];
+    private static readonly string[] DataMembers = ["arms", "comparison", "eligibility", "eligibility_reasons", "end_line", "finality", "first_instance_id", "native_errors", "problem_details", "problems", "start_line", "successor_instance_id", "timeout", "timeout_instance_id", "window_complete", "window_limit"];
+    private static readonly string[] ArmMembers = ["arm", "key", "lost_resends", "members", "originals_seen", "pair_count", "resend_invoked", "resends_seen", "unconfirmed_count", "unreported_attempts", "unreported_seen", "unreported_unseen", "witness"];
+    private static readonly string[] MemberFields = ["copies", "copies_truncated", "copy_count", "original_attempt_id", "original_copies", "other_copies", "pair_count", "payload_sha256", "resend_attempt_id", "resend_copies", "resend_lost", "resend_terminal", "sequence"];
     private static readonly string[] CopyFields = ["attempt_id", "instance_id", "offset", "partition", "role"];
     private static readonly string[] TerminalFields = ["delivered", "error_code", "persistence_status"];
     private static readonly string[] CoordinateFields = ["offset", "partition"];
@@ -61,6 +61,17 @@ public sealed class B10AbruptVerifyTests(B10AbruptVerifyKafkaFixture kafka) : IC
         foreach (string kind in expected.Keys)
             for (int index = 0; index < 3; index++) Assert.Equal(expected[kind][index], actual[kind][index]);
         Assert.Equal(LedgerMembers(real), LedgerMembers(built.Files));
+        Dictionary<string, byte[]> ordinary = await B10AbruptVerifyEvidence.ExportTimeoutAsync();
+        foreach ((string name, byte[] bytes) in ordinary)
+        {
+            byte[] independent = built.Files["timeout/" + name["producer/pod-first/".Length..]];
+            string[] producedRows = Encoding.UTF8.GetString(bytes).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            string[] independentRows = Encoding.UTF8.GetString(independent).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            if (producedRows.Length == 0) { Assert.Empty(independentRows); continue; }
+            // Empty timeout cohorts still use the ordinary row contract exercised by the three-row T2 case.
+            if (independentRows.Length == 0 && name.EndsWith("ledger.jsonl", StringComparison.Ordinal)) independentRows = [B10AbruptVerifyEvidence.TimeoutRow("t1", "k1", 0).ToJsonString()];
+            foreach (string row in independentRows) Assert.Equal(Names(JsonNode.Parse(producedRows[0])!.AsObject()), Names(JsonNode.Parse(row)!.AsObject()));
+        }
     }
 
     [Fact]
@@ -68,8 +79,12 @@ public sealed class B10AbruptVerifyTests(B10AbruptVerifyKafkaFixture kafka) : IC
     {
         await kafka.ResetAsync();
         Dictionary<string, byte[]> real = await B10AbruptVerifyEvidence.ExportAsync();
-        using var run = new B10AbruptVerifyHarness(kafka.Bootstrap, real);
+        Dictionary<string, byte[]> timeout = await B10AbruptVerifyEvidence.ExportTimeoutAsync();
+        B10AbruptVerifyEvidence combined = B10AbruptVerifyEvidence.FromExports(real, timeout);
+        using var run = new B10AbruptVerifyHarness(kafka.Bootstrap, combined.Files);
+        run.Configuration["Verifier:NamespaceName"] = "unit-test";
         await SuccessAsync(run);
+        Assert.Empty(run.Data["eligibility_reasons"]!.AsArray());
         JsonObject termination = JsonNode.Parse(real["first/termination.json"])!["data"]!.AsObject();
         JsonArray invocations = JsonNode.Parse(real["successor/completion.json"])!["data"]!["invocations"]!.AsArray();
         foreach ((string armName, string set) in new[] { ("same_instance", "control_unconfirmed_attempt_ids"), ("cross_restart", "kill_unconfirmed_attempt_ids") })
@@ -88,6 +103,12 @@ public sealed class B10AbruptVerifyTests(B10AbruptVerifyKafkaFixture kafka) : IC
         Assert.Equal(frames.Where(frame => Text(frame["kind"]) == "prepared" && Text(frame["data"]!["role"]) == "resend").Select(frame => Text(frame["data"]!["attempt_id"])),
             Arm(run, "same_instance")["members"]!.AsArray().Select(member => Text(member!["resend_attempt_id"])));
         Assert.Equal(1, run.OutputReadbacks); Assert.Equal(1, run.Creates);
+        JsonNode[] timeoutRows = Encoding.UTF8.GetString(timeout["producer/pod-first/publication/ledger.jsonl"]).Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => JsonNode.Parse(line)!).ToArray();
+        Assert.Equal(0, Count(run.Data["timeout"]!, "ok"));
+        Assert.Equal(timeoutRows.Count(row => row["delivered"]!.GetValue<bool>()), Count(run.Data["timeout"]!, "loss"));
+        Assert.Equal(timeoutRows.Count(row => !row["delivered"]!.GetValue<bool>()), Count(run.Data["timeout"]!, "reported_failure"));
+        Assert.Equal(termination["kill_unconfirmed_attempt_ids"]!.AsArray().Count, Count(Arm(run, "cross_restart"), "unreported_attempts"));
+        Assert.Equal(0, Count(Arm(run, "cross_restart"), "unreported_seen"));
     }
 
     [Theory]
@@ -98,7 +119,7 @@ public sealed class B10AbruptVerifyTests(B10AbruptVerifyKafkaFixture kafka) : IC
         await kafka.ResetAsync(); using var run = NewRun();
         if (original) await run.ProduceAsync(0, 10);
         await run.ProduceAsync(0, 12, instance: B10AbruptVerifyEvidence.Second, attempt: "r4");
-        await SuccessAsync(run);
+        await SuccessAsync(run, 8);
         JsonObject arm = Arm(run, "cross_restart"), member = Member(arm);
         AssertCounts(member, original ? 2 : 1, original ? 1 : 0, 1, 0, original ? 1 : 0);
         Assert.Equal(original ? 1 : 0, Count(arm, "originals_seen")); Assert.Equal(1, Count(arm, "resends_seen"));
@@ -111,7 +132,7 @@ public sealed class B10AbruptVerifyTests(B10AbruptVerifyKafkaFixture kafka) : IC
         await kafka.ResetAsync(); using var run = NewRun();
         await run.ProduceAsync(1, 5); await run.ProduceAsync(0, 9);
         await run.ProduceAsync(0, 12, instance: B10AbruptVerifyEvidence.Second, attempt: "r4");
-        await SuccessAsync(run);
+        await SuccessAsync(run, 8);
         AssertCounts(Member(Arm(run, "cross_restart")), 3, 2, 1, 0, 2);
         AssertWitness(Arm(run, "cross_restart"), "c4", "r4", 0, 9, 0, 12);
     }
@@ -125,7 +146,7 @@ public sealed class B10AbruptVerifyTests(B10AbruptVerifyKafkaFixture kafka) : IC
         await run.ProduceAsync(2, 2, "same_instance", attempt: "s5", sequence: 5);
         await run.ProduceAsync(2, 3, "same_instance", attempt: "s4");
         await run.ProduceAsync(2, 4, "same_instance", attempt: "t4");
-        await SuccessAsync(run); AssertCounts(Member(Arm(run, "same_instance")), 2, 1, 1, 0, 1);
+        await SuccessAsync(run, 8); AssertCounts(Member(Arm(run, "same_instance")), 2, 1, 1, 0, 1);
         AssertWitness(Arm(run, "same_instance"), "s4", "t4", 2, 3, 2, 4);
     }
 
@@ -149,7 +170,7 @@ public sealed class B10AbruptVerifyTests(B10AbruptVerifyKafkaFixture kafka) : IC
             case "extra-file": evidence.Files["successor/extra.json"] = [123, 125]; break;
         }
         using var run = NewRun(evidence); await run.ProduceAsync(0, 10); await run.ProduceAsync(0, 12, instance: B10AbruptVerifyEvidence.Second, attempt: "r4");
-        await SuccessAsync(run, problem); Assert.Null(run.Data["successor_instance_id"]);
+        await SuccessAsync(run, problem, 8); Assert.Null(run.Data["successor_instance_id"]);
         JsonObject arm = Arm(run, "cross_restart"), member = Member(arm);
         foreach (string field in new[] { "resend_attempt_id", "resend_terminal", "resend_copies", "pair_count" }) Assert.Null(member[field]);
         foreach (string field in new[] { "resend_invoked", "resends_seen", "pair_count", "witness" }) Assert.Null(arm[field]);
@@ -241,7 +262,13 @@ public sealed class B10AbruptVerifyTests(B10AbruptVerifyKafkaFixture kafka) : IC
         await kafka.ResetAsync(); using var run = NewRun(); await run.ProduceAsync(0, 0);
         run.CaptureStart(); await run.ProduceAsync(0, 1); await run.ProduceAsync(0, 2);
         run.AfterEndQuery = () => run.ProduceAsync(0, 3).GetAwaiter().GetResult();
-        await SuccessAsync(run);
+        await SuccessAsync(run, 9);
+        Assert.Empty(run.Data["eligibility_reasons"]!.AsArray());
+        foreach (JsonNode? arm in run.Data["arms"]!.AsArray())
+        {
+            Assert.Null(arm!["lost_resends"]);
+            Assert.All(arm["members"]!.AsArray(), member => Assert.Null(member!["resend_lost"]));
+        }
         Assert.Equal(new long[] { 1, 2 }, Member(Arm(run, "cross_restart"))["copies"]!.AsArray().Select(copy => Count(copy!, "offset")));
     }
 
@@ -263,7 +290,7 @@ public sealed class B10AbruptVerifyTests(B10AbruptVerifyKafkaFixture kafka) : IC
     public async Task Given_DiagnosticResult_When_ReadByScienceOrPublishedTwice_Then_ReadersRejectAndSecondHostFails_T14()
     {
         await kafka.ResetAsync(); using var run = NewRun(); await run.ProduceAsync(0, 10); await run.ProduceAsync(0, 12, instance: B10AbruptVerifyEvidence.Second, attempt: "r4");
-        await SuccessAsync(run); byte[] bytes = run.Verifier[B10AbruptVerifyHarness.Output]; JsonObject root = run.Result;
+        await SuccessAsync(run, 8); byte[] bytes = run.Verifier[B10AbruptVerifyHarness.Output]; JsonObject root = run.Result;
         Assert.Equal(EnvelopeMembers, Names(root));
         Assert.Equal(3, root["schema_version"]!.GetValue<int>()); Assert.Equal("b10_abrupt", Text(root["dialect"])); Assert.Equal("diagnostic_trial", Text(root["purpose"]));
         Assert.True(root["synthetic"]!.GetValue<bool>()); Assert.False(root["scientific_admissible"]!.GetValue<bool>()); Assert.Equal("nonfinal_result", Text(root["kind"]));
@@ -362,7 +389,7 @@ public sealed class B10AbruptVerifyTests(B10AbruptVerifyKafkaFixture kafka) : IC
         Assert.Equal(resendPartition, Count(witness["resend"]!, "partition")); Assert.Equal(resendOffset, Count(witness["resend"]!, "offset"));
     }
     private static void AssertFirstUnavailable(B10AbruptVerifyHarness run)
-    { Assert.Null(run.Data["arms"]); Assert.Null(run.Data["end_line"]); Assert.False(run.Data["window_complete"]!.GetValue<bool>()); }
+    { Assert.Null(run.Data["arms"]); Assert.NotNull(run.Data["end_line"]); Assert.True(run.Data["window_complete"]!.GetValue<bool>()); }
     private static void AssertUnknownCopies(B10AbruptVerifyHarness run)
     {
         Assert.False(run.Data["window_complete"]!.GetValue<bool>());

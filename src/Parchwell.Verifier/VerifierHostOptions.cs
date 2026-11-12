@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Parchwell.Verifier;
 
 /// <summary>Names the executable verifier mode selected by the runner.</summary>
@@ -59,11 +61,16 @@ internal sealed class VerifierHostOptions
         get
         {
             string first = Common.Phase.PhaseIdentity.JobName(RunId!, Phase!, Repeat!.Value);
+            if (ScenarioId == "B10" && IsB10TrialRunId(RunId))
+                return [first, first + "-restart", first + "-successor"];
             return ScenarioId == "B10"
                 ? [first, Common.Phase.PhaseIdentity.RestartJobName(RunId!, Phase!, Repeat.Value)]
                 : [first];
         }
     }
+
+    internal static bool IsB10TrialRunId(string? runId) =>
+        runId is not null && B10TrialRunIdPattern.Match().IsMatch(runId);
 
     public string? ClientId { get; set; }
     public string? VerifierClientId { get; set; }
@@ -106,6 +113,12 @@ internal sealed class VerifierHostOptions
     public string? GateOutputPath { get; set; }
     public List<ExpectedProbeRepeat>? ExpectedRepeats { get; set; }
     public List<string>? RepeatResultPaths { get; set; }
+}
+
+internal static partial class B10TrialRunIdPattern
+{
+    [GeneratedRegex("\\Ab10d-[0-9]+-[0-9]+\\z", RegexOptions.CultureInvariant)]
+    internal static partial Regex Match();
 }
 
 /// <summary>Provides the explicit parser limits used while loading a scenario.</summary>

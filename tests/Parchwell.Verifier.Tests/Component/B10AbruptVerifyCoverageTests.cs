@@ -12,6 +12,8 @@ public sealed class B10AbruptVerifyCoverageTests(B10AbruptVerifyKafkaFixture kaf
 {
     private const string FirstProblem = "b10_abrupt_verify_first_evidence_invalid";
     private const string SuccessorProblem = "b10_abrupt_verify_successor_evidence_invalid";
+    private static readonly string[] AbsentControlReasons = ["b10_restart_identity_unauthenticated", "b10_abrupt_control_incomplete"];
+    private static readonly string[] MissingReportReasons = ["b10_restart_identity_unauthenticated", "b10_restart_guard_failed"];
 
     [Theory]
     [InlineData("schema_version")]
@@ -80,8 +82,8 @@ public sealed class B10AbruptVerifyCoverageTests(B10AbruptVerifyKafkaFixture kaf
         Assert.Null(run.Data["first_instance_id"]);
         Assert.Null(run.Data["successor_instance_id"]);
         Assert.Null(run.Data["arms"]);
-        Assert.Null(run.Data["end_line"]);
-        Assert.False(run.Data["window_complete"]!.GetValue<bool>());
+        Assert.NotNull(run.Data["end_line"]);
+        Assert.True(run.Data["window_complete"]!.GetValue<bool>());
     }
 
     [Theory]
@@ -119,7 +121,7 @@ public sealed class B10AbruptVerifyCoverageTests(B10AbruptVerifyKafkaFixture kaf
             else root[defect] = "wrong";
         });
         evidence.RehashSuccessor(); using var run = NewRun(evidence);
-        await AssertRunAsync(run, defect is "schema-3" or "opaque-inventory" ? [] : [SuccessorProblem]);
+        await AssertRunAsync(run, defect == "schema-3" ? [] : [SuccessorProblem]);
         Assert.NotNull(run.Data["arms"]);
     }
 
@@ -160,7 +162,7 @@ public sealed class B10AbruptVerifyCoverageTests(B10AbruptVerifyKafkaFixture kaf
         JsonObject source = JsonNode.Parse(evidence.Files[objectFile])!.AsObject();
         evidence.Add(kind, source["data"]!.DeepClone()); evidence.Rehash();
         using var run = NewRun(evidence); await AssertRunAsync(run, FirstProblem);
-        Assert.Null(run.Data["arms"]); Assert.Null(run.Data["end_line"]); Assert.False(run.Data["window_complete"]!.GetValue<bool>());
+        Assert.Null(run.Data["arms"]); Assert.NotNull(run.Data["end_line"]); Assert.True(run.Data["window_complete"]!.GetValue<bool>());
     }
 
     [Fact]
@@ -189,7 +191,7 @@ public sealed class B10AbruptVerifyCoverageTests(B10AbruptVerifyKafkaFixture kaf
         await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence();
         JsonNode nested = JsonValue.Create(0)!;
         for (int count = 0; count < depth - 2; count++) nested = new JsonArray(nested);
-        evidence.Change("first/termination.json", root => root["data"]!["child"] = nested);
+        evidence.Change("first/termination.json", root => root["data"]!["detail"] = nested);
         evidence.RehashSuccessor(); using var run = NewRun(evidence);
         await AssertRunAsync(run, depth <= 32 ? [] : [FirstProblem]);
     }
@@ -359,7 +361,7 @@ public sealed class B10AbruptVerifyCoverageTests(B10AbruptVerifyKafkaFixture kaf
         await run.ProduceAsync(0, 2, attempt: "wrong-attempt");
         await run.ProduceAsync(0, 3, instance: B10AbruptVerifyEvidence.Second, attempt: "wrong-attempt");
         await run.ProduceAsync(0, 4, instance: "wrong-instance", attempt: "r4");
-        await AssertRunAsync(run); JsonNode member = run.Data["arms"]![1]!["members"]![0]!;
+        await AssertRunAsync(run, "b10_abrupt_verify_record_unjoined"); JsonNode member = run.Data["arms"]![1]!["members"]![0]!;
         Assert.Equal(4, member["copy_count"]!.GetValue<long>()); Assert.Equal(4, member["other_copies"]!.GetValue<long>());
         Assert.Equal(0, member["original_copies"]!.GetValue<long>()); Assert.Equal(0, member["resend_copies"]!.GetValue<long>());
         Assert.Equal(new long[] { 1, 2, 3, 4 }, member["copies"]!.AsArray().Select(copy => copy!["offset"]!.GetValue<long>()));
@@ -410,7 +412,12 @@ public sealed class B10AbruptVerifyCoverageTests(B10AbruptVerifyKafkaFixture kaf
             evidence.Change("first/termination.json", root => root["data"]!["manifest"] = B10AbruptVerifyEvidence.Descriptor("abrupt-manifest.json", evidence.Files["first/abrupt-manifest.json"]));
             evidence.RehashSuccessor();
         }
-        using var run = NewRun(evidence); await AssertRunAsync(run, defect == "empty-report-list" ? [] : [FirstProblem]);
+        using var run = NewRun(evidence); await AssertRunAsync(run, FirstProblem);
+        if (defect == "empty-report-list")
+        {
+            Assert.Equal(MissingReportReasons, run.Data["eligibility_reasons"]!.AsArray().Select(Text));
+            Assert.Null(run.Data["arms"]);
+        }
     }
 
     [Theory]
@@ -516,6 +523,11 @@ public sealed class B10AbruptVerifyCoverageTests(B10AbruptVerifyKafkaFixture kaf
             root["data"]!["kill_unconfirmed_attempt_ids"] = new JsonArray("c3");
             root["data"]!["invocations"]![0]!["predecessor_attempt_id"] = "c3"; root["data"]!["invocations"]![0]!["sequence"] = 3;
         });
+        evidence.Change("successor/manifest.json", root =>
+        {
+            root["data"]!["inventory"]![0]!["predecessor_attempt_id"] = "c3";
+            root["data"]!["inventory"]![0]!["sequence"] = 3;
+        });
         Resequence(evidence); evidence.Rehash(); using var run = NewRun(evidence); await AssertRunAsync(run);
         JsonNode arm = run.Data["arms"]![1]!; Assert.Equal(1, arm["unconfirmed_count"]!.GetValue<long>());
         Assert.Equal("c3", Text(Assert.Single(arm["members"]!.AsArray())!["original_attempt_id"]));
@@ -535,6 +547,15 @@ public sealed class B10AbruptVerifyCoverageTests(B10AbruptVerifyKafkaFixture kaf
             JsonObject later = root["data"]!["invocations"]![0]!.DeepClone().AsObject(); JsonObject earlier = later.DeepClone().AsObject();
             earlier["attempt_id"] = "r3"; earlier["predecessor_attempt_id"] = "c3"; earlier["sequence"] = 3;
             root["data"]!["invocations"] = reverse ? new JsonArray(later, earlier) : new JsonArray(earlier, later);
+        });
+        evidence.Change("successor/manifest.json", root =>
+        {
+            JsonObject later = root["data"]!["inventory"]![0]!.DeepClone().AsObject();
+            JsonObject earlier = later.DeepClone().AsObject(); earlier["attempt_id"] = "r3";
+            earlier["predecessor_attempt_id"] = "c3"; earlier["sequence"] = 3;
+            earlier["invocation_ordinal"] = reverse ? 1 : 0; later["invocation_ordinal"] = reverse ? 0 : 1;
+            root["data"]!["inventory"] = reverse ? new JsonArray(later, earlier) : new JsonArray(earlier, later);
+            root["data"]!["inventory_count"] = 2;
         });
         JsonObject row = JsonNode.Parse(evidence.Files["successor/ledger.jsonl"])!.AsObject(); JsonObject previous = row.DeepClone().AsObject(); previous["attempt_id"] = "r3";
         evidence.Files["successor/ledger.jsonl"] = Encoding.UTF8.GetBytes(previous.ToJsonString() + "\n" + row.ToJsonString() + "\n");
@@ -646,15 +667,19 @@ public sealed class B10AbruptVerifyCoverageTests(B10AbruptVerifyKafkaFixture kaf
             if (state == "successor-failure") { row["delivered"] = false; row["error_code"] = -1; }
             evidence.Files["successor/ledger.jsonl"] = Encoding.UTF8.GetBytes(row.ToJsonString() + "\n");
         }
-        Resequence(evidence); evidence.Rehash(); using var run = NewRun(evidence); await AssertRunAsync(run);
-        JsonNode? projected = run.Data["arms"]![state.StartsWith("successor", StringComparison.Ordinal) ? 1 : 0]!["members"]![0]!["resend_terminal"];
-        if (state == "absent-control") Assert.Null(projected);
-        else
+        Resequence(evidence); evidence.Rehash(); using var run = NewRun(evidence);
+        if (state == "absent-control")
         {
-            Assert.NotNull(projected); Assert.Null(projected["persistence_status"]);
-            Assert.Equal(state != "successor-failure", projected["delivered"]!.GetValue<bool>());
-            Assert.Equal(state == "successor-failure" ? -1 : 0, projected["error_code"]!.GetValue<int>());
+            await AssertRunAsync(run, FirstProblem);
+            Assert.Equal(AbsentControlReasons, run.Data["eligibility_reasons"]!.AsArray().Select(Text));
+            Assert.Null(run.Data["arms"]);
+            return;
         }
+        await AssertRunAsync(run);
+        JsonNode? projected = run.Data["arms"]![state.StartsWith("successor", StringComparison.Ordinal) ? 1 : 0]!["members"]![0]!["resend_terminal"];
+        Assert.NotNull(projected); Assert.Null(projected["persistence_status"]);
+        Assert.Equal(state != "successor-failure", projected["delivered"]!.GetValue<bool>());
+        Assert.Equal(state == "successor-failure" ? -1 : 0, projected["error_code"]!.GetValue<int>());
     }
 
     [Fact]

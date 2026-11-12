@@ -17,6 +17,7 @@ public sealed class B10AbruptVerifyBoundaryTests(B10AbruptVerifyKafkaFixture kaf
 {
     private const string FirstProblem = "b10_abrupt_verify_first_evidence_invalid";
     private const string SuccessorProblem = "b10_abrupt_verify_successor_evidence_invalid";
+    private static readonly string[] GuardReasons = ["b10_restart_guard_failed"];
     private static readonly string[] TwoKillOriginalIds = ["z3", "a4"];
     private static readonly string[] TwoKillResendIds = ["r3", "r4"];
     private static readonly string[] JournalAttemptFields = ["attempt_id", "cut_attempt_id"];
@@ -98,6 +99,7 @@ public sealed class B10AbruptVerifyBoundaryTests(B10AbruptVerifyKafkaFixture kaf
     {
         VerifierHostOptions options = VerifierHostTestOptions.ValidOptions("b10-abrupt-verify");
         options.ScenarioId = "B10"; options.ConfigurationId = "C1"; options.Phase = "C1"; options.Repeat = 1;
+        options.ArtifactPrefix = "run-1/C1/r1/producer/";
         options.JobName = "run-1-c1-r1-b10-abrupt-verify";
         options.LoadGenImage = B10AbruptVerifyEvidence.Image; options.VerifierImage = B10AbruptVerifyEvidence.Image;
         var validator = new VerifierHostOptionsValidator();
@@ -117,7 +119,8 @@ public sealed class B10AbruptVerifyBoundaryTests(B10AbruptVerifyKafkaFixture kaf
     {
         await kafka.ResetAsync(); using var run = NewRun(new());
         string first = B10AbruptVerifyEvidence.Prefix + B10AbruptVerifyEvidence.First + "/";
-        if (defect == "empty") run.Ledger.Clear();
+        if (defect == "empty")
+            foreach (string name in run.Ledger.Keys.Where(name => name.StartsWith(B10AbruptVerifyEvidence.Prefix, StringComparison.Ordinal)).ToArray()) run.Ledger.Remove(name);
         else if (defect == "no-first")
             foreach (string name in run.Ledger.Keys.Where(name => name.StartsWith(first, StringComparison.Ordinal)).ToArray()) run.Ledger.Remove(name);
         else if (defect == "unknown-directory") run.Ledger[B10AbruptVerifyEvidence.Prefix + "unknown/unknown.json"] = [123, 125];
@@ -257,9 +260,11 @@ public sealed class B10AbruptVerifyBoundaryTests(B10AbruptVerifyKafkaFixture kaf
         if (file == "first/journal.jsonl")
         {
             JsonObject kill = evidence.Frames[^1]; evidence.Frames.RemoveAt(evidence.Frames.Count - 1);
+            int captures = 0;
             while (evidence.Frames.Count < 4095) evidence.Add("native_error", new
-            { capture_sequence = evidence.Frames.Count, error_code = -1, error_name = "synthetic", is_error = true, is_fatal = false, callback_monotonic_ticks = 1 });
+            { capture_sequence = ++captures, error_code = -1, error_name = "synthetic", is_error = false, is_fatal = false, callback_monotonic_ticks = 1 });
             kill["sequence"] = 4096; evidence.Frames.Add(kill);
+            evidence.Change("first/termination.json", root => root["data"]!["native_error_count"] = captures);
             byte[][] lines = evidence.Frames.Select(frame => Encoding.UTF8.GetBytes(frame.ToJsonString())).ToArray();
             int padding = length - lines.Sum(line => line.Length + 1);
             Assert.True(padding >= 0);
@@ -285,6 +290,8 @@ public sealed class B10AbruptVerifyBoundaryTests(B10AbruptVerifyKafkaFixture kaf
         }
         using var run = NewRun(evidence); Assert.Equal(0, await run.RunAsync());
         AssertProblems(run, valid ? [] : [file.StartsWith("first/", StringComparison.Ordinal) ? FirstProblem : SuccessorProblem]);
+        if (valid && file is "successor/statistics.jsonl" or "successor/request-lifecycle.jsonl")
+            Assert.Equal(GuardReasons, run.Data["eligibility_reasons"]!.AsArray().Select(Text));
     }
 
     [Theory]
@@ -303,9 +310,11 @@ public sealed class B10AbruptVerifyBoundaryTests(B10AbruptVerifyKafkaFixture kaf
         {
             int count = int.Parse(defect[8..], CultureInfo.InvariantCulture);
             JsonObject kill = evidence.Frames[^1]; evidence.Frames.RemoveAt(evidence.Frames.Count - 1);
+            int captures = 0;
             while (evidence.Frames.Count < count - 1) evidence.Add("native_error", new
-            { capture_sequence = evidence.Frames.Count, error_code = -1, error_name = "synthetic", is_error = true, is_fatal = false, callback_monotonic_ticks = 1 });
-            kill["sequence"] = count; evidence.Frames.Add(kill); evidence.Rehash();
+            { capture_sequence = ++captures, error_code = -1, error_name = "synthetic", is_error = false, is_fatal = false, callback_monotonic_ticks = 1 });
+            kill["sequence"] = count; evidence.Frames.Add(kill);
+            evidence.Change("first/termination.json", root => root["data"]!["native_error_count"] = captures); evidence.Rehash();
         }
         else if (defect == "gap-record")
         { evidence.Add("gap", new { reason = "writer_failed", first_missing_sequence = (int?)null, capture_status = "invalid" }); evidence.Rehash(); }
@@ -441,7 +450,7 @@ public sealed class B10AbruptVerifyBoundaryTests(B10AbruptVerifyKafkaFixture kaf
             await run.ProduceAsync(1, 2, attempt: "a4");
             await run.ProduceAsync(1, 3, instance: B10AbruptVerifyEvidence.Second, attempt: "r4");
         }
-        Assert.Equal(0, await run.RunAsync()); AssertProblems(run, duplicate ? [SuccessorProblem] : []);
+        Assert.Equal(0, await run.RunAsync()); AssertProblems(run, duplicate ? [SuccessorProblem] : ["b10_abrupt_verify_record_unjoined"]);
         JsonNode arm = run.Data["arms"]!.AsArray().Single(value => Text(value!["arm"]) == "cross_restart")!;
         Assert.Equal(2, arm["unconfirmed_count"]!.GetValue<long>());
         if (!duplicate)

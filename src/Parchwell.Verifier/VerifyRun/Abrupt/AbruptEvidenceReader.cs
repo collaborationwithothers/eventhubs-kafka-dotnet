@@ -10,9 +10,32 @@ internal sealed record AbruptTerminal(bool Delivered, int ErrorCode, int? Persis
 internal sealed record AbruptFirstEvidence(string Pod, string Uid,
     IReadOnlyDictionary<string, AbruptAttempt> Attempts, IReadOnlyList<string> Control,
     IReadOnlyList<string> Kill, IReadOnlyDictionary<string, string> ControlResends,
-    IReadOnlyDictionary<string, AbruptTerminal> Terminals, byte[] JournalBytes, byte[] TerminationBytes);
+    IReadOnlyDictionary<string, AbruptTerminal> Terminals, byte[] JournalBytes, byte[] TerminationBytes)
+{
+    internal IReadOnlySet<int> Reasons { get; init; } = new HashSet<int>();
+    internal bool Invalid { get; init; }
+    internal IReadOnlySet<string> Accepted { get; init; } = new HashSet<string>(StringComparer.Ordinal);
+    internal IReadOnlySet<string> Rejected { get; init; } = new HashSet<string>(StringComparer.Ordinal);
+    internal IReadOnlyDictionary<string, AbruptWarmup> Warmups { get; init; } = new Dictionary<string, AbruptWarmup>(StringComparer.Ordinal);
+    internal AbruptNativeErrors NativeErrors { get; init; } = new(0, 0, "unknown_due_to_intended_kill");
+    internal IReadOnlyList<JsonElement> Frames { get; init; } = [];
+    internal IReadOnlyDictionary<string, byte[]> Files { get; init; } = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+}
 internal sealed record AbruptSuccessorEvidence(string Pod,
-    IReadOnlyDictionary<string, string> Resends, IReadOnlyDictionary<string, AbruptTerminal> Terminals);
+    IReadOnlyDictionary<string, string> Resends, IReadOnlyDictionary<string, AbruptTerminal> Terminals)
+{
+    internal IReadOnlySet<int> Reasons { get; init; } = new HashSet<int>();
+    internal bool Invalid { get; init; }
+    internal JsonElement Manifest { get; init; }
+    internal JsonElement Completion { get; init; }
+    internal IReadOnlyDictionary<string, byte[]> Files { get; init; } = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+}
+internal sealed record AbruptWarmup(string Id, string Arm, string Key, string PayloadSha256);
+internal sealed record AbruptNativeErrors(long Count, long FatalCount, string Tail);
+internal sealed class AbruptEvidenceException(string message, IReadOnlySet<int> reasons) : FormatException(message)
+{
+    internal IReadOnlySet<int> Reasons { get; } = reasons;
+}
 
 internal sealed class AbruptEvidenceReader(VerifierHostOptions options,
     Func<string, long, CancellationToken, Task<byte[]?>> read)
@@ -27,8 +50,19 @@ internal sealed class AbruptEvidenceReader(VerifierHostOptions options,
     internal async Task<AbruptFirstEvidence> ReadFirstAsync(string prefix, string pod, string uid,
         IReadOnlyList<string> names, CancellationToken ct)
     {
+        try { return await ReadFirstCoreAsync(prefix, pod, uid, names, ct).ConfigureAwait(false); }
+        catch (Exception exception) when (IsMalformed(exception))
+        {
+            if (exception is AbruptEvidenceException) throw;
+            throw new AbruptEvidenceException(exception.Message, new HashSet<int> { exception is InvalidDataException ? 2 : 3 });
+        }
+    }
+
+    private async Task<AbruptFirstEvidence> ReadFirstCoreAsync(string prefix, string pod, string uid,
+        IReadOnlyList<string> names, CancellationToken ct)
+    {
         Dictionary<string, byte[]> files = await ReadFilesAsync(prefix, pod, names, ct).ConfigureAwait(false);
-        Require(FirstFiles.All(files.ContainsKey), "first_files");
+        RequireEvidence(FirstFiles.All(files.ContainsKey), "first_files", 2);
         Envelope(files["registration.json"], "registration", options, pod, null, uid);
         JsonElement termination = Envelope(files["termination.json"], "termination", options, pod, null, uid).GetProperty("data");
         JsonElement manifest = Envelope(files["abrupt-manifest.json"], "abrupt_manifest", options, pod, null, uid).GetProperty("data");
@@ -42,10 +76,10 @@ internal sealed class AbruptEvidenceReader(VerifierHostOptions options,
             Bind(descriptor, name, files[name]);
         }
         Require(objectNames.SetEquals(files.Keys), "first_object_set");
-        Require(Text(termination, "termination") == "intended_self_kill" && termination.GetProperty("exit_observed").GetBoolean() &&
+        RequireEvidence(Text(termination, "termination") == "intended_self_kill" && termination.GetProperty("exit_observed").GetBoolean() &&
             termination.GetProperty("exit_code_local_observation").GetInt32() == 137 &&
             termination.GetProperty("capture_gaps").GetArrayLength() == 0 && manifest.GetProperty("gaps").GetArrayLength() == 0 &&
-            termination.GetProperty("successor_permitted").GetBoolean(), "termination");
+            termination.GetProperty("successor_permitted").GetBoolean(), "termination", 4);
 
         byte[] journal = files["journal.jsonl"];
         Require(journal.Length > 0 && journal[^1] == 10, "journal_newline");
@@ -115,6 +149,7 @@ internal sealed class AbruptEvidenceReader(VerifierHostOptions options,
         }
         Require(control is { Length: > 0 } && control.SequenceEqual(Strings(termination.GetProperty("control_unconfirmed_attempt_ids")), StringComparer.Ordinal), "control_set");
         AbruptAttempt[] resends = attempts.Values.Where(attempt => attempt.Role == "resend").OrderBy(attempt => attempt.JournalSequence).ToArray();
+        RequireEvidence(resends.Length == control!.Length, "control_resend_count", 10);
         Require(resends.Select(attempt => attempt.Predecessor).SequenceEqual(control!, StringComparer.Ordinal), "control_resends");
         var controlResends = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (AbruptAttempt resend in resends)
@@ -127,7 +162,9 @@ internal sealed class AbruptEvidenceReader(VerifierHostOptions options,
         string[] kill = Select("cross_restart");
         Require(kill.Length > 0 && kill.SequenceEqual(Strings(termination.GetProperty("kill_unconfirmed_attempt_ids")), StringComparer.Ordinal) &&
             lastProducing == "kill_intent", "kill_set");
-        return new(pod, uid, attempts, control!, kill, controlResends, terminals, journal, files["termination.json"]);
+        var evidence = new AbruptFirstEvidence(pod, uid, attempts, control!, kill, controlResends, terminals, journal, files["termination.json"])
+        { Accepted = accepted, Rejected = rejected, Frames = frames, Files = files };
+        return AbruptReconciliation.First(evidence, termination);
 
         string[] Select(string arm) => attempts.Values.Where(attempt => attempt.Arm == arm && attempt.Role == "original" &&
             accepted.Contains(attempt.Id) && !terminals.ContainsKey(attempt.Id) && !rejected.Contains(attempt.Id)).OrderBy(attempt => attempt.JournalSequence).Select(attempt => attempt.Id).ToArray();
@@ -136,12 +173,25 @@ internal sealed class AbruptEvidenceReader(VerifierHostOptions options,
     internal async Task<AbruptSuccessorEvidence> ReadSuccessorAsync(string prefix, string pod,
         AbruptFirstEvidence first, IReadOnlyList<string> names, CancellationToken ct)
     {
+        try { return await ReadSuccessorCoreAsync(prefix, pod, first, names, ct).ConfigureAwait(false); }
+        catch (Exception exception) when (IsMalformed(exception))
+        {
+            IReadOnlySet<int> reasons = exception is AbruptEvidenceException abrupt
+                ? abrupt.Reasons.Select(reason => reason == 10 ? 10 : 9).ToHashSet()
+                : new HashSet<int> { 9 };
+            throw new AbruptEvidenceException(exception.Message, reasons);
+        }
+    }
+
+    private async Task<AbruptSuccessorEvidence> ReadSuccessorCoreAsync(string prefix, string pod,
+        AbruptFirstEvidence first, IReadOnlyList<string> names, CancellationToken ct)
+    {
         Dictionary<string, byte[]> files = await ReadFilesAsync(prefix, pod, names, ct).ConfigureAwait(false);
         Require(files.Keys.ToHashSet(StringComparer.Ordinal).SetEquals(SuccessorFiles), "successor_files");
         JsonElement registration = Envelope(files["registration.json"], "registration", options, pod, first.Pod);
         string uid = Text(registration.GetProperty("identity"), "pod_uid");
         Require(uid != first.Uid, "pod_uid_duplicate");
-        Envelope(files["manifest.json"], "cohort_inventory", options, pod, first.Pod, uid);
+        JsonElement manifest = Envelope(files["manifest.json"], "cohort_inventory", options, pod, first.Pod, uid).GetProperty("data");
         JsonElement completion = Envelope(files["completion.json"], "successor_receipt", options, pod, first.Pod, uid).GetProperty("data");
         Bind(completion.GetProperty("registration"), "registration.json", files["registration.json"]);
         var boundNames = new HashSet<string>(StringComparer.Ordinal);
@@ -157,7 +207,7 @@ internal sealed class AbruptEvidenceReader(VerifierHostOptions options,
         Require(completion.GetProperty("cleanup_completed").GetBoolean() &&
             Strings(completion.GetProperty("kill_unconfirmed_attempt_ids")).SequenceEqual(first.Kill, StringComparer.Ordinal), "successor_completion");
         JsonElement[] invocations = completion.GetProperty("invocations").EnumerateArray().ToArray();
-        Require(invocations.Length == first.Kill.Count, "successor_invocations");
+        RequireEvidence(invocations.Length == first.Kill.Count, "successor_invocations", 10);
         var resends = new Dictionary<string, string>(StringComparer.Ordinal);
         var attemptIds = new HashSet<string>(StringComparer.Ordinal);
         for (int index = 0; index < invocations.Length; index++)
@@ -185,7 +235,8 @@ internal sealed class AbruptEvidenceReader(VerifierHostOptions options,
             start = offset + 1;
         }
         Require(terminals.Count == attemptIds.Count, "successor_ledger");
-        return new(pod, resends, terminals);
+        return AbruptReconciliation.Successor(new AbruptSuccessorEvidence(pod, resends, terminals)
+        { Manifest = manifest, Completion = completion, Files = files });
     }
 
     private async Task<Dictionary<string, byte[]>> ReadFilesAsync(string prefix, string pod,
@@ -214,8 +265,14 @@ internal sealed class AbruptEvidenceReader(VerifierHostOptions options,
     private async Task<byte[]> RequiredAsync(string name, long limit, CancellationToken ct, bool allowEmpty = false)
     {
         byte[]? bytes = await read(name, limit, ct).ConfigureAwait(false);
-        Require(bytes is not null && bytes.LongLength <= limit && (allowEmpty || bytes.Length > 0), "file_bytes");
+        RequireEvidence(bytes is not null && bytes.LongLength <= limit && (allowEmpty || bytes.Length > 0), "file_bytes", 2);
         return bytes!;
+    }
+    private static bool IsMalformed(Exception exception) => exception is FormatException or JsonException or
+        InvalidOperationException or InvalidDataException or KeyNotFoundException or OverflowException;
+    private static void RequireEvidence(bool condition, string detail, int reason)
+    {
+        if (!condition) throw new AbruptEvidenceException(detail, new HashSet<int> { reason });
     }
     private static AbruptTerminal Terminal(JsonElement data) => new(data.GetProperty("delivered").GetBoolean(),
         data.GetProperty("error_code").GetInt32(), data.GetProperty("persistence_status").ValueKind == JsonValueKind.Null

@@ -64,7 +64,7 @@ After timeout wait outcome `complete` or `failed`, before any later render, the 
 
 An exception in the timeout-Job step records fallback `b10_abrupt_publication_failed` at boundary `timeout_job` and starts no later Job. A failed timeout Job does not repair or fail the restart chain; ADR-021 protocol rule 12 owns independent per-instance checks. All Jobs share the existing 18000 s orchestration deadline. No log collection delays successor release.
 
-The start line still expects `{run}-c1-r1-loadgen` and `{run}-c1-r1-loadgen2`; the trial never runs the latter Job. [Decision 6787849492, point 1](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6787849492) accepted that gap until the verifier classification pull request; [decision 6816733258, point 1](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6816733258) extends it to the later full-reconciliation pull request of mode `b10-abrupt-verify`, before any science.
+For B10 run IDs matching `^b10d-[0-9]+-[0-9]+$`, the start line expects exactly `[{run}-c1-r1-loadgen, {run}-c1-r1-loadgen-restart, {run}-c1-r1-loadgen-successor]`, including the successor name even when no successor starts. Other B10 run IDs retain `[loadgen, loadgen2]`; other scenarios retain their one expected name. The codec writes B10 notes only with three names for a matching run ID and two otherwise. Trial metadata requires the three names. Scientific readers retain their existing checks and reject three-name trial notes against two-producer science. Authority: [PR3c approval](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6828172387).
 
 ## Schema-3 envelope and journal
 
@@ -186,7 +186,7 @@ After registration with the first pod as predecessor, it waits for that release 
 
 ## Diagnostic verifier mode
 
-The classification plan sections 3.1 to 3.4 and requirements R1 to R9 own mode `b10-abrupt-verify`. It reads the existing schema-3 publications described above and counts copies in one bounded original window. It selects no verdict, computes no eligibility and admits no evidence to science.
+The [approved full-classification plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/48c52669fd40a3bb80ca0378e061f1d6153d6a22/items/404/plan-pr3c-full-classification.md), sections 3 and 4, owns mode `b10-abrupt-verify`. It reconciles the timeout, first restart and successor instances, classifies the timeout cohort and counts each arm's copies in one bounded original window. Eligibility is diagnostic and pending the sweep; this mode selects no verdict and admits no evidence to science.
 
 ### Mode, options and publication
 
@@ -196,7 +196,7 @@ The required option names, under `Verifier__` in the environment, are:
 
 - Common: `Mode`, `ScenarioId`, `VerifierCommit`, `MaxOutputBytes`, `MaxDiagnosticsPerCheck`, `MaxDiagnosticBytes`, `CleanupTimeout`, `ProcessLifetime`, `RunId`, `Phase`, `ConfigurationId`, `BlobServiceUri`, `VerifierContainer` and `LedgerContainer`.
 - Repeat: `Repeat`, `RepeatPrefix`, `ExpectedInstanceId`, `VerifierClientId`, `NamespaceName`, `TokenTimeout`, `MetadataTimeout`, `WatermarkTimeout`, `PollSlice` and `BlobIoTimeout`.
-- Mode: `IoTimeout`, `SafetyStop`, `MaxConsumedRecords`, `MaxConsumedBytes`, `MaxArtifactBytes`, `MaxTotalInputBytes`, `MaxPartitions`, `MaxInputDepth`, `StartLineInputName`, `LoadGenImage` and `VerifierImage`.
+- Mode: `IoTimeout`, `SafetyStop`, `MaxConsumedRecords`, `MaxConsumedBytes`, `MaxArtifactBytes`, `MaxTotalInputBytes`, `MaxPartitions`, `MaxInputDepth`, `StartLineInputName`, `LoadGenImage`, `VerifierImage`, `ScenarioRoot`, `ArtifactPrefix`, `MaxRowBytes`, `MaxRowsPerArtifact`, `MaxInventoryEntries`, `MaxInputEntries`, `MaxNativeReportBytes` and `MaxBrokerEntries`, plus the scenario-parsing options required by `verify`. `ArtifactPrefix` must equal `<RunId>/C1/r1/producer/`; a different value exits 1 before any read.
 
 `JobName`, `PodName` and `PodUid` use the existing `PARCHWELL_*` environment fallbacks. The chart restricts this mode to run IDs matching `^b10d-[0-9]+-[0-9]+$`, with the fixed scenario/configuration/phase/repeat above and no `b10_abrupt_diagnostic` or `b10_abrupt_binding_configmap` setting. It renders one verifier-role Job on `workload`, using the verifier service account, the existing `verify_job_seconds` deadline and no abrupt binding volume.
 
@@ -204,10 +204,10 @@ The mode creates one object in container `verifier` at `<RunId>/C1/r1/b10-abrupt
 
 ### Inputs and enforced checks
 
-The producer envelope, journal, termination, first-publication and successor formats above stay unchanged. These numbered checks are the classification plan section 3.2 contract. A bracketed number identifies the problem literal in the next section.
+The producer envelope, journal, termination, first-publication and successor formats above stay unchanged. These numbered checks are the diagnostic reconciliation contract. A bracketed number identifies the problem literal in the next section.
 
 1. Validate the fixed mode options above. Failure exits 1 without an object or store read.
-2. Apply the ordinary `verify` start-line checks to `PhasePaths.StartLineCompletion`, `PhasePaths.StartLine` and `PhasePaths.BrokerInventory` for `(RunId, C1, 1)`. Expected Job names remain exactly `[{RunId}-c1-r1-loadgen, {RunId}-c1-r1-loadgen2]` under the accepted two-name gap above. [1]
+2. Apply the ordinary `verify` start-line checks to `PhasePaths.StartLineCompletion`, `PhasePaths.StartLine` and `PhasePaths.BrokerInventory` for `(RunId, C1, 1)`. Expected Job names follow the trial run-ID rule above. [1]
 3. List the ledger prefix `<RunId>/C1/r1/b10-abrupt-diagnostic/`. Exactly one directory must have a valid registration for `{RunId}-c1-r1-loadgen-restart`; zero or multiple such directories give [2]. No remaining directory gives [3]. Exactly one remaining directory must have a valid successor registration for `{RunId}-c1-r1-loadgen-successor`, naming the first pod as predecessor; anything else gives [4]. An incomplete bounded listing gives [2], including `listing_incomplete` at the existing entry/name-byte/page bounds: 1024 entries, 1048576 name bytes and 16 pages.
 4. Enforce exact envelope members, schema 3, `b10_abrupt`, `diagnostic_trial`, `synthetic=true` and `scientific_admissible=false`, with no duplicate/unknown member, trailing content or depth above 32. Require the 12 identity members above, with `RunId`, `B10`, `C1`, `C1`, repeat 1, `source_commit=VerifierCommit`, `image_reference=LoadGenImage`, the expected Job name, and pod/instance equal to the directory name. Predecessor is null for the first pod and the first pod's name for the successor. Pod UID is nonempty, agrees across each pod's objects and differs between pods. [2] for the first pod; [4] for the successor.
 5. Enforce the existing per-file byte limits: `journal.jsonl` 16777216; `ledger.jsonl` 268435456; `manifest.json` 67108864; `statistics.jsonl` and `request-lifecycle.jsonl` 134217728 each; each report 1048576; every other member 65536. Total bytes per pod are at most 1073741824. Only `request-lifecycle.jsonl` may be empty. [2] or [4]
@@ -222,9 +222,30 @@ The producer envelope, journal, termination, first-publication and successor for
 14. Read high watermarks once at verify start for every start-line partition. Complete the drain within `SafetyStop` and the consumed-record budget, retaining existing consumed-byte accounting. Only records with `start <= offset < end` for their partition are in scope. [5]
 15. An arm-key record with any `MessageIdentityReader` problem or a null value is malformed. [6]
 
-The new drain overload computes lowercase hexadecimal SHA-256 of value bytes only for records whose key belongs to the supplied arm-key set. A null value has no hash. The existing overload leaves the optional `ValueSha256` null.
 
-This slice does not check native-error/fatal coverage, cgroup/child identity, report leader binding, statistics/capabilities, warm-up ordering beyond check 8, the timeout cohort, registrations of other instances, eligibility or the sweep. Report hash/length checks do not evaluate report content or guard results. Those checks remain necessary before scientific admission.
+16. Timeout listing. List `<RunId>/C1/r1/producer/`. It holds exactly one directory, `<pod>/`, whose `registration.json` names Job `{RunId}-c1-r1-loadgen`, no predecessor, run `RunId`, `B10`, `C1`, phase `C1`, repeat 1 and source `VerifierCommit`. Any other registration, object outside that directory, or incomplete listing fails. [7] E7. The directory name is the timeout instance ID.
+17. Timeout publication. A reader in `VerifyRun/Abrupt/` applies every check `PublicationAcceptance.Evaluate` applies to one producer instance, except that the start line's expected names are compared with the expected-name list above (6826128120 point 4). [7] E7.
+18. Timeout judgement. Evaluated only when problems 1 and 5 are absent; otherwise not evaluated, adding no problem, with `timeout` null. The instance passes per-instance checks 1 to 6 and 12 to 27 of `docs/operations/verifier-contract.md`, as `RunJudgement.Evaluate` applies them to a B10 instance, with complete-valid status. For checks 7 to 11 it receives the mode's own window assessments for the shared window (PR3b checks 2 and 14), which pass whenever problems 1 and 5 are absent. Its records are only those that passed check 19. ADR-021 "Retries" also applies: for each inventory attempt in invocation order, when an earlier attempt with the same key and sequence exists, the latest such attempt has a row for which `B10RepeatChecks.IsPermittedTimeout` is true (as `B10RepeatChecks.cs` lines 79 to 85 apply it). [7] E7.
+19. Timeout records. Evaluated before check 18, whenever the window was drained and check 16 passed. Every in-window record whose `instance-id` header equals the timeout instance ID joins exactly one timeout ledger row by `attempt-id`, with equal key and `sequence`, and its key is not an arm key. A failing record gives [8] E3 and is not passed to check 18. When check 16 or 17 fails, these records are held out and add no problem.
+20. Probe and warm-up records. Evaluated when the window was drained and problem 2 is absent. Every other in-window record without problem 6 joins one of: a first-instance `prepared` attempt (instance, attempt, key, `sequence` and value hash equal to its `payload_sha256`); a first-instance warm-up (attempt `{pod}-{arm}-warmup`, the arm key, `sequence` -1, value hash equal to its `warmup_prepared` `payload_sha256`); or a successor invocation (instance, attempt, key, `sequence` and hash). [8] E3. When problem 3 or 4 applies, records whose instance equals the directory name check 3 found for the successor Job are held out and add no problem. Under problem 2, records that are not the timeout instance's are held out and add no problem.
+21. Native capture. `native_error` records have `capture_sequence` 1..n without gaps. Their count equals `termination.native_error_count`, and those with `is_fatal` true equal `native_fatal_count`. `native_tail` is `unknown_due_to_intended_kill`. [2] E3. A record with `is_fatal` true adds E6. A record with `is_error` true and `is_fatal` false adds E5 (6761524200 point 2).
+22. Child and cgroup. `termination.child.pid`, `start_time_ticks` and `boot_id` equal `child_started.data`; `parent_observed_start_time_ticks` equals `start_time_ticks`. `cgroup_before` and `cgroup_after` are non-null and equal in `boot_id`, `cgroup_path`, `directory_identity` and `oom_kill`, and their `boot_id` equals the child's. [2] E4.
+23. Warm-up order. The journal meets the warm-up rules in the journal contract above for both arms. [2] E3. The journal contract requires the control arm complete before the cross-restart `warmup_prepared`, under the condition `B10AbruptJournal.cs` `ControlCompleteBefore` applies (lines 166 and 256 to 277): `flush_returned` true, `out_queue_length` 0, `post_drain_report` after `control_drained`, and a terminal, earlier in the journal, for every accepted control attempt. A journal that fails any of these therefore fails this check (6826128120 point 6).
+24. Report binding. Each arm's `pre_acceptance_report` binds that arm's warm-up attempt ID and its `warmup_terminal.partition`; its `report_capture_utc` is strictly later than that terminal's `observed_utc`; and its report bytes satisfy `LeaderUp(report, "document-events", partition)` in the report contract above. The `post_drain_report` follows `control_drained`. [2] E3.
+25. Control terminals. The journal holds a terminal record for every accepted control original and control resend. Failure adds E8 (6826128120 point 6). Flush, queue and post-drain failures are check 23's, not this check's. Because check 23 also requires those terminals, a journal failing this check also fails check 23, so E8 appears with problem 2 and E3, never alone.
+26. Successor inventory. `manifest.json` (`cohort_inventory`) has `instance_id` the successor, `cohort` `cross_restart`, `bookkeeping_complete` true and `inventory_count` equal to the invocation count. Its entries equal the invocations in order: `attempt_id`, `predecessor_attempt_id`, `key`, `sequence` and `payload_sha256`, with `invocation_ordinal` 0..n-1. [4] E9.
+27. Successor release. Each invocation's `invocation_utc` is not earlier than `release_utc`. `ready_utc` later than `release_utc` adds E11.
+28. Guard (6826128120 point 7). Failure adds E13 only.
+    - First instance: the three bound reports parse with `NativeStatisticsReader`. Every `brokers` dictionary key they hold, the broker identity in [Statistics and configuration](verifier-contract.md#statistics-and-configuration), is in the start line's broker inventory, and every broker's `txerrs` and `rxerrs` is 0.
+    - Successor: its `statistics.jsonl`, `request-lifecycle.jsonl` and `capabilities.json` pass per-instance checks 15 to 26 as `verify` applies them, with ADR-021's B10 permitted conditions (nonzero `req_timeouts` and `txretries` permitted, ADR-021 "Permitted conditions"). Check 14 is replaced by its capabilities part only: `guard_observations_complete` true and `guard_observations` holding only the two markers [Statistics and configuration](verifier-contract.md#statistics-and-configuration) permits. Its manifest part does not apply, because the successor manifest is a `cohort_inventory` (contract line 185). Check 27 is replaced by: the captured resolved configuration equals C1's scenario-resolved configuration with exactly one difference, `message.timeout.ms` with value `"300000"`, unchanged baseline metadata and `override` null (ADR-021 protocol rule 1). `max.in.flight` and `enable.idempotence` keep their C1 values and scenario override provenance.
+29. End-line re-read (6827265635 point 2). Evaluated after the drain when problems 1 and 5 are absent and at least one member has a known resend with `resend_terminal.delivered` true and `resend_copies` 0. The handler reads the high watermarks of every start-line partition once more, through the existing `VerifierKafkaSession.ReadHighWatermarks`, whose metadata read is bounded by `MetadataTimeout` and whose watermark reads share `WatermarkTimeout` (00:00:10 each in `charts/parchwell/values.yaml`), so at most 20 s. The re-read is not charged to `SafetyStop`, which bounds only the drain. WHEN any partition's re-read high watermark is greater than its end line, or the read fails or times out, THEN problem [9] is recorded, and every such member's `resend_lost` and its arm's `lost_resends` are null. WHEN every re-read equals the end line, THEN those members keep `resend_lost` true. No reason is added: an unknown loss is neither loss nor eligibility evidence, and the later late-write sweep from the end line covers the advanced range (ADR-021 "Late-write scan").
+
+Resend counts: check 10 or check 12 failing only because a member has other than one resend gives E10 instead of E3 or E9.
+
+Checks 21 to 25 and the first-instance part of check 28 are evaluated only when the first instance's evidence passed checks 3 to 11. Checks 26, 27 and the successor part of check 28 are evaluated only when the successor passed checks 3, 4, 5, 12 and 13. A check that is not evaluated adds no problem or reason.
+
+Under problem 1, checks 17 to 20 and 28 are not evaluated and add nothing; `timeout` is null. Check 16 still runs. Under problem 2, problem 6 and check 20 are not evaluated. Check 19 runs after a drain if check 16 and the publication acceptance passed.
+
 
 ### Output `nonfinal_result`
 
@@ -240,6 +261,12 @@ The output envelope has exactly `schema_version: 3`, `dialect: "b10_abrupt"`, `p
 - `problems`: distinct literals from the ordered list below, in that order.
 - `problem_details`: array of `{problem, detail}`, at most `MaxDiagnosticsPerCheck` entries; each detail is at most `MaxDiagnosticBytes` UTF-8 bytes. Detail text is the implementer's choice.
 - `finality`: `"nonfinal"`.
+- `timeout_instance_id`: string, or null when check 16 fails.
+- `timeout`: `{ok, loss, phantom, reported_failure, duplicate, reorder}`, classified from timeout ledger rows and records that passed check 19; null under problems 1, 5 or 7. Problem 2 does not null it.
+- `comparison`: `both`, `cross_restart_only`, `same_instance_only`, `neither` or `unavailable`.
+- `native_errors`: `{count, fatal_count, tail}`, or null under problem 2.
+- `eligibility`: `ineligible` if the ordered `eligibility_reasons` list is nonempty, otherwise `pending_sweep`. Never `eligible`.
+- `eligibility_reasons`: distinct literals from the ordered list below.
 
 An arm object has exactly these members:
 
@@ -250,6 +277,9 @@ An arm object has exactly these members:
 - `pair_count`: the sum of member `pair_count` values.
 - `witness`.
 - `members`: in invocation order.
+- `unreported_attempts`: accepted journaled probe attempts, including control resends, with no terminal anywhere in the journal.
+- `unreported_seen`: those attempts with at least one in-window record having their instance and attempt headers; `unreported_unseen`: the rest. Their sum equals `unreported_attempts`.
+- `lost_resends`: members with `resend_lost` true.
 
 Each member has exactly these members:
 
@@ -260,12 +290,13 @@ Each member has exactly these members:
 - `pair_count`: `original_copies` times `resend_copies`.
 - `copies`: at most `MaxDiagnosticsPerCheck` entries sorted by `(partition, offset)`; each entry has exactly `{partition, offset, instance_id, attempt_id, role}`.
 - `copies_truncated`: boolean, or null when `copies` is null.
+- `resend_lost`: true when a known resend terminal has `delivered` true and `resend_copies` is 0, false when either is otherwise known, and null when either is null or check 29 makes the loss unknown.
 
 A copy is a window record with the member's key, sequence header and value hash equal to its `payload_sha256`. Warm-up sequence -1 never matches. Its role is `original` when the instance/attempt headers equal the first pod and original attempt; `resend` when they equal the authenticated resend's instance/attempt; otherwise `other`, retaining header values or null. The resend instance is the first pod for `same_instance` and the successor for `cross_restart`.
 
 The witness is the smallest `(original_attempt_id, resend_attempt_id, original coordinate, resend coordinate)` over all original/resend copy pairs, as `{original_attempt_id, resend_attempt_id, original: {partition, offset}, resend: {partition, offset}}`, or null. Counts are JSON integers from 0 to 9223372036854775807. Unknown counts and copies are null under the rules below, never zero.
 
-When more than `MaxDiagnosticsPerCheck` copies match a member, retain the first that many by `(partition, offset)` and set `copies_truncated=true`; every count remains complete. The per-member copy details and diagnostic extras belong only to this nonfinal object. The later final sweep projection must drop them and test that exclusion under classification plan section 3.3 and [decision 6816117386, point 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6816117386).
+When more than `MaxDiagnosticsPerCheck` copies match a member, retain the first that many by `(partition, offset)` and set `copies_truncated=true`; every count remains complete. The per-member copy details and diagnostic extras belong only to this nonfinal object. The later final sweep projection must drop them and test that exclusion under the approved diagnostic-only contract and [decision 6816117386, point 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6816117386).
 
 ### Problems and unavailable fields
 
@@ -277,15 +308,44 @@ The closed problem list, in order, is:
 4. `b10_abrupt_verify_successor_evidence_invalid`
 5. `b10_abrupt_verify_window_incomplete`
 6. `b10_abrupt_verify_probe_record_malformed`
+7. `b10_abrupt_verify_timeout_evidence_invalid`
+8. `b10_abrupt_verify_record_unjoined`
+9. `b10_abrupt_verify_end_line_advanced`
 
 A start-line failure records problem 1 and still runs checks 3 to 13. With valid first evidence, arms retain their members, but each member's `copy_count`, role counts, `pair_count`, `copies` and `copies_truncated` are null. The arm's `originals_seen`, `resends_seen`, `pair_count` and `witness` are null. `start_line` and `end_line` are null and `window_complete=false`.
 
 | Problem | Arms and member fields | Window |
 | --- | --- | --- |
-| 2 | `arms=null`; do not evaluate problems 3 or 4 | Not drained; `start_line` follows check 2, `end_line=null`, `window_complete=false` |
+| 2 | `arms=null`; do not evaluate problems 3 or 4 | Drained for the timeout cohort; `start_line` follows check 2, `end_line` is as read, and `window_complete` follows the drain. Problem 5 records an incomplete drain. Checks 16 to 19 run; `native_errors=null`, `comparison=unavailable` |
 | 3 or 4 | Arms present. For `cross_restart`, member `resend_attempt_id`, `resend_terminal`, `resend_copies` and `pair_count` are null; arm `resend_invoked`, `resends_seen`, `pair_count` and `witness` are null. Compute `copy_count`, `original_copies`, `other_copies`, `copies`, `copies_truncated` and `originals_seen`; successor-headed copies count as `other` | Drained |
 | 5 | Arms present; all copy fields and counts derived from them are null, including `copies_truncated` | `window_complete=false`; `end_line` as read, or null |
 | 6 | Arms present; a malformed record counts when its sequence and value hash parse, with null invalid headers and role `other` | Drained |
+
+
+`unreported_seen`, `unreported_unseen`, `lost_resends` and `resend_lost` are null when copy fields are null. Cross-restart loss fields are also null under problems 3 and 4. Under problem 9 the candidate lost members and their arm's `lost_resends` are null, preserving other known members' results. Unknown is never zero.
+
+`comparison` is unavailable under any of reasons E1 to E4 or E8 to E12. Otherwise it is `both` if both arms have at least one pair, `cross_restart_only` or `same_instance_only` if only that arm does, and `neither` if neither does. Native capture, timeout bookkeeping and guard reasons alone do not withdraw the comparison. Loss is not an eligibility reason.
+
+### Eligibility reasons
+
+The reason literals are ordered policy diagnostics. No reason represents the missing sweep; `pending_sweep` states that limit.
+
+| # | Literal | Condition here |
+|---|---|---|
+| 1 | `b10_restart_configuration_invalid` | problem 1 |
+| 2 | `b10_restart_first_evidence_unavailable` | checks 3 and 5 for the first pod |
+| 3 | `b10_restart_identity_unauthenticated` | check 4 for the first pod; checks 6, 8, 9, 10, 11, 19, 20, 21 (count or tail), 23 and 24; problems 6 and 8 |
+| 4 | `b10_restart_termination_unverified` | checks 7 and 22 |
+| 5 | `b10_restart_native_error_captured` | check 21, non-fatal error |
+| 6 | `b10_restart_fatal_captured` | check 21, fatal |
+| 7 | `b10_restart_timeout_bookkeeping_unavailable` | problem 7 |
+| 8 | `b10_abrupt_control_incomplete` | check 25 (missing control terminals only; 6826128120 point 6) |
+| 9 | `b10_restart_successor_evidence_unavailable` | problems 3 and 4, except resend count |
+| 10 | `b10_restart_resend_count_invalid` | resend-count rule above |
+| 11 | `b10_abrupt_successor_late` | check 27 |
+| 12 | `b10_restart_window_incomplete` | problem 5 |
+| 13 | `b10_restart_guard_failed` | check 28 |
+
 
 The existing `PhaseWireCodec`, `VerifierResultCodec` and `B10SweepEvidenceCodec` reject the produced bytes. Successful diagnostic publication never authorizes finality or scientific counts.
 
@@ -328,8 +388,8 @@ b10_abrupt_verify_failed
 
 Retired names are `b10_abrupt_target_invalid`, `b10_abrupt_stop_unconfirmed`, `b10_abrupt_resume_unconfirmed` and `b10_abrupt_eof_incomplete`. The closed `no_kill.reason` set is `b10_abrupt_exposure_inconclusive`, `b10_abrupt_control_incomplete`, `kill_too_early`, `b10_abrupt_cut_rejected`, `b10_abrupt_sample_missing`, `b10_abrupt_warmup_failed`, `b10_abrupt_leader_not_up`, `b10_abrupt_report_binding_invalid`, `b10_abrupt_guard_failed`, `b10_abrupt_signal_preflight_failed`, `b10_abrupt_deadline_exhausted` and `b10_abrupt_capture_gap`. A returned kill call is not a no-kill reason.
 
-Part 2 section 3.5 and classification plan requirements P4 and P5 own collection. For each applied `loadgen`, `loadgen-restart`, `loadgen-successor` and `b10-abrupt-verify` state record, `collect-b10-abrupt-trial` runs `collect-job` and copies `artifacts/<job>/` to `artifacts/b10-abrupt-diagnostic/<job>/`. For a `b10-abrupt-verify` record with outcome `complete`, it also downloads `<run_id>/C1/r1/b10-abrupt-diagnostic/nonfinal-result.json` from container `verifier`, at most 16777216 bytes, to `b10-abrupt-diagnostic/nonfinal-result.json`; a missing or ambiguous download records `b10_abrupt_verify_failed` at `verify_collection`. The phase makes no content check on that download. The start-line record is not copied. The workflow uploads only `b10-abrupt-diagnostic`. The timeout Job receives no successor-receipt check, ordinary verify or evidence check beyond its recorded outcome. Collection exit 124 records `b10_abrupt_deadline_exhausted`; other nonzero exits record `b10_abrupt_publication_ambiguous`; copy exceptions record `b10_abrupt_publication_failed`, all at `job_collection`.
+Part 2 section 3.5 and classification plan requirements P4 and P5 own collection. For each applied `loadgen`, `loadgen-restart`, `loadgen-successor` and `b10-abrupt-verify` state record, `collect-b10-abrupt-trial` runs `collect-job` and copies `artifacts/<job>/` to `artifacts/b10-abrupt-diagnostic/<job>/`. For a `b10-abrupt-verify` record with outcome `complete`, it also downloads `<run_id>/C1/r1/b10-abrupt-diagnostic/nonfinal-result.json` from container `verifier`, at most 16777216 bytes, to `b10-abrupt-diagnostic/nonfinal-result.json`; a missing or ambiguous download records `b10_abrupt_verify_failed` at `verify_collection`. The phase makes no content check on that download. The start-line record is not copied. The workflow uploads only `b10-abrupt-diagnostic`. Before diagnostic verification, the phase gives the timeout Job no successor-receipt check, ordinary verify or evidence check beyond its recorded outcome. Collection exit 124 records `b10_abrupt_deadline_exhausted`; other nonzero exits record `b10_abrupt_publication_ambiguous`; copy exceptions record `b10_abrupt_publication_failed`, all at `job_collection`.
 
 After an accepted first publication, the phase runs `b10-abrupt-verify` after the successor step, including successor failure, unknown outcome or exception. Rejected publication, no-kill, an empty kill set or unknown first termination starts no verify Job. A verify outcome of `failed`, `unknown`, `apply_failed` or `render_failed` records `b10_abrupt_verify_failed` at `verify_job`, preserves the prior `safety_stop` value and returns 1. A complete verify Job preserves the return value the trial would otherwise have had. No producer starts after verify.
 
-The ordinary timeout host publishes under `producer/`. Part 2 section 3.7's production-byte export/checker verifies that scientific paths reject its evidence in frozen diagnostic trial state and that the exported documents contain no diagnostic marker keys. The phase test `test_trial_and_science_run_ids_never_collide` (part 2 section 8.1, T-P1) verifies distinct trial and scientific run-ID prefixes and noncollision. This trial produces no scientific candidate. The [verifier contract](verifier-contract.md) cites this diagnostic mode; full reconciliation remains later work.
+The ordinary timeout host publishes under `producer/`. Part 2 section 3.7's production-byte export/checker verifies that scientific paths reject its evidence in frozen diagnostic trial state and that the exported documents contain no diagnostic marker keys. The phase test `test_trial_and_science_run_ids_never_collide` (part 2 section 8.1, T-P1) verifies distinct trial and scientific run-ID prefixes and noncollision. This trial produces no scientific candidate. The [verifier contract](verifier-contract.md) cites this diagnostic mode; scientific admission and the late-write sweep remain later work.

@@ -8,7 +8,7 @@ using Xunit;
 namespace Parchwell.Verifier.Tests.Component;
 
 /// <summary>Independent synthetic writer for the diagnostic contract, pinned to the real publisher by T0.</summary>
-internal sealed class B10AbruptVerifyEvidence
+internal sealed partial class B10AbruptVerifyEvidence
 {
     internal const string Run = "synthetic";
     internal const string First = "synthetic-first";
@@ -84,6 +84,7 @@ internal sealed class B10AbruptVerifyEvidence
             ready_utc = Utc, release_utc = Utc, invocations = new[] { new { attempt_id = "r4", predecessor_attempt_id = "c4", key = Key("cross_restart"), sequence = 4, payload_sha256 = Hash(Payload), invocation_utc = Utc, monotonic_ticks = 1 } },
             cleanup_completed = true, cross_host_timing = "not_verified"
         }, true));
+        CompleteFixtures();
         Rehash();
     }
 
@@ -114,7 +115,7 @@ internal sealed class B10AbruptVerifyEvidence
         {
             arm, attempt_id = id, name, length = bytes.Length, sha256 = Hash(bytes),
             report_identity = new { scenario_id = "B10", run_id = Run, role = "LoadGenProducer", client_id = First },
-            report_sequence = 1, report_capture_utc = Utc
+            report_sequence = 1, report_capture_utc = "2026-11-12T00:00:00.0000001+00:00"
         })!.AsObject();
         if (id is not null) { data["warmup_attempt_id"] = warmup; data["partition"] = 0; }
         Add(id is null ? "post_drain_report" : "pre_acceptance_report", data);
@@ -161,7 +162,9 @@ internal sealed class B10AbruptVerifyEvidence
     internal static string Hash(byte[] bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
     internal static JsonObject Descriptor(string name, byte[] bytes) => new() { ["name"] = name, ["length"] = bytes.LongLength, ["sha256"] = Hash(bytes) };
 
-    internal static async Task<Dictionary<string, byte[]>> ExportAsync()
+    internal static Task<Dictionary<string, byte[]>> ExportAsync() => ExportCoreAsync(false);
+    internal static Task<Dictionary<string, byte[]>> ExportTimeoutAsync() => ExportCoreAsync(true);
+    private static async Task<Dictionary<string, byte[]>> ExportCoreAsync(bool timeout)
     {
         string directory = Path.Combine(Path.GetTempPath(), "b10-abrupt-verify-export-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
@@ -171,8 +174,8 @@ internal sealed class B10AbruptVerifyEvidence
             string assembly = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "Parchwell.LoadGen.Tests", "bin", configuration, "net10.0", "Parchwell.LoadGen.Tests.dll"));
             Assert.True(File.Exists(assembly), "loadgen_test_assembly_missing:" + assembly);
             var start = new ProcessStartInfo("dotnet") { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
-            start.ArgumentList.Add(assembly); start.ArgumentList.Add("-class"); start.ArgumentList.Add("Parchwell.LoadGen.Tests.Abrupt.B10AbruptWireProducerTests");
-            start.Environment["PARCHWELL_B10_ABRUPT_WIRE_OUTPUT"] = directory;
+            start.ArgumentList.Add(assembly); start.ArgumentList.Add("-class"); start.ArgumentList.Add(timeout ? "Parchwell.LoadGen.Tests.Host.B10TimeoutEvidenceExportTests" : "Parchwell.LoadGen.Tests.Abrupt.B10AbruptWireProducerTests");
+            start.Environment[timeout ? "PARCHWELL_B10_TIMEOUT_EVIDENCE_OUTPUT" : "PARCHWELL_B10_ABRUPT_WIRE_OUTPUT"] = directory;
             using Process child = Process.Start(start) ?? throw new InvalidOperationException("wire_export_start_failed");
             Task<string> stdout = child.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
             Task<string> stderr = child.StandardError.ReadToEndAsync(TestContext.Current.CancellationToken);
@@ -188,7 +191,7 @@ internal sealed class B10AbruptVerifyEvidence
                 Assert.Equal(descriptor.GetProperty("length").GetInt64(), bytes.LongLength);
                 Assert.Equal(descriptor.GetProperty("sha256").GetString(), Hash(bytes)); files.Add(name, bytes);
             }
-            Assert.Equal(14, files.Count); return files;
+            Assert.Equal(timeout ? 8 : 14, files.Count); return files;
         }
         finally { Directory.Delete(directory, true); }
     }
