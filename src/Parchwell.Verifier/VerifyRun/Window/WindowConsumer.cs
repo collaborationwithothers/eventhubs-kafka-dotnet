@@ -12,6 +12,13 @@ internal static class WindowConsumer
     internal static WindowDrainResult Drain(IConsumer<byte[], byte[]> consumer, RunWindow window,
         TimeProvider timeProvider, long safetyOriginTimestamp, TimeSpan safetyStop, TimeSpan pollSlice,
         ConsumedRecordBudget budget, CancellationToken cancellationToken,
+        CancellationToken safetyCancellationToken = default) =>
+        Drain(consumer, window, timeProvider, safetyOriginTimestamp, safetyStop, pollSlice, budget,
+            null, cancellationToken, safetyCancellationToken);
+
+    internal static WindowDrainResult Drain(IConsumer<byte[], byte[]> consumer, RunWindow window,
+        TimeProvider timeProvider, long safetyOriginTimestamp, TimeSpan safetyStop, TimeSpan pollSlice,
+        ConsumedRecordBudget budget, IReadOnlySet<string>? valueHashKeys, CancellationToken cancellationToken,
         CancellationToken safetyCancellationToken = default)
     {
         if (!window.CanAssign) return new([], [], null, null);
@@ -52,7 +59,7 @@ internal static class WindowConsumer
                     record.Offset.Value >= boundary.Start && record.Offset.Value < boundary.End)
                 {
                     budget.Account(record);
-                    records.Add(MessageIdentityReader.Read(record));
+                    records.Add(MessageIdentityReader.Read(record, valueHashKeys));
                 }
             }
         }

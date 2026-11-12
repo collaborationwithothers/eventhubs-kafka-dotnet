@@ -92,8 +92,8 @@ class ByteIndependentCases(Setup, unittest.TestCase):
             b10_abrupt_first_termination_unknown b10_abrupt_successor_binding_invalid
             b10_abrupt_successor_late b10_abrupt_deadline_exhausted
         '''.split())
-        self.assertEqual(main_names | {'b10_abrupt_timeout_job_unknown', 'b10_abrupt_warmup_failed', 'b10_abrupt_leader_not_up'}, abrupt.FAILURE_NAMES)
-        self.assertEqual(29, len(abrupt.FAILURE_NAMES))
+        self.assertEqual(main_names | {'b10_abrupt_timeout_job_unknown', 'b10_abrupt_warmup_failed', 'b10_abrupt_leader_not_up', 'b10_abrupt_verify_failed'}, abrupt.FAILURE_NAMES)
+        self.assertEqual(30, len(abrupt.FAILURE_NAMES))
 
     def test_trial_and_science_run_ids_never_collide(self):
         diagnostic_environment = dict(PARCHWELL_SCENARIO='B10', PARCHWELL_PHASE='C1', PARCHWELL_CONFIGURATION='C1',
@@ -435,6 +435,140 @@ class ByteIndependentCases(Setup, unittest.TestCase):
                 else:
                     hook.assert_called_once()
                     self.assertEqual(mode, hook.call_args.args[0])
+
+
+class VerifyTrialCases(Setup, unittest.TestCase):
+    """The diagnostic consumer follows accepted publication even after producer failure."""
+
+    def reset_trial(self):
+        if not hasattr(self, 'trial'):
+            self.diagnostic()
+        state = self.p.state()
+        state.pop('b10_abrupt_started', None)
+        state.update(modes=[], safety_stop=False, b10_abrupt_gaps=[], b10_abrupt_diagnostics=[])
+        self.p.save_state(state)
+
+    def run_case(self, successor=None, wait=0, apply=0, render=750, rejected=False):
+        self.reset_trial()
+        self.p.render_code = 0 if render is not None else 1
+        deadline = time.monotonic() + 18000
+        calls = []
+        original_job = self.trial.job
+        def job(mode, bound):
+            calls.append(mode)
+            return original_job(mode, bound) if mode == 'b10-abrupt-verify' else {'outcome': 'complete'}
+        def release(_binding, _deadline):
+            calls.append('loadgen-successor')
+            if isinstance(successor, Exception):
+                raise successor
+            if successor == 'unknown':
+                state = self.p.state(); state['safety_stop'] = True; self.p.save_state(state)
+            return {'outcome': successor or 'complete', 'wait': 1 if successor == 'failed' else 2}
+        def command(args, _seconds, **_kwargs):
+            return apply if args[:2] == ['kubectl', 'apply'] else wait
+        with patch.object(self.p, 'b10_deadline', return_value=deadline), \
+             patch.object(self.p, 'run_mode', return_value={'outcome': 'complete'}), \
+             patch.object(self.trial, 'metadata'), patch.object(self.trial, 'job', side_effect=job), \
+             patch.object(self.trial, '_observe_timeout_termination'), \
+             patch.object(self.trial, 'observe_first_termination', return_value={}), \
+             patch.object(self.trial, 'download', return_value={'abrupt-manifest.json': b'ignored'}), \
+             patch.object(self.trial, 'envelope', return_value={'data': {'report_files': []}}), \
+             patch.object(self.trial, 'accept_diagnostic_publication',
+                          side_effect=ValueError('b10_abrupt_publication_failed') if rejected else None,
+                          return_value={'accepted': True}), \
+             patch.object(self.trial, 'release_successor', side_effect=release), \
+             patch.object(self.trial, 'render_verify', return_value=render), \
+             patch.object(self.p, 'render', return_value=render), \
+             patch.object(self.p, 'run', side_effect=command):
+            result = self.trial.run()
+        self.assertIsNone(self.p.command_deadline)
+        return result, calls
+
+    def test_verify_render_uses_real_helm_and_removes_producer_flag(self):
+        self.reset_trial()
+        document = self.p.read('phase.json')
+        document['run_id'] = 'b10d-1-1'
+        phase.write_json(self.private / 'phase.json', document)
+        self.assertEqual(750, self.trial.render_verify())
+        name = 'b10d-1-1-c1-r1-b10-abrupt-verify'
+        values = self.p.read('values-' + name + '.json')
+        self.assertIsNone(values['runtime']['b10_abrupt_diagnostic'])
+        self.assertNotIn('b10_abrupt_binding_configmap', values['runtime'])
+        rendered = (self.private / ('rendered-' + name + '.yaml')).read_text()
+        self.assertIn('  name: "' + name + '"', rendered)
+        self.assertIn('  activeDeadlineSeconds: 750', rendered)
+        self.assertNotIn('b10-abrupt-binding', rendered)
+
+    def test_successor_failure_unknown_or_raise_still_applies_verify(self):
+        for outcome, expected in [('failed', 'b10_abrupt_publication_ambiguous'),
+                                  ('unknown', 'b10_abrupt_publication_ambiguous'),
+                                  (ValueError('b10_abrupt_successor_late'), 'b10_abrupt_successor_late')]:
+            with self.subTest(outcome=outcome):
+                result, calls = self.run_case(successor=outcome)
+                self.assertEqual(1, result)
+                self.assertEqual(['loadgen', 'loadgen-restart', 'loadgen-successor', 'b10-abrupt-verify'], calls)
+                self.assertEqual([expected], self.p.state()['b10_abrupt_gaps'])
+                self.assertEqual('complete', self.p.state()['modes'][-1]['outcome'])
+                self.assertEqual(0, self.p.state()['modes'][-1]['apply'])
+                self.assertEqual(outcome == 'unknown', self.p.state()['safety_stop'])
+
+    def test_rejected_first_publication_never_renders_verify(self):
+        result, calls = self.run_case(rejected=True)
+        self.assertEqual(1, result)
+        self.assertEqual(['loadgen', 'loadgen-restart'], calls)
+        self.assertEqual([], self.p.state()['modes'])
+
+    def test_verify_outcomes_preserve_safety_stop_and_record_one_gap(self):
+        for options, outcome in [({}, 'complete'), ({'wait': 1}, 'failed'), ({'wait': 2}, 'unknown'),
+                                 ({'apply': 1}, 'apply_failed'), ({'render': None}, 'render_failed')]:
+            with self.subTest(outcome=outcome):
+                result, calls = self.run_case(**options)
+                self.assertEqual(int(outcome != 'complete'), result)
+                self.assertEqual('b10-abrupt-verify', calls[-1])
+                self.assertEqual(outcome, self.p.state()['modes'][-1]['outcome'])
+                self.assertFalse(self.p.state()['safety_stop'])
+                self.assertEqual([] if outcome == 'complete' else ['b10_abrupt_verify_failed'],
+                                 self.p.state().get('b10_abrupt_gaps', []))
+                if outcome != 'complete':
+                    self.assertEqual('verify_job', self.p.state()['b10_abrupt_diagnostics'][0]['boundary'])
+        result, _ = self.run_case(successor='unknown', wait=2)
+        self.assertEqual(1, result)
+        self.assertTrue(self.p.state()['safety_stop'])
+        self.assertEqual(['b10_abrupt_publication_ambiguous', 'b10_abrupt_verify_failed'],
+                         self.p.state()['b10_abrupt_gaps'])
+
+    def test_complete_verify_collects_raw_output_once_and_always_collects_logs(self):
+        for outcome, content in [('complete', b'not JSON: diagnostic transport only'),
+                                 ('complete', None), ('failed', None), ('unknown', None)]:
+            with self.subTest(outcome=outcome, content=content):
+                self.reset_trial()
+                name = self.run_id + '-c1-r1-b10-abrupt-verify'
+                state = self.p.state()
+                state['modes'] = [{'mode': 'b10-abrupt-verify', 'job': name, 'apply': 0, 'outcome': outcome}]
+                self.p.save_state(state)
+                source = self.p.artifacts / name; source.mkdir(exist_ok=True)
+                (source / 'synthetic.log').write_bytes(b'diagnostic logs')
+                deadline = time.monotonic() + 60
+                def download(_name, target, _maximum, _deadline, **_kwargs):
+                    if content is not None:
+                        target.write_bytes(content)
+                    return content
+                with patch.object(self.p, 'download_blob', side_effect=download) as fetch, \
+                     patch.object(self.p, 'b10_deadline', return_value=deadline), \
+                     patch.object(self.p, 'run', return_value=0) as command:
+                    self.assertEqual(int(outcome == 'complete' and content is None), self.trial.collect())
+                command.assert_called_once_with(['bash', 'infra/scripts/lifecycle/lifecycle.sh', 'collect-job', name], 210)
+                self.assertEqual(b'diagnostic logs', (self.trial.directory / name / 'synthetic.log').read_bytes())
+                if outcome == 'complete':
+                    fetch.assert_called_once_with(self.run_id + '/C1/r1/b10-abrupt-diagnostic/nonfinal-result.json',
+                        self.trial.directory / 'nonfinal-result.json', 16777216, deadline, container='verifier')
+                    if content is None:
+                        self.assertEqual(['b10_abrupt_verify_failed'], self.p.state()['b10_abrupt_gaps'])
+                        self.assertEqual('verify_collection', self.p.state()['b10_abrupt_diagnostics'][0]['boundary'])
+                    else:
+                        self.assertEqual(content, (self.trial.directory / 'nonfinal-result.json').read_bytes())
+                else:
+                    fetch.assert_not_called()
 
 
 class WarmupJournalCases(Setup, unittest.TestCase):
@@ -1238,7 +1372,8 @@ class ProducedBytesCases(Setup):
                 output.write_bytes(abrupt.encode(payload))
                 return 0
             if args[:2] == ['kubectl', 'apply']:
-                order.append('loadgen-successor' if 'loadgen-successor' in args[3] else
+                order.append('b10-abrupt-verify' if 'b10-abrupt-verify' in args[3] else
+                             'loadgen-successor' if 'loadgen-successor' in args[3] else
                              'loadgen-restart' if 'loadgen-restart' in args[3] else 'loadgen')
             if 'collect-job' in args:
                 # Any slow collection before successor admission fails immediately.
@@ -1248,7 +1383,7 @@ class ProducedBytesCases(Setup):
         def publication(observation, files):
             order.append('publication')
             return abrupt.Trial.accept_diagnostic_publication(self.trial, observation, files)
-        with patch.dict(support.DEADLINES, {'loadgen-restart': 1140, 'loadgen-successor': 1140}), \
+        with patch.dict(support.DEADLINES, {'loadgen-restart': 1140, 'loadgen-successor': 1140, 'b10-abrupt-verify': 750}), \
              patch.object(self.p, 'b10_deadline', return_value=time.monotonic() + 18000), \
              patch.object(self.p, 'run_mode', side_effect=lambda *args, **kwargs: order.append('metadata') or {'outcome': 'complete'}), \
              patch.object(self.trial, 'metadata', return_value=None), \
@@ -1256,11 +1391,11 @@ class ProducedBytesCases(Setup):
              patch.object(abrupt.time, 'time', return_value=0), \
              patch.object(self.p, 'run', side_effect=command):
             self.assertEqual(0, self.trial.run())
-        self.assertEqual(['metadata', 'loadgen', 'timeout-termination', 'loadgen-restart', 'termination', 'publication', 'loadgen-successor'], order)
-        self.assertEqual(['loadgen', 'loadgen-restart', 'loadgen-successor'],
-                         [event for event in order if event in ('loadgen', 'loadgen-restart', 'loadgen-successor')])
+        self.assertEqual(['metadata', 'loadgen', 'timeout-termination', 'loadgen-restart', 'termination', 'publication', 'loadgen-successor', 'b10-abrupt-verify'], order)
+        self.assertEqual(['loadgen', 'loadgen-restart', 'loadgen-successor', 'b10-abrupt-verify'],
+                         [event for event in order if event in ('loadgen', 'loadgen-restart', 'loadgen-successor', 'b10-abrupt-verify')])
         modes = [record['mode'] for record in self.p.state()['modes']]
-        self.assertEqual(['loadgen', 'loadgen-restart', 'loadgen-successor'], modes)
+        self.assertEqual(['loadgen', 'loadgen-restart', 'loadgen-successor', 'b10-abrupt-verify'], modes)
         self.assertFalse((self.candidate_dir / 'candidate.json').exists())
         self.assertFalse(any('collect-job' in call[0] for call in self.fake.calls))
 

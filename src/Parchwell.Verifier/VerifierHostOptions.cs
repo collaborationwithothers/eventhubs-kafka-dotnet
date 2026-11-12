@@ -10,7 +10,8 @@ internal enum VerifierMode
     ProbeGate,
     SingleActionJudge,
     B10Sweep,
-    B10SweepLine
+    B10SweepLine,
+    B10AbruptVerify
 }
 
 /// <summary>Holds runner-supplied verifier settings until startup validation completes.</summary>
@@ -141,9 +142,10 @@ internal static class VerifierModeParser
             "probe-gate" => VerifierMode.ProbeGate,
             "b10-sweep-line" => VerifierMode.B10SweepLine,
             "b10-sweep" => VerifierMode.B10Sweep,
+            "b10-abrupt-verify" => VerifierMode.B10AbruptVerify,
             _ => default
         };
 
-        return value is "start-line" or "verify" or "judge" or "probe-gate" or "single-action-judge" or "b10-sweep" or "b10-sweep-line";
+        return value is "start-line" or "verify" or "judge" or "probe-gate" or "single-action-judge" or "b10-sweep" or "b10-sweep-line" or "b10-abrupt-verify";
     }
 }

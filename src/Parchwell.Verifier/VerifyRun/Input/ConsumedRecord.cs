@@ -12,4 +12,5 @@ internal sealed record ConsumedRecord(
     string? InstanceId,
     string? AttemptId,
     long? Sequence,
-    IReadOnlyList<StructuralProblem> Problems);
+    IReadOnlyList<StructuralProblem> Problems,
+    string? ValueSha256 = null);
