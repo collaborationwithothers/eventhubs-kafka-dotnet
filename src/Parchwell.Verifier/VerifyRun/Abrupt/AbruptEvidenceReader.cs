@@ -175,8 +175,10 @@ internal sealed class AbruptEvidenceReader(VerifierHostOptions options,
         try { return await ReadSuccessorCoreAsync(prefix, pod, first, names, ct).ConfigureAwait(false); }
         catch (Exception exception) when (IsMalformed(exception))
         {
-            throw new AbruptEvidenceException(exception.Message, new HashSet<int>
-                { exception is AbruptEvidenceException abrupt && abrupt.Reasons.Contains(10) ? 10 : 9 });
+            IReadOnlySet<int> reasons = exception is AbruptEvidenceException abrupt
+                ? abrupt.Reasons.Select(reason => reason == 10 ? 10 : 9).ToHashSet()
+                : new HashSet<int> { 9 };
+            throw new AbruptEvidenceException(exception.Message, reasons);
         }
     }
 

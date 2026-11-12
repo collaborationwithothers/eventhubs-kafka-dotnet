@@ -1,6 +1,11 @@
 using System.Text.Json;
 using Confluent.Kafka;
 using Microsoft.Extensions.Options;
+using Parchwell.Kafka.Configuration;
+using Parchwell.Scenarios;
+using Parchwell.Verifier.Common.Phase;
+using Parchwell.Verifier.Common.Results;
+using Parchwell.Verifier.VerifyRun.Configuration;
 using Parchwell.Verifier.Common.Contracts;
 using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.Common.Storage;
@@ -12,7 +17,8 @@ using static Parchwell.Verifier.VerifyRun.Abrupt.AbruptEvidenceCodec;
 namespace Parchwell.Verifier.VerifyRun.Abrupt;
 
 internal sealed class B10AbruptVerifyHandler(IOptions<VerifierHostOptions> configured, TimeProvider clock,
-    VerifierKafkaSessionFactory sessions, IVerifierArtifactStore verifierStore, IProducerArtifactStore producerStore)
+    VerifierKafkaSessionFactory sessions, IVerifierArtifactStore verifierStore, IProducerArtifactStore producerStore,
+    ScenarioLoader scenarioLoader, RegisteredProducerConfigurationResolver configurationResolver)
     : IVerifierModeHandler
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
@@ -20,7 +26,9 @@ internal sealed class B10AbruptVerifyHandler(IOptions<VerifierHostOptions> confi
     [
         "b10_abrupt_verify_start_line_invalid", "b10_abrupt_verify_first_evidence_invalid",
         "b10_abrupt_verify_successor_absent", "b10_abrupt_verify_successor_evidence_invalid",
-        "b10_abrupt_verify_window_incomplete", "b10_abrupt_verify_probe_record_malformed"
+        "b10_abrupt_verify_window_incomplete", "b10_abrupt_verify_probe_record_malformed",
+        "b10_abrupt_verify_timeout_evidence_invalid", "b10_abrupt_verify_record_unjoined",
+        "b10_abrupt_verify_end_line_advanced"
     ];
     public VerifierMode Mode => VerifierMode.B10AbruptVerify;
 
@@ -28,15 +36,28 @@ internal sealed class B10AbruptVerifyHandler(IOptions<VerifierHostOptions> confi
     {
         VerifierHostOptions options = configured.Value;
         var limits = new InputLimits(options.MaxInputDepth!.Value, options.MaxArtifactBytes!.Value,
-            options.MaxTotalInputBytes!.Value, int.MaxValue, long.MaxValue, long.MaxValue, options.MaxDiagnosticBytes!.Value);
+            options.MaxTotalInputBytes!.Value, options.MaxRowBytes!.Value, options.MaxRowsPerArtifact!.Value,
+            options.MaxInputEntries!.Value, options.MaxDiagnosticBytes!.Value);
         var inputBudget = new InputBudget(limits);
+        var readBudget = new InputBudget(limits);
         var problems = new HashSet<int>();
         var details = new List<object>();
+        var reasons = new HashSet<int>();
+        var outputLimits = new OutputLimits(options.MaxOutputBytes!.Value, options.MaxDiagnosticsPerCheck!.Value, options.MaxDiagnosticBytes!.Value);
         string prefix = options.RunId + "/C1/r1/b10-abrupt-diagnostic/";
         var reader = new AbruptEvidenceReader(options, ReadLedger);
         StartLineEvidence? start = null;
         AbruptFirstEvidence? first = null;
         AbruptSuccessorEvidence? successor = null;
+        TimeoutRegistration? timeoutRegistration = null;
+        TimeoutEvidence? timeoutEvidence = null;
+        OutcomeCounts? timeout = null;
+        string? successorDirectory = null;
+        bool lossVerified = true;
+        bool drainedWindow = false;
+        LoadedScenario? scenario = null;
+        IReadOnlyList<string> expectedBrokers = [];
+        var timeoutReader = new TimeoutEvidenceReader(options, ReadProducer, ListProducer, limits, inputBudget);
         IReadOnlyDictionary<int, long>? ends = null;
         IReadOnlyList<ConsumedRecord> records = [];
         bool complete = false;
@@ -52,12 +73,22 @@ internal sealed class B10AbruptVerifyHandler(IOptions<VerifierHostOptions> confi
         }
         catch (Exception exception) when (EvidenceFailure(exception)) { Problem(0, "start_line"); start = null; }
 
+        if (start is not null)
+            expectedBrokers = start.Inventory.Value!.Brokers.Select(broker => broker.Name).Order(StringComparer.Ordinal).ToArray();
+        try
+        {
+            timeoutRegistration = await timeoutReader.ReadListingAsync(cancellationToken).ConfigureAwait(false);
+            if (start is not null)
+                timeoutEvidence = await timeoutReader.ReadPublicationAsync(timeoutRegistration, start, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (EvidenceFailure(exception)) { Problem(6, "timeout_evidence"); }
+
         string[] directories = [];
         Dictionary<string, string[]> namesByPod = new(StringComparer.Ordinal);
         try
         {
             BlobListing listing = await Timed(ct => producerStore.ListAsync(prefix, ct), options.BlobIoTimeout!.Value, cancellationToken).ConfigureAwait(false);
-            Require(listing.IsComplete, "listing_incomplete");
+            if (!listing.IsComplete) throw new AbruptEvidenceException("listing_incomplete", new HashSet<int> { 2 });
             Require(listing.Names.All(name => name.StartsWith(prefix, StringComparison.Ordinal) && name[prefix.Length..].Contains('/')), "listing_path");
             namesByPod = listing.Names.GroupBy(name => name[prefix.Length..].Split('/')[0], StringComparer.Ordinal)
                 .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
@@ -72,13 +103,22 @@ internal sealed class B10AbruptVerifyHandler(IOptions<VerifierHostOptions> confi
                 }
                 catch (Exception exception) when (EvidenceFailure(exception)) { /* This directory may be the successor. */ }
             }
-            Require(candidates.Count == 1, "first_registration_count");
+            if (candidates.Count != 1) throw new AbruptEvidenceException("first_registration_count", new HashSet<int> { 2 });
             (string firstPod, string firstUid) = candidates[0];
             first = await reader.ReadFirstAsync(prefix, firstPod, firstUid, namesByPod[firstPod], cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception exception) when (EvidenceFailure(exception)) { Problem(1, "first_evidence"); }
-
+        catch (Exception exception) when (EvidenceFailure(exception))
+        {
+            Problem(1, "first_evidence");
+            AddEvidenceReasons(exception, 3);
+        }
         if (first is not null)
+        {
+            reasons.UnionWith(first.Reasons);
+            if (first.Invalid) Problem(1, "first_reconciliation");
+        }
+
+        if (first is not null && !problems.Contains(1))
         {
             string[] remaining = directories.Where(pod => pod != first.Pod).ToArray();
             if (remaining.Length == 0) Problem(2, "successor_absent");
@@ -87,12 +127,23 @@ internal sealed class B10AbruptVerifyHandler(IOptions<VerifierHostOptions> confi
                 try
                 {
                     Require(remaining.Length == 1, "successor_count");
+                    await reader.ReadRegistrationAsync(prefix, remaining[0], first.Pod, cancellationToken).ConfigureAwait(false);
+                    successorDirectory = remaining[0];
                     successor = await reader.ReadSuccessorAsync(prefix, remaining[0], first, namesByPod[remaining[0]], cancellationToken).ConfigureAwait(false);
                 }
-                catch (Exception exception) when (EvidenceFailure(exception)) { Problem(3, "successor_evidence"); }
+                catch (Exception exception) when (EvidenceFailure(exception))
+                {
+                    Problem(3, "successor_evidence");
+                    AddEvidenceReasons(exception, 9);
+                }
+                if (successor is not null)
+                {
+                    reasons.UnionWith(successor.Reasons);
+                    if (successor.Invalid) Problem(3, "successor_reconciliation");
+                }
             }
         }
-        if (start is not null && first is not null)
+        if (start is not null)
         {
             VerifierKafkaSession? session = null;
             using var kafkaWork = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -110,19 +161,37 @@ internal sealed class B10AbruptVerifyHandler(IOptions<VerifierHostOptions> confi
                 RunWindow window = RunWindow.Create(start.Start, [], start.ExpectedIdentity, options.ExpectedProducerJobNames, ends);
                 if (window.CanAssign)
                 {
-                    var keys = first.Attempts.Values.Select(attempt => attempt.Key).ToHashSet(StringComparer.Ordinal);
+                    var keys = first?.Attempts.Values.Select(attempt => attempt.Key).ToHashSet(StringComparer.Ordinal)
+                        ?? new HashSet<string>(StringComparer.Ordinal);
                     WindowDrainResult drained = WindowConsumer.Drain(session.Consumer, window, clock, origin, options.SafetyStop!.Value,
                         options.PollSlice!.Value, new ConsumedRecordBudget(options.MaxConsumedRecords!.Value, options.MaxConsumedBytes!.Value),
                         keys, cancellationToken, kafkaWork.Token);
                     records = drained.Records;
+                    drainedWindow = true;
                     complete = drained.Assessments.All(assessment => assessment.Disposition == AssessmentDisposition.Pass);
-                    if (records.Any(record => record.Key is not null && keys.Contains(record.Key) &&
+                    if (!problems.Contains(1) && records.Any(record => record.Key is not null && keys.Contains(record.Key) &&
                         (record.Problems.Count != 0 || record.ValueSha256 is null))) Problem(5, "probe_identity");
                 }
                 if (!complete) Problem(4, "window_incomplete");
+                safetyTimer?.Dispose();
+                safetyTimer = null;
+                if (complete && first is not null && !problems.Contains(1))
+                {
+                    IReadOnlyList<AbruptArm> preliminary = AbruptClassification.Evaluate(first,
+                        problems.Contains(3) ? null : successor, records, true, options.MaxDiagnosticsPerCheck!.Value);
+                    if (preliminary.Any(arm => arm.Members.Any(member => member.ResendLost == true)))
+                    {
+                        try
+                        {
+                            IReadOnlyDictionary<int, long> reread = session.ReadHighWatermarks(cancellationToken: cancellationToken);
+                            lossVerified = ends.Count == reread.Count && ends.All(end => reread.TryGetValue(end.Key, out long high) && high == end.Value);
+                        }
+                        catch (Exception exception) when (KafkaFailure(exception, cancellationToken)) { lossVerified = false; }
+                        if (!lossVerified) Problem(8, "end_line_advanced_or_unreadable");
+                    }
+                }
             }
-            catch (Exception exception) when (!cancellationToken.IsCancellationRequested &&
-                exception is VerifierKafkaOperationException or KafkaException or TimeoutException or OperationCanceledException or InputLimitExceededException)
+            catch (Exception exception) when (KafkaFailure(exception, cancellationToken))
             {
                 Problem(4, "window_incomplete");
             }
@@ -135,7 +204,40 @@ internal sealed class B10AbruptVerifyHandler(IOptions<VerifierHostOptions> confi
                 CheckCleanup(cleanupOrigin, options.CleanupTimeout.Value);
             }
         }
-        IReadOnlyList<AbruptArm>? arms = first is null ? null : AbruptClassification.Evaluate(first, successor, records, complete, options.MaxDiagnosticsPerCheck!.Value);
+        if (drainedWindow)
+        {
+            if (timeoutEvidence is not null)
+            {
+                TimeoutRecordJoin joined = TimeoutEvidenceReader.Join(timeoutEvidence, records, options.RunId!);
+                if (joined.Unjoined) Problem(7, "timeout_record_identity");
+                if (!problems.Contains(4))
+                {
+                    scenario = await Timed(ct => scenarioLoader.LoadAsync(options.ScenarioId!, ct).AsTask(), options.IoTimeout!.Value, cancellationToken).ConfigureAwait(false);
+                    ResolvedRoleConfiguration expected = configurationResolver.Resolve(scenario, timeoutEvidence.Registered.Registration)
+                        .Configurations["C1"].Roles[KafkaClientRole.LoadGenProducer];
+                    timeout = TimeoutEvidenceReader.Judge(timeoutEvidence, joined.Records, expected, expectedBrokers, outputLimits);
+                    if (timeout is null) Problem(6, "timeout_judgement");
+                }
+            }
+            if (first is not null && !problems.Contains(1) &&
+                AbruptRecordJoin.HasUnjoined(first, problems.Contains(3) ? null : successor, records,
+                    timeoutRegistration?.InstanceId ?? timeoutReader.DirectoryInstanceId, successorDirectory))
+                Problem(7, "probe_record_identity");
+        }
+        if (start is not null && first is not null)
+        {
+            scenario ??= await Timed(ct => scenarioLoader.LoadAsync(options.ScenarioId!, ct).AsTask(), options.IoTimeout!.Value, cancellationToken).ConfigureAwait(false);
+            string client = successor?.Pod ?? first.Pod;
+            var registration = new ProducerRegistration(1, new("B10", "C1", options.RunId!, client, client, client),
+                "C1", 1, client, client, successor is null ? first.Uid : client, options.VerifierCommit!);
+            ResolvedRoleConfiguration expected = configurationResolver.Resolve(scenario, registration)
+                .Configurations["C1"].Roles[KafkaClientRole.LoadGenProducer];
+            if (!AbruptGuard.Evaluate(first, successor, options, expectedBrokers, expected, limits, inputBudget)) reasons.Add(13);
+        }
+        IReadOnlyList<AbruptArm>? arms = first is null || problems.Contains(1) ? null :
+            AbruptClassification.Evaluate(first, problems.Contains(3) ? null : successor, records, complete,
+                options.MaxDiagnosticsPerCheck!.Value, lossVerified);
+        string comparison = AbruptDiagnostics.Comparison(arms, reasons);
         byte[] result = JsonSerializer.SerializeToUtf8Bytes(new
         {
             schema_version = 3, dialect = "b10_abrupt", purpose = "diagnostic_trial", synthetic = true,
@@ -149,7 +251,12 @@ internal sealed class B10AbruptVerifyHandler(IOptions<VerifierHostOptions> confi
             },
             data = new
             {
-                first_instance_id = first?.Pod, successor_instance_id = successor?.Pod,
+                first_instance_id = problems.Contains(1) ? null : first?.Pod,
+                successor_instance_id = problems.Contains(3) ? null : successor?.Pod,
+                timeout_instance_id = timeoutRegistration?.InstanceId, timeout,
+                comparison, native_errors = problems.Contains(1) ? null : first?.NativeErrors,
+                eligibility = reasons.Count == 0 ? "pending_sweep" : "ineligible",
+                eligibility_reasons = reasons.Order().Select(reason => AbruptDiagnostics.ReasonNames[reason - 1]).ToArray(),
                 start_line = start?.Start.Value?.PartitionHighs.OrderBy(high => high.Partition).Select(high => new AbruptCoordinate(high.Partition, high.High)).ToArray(),
                 end_line = ends?.OrderBy(high => high.Key).Select(high => new AbruptCoordinate(high.Key, high.Value)).ToArray(),
                 window_complete = complete, window_limit = "copies_after_end_line_not_observed", arms,
@@ -166,17 +273,37 @@ internal sealed class B10AbruptVerifyHandler(IOptions<VerifierHostOptions> confi
 
         void Problem(int index, string detail)
         {
-            if (!problems.Add(index) || details.Count >= options.MaxDiagnosticsPerCheck!.Value) return;
+            switch (index)
+            {
+                case 0: reasons.Add(1); break;
+                case 2: reasons.Add(9); break;
+                case 4: reasons.Add(12); break;
+                case 5: case 7: reasons.Add(3); break;
+                case 6: reasons.Add(7); break;
+            }
+            if (!problems.Add(index) || index == 7 || details.Count >= options.MaxDiagnosticsPerCheck!.Value) return;
             details.Add(new { problem = ProblemNames[index], detail = detail[..Math.Min(detail.Length, options.MaxDiagnosticBytes!.Value)] });
         }
-        async Task<byte[]?> ReadVerifier(string name, CancellationToken ct) =>
-            await Timed(token => verifierStore.ReadAsync(name, token), options.BlobIoTimeout!.Value, ct).ConfigureAwait(false);
-        async Task<byte[]?> ReadLedger(string name, long maximumBytes, CancellationToken ct)
+        void AddEvidenceReasons(Exception exception, int fallback)
+        {
+            if (exception is AbruptEvidenceException evidence) reasons.UnionWith(evidence.Reasons);
+            else reasons.Add(fallback);
+        }
+        async Task<BlobListing> ListProducer(string name, CancellationToken ct) =>
+            await Timed(token => producerStore.ListAsync(name, token), options.BlobIoTimeout!.Value, ct).ConfigureAwait(false);
+        async Task<byte[]?> ReadProducer(string name, long maximumBytes, CancellationToken ct)
         {
             byte[]? bytes = await Timed(token => producerStore.ReadBoundedAsync(name, maximumBytes, token), options.BlobIoTimeout!.Value, ct).ConfigureAwait(false);
-            if (bytes is not null) inputBudget.ConsumeBytes(bytes.LongLength);
+            if (bytes is not null) readBudget.ConsumeBytes(bytes.LongLength);
             return bytes;
         }
+        async Task<byte[]?> ReadVerifier(string name, CancellationToken ct)
+        {
+            byte[]? bytes = await Timed(token => verifierStore.ReadAsync(name, token), options.BlobIoTimeout!.Value, ct).ConfigureAwait(false);
+            if (bytes is not null && name != prefix + "nonfinal-result.json") readBudget.ConsumeBytes(bytes.LongLength);
+            return bytes;
+        }
+        Task<byte[]?> ReadLedger(string name, long maximumBytes, CancellationToken ct) => ReadProducer(name, maximumBytes, ct);
     }
 
     private async Task<T> Timed<T>(Func<CancellationToken, Task<T>> action, TimeSpan budget, CancellationToken cancellationToken)
@@ -193,6 +320,9 @@ internal sealed class B10AbruptVerifyHandler(IOptions<VerifierHostOptions> confi
     {
         if (clock.GetElapsedTime(origin) >= budget) throw new TimeoutException("Kafka cleanup expired.");
     }
+    private static bool KafkaFailure(Exception exception, CancellationToken cancellationToken) =>
+        !cancellationToken.IsCancellationRequested && exception is
+            VerifierKafkaOperationException or KafkaException or TimeoutException or OperationCanceledException or InputLimitExceededException;
     private static bool EvidenceFailure(Exception exception) => exception is FormatException or JsonException or
         InvalidOperationException or InvalidDataException or KeyNotFoundException or ArgumentException or InputLimitExceededException or OverflowException;
 }

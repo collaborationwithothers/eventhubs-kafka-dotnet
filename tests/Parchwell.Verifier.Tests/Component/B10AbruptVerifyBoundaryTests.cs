@@ -257,9 +257,11 @@ public sealed class B10AbruptVerifyBoundaryTests(B10AbruptVerifyKafkaFixture kaf
         if (file == "first/journal.jsonl")
         {
             JsonObject kill = evidence.Frames[^1]; evidence.Frames.RemoveAt(evidence.Frames.Count - 1);
+            int captures = 0;
             while (evidence.Frames.Count < 4095) evidence.Add("native_error", new
-            { capture_sequence = evidence.Frames.Count, error_code = -1, error_name = "synthetic", is_error = true, is_fatal = false, callback_monotonic_ticks = 1 });
+            { capture_sequence = ++captures, error_code = -1, error_name = "synthetic", is_error = false, is_fatal = false, callback_monotonic_ticks = 1 });
             kill["sequence"] = 4096; evidence.Frames.Add(kill);
+            evidence.Change("first/termination.json", root => root["data"]!["native_error_count"] = captures);
             byte[][] lines = evidence.Frames.Select(frame => Encoding.UTF8.GetBytes(frame.ToJsonString())).ToArray();
             int padding = length - lines.Sum(line => line.Length + 1);
             Assert.True(padding >= 0);
@@ -303,9 +305,11 @@ public sealed class B10AbruptVerifyBoundaryTests(B10AbruptVerifyKafkaFixture kaf
         {
             int count = int.Parse(defect[8..], CultureInfo.InvariantCulture);
             JsonObject kill = evidence.Frames[^1]; evidence.Frames.RemoveAt(evidence.Frames.Count - 1);
+            int captures = 0;
             while (evidence.Frames.Count < count - 1) evidence.Add("native_error", new
-            { capture_sequence = evidence.Frames.Count, error_code = -1, error_name = "synthetic", is_error = true, is_fatal = false, callback_monotonic_ticks = 1 });
-            kill["sequence"] = count; evidence.Frames.Add(kill); evidence.Rehash();
+            { capture_sequence = ++captures, error_code = -1, error_name = "synthetic", is_error = false, is_fatal = false, callback_monotonic_ticks = 1 });
+            kill["sequence"] = count; evidence.Frames.Add(kill);
+            evidence.Change("first/termination.json", root => root["data"]!["native_error_count"] = captures); evidence.Rehash();
         }
         else if (defect == "gap-record")
         { evidence.Add("gap", new { reason = "writer_failed", first_missing_sequence = (int?)null, capture_status = "invalid" }); evidence.Rehash(); }
@@ -441,7 +445,7 @@ public sealed class B10AbruptVerifyBoundaryTests(B10AbruptVerifyKafkaFixture kaf
             await run.ProduceAsync(1, 2, attempt: "a4");
             await run.ProduceAsync(1, 3, instance: B10AbruptVerifyEvidence.Second, attempt: "r4");
         }
-        Assert.Equal(0, await run.RunAsync()); AssertProblems(run, duplicate ? [SuccessorProblem] : []);
+        Assert.Equal(0, await run.RunAsync()); AssertProblems(run, duplicate ? [SuccessorProblem] : ["b10_abrupt_verify_record_unjoined"]);
         JsonNode arm = run.Data["arms"]!.AsArray().Single(value => Text(value!["arm"]) == "cross_restart")!;
         Assert.Equal(2, arm["unconfirmed_count"]!.GetValue<long>());
         if (!duplicate)

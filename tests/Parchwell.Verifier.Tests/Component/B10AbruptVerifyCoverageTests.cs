@@ -80,8 +80,8 @@ public sealed class B10AbruptVerifyCoverageTests(B10AbruptVerifyKafkaFixture kaf
         Assert.Null(run.Data["first_instance_id"]);
         Assert.Null(run.Data["successor_instance_id"]);
         Assert.Null(run.Data["arms"]);
-        Assert.Null(run.Data["end_line"]);
-        Assert.False(run.Data["window_complete"]!.GetValue<bool>());
+        Assert.NotNull(run.Data["end_line"]);
+        Assert.True(run.Data["window_complete"]!.GetValue<bool>());
     }
 
     [Theory]
@@ -119,7 +119,7 @@ public sealed class B10AbruptVerifyCoverageTests(B10AbruptVerifyKafkaFixture kaf
             else root[defect] = "wrong";
         });
         evidence.RehashSuccessor(); using var run = NewRun(evidence);
-        await AssertRunAsync(run, defect is "schema-3" or "opaque-inventory" ? [] : [SuccessorProblem]);
+        await AssertRunAsync(run, defect == "schema-3" ? [] : [SuccessorProblem]);
         Assert.NotNull(run.Data["arms"]);
     }
 
@@ -160,7 +160,7 @@ public sealed class B10AbruptVerifyCoverageTests(B10AbruptVerifyKafkaFixture kaf
         JsonObject source = JsonNode.Parse(evidence.Files[objectFile])!.AsObject();
         evidence.Add(kind, source["data"]!.DeepClone()); evidence.Rehash();
         using var run = NewRun(evidence); await AssertRunAsync(run, FirstProblem);
-        Assert.Null(run.Data["arms"]); Assert.Null(run.Data["end_line"]); Assert.False(run.Data["window_complete"]!.GetValue<bool>());
+        Assert.Null(run.Data["arms"]); Assert.NotNull(run.Data["end_line"]); Assert.True(run.Data["window_complete"]!.GetValue<bool>());
     }
 
     [Fact]
@@ -189,7 +189,7 @@ public sealed class B10AbruptVerifyCoverageTests(B10AbruptVerifyKafkaFixture kaf
         await kafka.ResetAsync(); var evidence = new B10AbruptVerifyEvidence();
         JsonNode nested = JsonValue.Create(0)!;
         for (int count = 0; count < depth - 2; count++) nested = new JsonArray(nested);
-        evidence.Change("first/termination.json", root => root["data"]!["child"] = nested);
+        evidence.Change("first/termination.json", root => root["data"]!["detail"] = nested);
         evidence.RehashSuccessor(); using var run = NewRun(evidence);
         await AssertRunAsync(run, depth <= 32 ? [] : [FirstProblem]);
     }
@@ -359,7 +359,7 @@ public sealed class B10AbruptVerifyCoverageTests(B10AbruptVerifyKafkaFixture kaf
         await run.ProduceAsync(0, 2, attempt: "wrong-attempt");
         await run.ProduceAsync(0, 3, instance: B10AbruptVerifyEvidence.Second, attempt: "wrong-attempt");
         await run.ProduceAsync(0, 4, instance: "wrong-instance", attempt: "r4");
-        await AssertRunAsync(run); JsonNode member = run.Data["arms"]![1]!["members"]![0]!;
+        await AssertRunAsync(run, "b10_abrupt_verify_record_unjoined"); JsonNode member = run.Data["arms"]![1]!["members"]![0]!;
         Assert.Equal(4, member["copy_count"]!.GetValue<long>()); Assert.Equal(4, member["other_copies"]!.GetValue<long>());
         Assert.Equal(0, member["original_copies"]!.GetValue<long>()); Assert.Equal(0, member["resend_copies"]!.GetValue<long>());
         Assert.Equal(new long[] { 1, 2, 3, 4 }, member["copies"]!.AsArray().Select(copy => copy!["offset"]!.GetValue<long>()));

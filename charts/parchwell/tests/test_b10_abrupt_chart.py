@@ -184,6 +184,14 @@ def verify_reader(document, values):
     assert env['Verifier__LoadGenImage'] == values['runtime']['loadgen_image']
     assert env['Verifier__VerifierImage'] == values['runtime']['verifier_image']
     assert env['Verifier__StartLineInputName'] == 'b10d-1-1/C1/r1/start-line.json'
+    assert env['Verifier__ArtifactPrefix'] == values['runtime']['run_id'] + '/C1/r1/producer/'
+    bounds = values['runtime']['bounds']
+    assert env['Verifier__ScenarioRoot'] == scalar(bounds['verifier_kafka']['ScenarioRoot'])
+    for key in ('MaxRowBytes', 'MaxRowsPerArtifact', 'MaxInventoryEntries', 'MaxInputEntries',
+                'MaxNativeReportBytes', 'MaxBrokerEntries'):
+        assert env['Verifier__' + key] == scalar(bounds['verifier_verify'][key])
+    for key, value in bounds['scenario_parsing'].items():
+        assert env['Verifier__ScenarioLoadOptions__' + key] == scalar(value)
 
 
 def invalid_reader_cases():

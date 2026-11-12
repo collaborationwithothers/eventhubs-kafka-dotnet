@@ -80,6 +80,7 @@ public sealed class B10AbruptVerifyKafkaFixture : IAsyncLifetime
 internal sealed class B10AbruptVerifyHarness : IDisposable, IVerifierArtifactStore, IProducerArtifactStore
 {
     private readonly string bootstrap;
+    private readonly string runId;
     private readonly KafkaSessionTestSupport authentication = new();
     private IProducer<byte[], byte[]>? producer;
     private readonly Dictionary<int, long> nextOffsets = [];
@@ -98,17 +99,28 @@ internal sealed class B10AbruptVerifyHarness : IDisposable, IVerifierArtifactSto
     internal Action? AfterCleanup { get; set; }
     internal Action? AfterEndQuery { get; set; }
     internal Action? AfterAssign { get; set; }
+    internal Action? BeforeReRead { get; set; }
+    internal bool FailReRead { get; set; }
+    internal int ReReads { get; private set; }
+    private int watermarkQueries;
     internal const string Output = "synthetic/C1/r1/b10-abrupt-diagnostic/nonfinal-result.json";
-    internal JsonObject Result => JsonNode.Parse(Verifier[Output])!.AsObject();
+    internal JsonObject Result => JsonNode.Parse(Verifier[Output.Replace("synthetic", runId, StringComparison.Ordinal)])!.AsObject();
     internal JsonObject Data => Result["data"]!.AsObject();
 
-    internal B10AbruptVerifyHarness(string bootstrap, Dictionary<string, byte[]> files)
+    internal B10AbruptVerifyHarness(string bootstrap, Dictionary<string, byte[]> files, string runId = "synthetic")
     {
+        this.runId = runId;
+        if (runId != "synthetic") files = B10AbruptVerifyEvidence.RemapRun(files, runId);
         this.bootstrap = bootstrap; authentication.Refresh();
         foreach ((string name, byte[] bytes) in files)
         {
-            string directory = name.StartsWith("first/", StringComparison.Ordinal) ? B10AbruptVerifyEvidence.First : B10AbruptVerifyEvidence.Second;
-            Ledger[B10AbruptVerifyEvidence.Prefix + directory + "/" + name[(name.IndexOf('/') + 1)..]] = bytes;
+            if (name.StartsWith("timeout/", StringComparison.Ordinal))
+                Ledger[("synthetic/C1/r1/producer/synthetic-timeout/" + name[8..]).Replace("synthetic", runId, StringComparison.Ordinal)] = bytes;
+            else
+            {
+                string directory = name.StartsWith("first/", StringComparison.Ordinal) ? B10AbruptVerifyEvidence.First : B10AbruptVerifyEvidence.Second;
+                Ledger[(B10AbruptVerifyEvidence.Prefix + directory + "/" + name[(name.IndexOf('/') + 1)..]).Replace("synthetic", runId, StringComparison.Ordinal)] = bytes;
+            }
         }
         foreach ((string name, string value) in new Dictionary<string, string>
         {
@@ -124,39 +136,43 @@ internal sealed class B10AbruptVerifyHarness : IDisposable, IVerifierArtifactSto
             ["IoTimeout"] = "00:00:10", ["BlobIoTimeout"] = "00:00:10", ["TokenTimeout"] = "00:00:10", ["MetadataTimeout"] = "00:00:10",
             ["WatermarkTimeout"] = "00:00:10", ["PollSlice"] = "00:00:00.050", ["SafetyStop"] = "00:00:20",
             ["MaxOutputBytes"] = "16777216", ["MaxDiagnosticsPerCheck"] = "100", ["MaxDiagnosticBytes"] = "4096", ["MaxPartitions"] = "32",
+            ["ScenarioRoot"] = B10AbruptVerifyEvidence.RepositoryRoot(), ["ArtifactPrefix"] = "synthetic/C1/r1/producer/",
+            ["MaxRowBytes"] = "1048576", ["MaxRowsPerArtifact"] = "10000", ["MaxInventoryEntries"] = "10000",
+            ["MaxInputEntries"] = "10000", ["MaxNativeReportBytes"] = "1048576", ["MaxBrokerEntries"] = "100",
+            ["ScenarioLoadOptions:MaxDocumentCharacters"] = "131072", ["ScenarioLoadOptions:MaxNestingDepth"] = "32",
+            ["ScenarioLoadOptions:MaxScalarCharacters"] = "32768", ["ScenarioLoadOptions:MaxParserEvents"] = "16384",
             ["MaxInputDepth"] = "32", ["MaxArtifactBytes"] = "268435456", ["MaxTotalInputBytes"] = "2147483648", ["MaxConsumedRecords"] = "1000", ["MaxConsumedBytes"] = "1048576"
-        }) Configuration.Add("Verifier:" + name, value);
+        }) Configuration.Add("Verifier:" + name, value.Replace("synthetic", runId, StringComparison.Ordinal));
         Configuration["PARCHWELL_SOURCE_COMMIT"] = B10AbruptVerifyEvidence.Commit;
         Configuration["Telemetry:ConnectionString"] = "InstrumentationKey=synthetic-key";
         Configuration["Telemetry:ServiceName"] = "Parchwell.Verifier";
         Configuration["Telemetry:ServiceInstanceId"] = "synthetic-verifier";
         Configuration["Telemetry:ScenarioId"] = "B10";
-        Configuration["Telemetry:RunId"] = "synthetic";
+        Configuration["Telemetry:RunId"] = runId;
         CaptureStart();
     }
 
     internal void CaptureStart()
     {
         using var consumer = ComponentRunHarness.Consumer(bootstrap);
-        var identity = new RunIdentity("B10", "C1", "synthetic", "synthetic-c1-r1-loadgen", "synthetic-c1-r1-loadgen", "synthetic-c1-r1-loadgen");
+        var identity = new RunIdentity("B10", "C1", runId, runId + "-c1-r1-loadgen", runId + "-c1-r1-loadgen", runId + "-c1-r1-loadgen");
         PartitionHigh[] highs = Enumerable.Range(0, 3).Select(partition => new PartitionHigh(partition,
             consumer.QueryWatermarkOffsets(new TopicPartition("document-events", partition), TimeSpan.FromSeconds(10)).High.Value)).ToArray();
         var note = new StartLineNote(1, identity, "document-events", highs, B10AbruptVerifyEvidence.Utc, B10AbruptVerifyEvidence.Commit,
-            typeof(ConsumerConfig).Assembly.GetName().Version!.ToString(), Library.VersionString, ["synthetic-c1-r1-loadgen", "synthetic-c1-r1-loadgen2"]);
-        string start = PhasePaths.StartLine("synthetic", "C1", 1), inventory = PhasePaths.BrokerInventory("synthetic", "C1", 1);
+            typeof(ConsumerConfig).Assembly.GetName().Version!.ToString(), Library.VersionString, runId == "synthetic" ? [runId + "-c1-r1-loadgen", runId + "-c1-r1-loadgen2"] : [runId + "-c1-r1-loadgen", runId + "-c1-r1-loadgen-restart", runId + "-c1-r1-loadgen-successor"]);
+        string start = PhasePaths.StartLine(runId, "C1", 1), inventory = PhasePaths.BrokerInventory(runId, "C1", 1);
         Verifier[start] = StartLineNoteCodec.Write(note, new OutputLimits(16777216, 100, 4096));
         using var admin = new DependentAdminClientBuilder(consumer.Handle).Build();
-        var brokers = admin.GetMetadata("document-events", TimeSpan.FromSeconds(10)).Brokers;
-        Verifier[inventory] = BrokerInventoryCodec.Write(identity, brokers, B10AbruptVerifyEvidence.Commit, 16777216);
+        Verifier[inventory] = BrokerInventoryCodec.Write(identity, [new BrokerMetadata(1, "broker-a", 9093)], B10AbruptVerifyEvidence.Commit, 16777216);
         RehashStartReceipt();
     }
     internal void RehashStartReceipt()
     {
-        string start = PhasePaths.StartLine("synthetic", "C1", 1), inventory = PhasePaths.BrokerInventory("synthetic", "C1", 1);
-        var identity = new RunIdentity("B10", "C1", "synthetic", "synthetic-c1-r1-loadgen", "synthetic-c1-r1-loadgen", "synthetic-c1-r1-loadgen");
+        string start = PhasePaths.StartLine(runId, "C1", 1), inventory = PhasePaths.BrokerInventory(runId, "C1", 1);
+        var identity = new RunIdentity("B10", "C1", runId, runId + "-c1-r1-loadgen", runId + "-c1-r1-loadgen", runId + "-c1-r1-loadgen");
         ArtifactReference Ref(string name) => new("verifier", name, Verifier[name].LongLength, B10AbruptVerifyEvidence.Hash(Verifier[name]));
-        Verifier[PhasePaths.StartLineCompletion("synthetic", "C1", 1)] = PhaseWireCodec.WriteReceipt(new WorkerReceipt(1, "start-line", "B10", "C1", "synthetic", "C1", 1,
-            "synthetic-c1-r1-start-line", "synthetic-start", identity, B10AbruptVerifyEvidence.Commit, 0, true, B10AbruptVerifyEvidence.Utc, B10AbruptVerifyEvidence.Utc,
+        Verifier[PhasePaths.StartLineCompletion(runId, "C1", 1)] = PhaseWireCodec.WriteReceipt(new WorkerReceipt(1, "start-line", "B10", "C1", runId, "C1", 1,
+            runId + "-c1-r1-start-line", runId + "-start", identity, B10AbruptVerifyEvidence.Commit, 0, true, B10AbruptVerifyEvidence.Utc, B10AbruptVerifyEvidence.Utc,
             [Ref(start), Ref(inventory)], null, null));
     }
     internal Task<int> RunAsync() => Program.RunAsync(Configuration.Select(pair => "--" + pair.Key + "=" + pair.Value).ToArray(), services =>
@@ -171,6 +187,11 @@ internal sealed class B10AbruptVerifyHarness : IDisposable, IVerifierArtifactSto
             IConsumer<byte[], byte[]> real = ComponentRunHarness.Consumer(bootstrap);
             var consumer = NativeProxy.Create<IConsumer<byte[], byte[]>>((method, arguments) =>
             {
+                if (method.Name == "QueryWatermarkOffsets" && watermarkQueries++ == 3)
+                {
+                    ReReads++; BeforeReRead?.Invoke();
+                    if (FailReRead) throw new KafkaException(new Error(ErrorCode.Local_TimedOut));
+                }
                 object? result;
                 try { result = method.Invoke(real, arguments); }
                 catch (TargetInvocationException exception) when (exception.InnerException is not null)

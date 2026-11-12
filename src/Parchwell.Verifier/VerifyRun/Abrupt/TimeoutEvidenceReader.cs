@@ -29,11 +29,17 @@ internal sealed class TimeoutEvidenceReader(VerifierHostOptions options,
     Func<string, long, CancellationToken, Task<byte[]?>> readLedger,
     Func<string, CancellationToken, Task<BlobListing>> listLedger, InputLimits limits, InputBudget budget)
 {
+    internal string? DirectoryInstanceId { get; private set; }
+
     internal async Task<TimeoutRegistration> ReadListingAsync(CancellationToken cancellationToken)
     {
         string root = PhasePaths.ProducersPrefix(options.RunId!, "C1", 1);
         BlobListing listing = await listLedger(root, cancellationToken).ConfigureAwait(false);
-        Require(listing.IsComplete, "timeout_listing_incomplete");
+        Require(listing.IsComplete && listing.Pages is >= 0 and <= BoundedBlobListing.MaximumPages &&
+            listing.Names.Count <= BoundedBlobListing.MaximumEntries, "timeout_listing_incomplete");
+        long nameBytes = listing.Names.Sum(name => (long)Encoding.UTF8.GetByteCount(name));
+        if (nameBytes > BoundedBlobListing.MaximumNameBytes)
+            throw new InputLimitExceededException("Timeout registration listing exceeds its name-byte limit.");
         budget.ConsumeEntries(listing.Names.Count);
         string? instance = null;
         foreach (string name in listing.Names)
@@ -48,8 +54,11 @@ internal sealed class TimeoutEvidenceReader(VerifierHostOptions options,
             instance = candidate;
         }
         Require(instance is not null, "timeout_registration_count");
+        DirectoryInstanceId = instance;
         string registrationName = PhasePaths.Registration(options.RunId!, "C1", 1, instance!);
-        Require(listing.Names.Count(name => name == registrationName) == 1, "timeout_registration_count");
+        Require(listing.Names.Count(name => name == registrationName) == 1 &&
+            listing.Names.Count(name => name.EndsWith("/registration.json", StringComparison.Ordinal)) == 1,
+            "timeout_registration_count");
         byte[] bytes = await ReadRequired(registrationName, cancellationToken).ConfigureAwait(false);
         budget.ConsumeBytes(bytes.LongLength);
         ProducerRegistration registration = PhaseWireCodec.ReadRegistration(bytes);

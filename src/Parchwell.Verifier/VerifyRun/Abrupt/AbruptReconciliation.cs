@@ -7,14 +7,24 @@ namespace Parchwell.Verifier.VerifyRun.Abrupt;
 /// <summary>Independently reconciles the retained journal and successor declarations.</summary>
 internal static class AbruptReconciliation
 {
+    private static readonly string[] Arms = ["same_instance", "cross_restart"];
+    private static readonly string[] CgroupIdentityFields = ["boot_id", "cgroup_path", "directory_identity"];
+    private static readonly string[] InvocationTextFields = ["attempt_id", "predecessor_attempt_id", "key", "payload_sha256"];
+
     internal static AbruptFirstEvidence First(AbruptFirstEvidence first, JsonElement termination)
     {
-        var reasons = new HashSet<int>();
+        var reasons = new HashSet<int>(first.Reasons);
         JsonElement[] native = Frames("native_error");
-        long errors = native.LongCount(frame => Data(frame).GetProperty("is_error").GetBoolean());
-        long fatal = native.LongCount(frame => Data(frame).GetProperty("is_fatal").GetBoolean());
-        if (native.Any(frame => Data(frame).GetProperty("is_error").GetBoolean() && !Data(frame).GetProperty("is_fatal").GetBoolean())) reasons.Add(5);
-        if (fatal > 0) reasons.Add(6);
+        long fatal = 0;
+        foreach (JsonElement frame in native)
+            Check(3, () =>
+            {
+                bool isFatal = Data(frame).GetProperty("is_fatal").GetBoolean();
+                bool isError = Data(frame).GetProperty("is_error").GetBoolean();
+                if (isFatal) { fatal++; reasons.Add(6); }
+                if (isError && !isFatal) reasons.Add(5);
+                return true;
+            });
         Check(3, () => native.Select(frame => Data(frame).GetProperty("capture_sequence").GetInt64())
             .SequenceEqual(Enumerable.Range(1, native.Length).Select(value => (long)value)) &&
             termination.GetProperty("native_error_count").GetInt64() == native.Length &&
@@ -33,13 +43,13 @@ internal static class AbruptReconciliation
             JsonElement before = termination.GetProperty("cgroup_before"), after = termination.GetProperty("cgroup_after");
             Exact(before, "boot_id", "cgroup_path", "directory_identity", "oom_kill");
             Exact(after, "boot_id", "cgroup_path", "directory_identity", "oom_kill");
-            return new[] { "boot_id", "cgroup_path", "directory_identity" }.All(name => Text(before, name) == Text(after, name)) &&
+            return CgroupIdentityFields.All(name => Text(before, name) == Text(after, name)) &&
                 Text(before, "boot_id") == Text(child, "boot_id") && before.GetProperty("oom_kill").GetInt64() == after.GetProperty("oom_kill").GetInt64();
         });
         var warmups = new Dictionary<string, AbruptWarmup>(StringComparer.Ordinal);
         Check(3, () =>
         {
-            foreach (string arm in new[] { "same_instance", "cross_restart" })
+            foreach (string arm in Arms)
             {
                 JsonElement[] prepared = Frames("warmup_prepared").Where(frame => Text(Data(frame), "arm") == arm).ToArray();
                 if (prepared.Length != 1) return false;
@@ -62,7 +72,7 @@ internal static class AbruptReconciliation
         });
         Check(3, () =>
         {
-            foreach (string arm in new[] { "same_instance", "cross_restart" })
+            foreach (string arm in Arms)
             {
                 JsonElement[] reports = Frames("pre_acceptance_report").Where(frame => Text(Data(frame), "arm") == arm).ToArray();
                 if (reports.Length != 1) return false;
@@ -117,7 +127,7 @@ internal static class AbruptReconciliation
 
     internal static AbruptSuccessorEvidence Successor(AbruptSuccessorEvidence successor)
     {
-        var reasons = new HashSet<int>();
+        var reasons = new HashSet<int>(successor.Reasons);
         JsonElement[] invocations = successor.Completion.GetProperty("invocations").EnumerateArray().ToArray();
         try
         {
@@ -130,7 +140,7 @@ internal static class AbruptReconciliation
                 JsonElement entry = entries[index], invocation = invocations[index];
                 Exact(entry, "attempt_id", "invocation_ordinal", "predecessor_attempt_id", "key", "sequence", "payload_length", "payload_sha256");
                 valid = entry.GetProperty("invocation_ordinal").GetInt64() == index && entry.GetProperty("sequence").GetInt64() == invocation.GetProperty("sequence").GetInt64() &&
-                    new[] { "attempt_id", "predecessor_attempt_id", "key", "payload_sha256" }.All(name => Text(entry, name) == Text(invocation, name));
+                    InvocationTextFields.All(name => Text(entry, name) == Text(invocation, name));
             }
             if (!valid) reasons.Add(9);
         }
