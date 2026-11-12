@@ -9,6 +9,7 @@ internal static class AbruptEvidenceCodec
     internal static readonly string[] ReportFiles = ["same_instance-pre-acceptance-report.json", "control-post-drain-report.json", "cross_restart-pre-acceptance-report.json"];
     internal static readonly string[] SuccessorFiles = ["registration.json", "ledger.jsonl", "manifest.json", "statistics.jsonl", "request-lifecycle.jsonl", "capabilities.json", "completion.json"];
     internal static readonly string[] ProducingKinds = ["child_started", "warmup_prepared", "prepared", "pre_acceptance_report", "accepted", "synchronous_rejection", "cut", "control_drained", "post_drain_report", "kill_intent", "signal_failed", "no_kill"];
+    internal static readonly string[] JournalKinds = ["child_started", "warmup_prepared", "warmup_terminal", "prepared", "pre_acceptance_report", "accepted", "synchronous_rejection", "terminal", "native_error", "cut", "control_drained", "post_drain_report", "kill_intent", "signal_failed", "no_kill", "gap"];
     private static readonly Dictionary<string, string[]> DataMembers = new(StringComparer.Ordinal)
     {
         ["registration"] = ["registered_utc"],
@@ -30,6 +31,7 @@ internal static class AbruptEvidenceCodec
         ["no_kill"] = ["reason", "cross_restart_admitted"],
         ["abrupt_manifest"] = ["journal", "journal_records", "report_files", "gaps"],
         ["termination"] = ["termination", "outcome", "detail", "signal_observation", "successor_permitted", "child", "exit_observed", "exit_code_local_observation", "runtime_version", "wait_bound_milliseconds", "cgroup_before", "cgroup_after", "control_unconfirmed_attempt_ids", "kill_unconfirmed_attempt_ids", "capture_gaps", "native_error_count", "native_fatal_count", "native_tail", "manifest"],
+        ["cohort_inventory"] = ["instance_id", "cohort", "inventory_count", "inventory", "bookkeeping_complete"],
         ["successor_receipt"] = ["first_termination", "journal", "kill_unconfirmed_attempt_ids", "registration", "artifacts", "ready_utc", "release_utc", "invocations", "cleanup_completed", "cross_host_timing"],
     };
     internal static JsonElement Parse(ReadOnlyMemory<byte> bytes)

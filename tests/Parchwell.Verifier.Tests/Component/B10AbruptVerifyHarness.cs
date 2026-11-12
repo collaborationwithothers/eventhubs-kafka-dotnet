@@ -92,6 +92,10 @@ internal sealed class B10AbruptVerifyHarness : IDisposable, IVerifierArtifactSto
     internal int OutputReadbacks { get; private set; }
     internal bool IncompleteListing { get; set; }
     internal bool ChangeReadback { get; set; }
+    internal bool MissingReadback { get; set; }
+    internal TimeProvider Clock { get; set; } = TimeProvider.System;
+    internal Action<string>? BeforeRead { get; set; }
+    internal Action? AfterCleanup { get; set; }
     internal Action? AfterEndQuery { get; set; }
     internal Action? AfterAssign { get; set; }
     internal const string Output = "synthetic/C1/r1/b10-abrupt-diagnostic/nonfinal-result.json";
@@ -173,12 +177,13 @@ internal sealed class B10AbruptVerifyHarness : IDisposable, IVerifierArtifactSto
                 { System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception.InnerException).Throw(); throw; }
                 if (method.Name == "QueryWatermarkOffsets") { Action? action = AfterEndQuery; AfterEndQuery = null; action?.Invoke(); }
                 if (method.Name == "Assign") { Action? action = AfterAssign; AfterAssign = null; action?.Invoke(); }
+                if (method.Name == "Dispose") AfterCleanup?.Invoke();
                 return result;
             });
             return new VerifierKafkaSession(consumer, new DependentAdminClientBuilder(real.Handle).Build(), authentication.Authentication,
-                TimeProvider.System, provider.GetRequiredService<IOptions<VerifierHostOptions>>().Value, new CancellationTokenSource());
+                Clock, provider.GetRequiredService<IOptions<VerifierHostOptions>>().Value, new CancellationTokenSource());
         }));
-    }).WaitAsync(TimeSpan.FromSeconds(60), TestContext.Current.CancellationToken);
+    }, Clock).WaitAsync(TimeSpan.FromSeconds(60), TestContext.Current.CancellationToken);
 
     internal async Task ProduceAsync(int partition, long offset, string arm = "cross_restart", string instance = B10AbruptVerifyEvidence.First,
         string attempt = "c4", long sequence = 4, bool duplicateAttempt = false, bool nullValue = false, string? key = null, byte[]? value = null)
@@ -206,8 +211,9 @@ internal sealed class B10AbruptVerifyHarness : IDisposable, IVerifierArtifactSto
     public Task<byte[]?> ReadAsync(string name, CancellationToken cancellationToken)
     {
         Reads++;
+        BeforeRead?.Invoke(name);
         if (name == Output && Verifier.TryGetValue(name, out byte[]? output))
-        { OutputReadbacks++; return Task.FromResult<byte[]?>(ChangeReadback ? [] : output); }
+        { OutputReadbacks++; return Task.FromResult<byte[]?>(MissingReadback ? null : ChangeReadback ? [] : output); }
         return Task.FromResult(Verifier.GetValueOrDefault(name) ?? Ledger.GetValueOrDefault(name));
     }
     public Task<BlobListing> ListAsync(string prefix, CancellationToken cancellationToken)

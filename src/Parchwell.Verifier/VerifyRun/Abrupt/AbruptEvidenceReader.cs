@@ -57,6 +57,7 @@ internal sealed class AbruptEvidenceReader(VerifierHostOptions options,
             Require(frames.Count < 4096, "journal_records");
             byte[] line = journal[start..offset];
             string kind = Text(Parse(line), "kind");
+            Require(JournalKinds.Contains(kind, StringComparer.Ordinal), "journal_kind");
             JsonElement frame = Envelope(line, kind, options, pod, null, uid, journal: true);
             Require(kind != "gap" && frame.GetProperty("sequence").GetInt64() == frames.Count + 1L, "journal_sequence");
             frames.Add(frame);
@@ -139,6 +140,7 @@ internal sealed class AbruptEvidenceReader(VerifierHostOptions options,
         Require(files.Keys.ToHashSet(StringComparer.Ordinal).SetEquals(SuccessorFiles), "successor_files");
         string uid = (await ReadRegistrationAsync(prefix, pod, first.Pod, ct).ConfigureAwait(false))!;
         Require(uid != first.Uid, "pod_uid_duplicate");
+        Envelope(files["manifest.json"], "cohort_inventory", options, pod, first.Pod, uid);
         JsonElement completion = Envelope(files["completion.json"], "successor_receipt", options, pod, first.Pod, uid).GetProperty("data");
         Bind(completion.GetProperty("registration"), "registration.json", files["registration.json"]);
         var boundNames = new HashSet<string>(StringComparer.Ordinal);
