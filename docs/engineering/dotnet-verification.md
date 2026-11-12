@@ -55,14 +55,14 @@ Those commands check documentation. They are not the .NET build entry point. Doc
 PARCHWELL_BUILD_MAX_CPU=1 ./scripts/verify-dotnet.sh
 ```
 
-`--tier fast` passes `--filter-not-trait Tier=Docker Tier=Slow Tier=Host` to every test project. The option names were read from `dotnet test --help` on SDK 10.0.402 on 2026-11-12, and one run showed the fast tier removing exactly the marked tests. A filtered-out test is not reported as skipped, so the report check that rejects skips still holds. The fast tier also leaves out the spike-evidence publication, because the Docker spike test produces that evidence. `--project` runs only the named test project and repeats. A run with either option prints `Partial verification passed` and states that it is not the full gate. Cite a partial run as a partial run, never as the gate.
+`--tier fast` passes `--filter-not-trait Tier=Docker Tier=Slow Tier=Host` to every test project. The option names were read from `dotnet test --help` on SDK 10.0.402 on 2026-11-12, and one run showed the fast tier removing exactly the marked tests. In the recorded fast-tier run (`items/435/receipt.md`) the filtered-out tests were absent from the reports and every report passed the check that rejects skips. No cited source states how the runner reports filtered-out tests, so treat that as observed, not documented. The fast tier also leaves out the spike-evidence publication, because the Docker spike test produces that evidence. `--project` runs only the named test project; give the option more than once to run several. A run with either option prints `Partial verification passed` and states that it is not the full gate. Cite a partial run as a partial run, never as the gate.
 
 Three values of the xUnit trait `Tier` mark tests that the fast tier leaves out:
 
 | Trait | Mark a test with it when |
 |---|---|
 | `Docker` | It needs a Docker daemon, directly or through Testcontainers. |
-| `Slow` | One run of the test took more than 30 s in the measured session of 2026-11-12 (4 cores). The 30 s threshold is a policy choice, not a measurement. |
+| `Slow` | One run of the test took more than 30 s in the baseline run of 2026-11-12 (4 cores; 142.2 s, 121.1 s and 41.2 s for the three marked tests, listed in `items/435/receipt.md`). The 30 s threshold is a policy choice, not a measurement. |
 | `Host` | It needs a host kernel facility that managed cloud sandboxes may not provide, such as the cgroup membership the abrupt-exit capture reads. |
 
 Put the trait on the class when every test in it qualifies, and on the method otherwise. A test that needs Docker but carries no trait still runs in the full gate and in the fast tier. On a machine without Docker it fails in the fast tier, which is visible and safe. It does not disappear.
@@ -71,7 +71,7 @@ The script stops at once only for stages that every later stage depends on: rest
 
 `PARCHWELL_BUILD_MAX_CPU` adds `-maxcpucount:<n>` to restore, build, project evaluation and the warning control. It leaves the test processes alone. Do not set `DOTNET_PROCESSOR_COUNT` for the whole script: that changes the processor count that tests observe, and a Codex session recorded eight failures after doing so, with the cause not proved to be that setting (`items/404/b10-warm-leader-receipt.md`, V11). Whether the cap stops the MSBuild worker exits recorded there (V2) is not verified; it was not reproduced.
 
-`./scripts/test-verify-dotnet.sh` checks the option handling and fail-late behaviour of the script against a stub `dotnet`. It needs no SDK and no Docker, and takes about a second.
+`./scripts/test-verify-dotnet.sh` checks the option handling and fail-late behaviour of the script against a stub `dotnet`. It needs no SDK and no Docker, and ran in 1.5 s in the one measured run (`items/435/receipt.md`).
 
 ## Enforced gates
 

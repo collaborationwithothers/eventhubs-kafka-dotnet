@@ -23,7 +23,7 @@ Must not change: any assertion, expected value, test body or fixture; `.github/`
 ## 3. External contracts
 
 - `./scripts/verify-dotnet.sh` with no arguments behaves as before for a passing run: the same stages, the same pass line `Verification passed. Per-project reports identify the tests executed.`, exit 0. Hosted CI (`.github/workflows/dotnet-verification.yml`, line 27) calls it that way.
-- Option names: `--tier fast|all`, `--project <name>` (repeatable), `-h`/`--help`. Environment variable: `PARCHWELL_BUILD_MAX_CPU` (positive integer).
+- Option names: `--tier fast|all` (the issue text also lists `docker`; it is dropped, see open question 3), `--project <name>` (repeatable), `-h`/`--help`. Environment variable: `PARCHWELL_BUILD_MAX_CPU` (positive integer).
 - xUnit trait key `Tier` with values `Docker`, `Slow`, `Host`.
 - Exit status: 0 on success; 2 for an unusable option or environment value; otherwise the exit status of the first failed stage.
 
@@ -31,9 +31,9 @@ Must not change: any assertion, expected value, test body or fixture; `.github/`
 
 1. WHEN no option is given THEN no test filter is passed and every test project runs, and the pass line above is printed on success.
 2. WHEN `--tier fast` is given THEN every `dotnet test` call receives `--filter-not-trait Tier=Docker Tier=Slow Tier=Host`, the spike-evidence publication is skipped, and the success line starts `Partial verification passed` and says the run is not the full gate.
-3. WHEN `--tier` has a value other than `fast` or `all`, or `--project` names something that is not a test project, or an unknown argument is given, or `PARCHWELL_BUILD_MAX_CPU` is not a positive integer THEN the script exits 2 before restore or any test.
+3. WHEN `--tier` has a value other than `fast` or `all`, or `--project` names something that is not a test project, or an unknown argument is given, or `PARCHWELL_BUILD_MAX_CPU` is not a positive integer THEN the script exits 2 before restore, before any other `dotnet` call and before any test.
 4. WHEN `--project` is given THEN only the named test projects run, the architecture project runs only if named, and the success line starts `Partial verification passed`.
-5. WHEN a test project or the warning control fails THEN the script runs the remaining test projects and the warning control, prints the stage timing table and a list of failed stages, and exits with the first failure's status. A stage before testing (restore, build, Kafka XML inventory, project evaluation, scaffold inventory) still stops the run at once.
+5. WHEN a test project or the warning control fails THEN the script runs the remaining test projects and the warning control, prints the stage timing table and a list of failed stages, and exits with the first failure's status. A stage before testing (restore, build, Kafka XML inventory, project evaluation, scaffold inventory) still stops the run at once. The scaffold inventory now runs before the architecture tests, which ran before it on `main`; its failure therefore stops the architecture tests too.
 6. WHEN the warning control's intentional warning is accepted, or fails for an unrelated cause, THEN that is recorded as a failed stage `Warning control`, as before it was a hard failure.
 7. WHEN `PARCHWELL_BUILD_MAX_CPU=n` is set THEN `-maxcpucount:n` is added to restore, build, project evaluation and the warning control calls, and to no `dotnet test` or `dotnet publish` call.
 8. WHEN a stage runs through `run_logged` THEN its label and whole seconds are printed and appended to `stage-timing.tsv` in the results directory.
@@ -51,7 +51,7 @@ Must not change: any assertion, expected value, test body or fixture; `.github/`
 |---|---|---|
 | 1 | `default` | exit 0; 6 test calls (architecture plus 5 units); log has no `filter-not-trait`; output has the full-gate line |
 | 2 | `fast` | 6 test calls each with `--filter-not-trait Tier=Docker Tier=Slow Tier=Host`; output has `Partial verification passed` and not the full-gate line |
-| 3 | `unknown_project`, `unknown_tier`, `bad_cpu` (value `0`) | exit 2; 0 test calls |
+| 3 | `unknown_project`, `unknown_tier`, `bad_cpu` (value `0`) | exit 2; the stub `dotnet` log is empty |
 | 4 | `select` | exactly 1 test call, for Parchwell.Scenarios.Tests; partial line |
 | 5 | `fail_late` | two named projects fail with exit 2; all 6 test calls still made; exit 2; both names listed; warning control still reached |
 | 6 | `warning_accepted` | exit not 0; 6 test calls; `Warning control (exit` listed |
@@ -83,7 +83,7 @@ Boundaries not covered by an automated test: `PARCHWELL_BUILD_MAX_CPU=1` (run on
 ## 10. Later pull requests (outline, not planned in detail)
 
 - Pull request 2, governance wording. Amend the plan template's acceptance wording so an acceptance gate may be met by the fast tier locally plus the full script in hosted CI on the final head. Touches `docs/agents/factory.md` and possibly AGENTS.md and `docs/agents/pull-requests.md`. Needs its own plan; Hari merges.
-- Pull request 3, workflow trigger. Run `dotnet-verification.yml` on pushes to `*-wip` branches so an agent gets the full gate on a Docker-capable runner without publishing. Needs pull request 2 merged first, because AGENTS.md hard safety rule 8 bars agents from changing existing workflow triggers, and docs/agents/pull-requests.md rule 12 records that no workflow runs on such a branch. Also touches the architecture contract tests that read workflow files if they cover this workflow. Needs its own plan; Hari merges.
+- Pull request 3, workflow trigger. Run `dotnet-verification.yml` on pushes to `*-wip` branches so an agent gets the full gate on a Docker-capable runner without publishing. Needs pull request 2 merged first, because AGENTS.md hard safety rule 8 bars agents from changing existing workflow triggers, and AGENTS.md "Before opening a pull request" rule 12 records that no workflow runs on such a branch. Also touches the architecture contract tests that read workflow files if they cover this workflow. Needs its own plan; Hari merges.
 
 ## 11. Plan-check questions
 
@@ -95,7 +95,9 @@ Boundaries not covered by an automated test: `PARCHWELL_BUILD_MAX_CPU=1` (run on
 
 1. The guard you were offered with traits, an architecture test that fails when a class uses Testcontainers without `Tier=Docker`, is not in this pull request. It needs the architecture project to load the test assemblies, which adds an assembly reference (a P1 under "Code Review Rules"). The omission is safe, because an unmarked Docker test still runs in the full gate and fails visibly in a fast run without Docker. Do you want the guard as a separate pull request?
 2. `B10AbruptOfflineImageTests` returns at once and passes when `PARCHWELL_B10_OFFLINE_IMAGE` is unset. In the full gate it therefore counts as a passing test without testing anything. Outside this item's scope; reported here so you can decide.
-3. Tiers are `fast` and `all`. A `heavy` tier (only the marked tests) was dropped because projects with no marked tests would fail the minimum-expected-tests check. Say if CI should split on it later.
+3. The issue text lists `--tier fast|docker|all`. This pull request provides only `fast` and `all`. A tier that runs only the marked tests (`docker` or `heavy`) was dropped because projects with no marked tests would fail the minimum-expected-tests check. You chose the traits method after being offered `fast|docker|all`; the drop is mine and needs your agreement. Say if CI should split on such a tier later.
+4. The session harness fixed the branch name `claude/modest-allen-wcadc4`, which lacks the issue number that AGENTS.md "Implementer and reviewer" and CLAUDE.md "Identity" require. Do you want the work published from a branch named `claude/435-...`?
+5. factory.md "Item state file" has the first implementation pull request of an issue create `items/<issue>/state.md`. This pull request adds none because it is directly authorized work, not an `implement-plan` session. Do you want one?
 
 ## 13. Stop rule
 

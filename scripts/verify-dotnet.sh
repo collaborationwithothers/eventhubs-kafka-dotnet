@@ -69,6 +69,23 @@ if [[ -n "${PARCHWELL_BUILD_MAX_CPU:-}" ]]; then
     build_cpu_args=("-maxcpucount:$PARCHWELL_BUILD_MAX_CPU")
 fi
 
+# Each --project name must be a test project of the solution. Checked before any build.
+if ((${#selected_projects[@]} > 0)); then
+    shopt -s globstar nullglob
+    known_test_projects=()
+    for project in tests/**/*.csproj; do known_test_projects+=("$(basename "${project%.csproj}")"); done
+    for requested in "${selected_projects[@]}"; do
+        found=false
+        for candidate in "${known_test_projects[@]}"; do
+            if [[ "$candidate" == "$requested" ]]; then found=true; fi
+        done
+        if [[ "$found" != true ]]; then
+            echo "Unknown --project '$requested'. Test projects: ${known_test_projects[*]}" >&2
+            exit 2
+        fi
+    done
+fi
+
 if ! command -v dotnet >/dev/null 2>&1; then
     echo "Install .NET SDK 10.0.402 separately, then rerun ./scripts/verify-dotnet.sh." >&2
     exit 1
@@ -116,11 +133,11 @@ record_failure() {
 }
 
 # Callers run this inside "|| record_failure", which disables errexit in the whole function body,
-# so every step that can fail ends in an explicit "|| return".
+# so each command here that can fail must end in an explicit "|| return".
 run_tests() {
     local project=$1 name=$2
     local results="$verification_results/$name"
-    mkdir -p "$results"
+    mkdir -p "$results" || return $?
     local test_status=0 evidence_status=0
     if [[ "$name" == "Parchwell.Kafka.Tests" ]]; then
         export PARCHWELL_SPIKE_EVIDENCE_DIRECTORY="$results/spike"
@@ -165,10 +182,10 @@ is_selected() {
 # Same rule as the original inline sequence, as a function so a failure can be recorded.
 warning_control() {
     local warning_fixture="$verification_results/warning-control"
-    mkdir -p "$warning_fixture"
-    cp tests/verification-fixtures/warnings/WarningControl.csproj.fixture "$warning_fixture/WarningControl.csproj"
-    cp tests/verification-fixtures/warnings/Allowed.cs.fixture "$warning_fixture/Allowed.cs"
-    cp tests/verification-fixtures/warnings/Forbidden.cs.fixture "$warning_fixture/Forbidden.cs"
+    mkdir -p "$warning_fixture" || return $?
+    cp tests/verification-fixtures/warnings/WarningControl.csproj.fixture "$warning_fixture/WarningControl.csproj" || return $?
+    cp tests/verification-fixtures/warnings/Allowed.cs.fixture "$warning_fixture/Allowed.cs" || return $?
+    cp tests/verification-fixtures/warnings/Forbidden.cs.fixture "$warning_fixture/Forbidden.cs" || return $?
     run_logged "Warning control restore" "$warning_fixture/restore.log" dotnet restore "$warning_fixture/WarningControl.csproj" \
         ${build_cpu_args[@]+"${build_cpu_args[@]}"} \
         "-p:ParchwellRepositoryRoot=$repository_root" "-p:ControlSource=$warning_fixture/Allowed.cs" || return $?
@@ -232,20 +249,6 @@ echo "Effective Release project settings and references: collected."
 run_logged "Unit scaffold inventory" "$verification_results/scaffolds.log" dotnet msbuild scripts/dotnet-verification.proj \
     -t:SelectTests "-p:ManifestDirectory=$verification_results/manifests" "-p:ProjectList=$verification_results/unit-projects.txt" -nologo
 cat "$verification_results/scaffolds.log"
-
-# Each --project name must be a test project of the solution.
-known_test_projects=()
-for project in tests/**/*.csproj; do known_test_projects+=("$(basename "${project%.csproj}")"); done
-for requested in ${selected_projects[@]+"${selected_projects[@]}"}; do
-    found=false
-    for candidate in "${known_test_projects[@]}"; do
-        if [[ "$candidate" == "$requested" ]]; then found=true; fi
-    done
-    if [[ "$found" != true ]]; then
-        echo "Unknown --project '$requested'. Test projects: ${known_test_projects[*]}" >&2
-        exit 2
-    fi
-done
 
 # From here on a failing stage is recorded and the run continues, so one run reports every failure.
 if is_selected Parchwell.ArchitectureTests; then

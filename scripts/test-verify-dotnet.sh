@@ -90,11 +90,11 @@ run_case select -- --project Parchwell.Scenarios.Tests
 [[ "$output" == *"Partial verification passed"* ]] || fail "--project must say it is not the full gate"
 
 run_case unknown_project -- --project Parchwell.Nope
-[[ $status -eq 2 && $tested -eq 0 ]] || fail "unknown --project must exit 2 before testing (status $status, ran $tested)"
+[[ $status -eq 2 && $tested -eq 0 && ! -s "$STUB_LOG" ]] || fail "unknown --project must exit 2 before any dotnet call (status $status, ran $tested)"
 run_case unknown_tier -- --tier slow
-[[ $status -eq 2 && $tested -eq 0 ]] || fail "unknown --tier must exit 2 before testing (status $status, ran $tested)"
+[[ $status -eq 2 && ! -s "$STUB_LOG" ]] || fail "unknown --tier must exit 2 before any dotnet call (status $status)"
 run_case bad_cpu PARCHWELL_BUILD_MAX_CPU=0 --
-[[ $status -eq 2 && $tested -eq 0 ]] || fail "invalid PARCHWELL_BUILD_MAX_CPU must exit 2 (status $status, ran $tested)"
+[[ $status -eq 2 && ! -s "$STUB_LOG" ]] || fail "invalid PARCHWELL_BUILD_MAX_CPU must exit 2 before any dotnet call (status $status)"
 
 run_case cpu PARCHWELL_BUILD_MAX_CPU=3 --
 [[ $status -eq 0 ]] || fail "cpu-capped run exited $status"
