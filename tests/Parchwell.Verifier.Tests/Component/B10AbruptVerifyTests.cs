@@ -13,6 +13,7 @@ namespace Parchwell.Verifier.Tests.Component;
 
 #pragma warning disable CA1707
 [Collection("B10 abrupt verifier")]
+[Trait("Tier", "Docker")]
 public sealed class B10AbruptVerifyTests(B10AbruptVerifyKafkaFixture kafka) : IClassFixture<B10AbruptVerifyKafkaFixture>
 {
     private static readonly string[] Problems = ["b10_abrupt_verify_start_line_invalid", "b10_abrupt_verify_first_evidence_invalid",

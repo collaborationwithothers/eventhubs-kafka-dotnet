@@ -12,6 +12,7 @@ public sealed class B10AbruptVerifyTestGroup { }
 
 #pragma warning disable CA1707
 [Collection("B10 abrupt verifier")]
+[Trait("Tier", "Docker")]
 public sealed class B10AbruptVerifyBoundaryTests(B10AbruptVerifyKafkaFixture kafka) : IClassFixture<B10AbruptVerifyKafkaFixture>
 {
     private const string FirstProblem = "b10_abrupt_verify_first_evidence_invalid";
