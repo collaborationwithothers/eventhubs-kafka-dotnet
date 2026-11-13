@@ -16,12 +16,61 @@ This change implements the scientific producer sequence and per-repeat evidence 
 
 ## Predicate map and implementation choices
 
-Plan section 6 is the starting predicate-to-test map. The completed map will record test locations for each requirement and the empty, boundary and precedence cases before the first cold review.
+Plan section 6 supplies the inputs and literal expectations. The implemented predicate map below adds the test locations and boundary coverage. The source implementation is commit `b120241c2e46d0257659a9eeb8f54367181775b1`, followed by the strict run-ID boundary correction recorded below.
 
 - Plan-check P2-A applies: for repeat 2 or later without a drained window, check 30 is not evaluated, adds no problem 10, and `earlier_repeat_records` is null. Repeat 1 remains zero.
 - Plan-check P2-B applies: the new literals include `verifier_termination_unavailable` from section 3.2, alongside section 3.7's `b10_abrupt_verify_earlier_repeat_unavailable`, `b10_c1_final_judgement_unavailable` and `b10_c0_final_judgement_unavailable`.
 - Plan-check P2-C choice: retain the existing cumulative `B10_LIFECYCLE_SECONDS` policy bound of 120 seconds for lifecycle pod reads, including C1 producers and verifiers. It keeps evidence collection bounded without extending the approved orchestration deadline. A lifecycle gap makes `run-repeats` exit 1: a missing observed termination is incomplete orchestration evidence, which item (b) must see as a gap. It does not invent a worker outcome or prevent the current repeat's required verifier after an accepted first publication.
-- Legacy verifier fixtures with non-scientific run IDs retain their existing contracts. Every fixture adaptation will be inventoried before review; no assertion may be loosened or removed.
+- Legacy verifier fixtures with non-scientific run IDs retain their existing contracts. Fixture adaptations are inventoried below; no assertion is loosened or removed.
+
+| Requirements and plan tests | Implemented tests and predicates |
+| --- | --- |
+| R1, T1/T2 | [Options](../../tests/Parchwell.Verifier.Tests/Host/B10ScientificThreeJobOptionsTests.cs) and [start-line codec](../../tests/Parchwell.Verifier.Tests/Window/B10ScientificThreeJobStartLineCodecTests.cs): scientific C0/C1, trial and legacy names; name counts 0 through 4; repeated names at the otherwise valid count; exact run-ID recognition, including a trailing newline. |
+| R2/R3/R4/R12, T8/T9/T9b-T9h/T10/T12/T20/T21 | [Scientific phase tests](../../infra/scripts/phase/tests/test_b10_scientific.py): `test_c1_jobs_configmaps_lifecycle_and_science_markers`, rejected publication, render/unknown outcomes, each producer's failed pod read, failed successor receipt, first identity mismatch and metadata failure. They assert phase-stop precedence, verifier execution after an accepted first publication despite successor safety stop, and later repeat slots. Existing [trial tests](../../infra/scripts/phase/tests/test_b10_abrupt.py) keep every expectation. |
+| R5/R13, T13/T22 | Scientific phase tests: C0 has 15 records and C1 has 25 in the specified order; lifecycle producer/verifier totals are checked separately. `test_judge_and_candidate_named_gap_remove_stale_candidates` checks each configuration's literal gap, exit 1, no candidate and `full_allowed=false`. |
+| R6/R7, T3-T7 | [LoadGen tests](../../tests/Parchwell.LoadGen.Tests/Abrupt/B10ScientificThreeJobTests.cs) and [chart tests](../../charts/parchwell/tests/test_b10_abrupt_chart.py): actual producer/successor bytes at repeat 3, valid repeats 1/3/5, invalid 0/6/03, purpose and repeat mismatch, diagnostic identities retained, prefix and key binding, scientific renders and schema-only rejections. The author correction adds a scientific run ID ending in newline: it must fail with `DiagnosticIdentity` before role/binding validation. |
+| R8/R9/R10/R18, T14-T18/T31 and P2-A | [Scientific component tests](../../tests/Parchwell.Verifier.Tests/Component/B10ScientificThreeJobVerifyTests.cs): repeats 1/3/5, exact output and last-write receipt bytes/hash, earlier record exclusion, empty earlier prefixes, failed/invalid earlier evidence, current-versus-earlier collision even when another independent check fails, undrained null/no problem 10, invalid options before reads, existing receipt and write/read-back failures. |
+| R10 boundary map | [Earlier-reader tests](../../tests/Parchwell.Verifier.Tests/Component/B10ScientificThreeJobEarlierReadTests.cs): empty input; pages -1/0/16/17; entries 1023/1024/1025; listing-name bytes 1048575/1048576/1048577; registration bytes 65535/65536/65537; incomplete listing, escaped/nested paths, missing/invalid registration, ordinary and abrupt registration binding, and a reused current identity. Repeat 1 cannot have an earlier repeat, so it performs no earlier listing; repeat 5 reads only the four earlier repeats. |
+| R11, T19/T30 | [Legacy reader tests](../../tests/Parchwell.Verifier.Tests/Host/B10ScientificThreeJobLegacyReaderTests.cs) give frozen handlers codec-produced scientific start lines and actual C0 output. Scientific component tests give actual C1 output bytes to legacy result, receipt and sweep codecs. The frozen C0 sweep rejects the singleton intake before its start-line comparison; the C1 case reaches the three-name start-line rejection. |
+| R14/R15/R16/R17, T23-T29 | [C0 host tests](../../tests/Parchwell.Verifier.Tests/Host/B10OneJobC0VerifyTests.cs): valid singleton nonfinal output; registration counts 0/1/2; legacy pair start line; restart manifest; latest-earlier permitted versus non-permitted timeout row; earlier repeat with two registrations. Direct publication assertions keep the named rejection from being masked by another invalid field. |
+| R19, T32 | [C0 codec tests](../../tests/Parchwell.Verifier.Tests/Results/B10OneJobC0CodecTests.cs): scientific singleton, non-scientific singleton rejection, legacy pair preservation, C1 singleton rejection, role/predecessor mismatch, observation counts below/at/above one and rejection of `complete_valid` on read and write. |
+| R20, T33/T34 | [Receipt codec tests](../../tests/Parchwell.Verifier.Tests/Phase/B10ScientificThreeJobReceiptCodecTests.cs): valid repeats 1/3/5 and null/0/6 rejection, identity, exact Job name, artifact count/path, cleanup, exit, schema, coordinates and explicit null intake. Scientific phase prepare tests cover both configurations, the plan's numeric run/attempt inputs and the unchanged over-length failure. |
+| Lifecycle choices and precedence | Scientific phase tests cover the cumulative 120-second budget below/at/above its boundary, no applied Job, missing verifier termination, later-repeat continuation after a lifecycle gap, all later slots after the phase deadline, verify failure/missing output, and unchanged per-mode trial producer-admission predicates. |
+
+The first-publication `pod_uid` mismatch records `b10_abrupt_first_termination_unknown` at `admission`, with no second failure. This follows `Trial.fail` and `RecordedFailure` on the source baseline: `fail` records and raises, and `record_failure` ignores the already-recorded exception. The plan check's historical suggestion of an additional failure is not the baseline implementation. The test pins the actual trial behavior required by T9h.
+
+## Existing tests and fixture inventory
+
+The fixture-rule count is one existing InlineData row, computed from the inventory under plan section 2.4. The two codec rows and the scientific sequence contract are the section's explicit contract changes and do not count against 40. Shared support edits below change no existing expectation and also do not count.
+
+- Rule (b), counted: `B10TrialStartLineOptionsTests` changes only `("b10-1-1", false)` to `("b10-1-1", true)`, requiring the three scientific C1 names. The class comment is updated to match the rule.
+- Explicit codec contract changes: `B10TrialStartLineCodecTests` for `b10-1-1` changes count 2 from accepted to rejected and count 3 from rejected to accepted. Count 1 and all trial rows retain their expectations. The class comment describes the new scientific rule.
+- Explicit sequence contract: `test_b10_runs_twenty_ordered_modes_then_repeat_free_capture_and_sweep` becomes the scientific sequence test with 15 C0 and 25 C1 records, no sweep or judge worker, judge exit 1, and the plan's lifecycle totals. Its new test name describes that sequence.
+- Rule (a), support only: `prepare_b10` in `test_phase.py` uses `legacy-b10-40121134428-1` for the following frozen legacy subjects, retaining every assertion and tested boundary. The previous incidental scientific run ID would select the replacement sequence. The new scientific suite separately tests that replacement.
+
+The legacy fixture methods are:
+
+1. `test_b10_nonfinal_verifier_failure_is_retained_and_later_slots_run`
+2. `test_b10_missing_first_termination_blocks_second_without_exit_success_gate`
+3. `test_b10_unknown_live_pod_stops_every_subsequent_launch`
+4. `test_b10_uses_actual_pod_time_and_latest_receipt_time`
+5. `test_b10_settle_boundary_waits_only_remaining_time`
+6. `test_b10_lifecycle_rejects_missing_malformed_and_wrong_binding_receipts`
+7. `test_b10_pod_identity_and_source_cannot_supply_lifecycle_time`
+8. `test_b10_shared_deadline_stops_second_capture_sweep_and_judge`
+9. `test_b10_judge_fails_closed_with_missing_or_wrong_clock`
+10. `test_b10_receipt_missing_or_over_capacity_records_gap_without_retry`
+11. `test_b10_lifecycle_budget_is_shared_across_all_fifteen_observations`
+12. `test_b10_phase_worker_failures_preserve_sweep_and_separate_judge`
+13. `test_b10_all_command_types_and_sleep_obey_remaining_deadline`
+14. `test_b10_phase_values_render_the_actual_chart`
+15. `test_b10_candidate_retrieval_uses_stored_deadline_and_cleanup_remains_available`
+
+`HostEvidenceBuilder` gains an optional run-ID override for new scientific tests. Existing calls retain `synthetic-c5`; `VerifierHostTestOptions` and the unchanged expected-producer tests retain `run-1`. Neither matches the scientific pattern, so their legacy pairs remain valid. The LoadGen support helpers in `B10AbruptProducerTests`, `B10AbruptSuccessorCompletionTests` and `B10AbruptWireProducerTests` gain optional purpose/repeat parameters, with the existing diagnostic defaults and assertions retained. New scientific tests supply the nondefault values. The chart's existing invalid selections also retain their expectations; added cases isolate the new schema predicates with all other inputs valid.
+
+## Claim limits
+
+The changed documents specify this repository's application contracts. No new Kafka, librdkafka, Confluent.Kafka or Event Hubs behavior claim is added. Live assumptions remain accepted for planning only under the approval's decisions; this change supplies no scientific run or live result. The later governed diagnostic run and Hari's post-merge C5 measurement remain required, with no workflow dispatch by this session.
 
 ## Validation and review record
 

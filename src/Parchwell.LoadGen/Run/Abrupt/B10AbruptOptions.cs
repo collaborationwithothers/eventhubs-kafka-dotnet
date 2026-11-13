@@ -74,7 +74,7 @@ internal sealed class B10AbruptOptions
     internal void Validate(string? expectedRole = null)
     {
         bool identityValid = Purpose == "diagnostic_trial" ? Get("Repeat") == "1" :
-            Purpose == "scientific" && Regex.IsMatch(RunId, "^b10-[0-9]+-[0-9]+$", RegexOptions.CultureInvariant) &&
+            Purpose == "scientific" && Regex.IsMatch(RunId, @"\Ab10-[0-9]+-[0-9]+\z", RegexOptions.CultureInvariant) &&
             Get("Repeat") is "1" or "2" or "3" or "4" or "5";
         if (!Enabled || !identityValid || ScenarioId != "B10" || ConfigurationId != "C1" || Phase != "C1" || (expectedRole is not null && Role != expectedRole)) throw Invalid(ValidationDetail.DiagnosticIdentity);
         ValidateRole();

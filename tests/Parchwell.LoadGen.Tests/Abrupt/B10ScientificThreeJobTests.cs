@@ -28,6 +28,7 @@ public sealed class B10ScientificThreeJobTests
     [Theory]
     [InlineData("scientific", "b10d-1-1", "1")]
     [InlineData("scientific", "synthetic", "1")]
+    [InlineData("scientific", "b10-1-1\n", "1")]
     [InlineData("scientific", "b10-1-1", "0")]
     [InlineData("scientific", "b10-1-1", "6")]
     [InlineData("scientific", "b10-1-1", "03")]
