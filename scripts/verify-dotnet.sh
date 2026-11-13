@@ -6,7 +6,7 @@ cd "$repository_root"
 
 usage() {
     cat <<'USAGE'
-Usage: ./scripts/verify-dotnet.sh [--tier fast|sandbox|all] [--project <test project name>]...
+Usage: ./scripts/verify-dotnet.sh [--tier fast|sandbox|all] [--project <test project name>]... [--shard <name>]
 
 With no options the script runs the full gate: every test project, every test.
   --tier all      Run every test (default).
@@ -14,7 +14,10 @@ With no options the script runs the full gate: every test project, every test.
   --tier sandbox  Leave out only tests marked with the xUnit trait Tier=CGroupV2, which need the host's
                   cgroup v2 memory files. The pre-PR local gate of docs/agents/pull-requests.md "Verification gates".
   --project       Run only the named test project, for example Parchwell.Verifier.Tests. Repeatable.
+  --shard         Run one shard of the single --project: the test classes that scripts/dotnet-test-shards.tsv
+                  lists for that shard, or with the shard name rest every class it does not list.
 Environment:
+  PARCHWELL_TEST_SHARDS_FILE  Path of the shard file. Defaults to scripts/dotnet-test-shards.tsv.
   PARCHWELL_BUILD_MAX_CPU  Positive integer. Adds -maxcpucount:<n> to restore, build and project
                            evaluation only. Tests keep the machine's real processor count.
 A run with --tier fast, --tier sandbox or --project prints that it is not the full gate.
@@ -24,6 +27,8 @@ USAGE
 
 tier=all
 selected_projects=()
+shard_count=0
+shard=""
 while (($# > 0)); do
     case "$1" in
         --tier)
@@ -42,6 +47,17 @@ while (($# > 0)); do
             ;;
         --project=*)
             selected_projects+=("${1#--project=}")
+            shift
+            ;;
+        --shard)
+            if (($# < 2)); then usage >&2; exit 2; fi
+            shard_count=$((shard_count + 1))
+            shard=$2
+            shift 2
+            ;;
+        --shard=*)
+            shard_count=$((shard_count + 1))
+            shard=${1#--shard=}
             shift
             ;;
         -h | --help)
@@ -88,6 +104,100 @@ if ((${#selected_projects[@]} > 0)); then
             exit 2
         fi
     done
+fi
+
+# --shard: the shard file is read and validated here, before any dotnet call. Sets shard_project and
+# shard_args. The format is in scripts/dotnet-test-shards.tsv and docs/engineering/dotnet-verification.md.
+shard_args=()
+shard_project=""
+if ((shard_count > 0)); then
+    if ((${#selected_projects[@]} != 1)); then
+        echo "--shard needs exactly one --project." >&2
+        exit 2
+    fi
+    if ((shard_count > 1)); then
+        echo "--shard may be given once." >&2
+        exit 2
+    fi
+    shard_project=${selected_projects[0]}
+    shards_file=${PARCHWELL_TEST_SHARDS_FILE:-}
+    if [[ -z "$shards_file" ]]; then shards_file="$repository_root/scripts/dotnet-test-shards.tsv"; fi
+    if [[ ! -f "$shards_file" || ! -r "$shards_file" ]]; then
+        echo "Cannot read shard file $shards_file." >&2
+        exit 2
+    fi
+    entry_projects=()
+    entry_shards=()
+    entry_classes=()
+    line_number=0
+    tab=$'\t'
+    # Literal character sets, not ranges, so the match does not depend on the locale's collation.
+    upper=ABCDEFGHIJKLMNOPQRSTUVWXYZ lower=abcdefghijklmnopqrstuvwxyz digits=0123456789
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        line_number=$((line_number + 1))
+        line=${line%$'\r'}
+        if [[ -z "$line" || "${line:0:1}" == "#" ]]; then continue; fi
+        tabs=${line//[^$tab]/}
+        valid=true
+        if ((${#tabs} != 2)); then
+            valid=false
+        else
+            entry_project=${line%%"$tab"*}
+            remainder=${line#*"$tab"}
+            entry_shard=${remainder%%"$tab"*}
+            entry_class=${remainder#*"$tab"}
+            [[ "$entry_project" =~ ^Parchwell\.[$upper$lower$digits.]+$ ]] || valid=false
+            [[ "$entry_shard" =~ ^[$lower$digits]+(-[$lower$digits]+)*$ && "$entry_shard" != rest ]] || valid=false
+            [[ "$entry_class" == "$entry_project."* && "$entry_class" != *" "* ]] || valid=false
+        fi
+        if [[ "$valid" == true ]]; then
+            for ((index = 0; index < ${#entry_projects[@]}; index++)); do
+                if [[ "${entry_projects[index]}" == "$entry_project" && "${entry_classes[index]}" == "$entry_class" ]]; then valid=false; fi
+            done
+        fi
+        if [[ "$valid" != true ]]; then
+            echo "Malformed shard file line $line_number: $shards_file." >&2
+            exit 2
+        fi
+        entry_projects+=("$entry_project")
+        entry_shards+=("$entry_shard")
+        entry_classes+=("$entry_class")
+    done <"$shards_file"
+    project_shards=()
+    project_classes=()
+    for ((index = 0; index < ${#entry_projects[@]}; index++)); do
+        if [[ "${entry_projects[index]}" != "$shard_project" ]]; then continue; fi
+        project_classes+=("${entry_classes[index]}")
+        known=false
+        for candidate in ${project_shards[@]+"${project_shards[@]}"}; do
+            if [[ "$candidate" == "${entry_shards[index]}" ]]; then known=true; fi
+        done
+        if [[ "$known" != true ]]; then project_shards+=("${entry_shards[index]}"); fi
+    done
+    if ((${#project_shards[@]} == 0)); then
+        echo "$shard_project has no shards in $shards_file." >&2
+        exit 2
+    fi
+    project_shards+=(rest)
+    known=false
+    for candidate in "${project_shards[@]}"; do
+        if [[ "$candidate" == "$shard" ]]; then known=true; fi
+    done
+    if [[ "$known" != true ]]; then
+        echo "Unknown --shard '$shard' for $shard_project. Shards: ${project_shards[*]}" >&2
+        exit 2
+    fi
+    if [[ "$shard" == rest ]]; then
+        shard_args=(--filter-not-class "${project_classes[@]}")
+    else
+        shard_classes=()
+        for ((index = 0; index < ${#entry_projects[@]}; index++)); do
+            if [[ "${entry_projects[index]}" == "$shard_project" && "${entry_shards[index]}" == "$shard" ]]; then
+                shard_classes+=("${entry_classes[index]}")
+            fi
+        done
+        shard_args=(--filter-class "${shard_classes[@]}")
+    fi
 fi
 
 if ! command -v dotnet >/dev/null 2>&1; then
@@ -213,6 +323,7 @@ summary_json() {
         done
         printf '],'
     fi
+    if ((shard_count > 0)); then json_string "$shard"; printf '"shard":%s,' "$REPLY"; else printf '"shard":null,'; fi
     printf '"nproc":%s,"mem_total_kib":%s,' "${nproc_value:-null}" "${mem_total_kib:-null}"
     if [[ -n "${DOTNET_PROCESSOR_COUNT+set}" ]]; then
         json_string "$DOTNET_PROCESSOR_COUNT"; printf '"dotnet_processor_count":%s,' "$REPLY"
@@ -304,6 +415,13 @@ record_failure() {
     if [[ "$first_failure_status" -eq 0 ]]; then first_failure_status=$status; fi
 }
 
+# Writes the project's test method listing, as JSON on standard output, to $2. The runner's own
+# messages stay on standard error, which run_logged captures.
+list_methods() {
+    dotnet run --project "$1" --configuration Release --no-build --no-launch-profile \
+        -- -list methods/json -noColor >"$2"
+}
+
 # Callers run this inside "|| record_failure", which disables errexit in the whole function body,
 # so each command here that can fail must end in an explicit "|| return".
 run_tests() {
@@ -311,6 +429,8 @@ run_tests() {
     local results="$verification_results/$name"
     mkdir -p "$results" || return $?
     local test_status=0 evidence_status=0
+    local shard_test_args=()
+    if [[ -n "$shard_project" && "$name" == "$shard_project" ]]; then shard_test_args=("${shard_args[@]}"); fi
     if [[ "$name" == "Parchwell.Kafka.Tests" ]]; then
         export PARCHWELL_SPIKE_EVIDENCE_DIRECTORY="$results/spike"
     fi
@@ -324,6 +444,7 @@ run_tests() {
         --project "$project" --configuration Release --no-build \
         --minimum-expected-tests 1 --results-directory "$results" -- \
         ${tier_args[@]+"${tier_args[@]}"} \
+        ${shard_test_args[@]+"${shard_test_args[@]}"} \
         --report-xunit-xml --report-xunit-xml-filename results.xml || test_status=$?
     # The spike evidence comes from the Docker spike test, which only the fast tier leaves out.
     if [[ "$name" == "Parchwell.Kafka.Tests" && "$tier" != fast ]]; then
@@ -339,6 +460,7 @@ run_tests() {
     run_logged "$name report" "$results/report.log" dotnet msbuild scripts/dotnet-verification.proj \
         -t:ValidateReport "-p:Report=$results/results.xml" "-p:ExpectedAssembly=$name" -nologo || return $?
     cat "$results/report.log"
+    run_logged "$name test list" "$results/test-list.log" list_methods "$project" "$results/methods.json" || return $?
 }
 
 # True when no --project option was given or the named project was given.

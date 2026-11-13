@@ -17,7 +17,7 @@ PROJECTS = [
     "Parchwell.Verifier.Tests",
 ]
 PREFIX = "check-dotnet-matrix: "
-USAGE = "usage: check-dotnet-matrix.py <reports directory> <job>=<result>..."
+USAGE = "usage: check-dotnet-matrix.py <reports directory> <shard file> <job>=<result>..."
 SUCCESS_LINE = PREFIX + "6 test projects passed with validated reports: " + ", ".join(PROJECTS)
 GOOD_JOBS = ["dotnet-tests=success", "worker-images=success"]
 INVENTORY = "".join(
@@ -26,11 +26,25 @@ INVENTORY = "".join(
 )
 
 
-def summary(project):
+VERIFIER = "Parchwell.Verifier.Tests"
+S1 = VERIFIER + "--s1"
+REST = VERIFIER + "--rest"
+SHARD_FILE = VERIFIER + "\ts1\t" + VERIFIER + ".A\n"
+METHODS = [VERIFIER + ".A.M1", VERIFIER + ".B.M2"]
+
+
+def results_xml(*tests):
+    """An xUnit-shaped report holding one <test> element per (type, method) pair."""
+    lines = "".join(f'<test type="{t}" method="{m}" name="{t}.{m}" />' for t, m in tests)
+    return f"<assemblies><assembly><collection>{lines}</collection></assembly></assemblies>"
+
+
+def summary(project, shard=None):
     return {
         "schema_version": 1,
         "tier": "all",
         "projects": [project],
+        "shard": shard,
         "exit_code": 0,
         "outcome": "partial_passed",
         "failed_stages": [],
@@ -39,6 +53,8 @@ def summary(project):
              "end_utc": "2026-11-13T00:00:01Z", "exit_code": 0},
             {"label": f"{project} report", "elapsed_s": 1, "start_utc": "2026-11-13T00:00:01Z",
              "end_utc": "2026-11-13T00:00:02Z", "exit_code": 0},
+            {"label": f"{project} test list", "elapsed_s": 1, "start_utc": "2026-11-13T00:00:02Z",
+             "end_utc": "2026-11-13T00:00:03Z", "exit_code": 0},
         ],
     }
 
@@ -49,19 +65,24 @@ class CheckerTestCase(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
         self.reports = os.path.join(self.root, "reports")
         os.mkdir(self.reports)
+        self.shard_file = os.path.join(self.root, "shards.tsv")
+        self.write(self.root, "shards.tsv", "# none\n")
         for project in PROJECTS:
             self.add(project, 1)
 
     def directory(self, project, attempt=1):
         return os.path.join(self.reports, f"dotnet-verification-{project}-attempt-{attempt}")
 
-    def add(self, project, attempt, passed=True, inventory=INVENTORY):
-        directory = self.directory(project, attempt)
+    def add(self, project, attempt, passed=True, inventory=INVENTORY, shard=None, methods="[]", results="<assemblies />"):
+        """Adds the artifact of a unit: the project itself, or with a shard the unit <project>--<shard>."""
+        unit = project if shard is None else f"{project}--{shard}"
+        directory = self.directory(unit, attempt)
         os.makedirs(directory)
-        self.write(directory, "summary.json", json.dumps(summary(project)))
+        self.write(directory, "summary.json", json.dumps(summary(project, shard)))
         self.write(directory, "stage-timing.tsv", f"{project} tests\t1\t2026-11-13T00:00:00Z\t2026-11-13T00:00:01Z\n")
-        self.write(directory, "results.xml", "<assemblies />")
+        self.write(directory, "results.xml", results)
         self.write(directory, "unit-projects.txt", inventory)
+        self.write(directory, "methods.json", methods)
         if passed:
             self.write(directory, "leg-passed", "")
 
@@ -78,8 +99,9 @@ class CheckerTestCase(unittest.TestCase):
                 data[key] = value
         self.write(self.directory(project), "summary.json", json.dumps(data))
 
-    def run_checker(self, jobs=None, reports=None):
-        command = [sys.executable, CHECKER, reports or self.reports] + (GOOD_JOBS if jobs is None else jobs)
+    def run_checker(self, jobs=None, reports=None, with_shard_file=True):
+        command = [sys.executable, CHECKER, reports or self.reports] + ([self.shard_file] if with_shard_file else []) + (
+            GOOD_JOBS if jobs is None else jobs)
         done = subprocess.run(command, capture_output=True, text=True)
         return done.returncode, done.stdout, done.stderr
 
@@ -116,13 +138,14 @@ class JobResultTests(CheckerTestCase):
     def test_t4_usage_errors(self):
         cases = {
             "only the directory": [],
+            "directory and shard file only": [],
             "no equals": ["worker-images"],
             "empty job name": ["=success"],
             "repeated job": ["dotnet-tests=success", "dotnet-tests=success"],
         }
         for label, jobs in cases.items():
             with self.subTest(label):
-                code, out, err = self.run_checker(jobs)
+                code, out, err = self.run_checker(jobs, with_shard_file=label != "only the directory")
                 self.assertEqual((2, "", USAGE + "\n"), (code, out, err))
 
 
@@ -177,7 +200,7 @@ class ArtifactDiscoveryTests(CheckerTestCase):
 
 class RequiredFileTests(CheckerTestCase):
     def test_t10_missing_files(self):
-        for name in ("summary.json", "stage-timing.tsv", "results.xml"):
+        for name in ("summary.json", "stage-timing.tsv", "results.xml", "methods.json"):
             with self.subTest(name):
                 path = os.path.join(self.directory("Parchwell.LoadGen.Tests"), name)
                 with open(path) as handle:
@@ -202,6 +225,7 @@ class SummaryTests(CheckerTestCase):
         cases = [
             ("schema_version", 2), ("schema_version", True), ("tier", "fast"), ("projects", []),
             ("projects", ["Parchwell.Scenarios.Tests", "Parchwell.Kafka.Tests"]), ("projects", None),
+            ("shard", "s1"), ("shard", MISSING),
             ("exit_code", 1), ("exit_code", False), ("outcome", "full_gate_passed"), ("outcome", "failed"),
             ("failed_stages", [{"label": "Warning control", "exit_code": 1}]), ("outcome", MISSING),
         ]
@@ -281,6 +305,184 @@ class InventoryTests(CheckerTestCase):
             "missing-project: Parchwell.Verifier.Tests",
             jobs=["dotnet-tests=success", "worker-images=failure"],
         )
+
+
+class ShardedFixtureTestCase(CheckerTestCase):
+    """Fixture W: the Verifier tests are two units, s1 (class A) and rest (class B)."""
+
+    def setUp(self):
+        super().setUp()
+        shutil.rmtree(self.directory(VERIFIER))
+        methods = json.dumps(METHODS)
+        self.add(VERIFIER, 1, shard="s1", methods=methods, results=results_xml((VERIFIER + ".A", "M1")))
+        self.add(VERIFIER, 1, shard="rest", methods=methods, results=results_xml((VERIFIER + ".B", "M2")))
+        self.write_shard_file(SHARD_FILE)
+
+    def write_shard_file(self, text):
+        self.write(self.root, "shards.tsv", text)
+
+    def add_unit(self, unit_project, shard, methods=None, results="<assemblies />"):
+        self.add(unit_project, 1, shard=shard, methods=json.dumps(METHODS if methods is None else methods), results=results)
+
+    def write_unit_summary(self, unit, project, unit_shard, **changes):
+        data = summary(project, unit_shard)
+        for key, value in changes.items():
+            if value is MISSING:
+                del data[key]
+            else:
+                data[key] = value
+        self.write(self.directory(unit), "summary.json", json.dumps(data))
+
+
+class ShardedUnitTests(ShardedFixtureTestCase):
+    def test_t25_valid_sharded_fixture_passes(self):
+        self.expect_success()
+
+    def test_t26_missing_rest_shard(self):
+        shutil.rmtree(self.directory(REST))
+        self.expect_findings(f"missing-shard: {REST}")
+
+    def test_t27_unsharded_artifact_of_a_sharded_project(self):
+        self.add(VERIFIER, 1)
+        self.expect_findings(f"unexpected-artifact: {VERIFIER}")
+
+    def test_t28_unexpected_units(self):
+        self.add("Parchwell.Scenarios.Tests", 1, shard="rest")
+        self.expect_findings("unexpected-artifact: Parchwell.Scenarios.Tests--rest")
+        shutil.rmtree(self.directory("Parchwell.Scenarios.Tests--rest"))
+        self.add_unit(VERIFIER, "s2", results="<assemblies />")
+        self.expect_findings(f"unexpected-artifact: {VERIFIER}--s2")
+
+    def test_t29_rest_runs_a_listed_class(self):
+        self.write(self.directory(REST), "results.xml", results_xml((VERIFIER + ".B", "M2"), (VERIFIER + ".A", "M1")))
+        self.expect_findings(f"class-outside-shard: {REST}: {VERIFIER}.A",
+                             f"method-in-two-shards: {VERIFIER}: {VERIFIER}.A.M1")
+
+    def test_t30_shard_runs_an_unlisted_class(self):
+        self.write(self.directory(S1), "results.xml", results_xml((VERIFIER + ".A", "M1"), (VERIFIER + ".B", "M2")))
+        self.expect_findings(f"class-outside-shard: {S1}: {VERIFIER}.B",
+                             f"method-in-two-shards: {VERIFIER}: {VERIFIER}.B.M2")
+
+    def test_t31_listed_method_runs_nowhere(self):
+        for unit in (S1, REST):
+            self.write(self.directory(unit), "methods.json", json.dumps(METHODS + [VERIFIER + ".B.M3"]))
+        self.expect_findings(f"method-not-run: {VERIFIER}: {VERIFIER}.B.M3")
+
+    def test_t32_listings_differ_between_units(self):
+        self.write(self.directory(REST), "methods.json", json.dumps(METHODS + [VERIFIER + ".B.M3"]))
+        self.expect_findings(f"methods-mismatch: {VERIFIER}")
+
+    def test_t33_test_missing_from_the_listing(self):
+        self.write(self.directory(S1), "results.xml", results_xml((VERIFIER + ".A", "M1"), (VERIFIER + ".A", "M9")))
+        self.expect_findings(f"unlisted-test: {S1}: {VERIFIER}.A.M9")
+
+    def test_t34_shard_class_with_no_tests(self):
+        self.write_shard_file(SHARD_FILE + VERIFIER + "\ts1\t" + VERIFIER + ".C\n")
+        self.expect_findings(f"shard-class-not-run: {S1}: {VERIFIER}.C")
+
+    def test_t35_invalid_listing(self):
+        for text in ("not json", "{}", "[1]", '["x","x"]'):
+            with self.subTest(text=text):
+                self.write(self.directory(S1), "methods.json", text)
+                self.expect_findings(f"bad-methods: {S1}")
+
+    def test_t36_results_do_not_parse(self):
+        self.write(self.directory(S1), "results.xml", "not xml")
+        self.expect_findings(f"bad-results: {S1}")
+
+    def test_t37_summary_shard_value(self):
+        cases = [
+            (S1, VERIFIER, "s1", {"shard": "rest"}),
+            (S1, VERIFIER, "s1", {"shard": None}),
+            (S1, VERIFIER, "s1", {"shard": MISSING}),
+            ("Parchwell.Scenarios.Tests", "Parchwell.Scenarios.Tests", None, {"shard": "s1"}),
+        ]
+        for unit, project, shard, changes in cases:
+            with self.subTest(unit=unit, changes=repr(changes)):
+                self.write_unit_summary(unit, project, shard, **changes)
+                self.expect_findings(f"bad-summary: {unit}: shard")
+                self.write_unit_summary(unit, project, shard)
+
+    def test_t38_test_list_stage(self):
+        project = "Parchwell.Kafka.Tests"
+        good = summary(project)["stages"]
+        for label, stages in {"stage missing": good[:2], "exit 1": good[:2] + [dict(good[2], exit_code=1)]}.items():
+            with self.subTest(label):
+                self.set_summary(project, stages=stages)
+                self.expect_findings(f"report-stage: {project}")
+
+    def test_t39_missing_listing(self):
+        os.remove(os.path.join(self.directory("Parchwell.Kafka.Tests"), "methods.json"))
+        self.expect_findings("missing-file: Parchwell.Kafka.Tests/methods.json")
+        self.write(self.directory("Parchwell.Kafka.Tests"), "methods.json", "[]")
+        os.remove(os.path.join(self.directory(REST), "methods.json"))
+        self.expect_findings(f"missing-file: {REST}/methods.json")
+
+    def test_t40_bad_unit_names(self):
+        for name in (
+            "dotnet-verification-Parchwell.Kafka.Tests--Bad-attempt-1",
+            "dotnet-verification-Parchwell.Kafka.Tests--rest--x-attempt-1",
+            "dotnet-verification---rest-attempt-1",
+        ):
+            with self.subTest(name):
+                os.mkdir(os.path.join(self.reports, name))
+                self.expect_findings(f"bad-artifact-name: {name}")
+                os.rmdir(os.path.join(self.reports, name))
+
+    def test_t41_unsharded_project_lists_a_method_that_did_not_run(self):
+        self.write(self.directory("Parchwell.Scenarios.Tests"), "methods.json", '["Parchwell.Scenarios.Tests.X.M"]')
+        self.expect_findings("method-not-run: Parchwell.Scenarios.Tests: Parchwell.Scenarios.Tests.X.M")
+
+    def test_t42_repeated_method_inside_one_unit(self):
+        rows = [(VERIFIER + ".A", "M1")] * 3
+        self.write(self.directory(S1), "results.xml", results_xml(*rows))
+        self.expect_success()
+
+    def test_t45_findings_come_in_the_documented_order(self):
+        os.remove(os.path.join(self.directory(S1), "leg-passed"))
+        self.write(self.directory(S1), "results.xml", results_xml((VERIFIER + ".A", "M1"), (VERIFIER + ".B", "M2")))
+        self.expect_findings(
+            "job-result: worker-images is 'failure', expected 'success'",
+            f"leg-not-passed: {S1}",
+            f"class-outside-shard: {S1}: {VERIFIER}.B",
+            f"method-in-two-shards: {VERIFIER}: {VERIFIER}.B.M2",
+            jobs=["dotnet-tests=success", "worker-images=failure"],
+        )
+
+    def test_t46_shard_file_with_crlf_line_ends(self):
+        self.write_shard_file(SHARD_FILE.replace("\n", "\r\n"))
+        self.expect_success()
+
+    def test_t47_inventory_of_a_shard_unit(self):
+        lines = INVENTORY.splitlines(keepends=True)[1:]
+        self.write(self.directory(REST), "unit-projects.txt", "".join(lines))
+        self.expect_findings(f"inventory-mismatch: {REST}")
+
+
+class ShardFileTests(CheckerTestCase):
+    """Fixture V with a bad shard file: nothing is sharded, so only the file's lines are reported."""
+
+    def test_t43_bad_shard_file_lines(self):
+        a = VERIFIER + ".A"
+        cases = [
+            ("two fields", f"{VERIFIER}\ts1\n", 1),
+            ("rest shard", f"{VERIFIER}\trest\t{a}\n", 1),
+            ("uppercase shard", f"{VERIFIER}\tBad\t{a}\n", 1),
+            ("class of another project", f"{VERIFIER}\ts1\tOther.X\n", 1),
+            ("duplicate pair", f"{VERIFIER}\ts1\t{a}\n{VERIFIER}\ts2\t{a}\n", 2),
+            ("unexpected project", "Parchwell.Nope.Tests\ts1\tParchwell.Nope.Tests.A\n", 1),
+            ("four fields", f"{VERIFIER}\ts1\t{a}\tx\n", 1),
+            ("project outside the pattern", "Verifier.Tests\ts1\tVerifier.Tests.A\n", 1),
+            ("class with a space", f"{VERIFIER}\ts1\t{a} B\n", 1),
+        ]
+        for label, text, line in cases:
+            with self.subTest(label):
+                self.write(self.root, "shards.tsv", text)
+                self.expect_findings(f"bad-shard-file: {self.shard_file}: line {line}")
+
+    def test_t44_missing_shard_file(self):
+        os.remove(self.shard_file)
+        self.expect_findings(f"bad-shard-file: {self.shard_file}: unreadable")
 
 
 if __name__ == "__main__":
