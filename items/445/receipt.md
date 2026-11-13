@@ -43,7 +43,7 @@ A second rebase onto `origin/main` 259a31f (the `codex/448` cleanup-script merge
   - P2 (A2 pointed to a missing section): fixed; the A2 line now records the handling and a "Command 10" section follows.
   - P2 (state file cited a comment posted after `ready-for-agent`): fixed; the default wording is used and the comment is noted.
   - Pre-existing, not changed: CLAUDE.md "Both hooks" wording is now ambiguous with two `SessionStart` hooks. Plan section 2 forbids changing CLAUDE.md here; recorded as a follow-up candidate in the pull request.
-- Round 2: mode focused; input revision: this branch at the commit after the round 1 fixes; comparison revision 186e3daf; the full pull request diff is supplied as context. Counts after it: 1 comprehensive, 1 focused.
+- Round 2: mode focused; input revision: this branch at the commit after the round 1 fixes; comparison revision 51a3486a (186e3daf before the second rebase), focused diff file `focused-diff2.patch`; the full pull request diff is supplied as context. Counts after it: 1 comprehensive, 1 focused.
 
 ## Command 10
 Not yet taken.
