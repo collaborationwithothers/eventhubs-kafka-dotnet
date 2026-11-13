@@ -26,6 +26,7 @@ MODES = ("start-line", "loadgen", "verify")
 B10_SCIENTIFIC_RUN = r"b10-[0-9]+-[0-9]+"
 B10_MODES = ("start-line", "loadgen", "loadgen2", "verify")
 B10_PHASE_MODES = ("b10-sweep-line", "b10-sweep")
+B10_FINAL_MODE = "b10-final-sweep"
 B10_ORCHESTRATION_SECONDS = 18000
 B10_LIFECYCLE_SECONDS = 120
 B10_RECEIPT_MAXIMUM = 65536
@@ -217,7 +218,7 @@ def job_name(run, phase, mode, repeat=None, item=None, configuration=None, actio
     if mode in SINGLE_ACTION_MODES:
         suffix = "single-judge" if mode == "single-action-judge" else "single"
         return f"{run}-{item.lower()}-{configuration.lower()}-{suffix}"
-    if mode in ("judge", *B10_PHASE_MODES):
+    if mode in ("judge", *B10_PHASE_MODES, B10_FINAL_MODE):
         return f"{run}-{phase.lower()}-{mode}"
     return f"{run}-{phase.lower()}-r{repeat}-{mode}"
 
@@ -647,7 +648,7 @@ class Phase:
                            enrichment_image=phase["images"]["enrichment"]["reference"])
             if mode == "single-action-judge" and item == "F04" and not runtime["image_smoke"]:
                 runtime["seed_receipt_configmap"] = phase["run_id"] + "-f04-seed-receipt"
-        elif mode not in ("judge", *B10_PHASE_MODES):
+        elif mode not in ("judge", *B10_PHASE_MODES, B10_FINAL_MODE):
             runtime.update(repeat=repeat, loadgen_job_name=job_name(run_id, runtime["phase"], "loadgen", repeat))
         if mode == "b10-sweep-line":
             runtime.update(phase["b10_lifecycle_inputs"])
@@ -786,7 +787,12 @@ class Phase:
     def judge(self):
         self.reject_b10_abrupt_science()
         if self.b10_scientific(self.read("phase.json")):
-            return self.b10_final_judgement_gap()
+            deadline = self.b10_deadline()
+            reason = self.b10_prepare_final_sweep(deadline)
+            records = [self.run_mode("b10-sweep-line", None, skip_reason=reason, absolute_deadline=deadline),
+                       self.run_mode(B10_FINAL_MODE, None, absolute_deadline=deadline),
+                       self.run_mode("judge", None, absolute_deadline=deadline)]
+            return int(any(record["outcome"] in BAD_OUTCOMES for record in records))
         if self.read("phase.json")["scenario"] == "B10":
             return int(self.run_mode("judge", None, absolute_deadline=self.b10_deadline())["outcome"] in BAD_OUTCOMES)
         return int(self.run_mode("judge", None)["outcome"] in BAD_OUTCOMES)
@@ -946,6 +952,47 @@ class Phase:
         phase["b10_lifecycle_inputs"] = {
             "b10_last_loadgen_terminated_utc": last_producer["completed_utc"],
             "b10_last_verifier_completed_utc": last_verifier["completed_utc"]}
+        write_json(self.private / "phase.json", phase)
+        return None
+
+    def b10_prepare_final_sweep(self, deadline):
+        """Bind scientific lifecycle entries to the Jobs the phase actually applied."""
+        state = self.state()
+        lifecycle = state.get("b10_lifecycle", {})
+        roles = {"producers": ("loadgen", "loadgen-restart", "loadgen-successor"),
+                 "verifiers": ("verify", "b10-abrupt-verify")}
+        times = {}
+        try:
+            if lifecycle.get("gaps") != []:
+                raise ValueError("lifecycle gap")
+            for role, modes in roles.items():
+                applied = [(record["job"], record["repeat"], record["mode"]) for record in state["modes"]
+                           if record["mode"] in modes and record["apply"] is not None]
+                entries = lifecycle[role]
+                bindings = [(entry["job"], entry["repeat"], entry["mode"]) for entry in entries]
+                if len(set(applied)) != len(applied) or sorted(bindings) != sorted(applied):
+                    raise ValueError("lifecycle binding")
+                times[role] = [self.b10_utc(entry["finished_utc"]) for entry in entries]
+            if not times["producers"]:
+                raise ValueError("no producer applied")
+        except (ValueError, KeyError, TypeError, AttributeError):
+            return "lifecycle_evidence_gap"
+        last_producer = max(times["producers"], key=lambda item: item[1])
+        last_verifier = max(times["verifiers"], key=lambda item: item[1]) if times["verifiers"] else last_producer
+        settle_until = max(last_verifier[1], last_producer[1] + 600_000_000) / 10_000_000
+        remaining = max(0, settle_until - time.time())
+        while remaining > 0:
+            available = max(0, deadline - time.monotonic() - TERMINATION_RESERVE)
+            if available <= 0:
+                return "orchestration_deadline"
+            delay = min(remaining, available, 60)
+            self.sleep(delay)
+            remaining -= delay
+        if deadline - time.monotonic() <= TERMINATION_RESERVE:
+            return "orchestration_deadline"
+        phase = self.read("phase.json")
+        phase["b10_lifecycle_inputs"] = {"b10_last_loadgen_terminated_utc": last_producer[0],
+                                         "b10_last_verifier_completed_utc": last_verifier[0]}
         write_json(self.private / "phase.json", phase)
         return None
 
@@ -1537,8 +1584,6 @@ class Phase:
 
     def candidate(self):
         self.reject_b10_abrupt_science()
-        if self.b10_scientific(self.read("phase.json")):
-            return self.b10_final_judgement_gap()
         if self.read("phase.json")["scenario"] != "B10":
             return self.candidate_download()
         previous = self.command_deadline

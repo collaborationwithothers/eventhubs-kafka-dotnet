@@ -102,6 +102,7 @@
             "judge",
             "b10-sweep-line",
             "b10-sweep",
+            "b10-final-sweep",
             "single-action",
             "single-action-judge",
             "single-action-seed",
@@ -652,7 +653,7 @@
         {"if": {"properties": {"b10_abrupt_science": {"const": true}}, "required": ["b10_abrupt_science"]}, "then": {"required": ["repeat", "run_id", "b10_abrupt_binding_configmap", "bounds"], "properties": {"phase": {"const": "C1"}, "repeat": {"minimum": 1, "maximum": 5}, "mode": {"enum": ["loadgen-restart", "loadgen-successor"]}, "bounds": {"required": ["b10_abrupt"]}, "b10_abrupt_diagnostic": {"const": false}, "run_id": {"pattern": "^b10-[0-9]+-[0-9]+$"}}, "not": {"anyOf": [{"required": ["enrichment_image"]}, {"required": ["seed_receipt_configmap"]}, {"required": ["action_role"]}, {"required": ["image_smoke"]}, {"required": ["stage"]}, {"required": ["probe_namespace_data_roles"]}, {"required": ["capture_authentication_metadata"]}, {"required": ["native_authentication"]}, {"required": ["native_principal_id"]}, {"required": ["capture_pods"]}, {"required": ["judge_items"]}, {"required": ["b10_last_verifier_completed_utc"]}, {"required": ["b10_last_loadgen_terminated_utc"]}]}}},
         {"if": {"not": {"anyOf": [{"properties": {"b10_abrupt_diagnostic": {"const": true}}, "required": ["b10_abrupt_diagnostic"]}, {"properties": {"b10_abrupt_science": {"const": true}}, "required": ["b10_abrupt_science"]}]}}, "then": {"not": {"required": ["b10_abrupt_binding_configmap"]}}},
         {
-          "if": { "properties": { "mode": { "enum": ["b10-sweep-line", "b10-sweep"] } }, "required": ["mode"] },
+          "if": { "properties": { "mode": { "enum": ["b10-sweep-line", "b10-sweep", "b10-final-sweep"] } }, "required": ["mode"] },
           "then": { "not": { "anyOf": [{ "required": ["repeat"] }, { "required": ["loadgen_job_name"] }] } }
         },
         {
@@ -661,7 +662,7 @@
           "else": { "not": { "anyOf": [{ "required": ["b10_last_verifier_completed_utc"] }, { "required": ["b10_last_loadgen_terminated_utc"] }] } }
         },
         {
-          "if": { "properties": { "mode": { "const": "b10-sweep" } }, "required": ["mode"] },
+          "if": { "properties": { "mode": { "enum": ["b10-sweep", "b10-final-sweep"] } }, "required": ["mode"] },
           "then": { "properties": { "bounds": { "required": ["b10_sweep"] } } }
         },
         {
@@ -930,6 +931,10 @@
   },
   "allOf": [
     {
+      "if": {"properties": {"runtime": {"properties": {"mode": {"const": "b10-final-sweep"}}, "required": ["mode"]}}, "required": ["runtime"]},
+      "then": {"properties": {"scenario_id": {"const": "B10"}, "configuration_id": {"enum": ["C0", "C1"]}, "runtime": {"properties": {"run_id": {"pattern": "^b10-[0-9]+-[0-9]+$"}, "phase": {"enum": ["C0", "C1"]}}}}}
+    },
+    {
       "if": {"properties": {"runtime": {"properties": {"mode": {"const": "b10-abrupt-verify"}}, "required": ["mode"]}}, "required": ["runtime"]},
       "then": {"properties": {"scenario_id": {"const": "B10"}, "configuration_id": {"const": "C1"}, "runtime": {"required": ["phase", "repeat", "run_id"], "properties": {"phase": {"const": "C1"}}, "not": {"anyOf": [{"required": ["b10_abrupt_diagnostic"]}, {"required": ["b10_abrupt_binding_configmap"]}, {"required": ["b10_abrupt_science"]}]}, "oneOf": [{"properties": {"run_id": {"pattern": "^b10d-[0-9]+-[0-9]+$"}, "repeat": {"const": 1}}}, {"properties": {"run_id": {"pattern": "^b10-[0-9]+-[0-9]+$"}, "repeat": {"minimum": 1, "maximum": 5}}}]}}}
     },
@@ -939,12 +944,12 @@
       "then": {
         "properties": {
           "configuration_id": { "enum": ["C0", "C1"] },
-          "runtime": { "properties": { "phase": { "enum": ["C0", "C1"] }, "mode": { "enum": ["start-line", "loadgen", "loadgen2", "loadgen-restart", "loadgen-successor", "verify", "b10-abrupt-verify", "b10-sweep-line", "b10-sweep", "judge"] } } }
+          "runtime": { "properties": { "phase": { "enum": ["C0", "C1"] }, "mode": { "enum": ["start-line", "loadgen", "loadgen2", "loadgen-restart", "loadgen-successor", "verify", "b10-abrupt-verify", "b10-sweep-line", "b10-sweep", "b10-final-sweep", "judge"] } } }
         }
       }
     },
     {
-      "if": { "properties": { "runtime": { "properties": { "mode": { "enum": ["b10-sweep-line", "b10-sweep"] } }, "required": ["mode"] } }, "required": ["runtime"] },
+      "if": { "properties": { "runtime": { "properties": { "mode": { "enum": ["b10-sweep-line", "b10-sweep", "b10-final-sweep"] } }, "required": ["mode"] } }, "required": ["runtime"] },
       "then": { "properties": { "scenario_id": { "const": "B10" } } }
     },
     {

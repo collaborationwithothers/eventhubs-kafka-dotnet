@@ -11,7 +11,7 @@
 {{- $r := .Values.runtime -}}
 {{- $mode := $r.mode -}}
 {{- $abrupt := or $r.b10_abrupt_diagnostic ($r.b10_abrupt_science | default false) -}}
-{{- $phaseMode := has $mode (list "judge" "b10-sweep-line" "b10-sweep") -}}
+{{- $phaseMode := has $mode (list "judge" "b10-sweep-line" "b10-sweep" "b10-final-sweep") -}}
 {{- $role := include "parchwell.role" . -}}
 {{- $job := include "parchwell.jobName" . -}}
 {{- $account := index $r.service_accounts $role -}}
@@ -26,7 +26,7 @@
 {{- end -}}
 {{- if ne $r.eventhubs.bootstrap_servers (printf "%s.servicebus.windows.net:9093" $r.eventhubs.namespace_name) }}{{ fail "bootstrap_servers must match namespace_name" }}{{ end -}}
 {{- $deadline := int $r.bounds.execution.gate_job_seconds -}}
-{{- if eq $role "loadgen" }}{{ $deadline = int $r.bounds.execution.loadgen_job_seconds }}{{ else if has $mode (list "verify" "b10-sweep" "b10-abrupt-verify") }}{{ $deadline = int $r.bounds.execution.verify_job_seconds }}{{ else if has $mode (list "start-line" "b10-sweep-line") }}{{ $deadline = int $r.bounds.execution.start_line_job_seconds }}{{ end }}
+{{- if eq $role "loadgen" }}{{ $deadline = int $r.bounds.execution.loadgen_job_seconds }}{{ else if has $mode (list "verify" "b10-sweep" "b10-final-sweep" "b10-abrupt-verify") }}{{ $deadline = int $r.bounds.execution.verify_job_seconds }}{{ else if has $mode (list "start-line" "b10-sweep-line") }}{{ $deadline = int $r.bounds.execution.start_line_job_seconds }}{{ end }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -200,7 +200,7 @@ spec:
             - name: {{ printf "Verifier__%s" $key | quote }}
               value: {{ include "parchwell.envValue" $value | quote }}
             {{- end }}{{ else }}{{ range $key, $value := $r.bounds.verifier_verify }}
-            {{- if not (and (eq $mode "b10-sweep") (has $key (list "MaxConsumedRecords" "MaxConsumedBytes"))) }}
+            {{- if not (and (has $mode (list "b10-sweep" "b10-final-sweep")) (has $key (list "MaxConsumedRecords" "MaxConsumedBytes"))) }}
             - name: {{ printf "Verifier__%s" $key | quote }}
               value: {{ include "parchwell.envValue" $value | quote }}
             {{- end }}

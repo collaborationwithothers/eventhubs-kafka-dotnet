@@ -1,6 +1,6 @@
 # B10 final judgement implementation receipt
 
-Implementation is stopped on a test-scope conflict, after the prerequisite audit passed under Hari's clarification. The saved code is an incomplete, uncompiled draft for continuation, not a publishable implementation. No pull request or workflow dispatch was made.
+Implementation is stopped on a separate frozen-assertion conflict after the judgement-gap amendment was applied. The prerequisite audit passes, Docker is healthy, and partial implementation is preserved for continuation. No pull request was opened or merged, and no workflow was dispatched.
 
 ## Execution card
 
@@ -11,9 +11,17 @@ Implementation is stopped on a test-scope conflict, after the prerequisite audit
 - Mandatory gates and commands: plan section 8, A1 to A6; predicate coverage in section 6; `docs/agents/pull-requests.md` rules 1 to 10; final-head CI and both hosted reviews. Hari merges. Hari dispatches post-merge C5; this session dispatches no workflow.
 - Exact remaining acceptance commands: `./scripts/verify-dotnet.sh`; `python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'`; `python3 -m unittest discover -s infra/scripts/phase/tests -p 'test_*.py'`; `bash infra/scripts/lifecycle/check-offline.sh`; `npm run check:docs`; and `git diff --name-only origin/main...HEAD` with the plan's scripted scope check.
 - Earliest normal publication: the tested PR at the first applicable clean cold-review checkpoint under rule 8. This backup is exempt from cold review under rule 12 and must not become a PR.
-- Root-cause caps: plan section 9, 20 verification-failure and 20 review-finding root causes, each exhausting to `push -wip and hand off to the next session`. No implementation verification or review has run. No existing test or fixture has changed. The standing fixture cap is 40 cases with the same exhaustion action. The new-target cap is 8 files/shards with that exhaustion action.
+- Root-cause caps: plan section 9, 20 verification-failure and 20 review-finding root causes, each exhausting to `push -wip and hand off to the next session`. Incomplete focused verification results are recorded below; no review has run. No existing test or fixture has changed. The standing fixture cap is 40 cases with the same exhaustion action. The new-target cap is 8 files/shards with that exhaustion action.
 - Cold-review budget: comprehensive 0 of 2; focused 0 of 2. Subagents performed prerequisite audit and implementation preparation, not cold reviews. No hosted reviews were requested.
 - Process limitation: this execution card was written after the initial unpublished drafts, rather than before implementation as required. No normal push or PR occurred. Continuation must retain that record.
+
+## Resumption authorization and verification order
+
+[Decision 6857653379](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6857653379), read in full, adds `infra/scripts/phase/tests/test_b10_scientific.py` only to replace temporary-judgement-gap assertions with the behavior pinned by P1/P4. Stale-candidate removal assertions remain wherever required. Every changed case counts toward the 40-case cap; before/after expected values and forcing requirements will be listed here. No other conflict is waived. The earlier scope-stop section is historical.
+
+The environment-start failure during the first continuation caused no edits. After recovery, managed-daemon `docker info` and an actual `docker run --rm hello-world` succeeded again before edits resumed. The original plan hash was reverified. Current main `662685a` was merged to incorporate the new verification-gate governance; it changes no prerequisite implementation file.
+
+`docs/agents/pull-requests.md` now owns the order: focused tests, cold review, `./scripts/verify-dotnet.sh --tier sandbox` once on the reviewed pre-PR source, and full hosted final-head `.NET verification`. The sandbox run is partial, excluding only `Tier=CGroupV2`; it is never reported as the full gate. This current governance supersedes the old local full-gate order recorded by the original plan. No local gate runs while a cold-review report is pending.
 
 ## Source and prerequisite evidence
 
@@ -41,6 +49,8 @@ A fresh-context reader scripted the numbered source map below at the exact sourc
 | A8 gaps/legacy retention | `infra/scripts/phase/phase.py:1084-1085,27-28,1110-1112,788-789,1540-1541,958-967` | Matches the prerequisite's deliberate judgement gaps and retained legacy calls. |
 | A9 three-way gate | `VerifierHostOptions.cs:58-78,123-133`; `infra/scripts/phase/phase.py:954`; `docs/operations/b10-abrupt-contract.md:356-365` | Matches under decision 6856409628: scientific IDs get scientific rules, trial IDs retain trial behavior, other IDs retain two producers. |
 
+The audit was also rerun against current main `662685a` after recovery, using `/workspace/scratch/404-a6-current-main.py`, and exited 0 with the same A1 to A9 matches.
+
 The initial A6 script exited 1 only because the pinned A9 sentence incorrectly included the diagnostic trial among two-producer IDs. Decision 6856409628 explicitly clarifies that sentence and decision 6847743695 without a plan revision. The updated audit exited 0; no other A1 to A9 difference was identified. The original failed evidence was retained separately in workspace scratch. Script and output are outside the repository, not committed program output: `/workspace/scratch/404-a6-prerequisite-audit.py` and `.txt`, with the earlier copies suffixed `-before-6856409628`.
 
 ### LA-F7 replacement evidence
@@ -52,16 +62,41 @@ The initial A6 script exited 1 only because the pinned A9 sentence incorrectly i
 - The control session's estimate, dated 2026-11-13, is roughly 2.4 KB per record above about 280 MiB fixed cost, reaching 12Gi near 5 million records, more than 30 times the observed phase volume. This is not measured new-sweep memory use: R20 retains different fields, so it is only a scale guide.
 - LA-F7 is accepted by name for planning only and is first exercised in the separately authorized governed diagnostic run. LA-F1 to LA-F6 remain unaccepted for any run. Exceeding memory leaves no projection and holds the phase result; no run is authorized here.
 
-## Scope stop and continuation
+## Historical first scope stop (resolved)
 
 The prerequisite merge introduced `infra/scripts/phase/tests/test_b10_scientific.py`. Its `ScientificCases.test_judge_and_candidate_named_gap_remove_stale_candidates`, lines 373 to 390 at the source commit, requires scientific C0 and C1 judge/candidate commands to return 1 without calls and to record the unavailable-final-judgement gap. Plan section 3.6 P4 requires those gaps to cease and explicitly says no test asserts them for science after this PR.
 
 Section 2.1 item 7 lists `test_phase.py` and the conditional `test_b10_abrupt.py`, not `test_b10_scientific.py`. Section 2.3 permits fixture corrections preserving assertions/boundaries or changed expected values for intentionally invalid inputs. This method intentionally tests the old gap on scientific inputs; replacing it with successful final judgement changes that boundary and is not an invalid-input fixture correction. No test assertion was changed.
 
-Required decision: authorize the precise replacement of that obsolete method in the newly introduced test file with coverage of the approved final judge/candidate path, or provide another compliant disposition. This is a plan section 12 scope stop, separate from A9; decision 6856409628 does not cover it.
+Decision originally required, now supplied by 6857653379: authorize the precise replacement of that obsolete method in the newly introduced test file with coverage of the approved final judge/candidate path, or provide another compliant disposition. This is a plan section 12 scope stop, separate from A9; decision 6856409628 does not cover it.
 
 Saved drafts comprise the projection records/codec, final-sweep path/name/receipt additions, and a partial sweep handler. The handler references not-yet-created types and an enum member, so the backup is not buildable. No tests, build, docs check, cold review or normal publication were attempted after the scope stop. The state file records the continuation. Do not open a PR from the backup branch.
 
 Implementer choices so far: split projection records and codec into two Common files; use three proposed sweep files and up to five Common/Judge files, within the eight-target cap. These are tentative. The partial handler's scenario-loader dependency requires reassessment against existing option requirements; no additional required option or contract change has been authorized or implemented. Predicate map remains the approved section 6; none of its new implementation tests has run.
 
 Models: Codex controller and fresh-context Codex subagents, high effort for subagents. No cold reviewer or hosted reviewer ran.
+
+
+## Second implementation pause: synthetic mutation population
+
+The resumed work found a new scope conflict in the mutation tests. Plan section 2.1 item 6 requires appending every new production file to the C5 targets and enumerates allowed layout assertions, then says: "Every assertion not named above stays." The existing `ProductionAggregationTests.test_zero_tested_complements_keep_positive_target_population` has a separate unnamed `(17, 17)` numerator/denominator assertion. Its fixture includes every configured target and one killed synthetic mutant per target.
+
+Seven planned targets were added, producing 24 targets and 68 shards, with no new primary cuts. The existing assertion must therefore receive `(24, 24)`. Its own per-target assertion still requires denominator 1 for every target. The aggregation accepts the input; this is not a fixture rejected by a newly added or tightened check, so section 2.3 does not authorize changing it. No change was made to that assertion or to the existing test's fixture.
+
+A bounded synthetic reproduction exercised the real `AggregateFixture` and aggregator once for the original and updated layouts. The controller inspected the script and repeated it. Both runs returned exit 0, `measurement_complete` true and `break_passed` true; the original 17-target/61-shard layout returned `(17, 17)` and the updated 24-target/68-shard layout returned `(24, 24)`, with every target denominator 1. The synthetic source repeats the existing fixture's method bytes to cover the unchanged cut offsets; it does not measure new production mutants or any Kafka behavior. Commands: `python3 /workspace/scratch/404-mutation-population-repro.py`; output is retained outside the repository in `404-mutation-population-repro.txt` and `404-mutation-population-controller.txt`. The original measured-inventory corpus is not remeasured.
+
+The mutation author compared the baseline's first 17 target entries, existing primary cuts, expected cuts, original configuration values, original matrix rows and the entire measured-inventory suite AST with the working tree: unchanged. Preservation details remain in `/workspace/scratch/404-mutation-preservation-check.txt`. The new targets are one part each and have no measured corpus. No mutation workflow was dispatched.
+
+Required decision: permit updating this one synthetic population assertion to the current configured target count (before `(17, 17)`, currently `(24, 24)`), preserving every per-target, crossing, completeness and score assertion, or provide another compliant disposition. This is a section 12 scope stop; the two later clarifications do not cover it.
+
+### Authorized judgement-gap test replacement
+
+Exactly one existing unittest method changed under decision 6857653379, counted by an AST comparison: `infra/scripts/phase/tests/test_b10_scientific.py::ScientificCases.test_judge_and_candidate_named_gap_remove_stale_candidates`. Its original expectations were judge/candidate exit 1, no external calls, the configuration-specific judgement-gap literal, null candidate, `full_allowed` false and both stale files absent. The replacement expects the ordered `b10-sweep-line`, `b10-final-sweep`, `judge` steps with judge exit 0 and no gap; valid candidate retrieval exits 0 and preserves the retrieved bytes, while invalid retrieval exits 1 and removes both stale files. The partial file is unverified. P1/P4 force that replacement. Its stale-removal assertions remain on failed candidate retrieval. Existing case usage is 1 of 40; added chart cases retain all existing matrix cases.
+
+### Partial implementation and verification status
+
+The backup now includes draft host mode/parser/validation/DI and new host tests; Common registration/projection codecs; final Judge routing and draft judgement; sweep orchestration and repeat evidence; phase lifecycle/final-sweep sequence; chart mode/schema cases; mutation wiring; and the authorized gap-test replacement. Sweep classification, candidate codec integration, most verifier tests, TP3 and operation docs remain unfinished. The draft is not buildable and must not be submitted as a PR.
+
+No complete acceptance suite passed. A focused `CommittedContractTests` attempt ran four tests with eight missing-source subcase errors while sibling files were not yet created. A focused host build, `dotnet build tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-restore`, failed on the incomplete sweep types and an inaccessible `PhaseWireCodec.ParseUtc` call in the new registration reader. New host tests have not compiled or run. A focused phase test invocation was interrupted with exit 130 when the stop arrived; a new lifecycle fixture needs mocked sleep to avoid the settle wait. These are incomplete verification results, not accepted gates.
+
+Distinct verification root causes recorded by script: 4 of the session cap 20: (1) frozen synthetic population assertion, (2) unfinished sibling source dependencies, consolidating both early missing-source runs, (3) inaccessible parser API, and (4) missing mocked sleep in a new phase fixture. No review root cause was measured. Cold usage remains comprehensive 0/2 and focused 0/2. No docs check, sandbox gate, hosted CI/review or normal publication has occurred. All writes stopped when the mutation scope conflict was confirmed.

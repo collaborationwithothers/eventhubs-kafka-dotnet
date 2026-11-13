@@ -23,7 +23,7 @@ PERSISTENT = {'acr': {'value': {'name': 'parchwellacr', 'login_server': 'parchwe
 ACCOUNTS = {'loadgen': {'name': 'loadgen', 'client_id': 'synthetic-loadgen', 'subject': 'system:serviceaccount:parchwell:loadgen'}, 'verifier': {'name': 'verifier', 'client_id': 'synthetic-verifier', 'subject': 'system:serviceaccount:parchwell:verifier'}, 'enrichment-consumer': {'name': 'unused'}}
 EPHEMERAL = {'eventhubs': {'value': {'namespace_name': 'eh-synthetic', 'bootstrap_servers': 'eh-synthetic.servicebus.windows.net:9093', 'topics': {'events': 'document-events', 'state': 'document-state', 'dlq': 'document-events-dlq'}}}, 'blob': {'value': {'account_url': 'https://synthetic.blob.core.windows.net', 'containers': {'ledger': 'ledger', 'verifier': 'verifier', 'claim_check': 'claim-check'}}}, 'private_endpoint_ips': {'value': {'eventhubs': '10.0.0.4', 'blob': '10.0.0.5'}}}
 DEADLINES = {'start-line': 150, 'loadgen': 1140, 'verify': 750, 'judge': 90,
-             'loadgen2': 1140, 'loadgen-restart': 1140, 'loadgen-successor': 1140, 'b10-abrupt-verify': 750, 'b10-sweep-line': 150, 'b10-sweep': 750}
+             'loadgen2': 1140, 'loadgen-restart': 1140, 'loadgen-successor': 1140, 'b10-abrupt-verify': 750, 'b10-sweep-line': 150, 'b10-sweep': 750, 'b10-final-sweep': 750}
 BATCH_DEADLINES = {'single-action': 1980, 'single-action-judge': 120, 'single-action-seed': 420}
 BATCH_MATRIX = (
     ('B01', 'C0', 'loadgen'), ('B01', 'C1', 'loadgen'),
@@ -261,6 +261,82 @@ class PhaseTests(unittest.TestCase):
                                     'instance_id': self.name('loadgen', repeat) + '-pod',
                                     'expected_instance_id': self.name('loadgen', repeat) + '-pod', 'client_id': 'synthetic'}}
             self.fake.blobs[f'{self.run_id}/{selected}/r{repeat}/verify-completion.json'] = json.dumps(receipt).encode()
+
+    def final_lifecycle(self, configuration='C1', missing_successor=False, no_verifiers=False):
+        self.prepare_b10(configuration)
+        document = phase.Phase().read('phase.json')
+        document['run_id'] = self.run_id = 'b10-40121134428-1'
+        phase.write_json(self.private / 'phase.json', document)
+        instance = phase.Phase()
+        state = instance.state()
+        state['modes'] = []
+        state['b10_lifecycle'] = {'producers': [], 'verifiers': [], 'gaps': []}
+        producers = ('loadgen',) if configuration == 'C0' else ('loadgen', 'loadgen-restart', 'loadgen-successor')
+        verifiers = () if no_verifiers else ('verify' if configuration == 'C0' else 'b10-abrupt-verify',)
+        for repeat in phase.SLOTS:
+            for mode in (*producers, *verifiers):
+                skipped = missing_successor and repeat == 3 and mode == 'loadgen-successor'
+                job = self.name(mode, repeat)
+                state['modes'].append(dict(job=job, repeat=repeat, mode=mode,
+                                           apply=None if skipped else 0, outcome='render_failed' if skipped else 'complete'))
+                if not skipped:
+                    role = 'verifiers' if mode in verifiers else 'producers'
+                    state['b10_lifecycle'][role].append(dict(job=job, repeat=repeat, mode=mode,
+                        pod_name=job + '-pod', pod_uid=job + '-uid', exit_code=1,
+                        finished_utc='2025-12-31T23:59:' + str(10 + repeat) + '.1234567Z'))
+        instance.save_state(state)
+        return instance
+
+    def test_b10_scientific_final_sequence_follows_repeats(self):
+        for configuration in ('C0', 'C1'):
+            with self.subTest(configuration=configuration):
+                instance = self.final_lifecycle(configuration)
+                before = len(self.records())
+                instance.b10_deadline(start=True)
+                with self.mocked():
+                    self.assertEqual(0, self.main('judge'))
+                records = self.records()[before:]
+                self.assertEqual(['b10-sweep-line', 'b10-final-sweep', 'judge'], [record['mode'] for record in records])
+                self.assertEqual([None] * 3, [record['repeat'] for record in records])
+                self.assertEqual(['complete'] * 3, [record['outcome'] for record in records])
+                self.assertNotIn('b10-sweep', [record['mode'] for record in self.records()])
+                runtime = json.loads((self.private / ('values-' + self.name('b10-final-sweep', None) + '.json')).read_text())['runtime']
+                self.assertNotIn('repeat', runtime)
+                self.assertNotIn('loadgen_job_name', runtime)
+
+    def test_b10_final_lifecycle_uses_applied_jobs_and_rejects_gaps(self):
+        for configuration in ('C0', 'C1'):
+            for failure in (None, 'producer', 'verifier', 'gap', 'duplicate', 'unapplied', 'empty'):
+                with self.subTest(configuration=configuration, failure=failure):
+                    instance = self.final_lifecycle(configuration, missing_successor=configuration == 'C1')
+                    state = instance.state()
+                    expected = (5, 5) if configuration == 'C0' else (14, 5)
+                    self.assertEqual(expected, tuple(len(state['b10_lifecycle'][key]) for key in ('producers', 'verifiers')))
+                    lifecycle = state['b10_lifecycle']
+                    if failure in ('producer', 'verifier'):
+                        lifecycle[failure + 's'].pop()
+                    elif failure == 'gap':
+                        lifecycle['gaps'].append(dict(object='missing/pods.json', reason='producer_termination_unavailable'))
+                    elif failure == 'duplicate':
+                        lifecycle['producers'].append(copy.deepcopy(lifecycle['producers'][0]))
+                    elif failure == 'unapplied':
+                        state['modes'][0]['apply'] = None
+                    elif failure == 'empty':
+                        state['modes'] = []
+                        lifecycle['producers'] = []
+                        lifecycle['verifiers'] = []
+                    instance.save_state(state)
+                    self.assertEqual(None if failure is None else 'lifecycle_evidence_gap',
+                                     instance.b10_prepare_final_sweep(1000))
+                    if failure:
+                        self.assertNotIn('b10_lifecycle_inputs', instance.read('phase.json'))
+
+    def test_b10_final_no_verifier_uses_latest_producer_time(self):
+        instance = self.final_lifecycle(no_verifiers=True)
+        self.assertEqual(None, instance.b10_prepare_final_sweep(1000))
+        inputs = instance.read('phase.json')['b10_lifecycle_inputs']
+        self.assertEqual('2025-12-31T23:59:15.1234567+00:00', inputs['b10_last_loadgen_terminated_utc'])
+        self.assertEqual(inputs['b10_last_loadgen_terminated_utc'], inputs['b10_last_verifier_completed_utc'])
 
     def test_b10_runs_twenty_ordered_modes_then_repeat_free_capture_and_sweep(self):
         try:
