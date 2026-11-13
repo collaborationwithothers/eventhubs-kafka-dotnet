@@ -351,8 +351,8 @@ class Trial:
 
     def render_verify(self):
         phase = self.phase()
-        name = self.p.mode_job(phase, 'b10-abrupt-verify', 1)
-        values = self.p.values('b10-abrupt-verify', 1)
+        name = self.p.mode_job(phase, 'b10-abrupt-verify', self.repeat)
+        values = self.p.values('b10-abrupt-verify', self.repeat)
         # Helm removes a default key when its override is null. The merged verifier
         # values must omit the producer-only flag, whose chart default is false.
         # https://helm.sh/docs/chart_template_guide/values_files/#deleting-a-default-key
@@ -1122,7 +1122,7 @@ class Scientific(Trial):
         if deadline - time.monotonic() <= 5:
             record['reason'] = 'orchestration_deadline'
         else:
-            budget = self.p.render(mode, self.repeat)
+            budget = self.render_verify() if mode == 'b10-abrupt-verify' else self.p.render(mode, self.repeat)
             record['render'] = self.p.render_code
             if budget is None:
                 record['outcome'] = 'render_failed'

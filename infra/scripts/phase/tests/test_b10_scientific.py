@@ -4,6 +4,7 @@ import json
 import os
 import unittest
 from unittest.mock import patch
+import yaml
 
 try:
     from . import test_phase as support
@@ -233,6 +234,32 @@ class ScientificCases(unittest.TestCase):
         lifecycle = self.p.state()['b10_lifecycle']
         self.assertEqual((5, 5, []), (len(lifecycle['producers']), len(lifecycle['verifiers']), lifecycle['gaps']))
         self.assertEqual([], self.configmaps)
+
+    def test_c1_orchestration_values_render_actual_chart_for_every_repeat(self):
+        self.start()
+        real_run = phase.Phase.run
+
+        def command(instance, args, seconds, output=None, maximum=4 * phase.MIB):
+            if args[:2] == ['helm', 'template']:
+                return real_run(instance, args, seconds, output, maximum)
+            return self.scientific_command(instance, args, seconds, output, maximum)
+
+        with patch.object(phase.Phase, 'run', autospec=True, side_effect=command):
+            self.assertEqual(0, self.main('run-repeats'), self.p.state())
+
+        for repeat in phase.SLOTS:
+            with self.subTest(repeat=repeat):
+                name = self.name('b10-abrupt-verify', repeat)
+                runtime = json.loads((self.private / ('values-' + name + '.json')).read_text())['runtime']
+                self.assertEqual(repeat, runtime['repeat'])
+                self.assertIsNone(runtime['b10_abrupt_diagnostic'])
+                rendered = (self.private / ('rendered-' + name + '.yaml')).read_text()
+                job = next(document for document in yaml.safe_load_all(rendered)
+                           if isinstance(document, dict) and document.get('kind') == 'Job')
+                self.assertEqual(name, job['metadata']['name'])
+                environment = {entry['name']: entry['value'] for entry in
+                               job['spec']['template']['spec']['containers'][0]['env']}
+                self.assertEqual(str(repeat), environment['Verifier__Repeat'])
 
     def test_rejected_publication_ends_only_repeat(self):
         self.start()
