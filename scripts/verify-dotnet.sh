@@ -16,6 +16,7 @@ Environment:
   PARCHWELL_BUILD_MAX_CPU  Positive integer. Adds -maxcpucount:<n> to restore, build and project
                            evaluation only. Tests keep the machine's real processor count.
 A run with --tier fast or --project prints that it is not the full gate.
+Each run writes summary.json and stage-timing.tsv to its results directory.
 USAGE
 }
 
@@ -100,26 +101,189 @@ else
 fi
 
 verification_results=$(mktemp -d "${TMPDIR:-/tmp}/parchwell-dotnet-verification.XXXXXXXX")
-trap 'echo "Verification logs and reports: $verification_results"' EXIT
+started_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 mkdir -p "$verification_results/manifests"
 export PARCHWELL_REPOSITORY_ROOT="$repository_root"
 export PARCHWELL_PROJECT_MANIFEST_DIRECTORY="$verification_results/manifests"
 stage_timing="$verification_results/stage-timing.tsv"
 failed_stages=()
+failed_stage_labels=()
+failed_stage_codes=()
+stage_labels=()
+stage_elapsed=()
+stage_starts=()
+stage_ends=()
+stage_codes=()
+stopping_label=""
+outcome=failed
 first_failure_status=0
 
-# Prints "<label>: passed (<n> s)" or the failure with the log tail, and records the duration.
+# Machine and source facts for summary.json. Each is empty when it cannot be read.
+source_sha=""
+source_dirty=""
+if sha=$(git rev-parse HEAD 2>/dev/null) && [[ -n "$sha" ]]; then
+    source_sha=$sha
+    if porcelain=$(git status --porcelain 2>/dev/null); then
+        if [[ -n "$porcelain" ]]; then source_dirty=true; else source_dirty=false; fi
+    fi
+fi
+nproc_value=""
+if count=$(nproc 2>/dev/null) && [[ "$count" =~ ^[0-9]+$ ]]; then nproc_value=$count; fi
+mem_total_kib=""
+if memory=$(awk '/^MemTotal:/ { print $2; exit }' /proc/meminfo 2>/dev/null) && [[ "$memory" =~ ^[0-9]+$ ]]; then
+    mem_total_kib=$memory
+fi
+
+# Sets REPLY to the JSON string literal for $1: backslash, double quote and bytes below 0x20 are escaped.
+json_string() {
+    local LC_ALL=C
+    local text=$1 escaped="" index character hex
+    text=${text//\\/\\\\}
+    text=${text//\"/\\\"}
+    if [[ "$text" == *[$'\001'-$'\037']* ]]; then
+        for ((index = 0; index < ${#text}; index++)); do
+            character=${text:index:1}
+            if [[ "$character" == [$'\001'-$'\037'] ]]; then
+                printf -v hex '\\u%04x' "'$character"
+                escaped+=$hex
+            else
+                escaped+=$character
+            fi
+        done
+        text=$escaped
+    fi
+    REPLY="\"$text\""
+}
+
+# Prints the JSON object for slowest_tests: the 30 slowest <test> elements of each results.xml.
+slowest_tests_json() {
+    local report project_name test_time test_name separator="" object_separator="" rows=""
+    printf '{'
+    for report in "$verification_results"/*/results.xml; do
+        [[ -f "$report" ]] || continue
+        project_name=$(basename "$(dirname "$report")")
+        rows=$(
+            awk 'BEGIN { RS = "<" }
+                /^test[ \t\r\n]/ {
+                    if (match($0, /[ \t\r\n]name="[^"]*"/)) { name = substr($0, RSTART + 7, RLENGTH - 8) } else { next }
+                    if (match($0, /[ \t\r\n]time="[^"]*"/)) { time = substr($0, RSTART + 7, RLENGTH - 8) } else { next }
+                    printf "%s\t%s\n", time, name
+                }' "$report" 2>/dev/null \
+                | while IFS=$'\t' read -r test_time test_name; do
+                    test_name=${test_name//"&lt;"/"<"}
+                    test_name=${test_name//"&gt;"/">"}
+                    test_name=${test_name//"&quot;"/'"'}
+                    test_name=${test_name//"&apos;"/"'"}
+                    test_name=${test_name//"&amp;"/"&"}
+                    printf '%s\t%s\n' "$test_time" "$test_name"
+                done \
+                | LC_ALL=C sort -t $'\t' -k1,1gr -k2,2 | head -n 30
+        ) || true
+        json_string "$project_name"
+        printf '%s%s:[' "$object_separator" "$REPLY"
+        object_separator=","
+        separator=""
+        while IFS=$'\t' read -r test_time test_name; do
+            [[ -n "$test_time" ]] || continue
+            json_string "$test_name"
+            printf '%s{"name":%s,' "$separator" "$REPLY"
+            json_string "$test_time"
+            printf '"time_s":%s}' "$REPLY"
+            separator=","
+        done <<<"$rows"
+        printf ']'
+    done
+    printf '}'
+}
+
+# Prints summary.json. $1 is the script's exit status.
+summary_json() {
+    local exit_status=$1 index separator="" value
+    printf '{"schema_version":1,'
+    printf '"started_utc":"%s","ended_utc":"%s",' "$started_utc" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    if [[ -n "$source_sha" ]]; then json_string "$source_sha"; printf '"source_sha":%s,' "$REPLY"; else printf '"source_sha":null,'; fi
+    printf '"source_dirty":%s,' "${source_dirty:-null}"
+    json_string "$sdk_version"; printf '"sdk_version":%s,' "$REPLY"
+    json_string "$tier"; printf '"tier":%s,' "$REPLY"
+    if ((${#selected_projects[@]} == 0)); then
+        printf '"projects":null,'
+    else
+        printf '"projects":['
+        for value in "${selected_projects[@]}"; do
+            json_string "$value"; printf '%s%s' "$separator" "$REPLY"; separator=","
+        done
+        printf '],'
+    fi
+    printf '"nproc":%s,"mem_total_kib":%s,' "${nproc_value:-null}" "${mem_total_kib:-null}"
+    if [[ -n "${DOTNET_PROCESSOR_COUNT+set}" ]]; then
+        json_string "$DOTNET_PROCESSOR_COUNT"; printf '"dotnet_processor_count":%s,' "$REPLY"
+    else
+        printf '"dotnet_processor_count":null,'
+    fi
+    if [[ -n "${PARCHWELL_BUILD_MAX_CPU:-}" ]]; then
+        json_string "$PARCHWELL_BUILD_MAX_CPU"; printf '"parchwell_build_max_cpu":%s,' "$REPLY"
+    else
+        printf '"parchwell_build_max_cpu":null,'
+    fi
+    printf '"stages":['
+    separator=""
+    for ((index = 0; index < ${#stage_labels[@]}; index++)); do
+        json_string "${stage_labels[index]}"
+        printf '%s{"label":%s,"elapsed_s":%s,"start_utc":"%s","end_utc":"%s","exit_code":%s}' \
+            "$separator" "$REPLY" "${stage_elapsed[index]}" "${stage_starts[index]}" "${stage_ends[index]}" "${stage_codes[index]}"
+        separator=","
+    done
+    printf '],"failed_stages":['
+    separator=""
+    if ((${#failed_stage_labels[@]} > 0)); then
+        for ((index = 0; index < ${#failed_stage_labels[@]}; index++)); do
+            json_string "${failed_stage_labels[index]}"
+            printf '%s{"label":%s,"exit_code":%s}' "$separator" "$REPLY" "${failed_stage_codes[index]}"
+            separator=","
+        done
+    elif [[ "$exit_status" -ne 0 && -n "$stopping_label" ]]; then
+        json_string "$stopping_label"
+        printf '{"label":%s,"exit_code":%s}' "$REPLY" "$exit_status"
+    fi
+    printf '],"exit_code":%s,"outcome":"%s","slowest_tests":' "$exit_status" "$outcome"
+    slowest_tests_json
+    printf '}\n'
+}
+
+# Runs on every exit after the results directory exists. Writing the summary never changes the exit status.
+on_exit() {
+    local exit_status=$?
+    local summary
+    if summary=$(summary_json "$exit_status" 2>/dev/null) && { printf '%s\n' "$summary" >"$verification_results/summary.json"; } 2>/dev/null; then
+        :
+    else
+        echo "summary.json could not be written." >&2
+    fi
+    echo "Verification logs and reports: $verification_results"
+}
+trap on_exit EXIT
+
+# Prints "<label>: passed (<n> s, <start> to <end>)" or the failure with the log tail, and records
+# the duration and the UTC start and end.
 run_logged() {
     local label=$1 logfile=$2
     shift 2
-    local started=$SECONDS status=0
+    local started=$SECONDS status=0 start_utc end_utc
+    start_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     "$@" >"$logfile" 2>&1 || status=$?
+    end_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     local elapsed=$((SECONDS - started))
-    printf '%s\t%s\n' "$label" "$elapsed" >>"$stage_timing"
+    printf '%s\t%s\t%s\t%s\n' "$label" "$elapsed" "$start_utc" "$end_utc" >>"$stage_timing"
+    stage_labels+=("$label")
+    stage_elapsed+=("$elapsed")
+    stage_starts+=("$start_utc")
+    stage_ends+=("$end_utc")
+    stage_codes+=("$status")
     if [[ "$status" -eq 0 ]]; then
-        echo "$label: passed ($elapsed s)"
+        echo "$label: passed ($elapsed s, $start_utc to $end_utc)"
     else
-        echo "$label: failed (exit $status, $elapsed s)" >&2
+        stopping_label=$label
+        echo "$label: failed (exit $status, $elapsed s, $start_utc to $end_utc)" >&2
         tail -n 80 "$logfile" >&2
         return "$status"
     fi
@@ -129,6 +293,8 @@ run_logged() {
 record_failure() {
     local label=$1 status=$2
     failed_stages+=("$label (exit $status)")
+    failed_stage_labels+=("$label")
+    failed_stage_codes+=("$status")
     if [[ "$first_failure_status" -eq 0 ]]; then first_failure_status=$status; fi
 }
 
@@ -240,6 +406,7 @@ for project in "${projects[@]}"; do
         :
     else
         status=$?
+        stopping_label="Project evaluation"
         cat "$manifest" "$manifest.stderr" >&2
         exit "$status"
     fi
@@ -269,15 +436,17 @@ done
 
 warning_control || record_failure "Warning control" $?
 
-echo "Stage timing (seconds), also in $stage_timing:"
-awk -F '\t' '{ printf "  %-48s %s\n", $1, $2 }' "$stage_timing"
+echo "Stage timing (seconds, UTC start and end), also in $stage_timing:"
+awk -F '\t' '{ printf "  %-48s %s  %s  %s\n", $1, $2, $3, $4 }' "$stage_timing"
 if ((${#failed_stages[@]} > 0)); then
     echo "Verification failed in ${#failed_stages[@]} stage(s):" >&2
     printf '  %s\n' "${failed_stages[@]}" >&2
     exit "$first_failure_status"
 fi
 if [[ "$tier" == all && ${#selected_projects[@]} -eq 0 ]]; then
+    outcome=full_gate_passed
     echo "Verification passed. Per-project reports identify the tests executed."
 else
+    outcome=partial_passed
     echo "Partial verification passed (tier $tier, projects: ${selected_projects[*]:-all}). This is not the full gate: it does not satisfy a requirement to run ./scripts/verify-dotnet.sh with no options."
 fi
