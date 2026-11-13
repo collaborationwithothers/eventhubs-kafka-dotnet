@@ -99,8 +99,8 @@ class CheckerTestCase(unittest.TestCase):
                 data[key] = value
         self.write(self.directory(project), "summary.json", json.dumps(data))
 
-    def run_checker(self, jobs=None, reports=None):
-        command = [sys.executable, CHECKER, reports or self.reports, self.shard_file] + (
+    def run_checker(self, jobs=None, reports=None, with_shard_file=True):
+        command = [sys.executable, CHECKER, reports or self.reports] + ([self.shard_file] if with_shard_file else []) + (
             GOOD_JOBS if jobs is None else jobs)
         done = subprocess.run(command, capture_output=True, text=True)
         return done.returncode, done.stdout, done.stderr
@@ -137,6 +137,7 @@ class JobResultTests(CheckerTestCase):
 
     def test_t4_usage_errors(self):
         cases = {
+            "only the directory": [],
             "directory and shard file only": [],
             "no equals": ["worker-images"],
             "empty job name": ["=success"],
@@ -144,7 +145,7 @@ class JobResultTests(CheckerTestCase):
         }
         for label, jobs in cases.items():
             with self.subTest(label):
-                code, out, err = self.run_checker(jobs)
+                code, out, err = self.run_checker(jobs, with_shard_file=label != "only the directory")
                 self.assertEqual((2, "", USAGE + "\n"), (code, out, err))
 
 

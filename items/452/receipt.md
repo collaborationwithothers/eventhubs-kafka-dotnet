@@ -15,7 +15,7 @@ This is the single authored receipt of the pull request for issue #452. It names
 
 The plan check left no `apply in implementation` finding. These are choices the plan leaves to the implementer:
 
-1. A `<test>` element without a `type` or a `method` attribute is skipped when `check-dotnet-matrix.py` reads `results.xml` (R11). The plan defines the method string only for elements that carry both. A skipped element cannot hide a listed method: the method it should have counted then has no running element, so `method-not-run` is reported. xUnit's writer puts both attributes on every `<test>`.
+1. A `<test>` element without a `type` or a `method` attribute is skipped when `check-dotnet-matrix.py` reads `results.xml` (R11). The plan defines the method string only for elements that carry both. A skipped element cannot hide a dropped listed method: the method it should have counted then has no running element, so `method-not-run` is reported. It can hide a repeated test: a skipped element in the wrong shard produces neither `class-outside-shard` nor `method-in-two-shards`. Making that case fail closed (`bad-results`) would extend R11, which the plan's stop rule reserves for Hari, so it is left as the plan has it. The case is not reachable with xUnit's writer, which puts both attributes on every `<test>`: all 313 elements of the A8 report carry both.
 2. The shard-file header comment (plan section 3.2, "the implementer's") is five `#` lines that describe the format and the reason for the Verifier split.
 3. `verify-dotnet.sh` matches shard-file fields with literal character sets, not ranges, so the match does not depend on the locale's collation. The checker uses `re.fullmatch`, which has no trailing-newline case.
 4. R13 emits `method-in-two-shards` findings before `method-not-run` findings within a project, each in ordinal order of method. The plan gives the two rules in that order and one ordering clause for both.
@@ -25,7 +25,7 @@ The plan check left no `apply in implementation` finding. These are choices the 
 
 Under plan section 6.2. No case was removed, no assertion loosened, no check changed.
 
-- `scripts/tests/test_check_dotnet_matrix.py`, T1 to T24, rule (a): the fixture gains `methods.json`, the `shard` key, the `test list` stage and the shard-file argument that the new checks require. `T4` expected usage line, rule (b): the usage line now reads `usage: check-dotnet-matrix.py <reports directory> <shard file> <job>=<result>...`, and the case "only the directory" became "directory and shard file only". `T10` also removes `methods.json`, and `T13` adds the two `shard` cases (plan T37 covers the same key); both extend the existing test.
+- `scripts/tests/test_check_dotnet_matrix.py`, T1 to T24, rule (a): the fixture gains `methods.json`, the `shard` key, the `test list` stage and the shard-file argument that the new checks require. `T4` expected usage line, rule (b): the usage line now reads `usage: check-dotnet-matrix.py <reports directory> <shard file> <job>=<result>...`. The subtest "only the directory" keeps its input (the directory alone, with no shard file argument) and gains the new usage line as its expected value; the subtest "directory and shard file only" is added beside it, as the plan says. `T10` also removes `methods.json`, and `T13` adds the two `shard` cases (plan T37 covers the same key); both extend the existing test.
 - `scripts/test-verify-dotnet.sh`, rule (a): the stub gains a `run` case; the `default` case gains one assertion; the `help` case gains two. The existing assertions are unchanged.
 - `infra/scripts/phase/tests/test_workflow.py`, rule (a): the hash and the comment line of R17.
 
@@ -49,6 +49,13 @@ No time saving is stated here. The 310 s tests stage above is one local measurem
 
 ## Cold review record
 
-- Round 1: comprehensive pass 1 of at most 2. Input revision: the staged tree on top of the local commit that the `-wip` branch holds (backup push under rule 12), diffed against `origin/main` at `662685a0d54ced8fc97a438bf6fac56023fa0b90`. Comparison revision: none (first pass).
-- Specification sources: the approved plan (`items/452/plan-test-shards.md`, r4, commit `2226c77a98bcd937989a1062cae8c7f6e551c494`) and Hari's approval 6858183518 on issue #452. No later decision exists. The issue body is the originating request.
-- Cumulative counts: comprehensive 1, focused 0.
+Round 1: comprehensive pass 1 of at most 2. Input: the staged tree on top of local commit `11ba353d10111c749e550be96b29124e54e78a92`, against `origin/main` at `662685a0d54ced8fc97a438bf6fac56023fa0b90`. Specification sources: the approved plan r4 (`items/452/plan-test-shards.md`, commit `2226c77a98bcd937989a1062cae8c7f6e551c494`) and Hari's approval 6858183518. No later decision exists. The report found two P1 and four P2, and no P0. Dispositions, each checked against its source before the fix:
+
+- P1, T4 subtest "only the directory" replaced: valid (`main` has the one-argument case; the plan says T4 "gains" a subtest). Fixed: `run_checker` takes `with_shard_file`, the one-argument subtest is back with the new usage line, and "directory and shard file only" sits beside it. The fixture-rule paragraph above is corrected.
+- P1, new doc paragraph cites no source for `-list`, `-noColor` and the `<type>.<method>` form: valid. Fixed: the doc cites the runner help, names the ANSI observation and marks the string form and the equality as observed, with the plan section 7 run and receipt A8.
+- P2, S10 compared the file through `$(cat ...)`: valid. Fixed with `cmp` against `printf '["A.B.C"]\n'`.
+- P2, "reports the project as missing": valid. Fixed to name `missing-project` and `missing-shard`.
+- P2, shard file header and doc refer to each other: valid. Fixed: the doc states the validation rules and the header points to that section.
+- P2, choice 1 covers only the dropped-test case: valid. Left as the plan has it, with the duplicate case stated in implementer choice 1; the alternative extends R11, which the stop rule reserves for Hari.
+
+Round 2: comprehensive pass 2 of at most 2. Input: the staged tree on top of the local commit that the `-wip` branch holds, against the same `origin/main`. Comparison revision: round 1's input. Cumulative counts after round 2 starts: comprehensive 2, focused 0.

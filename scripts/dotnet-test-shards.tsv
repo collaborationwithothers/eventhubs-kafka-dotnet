@@ -1,7 +1,8 @@
 # Test shards for hosted CI (issue 452). One line per test class: <project> TAB <shard> TAB <class>.
 # A project named here is split into its named shards plus an implicit shard "rest" that runs every
 # other class of the project. Each line is read by scripts/verify-dotnet.sh and by
-# scripts/check-dotnet-matrix.py. The format is described in docs/engineering/dotnet-verification.md.
+# scripts/check-dotnet-matrix.py, which reject a file that breaks the rules that
+# docs/engineering/dotnet-verification.md ("Tiers, partial runs and failure reporting") states.
 # The nine Verifier classes are the xUnit collection "B10 abrupt verifier", which runs without
 # parallelization, so they are split across two shards by whole class.
 Parchwell.LoadGen.Tests	b10-end-to-end	Parchwell.LoadGen.Tests.Abrupt.B10AbruptEndToEndTests

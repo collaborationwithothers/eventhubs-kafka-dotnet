@@ -217,7 +217,7 @@ run_case list STUB_METHODS='["A.B.C"]' --
 [[ $(grep -c '^RUN ' "$STUB_LOG") -eq 6 ]] || fail "S10: expected six RUN lines"
 [[ $(grep '^RUN ' "$STUB_LOG" | grep -c -- '--configuration Release --no-build --no-launch-profile -- -list methods/json -noColor') -eq 6 ]] || fail "S10: every RUN line must carry the list arguments"
 for project in Parchwell.ArchitectureTests Parchwell.Enrichment.Tests Parchwell.Kafka.Tests Parchwell.LoadGen.Tests Parchwell.Scenarios.Tests Parchwell.Verifier.Tests; do
-    [[ "$(cat "$results_dir/$project/methods.json")" == '["A.B.C"]' ]] || fail "S10: $project methods.json"
+    printf '["A.B.C"]\n' | cmp -s - "$results_dir/$project/methods.json" || fail "S10: $project methods.json must equal the stub's output byte for byte"
     jq -e --arg p "$project" '[.stages[].label] as $l | ($l | index($p + " report")) + 1 == ($l | index($p + " test list")) and ([.stages[] | select(.label == ($p + " test list"))][0].exit_code == 0)' "$summary" >/dev/null \
         || fail "S10: $project test list stage must follow its report stage and pass"
 done
