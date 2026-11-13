@@ -9,4 +9,4 @@ Decisions in force:
 - Approval of plan r4 at commit `2226c77a98bcd937989a1062cae8c7f6e551c494`: "Implement this exact revision." Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/452#issuecomment-6858183518
 Open questions:
 - None
-Next action: Codex review of the pull request head and the hosted `.NET verification` run, then Hari merges (protected workflow path).
+Next action: run the pre-PR local gate `./scripts/verify-dotnet.sh --tier sandbox` once on the source the cold review cleared (docs/agents/pull-requests.md "Verification gates" step 3), then Codex review of the pull request head and the hosted `.NET verification` run, then Hari merges (protected workflow path).
