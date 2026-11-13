@@ -14,11 +14,12 @@ namespace Parchwell.Verifier.VerifyRun.Abrupt;
 /// </summary>
 /// <remarks>
 /// Azure.Core abandons a request after <see cref="RetryOptions.NetworkTimeout"/>, 100 s by default, so a stalled
-/// request outlives the 10 s initial token timeout and is never retried. The values are policy, not measured.
+/// request outlives the 10 s initial token timeout and is never retried. The default is set in `RetryOptions.cs`
+/// lines 74-97 at tag `Azure.Core_1.63.0` of https://github.com/Azure/azure-sdk-for-net. The values are policy, not measured.
 /// </remarks>
 internal sealed class AbruptKafkaTokenProvider : IKafkaTokenProvider
 {
-    // Values chosen in decisions 6844950677 and 6845385609 on issue 404; they are not configuration.
+    // Mechanism: decision 6844950677 on issue 404. Values: decision 6845385609 on issue 404. They are not configuration.
     internal static readonly TimeSpan NetworkTimeout = TimeSpan.FromSeconds(2);
     internal const int MaxRetries = 1;
     internal static readonly TimeSpan Delay = TimeSpan.FromMilliseconds(200);
