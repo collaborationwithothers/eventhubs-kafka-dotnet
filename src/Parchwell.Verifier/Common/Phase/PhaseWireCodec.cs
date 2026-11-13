@@ -160,11 +160,11 @@ internal static partial class PhaseWireCodec
             r.Identity is { } startIdentity && (startIdentity.ScenarioId != r.ScenarioId || startIdentity.ConfigurationId != r.ConfigurationId ||
                 startIdentity.RunId != r.RunId || startIdentity.InstanceId != startIdentity.ExpectedInstanceId)))
             throw new PhaseWireIdentityException("Start-line receipt identity does not bind to its phase.");
-        if (r.SchemaVersion != 1 || r.Mode is not ("start-line" or "verify" or "judge" or "b10-sweep-line" or "b10-sweep" or "b10-abrupt-verify") || !PhaseIdentity.IsRunId(r.RunId) || r.SourceCommit.Length != 40 || !CommitRegex().IsMatch(r.SourceCommit)) throw new FormatException("Receipt has invalid fixed identity fields.");
+        if (r.SchemaVersion != 1 || r.Mode is not ("start-line" or "verify" or "judge" or "b10-sweep-line" or "b10-sweep" or "b10-abrupt-verify" or "b10-final-sweep") || !PhaseIdentity.IsRunId(r.RunId) || r.SourceCommit.Length != 40 || !CommitRegex().IsMatch(r.SourceCommit)) throw new FormatException("Receipt has invalid fixed identity fields.");
         PhaseIdentity.ValidatePhase(r.Phase);
         if (!ScenarioPhases.TryGetConfiguration(r.ScenarioId, r.Phase, out string? expectedConfiguration) || r.ConfigurationId != expectedConfiguration) throw new FormatException("Receipt scenario or configuration does not match its phase.");
         if (r.Mode == "b10-abrupt-verify" ? r.Repeat is null || r.Identity is not null :
-            r.Mode is "judge" or "b10-sweep-line" or "b10-sweep" ? r.Repeat is not null || r.Identity is not null : r.Repeat is null || r.Identity is null) throw new FormatException("Receipt nullable identity fields do not match its mode.");
+            r.Mode is "judge" or "b10-sweep-line" or "b10-sweep" or "b10-final-sweep" ? r.Repeat is not null || r.Identity is not null : r.Repeat is null || r.Identity is null) throw new FormatException("Receipt nullable identity fields do not match its mode.");
         if (r.Repeat is int repeat) PhaseIdentity.ValidateRepeat(repeat);
         if (!Text(r.JobName,253,true) || !Text(r.PodName,253,true)) throw new FormatException("Receipt Job and pod names must be bounded text.");
         DateTimeOffset started = ParseUtc(r.StartedUtc); DateTimeOffset completed = ParseUtc(r.CompletedUtc);
@@ -181,7 +181,7 @@ internal static partial class PhaseWireCodec
         if (r.ScenarioId == "B10" && r.Mode == "verify" &&
             (r.HandlerExitCode != 1 || r.PublicationAcceptance is not null || r.B10Intake is null))
             throw new FormatException("B10 verify receipts require nonfinal independent intake evidence.");
-        if (r.Mode is "judge" or "b10-sweep-line" or "b10-sweep" && r.Artifacts.Count != 1 || r.Mode == "start-line" && r.Artifacts.Count != 2 || r.Mode == "verify" && r.Artifacts.Count != 1) throw new FormatException("Receipt artifact list has the wrong role-specific size.");
+        if (r.Mode is "judge" or "b10-sweep-line" or "b10-sweep" or "b10-final-sweep" && r.Artifacts.Count != 1 || r.Mode == "start-line" && r.Artifacts.Count != 2 || r.Mode == "verify" && r.Artifacts.Count != 1) throw new FormatException("Receipt artifact list has the wrong role-specific size.");
         if (r.Mode == "b10-abrupt-verify")
         {
             if (r.ScenarioId != "B10" || r.ConfigurationId != "C1" || r.Phase != "C1" ||
@@ -200,6 +200,15 @@ internal static partial class PhaseWireCodec
                 line.Container != "verifier" || line.Name != PhasePaths.SweepLine(r.RunId, r.Phase) ||
                 line.Length < 0 || !ShaRegex().IsMatch(line.Sha256))
                 throw new FormatException("B10 sweep-line receipt does not bind its fixed sweep-line path.");
+        }
+        else if (r.Mode == "b10-final-sweep")
+        {
+            ArtifactReference projection = r.Artifacts[0];
+            if (r.ScenarioId != "B10" || r.Phase is not ("C0" or "C1") || !VerifierHostOptions.IsB10ScientificRunId(r.RunId) ||
+                r.HandlerExitCode != 0 || r.JobName != PhaseIdentity.B10FinalSweepJobName(r.RunId, r.Phase) ||
+                projection.Container != "verifier" || projection.Name != PhasePaths.B10FinalSweep(r.RunId, r.Phase) ||
+                projection.Length < 0 || !ShaRegex().IsMatch(projection.Sha256))
+                throw new FormatException("Final B10 receipt does not bind its projection.");
         }
         else if (r.Mode == "b10-sweep")
         {
