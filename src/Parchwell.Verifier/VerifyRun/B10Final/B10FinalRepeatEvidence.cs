@@ -177,6 +177,8 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
             Exact(data, "first_instance_id", "successor_instance_id", "timeout_instance_id", "timeout", "comparison", "native_errors", "eligibility", "eligibility_reasons", "start_line", "end_line", "window_complete", "window_limit", "arms", "problems", "problem_details", "finality", "earlier_repeat_records");
             Require(Text(data, "finality") == "nonfinal" && Text(data, "eligibility") is "pending_sweep" or "ineligible", "nonfinal_finality");
             ValidateArms(data.GetProperty("arms"));
+            ValidateTimeout(data.GetProperty("timeout"));
+            _ = AbruptEvidenceCodec.Strings(data.GetProperty("problems"));
             Dictionary<int, long>? starts = JsonVector(data.GetProperty("start_line")), ends = JsonVector(data.GetProperty("end_line"));
             // Validate before keeping anything: a rejected object must not install vectors, timeout counts or eligibility reasons.
             if (starts is not null && ends is not null && input.Start is not null)
@@ -458,6 +460,16 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
 
         string[] Select(string arm) => attempts.Values.Where(attempt => attempt.Arm == arm && attempt.Role == "original" && accepted.Contains(attempt.Id) &&
             !terminals.ContainsKey(attempt.Id) && !rejected.Contains(attempt.Id)).OrderBy(attempt => attempt.JournalSequence).Select(attempt => attempt.Id).ToArray();
+    }
+
+    // The sweep later reads these counts unchecked, so a malformed object must be rejected here, inside the guarded block.
+    internal static void ValidateTimeout(JsonElement timeout)
+    {
+        if (timeout.ValueKind == JsonValueKind.Null) return;
+        Require(timeout.ValueKind == JsonValueKind.Object, "nonfinal_timeout");
+        foreach (string field in new[] { "ok", "loss", "phantom", "reported_failure", "duplicate", "reorder" })
+            if (timeout.TryGetProperty(field, out JsonElement value) && value.ValueKind != JsonValueKind.Null)
+                Require(value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out long count) && count >= 0, "nonfinal_timeout_count");
     }
 
     internal static void ValidateArms(JsonElement arms)

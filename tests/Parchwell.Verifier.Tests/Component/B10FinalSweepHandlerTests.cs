@@ -315,6 +315,47 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
     }
 
     [Theory]
+    [InlineData("timeout_ok_string")]
+    [InlineData("timeout_ok_negative")]
+    [InlineData("timeout_ok_fraction")]
+    [InlineData("timeout_loss_bool")]
+    [InlineData("timeout_duplicate_string")]
+    [InlineData("timeout_not_object")]
+    [InlineData("timeout_array")]
+    [InlineData("problems_number")]
+    [InlineData("problems_item_number")]
+    [InlineData("problems_object")]
+    public async Task Given_NonfinalTimeoutOrProblemsAreMalformed_When_FinalSweepRuns_Then_SweepPublishesAndOnlyRestartIsRejected_P1_Codex(string change)
+    {
+        using var run = await B10FinalSweepHarness.CreateAsync(kafka);
+        run.RewriteA3(3, root =>
+        {
+            JsonNode data = root["data"]!;
+            switch (change)
+            {
+                case "timeout_ok_string": data["timeout"]!["ok"] = "1"; break;
+                case "timeout_ok_negative": data["timeout"]!["ok"] = -1; break;
+                case "timeout_ok_fraction": data["timeout"]!["ok"] = 1.5; break;
+                case "timeout_loss_bool": data["timeout"]!["loss"] = true; break;
+                case "timeout_duplicate_string": data["timeout"]!["duplicate"] = "0"; break;
+                case "timeout_not_object": data["timeout"] = "none"; break;
+                case "timeout_array": data["timeout"] = new JsonArray(1); break;
+                case "problems_number": data["problems"] = 5; break;
+                case "problems_item_number": data["problems"] = new JsonArray(5); break;
+                case "problems_object": data["problems"] = new JsonObject(); break;
+                default: throw new InvalidOperationException(change);
+            }
+        });
+        Assert.Equal(0, await run.RunAsync());
+        Assert.True(run.Data["scan_complete"]!.GetValue<bool>(), run.Data.ToJsonString());
+        for (int repeat = 1; repeat <= 5; repeat++) AssertComplete(run.Repeat(repeat));
+        JsonObject item = run.Repeat(3);
+        Assert.Equal("ineligible", Text(item["restart"]!["eligibility"]));
+        Assert.Equal(["b10_restart_input_unavailable"], Strings(item["restart"]!["eligibility_reasons"]));
+        Assert.Null(item["restart"]!["arms"]);
+    }
+
+    [Theory]
     [InlineData("below")]
     [InlineData("above")]
     public async Task Given_NonfinalStartDisagreesWithAuthenticatedStartNote_When_FinalSweepRuns_Then_RejectedObjectContributesNothing_P1_4567914700(string side)
