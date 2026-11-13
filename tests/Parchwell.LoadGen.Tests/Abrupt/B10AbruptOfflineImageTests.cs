@@ -79,7 +79,8 @@ internal sealed class B10OfflineImageRun(string image, string commit, ITestOutpu
     private readonly string containerPrefix = "b10-offline-image-" + Guid.NewGuid().ToString("N");
     private readonly List<IContainer> containers = [];
     private readonly List<(string Name, string Id)> helpers = [];
-    private readonly DockerClient docker = TestcontainersSettings.OS.DockerEndpointAuthConfig.GetDockerClientBuilder()
+    private readonly DockerClient docker = LocalKafkaFixture.RequireDockerEndpoint(TestcontainersSettings.OS.DockerEndpointAuthConfig)
+        .GetDockerClientBuilder()
         .WithTimeout(TimeSpan.FromMinutes(2)).Build();
     private LocalKafkaFixture? kafka;
     private readonly B10AbruptKafkaProxy proxy = new();
