@@ -20,7 +20,7 @@ Not applicable, as the plan states. No check that validates or rejects input is 
 `main` moved from 92b8128 to 696c686 during the work (the #442 verification-script change merged). The rebase was clean. The lines the plan names moved to `scripts/verify-dotnet.sh` lines 13 and 58, `scripts/test-verify-dotnet.sh` lines 130 and 131, and `docs/engineering/dotnet-verification.md` lines 58 and 66; the replacement text is the plan's.
 
 ## Commands and results
-Source commit of the code under test: 925bb103 (rebased onto `origin/main` 696c686; the receipt commits after it change only `items/445/`). Commands 1 to 6 and 9 ran on it. Command 7 ran on 854f3ef8, which differs only in a blank line of `docs/engineering/dotnet-verification.md` and in `.claude/hooks/tests/start-dockerd.test.sh`, files `verify-dotnet.sh` does not read. Command 5 and 6 first ran before the rebase; the cold review found that the rebase changed `scripts/verify-dotnet.sh`, so both were re-run on 925bb103 and only those results are recorded here.
+A second rebase onto `origin/main` 259a31f (the `codex/448` cleanup-script merge) was clean and changed none of this pull request's files; the SHAs of the commits changed, their content did not. Source commit of the code under test: 925bb103 before that rebase (on `origin/main` 696c686; the receipt commits after it change only `items/445/`). Commands 1 to 6 and 9 ran on it. Command 7 ran on 854f3ef8, which differs only in a blank line of `docs/engineering/dotnet-verification.md` and in `.claude/hooks/tests/start-dockerd.test.sh`, files `verify-dotnet.sh` does not read. Command 5 and 6 first ran before the rebase; the cold review found that the rebase changed `scripts/verify-dotnet.sh`, so both were re-run on 925bb103 and only those results are recorded here.
 
 - Command 1: `grep -rn --exclude-dir=items --exclude-dir=.git --exclude-dir=node_modules -e 'Tier=Host' -e '"Tier", "Host"' .` printed nothing, exit 1.
 - Command 2: `./scripts/test-verify-dotnet.sh` printed `verify-dotnet.sh checks passed.`
@@ -33,7 +33,7 @@ Source commit of the code under test: 925bb103 (rebased onto `origin/main` 696c6
 - Command 8 (hosted `.NET verification` on the final head) and command 10 (fresh-session hook check): recorded below when taken.
 
 ## Cold review
-- Round 1: mode comprehensive; input revision: this branch's index against merge base `origin/main` 696c686 (the review diff file); specification sources: plan Revision 3 at 386f36bd5b4fa5b2295e6714bbf245a9c2b6916c, decisions 6848081896, 6848259371, 6849531953, check 6849713128 and the plan-check findings P2-1 and P2-2 above. Budget: 2 comprehensive, 2 focused. Counts so far: 1 comprehensive, 0 focused.
+- Round 1: mode comprehensive; input revision: this branch's index against merge base `origin/main` 696c686 (the review diff file; round 1 ran before the second rebase); specification sources: plan Revision 3 at 386f36bd5b4fa5b2295e6714bbf245a9c2b6916c, decisions 6848081896, 6848259371, 6849531953, check 6849713128 and the plan-check findings P2-1 and P2-2 above. Budget: 2 comprehensive, 2 focused. Counts so far: 1 comprehensive, 0 focused.
   Round 1 report (complete) reviewed revision 186e3daf. Findings and dispositions:
   - P1 (no source commit on commands; "the rebase changed no test or hook file" false): fixed. The receipt now names source commit 925bb103, states the rebase did change `scripts/verify-dotnet.sh`, and records commands 5 and 6 re-run on the rebased tree.
   - P2 (no blank line before the new doc paragraph): fixed.
