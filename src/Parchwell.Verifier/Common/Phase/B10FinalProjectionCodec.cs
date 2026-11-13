@@ -181,7 +181,8 @@ internal static class B10FinalProjectionCodec
                         value.ValueKind == JsonValueKind.Number && value.GetInt64() == 0);
                 }
         }
-        bool unavailable = reasons.Any(reason => reason is not ("b10_restart_native_error_captured" or "b10_restart_fatal_captured" or
+        bool unavailable = arms.EnumerateArray().Any(arm => arm.GetProperty("pair_count").ValueKind == JsonValueKind.Null) ||
+            reasons.Any(reason => reason is not ("b10_restart_native_error_captured" or "b10_restart_fatal_captured" or
             "b10_restart_timeout_bookkeeping_unavailable" or "b10_restart_guard_failed"));
         bool HasPair(int index) => arms[index].GetProperty("pair_count").ValueKind == JsonValueKind.Number && arms[index].GetProperty("pair_count").GetInt64() >= 1;
         string expectedComparison = unavailable ? "unavailable" : (HasPair(0), HasPair(1)) switch

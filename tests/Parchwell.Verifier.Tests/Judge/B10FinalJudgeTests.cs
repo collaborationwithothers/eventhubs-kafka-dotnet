@@ -195,6 +195,88 @@ public sealed class B10FinalJudgeTests
     }
 
     [Theory]
+    [InlineData(0, false, false)] [InlineData(0, false, true)]
+    [InlineData(0, true, false)] [InlineData(0, true, true)]
+    [InlineData(1, false, false)] [InlineData(1, false, true)]
+    [InlineData(1, true, false)] [InlineData(1, true, true)]
+    public async Task Given_BoundUnknownPairEvidence_When_Judged_Then_RejectsAvailableComparisonAndEligibility(int armIndex, bool otherPair, bool eligible)
+    {
+        string[] comparisons = eligible ? ["neither", "same_instance_only", "cross_restart_only", "both", "unavailable"] :
+            ["neither", "same_instance_only", "cross_restart_only", "both"];
+        foreach (string comparison in comparisons)
+        {
+            var fixture = new B10FinalJudgeFixture("C1");
+            B10FinalArm[] arms = [B10FinalJudgeFixture.Arm("same_instance", armIndex == 1 && otherPair),
+                B10FinalJudgeFixture.Arm("cross_restart", armIndex == 0 && otherPair)];
+            string knownComparison = otherPair ? armIndex == 0 ? "cross_restart_only" : "same_instance_only" : "neither";
+            fixture.Repeats[0] = fixture.Repeats[0] with { Restart = fixture.Repeats[0].Restart! with { Comparison = knownComparison, Arms = arms } };
+            fixture.Publish();
+            fixture.Mutate(PhasePaths.B10FinalSweep(B10FinalJudgeFixture.Run, "C1"), node =>
+            {
+                JsonObject restart = node["data"]!["repeats"]![0]!["restart"]!.AsObject();
+                restart["arms"]![armIndex]!["pair_count"] = null;
+                restart["comparison"] = comparison;
+                restart["eligibility"] = eligible ? "eligible" : "ineligible";
+                restart["eligibility_reasons"] = eligible ? new JsonArray() : new JsonArray("b10_restart_guard_failed");
+            });
+            fixture.RebindProjection();
+            using JsonDocument candidate = await fixture.JudgeAsync(false);
+            Assert.Equal("invalid", candidate.RootElement.GetProperty("status").GetString());
+            Assert.Contains("b10_final_projection_untrusted", Strings(candidate.RootElement.GetProperty("reasons")));
+            Assert.Equal(JsonValueKind.Null, candidate.RootElement.GetProperty("b10_final").ValueKind);
+        }
+    }
+
+    [Theory]
+    [InlineData(0L, 0L, "neither")]
+    [InlineData(1L, 0L, "same_instance_only")] [InlineData(0L, 1L, "cross_restart_only")]
+    [InlineData(1L, 1L, "both")]
+    [InlineData(2L, 0L, "same_instance_only")] [InlineData(0L, 2L, "cross_restart_only")]
+    [InlineData(2L, 2L, "both")]
+    public async Task Given_KnownPairCounts_When_Judged_Then_RetainsAvailableComparison(long samePairs, long crossPairs, string comparison)
+    {
+        var fixture = new B10FinalJudgeFixture("C1");
+        fixture.Repeats[0] = fixture.Repeats[0] with { Restart = fixture.Repeats[0].Restart! with { Comparison = comparison,
+            Arms = [B10FinalJudgeFixture.Arm("same_instance", samePairs > 0) with { PairCount = samePairs },
+                B10FinalJudgeFixture.Arm("cross_restart", crossPairs > 0) with { PairCount = crossPairs }] } };
+        using JsonDocument candidate = await fixture.JudgeAsync();
+        Assert.Equal("complete_valid", candidate.RootElement.GetProperty("status").GetString());
+        JsonElement final = candidate.RootElement.GetProperty("b10_final");
+        JsonElement actual = final.GetProperty("repeats")[0].GetProperty("restart");
+        Assert.Equal(comparison, actual.GetProperty("comparison").GetString());
+        Assert.Equal("eligible", actual.GetProperty("eligibility").GetString());
+        Assert.Equal(samePairs, actual.GetProperty("arms")[0].GetProperty("pair_count").GetInt64());
+        Assert.Equal(crossPairs, actual.GetProperty("arms")[1].GetProperty("pair_count").GetInt64());
+        JsonElement rule = final.GetProperty("restart_rule");
+        Assert.Equal(5, rule.GetProperty("eligible_repeats").GetInt32());
+        Assert.Equal(crossPairs > 0 ? "confirmed" : "untestable", rule.GetProperty("rule_selection").GetString());
+        Assert.Equal(crossPairs > 0 ? [1] : [], Numbers(rule.GetProperty("qualifying_pair_repeats")));
+    }
+
+    [Fact]
+    public async Task Given_UnavailableIneligibleUnknownPairs_When_Judged_Then_PreservesUnknownEvidenceAndExcludesRepeat()
+    {
+        var fixture = new B10FinalJudgeFixture("C1");
+        fixture.Repeats[0] = fixture.Repeats[0] with { Restart = fixture.Repeats[0].Restart! with
+        { Eligibility = "ineligible", EligibilityReasons = ["b10_restart_late_record_unjoined"], Comparison = "unavailable",
+            Arms = fixture.Repeats[0].Restart!.Arms!.Select(arm => arm with { OriginalsSeen = null, ResendsSeen = null, PairCount = null,
+                UnreportedSeen = null, UnreportedUnseen = null, LostResends = null, Witness = null }).ToArray() } };
+        using JsonDocument candidate = await fixture.JudgeAsync();
+        Assert.Equal("complete_valid", candidate.RootElement.GetProperty("status").GetString());
+        JsonElement final = candidate.RootElement.GetProperty("b10_final");
+        JsonElement actual = final.GetProperty("repeats")[0].GetProperty("restart");
+        Assert.Equal("unavailable", actual.GetProperty("comparison").GetString());
+        Assert.Equal("ineligible", actual.GetProperty("eligibility").GetString());
+        Assert.Equal(["b10_restart_late_record_unjoined"], Strings(actual.GetProperty("eligibility_reasons")));
+        Assert.All(actual.GetProperty("arms").EnumerateArray(), arm => Assert.Equal(JsonValueKind.Null, arm.GetProperty("pair_count").ValueKind));
+        JsonElement rule = final.GetProperty("restart_rule");
+        Assert.Equal(4, rule.GetProperty("eligible_repeats").GetInt32());
+        Assert.Equal([2, 3, 4, 5], Numbers(rule.GetProperty("eligible_repeat_numbers")));
+        Assert.Empty(Numbers(rule.GetProperty("qualifying_pair_repeats")));
+        Assert.Equal("untestable", rule.GetProperty("rule_selection").GetString());
+    }
+
+    [Theory]
     [InlineData(0, "originals_seen", 0L)] [InlineData(0, "originals_seen", null)]
     [InlineData(0, "resends_seen", 0L)] [InlineData(0, "resends_seen", null)]
     [InlineData(1, "originals_seen", 0L)] [InlineData(1, "originals_seen", null)]

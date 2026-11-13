@@ -165,6 +165,63 @@ public sealed class B10FinalProjectionCodecTests
     }
 
     [Theory]
+    [InlineData(0, false, false)] [InlineData(0, false, true)]
+    [InlineData(0, true, false)] [InlineData(0, true, true)]
+    [InlineData(1, false, false)] [InlineData(1, false, true)]
+    [InlineData(1, true, false)] [InlineData(1, true, true)]
+    public void Given_UnknownPairEvidence_When_Read_Then_RejectsAvailableComparisonAndEligibility(int armIndex, bool otherPair, bool eligible)
+    {
+        var fixture = Fixture();
+        B10FinalArm[] arms = [B10FinalJudgeFixture.Arm("same_instance", armIndex == 1 && otherPair),
+            B10FinalJudgeFixture.Arm("cross_restart", armIndex == 0 && otherPair)];
+        string knownComparison = otherPair ? armIndex == 0 ? "cross_restart_only" : "same_instance_only" : "neither";
+        fixture.Repeats[0] = fixture.Repeats[0] with { Restart = fixture.Repeats[0].Restart! with { Comparison = knownComparison, Arms = arms } };
+        JsonObject baseline = JsonNode.Parse(B10FinalProjectionCodec.Write(fixture.Projection()))!.AsObject();
+        string[] comparisons = eligible ? ["neither", "same_instance_only", "cross_restart_only", "both", "unavailable"] :
+            ["neither", "same_instance_only", "cross_restart_only", "both"];
+        foreach (string comparison in comparisons)
+        {
+            JsonObject root = baseline.DeepClone().AsObject();
+            JsonObject restart = root["data"]!["repeats"]![0]!["restart"]!.AsObject();
+            restart["arms"]![armIndex]!["pair_count"] = null;
+            restart["comparison"] = comparison;
+            restart["eligibility"] = eligible ? "eligible" : "ineligible";
+            restart["eligibility_reasons"] = eligible ? new JsonArray() : new JsonArray("b10_restart_guard_failed");
+            Assert.Throws<FormatException>(() => Read(root));
+        }
+    }
+
+    [Theory]
+    [InlineData(0L, 0L, "neither")]
+    [InlineData(1L, 0L, "same_instance_only")] [InlineData(0L, 1L, "cross_restart_only")]
+    [InlineData(1L, 1L, "both")]
+    [InlineData(2L, 0L, "same_instance_only")] [InlineData(0L, 2L, "cross_restart_only")]
+    [InlineData(2L, 2L, "both")]
+    public void Given_KnownPairCounts_When_Read_Then_RetainsAvailableComparison(long samePairs, long crossPairs, string comparison)
+    {
+        var fixture = Fixture();
+        fixture.Repeats[0] = fixture.Repeats[0] with { Restart = fixture.Repeats[0].Restart! with { Comparison = comparison,
+            Arms = [B10FinalJudgeFixture.Arm("same_instance", samePairs > 0) with { PairCount = samePairs },
+                B10FinalJudgeFixture.Arm("cross_restart", crossPairs > 0) with { PairCount = crossPairs }] } };
+        B10FinalRestart actual = Read(JsonNode.Parse(B10FinalProjectionCodec.Write(fixture.Projection()))!.AsObject()).Data.Repeats[0].Restart!;
+        Assert.Equal(comparison, actual.Comparison);
+        Assert.Equal("eligible", actual.Eligibility);
+        Assert.Equal(samePairs, actual.Arms![0].PairCount);
+        Assert.Equal(crossPairs, actual.Arms[1].PairCount);
+    }
+
+    [Fact]
+    public void Given_UnavailableIneligibleUnknownPairs_When_Read_Then_PreservesUnknownEvidence()
+    {
+        JsonObject root = LocalUnjoined();
+        B10FinalRestart actual = Read(root).Data.Repeats[0].Restart!;
+        Assert.Equal("unavailable", actual.Comparison);
+        Assert.Equal("ineligible", actual.Eligibility);
+        Assert.Equal(["b10_restart_late_record_unjoined"], actual.EligibilityReasons);
+        Assert.All(actual.Arms!, arm => Assert.Null(arm.PairCount));
+    }
+
+    [Theory]
     [InlineData(0, "originals_seen", 0L)] [InlineData(0, "originals_seen", null)]
     [InlineData(0, "resends_seen", 0L)] [InlineData(0, "resends_seen", null)]
     [InlineData(1, "originals_seen", 0L)] [InlineData(1, "originals_seen", null)]
