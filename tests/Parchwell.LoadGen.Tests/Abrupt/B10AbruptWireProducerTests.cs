@@ -28,10 +28,17 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
     {
         var identity = TestOptions(NewRoot()).Identity();
         await using var fixture = ExportFixture(identity, "diagnostic_trial");
+        fixture.ReleaseTarget = release =>
+        {
+            fixture.Advancing.AdvanceTo(release);
+            fixture.Clock.FreezeUtc();
+            return release;
+        };
         fixture.ConfigureControl();
         fixture.Initialize();
         fixture.StartReports();
         await fixture.Runner.RunControlAsync(TestContext.Current.CancellationToken);
+        fixture.Clock.ResumeUtc();
         await fixture.Runner.PrepareArmAsync("cross_restart", TestContext.Current.CancellationToken);
         await fixture.StopReportsAsync();
         var terminal = fixture.Journal.Frames.Single(frame => frame.Kind == "warmup_terminal" &&
