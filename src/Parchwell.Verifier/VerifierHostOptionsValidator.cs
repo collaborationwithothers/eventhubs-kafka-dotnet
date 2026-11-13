@@ -223,8 +223,10 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
     private static ValidateOptionsResult ValidateAbrupt(VerifierHostOptions options)
     {
         var errors = new List<string>();
-        if (options.ScenarioId != "B10" || options.ConfigurationId != "C1" || options.Phase != "C1" || options.Repeat != 1)
-            errors.Add("Abrupt diagnostic verification requires B10/C1/C1/1.");
+        bool scientific = VerifierHostOptions.IsB10ScientificRunId(options.RunId);
+        if (options.ScenarioId != "B10" || options.ConfigurationId != "C1" || options.Phase != "C1" ||
+            (scientific ? options.Repeat is not (>= 1 and <= 5) : options.Repeat != 1))
+            errors.Add("Abrupt verification requires B10/C1/C1 and a permitted repeat.");
         RequireText(options.SourceCommit, "PARCHWELL_SOURCE_COMMIT", errors);
         RequireText(options.VerifierCommit, "Verifier:VerifierCommit", errors);
         if (options.VerifierCommit != options.SourceCommit)
@@ -255,7 +257,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         RequirePositive(options.MaxInputDepth, "Verifier:MaxInputDepth", errors);
         RequireText(options.ScenarioRoot, "Verifier:ScenarioRoot", errors);
         RequireText(options.ArtifactPrefix, "Verifier:ArtifactPrefix", errors);
-        if (options.ArtifactPrefix != $"{options.RunId}/C1/r1/producer/")
+        if (options.ArtifactPrefix != $"{options.RunId}/C1/r{(scientific ? options.Repeat : 1)}/producer/")
             errors.Add("Verifier:ArtifactPrefix must equal the derived abrupt timeout producer prefix.");
         RequirePositive(options.MaxRowBytes, "Verifier:MaxRowBytes", errors);
         RequirePositive(options.MaxRowsPerArtifact, "Verifier:MaxRowsPerArtifact", errors);

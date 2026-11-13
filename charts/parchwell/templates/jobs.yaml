@@ -10,7 +10,7 @@
 {{- else -}}
 {{- $r := .Values.runtime -}}
 {{- $mode := $r.mode -}}
-{{- $abrupt := $r.b10_abrupt_diagnostic -}}
+{{- $abrupt := or $r.b10_abrupt_diagnostic ($r.b10_abrupt_science | default false) -}}
 {{- $phaseMode := has $mode (list "judge" "b10-sweep-line" "b10-sweep") -}}
 {{- $role := include "parchwell.role" . -}}
 {{- $job := include "parchwell.jobName" . -}}
@@ -114,7 +114,7 @@ spec:
             - name: {{ printf "B10Abrupt__%s" $key | quote }}
               value: {{ include "parchwell.envValue" $value | quote }}
             {{- end }}
-            {{- range $key, $value := dict "Enabled" "true" "Purpose" "diagnostic_trial" "Role" (ternary "parent" "successor" (eq $mode "loadgen-restart")) "ScenarioId" $.Values.scenario_id "ConfigurationId" $.Values.configuration_id "RunId" $r.run_id "Phase" $r.phase "Repeat" (printf "%d" (int $r.repeat)) "SourceCommit" $r.source_commit "ImageReference" $r.loadgen_image "JobName" $job "NamespaceName" $r.eventhubs.namespace_name "BlobEndpoint" $r.blob.account_url "ScenarioSourceRoot" "/app" "OutputRoot" "/work/loadgen" }}
+            {{- range $key, $value := dict "Enabled" "true" "Purpose" (ternary "scientific" "diagnostic_trial" ($r.b10_abrupt_science | default false)) "Role" (ternary "parent" "successor" (eq $mode "loadgen-restart")) "ScenarioId" $.Values.scenario_id "ConfigurationId" $.Values.configuration_id "RunId" $r.run_id "Phase" $r.phase "Repeat" (printf "%d" (int $r.repeat)) "SourceCommit" $r.source_commit "ImageReference" $r.loadgen_image "JobName" $job "NamespaceName" $r.eventhubs.namespace_name "BlobEndpoint" $r.blob.account_url "ScenarioSourceRoot" "/app" "OutputRoot" "/work/loadgen" }}
             - name: {{ printf "B10Abrupt__%s" $key | quote }}
               value: {{ $value | quote }}
             {{- end }}

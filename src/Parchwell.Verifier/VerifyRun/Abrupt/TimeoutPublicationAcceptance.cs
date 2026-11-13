@@ -9,7 +9,7 @@ using Parchwell.Verifier.VerifyRun.Publication;
 
 namespace Parchwell.Verifier.VerifyRun.Abrupt;
 
-/// <summary>Applies ordinary publication acceptance with the diagnostic trial's expected Job names.</summary>
+/// <summary>Applies ordinary publication acceptance with the abrupt mode's expected Job names.</summary>
 internal static class TimeoutPublicationAcceptance
 {
     internal static readonly string[] PublicationNames=["index.json","ledger.jsonl","manifest.json","statistics.jsonl","request-lifecycle.jsonl","capabilities.json"];

@@ -49,31 +49,31 @@ internal static class B10AbruptWire
     };
     internal static bool IsProducingKind(string kind) => kind is "child_started" or "warmup_prepared" or "prepared" or "pre_acceptance_report" or "accepted" or "synchronous_rejection" or "cut" or "control_drained" or "post_drain_report" or "kill_intent" or "signal_failed" or "no_kill";
     internal static JsonElement Element(object value) => JsonSerializer.SerializeToElement(value, JsonOptions);
-    internal static byte[] SerializeEnvelope(string kind, Identity identity, object data)
+    internal static byte[] SerializeEnvelope(string kind, Identity identity, object data, string purpose = "diagnostic_trial")
     {
-        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(new { schema_version = 3, dialect = "b10_abrupt", purpose = "diagnostic_trial", synthetic = true, scientific_admissible = false, kind, identity, data }, JsonOptions);
+        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(new { schema_version = 3, dialect = "b10_abrupt", purpose, synthetic = true, scientific_admissible = false, kind, identity, data }, JsonOptions);
         if (bytes.Length > MaximumBodyBytes) throw Gap("frame_oversize");
         return bytes;
     }
-    internal static JsonElement ReadEnvelope(ReadOnlyMemory<byte> bytes, string kind, params string[] extraMembers)
+    internal static JsonElement ReadEnvelope(ReadOnlyMemory<byte> bytes, string kind, string purpose = "diagnostic_trial", int? repeat = null)
     {
         JsonElement root = Parse(bytes);
-        ExactMembers(root, ["schema_version", "dialect", "purpose", "synthetic", "scientific_admissible", "kind", "identity", "data", ..extraMembers]);
-        ValidateEnvelope(root, kind); return root;
+        ExactMembers(root, ["schema_version", "dialect", "purpose", "synthetic", "scientific_admissible", "kind", "identity", "data"]);
+        ValidateEnvelope(root, kind, purpose, repeat); return root;
     }
-    private static void ValidateEnvelope(JsonElement root, string kind)
+    private static void ValidateEnvelope(JsonElement root, string kind, string purpose, int? repeat)
     {
-        if (Nonnegative(root.GetProperty("schema_version")) != 3 || RequiredString(root.GetProperty("dialect")) != "b10_abrupt" || RequiredString(root.GetProperty("purpose")) != "diagnostic_trial" || root.GetProperty("synthetic").ValueKind != JsonValueKind.True || root.GetProperty("scientific_admissible").ValueKind != JsonValueKind.False || RequiredString(root.GetProperty("kind")) != kind) throw Gap("malformed_frame");
-        ValidateIdentity(root.GetProperty("identity")); ValidateData(kind, root.GetProperty("data"));
+        if (Nonnegative(root.GetProperty("schema_version")) != 3 || RequiredString(root.GetProperty("dialect")) != "b10_abrupt" || RequiredString(root.GetProperty("purpose")) != purpose || root.GetProperty("synthetic").ValueKind != JsonValueKind.True || root.GetProperty("scientific_admissible").ValueKind != JsonValueKind.False || RequiredString(root.GetProperty("kind")) != kind) throw Gap("malformed_frame");
+        ValidateIdentity(root.GetProperty("identity"), purpose, repeat); ValidateData(kind, root.GetProperty("data"));
     }
-    internal static byte[] WriteFrame(Frame frame) => JsonSerializer.SerializeToUtf8Bytes(new { schema_version = 3, dialect = "b10_abrupt", purpose = "diagnostic_trial", synthetic = true, scientific_admissible = false, frame.Kind, frame.Identity, frame.Sequence, frame.ObservedUtc, frame.MonotonicTicks, frame.ClockFrequency, frame.Data }, JsonOptions);
-    internal static Frame ReadFrame(ReadOnlyMemory<byte> bytes)
+    internal static byte[] WriteFrame(Frame frame, string purpose = "diagnostic_trial") => JsonSerializer.SerializeToUtf8Bytes(new { schema_version = 3, dialect = "b10_abrupt", purpose, synthetic = true, scientific_admissible = false, frame.Kind, frame.Identity, frame.Sequence, frame.ObservedUtc, frame.MonotonicTicks, frame.ClockFrequency, frame.Data }, JsonOptions);
+    internal static Frame ReadFrame(ReadOnlyMemory<byte> bytes, string purpose = "diagnostic_trial", int? repeat = null)
     {
         JsonElement root = Parse(bytes);
         ExactMembers(root, "schema_version", "dialect", "purpose", "synthetic", "scientific_admissible", "kind", "identity", "sequence", "observed_utc", "monotonic_ticks", "clock_frequency", "data");
         string kind = RequiredString(root.GetProperty("kind"));
         if (!IsProducingKind(kind) && kind is not ("terminal" or "warmup_terminal" or "native_error" or "gap")) throw Gap("malformed_frame");
-        ValidateEnvelope(root, kind);
+        ValidateEnvelope(root, kind, purpose, repeat);
         long sequence = Nonnegative(root.GetProperty("sequence")), frequency = Nonnegative(root.GetProperty("clock_frequency"));
         string utc = RequiredString(root.GetProperty("observed_utc"));
         if (sequence == 0 || frequency == 0 || !IsUtc(utc)) throw Gap("malformed_frame");
@@ -202,16 +202,17 @@ internal static class B10AbruptWire
         DateTimeOffset.TryParseExact(value, "O", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed) &&
         parsed.ToString("O", CultureInfo.InvariantCulture) == value;
 
-    internal static void ValidateIdentity(JsonElement value)
+    internal static void ValidateIdentity(JsonElement value, string purpose = "diagnostic_trial", int? repeat = null)
     {
         ExactMembers(value, "run_id", "scenario_id", "configuration_id", "phase", "repeat", "source_commit", "image_reference", "job_name", "pod_name", "pod_uid", "instance_id", "predecessor_instance_id");
         foreach (var member in value.EnumerateObject())
         {
-            if (member.Name == "repeat") { if (Nonnegative(member.Value) != 1) throw Gap("malformed_frame"); continue; }
+            if (member.Name == "repeat") { long observed = Nonnegative(member.Value); if ((purpose == "diagnostic_trial" ? observed != 1 : purpose != "scientific" || observed is < 1 or > 5) || repeat is not null && observed != repeat) throw Gap("malformed_frame"); continue; }
             if (member.Name == "predecessor_instance_id" && member.Value.ValueKind == JsonValueKind.Null) continue;
             if (member.Value.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(member.Value.GetString()) ||
                 member.Value.GetString()!.Any(c => char.IsControl(c) || char.IsWhiteSpace(c))) throw Gap("malformed_frame");
         }
+        if (purpose == "scientific" && !System.Text.RegularExpressions.Regex.IsMatch(value.GetProperty("run_id").GetString()!, "^b10-[0-9]+-[0-9]+$", System.Text.RegularExpressions.RegexOptions.CultureInvariant)) throw Gap("malformed_frame");
         string source = value.GetProperty("source_commit").GetString()!;
         string image = value.GetProperty("image_reference").GetString()!;
         int imageDigest = image.LastIndexOf("@sha256:", StringComparison.Ordinal);
@@ -220,6 +221,11 @@ internal static class B10AbruptWire
         if (value.GetProperty("instance_id").GetString() != value.GetProperty("pod_name").GetString()) throw Gap("malformed_frame");
         if (value.GetProperty("scenario_id").GetString() != "B10" || value.GetProperty("configuration_id").GetString() != "C1" || value.GetProperty("phase").GetString() != "C1") throw Gap("malformed_frame");
     }
+
+    internal static string ProbeKey(Identity identity, string arm) => $"B10/{identity.RunId}/{identity.ConfigurationId}/{identity.Repeat.ToString(CultureInfo.InvariantCulture)}/{arm}";
+
+    internal static string ArtifactPrefix(Identity identity, string purpose) =>
+        $"{identity.RunId}/C1/r{identity.Repeat.ToString(CultureInfo.InvariantCulture)}/{(purpose == "scientific" ? "b10-abrupt" : "b10-abrupt-diagnostic")}/{identity.PodName}/";
 
     internal static Descriptor Describe(string path, string name)
     {

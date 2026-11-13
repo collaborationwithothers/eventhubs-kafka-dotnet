@@ -1057,7 +1057,10 @@ internal static class VerifierResultCodec
     private static bool EligibleShape(VerifierResultStatus status, IReadOnlyList<int> failedChecks, bool? classificationFinal,
         IReadOnlyList<WatermarkOffset>? start, IReadOnlyList<WatermarkOffset>? end, B10IntakeEvidence? intake) =>
         status == VerifierResultStatus.Incomplete && failedChecks.Count == 0 && classificationFinal == false &&
-        start is not null && end is not null && intake?.Producers.Count == 2 &&
+        start is not null && end is not null && intake is not null &&
+        (intake.Producers.Count == 2 || intake.Producers.Count == 1 &&
+            intake.Producers[0].Identity.ConfigurationId == "C0" &&
+            VerifierHostOptions.IsB10ScientificRunId(intake.Producers[0].Identity.RunId)) &&
         intake.Producers.All(producer => producer.PublicationAcceptance is not null);
 
     private static HashSet<string> BuildOptionalRootFields()

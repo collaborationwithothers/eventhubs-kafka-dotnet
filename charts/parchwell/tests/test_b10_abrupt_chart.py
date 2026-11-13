@@ -204,12 +204,83 @@ def invalid_reader_cases():
         case = verify_reader_case(); case['runtime'][key] = value
         yield key + '-' + str(value), case
 
+
+def scientific_cases():
+    for repeat in (1, 5):
+        for original in diagnostic_cases():
+            case = deepcopy(original)
+            runtime = case['runtime']
+            runtime.update(run_id='b10-1-1', repeat=repeat, b10_abrupt_diagnostic=False,
+                           b10_abrupt_science=True, run_kind='batch',
+                           loadgen_job_name=f'b10-1-1-c1-r{repeat}-loadgen')
+            yield case
+
+
+def scientific_schema_rejections():
+    original = next(scientific_cases())
+    for key, value in [('run_id', 'b10d-1-1'), ('repeat', 6),
+                       ('b10_abrupt_diagnostic', True), ('b10_abrupt_science', False),
+                       ('capture_pods', 'excluded')]:
+        case = deepcopy(original); case['runtime'][key] = value
+        yield key + '-' + str(value), case
+    case = deepcopy(original); case['runtime']['bounds']['b10_abrupt'] = None
+    yield 'missing-abrupt-bounds', case
+    case = deepcopy(original); case['runtime']['mode'] = 'loadgen'
+    case['runtime']['b10_abrupt_science'] = False
+    yield 'binding-with-neither-flag', case
+    for run_id, repeat in [('b10-1-1', 6), ('b10d-1-1', 2)]:
+        case = verify_reader_case()
+        case['runtime'].update(run_id=run_id, repeat=repeat,
+                               loadgen_job_name=f'{run_id}-c1-r{repeat}-loadgen')
+        yield 'reader-' + run_id + '-' + str(repeat), case
+
+
+def verify_scientific(directory):
+    positives = list(scientific_cases())
+    for index, values in enumerate(positives):
+        document = render(values, directory, 'science-' + str(index))
+        job = next(obj for obj in yaml.safe_load_all(document) if obj['kind'] == 'Job')
+        runtime = values['runtime']
+        container = job['spec']['template']['spec']['containers'][0]
+        env = {entry['name']: entry.get('value') for entry in container['env']}
+        assert env['B10Abrupt__Purpose'] == 'scientific'
+        assert env['B10Abrupt__Repeat'] == str(runtime['repeat'])
+        suffix = 'restart' if runtime['mode'] == 'loadgen-restart' else 'successor'
+        assert job['metadata']['name'] == runtime['loadgen_job_name'] + '-' + suffix
+        assert container['args'] == ['--b10-abrupt-parent' if suffix == 'restart' else '--b10-abrupt-successor']
+        assert job['spec']['activeDeadlineSeconds'] == 1140
+        assert any(volume['name'] == 'b10-abrupt-binding' for volume in job['spec']['template']['spec']['volumes'])
+        proc = run(['kubeconform', '-strict', '-summary', '-kubernetes-version', '1.35.0',
+                    str(directory / ('science-' + str(index) + '.rendered.yaml'))])
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+    reader = verify_reader_case()
+    reader['runtime'].update(run_id='b10-1-1', repeat=5, loadgen_job_name='b10-1-1-c1-r5-loadgen')
+    document = render(reader, directory, 'science-reader')
+    job = next(obj for obj in yaml.safe_load_all(document) if obj['kind'] == 'Job')
+    env = {entry['name']: entry.get('value') for entry in job['spec']['template']['spec']['containers'][0]['env']}
+    assert job['metadata']['name'] == 'b10-1-1-c1-r5-b10-abrupt-verify'
+    assert env['Verifier__ArtifactPrefix'] == 'b10-1-1/C1/r5/producer/'
+    assert job['spec']['activeDeadlineSeconds'] == 750
+    negatives = list(scientific_schema_rejections())
+    for index, (name, values) in enumerate(negatives):
+        source = directory / ('science-invalid-' + str(index) + '.yaml')
+        with_case(values, source)
+        proc = run(['helm', 'template', 'synthetic', 'charts/parchwell', '-f', str(source)])
+        assert proc.returncode != 0, name
+        assert "values don't meet the specifications" in proc.stderr, (name, proc.stderr)
+    # Omission and explicit false are the same default-off runtime selection.
+    absent = deepcopy(FIXTURE)
+    explicit = deepcopy(absent); explicit['runtime']['b10_abrupt_science'] = False
+    assert render(absent, directory, 'science-absent') == render(explicit, directory, 'science-false')
+    print(f'b10 scientific chart checks passed: {len(positives) + 3} renders, {len(negatives)} schema rejections')
+
 def main():
     schema = json.loads((CHART / 'values.schema.json').read_text())
     assert DEFAULTS['b10_abrupt'] == POLICY
     assert schema['properties']['runtime']['properties']['bounds']['properties']['b10_abrupt']['const'] == POLICY
     with tempfile.TemporaryDirectory(prefix='parchwell-b10-abrupt-chart-') as name:
         directory = Path(name)
+        verify_scientific(directory)
         defaults = deepcopy(FIXTURE)
         explicit_false = deepcopy(defaults); explicit_false['runtime']['b10_abrupt_diagnostic'] = False
         ordinary = render(defaults, directory, 'defaults')

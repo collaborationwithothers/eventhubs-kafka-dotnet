@@ -61,8 +61,10 @@ internal sealed class VerifierHostOptions
         get
         {
             string first = Common.Phase.PhaseIdentity.JobName(RunId!, Phase!, Repeat!.Value);
-            if (ScenarioId == "B10" && IsB10TrialRunId(RunId))
+            if (ScenarioId == "B10" && (IsB10TrialRunId(RunId) ||
+                ConfigurationId == "C1" && IsB10ScientificRunId(RunId)))
                 return [first, first + "-restart", first + "-successor"];
+            if (ScenarioId == "B10" && ConfigurationId == "C0" && IsB10ScientificRunId(RunId)) return [first];
             return ScenarioId == "B10"
                 ? [first, Common.Phase.PhaseIdentity.RestartJobName(RunId!, Phase!, Repeat.Value)]
                 : [first];
@@ -71,6 +73,9 @@ internal sealed class VerifierHostOptions
 
     internal static bool IsB10TrialRunId(string? runId) =>
         runId is not null && B10TrialRunIdPattern.Match().IsMatch(runId);
+
+    internal static bool IsB10ScientificRunId(string? runId) =>
+        runId is not null && B10ScientificRunIdPattern.Match().IsMatch(runId);
 
     public string? ClientId { get; set; }
     public string? VerifierClientId { get; set; }
@@ -113,6 +118,12 @@ internal sealed class VerifierHostOptions
     public string? GateOutputPath { get; set; }
     public List<ExpectedProbeRepeat>? ExpectedRepeats { get; set; }
     public List<string>? RepeatResultPaths { get; set; }
+}
+
+internal static partial class B10ScientificRunIdPattern
+{
+    [GeneratedRegex("\\Ab10-[0-9]+-[0-9]+\\z", RegexOptions.CultureInvariant)]
+    internal static partial Regex Match();
 }
 
 internal static partial class B10TrialRunIdPattern

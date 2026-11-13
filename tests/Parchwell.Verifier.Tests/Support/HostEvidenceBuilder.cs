@@ -30,9 +30,10 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
     private bool fixtureIdentityInitialized;
     private static readonly JsonSerializerOptions WireOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
 
-    public HostEvidenceBuilder(string instanceId="pod-c5",string clientId="pod-c5",string verifierClientId="synthetic-verifier",string scenarioId="A01",string phase="C0",string? scenarioSourceId=null)
+    public HostEvidenceBuilder(string instanceId="pod-c5",string clientId="pod-c5",string verifierClientId="synthetic-verifier",string scenarioId="A01",string phase="C0",string? scenarioSourceId=null,string? runId=null)
     {
         Options.ScenarioId=scenarioId;
+        if(runId is not null)Options.RunId=runId;
         SetRepeatCoordinates(Options.Repeat!.Value,phase);
         Options.InstanceId=instanceId;
         Options.ClientId=clientId;Options.VerifierClientId=verifierClientId;

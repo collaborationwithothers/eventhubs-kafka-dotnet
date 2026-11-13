@@ -1,4 +1,4 @@
-"""Bounded diagnostic-only orchestration for the owned-child restart trial."""
+"""Bounded orchestration and publication readers for the owned-child restart path."""
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -219,6 +219,10 @@ def failure_site(error, caller):
 
 
 class Trial:
+    repeat = 1
+    purpose = 'diagnostic_trial'
+    artifact_segment = 'b10-abrupt-diagnostic'
+
     def __init__(self, phase, failure=ValueError):
         self.p = phase
         self.failure = failure
@@ -242,6 +246,7 @@ class Trial:
         state.setdefault('b10_abrupt_gaps', []).append(reason)
         state.setdefault('b10_abrupt_diagnostics', []).append({
             'reason': reason, 'boundary': boundary, 'exception_type': type(error).__name__,
+            **({'repeat': self.repeat} if self.purpose == 'scientific' else {}),
             'validation_detail': message, 'site': failure_site(cause or error, caller or sys._getframe(1)),
             'cause_type': type(cause).__name__ if cause is not None else None})
         state['candidate'] = None
@@ -282,6 +287,9 @@ class Trial:
             b10_abrupt_binding_configmap=phase['run_id'] + '-b10-abrupt-' + role)
         return values
 
+    def configmap_name(self, role):
+        return self.phase()['run_id'] + '-b10-abrupt-' + role
+
     def configmap(self, role, binding):
         phase = self.phase()
         raw = encode(binding)
@@ -290,7 +298,7 @@ class Trial:
         if role == 'first':
             (self.p.private / 'b10-abrupt-start-line-binding.json').write_bytes(raw)
         value = {'apiVersion': 'v1', 'kind': 'ConfigMap', 'metadata': {
-            'name': phase['run_id'] + '-b10-abrupt-' + role, 'namespace': 'parchwell',
+            'name': self.configmap_name(role), 'namespace': 'parchwell',
             'labels': {'app.kubernetes.io/instance': phase['run_id']}},
             'immutable': True, 'data': {'binding.json': raw.decode()}}
         path = self.p.private / ('b10-abrupt-' + role + '-configmap.json')
@@ -302,7 +310,7 @@ class Trial:
 
     def metadata(self, record, deadline):
         phase = self.phase()
-        prefix = phase['run_id'] + '/C1/r1/'
+        prefix = phase['run_id'] + '/C1/r' + str(self.repeat) + '/'
         files = {}
         for name in ('start-line.json', 'broker-inventory.json', 'start-line-completion.json'):
             raw = self.p.download_blob(prefix + name, self.directory / name, AUXILIARY_MAXIMUM, deadline)
@@ -311,7 +319,7 @@ class Trial:
             files[name] = raw
         receipt = decode(files['start-line-completion.json'])
         for key, expected in {'schema_version': 1, 'mode': 'start-line', 'scenario_id': 'B10',
-                'configuration_id': 'C1', 'run_id': phase['run_id'], 'phase': 'C1', 'repeat': 1,
+                'configuration_id': 'C1', 'run_id': phase['run_id'], 'phase': 'C1', 'repeat': self.repeat,
                 'source_commit': phase['source_commit'], 'job_name': record['job'],
                 'handler_exit_code': 0, 'cleanup_completed': True}.items():
             if receipt.get(key) != expected:
@@ -327,13 +335,13 @@ class Trial:
             if any(identity.get(key) != value for key, value in {'scenario_id': 'B10',
                     'configuration_id': 'C1', 'run_id': phase['run_id']}.items()):
                 raise ValueError('start-line identity')
-            first_job = self.p.mode_job(phase, 'loadgen', 1)
+            first_job = self.p.mode_job(phase, 'loadgen', self.repeat)
             if any(identity.get(key) != first_job for key in ('instance_id', 'expected_instance_id', 'client_id')):
                 raise ValueError('start-line producer identity')
             if name == 'start-line.json':
                 if (document.get('verifier_commit') != phase['source_commit'] or document.get('expected_job_names') !=
-                        [first_job, self.p.mode_job(phase, 'loadgen-restart', 1),
-                         self.p.mode_job(phase, 'loadgen-successor', 1)]):
+                        [first_job, self.p.mode_job(phase, 'loadgen-restart', self.repeat),
+                         self.p.mode_job(phase, 'loadgen-successor', self.repeat)]):
                     raise ValueError('start-line source or jobs')
             elif document.get('source_commit') != phase['source_commit'] or document.get('source') != 'kafka_metadata':
                 raise ValueError('broker inventory source')
@@ -460,13 +468,13 @@ class Trial:
     def envelope(self, raw, kind, observation, predecessor=None, maximum=AUXILIARY_MAXIMUM):
         value = decode(raw, maximum)
         if (not isinstance(value, dict) or set(value) != ENVELOPE_FIELDS or type(value['schema_version']) is not int or value['schema_version'] != 3
-                or value['dialect'] != 'b10_abrupt' or value['purpose'] != 'diagnostic_trial'
+                or value['dialect'] != 'b10_abrupt' or value['purpose'] != self.purpose
                 or value['synthetic'] is not True or value['scientific_admissible'] is not False or value['kind'] != kind):
             raise ValueError('diagnostic envelope')
         identity = value['identity']
         phase = self.phase()
         expected = {'run_id': phase['run_id'], 'scenario_id': 'B10', 'configuration_id': 'C1', 'phase': 'C1',
-                    'repeat': 1, 'source_commit': phase['source_commit'], 'image_reference': phase['images']['loadgen']['reference'],
+                    'repeat': self.repeat, 'source_commit': phase['source_commit'], 'image_reference': phase['images']['loadgen']['reference'],
                     'job_name': observation['job_name'], 'pod_name': observation['pod_name'], 'pod_uid': observation['pod_uid'],
                     'instance_id': observation['pod_name'], 'predecessor_instance_id': predecessor}
         if not isinstance(identity, dict) or set(identity) != IDENTITY_FIELDS or identity != expected or type(identity['repeat']) is not int:
@@ -592,7 +600,7 @@ class Trial:
 
     def download(self, observation, names, deadline):
         phase = self.phase()
-        prefix = phase['run_id'] + '/C1/r1/b10-abrupt-diagnostic/' + observation['pod_name'] + '/'
+        prefix = phase['run_id'] + '/C1/r' + str(self.repeat) + '/' + self.artifact_segment + '/' + observation['pod_name'] + '/'
         target = self.directory / observation['pod_name']
         target.mkdir(exist_ok=True)
         files = {}
@@ -650,7 +658,7 @@ class Trial:
                 arm = data['arm']
                 if (arm in prepared
                         or data['attempt_id'] != frame['identity']['instance_id'] + '-' + arm + '-warmup'
-                        or data['key'] != 'B10/' + self.phase()['run_id'] + '/C1/1/' + arm
+                        or data['key'] != 'B10/' + self.phase()['run_id'] + '/C1/' + str(self.repeat) + '/' + arm
                         or arm == 'cross_restart' and not self.control_complete_before(frames, frame['sequence'])):
                     raise ValueError('journal malformed_frame')
                 prepared[arm] = frame
@@ -703,7 +711,7 @@ class Trial:
         receipt_identity = decode(files['termination.json'])['identity']
         if any(receipt_identity.get(key) != observation.get(key) for key in ('job_name', 'pod_name', 'pod_uid')):
             self.fail('b10_abrupt_first_termination_unknown', safety=True)
-        if observation['job_name'] != self.phase()['run_id'] + '-c1-r1-loadgen-restart':
+        if observation['job_name'] != self.p.mode_job(self.phase(), 'loadgen-restart', self.repeat):
             raise ValueError('diagnostic identity')
         objects = {name: self.envelope(files[name], kind, observation) for name, kind in
                    (('registration.json', 'registration'), ('abrupt-manifest.json', 'abrupt_manifest'),
@@ -746,7 +754,7 @@ class Trial:
                         or data['arm'] not in ('same_instance', 'cross_restart') or data['role'] not in ('original', 'resend')
                         or type(data['ordinal']) is not int or not 0 <= data['ordinal'] <= 4
                         or type(data['sequence']) is not int or data['sequence'] != data['ordinal']
-                        or data['key'] != 'B10/' + self.phase()['run_id'] + '/C1/1/' + data['arm']
+                        or data['key'] != 'B10/' + self.phase()['run_id'] + '/C1/' + str(self.repeat) + '/' + data['arm']
                         or data['probe_id'] != data['key']
                         or type(data['payload_length']) is not int or not 0 <= data['payload_length'] <= 900000
                         or not isinstance(data['payload_sha256'], str) or not re.fullmatch('[0-9a-f]{64}', data['payload_sha256'])):
@@ -977,7 +985,7 @@ class Trial:
         if files is not None:
             binding = decode(binding_path.read_bytes())
             first = binding['first_pod']
-            if observation['job_name'] != self.phase()['run_id'] + '-c1-r1-loadgen-successor':
+            if observation['job_name'] != self.p.mode_job(self.phase(), 'loadgen-successor', self.repeat):
                 raise ValueError('b10_abrupt_successor_binding_invalid')
             if observation['pod_name'] == first['pod_name'] or observation['pod_uid'] == first['pod_uid']:
                 raise ValueError('b10_abrupt_successor_binding_invalid')
@@ -1060,3 +1068,188 @@ class Trial:
             self.record_failure(error, 'b10_abrupt_publication_failed', 'diagnostic_status')
             failed = True
         return int(failed)
+
+
+class Scientific(Trial):
+    """Apply the trial's admission rules independently to each scientific repeat."""
+    purpose = 'scientific'
+    artifact_segment = 'b10-abrupt'
+    modes = ('start-line', 'loadgen', 'loadgen-restart', 'loadgen-successor', 'b10-abrupt-verify')
+
+    def __init__(self, phase, failure, repeat, deadline, lifecycle_budget):
+        super().__init__(phase, failure)
+        self.repeat = repeat
+        self.deadline = deadline
+        self.lifecycle_budget = lifecycle_budget
+        self.records = []
+        self.observations = {}
+
+    @property
+    def directory(self):
+        return self.p.artifacts / 'b10-abrupt' / ('r' + str(self.repeat))
+
+    def phase(self):
+        phase = self.p.read('phase.json')
+        if (any(phase.get(key) != value for key, value in
+                {'scenario': 'B10', 'configuration': 'C1', 'phase': 'C1'}.items())
+                or re.fullmatch(r'b10-[0-9]+-[0-9]+', phase.get('run_id', '')) is None
+                or phase.get('b10_abrupt_diagnostic') is True
+                or phase.get('purpose') == 'diagnostic_trial' or not 1 <= self.repeat <= 5):
+            raise self.failure('b10_abrupt_configuration_invalid')
+        return phase
+
+    def values(self, mode, values=None):
+        if mode not in execution_modes('C1'):
+            raise ValueError('b10_abrupt_configuration_invalid')
+        values = values or self.p.values(mode, self.repeat)
+        role = 'first' if mode == 'loadgen-restart' else 'successor'
+        values['runtime'].update(b10_abrupt_science=True,
+            b10_abrupt_binding_configmap=self.configmap_name(role))
+        return values
+
+    def configmap_name(self, role):
+        return self.phase()['run_id'] + '-b10-abrupt-' + role + '-r' + str(self.repeat)
+
+    def job(self, mode, deadline):
+        """Keep verifier execution possible after a successor sets safety_stop."""
+        name = self.p.mode_job(self.phase(), mode, self.repeat)
+        record = {'job': name, 'mode': mode, 'repeat': self.repeat, 'outcome': 'not_attempted',
+                  **{key: None for key in ('render', 'apply', 'wait', 'collect', 'delete', 'confirm')}}
+        state = self.p.state()
+        state['modes'].append(record)
+        self.p.save_state(state)
+        self.records.append(record)
+        if deadline - time.monotonic() <= 5:
+            record['reason'] = 'orchestration_deadline'
+        else:
+            budget = self.p.render(mode, self.repeat)
+            record['render'] = self.p.render_code
+            if budget is None:
+                record['outcome'] = 'render_failed'
+            else:
+                path = self.p.private / ('rendered-' + name + '.yaml')
+                record['apply'] = self.p.run(['kubectl', 'apply', '-f', str(path), '--request-timeout=30s'], 60)
+                if record['apply']:
+                    record['outcome'] = 'apply_failed'
+                else:
+                    record['wait'] = self.p.run(['bash', 'infra/scripts/lifecycle/lifecycle.sh',
+                                               'wait-job', name, str(budget)], budget + 90)
+                    record['outcome'] = 'complete' if record['wait'] == 0 else 'failed' if record['wait'] == 1 else 'unknown'
+        state = self.p.state()
+        state['modes'][-1] = record
+        if mode != 'b10-abrupt-verify' and record['outcome'] in ('unknown', 'apply_failed'):
+            state['safety_stop'] = True
+        if deadline - time.monotonic() <= 5 and record['apply'] == 0 and record['outcome'] != 'complete':
+            state['safety_stop'] = True
+        self.p.save_state(state)
+        return record
+
+    def observe_first_termination(self, record):
+        try:
+            observation = self.p.b10_scientific_observe(record, self.deadline, self.lifecycle_budget)
+            if observation is None:
+                raise ValueError('pod observation unavailable')
+            self.observations[record['job']] = observation
+            return observation
+        except (ValueError, OSError, LookupError, TypeError, AttributeError, self.failure) as error:
+            self.fail('b10_abrupt_first_termination_unknown', safety=True, cause=error)
+
+    def collect_job(self, record):
+        if record['apply'] is None:
+            return
+        try:
+            record['collect'] = self.p.run(['bash', 'infra/scripts/lifecycle/lifecycle.sh',
+                                          'collect-job', record['job']], 210)
+            if record['collect']:
+                reason = ('b10_abrupt_deadline_exhausted' if record['collect'] == 124
+                          else 'b10_abrupt_publication_ambiguous')
+                self.record_failure(ValueError(reason), reason,
+                                    'job_collection')
+            collected = self.p.artifacts / record['job']
+            if collected.is_dir():
+                shutil.copytree(collected, self.directory / record['job'], dirs_exist_ok=True)
+        except (ValueError, OSError, LookupError, TypeError, AttributeError, self.failure) as error:
+            self.record_failure(error, 'b10_abrupt_publication_failed', 'job_collection')
+        state = self.p.state()
+        next(entry for entry in state['modes'] if entry['job'] == record['job']).update(record)
+        self.p.save_state(state)
+
+    def run(self):
+        self.phase()
+        self.directory.mkdir(parents=True, exist_ok=True)
+        boundary, failure = 'metadata', 'b10_abrupt_publication_failed'
+        binding = None
+        try:
+            metadata = self.p.run_mode('start-line', self.repeat, absolute_deadline=self.deadline)
+            if metadata['outcome'] != 'complete' or self.p.state().get('safety_stop', False):
+                raise ValueError('b10_abrupt_publication_failed')
+            self.metadata(metadata, self.deadline)
+            boundary = 'timeout_job'
+            timeout = self.job('loadgen', self.deadline)
+            if timeout['apply'] is not None:
+                try:
+                    self.p.b10_scientific_observe(timeout, self.deadline, self.lifecycle_budget)
+                except (ValueError, OSError, LookupError, TypeError, AttributeError, self.failure):
+                    timeout['outcome'] = 'unknown'
+            if timeout['outcome'] in ('unknown', 'apply_failed'):
+                self.record_failure(ValueError('b10_abrupt_timeout_job_unknown'),
+                                    'b10_abrupt_timeout_job_unknown', boundary, safety=True)
+                return
+            if timeout['outcome'] == 'render_failed':
+                raise ValueError('b10_abrupt_configuration_invalid')
+            if timeout['outcome'] not in ('complete', 'failed'):
+                return
+            boundary, failure = 'first_termination', 'b10_abrupt_first_termination_unknown'
+            restart = self.job('loadgen-restart', self.deadline)
+            observation = self.observe_first_termination(restart)
+            if restart['outcome'] != 'complete':
+                raise ValueError('b10_abrupt_publication_failed')
+            boundary, failure = 'first_publication', 'b10_abrupt_publication_failed'
+            files = self.download(observation, FIRST_FILES, self.deadline)
+            manifest = self.envelope(files['abrupt-manifest.json'], 'abrupt_manifest', observation)['data']
+            names = [entry['name'] for entry in manifest['report_files']]
+            if len(names) > len(REPORT_FILES) or len(set(names)) != len(names) or not set(names) <= set(REPORT_FILES):
+                raise ValueError('b10_abrupt_publication_failed')
+            files.update(self.download(observation, names, self.deadline))
+            binding = self.accept_diagnostic_publication(observation, files)
+            (self.directory / 'predecessor-binding.json').write_bytes(encode(binding))
+            boundary, failure = 'successor_admission', 'b10_abrupt_successor_binding_invalid'
+            successor = self.release_successor(binding, self.deadline)
+            if successor['outcome'] != 'complete':
+                reason = ('b10_abrupt_deadline_exhausted' if successor.get('wait') == 124
+                          else 'b10_abrupt_publication_ambiguous')
+                self.record_failure(ValueError(reason), reason, 'successor_job')
+            if successor['apply'] is not None:
+                boundary, failure = 'successor_termination', 'b10_abrupt_first_termination_unknown'
+                observation = self.observe_first_termination(successor)
+                boundary, failure = 'successor_publication', 'b10_abrupt_publication_failed'
+                files = self.download(observation, SUCCESSOR_FILES, self.deadline)
+                boundary, failure = 'successor_receipt', 'b10_abrupt_successor_binding_invalid'
+                self.collect(files, observation)
+        except (ValueError, OSError, LookupError, TypeError, AttributeError, self.failure) as error:
+            self.record_failure(error, failure, boundary)
+        finally:
+            if binding is not None:
+                try:
+                    verify = self.job('b10-abrupt-verify', self.deadline)
+                    try:
+                        self.p.b10_scientific_observe(verify, self.deadline, self.lifecycle_budget)
+                    except (ValueError, OSError, LookupError, TypeError, AttributeError, self.failure):
+                        pass
+                    if verify['outcome'] != 'complete':
+                        raise ValueError('b10_abrupt_verify_failed')
+                except (ValueError, OSError, LookupError, TypeError, AttributeError, self.failure) as error:
+                    self.record_failure(ValueError('b10_abrupt_verify_failed'),
+                                        'b10_abrupt_verify_failed', 'verify_job', cause=error)
+                else:
+                    try:
+                        name = self.phase()['run_id'] + '/C1/r' + str(self.repeat) + '/b10-abrupt/nonfinal-result.json'
+                        if self.p.download_blob(name, self.directory / 'nonfinal-result.json',
+                                                16777216, self.deadline, container='verifier') is None:
+                            raise ValueError('b10_abrupt_verify_failed')
+                    except (ValueError, OSError, LookupError, TypeError, AttributeError, self.failure) as error:
+                        self.record_failure(ValueError('b10_abrupt_verify_failed'),
+                                            'b10_abrupt_verify_failed', 'verify_collection', cause=error)
+            # Preserve the release window: collect logs only after successor admission.
+            for record in self.records:
+                self.collect_job(record)

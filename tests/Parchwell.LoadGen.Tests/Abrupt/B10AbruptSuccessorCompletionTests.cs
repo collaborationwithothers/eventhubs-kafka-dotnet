@@ -451,7 +451,7 @@ public sealed class B10AbruptSuccessorCompletionTests(ITestOutputHelper output)
         internal int DisposalsAtEvidenceCompletion { get; private set; } = -1;
 
         internal Chain(TimeProvider? inner = null, TimeSpan? completionTimeout = null, string[]? brokers = null, bool real = false,
-            RunIdentity? identity = null, string? root = null, B10AbruptWire.Identity? wireIdentity = null)
+            RunIdentity? identity = null, string? root = null, B10AbruptWire.Identity? wireIdentity = null, string purpose = "diagnostic_trial")
         {
             this.real = real;
             Identity = identity ?? new("B10", "C1", "run-1", "pod-1", "pod-1", "client");
@@ -493,7 +493,7 @@ public sealed class B10AbruptSuccessorCompletionTests(ITestOutputHelper output)
             wireIdentity ??= new B10AbruptWire.Identity("run-1", "B10", "C1", "C1", 1, new string('a', 40),
                 "image@sha256:" + new string('b', 64), "run-1-loadgen", "pod-1", "uid-1", "pod-1", null);
             Producer = new B10AbruptProducer(() => (IProducer<byte[], byte[]>)(object)Native, Clock, Adapter,
-                evidence: Evidence, diagnosticIdentity: wireIdentity, completion: recording);
+                evidence: Evidence, diagnosticIdentity: wireIdentity, completion: recording, purpose: purpose);
             Clock.OnFirstPollTimer = () => { if (DeliverAtPoll) Deliver(); };
         }
 

@@ -82,7 +82,7 @@ internal static class B10AbruptHost
             async Task<int> RunProducerAsync(B10AbruptPublisher.SuccessorInput? input)
             {
                 if (input is not null) await publisher.RegisterDiagnosticAsync(options.Identity(input.FirstIdentity.InstanceId), lifetime.Token).ConfigureAwait(false);
-                B10AbruptJournal? journal = input is null ? new B10AbruptJournal(Path.Combine(options.OutputRoot, "abrupt", "journal.jsonl"), options.Identity(), clock) : null;
+                B10AbruptJournal? journal = input is null ? new B10AbruptJournal(Path.Combine(options.OutputRoot, "abrupt", "journal.jsonl"), options.Identity(), clock, purpose: options.Purpose) : null;
                 await using var journalScope = journal;
                 var runtime = await CreateProducerAsync(host.Services, options, journal, input, lifetime.Token).ConfigureAwait(false);
                 var identity = new RunIdentity(options.ScenarioId, options.ConfigurationId, options.RunId, options.PodName, options.PodName, options.PodName);
@@ -151,7 +151,7 @@ internal static class B10AbruptHost
         });
         builder.Services.AddSingleton<IB10AbruptStorage>(_ => new B10AbruptBlobStorage(
             new BlobServiceClient(new Uri(options.BlobEndpoint), new WorkloadIdentityCredential())));
-        builder.Services.AddSingleton<B10AbruptPublisher>();
+        builder.Services.AddSingleton(services => new B10AbruptPublisher(services.GetRequiredService<IB10AbruptStorage>(), services.GetRequiredService<TimeProvider>(), options.Purpose));
         builder.Services.AddParchwellScenarios(value => { value.MaxDocumentCharacters = 1048576; value.MaxNestingDepth = 32; value.MaxScalarCharacters = 65536; value.MaxParserEvents = 100000; });
         builder.Services.AddSingleton<IScenarioSource>(_ => new FileSystemScenarioSource(options.ScenarioSourceRoot));
         AddB10KafkaRoles(builder.Services, options);
@@ -220,7 +220,7 @@ internal static class B10AbruptHost
         IProducer<byte[], byte[]> Factory() => ProducerFactoryOverride is { } factory ? factory(config, statisticsHandler, errorHandler) : authFactory.CreateProducerBuilder<byte[], byte[]>(config, authentication)
             .SetStatisticsHandler(statisticsHandler).SetLogHandler((_, log) => evidence.CaptureLog(log)).SetErrorHandler(errorHandler).Build();
         var producer = new B10AbruptProducer(Factory, clock, observations, journal, evidence, options.Identity(input?.FirstIdentity.InstanceId),
-            SuccessorCompletion(statistics, evidence, brokers, evidencePath), new B10AbruptTimeline(clock, options.Role, Console.Error), selfKill: SelfKillOverride);
+            SuccessorCompletion(statistics, evidence, brokers, evidencePath), new B10AbruptTimeline(clock, options.Role, Console.Error), selfKill: SelfKillOverride, purpose: options.Purpose);
         var execution = new RunExecutionOptions(186000, 900000, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(300), TimeSpan.FromSeconds(10),
             16384, 67108864, 268435456, options.OutputRoot, "document-events", brokers, false, true,
             TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(20), ApplicationRetryPolicy.ForScenario("B10"));

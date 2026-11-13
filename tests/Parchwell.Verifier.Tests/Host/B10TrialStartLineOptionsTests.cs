@@ -5,7 +5,7 @@ using Xunit;
 namespace Parchwell.Verifier.Tests.Host;
 
 #pragma warning disable CA1707
-// Trial recognition changes only the B10 expected Job list; scientific names retain their original shape.
+// Trial recognition changes only the B10 expected Job list; scientific C1 names use the same three producer roles.
 public sealed class B10TrialStartLineOptionsTests
 {
     [Theory]
@@ -13,7 +13,7 @@ public sealed class B10TrialStartLineOptionsTests
     [InlineData("b10d-01-1", true)]
     [InlineData("b10d-1", false)]
     [InlineData("xb10d-1-1", false)]
-    [InlineData("b10-1-1", false)]
+    [InlineData("b10-1-1", true)]
     public void Given_RunIdAtTrialPatternBoundary_When_StartLineOptionsValidated_Then_DerivesExpectedJobs(
         string runId, bool trial)
     {

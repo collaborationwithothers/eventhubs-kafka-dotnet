@@ -60,9 +60,11 @@ The writer uses bounded non-waiting admission and a separate background file wri
 
 Unit tests cover in-memory generation, codecs, inventory and reconciliation. Filesystem cases are component tests in isolated temporary directories. Local tests establish harness behavior, with no live result, verifier totals or A01 verdict.
 
-## Inactive B10 abrupt diagnostic execution
+## B10 abrupt execution
 
-Diagnostic-only; not active for scientific publication. The arguments `--b10-abrupt-parent`, `--b10-abrupt-child`, `--b10-abrupt-successor` and `--validate-b10-abrupt-configuration` run the B10 abrupt diagnostic of ADR-021 in [the blueprint](../blueprint.md) only when chart value `runtime.b10_abrupt_diagnostic` is true, for B10, C1, repeat 1 and purpose `diagnostic_trial`. The [approved part 1 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/fc1a4f36452b2d302f1d73987e1ba5eb967b3d65/items/404/plan-b10-execution-loadgen.md), sections 3.1 to 3.3, owns these process and Job interfaces; their wire, policy and failure names are in the [B10 abrupt diagnostic contract](b10-abrupt-contract.md). Abrupt output is published under `b10-abrupt-diagnostic/`. The C1 timeout Job is an ordinary `loadgen` Job, unchanged, and publishes under `producer/`; the production-byte test required by [decision 6774480762, point 3](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6774480762) and the [approved part 2 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/0c73e5139e1670d5b675a51fc52dbd99c4b1af49/items/404/plan-b10-execution-trial.md), section 3.7, proves that no scientific path admits that evidence in frozen diagnostic trial state. No verifier, judge or candidate path accepts abrupt diagnostic artifacts.
+The arguments `--b10-abrupt-parent`, `--b10-abrupt-child`, `--b10-abrupt-successor` and `--validate-b10-abrupt-configuration` support ADR-021's restart path. The [B10 abrupt contract](b10-abrupt-contract.md#processes-and-configuration) owns their processes, wire formats, policy and failure names. Its [scientific execution section](b10-abrupt-contract.md#scientific-execution) owns purpose validation, repeat-derived names and keys, publication prefixes and purpose-bound readers.
+
+Scientific C1 selects chart flag `runtime.b10_abrupt_science` and purpose `scientific`; the diagnostic trial keeps `runtime.b10_abrupt_diagnostic`, purpose `diagnostic_trial` and repeat 1. Both purposes retain `scientific_admissible=false` on abrupt envelopes. The C1 timeout Job remains an ordinary `loadgen` Job and publishes under `producer/`. Scientific C0 likewise uses one ordinary producer, as [scientific C0 verify](verifier-contract.md#scientific-c0-verify) requires. The [workflow contract](b10-workflow.md#scientific-execution) owns their ordering; per-repeat publication does not authorize finality or a scientific candidate.
 
 ## Application retry (B10)
 
@@ -78,7 +80,7 @@ Worker status and `first_unexecuted_ordinal` follow schedule progress, not the i
 
 ## Restarted instance (B10)
 
-This section describes the legacy schema-one clean restart. The restart protocol of ADR-021's redesign is in the [B10 abrupt diagnostic contract](b10-abrupt-contract.md).
+This section describes the retained legacy schema-one clean restart. Scientific phase orchestration no longer starts this shape; its restart protocol is in the [B10 abrupt contract](b10-abrupt-contract.md#scientific-execution).
 
 ADR-021 in [the blueprint](../blueprint.md) lets a B10 repeat run a second load generator instance after the first has ended. It resends only sends the first instance reported as timed out. "Second load generator Job (B10)" below defines how it starts and reads the first instance's published evidence.
 
@@ -99,7 +101,7 @@ Checks 1 to 6 need only the manifest. The second instance applies check 7 at rea
 
 ## Second load generator Job (B10)
 
-This section describes the legacy schema-one clean restart. The restart protocol of ADR-021's redesign is in the [B10 abrupt diagnostic contract](b10-abrupt-contract.md).
+This section describes the retained legacy schema-one clean restart. Scientific phase orchestration no longer starts this shape; its restart protocol is in the [B10 abrupt contract](b10-abrupt-contract.md#scientific-execution).
 
 Chart mode `loadgen2` runs the second instance as Job `<run-id>-<lowercase-phase>-r<repeat>-loadgen2`, otherwise rendered as `loadgen`. That name alone marks the second instance. Configuration validation rejects it outside B10. The host reports only the generic invalid-inputs message; `restart_instance_requires_b10` is the reason the tests assert, not a line in the pod log.
 

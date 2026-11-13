@@ -39,7 +39,8 @@ internal static class B10PhaseRegistrationReader
             budget.ConsumeBytes(nameBytes);
             string[] names = listing.Names.Where(name => name.EndsWith("/registration.json", StringComparison.Ordinal))
                 .Order(StringComparer.Ordinal).ToArray();
-            if (names.Length != 2) throw new InvalidOperationException("b10_registration_count_invalid");
+            bool oneProducer = options.ConfigurationId == "C0" && VerifierHostOptions.IsB10ScientificRunId(options.RunId);
+            if (names.Length != (oneProducer ? 1 : 2)) throw new InvalidOperationException("b10_registration_count_invalid");
             var discovered = new List<(ProducerRegistration Registration, string PathInstance)>();
             foreach (string name in names)
             {
@@ -58,7 +59,8 @@ internal static class B10PhaseRegistrationReader
             }
             IReadOnlyList<ProducerRegistration> pair = B10IntakeChecks.BindRegistrations(discovered,
                 options.ScenarioId, options.ConfigurationId!, options.RunId!, options.Phase!, repeat, options.SourceCommit!,
-                [PhaseIdentity.JobName(options.RunId!, options.Phase!, repeat),
+                oneProducer ? [PhaseIdentity.JobName(options.RunId!, options.Phase!, repeat)] :
+                    [PhaseIdentity.JobName(options.RunId!, options.Phase!, repeat),
                     PhaseIdentity.RestartJobName(options.RunId!, options.Phase!, repeat)]);
             foreach (ProducerRegistration registration in pair)
                 if (!instances.Add(registration.Identity.InstanceId))

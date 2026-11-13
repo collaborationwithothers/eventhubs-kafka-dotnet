@@ -153,7 +153,7 @@ internal static class B10AbruptDiagnostics
             },
             startup_cleanup = (object?)null,
             timeline = timeline.Snapshot(omitEntries: reduction >= 1)
-        });
+        }, options.Purpose);
         byte[] diagnostic;
         try { diagnostic = Build(0); }
         catch (InvalidDataException first) when (first.Message == "b10_abrupt_capture_gap:frame_oversize")

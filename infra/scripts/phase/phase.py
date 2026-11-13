@@ -23,6 +23,7 @@ SCENARIOS = {"A01": {"probe": "C0", "C0": "C0", "C3": "C3"},
              "B04": {"C0": "C0", "C1": "C1"},
              "B10": {"C0": "C0", "C1": "C1"}}
 MODES = ("start-line", "loadgen", "verify")
+B10_SCIENTIFIC_RUN = r"b10-[0-9]+-[0-9]+"
 B10_MODES = ("start-line", "loadgen", "loadgen2", "verify")
 B10_PHASE_MODES = ("b10-sweep-line", "b10-sweep")
 B10_ORCHESTRATION_SECONDS = 18000
@@ -260,12 +261,13 @@ class Phase:
     def candidates(self):
         return Path(require("PARCHWELL_CANDIDATE_DIRECTORY"))
 
-    def b10_abrupt(self):
+    def b10_abrupt(self, repeat=None, deadline=None, lifecycle_budget=None):
         source = Path(__file__).with_name("b10_abrupt.py")
         spec = importlib.util.spec_from_file_location("parchwell_b10_abrupt", source)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        return module.Trial(self, Failure)
+        return (module.Trial(self, Failure) if repeat is None else
+                module.Scientific(self, Failure, repeat, deadline, lifecycle_budget))
 
     def prepare_b10_abrupt_trial(self):
         return self.b10_abrupt().prepare()
@@ -456,7 +458,8 @@ class Phase:
         temporary, environment = require("RUNNER_TEMP"), require("GITHUB_ENV")
         run = f"{prefix}-{require('GITHUB_RUN_ID')}-{require('GITHUB_RUN_ATTEMPT')}"
         sha = require("GITHUB_SHA")
-        if not re.fullmatch(r"[0-9a-f]{40}", sha) or len(run) > 29 or not re.fullmatch(LABEL, run):
+        if (not re.fullmatch(r"[0-9a-f]{40}", sha) or len(run) > 29 or not re.fullmatch(LABEL, run)
+                or selected == "B10" and prefix == "b10" and not re.fullmatch(B10_SCIENTIFIC_RUN, run)):
             raise Failure("invalid run or source commit")
         self.validate_resource()
         secrets = {}
@@ -657,8 +660,11 @@ class Phase:
         values = self.private / f"values-{job}.json"
         rendered = self.private / f"rendered-{job}.yaml"
         value_set = self.values(mode, repeat, item, configuration, action_role)
-        if phase.get("b10_abrupt_diagnostic") is True and mode in ("loadgen-restart", "loadgen-successor"):
-            value_set = self.b10_abrupt().values(mode, value_set)
+        if mode in ("loadgen-restart", "loadgen-successor"):
+            if phase.get("b10_abrupt_diagnostic") is True:
+                value_set = self.b10_abrupt().values(mode, value_set)
+            elif self.b10_scientific(phase):
+                value_set = self.b10_abrupt(repeat).values(mode, value_set)
         write_json(values, value_set)
         self.render_code = self.run(["helm", "template", "parchwell", "charts/parchwell", "--values", str(values)],
                                     120, output=rendered, maximum=4 * MIB)
@@ -779,6 +785,8 @@ class Phase:
 
     def judge(self):
         self.reject_b10_abrupt_science()
+        if self.b10_scientific(self.read("phase.json")):
+            return self.b10_final_judgement_gap()
         if self.read("phase.json")["scenario"] == "B10":
             return int(self.run_mode("judge", None, absolute_deadline=self.b10_deadline())["outcome"] in BAD_OUTCOMES)
         return int(self.run_mode("judge", None)["outcome"] in BAD_OUTCOMES)
@@ -941,7 +949,140 @@ class Phase:
         write_json(self.private / "phase.json", phase)
         return None
 
+    @staticmethod
+    def b10_scientific(phase):
+        return phase.get("scenario") == "B10" and re.fullmatch(B10_SCIENTIFIC_RUN, phase.get("run_id", "")) is not None
+
+    def b10_final_judgement_gap(self):
+        phase = self.read("phase.json")
+        reason = "b10_" + phase["configuration"].lower() + "_final_judgement_unavailable"
+        state = self.state()
+        state["b10_candidate_gap"] = reason
+        state["candidate"] = None
+        state["full_allowed"] = False
+        self.save_state(state)
+        for name in ("candidate.json", "candidate.json.partial"):
+            (self.candidates / name).unlink(missing_ok=True)
+        append_lines(require("GITHUB_OUTPUT"), ["full_allowed=false"])
+        return 1
+
+    def b10_scientific_observe(self, record, deadline, budget, query=True):
+        """Retain one bounded pod observation for the later final-judgement reader."""
+        if record["apply"] is None:
+            return None
+        phase = self.read("phase.json")
+        role = "verifier" if record["mode"] in ("verify", "b10-abrupt-verify") else "loadgen"
+        key = "verifiers" if role == "verifier" else "producers"
+        began = time.monotonic()
+        previous = self.command_deadline
+        path = self.artifacts / record["job"] / "pods.json"
+        try:
+            remaining = B10_LIFECYCLE_SECONDS - budget[0]
+            if remaining <= 0 or deadline - began <= TERMINATION_RESERVE:
+                raise ValueError("lifecycle deadline")
+            self.command_deadline = min(deadline, began + remaining)
+            if query:
+                path.parent.mkdir(exist_ok=True)
+                code = self.run(["kubectl", "get", "pods", "-n", "parchwell", "-l", "job-name=" + record["job"],
+                                 "-o", "json", "--request-timeout=30s"], min(30, remaining), output=path, maximum=4 * MIB)
+                if code:
+                    raise ValueError("pod observation failed")
+            if not 0 < path.stat().st_size <= 4 * MIB:
+                raise ValueError("pod size")
+            pods = single_action_json(path.read_bytes())["items"]
+            if not isinstance(pods, list) or len(pods) != 1:
+                raise ValueError("pod count")
+            pod = pods[0]
+            metadata, spec = pod["metadata"], pod["spec"]
+            if (not isinstance(metadata["name"], str) or not re.fullmatch(LABEL, metadata["name"])
+                    or not isinstance(metadata["uid"], str) or not metadata["uid"]):
+                raise ValueError("pod identity")
+            owners = [entry for entry in metadata["ownerReferences"] if entry.get("controller") is True]
+            if len(owners) != 1 or owners[0].get("kind") != "Job" or owners[0].get("name") != record["job"]:
+                raise ValueError("pod Job binding")
+            containers = [entry for entry in spec["containers"] if entry["name"] == role]
+            if len(containers) != 1 or containers[0]["image"] != phase["images"][role]["reference"]:
+                raise ValueError("pod worker binding")
+            bindings = []
+            if phase["configuration"] == "C0" and role == "loadgen":
+                accounts = unwrap(self.read("cluster-output.json")["workload_identity"])["service_accounts"]
+                if spec["serviceAccountName"] != accounts[role]["name"]:
+                    raise ValueError("pod worker binding")
+                bindings = [("PARCHWELL_SOURCE_COMMIT", phase["source_commit"]), ("PARCHWELL_JOB_NAME", record["job"])]
+            elif record["mode"] in ("loadgen-restart", "loadgen-successor"):
+                bindings = [("B10Abrupt__SourceCommit", phase["source_commit"]), ("B10Abrupt__JobName", record["job"])]
+            if phase["configuration"] == "C1" and record["mode"] == "loadgen" and len(spec["containers"]) != 1:
+                raise ValueError("timeout pod image")
+            for name, expected in bindings:
+                entries = [entry for entry in containers[0]["env"] if entry["name"] == name]
+                if len(entries) != 1 or entries[0].get("value") != expected:
+                    raise ValueError("pod source binding")
+            statuses = [entry for entry in pod["status"]["containerStatuses"] if entry["name"] == role]
+            if (len(statuses) != 1 or phase["configuration"] == "C1" and record["mode"] == "loadgen"
+                    and len(pod["status"]["containerStatuses"]) != 1):
+                raise ValueError("pod termination count")
+            terminated = statuses[0]["state"]["terminated"]
+            if type(terminated["exitCode"]) is not int:
+                raise ValueError("pod exit status")
+            finished, _ = self.b10_utc(terminated["finishedAt"])
+            if budget[0] + time.monotonic() - began > B10_LIFECYCLE_SECONDS:
+                raise ValueError("lifecycle deadline")
+            state = self.state()
+            state["b10_lifecycle"][key].append({"job": record["job"], "repeat": record["repeat"], "mode": record["mode"],
+                "pod_name": metadata["name"], "pod_uid": metadata["uid"], "finished_utc": finished,
+                "exit_code": terminated["exitCode"]})
+            self.save_state(state)
+            return {"job_name": record["job"], "pod_name": metadata["name"], "pod_uid": metadata["uid"],
+                "image_reference": phase["images"][role]["reference"], "source_commit": phase["source_commit"],
+                "finished_utc": finished}
+        except (OSError, ValueError, UnicodeError, LookupError, TypeError, AttributeError, Failure):
+            state = self.state()
+            state["b10_lifecycle"]["gaps"].append({"object": record["job"] + "/pods.json",
+                "reason": "verifier_termination_unavailable" if role == "verifier" else "producer_termination_unavailable"})
+            self.save_state(state)
+            raise
+        finally:
+            budget[0] += time.monotonic() - began
+            self.command_deadline = previous
+
+    def run_b10_scientific_repeats(self):
+        deadline = self.b10_deadline(start=True)
+        previous = self.command_deadline
+        self.command_deadline = deadline
+        budget = [0]
+        state = self.state()
+        state["b10_lifecycle"] = {"producers": [], "verifiers": [], "gaps": []}
+        self.save_state(state)
+        phase = self.read("phase.json")
+        c1 = phase["configuration"] == "C1"
+        modes = ("start-line", "loadgen", "loadgen-restart", "loadgen-successor", "b10-abrupt-verify") if c1 else MODES
+        try:
+            for repeat in SLOTS:
+                if self.state().get("safety_stop", False) or deadline - time.monotonic() <= TERMINATION_RESERVE:
+                    for mode in modes:
+                        self.run_mode(mode, repeat, absolute_deadline=deadline)
+                    continue
+                if c1:
+                    self.b10_abrupt(repeat, deadline, budget).run()
+                    continue
+                for mode in modes:
+                    record = self.run_mode(mode, repeat, absolute_deadline=deadline)
+                    if mode == "start-line" or record["apply"] is None:
+                        continue
+                    try:
+                        self.b10_scientific_observe(record, deadline, budget, query=False)
+                    except (OSError, ValueError, UnicodeError, LookupError, TypeError, AttributeError, Failure):
+                        if mode == "loadgen":
+                            self.b10_stop_unobserved(record, deadline)
+            state = self.state()
+            return int(any(record["outcome"] in BAD_OUTCOMES for record in state["modes"])
+                       or bool(state.get("b10_abrupt_gaps")) or bool(state["b10_lifecycle"]["gaps"]))
+        finally:
+            self.command_deadline = previous
+
     def run_b10_repeats(self):
+        if self.b10_scientific(self.read("phase.json")):
+            return self.run_b10_scientific_repeats()
         deadline = self.b10_deadline(start=True)
         observations, gaps, records = [], [], []
         spent = 0
@@ -1396,6 +1537,8 @@ class Phase:
 
     def candidate(self):
         self.reject_b10_abrupt_science()
+        if self.b10_scientific(self.read("phase.json")):
+            return self.b10_final_judgement_gap()
         if self.read("phase.json")["scenario"] != "B10":
             return self.candidate_download()
         previous = self.command_deadline
@@ -1476,7 +1619,7 @@ class Phase:
         selector = f"app.kubernetes.io/instance={phase['run_id']}"
         if phase["scenario"] == LEDGER_MODE:
             selector = "app.kubernetes.io/instance in (" + ",".join(f"{phase['run_id']}-{item.lower()}" for item in LEDGER_ITEMS) + ")"
-        return self.run(["kubectl", "delete", "jobs,configmaps" if phase["scenario"] in ("probe-batch", "probe-batch-2") or phase.get("b10_abrupt_diagnostic") is True else "jobs", "-n", "parchwell", "-l",
+        return self.run(["kubectl", "delete", "jobs,configmaps" if phase["scenario"] in ("probe-batch", "probe-batch-2") or phase.get("b10_abrupt_diagnostic") is True or self.b10_scientific(phase) else "jobs", "-n", "parchwell", "-l",
                          selector, "--ignore-not-found", "--wait=false",
                          "--request-timeout=30s"], 60)
 

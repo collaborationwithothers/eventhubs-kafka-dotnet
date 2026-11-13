@@ -1,10 +1,38 @@
 # B10 workflow
 
-The B10 workflow runs the committed synthetic timeout scenario with two sequential producer Jobs per repeat, followed by a phase sweep. The sweep captures late-record frequencies and locations for diagnosis. The second worker validates predecessor evidence against that predecessor's authenticated client identity; the [implementation receipt](../../items/355/receipt.md) records the regression checks. Live expiry frequency, persistence and runtime viability remain unmeasured until Hari's later smoke.
+The B10 scientific path runs one ordinary producer Job per C0 repeat and up to three sequential producer Jobs per C1 repeat. Each of the five repeats produces nonfinal evidence. Phase sweep, final judgement and candidate publication remain later work.
 
-This page describes the legacy schema-one two-Job workflow that `scenario.yml` runs. The diagnostic trial of ADR-021's redesign runs only through `b10-abrupt-trial.yml`; see "Diagnostic trial (inactive for science)" below and the [B10 abrupt diagnostic contract](b10-abrupt-contract.md).
+The [approved scientific three-Job plan, Revision 7](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/4196a0325fd91534239efbc70ef3dbafd6dfe10e/items/404/plan-b10-scientific-three-job.md), sections 3.1 to 3.8, owns this cutover. The [abrupt contract](b10-abrupt-contract.md#scientific-execution) owns scientific names, purposes, chart admission and C1 verifier evidence; the [verifier contract](verifier-contract.md#scientific-c0-verify) owns C0 verification. The legacy two-Job path and diagnostic trial remain documented separately below.
 
-## Inputs and execution
+## Scientific execution
+
+Scientific prepare generates run IDs matching `^b10-[0-9]+-[0-9]+$`, called S, using `b10-{GITHUB_RUN_ID}-{GITHUB_RUN_ATTEMPT}` within the existing run-ID length limit. For each repeat N from 1 to 5, C0 runs `start-line`, `loadgen`, `verify`, with one producer and no `loadgen2`. C1 runs the following sequence for run ID `R`:
+
+| Order | Job suffix after `R-c1-rN-` | Admission and failure behavior |
+| --- | --- | --- |
+| 1 | `start-line` | Runs unless the phase has stopped. An outcome other than `complete` records `b10_abrupt_publication_failed` at `metadata` and ends the repeat, subject to the existing `run_mode` safety stop after an unknown/apply failure that cannot establish no remaining pod, or deadline exhaustion after an applied Job that did not complete. Metadata is then checked as below. |
+| 2 | `loadgen` | Requires accepted metadata. A render failure records `b10_abrupt_configuration_invalid` at `timeout_job` and ends the repeat without setting `safety_stop`. `unknown`, `apply_failed` or a failed termination pod read records `b10_abrupt_timeout_job_unknown`, sets `safety_stop` and stops the phase. `complete` or `failed` with the pod check passed continues. |
+| 3 | `loadgen-restart` | Requires the timeout step to continue. `unknown` or `apply_failed` sets `safety_stop` regardless of the pod read. The first-termination pod read always runs; a render failure, apply failure or failed read gives `b10_abrupt_first_termination_unknown` and sets `safety_stop`. A first-publication identity mismatch has the same safety result. Other noncomplete outcomes after a passed pod read record `b10_abrupt_publication_failed` at `first_termination` and end the repeat. A rejected first publication records its failure at `first_publication` and ends the repeat with no successor or verify. |
+| 4 | `loadgen-successor` | Requires accepted first publication, including `successor_permitted=true` and a nonempty kill set. A late release records `b10_abrupt_successor_late`. Render failure or a noncomplete outcome records `b10_abrupt_publication_ambiguous` at `successor_job`, or `b10_abrupt_deadline_exhausted` for wait exit 124. `unknown` or `apply_failed` also sets `safety_stop`. Every applied successor receives the trial's publication and receipt checks during `run-repeats`; a failed pod read gives `b10_abrupt_first_termination_unknown` and `safety_stop`, while other failures retain their trial names at `successor_publication` or `successor_receipt`. |
+| 5 | `b10-abrupt-verify` | Requires accepted first publication and runs after the successor step whatever that step recorded, including `safety_stop`. A noncomplete outcome records `b10_abrupt_verify_failed` at `verify_job`, preserving `safety_stop`. Download of the [scientific C1 result](b10-abrupt-contract.md#scientific-per-repeat-c1-verifier) follows; a failed download records `b10_abrupt_verify_failed` at `verify_collection`. |
+
+A phase stop takes precedence over a repeat end. Once `safety_stop=true`, no later repeat's Job is applied and every later slot is recorded with reason `safety_stop`; only the current repeat's verifier may still run under its admission rule. A repeat end skips the remaining Jobs of that repeat and permits the next repeat to start. A no-kill end, empty kill set or rejected first publication starts neither successor nor verifier.
+
+Before each C1 timeout Job, the phase downloads `R/C1/rN/start-line.json`, `broker-inventory.json` and `start-line-completion.json`. Trial metadata checks apply with repeat N, receipt Job `R-c1-rN-start-line`, start-line identity Job `R-c1-rN-loadgen` and the scientific C1 expected-name list owned by the abrupt contract. A missing object records `b10_abrupt_publication_ambiguous`; other metadata rejection records `b10_abrupt_publication_failed`, at `metadata`, ending that repeat. Success creates configmap `R-b10-abrupt-first-rN`; the successor uses `R-b10-abrupt-successor-rN`. Their binding formats remain the trial's.
+
+At most one producer pod runs at a time across repeats. Each C1 producer's termination is confirmed before the next producer is rendered, or the phase stops. After every applied Job, `collect-job` copies its folder using the [trial collection mapping](b10-abrupt-contract.md#failure-names-and-collection); collection failures record their existing names and do not themselves end the repeat or phase. All repeats share the unchanged 18000-second orchestration deadline and 360-minute workflow job timeout. Deadline exhaustion records later slots as `orchestration_deadline`.
+
+After each applied producer or verify Job in either configuration, the phase appends one object to `phase-status.json` under `b10_lifecycle.producers` or `b10_lifecycle.verifiers`. Each object has exactly `{job, repeat, mode, pod_name, pod_uid, finished_utc, exit_code}`, taken from that Job's one pod observation; `finished_utc` is normalized from `state.terminated.finishedAt` by `b10_utc`. Missing termination evidence instead appends a gap `{object: "<job>/pods.json", reason: "producer_termination_unavailable"}` or reason `verifier_termination_unavailable`. A Job not applied adds nothing. Lifecycle pod reads share a cumulative 120-second bound for the phase. Any lifecycle gap makes `run-repeats` exit 1.
+
+`run-repeats` also exits 1 for an outcome in `BAD_OUTCOMES` or any recorded failure name; otherwise it exits 0. It sets no diagnostic trial marker in scientific `phase.json`, so the existing diagnostic-state rejection remains in force. The legacy `loadgen2`, sweep preparation, sweep-line and sweep code remains unreachable for B10 science. Neither scientific configuration runs a phase sweep or final judgement after its repeat loop. `judge` and `candidate` record `b10_c0_final_judgement_unavailable` for C0 or `b10_c1_final_judgement_unavailable` for C1, write no candidate, keep `full_allowed=false` and exit 1.
+
+This change authorizes no dispatch or scientific publication. The approved plan's section 7 requires a separately authorized governed diagnostic run of the scientific path after this change and the final-judgement change merge, before any scientific run. Synthetic local checks do not establish live behavior.
+
+## Legacy execution outside S
+
+The remaining legacy workflow sections describe the retained schema-one two-Job path for run IDs outside S. They do not describe the scientific sequence above.
+
+### Legacy inputs and execution
 
 The [scenario](../../scenarios/B10/scenario.yaml) selects phases C0 and C1, with five repeats each. Both use `message.timeout.ms=100` and `max.in.flight=5`; C0 inherits `enable.idempotence=false`, and C1 overrides it to true. The [synthetic timeout profile](../../scenarios/profiles/b10-timeout.yaml) retains the saturation profile's seed, tenant mix, payload distributions and stage rates, with four 10-second stages. Its configured event and attempt bounds, rather than observed live counts, are checked in [the implementation receipt](../../items/355/receipt.md).
 
@@ -18,7 +46,7 @@ The `b10-sweep` Job then authenticates and reconciles the repeats. Judge remains
 
 All repeat modes, lifecycle observations, settling, capture, sweep and judge share one absolute 18000-second orchestration deadline. Operations use only its remaining time. Exhaustion records unattempted modes and gaps, stops new producers, preserves available diagnostics and leaves cleanup to the workflow. This cap is shorter than the conservative configured worst-case envelope; it does not guarantee successful completion. Missing or failed sweep evidence cannot authorize finality or counts.
 
-## Diagnostic events
+### Legacy diagnostic events
 
 Sweep pod logs contain structured events with `scenario_id`, `run_id`, `phase`, `source_repeat` and `observation_complete`:
 
@@ -36,7 +64,7 @@ Only reconciled own late records are selected, with each topic/partition/offset 
 
 `landing_repeat` is a later repeat number only when the offset lies inside that repeat's recorded half-open original window; otherwise it is `gap`. An offset at a window's start is inside, and one at its end is outside. Logs carry producer instance and attempt identifiers, not tenant/document payloads or private Azure identities. A late record is not automatically a duplicate. Authenticated classifier totals and diagnostic frequencies answer different questions; logs cannot authorize the former.
 
-## Retrieval and later smoke record
+### Legacy retrieval and later smoke record
 
 Public Actions artifacts retain the `b10-C0` and `b10-C1` pod-artifact prefixes, including per-Job logs and `pods.json`. `phase-status.json` records attempted and unattempted workers and gap reasons, with B10 lifecycle observations under `b10_lifecycle`. Private workflow inputs are separate from public evidence.
 
@@ -50,7 +78,7 @@ During the run, the verifier container holds these fixed phase-root objects, whe
 
 These objects remain in ephemeral run storage only for the run. Public pod logs are diagnostic artifacts, not replacement ledger evidence or authoritative outcome totals. Retrieval and retention follow the [verifier contract](verifier-contract.md) and [ADR-020](../blueprint.md#adr-020-the-workflow-owns-the-infrastructure-lifecycle-no-net-code-orchestrates).
 
-After the implementation merges, Hari may start the scenario workflow on `main`, selecting B10 and approving its environment. The current implementation session starts no workflow or smoke. For that later smoke, retain each phase/repeat's permitted-timeout count and persistence status, first-instance retry count, second-instance resend count, late-record frequency and sampled locations including gaps, omitted sample count, guard failures, scan completion, worker gap/exit evidence and candidate authentication. Missing observations stay unavailable. A clean local harness test does not establish live behavior.
+A later authorized legacy smoke would retain each phase/repeat's permitted-timeout count and persistence status, first-instance retry count, second-instance resend count, late-record frequency and sampled locations including gaps, omitted sample count, guard failures, scan completion, worker gap/exit evidence and candidate authentication. Missing observations stay unavailable. A clean local harness test does not establish live behavior.
 
 The scientific rule remains [ADR-021](../blueprint.md#adr-021-b10-accepts-timed-out-sends-application-retries-and-one-producer-restart-in-a-second-job-and-classifies-late-appends-up-to-a-sweep-line). Every later B10 publication must state: **A late append after the phase sweep line is not detected.** Expected outcomes remain successor work. Mutation acceptance is not met; a later passing main measuring run covering the changed target remains required before evidence publication.
 
@@ -64,4 +92,4 @@ The [Kubernetes Job page, Terminal Job conditions](https://kubernetes.io/docs/co
 
 Collection follows the release path. Each applied timeout, restart, successor and diagnostic verifier Job has its `collect-job` logs copied to `artifacts/b10-abrupt-diagnostic/<job>/`; the start-line record is not copied. For a complete diagnostic verifier Job, collection also retrieves `b10-abrupt-diagnostic/nonfinal-result.json` under the [collection contract](b10-abrupt-contract.md#failure-names-and-collection). The timeout Job receives no ordinary verify or successor-receipt check. The workflow uploads only `b10-abrupt-diagnostic`. [ADR-021](../blueprint.md#adr-021-b10-accepts-timed-out-sends-application-retries-and-one-producer-restart-in-a-second-job-and-classifies-late-appends-up-to-a-sweep-line) owns the protocol, the [approved part 1 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/fc1a4f36452b2d302f1d73987e1ba5eb967b3d65/items/404/plan-b10-execution-loadgen.md) sections 3.1, 3.3 and 3.8 to 3.11 own the processes, names and publication, and the [approved part 2 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/0c73e5139e1670d5b675a51fc52dbd99c4b1af49/items/404/plan-b10-execution-trial.md) sections 3.1, 3.2 and 3.5 own this ordering, timeout handling and collection. The [B10 abrupt diagnostic contract](b10-abrupt-contract.md) records the schema-3 journal interfaces.
 
-For trial run IDs matching `^b10d-[0-9]+-[0-9]+$`, the start line carries `{run}-c1-r1-loadgen`, `{run}-c1-r1-loadgen-restart` and `{run}-c1-r1-loadgen-successor`, in that order. Trial metadata rejects any other list before applying a producer Job. Scientific runs retain their existing start-line rules. The [abrupt diagnostic contract](b10-abrupt-contract.md#diagnostic-verifier-mode) owns these interfaces and the nonfinal classification output.
+For trial run IDs matching `^b10d-[0-9]+-[0-9]+$`, the start line carries `{run}-c1-r1-loadgen`, `{run}-c1-r1-loadgen-restart` and `{run}-c1-r1-loadgen-successor`, in that order. Trial metadata rejects any other list before applying a producer Job. Scientific run IDs use the [scientific expected-name rules](b10-abrupt-contract.md#scientific-execution). The [abrupt diagnostic contract](b10-abrupt-contract.md#diagnostic-verifier-mode) owns these interfaces and the nonfinal classification output.
