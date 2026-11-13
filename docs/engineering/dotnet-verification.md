@@ -67,11 +67,32 @@ Three values of the xUnit trait `Tier` mark tests that the fast tier leaves out:
 
 Put the trait on the class when every test in it qualifies, and on the method otherwise. A test that needs Docker but carries no trait still runs in the full gate and in the fast tier. On a machine without Docker it fails in the fast tier, which is visible and safe. It does not disappear.
 
-The script stops at once only for stages that every later stage depends on: restore, build, the Kafka XML inventory check, project evaluation and the scaffold inventory. After those, a failing test project or the warning control is recorded and the run continues, so one run reports every failing project. The script then prints a stage timing table, lists each failed stage, and exits with the exit status of the first failure. It writes the same table to `stage-timing.tsv` in its results directory.
+The script stops at once only for stages that every later stage depends on: restore, build, the Kafka XML inventory check, project evaluation and the scaffold inventory. After those, a failing test project or the warning control is recorded and the run continues, so one run reports every failing project. The script then prints a stage timing table, lists each failed stage, and exits with the exit status of the first failure. Each stage line also gives the stage's UTC start and end. The script writes the same table to `stage-timing.tsv` in its results directory, one line per stage with four tab-separated fields: label, whole seconds, UTC start and UTC end.
+
+On every exit after it creates its results directory, the script also writes `summary.json` there. Writing it never changes the exit status. It records the run's UTC start and end, the source commit and whether the working tree had changes, the tier and selected projects, the processor count from `nproc`, total memory from `/proc/meminfo`, the values of `DOTNET_PROCESSOR_COUNT` and `PARCHWELL_BUILD_MAX_CPU` as set, each stage with its exit status, the failed stages, the exit status, the outcome, and the 30 slowest tests of each test project's report. A test name there is xUnit's escaped display name, as the report holds it.
+
+| Key | Type |
+|---|---|
+| `schema_version` | number `1` |
+| `started_utc`, `ended_utc` | string, UTC time in the form `YYYY-MM-DDTHH:MM:SSZ`; start is taken when the results directory is created, end when the summary is written at exit |
+| `source_sha` | string from `git rev-parse HEAD` in the repository root, or `null` when that command fails |
+| `source_dirty` | `true` when `git status --porcelain` prints anything, `false` when it prints nothing, `null` when it fails |
+| `sdk_version` | string, the checked SDK version |
+| `tier` | `"all"` or `"fast"` |
+| `projects` | `null` without `--project`; otherwise array of the given names in the given order |
+| `nproc` | number, output of `nproc` |
+| `mem_total_kib` | number, the `MemTotal` value in kB from `/proc/meminfo`, or `null` when that line is absent or the file cannot be read |
+| `dotnet_processor_count` | string, the `DOTNET_PROCESSOR_COUNT` value exactly as set, or `null` when unset |
+| `parchwell_build_max_cpu` | string, the `PARCHWELL_BUILD_MAX_CPU` value exactly as set, or `null` when unset or empty |
+| `stages` | array in run order, one object per line of `stage-timing.tsv`: `{"label": string, "elapsed_s": number, "start_utc": string, "end_utc": string, "exit_code": number}` |
+| `failed_stages` | array of `{"label": string, "exit_code": number}` in order: each failed test project or the warning control, labelled with the test project name or `Warning control`, or, for a stage that stops the run, one entry: that stage's label, or `Project evaluation` for project evaluation; empty array otherwise |
+| `exit_code` | number, the script's exit status |
+| `outcome` | `"full_gate_passed"` when the full-gate line printed, `"partial_passed"` when the partial line printed, `"failed"` otherwise |
+| `slowest_tests` | object keyed by test project name, one key for each project whose `<results directory>/<project>/results.xml` exists at exit: array of at most 30 `{"name": string, "time_s": string}`; `{}` when no report exists |
 
 `PARCHWELL_BUILD_MAX_CPU` adds `-maxcpucount:<n>` to restore, build, project evaluation and the warning control. It leaves the test processes alone. Do not set `DOTNET_PROCESSOR_COUNT` for the whole script: that changes the processor count that tests observe, and a Codex session recorded eight failures after doing so, with the cause not proved to be that setting (`items/404/b10-warm-leader-receipt.md`, V11). Whether the cap stops the MSBuild worker exits recorded there (V2) is not verified; it was not reproduced.
 
-`./scripts/test-verify-dotnet.sh` checks the option handling and fail-late behaviour of the script against a stub `dotnet`. It needs no SDK and no Docker, and ran in 1.5 s in the one measured run (`items/435/receipt.md`).
+`./scripts/test-verify-dotnet.sh` checks the option handling, fail-late behaviour, stage timing and `summary.json` of the script against a stub `dotnet`. It needs no SDK and no Docker, but needs `jq` to read `summary.json`. It ran in 1.5 s in the one measured run (`items/435/receipt.md`), before the stage timing and summary checks were added.
 
 ## Enforced gates
 
