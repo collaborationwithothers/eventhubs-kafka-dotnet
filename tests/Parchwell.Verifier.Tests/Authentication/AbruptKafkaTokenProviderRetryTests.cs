@@ -66,18 +66,23 @@ public sealed class AbruptKafkaTokenProviderRetryTests : IDisposable
     [Fact]
     public async Task Given_CallerCancelsDuringFirstPost_When_TokenRequested_Then_NoSecondPostIsSent()
     {
-        using var caller = new CancellationTokenSource();
-        // The 0.5 s starts when the first POST arrives, so the cancellation always lands during that attempt.
-        // A timer started before GetToken can fire during credential start-up, before any POST is sent.
-        using var handler = new ScriptedHandler((_, token) =>
-        {
-            caller.CancelAfter(TimeSpan.FromMilliseconds(500));
-            return Block(token);
-        });
-        Assert.ThrowsAny<Exception>(() => Provider(handler).GetToken(Scope, caller.Token));
+        Warm();
+        using var handler = new ScriptedHandler((_, token) => Block(token));
+        using var caller = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        AbruptKafkaTokenProvider provider = Provider(handler);
+        caller.CancelAfter(TimeSpan.FromMilliseconds(500));
+        Assert.ThrowsAny<Exception>(() => provider.GetToken(Scope, caller.Token));
         Assert.Equal(1, handler.Posts);
         await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
         Assert.Equal(1, handler.Posts);
+    }
+
+    // One throwaway acquisition so assembly loading and JIT work do not run inside T7's 0.5 s window.
+    private void Warm()
+    {
+        using var handler = new ScriptedHandler((_, _) => Task.FromResult(Token("synthetic-warm")));
+        using var caller = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        Provider(handler).GetToken(Scope, caller.Token);
     }
 
     private AbruptKafkaTokenProvider Provider(ScriptedHandler handler) => new(

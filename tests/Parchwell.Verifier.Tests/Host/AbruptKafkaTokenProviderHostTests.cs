@@ -61,7 +61,7 @@ public sealed class AbruptKafkaTokenProviderHostTests
     private static string[] ArgumentsFor(string mode) => mode switch
     {
         "start-line" or "verify" => VerifierHostTestOptions.ArgumentsFor(mode, VerifierHostTestOptions.TempPath()),
-        "b10-sweep-line" => Arguments(B10SweepLineOptionsTests.Configuration(B10SweepLineOptionsTests.CaptureOptions())),
+        "b10-sweep-line" => Arguments(B10SweepLineOptionsTests.Configuration(B10SweepLineOptionsTests.CaptureOptions("C1"))),
         "b10-sweep" => Arguments(SweepConfiguration(SweepOptions())),
         _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
     };
@@ -103,15 +103,15 @@ public sealed class AbruptKafkaTokenProviderHostTests
         return Arguments(values);
     }
 
-    // Copied from B10SweepOptionsTests, where these helpers are private.
-    private static VerifierHostOptions SweepOptions()
+    // Copied unchanged from B10SweepOptionsTests (`SweepOptions` and `Configuration`), where both are private.
+    private static VerifierHostOptions SweepOptions(string phase = "C0")
     {
         VerifierHostOptions options = VerifierHostTestOptions.ValidOptions("b10-sweep");
         options.ScenarioId = "B10";
-        options.Phase = "C0";
-        options.ConfigurationId = "C0";
-        options.PhasePrefix = PhaseIdentity.PhasePrefix(options.RunId!, "C0");
-        options.JobName = PhaseIdentity.B10SweepJobName(options.RunId!, "C0");
+        options.Phase = phase;
+        options.ConfigurationId = phase;
+        options.PhasePrefix = PhaseIdentity.PhasePrefix(options.RunId!, phase);
+        options.JobName = PhaseIdentity.B10SweepJobName(options.RunId!, phase);
         options.Repeat = null;
         options.RepeatPrefix = null;
         options.ExpectedInstanceId = null;
@@ -134,6 +134,9 @@ public sealed class AbruptKafkaTokenProviderHostTests
             if (value is string or int or long or TimeSpan)
                 values["Verifier:" + member.Name] = Convert.ToString(value, CultureInfo.InvariantCulture);
         }
+        if (options.ScenarioLoadOptions is { } limits)
+            foreach (var member in typeof(VerifierScenarioLoadOptions).GetProperties())
+                values["Verifier:ScenarioLoadOptions:" + member.Name] = Convert.ToString(member.GetValue(limits), CultureInfo.InvariantCulture);
         values["PARCHWELL_SOURCE_COMMIT"] = options.SourceCommit;
         values["Telemetry:ConnectionString"] = "InstrumentationKey=synthetic-key";
         values["Telemetry:ServiceName"] = "Parchwell.Verifier";
