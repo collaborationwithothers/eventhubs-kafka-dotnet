@@ -47,7 +47,7 @@ Those commands check documentation. They are not the .NET build entry point. Doc
 
 ## Tiers, partial runs and failure reporting
 
-`./scripts/verify-dotnet.sh` with no options is the full gate: every test project and every test. Hosted CI runs exactly that. These options exist for quicker feedback and never replace it:
+`./scripts/verify-dotnet.sh` with no options is the full gate: every test project and every test. Hosted CI runs each test project in its own job with `./scripts/verify-dotnet.sh --project <name>`, so a single hosted job is a partial run; the `.NET verification` aggregate job requires all of them ([Hosted CI and completion](#hosted-ci-and-completion)). These options exist for quicker feedback and never replace it:
 
 ```bash
 ./scripts/verify-dotnet.sh --tier fast
@@ -110,7 +110,7 @@ The parser uses each project's effective Release `LangVersion` and `DefineConsta
 
 Fresh machine-readable xUnit reports must identify the expected test assembly, contain a positive passed-test count, and have no failed, skipped or not-run tests or runner errors. Summary counts must agree with the individual results. `scripts/dotnet-verification.proj` parses XML and rejects missing or malformed reports. The [pinned xUnit writer][xml-fields] supplies the checked assembly result fields.
 
-A paired unit-test project is reported as an empty scaffold only when its evaluated `Compile` item list is empty. Any compile item makes that project execute under the same result requirements, including explicitly linked files under `bin/` or `obj/`. The exemption does not permanently exclude that project. The Kafka test project executes its mapping tests and Docker characterization; the additional [mapping coverage pass](../operations/kafka-baseline.md#verification) supplements full verification. After the solution build, the entry point also checks generated Kafka setting XML against the catalogue inventory IDs. The [CI mapping coverage steps](../operations/kafka-baseline.md#ci-mapping-coverage) run after foundation verification and reject missing coverage or uncovered mapping lines. There are no dummy passing tests.
+A paired unit-test project is reported as an empty scaffold only when its evaluated `Compile` item list is empty. Any compile item makes that project execute under the same result requirements, including explicitly linked files under `bin/` or `obj/`. The exemption does not permanently exclude that project. The Kafka test project executes its mapping tests and Docker characterization; the additional [mapping coverage pass](../operations/kafka-baseline.md#verification) supplements full verification. After the solution build, the entry point also checks generated Kafka setting XML against the catalogue inventory IDs. The [CI mapping coverage steps](../operations/kafka-baseline.md#ci-mapping-coverage) run in the Kafka test project's job after its verification and reject missing coverage or uncovered mapping lines. There are no dummy passing tests.
 
 ## Approved controls
 
@@ -152,9 +152,15 @@ Regression example ([#179](https://github.com/collaborationwithothers/eventhubs-
 
 ## Hosted CI and completion
 
-The [verification workflow][workflow] configures the `.NET verification` job on standard GitHub-hosted `ubuntu-24.04`, for pull requests, pushes to `main` and manual dispatch. Its sole repository permission is `contents: read`; SDK selection comes from `global.json`. It runs `./scripts/verify-dotnet.sh`, installs standalone `dotnet-coverage` 18.12.0 under `$RUNNER_TEMP/parchwell-coverage`, then invokes `./scripts/verify-kafka-coverage.sh` with that collector path, and finally runs the [worker image smoke](#worker-image-smoke). The [Ubuntu 24.04 runner image readme][runner-readme], read at a fixed commit, lists Docker Server 28.0.4 for image version 20261023.334.3; `runs-on: ubuntu-24.04` does not pin that image version. The collector pin and local equivalent are documented in the [Kafka baseline verification guide](../operations/kafka-baseline.md#verification). It has no Azure identity, private-network runner or live tests.
+The [verification workflow][workflow] runs on standard GitHub-hosted `ubuntu-24.04`, for pull requests, pushes to `main` and manual dispatch. Its sole repository permission is `contents: read`; SDK selection comes from `global.json`. It has three kinds of job:
 
-The approved immutable pins are [checkout v7.0.1][checkout-release] at `3d3c42e5aac5ba805825da76410c181273ba90b1` and [setup-dotnet v6.0.0][setup-release] at `a98b56852c35b8e3190ac28c8c2271da59106c68`. The pinned [setup-dotnet README][setup-readme] documents the `global-json-file` input. This describes implemented workflow configuration, not proof of a successful hosted run.
+- One `.NET tests (<project>)` job per test project runs `./scripts/verify-dotnet.sh --project <name>`. The job for the Kafka test project also installs standalone `dotnet-coverage` 18.12.0 under `$RUNNER_TEMP/parchwell-coverage` and invokes `./scripts/verify-kafka-coverage.sh` with that collector path. Each job uploads an artifact named `dotnet-verification-<project>-attempt-<n>` that holds `summary.json`, `stage-timing.tsv`, `unit-projects.txt`, `results.xml` and, only when every earlier step passed, an empty `leg-passed` file.
+- `Worker image smoke` runs the [worker image smoke](#worker-image-smoke) in its own job.
+- `.NET verification`, the required check, is an aggregate job. It runs `scripts/check-dotnet-matrix.py`, which fails unless both other jobs succeeded and every project of the scaffold inventory plus `Parchwell.ArchitectureTests` has a passing summary, a passed report stage and the passed marker.
+
+The local full gate stays `./scripts/verify-dotnet.sh` with no options. The [Ubuntu 24.04 runner image readme][runner-readme], read at a fixed commit, lists Docker Server 28.0.4 for image version 20261023.334.3; `runs-on: ubuntu-24.04` does not pin that image version. The collector pin and local equivalent are documented in the [Kafka baseline verification guide](../operations/kafka-baseline.md#verification). It has no Azure identity, private-network runner or live tests.
+
+The approved immutable pins are [checkout v7.0.1][checkout-release] at `3d3c42e5aac5ba805825da76410c181273ba90b1` and [setup-dotnet v6.0.0][setup-release] at `a98b56852c35b8e3190ac28c8c2271da59106c68`, [upload-artifact v4.6.2][upload-release] at `ea165f8d65b6e75b540449e92b4886f43607fa02` and [download-artifact v4.3.0][download-release] at `d3f86a106a0bac45b974a628896c90dbdf5c8093`. The pinned [setup-dotnet README][setup-readme] documents the `global-json-file` input. This describes implemented workflow configuration, not proof of a successful hosted run.
 
 Hari explicitly authorized this workflow change in the approved issue plan. If GitHub rejects the workflow push for missing credential permission, hand off the exact YAML and rejection; do not change authentication to work around it.
 
@@ -170,6 +176,8 @@ Issue #47 stays open until hosted verification passes on the reviewed PR head an
 [di-manifest]: https://api.nuget.org/v3-flatcontainer/microsoft.extensions.dependencyinjection/10.0.13/microsoft.extensions.dependencyinjection.nuspec
 [checkout-release]: https://github.com/actions/checkout/releases/tag/v7.0.1
 [setup-release]: https://github.com/actions/setup-dotnet/releases/tag/v6.0.0
+[upload-release]: https://github.com/actions/upload-artifact/releases/tag/v4.6.2
+[download-release]: https://github.com/actions/download-artifact/releases/tag/v4.3.0
 [setup-readme]: https://github.com/actions/setup-dotnet/blob/a98b56852c35b8e3190ac28c8c2271da59106c68/README.md
 [runner-readme]: https://github.com/actions/runner-images/blob/2deeef005a7e79479c137ef48d6f07f2cca37880/images/ubuntu/Ubuntu2404-Readme.md
 [workflow]: ../../.github/workflows/dotnet-verification.yml
