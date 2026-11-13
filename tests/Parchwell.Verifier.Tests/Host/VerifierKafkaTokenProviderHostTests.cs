@@ -3,32 +3,39 @@ using Azure.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Parchwell.Kafka.Authentication;
+using Parchwell.Verifier.Common.Kafka;
 using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Tests.Component;
 using Parchwell.Verifier.Tests.Support;
-using Parchwell.Verifier.VerifyRun.Abrupt;
 using Xunit;
 
 namespace Parchwell.Verifier.Tests.Host;
 
 #pragma warning disable CA1707 // Repository test naming convention.
-/// <summary>Shows which Kafka token provider each verifier mode composes and how the abrupt mode's credential is configured.</summary>
-public sealed class AbruptKafkaTokenProviderHostTests
+/// <summary>Shows which Kafka token provider each verifier mode composes and how its credential is configured.</summary>
+public sealed class VerifierKafkaTokenProviderHostTests
 {
-    [Fact]
-    public void Given_AbruptVerifyMode_When_HostBuilt_Then_OneAbruptTokenProviderIsRegistered()
+    public static TheoryData<string> KafkaModes() =>
+        ["start-line", "verify", "b10-sweep-line", "b10-sweep", "b10-abrupt-verify"];
+
+    [Theory]
+    [MemberData(nameof(KafkaModes))]
+    public void Given_KafkaMode_When_HostBuilt_Then_OneVerifierTokenProviderIsRegistered(string mode)
     {
         var registrations = new List<ServiceDescriptor>();
-        using IHost host = Program.BuildHost(AbruptArguments(), services => registrations.AddRange(services));
+        using IHost host = Program.BuildHost(ArgumentsFor(mode), services => registrations.AddRange(services));
         Assert.Single(registrations, service => service.ServiceType == typeof(IKafkaTokenProvider));
-        Assert.IsType<AbruptKafkaTokenProvider>(host.Services.GetRequiredService<IKafkaTokenProvider>());
+        object provider = host.Services.GetRequiredService<IKafkaTokenProvider>();
+        Assert.IsType<VerifierKafkaTokenProvider>(provider);
+        Assert.Equal("Parchwell.Verifier.Common.Kafka", provider.GetType().Namespace);
     }
 
-    [Fact]
-    public void Given_AbruptVerifyMode_When_ProviderResolved_Then_CredentialCarriesPinnedRetryAndIdentity()
+    [Theory]
+    [MemberData(nameof(KafkaModes))]
+    public void Given_KafkaMode_When_ProviderResolved_Then_CredentialCarriesPinnedRetryAndIdentity(string mode)
     {
-        using IHost host = Program.BuildHost(AbruptArguments());
-        var provider = Assert.IsType<AbruptKafkaTokenProvider>(host.Services.GetRequiredService<IKafkaTokenProvider>());
+        using IHost host = Program.BuildHost(ArgumentsFor(mode));
+        var provider = Assert.IsType<VerifierKafkaTokenProvider>(host.Services.GetRequiredService<IKafkaTokenProvider>());
         var options = provider.CredentialOptions;
         Assert.Equal(TimeSpan.FromSeconds(2), options.Retry.NetworkTimeout);
         Assert.Equal(1, options.Retry.MaxRetries);
@@ -39,30 +46,30 @@ public sealed class AbruptKafkaTokenProviderHostTests
 #pragma warning disable AZID0002 // IsAzureProxyEnabled is experimental in Azure.Core 1.63.0.
         Assert.False(options.IsAzureProxyEnabled);
 #pragma warning restore AZID0002
-        Assert.Equal("synthetic-tenant", options.TenantId);
-        Assert.Equal("synthetic-client", options.ClientId);
-        Assert.Equal("/tmp/synthetic-token", options.TokenFilePath);
+        bool abrupt = mode == "b10-abrupt-verify";
+        Assert.Equal(abrupt ? "synthetic-tenant" : "tenant-id", options.TenantId);
+        Assert.Equal(abrupt ? "synthetic-client" : "workload-client-id", options.ClientId);
+        Assert.Equal(abrupt ? "/tmp/synthetic-token" : "/tmp/token", options.TokenFilePath);
     }
 
     [Theory]
-    [InlineData("start-line")]
-    [InlineData("verify")]
-    [InlineData("b10-sweep-line")]
-    [InlineData("b10-sweep")]
-    public void Given_OtherKafkaModes_When_HostBuilt_Then_SharedTokenProviderIsKept(string mode)
+    [InlineData("judge")]
+    [InlineData("probe-gate")]
+    public void Given_ModeWithoutKafkaSession_When_HostBuilt_Then_NoTokenProviderIsRegistered(string mode)
     {
         var registrations = new List<ServiceDescriptor>();
         using IHost host = Program.BuildHost(ArgumentsFor(mode), services => registrations.AddRange(services));
-        Assert.Single(registrations, service => service.ServiceType == typeof(IKafkaTokenProvider));
-        Assert.Equal("Parchwell.Kafka.Authentication.WorkloadIdentityTokenProvider",
-            host.Services.GetRequiredService<IKafkaTokenProvider>().GetType().FullName);
+        Assert.DoesNotContain(registrations, service => service.ServiceType == typeof(IKafkaTokenProvider));
     }
 
     private static string[] ArgumentsFor(string mode) => mode switch
     {
-        "start-line" or "verify" => VerifierHostTestOptions.ArgumentsFor(mode, VerifierHostTestOptions.TempPath()),
+        "start-line" or "verify" or "probe-gate" => VerifierHostTestOptions.ArgumentsFor(mode, VerifierHostTestOptions.TempPath())
+            .Append($"--Verifier:ScenarioRoot={Path.GetTempPath()}").ToArray(),
         "b10-sweep-line" => Arguments(B10SweepLineOptionsTests.Configuration(B10SweepLineOptionsTests.CaptureOptions("C1"))),
         "b10-sweep" => Arguments(SweepConfiguration(SweepOptions())),
+        "judge" => Arguments(SweepConfiguration(JudgeOptions())),
+        "b10-abrupt-verify" => AbruptArguments(),
         _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
     };
 
@@ -103,7 +110,7 @@ public sealed class AbruptKafkaTokenProviderHostTests
         return Arguments(values);
     }
 
-    // Copied unchanged from B10SweepOptionsTests (`SweepOptions` and `Configuration`), where both are private.
+    // Copied unchanged from B10SweepOptionsTests (`SweepOptions`, `JudgeOptions` and `Configuration`), where all three are private.
     private static VerifierHostOptions SweepOptions(string phase = "C0")
     {
         VerifierHostOptions options = VerifierHostTestOptions.ValidOptions("b10-sweep");
@@ -122,6 +129,28 @@ public sealed class AbruptKafkaTokenProviderHostTests
         options.ScenarioRoot = null;
         options.ScenarioLoadOptions = null;
         options.B10SettleIntervalMilliseconds = 1000;
+        return options;
+    }
+
+    private static VerifierHostOptions JudgeOptions()
+    {
+        VerifierHostOptions options = SweepOptions();
+        options.Mode = "judge";
+        options.JobName = PhaseIdentity.JudgeJobName(options.RunId!, options.Phase!);
+        options.CandidateOutputName = PhasePaths.Candidate(options.RunId!, options.Phase!);
+        options.LoadGenImage = "synthetic/loadgen@sha256:" + new string('a', 64);
+        options.VerifierImage = "synthetic/verifier@sha256:" + new string('b', 64);
+        options.ScenarioLoadOptions = VerifierHostTestOptions.ValidOptions("verify").ScenarioLoadOptions;
+        options.VerifierClientId = null;
+        options.NamespaceName = null;
+        options.TokenTimeout = null;
+        options.MetadataTimeout = null;
+        options.WatermarkTimeout = null;
+        options.PollSlice = null;
+        options.BlobIoTimeout = null;
+        options.SafetyStop = null;
+        options.MaxConsumedRecords = null;
+        options.MaxConsumedBytes = null;
         return options;
     }
 

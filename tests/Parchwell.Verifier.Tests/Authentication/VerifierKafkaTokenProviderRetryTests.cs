@@ -3,20 +3,20 @@ using System.Net;
 using System.Text;
 using Azure.Core.Pipeline;
 using Parchwell.Kafka.Authentication;
-using Parchwell.Verifier.VerifyRun.Abrupt;
+using Parchwell.Verifier.Common.Kafka;
 using Xunit;
 
 namespace Parchwell.Verifier.Tests.Authentication;
 
 #pragma warning disable CA1707 // Repository test naming convention.
-/// <summary>Runs the abrupt-verify token provider's real credential against a scripted token endpoint.</summary>
+/// <summary>Runs the verifier Kafka token provider's real credential against a scripted token endpoint.</summary>
 [Trait("Tier", "Slow")]
-public sealed class AbruptKafkaTokenProviderRetryTests : IDisposable
+public sealed class VerifierKafkaTokenProviderRetryTests : IDisposable
 {
     private const string Scope = "https://eventhubs.azure.net/.default";
     private readonly string tokenFile = Path.Combine(Path.GetTempPath(), "abrupt-token-" + Guid.NewGuid().ToString("N"));
 
-    public AbruptKafkaTokenProviderRetryTests() => File.WriteAllText(tokenFile, "synthetic-assertion");
+    public VerifierKafkaTokenProviderRetryTests() => File.WriteAllText(tokenFile, "synthetic-assertion");
 
     public void Dispose() => File.Delete(tokenFile);
 
@@ -69,7 +69,7 @@ public sealed class AbruptKafkaTokenProviderRetryTests : IDisposable
         Warm();
         using var handler = new ScriptedHandler((_, token) => Block(token));
         using var caller = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        AbruptKafkaTokenProvider provider = Provider(handler);
+        VerifierKafkaTokenProvider provider = Provider(handler);
         caller.CancelAfter(TimeSpan.FromMilliseconds(500));
         Assert.ThrowsAny<Exception>(() => provider.GetToken(Scope, caller.Token));
         Assert.Equal(1, handler.Posts);
@@ -85,7 +85,7 @@ public sealed class AbruptKafkaTokenProviderRetryTests : IDisposable
         Provider(handler).GetToken(Scope, caller.Token);
     }
 
-    private AbruptKafkaTokenProvider Provider(ScriptedHandler handler) => new(
+    private VerifierKafkaTokenProvider Provider(ScriptedHandler handler) => new(
         new KafkaWorkloadIdentityOptions
         {
             TenantId = "11111111-1111-1111-1111-111111111111",

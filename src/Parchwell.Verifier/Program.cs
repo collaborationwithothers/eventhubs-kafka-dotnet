@@ -161,6 +161,7 @@ internal static partial class Program
                 options.ClientId = configuration["Verifier:WorkloadIdentityClientId"] ?? configuration["AZURE_CLIENT_ID"];
                 options.TokenFilePath = configuration["Verifier:FederatedTokenFilePath"] ?? configuration["AZURE_FEDERATED_TOKEN_FILE"];
             });
+            VerifierKafkaTokenProvider.Register(services);
             services.AddSingleton<VerifierKafkaSessionFactory>();
         }
         services.AddSingleton<IVerifierArtifactStore>(provider =>
@@ -193,7 +194,6 @@ internal static partial class Program
         }
         if (mode == "b10-abrupt-verify")
         {
-            VerifyRun.Abrupt.AbruptKafkaTokenProvider.Register(services);
             services.AddParchwellScenarios(options =>
                 configuration.GetSection("Verifier:ScenarioLoadOptions").Bind(options));
             services.AddSingleton<IScenarioSource>(provider => new FileSystemScenarioSource(
