@@ -1,10 +1,16 @@
 # B10 scientific three-Job path contract-grade plan
 
-Revision 5. Issue 404, pull request short name `B10 scientific three-Job path`. Status: not approved. Implementing tool: Codex ([6846521676](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6846521676) point 1). Hari merges, because the change touches `Parchwell.Verifier*/` (`.github/CODEOWNERS`).
+Revision 6. Issue 404, pull request short name `B10 scientific three-Job path`. Status: not approved. Implementing tool: Codex ([6846521676](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6846521676) point 1). Hari merges, because the change touches `Parchwell.Verifier*/` (`.github/CODEOWNERS`).
 
 This pull request moves the scientific B10 path that `scenario.yml` runs to ADR-021's Job shape: one ordinary producer Job per C0 repeat, and three sequential producer Jobs per C1 repeat. Each scientific repeat then publishes the per-repeat evidence that the later final-judgement pull request reads. It authorizes no dispatch, verdict, result or expected outcome, and leaves the phase sweep and the five-repeat judgement to that later pull request.
 
 ## 0. Changes
+
+Since Revision 5 (`9ff662e7`), under decision [6847743695](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6847743695) and plan check [6847206853](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6847206853):
+- B1, option A: the one-producer C0 rule, the three-name C1 rule and the three-name start line apply only to run IDs matching S `^b10-[0-9]+-[0-9]+$`; every other run ID keeps `main`'s two-producer behaviour, so the legacy tests stay unchanged (3.1, 3.8, 2.4). The legacy-fixture rule is withdrawn. T34 proves the scientific prepare generates only S IDs.
+- B2: 3.6 pins the receipt codec rules for mode `b10-abrupt-verify`; R20 and T33 test them.
+- B3: the 40-case cap counts each test method or `InlineData` row whose expected values change (2.4).
+- Check notes: T9h names its first failure; the LoadGen path is cited in full.
 
 Since Revision 4 (`4ba489ab`), after plan check [6847030526](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6847030526):
 - B1: the C0 branch of each of the three codecs accepts one producer or `main`'s legacy pair, so the frozen `B10SweepHandler` and `JudgeHandler` and their existing C0 tests keep working. The one-registration rule of the scientific path stays in `VerifyRunHandler`, `B10IntakeChecks` and `B10PhaseRegistrationReader` (3.8, R19, T32). Decision 6846854445 point 1 asks only that one-producer C0 branches be added.
@@ -48,8 +54,9 @@ Authority, in creation order, under docs/agents/factory.md "Item lifecycle" step
 - [6846521676](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6846521676): answers to Q1 to Q9, and the Revision 3 instructions.
 - [6846551008](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6846551008): answers to item (b)'s questions. Point 9 (item (b)'s Q9 option B, as item (b)'s plan at `51a34df2` line 371 states it: "ask (a) to add a create-only `WorkerReceipt` for the scientific `b10-abrupt-verify` Job") binds 3.6. Point 2 confirms C0 here. Its sign-in scope widening applies to every verifier mode that opens a Kafka session, in the sign-in fix's own pull request.
 - [6846854445](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6846854445): check B2 option A (C0 nonfinal shape, three codec branches) and Q10 option A.
+- [6847743695](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6847743695): check B1 option A, gate by the scientific run-ID pattern; B2 and B3 fixed in Revision 6. [6847745560](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6847745560), on the sign-in fix, changes nothing here.
 
-Catch-up at this revision's refresh: 332 comments on 4 pages; added since Revision 3: 6846805964 (this plan's check), 6846818616 (handoff), 6846854445 (decision) each read in full; 6847030526 (this plan's Revision 4 check), whose findings were read, and 6846904630 (the sign-in fix's plan check), heading only. Read in full: every comment after 6830544567, with three exceptions read in part: item (b)'s plan checks 6846147228 and 6846466122, of which only the lines naming item (a) or C0 were read, selected by script; and this plan's check 6846375050, of which the findings and the plan-check answers were read but not its claims table.
+Catch-up at this revision's refresh: 337 comments on 4 pages (added since Revision 5: 6847206853, this plan's check, findings read; 6847229061, 6847557265, 6847743695 and 6847745560, each read in full); added since Revision 3: 6846805964 (this plan's check), 6846818616 (handoff), 6846854445 (decision) each read in full; 6847030526 (this plan's Revision 4 check), whose findings were read, and 6846904630 (the sign-in fix's plan check), heading only. Read in full: every comment after 6830544567, with three exceptions read in part: item (b)'s plan checks 6846147228 and 6846466122, of which only the lines naming item (a) or C0 were read, selected by script; and this plan's check 6846375050, of which the findings and the plan-check answers were read but not its claims table.
 
 Reading limit: the prompt that started the first session asked for every `## Decision` and `## Approval` on the issue to be read in full (170 at Revision 1, 335783 bytes by script). This session read the new ones, those selected by script for this plan's terms (listed in Revision 1, section 1) and, for this revision, 6827265635 and 6827960705, in full; for the rest it relied on `items/404/state.md`. Parent items 347 and 348 were not re-read; the Revision 1 and 2 checks found no new decision on them.
 
@@ -75,7 +82,7 @@ The plan freezes files and contracts, not lines (6845612916 point 2). Line numbe
 2. `src/Parchwell.LoadGen/Run/Abrupt/**`, for 3.4 only. `tests/Parchwell.LoadGen.Tests/Abrupt/**` and `tests/Parchwell.LoadGen.Tests/Host/RestartJobIdentityTests.cs`.
 3. `charts/parchwell/templates/jobs.yaml`, `templates/_helpers.tpl`, `values.schema.json`, `charts/parchwell/tests/**`, for 3.5.
 4. Verifier, for 3.1, 3.6 and 3.8: `VerifierHostOptions.cs`, `VerifierHostOptionsValidator.cs`, `Common/Window/StartLineNoteCodec.cs`, `Common/Phase/PhaseWireCodec.cs` (the receipt mode of 3.6 and the one-producer C0 intake branch of 3.8), `Common/Results/VerifierResultCodec.cs` and `Common/Results/B10ProducerObservationsCodec.cs` (the one-producer C0 branch of 3.8 only; 6846854445 point 1), `VerifyRun/Abrupt/**`, `VerifyRun/VerifyRunHandler.cs`, `VerifyRun/Judgement/B10IntakeChecks.cs`, `VerifyRun/Input/B10PhaseRegistrationReader.cs`, `VerifyRun/Publication/PublicationAcceptance.cs`, and new files under `VerifyRun/`. The last three are C5 `mutate` targets whose freeze 6846521676 point 2 lifts.
-5. Verifier tests: any file under `tests/Parchwell.Verifier.Tests/` that 2.4 lists, `Support/HostEvidenceBuilder.cs` and `Support/B10SweepFixture.cs` for the legacy-fixture rule, and new files prefixed `B10ScientificThreeJob` or `B10OneJobC0`.
+5. Verifier tests: any file under `tests/Parchwell.Verifier.Tests/` that 2.4 lists, `Support/HostEvidenceBuilder.cs` and `Support/B10SweepFixture.cs` for fixture-rule uses and new S-pattern fixtures, and new files prefixed `B10ScientificThreeJob` or `B10OneJobC0`.
 6. `docs/operations/b10-abrupt-contract.md` (owner of 3.4 to 3.6), `docs/operations/verifier-contract.md` (owner of 3.8), `docs/operations/b10-workflow.md`, `docs/operations/loadgen-contract.md` and `docs/operations/chart-contract.md`, only where they state the rules this plan changes.
 7. `items/404/state.md` and a new receipt `items/404/b10-scientific-three-job-receipt.md`.
 
@@ -83,7 +90,7 @@ The plan freezes files and contracts, not lines (6845612916 point 2). Line numbe
 
 - Every file under `.github/` and `docs/operations/workflows/`. If a workflow change is needed, stop (section 12).
 - `infra/ephemeral/**`, `infra/persistent/**`, `infra/cluster/**`.
-- `src/Parchwell.Kafka/**`, and every LoadGen file outside `Run/Abrupt/`. The ordinary host already accepts `{run}-{phase}-rN-loadgen` for N in 1..5 (`LoadGenHostOptions.cs` lines 22, 98-106).
+- `src/Parchwell.Kafka/**`, and every LoadGen file outside `Run/Abrupt/`. The ordinary host already accepts `{run}-{phase}-rN-loadgen` for N in 1..5 (`src/Parchwell.LoadGen/Run/Input/LoadGenHostOptions.cs` lines 22, 98-106).
 - `src/Parchwell.Verifier/Program.cs` and `src/Parchwell.Verifier/Common/Kafka/**` (the sign-in fix's files).
 - Every other C5 `mutate` target (`stryker-c5-config.json` lines 17-35) and that file, including `B10RepeatChecks.cs`, `B10SweepHandler.cs`, `B10JudgeChecks.cs`, `B10SweepChecks.cs`, `B10LateWriteChecks.cs`, `B10SweepEvidenceCodec.cs`, `PhaseJudge.cs` and `RestartManifestReader.cs`. Also `JudgeHandler.cs` and `PhaseIdentity.cs`.
 - `docs/blueprint.md`, `docs/operations/a01-runtime-limits.json`, `scenarios/**`, `results/**`. `scenarios/B10/expected.yaml` must not be created.
@@ -95,16 +102,15 @@ The plan freezes files and contracts, not lines (6845612916 point 2). Line numbe
 - Protected: `src/Parchwell.Verifier/**` and `tests/Parchwell.Verifier.Tests/**`. Hari merges.
 - Required checks: `.NET verification`, `Lifecycle verification`. `docs-advisory` is advisory.
 - Mutation: three C5 targets change, so acceptance needs `verifier-c5-mutation.yml` dispatched on `main` after merge with `measurement_complete: true` and `break_passed: true` against `thresholds.break: 60` (docs/engineering/dotnet.md line 55; 6846521676 point 2). That run is Hari's; this pull request dispatches nothing. Risk, stated: the C0 two-producer cases of the C5 targets' tests change to rejections, so the measured score can fall.
-- Standing fixture rule (plan-pr "Plan rules" rule 2, modelled on [6830544567](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6830544567) point 2). When an existing test's fixture is rejected by a check this plan adds or tightens, the implementer does exactly one of: (a) changes the fixture so it passes the new checks, keeping every assertion and the boundary the test exercises; or (b) where invalid input is the test's purpose, keeps the input and changes the expected values to exactly what this plan's checks produce. The rule never permits removing a case, loosening an assertion or changing a check. The receipt lists each change with the check that forces it. The cold review and Codex review check each listed change. Cap: at most 40 existing test cases changed under this rule; exhaustion `push -wip and hand off to the next session` (6846521676 point 9).
-- Legacy-fixture rule, a use of rule (a). A test that exercises a frozen legacy reader (`B10SweepHandler`, `JudgeHandler`, `B10JudgeChecks`, `B10SweepChecks`, `PhaseJudge`, `B10LateWriteChecks`, `B10RepeatChecks`) keeps its two-producer evidence. Its fixture passes the legacy names `[{run}-{phase}-rN-loadgen, {run}-{phase}-rN-loadgen2]` to `HostEvidenceBuilder` or `B10SweepFixture` explicitly, instead of `ExpectedProducerJobNames`, and the codec still writes them (3.1). Every assertion stays. Each such test counts toward the cap.
+- Standing fixture rule (plan-pr "Plan rules" rule 2, modelled on [6830544567](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6830544567) point 2). When an existing test's fixture is rejected by a check this plan adds or tightens, the implementer does exactly one of: (a) changes the fixture so it passes the new checks, keeping every assertion and the boundary the test exercises; or (b) where invalid input is the test's purpose, keeps the input and changes the expected values to exactly what this plan's checks produce. The rule never permits removing a case, loosening an assertion or changing a check. The receipt lists each change with the check that forces it. The cold review and Codex review check each listed change. Cap: at most 40 existing test cases changed under this rule, counting each test method or `InlineData` row whose expected values change; an edit to shared fixture support under rule (a) that changes no expected value is not counted (6847743695). Exhaustion `push -wip and hand off to the next session` (6846521676 point 9).
+- Legacy tests. Every new B10 rule of 3.1 and 3.8 applies only to run IDs matching pattern S (3.1; [6847743695](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6847743695)). Tests whose run IDs do not match S, such as `run-1`, keep `main`'s two-producer behaviour and their expected values. This covers the frozen legacy readers' tests (`B10SweepHandlerTests.cs`, `JudgeHandlerTests.cs`, `B10JudgeChecksTests.cs`, `PhaseJudgeTests.cs`, `B10SweepChecksTests.cs`, `B10SweepEvidenceTests.cs`) and the C0 two-instance `verify` tests, which build evidence through `HostEvidenceBuilder.Verify`. The receipt records each run ID it relied on.
 - Contract changes to existing tests, which are not fixture-rule uses and do not count toward the cap. Each new expected value is literal:
-  - `tests/Parchwell.Verifier.Tests/Host/B10ExpectedProducerJobsTests.cs` line 20 expects `["run-1-c0-r1-loadgen"]` and line 45 `["run-1-c1-r5-loadgen", "run-1-c1-r5-loadgen-restart", "run-1-c1-r5-loadgen-successor"]`, with each test's own run ID.
+  - `tests/Parchwell.Verifier.Tests/Host/B10ExpectedProducerJobsTests.cs`: unchanged where its run IDs do not match S (lines 20 and 45 use `run-1`).
   - `infra/scripts/phase/tests/test_phase.py` `test_b10_runs_twenty_ordered_modes_then_repeat_free_capture_and_sweep` (line 265). C0 subtest: modes per repeat `start-line`, `loadgen`, `verify`, 15 records, no `b10-sweep-line`, `b10-sweep` or `judge` record, `main('run-repeats')` 0, `main('judge')` 1, `b10_lifecycle.producers` 5 and `verifiers` 5. C1 subtest: T8's 25 records in order, `main('run-repeats')` 0, `main('judge')` 1, `producers` 15 and `verifiers` 5.
-  - `tests/Parchwell.Verifier.Tests/Window/B10TrialStartLineCodecTests.cs`: the case that writes a `b10-1-1` note with three names now writes (3.1); every other case is unchanged.
+  - `tests/Parchwell.Verifier.Tests/Window/B10TrialStartLineCodecTests.cs`: a case that writes a B10 note for a run ID matching S follows 3.1's codec rule, with T2's literal results; other cases are unchanged.
 - Fixture-rule uses already identified (the receipt completes the inventory):
-  - C0 two-instance `verify` host tests: `B10TwoInstanceVerifyTests.cs`, `B10RepeatVerifyTests.cs`, `B10EarlierRepeatExclusionTests.cs` and the B10 cases of `VerifyRunHandlerTests.cs`. Rule (a) where the test's subject survives one producer (move to one registration, keep assertions); rule (b) where the subject is the second instance (expected exit 1 and failure `b10_registration_count_invalid`).
-  - `B10IntakeChecksTests.cs`, `B10RegistrationTests.cs` and `PublicationAcceptanceTests.cs`, C0 two-producer cases: rule (b), with the literals of 3.8. Their C1 cases are unchanged (3.8 keeps C1's legacy branch).
-  - `B10SweepHandlerTests.cs` (including `InlineData("C1")`, lines 24 and 250-252), `B10JudgeChecksTests.cs`, `PhaseJudgeTests.cs`, `B10SweepChecksTests.cs`, `B10SweepEvidenceTests.cs`, `JudgeHandlerTests.cs`: legacy-fixture rule.
+  - Any existing test whose run ID matches S and whose B10 behaviour 3.1 or 3.8 changes, for example phase tests built by `prepare_b10` (run ID `b10-40121134428-1`, `test_phase.py` line 173): rule (a) where the subject survives, rule (b) otherwise, each counted.
+  - `B10IntakeChecksTests.cs`, `B10RegistrationTests.cs`, `PublicationAcceptanceTests.cs`, `B10IntakeWireTests.cs` and `VerifierResultCodecTests.cs`: unchanged where their run IDs do not match S.
   - LoadGen `B10AbruptOptionsTests.cs` lines 48-67 InlineData `Repeat` "2" and `Purpose` "scientific" with run ID "synthetic": still `DiagnosticIdentity` under 3.4; unchanged.
   - Chart `test_b10_abrupt_chart.py` `invalid_cases` (lines 112-130) and `invalid_reader_cases` (lines 197-205): unchanged expected values; T7 adds the cases that pin the schema rule itself.
   - Phase `test_b10_abrupt.py` `test_every_scientific_entry_rejects_before_work_and_removes_candidate` (line 328): unchanged.
@@ -115,11 +121,12 @@ The plan freezes files and contracts, not lines (6845612916 point 2). Line numbe
 
 ### 3.1 Start-line names
 
-- B10 C1, any run ID: exactly `[R-c1-rN-loadgen, R-c1-rN-loadgen-restart, R-c1-rN-loadgen-successor]`, including the successor name when no successor starts.
-- B10 C0, any run ID: exactly `[R-c0-rN-loadgen]`.
+- B10 C1, run ID matching S: exactly `[R-c1-rN-loadgen, R-c1-rN-loadgen-restart, R-c1-rN-loadgen-successor]`, including the successor name when no successor starts. Pattern T: the same three names, as on `main`.
+- B10 C0, run ID matching S: exactly `[R-c0-rN-loadgen]`.
+- B10, any other run ID (neither S nor T): `[...-loadgen, ...-loadgen2]`, as on `main` (6847743695). S is exactly the form the scientific prepare generates: prefix `selected.lower()` (`phase.py` lines 409-414) and run ID `f"{prefix}-{GITHUB_RUN_ID}-{GITHUB_RUN_ATTEMPT}"` (line 457); T34 proves it.
 - Other scenarios keep their one name.
-- Codec write rule: a B10 note for a pattern-T run ID needs exactly three names (unchanged); any other B10 note needs one, two or three distinct bounded names; any other count throws `ArgumentException`. The derivation decides which list a Job writes; readers check it (two names remain writable only for legacy fixtures, 2.4).
-- Frozen legacy readers (`B10SweepHandler`, `JudgeHandler`) still compare with `[loadgen, loadgen2]`, so they reject every note this pull request's start-line Job writes for B10.
+- Codec write rule: a B10 note needs exactly three distinct bounded names for a pattern-T run ID (unchanged) and for a pattern-S C1 note, exactly one for a pattern-S C0 note, and exactly two for any other run ID (unchanged). Any other count, or a repeated name, throws `ArgumentException`.
+- Frozen legacy readers (`B10SweepHandler`, `JudgeHandler`) still compare with `[loadgen, loadgen2]`, so they reject every note this path writes for a pattern-S run ID, and keep accepting legacy notes for other run IDs.
 
 ### 3.2 Scientific orchestration (phase)
 
@@ -179,6 +186,7 @@ Mode `b10-abrupt-verify` is unchanged for pattern T. For pattern S:
 - Output: container `verifier`, `<RunId>/C1/rN/b10-abrupt/nonfinal-result.json`, create-only with read-back. Envelope `schema_version` 3, `dialect` `b10_abrupt`, `purpose` `scientific`, `synthetic` true, `scientific_admissible` false, `kind` `nonfinal_result`; identity `repeat` N.
 - `data` members are exactly those of `b10-abrupt-contract.md` "Output `nonfinal_result`", plus `earlier_repeat_records` (integer, or null). `finality` `nonfinal`; `eligibility` `ineligible` or `pending_sweep`. Problems 1 to 9 keep their order; problem 10 follows. Reasons E1 to E13 unchanged.
 - Completion receipt (6846551008 point 9). For pattern S only, after the object is created and read back byte-identical, and as the mode's last external write, the mode creates once `<RunId>/C1/rN/b10-abrupt/verify-completion.json` in container `verifier`, read back byte-identical. It is a `WorkerReceipt` in the existing schema-1 format with `mode` `b10-abrupt-verify`, `scenario_id` `B10`, `configuration_id` and `phase` `C1`, `repeat` N, `job_name` `{RunId}-c1-rN-b10-abrupt-verify`, `pod_name` the verifier pod, `identity` null, `source_commit` `VerifierCommit`, `handler_exit_code` 0, `cleanup_completed` true, `started_utc` and `completed_utc`, `artifacts` exactly one reference `{container: "verifier", name: "<RunId>/C1/rN/b10-abrupt/nonfinal-result.json", length, sha256}` of the object's exact bytes, and `publication_acceptance`, `repeat_checks` and `b10_intake` null, as the `b10-sweep` receipt has them (`docs/operations/verifier-contract.md` line 261). Exit 0 requires both writes. An existing receipt or a failed write or read-back exits nonzero; the object is never rewritten.
+- Receipt codec (`PhaseWireCodec`, B2 of 6847206853). The codec admits mode `b10-abrupt-verify` (today's mode list, line 157, does not) only with `schema_version` 1, `scenario_id` `B10`, `configuration_id` and `phase` `C1`, `run_id` matching S, `repeat` 1 to 5, `identity` null (an exception to line 160's rule that a repeat needs an identity, for this mode only), `handler_exit_code` 0, `cleanup_completed` true, `publication_acceptance`, `repeat_checks` and `b10_intake` null, and `artifacts` exactly one reference in container `verifier` named `<RunId>/C1/r<repeat>/b10-abrupt/nonfinal-result.json`. Any other value for that mode throws `FormatException`. Every other mode keeps `main`'s rules. `ReadReceipt` and `WriteReceipt` apply the same rules.
 - For pattern T the output has no `earlier_repeat_records` member and no receipt, and stays as on `main`.
 
 ### 3.7 New literals
@@ -189,6 +197,7 @@ Mode `b10-abrupt-verify` is unchanged for pattern T. For pattern S:
 
 ### 3.8 Scientific C0 verify (external contract with item (b))
 
+- Scope: every rule in this section applies only to B10 C0 with a run ID matching S. For other run IDs `verify`, `B10IntakeChecks`, `B10PhaseRegistrationReader`, `PublicationAcceptance` and the three codecs keep `main`'s behaviour (6847743695).
 - Mode `verify` for B10 C0 lists `R/C0/rN/producer/` and requires exactly one `registration.json`, bound to `R-c0-rN-loadgen` with null predecessor. Zero or two or more registrations fail with `b10_registration_count_invalid`, as two-instance failures do on `main`.
 - `B10IntakeChecks.BindRegistrations` for C0: exactly one registration and expected list `[R-c0-rN-loadgen]`. Its C1 branch keeps the two-name rule of `main`, which no scientific Job reaches.
 - `B10PhaseRegistrationReader` for C0: exactly one registration per earlier repeat, bound to `[JobName]`. C1 unchanged.
@@ -199,7 +208,8 @@ Mode `b10-abrupt-verify` is unchanged for pattern T. For pattern S:
 
 ## 4. Requirements
 
-- R1. WHEN a B10 start line is written, THEN it carries 3.1's list for its configuration.
+- R1. WHEN a B10 start line is written for a run ID matching S, THEN it carries 3.1's list for its configuration; WHEN for any other run ID, THEN it carries `main`'s list.
+- R20. WHEN the scientific prepare generates a B10 run ID, THEN it matches S; WHEN a receipt of mode `b10-abrupt-verify` breaks a rule of 3.6's receipt codec bullet, THEN the codec throws `FormatException`.
 - R2. WHEN `run-repeats` runs B10 C1 science, THEN for each N it applies 3.2's rows in order under their "Runs when" conditions.
 - R3. WHEN a row's "Ends" gives repeat end, THEN its failure name is recorded at its boundary, no later row of repeat N runs, and repeat N+1 starts.
 - R4. WHEN `safety_stop` is set in repeat N, THEN no Job of a later repeat is applied and every later slot is recorded with reason `safety_stop`; WHEN it is set in row 4 after an accepted first publication, THEN row 5 still runs.
@@ -231,8 +241,8 @@ Mode `b10-abrupt-verify` is unchanged for pattern T. For pattern S:
 
 | Test | Inputs | Expected |
 |---|---|---|
-| T1 names | `ExpectedProducerJobNames`, B10, repeat 5, run IDs `b10-1-1`, `b10d-1-1`, `run-1`; C1 and C0 | C1: `[x-c1-r5-loadgen, x-c1-r5-loadgen-restart, x-c1-r5-loadgen-successor]`; C0: `[x-c0-r5-loadgen]` |
-| T2 codec | B10 notes: `b10d-1-1` with 1, 2, 3 names; `b10-1-1` with 0, 1, 2, 3, 4 names; `b10-1-1` with `["b10-1-1-c1-r1-loadgen", "b10-1-1-c1-r1-loadgen"]` | `b10d`: only 3 writes; `b10-1-1`: 1, 2 and 3 write, 0 and 4 throw `ArgumentException`; the duplicate pair throws `ArgumentException` |
+| T1 names | `ExpectedProducerJobNames`, B10, repeat 5, run IDs `b10-1-1`, `b10d-1-1`, `run-1`; C1 and C0 | `b10-1-1`: C1 `[b10-1-1-c1-r5-loadgen, b10-1-1-c1-r5-loadgen-restart, b10-1-1-c1-r5-loadgen-successor]`, C0 `[b10-1-1-c0-r5-loadgen]`; `b10d-1-1` C1: the three trial names as on `main`; `run-1`: C1 `[run-1-c1-r5-loadgen, run-1-c1-r5-loadgen2]`, C0 `[run-1-c0-r5-loadgen, run-1-c0-r5-loadgen2]` |
+| T2 codec | B10 notes: `b10d-1-1` C1 with 2 and 3 names; `b10-1-1` C1 with 1, 2, 3, 4 names; `b10-1-1` C0 with 0, 1, 2 names; `run-1` C1 and C0 with 2 and 3 names; `b10-1-1` C1 with `["b10-1-1-c1-r1-loadgen", "b10-1-1-c1-r1-loadgen-restart", "b10-1-1-c1-r1-loadgen"]` | write: `b10d` 3; `b10-1-1` C1 3; `b10-1-1` C0 1; `run-1` 2. Every other case, including the repeated name, throws `ArgumentException` |
 | T3 LoadGen scientific | `Purpose` `scientific`, run ID `b10-1-1`, `Repeat` "1", "3", "5" | valid; repeat 3: Job `b10-1-1-c1-r3-loadgen-restart`, key `B10/b10-1-1/C1/3/cross_restart`, prefix `b10-1-1/C1/r3/b10-abrupt/`, identity `repeat` 3 |
 | T4 LoadGen rejects | `scientific` with run ID `b10d-1-1`, `synthetic`; `Repeat` "0", "6", "03"; `diagnostic_trial` with `Repeat` "2" | each `DiagnosticIdentity` |
 | T5 envelope purpose | scientific journal to a trial reader; trial journal to a scientific reader; successor configured `scientific` reading a journal with identity `repeat` 2 at `Repeat` 3; `diagnostic_trial` with run ID `synthetic` and with `b10-1-1` | first three rejected: `malformed_frame` in LoadGen, `b10_abrupt_publication_failed` in the phase, problem 2 in the verifier; the last two accepted by LoadGen as on `main` |
@@ -245,7 +255,7 @@ Mode `b10-abrupt-verify` is unchanged for pattern T. For pattern S:
 | T9d successor check | as T8, repeat 2 successor `completion.json` with `cleanup_completed` false | `b10_abrupt_publication_failed` at `successor_receipt`; verify runs; repeat 3 runs |
 | T9e successor unknown | as T8, repeat 2 successor wait outcome `unknown` | `safety_stop` true; `b10_abrupt_publication_ambiguous` at `successor_job`; repeat 2 verify applied; repeats 3 to 5 not applied |
 | T9g restart unknown | as T8, repeat 2 restart wait outcome `unknown`, pod read passes | `b10_abrupt_publication_failed` at `first_termination`; `safety_stop` true; exit 1; no successor or verify for repeat 2; repeats 3 to 5 not applied, reason `safety_stop` |
-| T9h identity mismatch | as T8, repeat 2 first publication with a wrong `pod_uid` in `termination.json` identity | `b10_abrupt_first_termination_unknown` at `admission`, `safety_stop` true; no successor or verify; repeats 3 to 5 not applied; exit 1 |
+| T9h identity mismatch | as T8, repeat 2 first publication with a wrong `pod_uid` in `termination.json` identity | first recorded failure `b10_abrupt_first_termination_unknown` at `admission` (later failures as the trial records them, listed in the receipt), `safety_stop` true; no successor or verify; repeats 3 to 5 not applied; exit 1 |
 | T9f timeout render failure | as T8, repeat 2 timeout render fails | `b10_abrupt_configuration_invalid` at `timeout_job`, `safety_stop` false; repeat 3 starts |
 | T10 metadata | repeat 2 start line with `[loadgen, loadgen2]` names; separately, repeat 2 `start-line.json` missing | `b10_abrupt_publication_failed` at `metadata`; `b10_abrupt_publication_ambiguous` at `metadata`; no producer Job for repeat 2; repeat 3 runs |
 | T12 lifecycle | T8 run; T22 run | C1: `producers` 15, `verifiers` 5, `gaps` []; C0: `producers` 5, `verifiers` 5; each entry with the 7 members of 3.2 |
@@ -256,20 +266,22 @@ Mode `b10-abrupt-verify` is unchanged for pattern T. For pattern S:
 | T16b earlier empty | as T14, repeat 2 listings both empty | `problems` []; `earlier_repeat_records` 0 |
 | T17 repeat 1 | `b10-1-1`, repeat 1 | check 30 not evaluated; `earlier_repeat_records` 0 |
 | T18 verifier rejects | S with prefix `b10-1-1/C1/r2/producer/` at repeat 3; repeat 6 | exit 1 before any read |
-| T19 legacy readers | T14 bytes; a start line written by T1's C1 and C0 derivations | `B10SweepHandler`, `JudgeHandler`, `PhaseWireCodec`, `VerifierResultCodec`, `B10SweepEvidenceCodec` reject |
+| T19 legacy readers | T14 bytes; start lines written by T1's `b10-1-1` derivations; T1's `run-1` start lines | `B10SweepHandler`, `JudgeHandler` and `B10SweepEvidenceCodec` reject the first two; the `run-1` start lines are accepted as on `main` |
 | T20 trial unchanged | existing trial tests in `test_b10_abrupt.py`, `test_b10_abrupt_chart.py`, `B10AbruptVerify*`, `B10AbruptOptionsTests` | pass with their existing expected values |
 | T21 science not diagnostic | scientific `phase.json` after T8 | `reject_b10_abrupt_science` passes; no `b10_abrupt_diagnostic` key |
 | T22 C0 order | fake kubectl/helm, C0 science, every Job complete | 15 records: for N = 1..5 start-line, loadgen, verify; no `loadgen2`; exit 0 |
-| T23 C0 verify valid | host test, B10 C0 repeat 2, one registration `run-1-c0-r2-loadgen`, start line `[run-1-c0-r2-loadgen]`, valid evidence | handler exit 1; `verify-completion.json` `handler_exit_code` 1, intake with 1 producer; `result.json` status `incomplete`, `classification_final` false, `b10_window_checks_complete` true |
+| T23 C0 verify valid | host test, run ID `b10-1-1`, B10 C0 repeat 2, one registration `b10-1-1-c0-r2-loadgen`, start line `[b10-1-1-c0-r2-loadgen]`, valid evidence | handler exit 1; `verify-completion.json` `handler_exit_code` 1, intake with 1 producer; `result.json` status `incomplete`, `classification_final` false, `b10_window_checks_complete` true |
 | T24 C0 count | as T23 with 0 and with 2 registrations | exit 1, `b10_registration_count_invalid` |
-| T25 C0 start line | as T23 with start line `[run-1-c0-r2-loadgen, run-1-c0-r2-loadgen2]` | `start_line_invalid` |
+| T25 C0 start line | as T23 with start line `[b10-1-1-c0-r2-loadgen, b10-1-1-c0-r2-loadgen2]` | `start_line_invalid` |
 | T26 C0 restart manifest | as T23 with a manifest carrying `Restart` | `publication_restart_role_mismatch` |
 | T27 C0 retry rule | as T23: attempts a1 (k1, seq 0) callback delivered false, -192, persistence 1, then a2 (k1, seq 0) delivered; and the same with a1 delivered false, error -1 | first: T23's eligible shape; second: `result.json` status `invalid` |
 | T28 C0 earlier repeat | as T23 at repeat 3, repeat 2 producer prefix with 2 registrations | `InvalidOperationException` with message `b10_registration_count_invalid` (`B10PhaseRegistrationReader.cs` line 42 on `main`) |
 | T29 C1 legacy branch | `B10IntakeChecks.BindRegistrations` and `PublicationAcceptance` with C1 two-producer inputs from `main`'s tests | unchanged results |
-| T32 C0 codecs | `ValidateB10Intake`, `VerifierResultCodec` (including `EligibleShape`) and `B10ProducerObservationsCodec` with: C0 one producer; C0 legacy pair; C1 one producer; C1 two producers as on `main`; a B10 C0 result with status `complete_valid` | C0 one accepted; C0 legacy pair accepted as on `main`; C1 one rejected; C1 two accepted; `complete_valid` rejected |
+| T32 C0 codecs | `ValidateB10Intake`, `VerifierResultCodec` (including `EligibleShape`) and `B10ProducerObservationsCodec` with: C0 one producer, run ID `b10-1-1`; C0 one producer, run ID `run-1`; C0 legacy pair, run ID `run-1`; C1 one producer, `b10-1-1`; C1 two producers as on `main`; a B10 C0 result with status `complete_valid`, `b10-1-1` | accepted: first, third, fifth; rejected: second, fourth, sixth |
 | T31 C1 receipt | T14 run; T14 with a pre-existing receipt; trial run as T20 | receipt with the 3.6 members, `artifacts[0]` length and SHA-256 equal to the object's bytes, exit 0; exit nonzero and the object unchanged; no receipt object |
-| T30 legacy fixtures | the tests 2.4 puts under the legacy-fixture rule | pass with every existing assertion |
+| T30 legacy tests | every existing test whose run ID does not match S | passes with its existing expected values |
+| T33 receipt codec | 3.6 receipt bytes round-tripped through `WriteReceipt` and `ReadReceipt`; the same with `identity` non-null, `repeat` null, `repeat` 6, run ID `b10d-1-1`, `handler_exit_code` 1, two artifacts, artifact name for another repeat | round trip equal; each other case `FormatException` |
+| T34 run-ID pattern | scientific `prepare` for B10 C0 and C1 with `GITHUB_RUN_ID` `1`, `40121134428` and `9` x 19, `GITHUB_RUN_ATTEMPT` `1` and `12`, and a case exceeding 29 characters | each generated run ID matches `^b10-[0-9]+-[0-9]+$`; the over-length case fails as on `main` |
 
 Each verifier row asserts that every other enforced check still passes in that subcase. The receipt records the rest of the predicate map: below, at and above each boundary (repeat 0, 1, 5, 6; name counts 0 to 4; registration counts 0, 1, 2).
 
@@ -292,8 +304,8 @@ Status of all of these: accepted by Hari for planning only, and not for any run 
 
 | # | Command | Evidence |
 |---|---|---|
-| A1 | `./scripts/verify-dotnet.sh` | `Verification passed.`; reports include T1 to T5, T14 to T20, T23 to T32 |
-| A2 | `python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'` and the same for `infra/scripts/phase/tests` | `OK`; includes T8 to T13, T9b to T9h, T21, T22 |
+| A1 | `./scripts/verify-dotnet.sh` | `Verification passed.`; reports include T1 to T5, T14 to T20, T23 to T33 |
+| A2 | `python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'` and the same for `infra/scripts/phase/tests` | `OK`; includes T8 to T13, T9b to T9h, T21, T22, T34 |
 | A3 | `bash infra/scripts/lifecycle/check-offline.sh` | exit 0; includes T6, T7 |
 | A4 | `npm run check:docs` | each warning fixed or explained (docs/agents/pull-requests.md rule 8) |
 | A5 | `git diff --name-only origin/main...HEAD` | a subset of 2.2, checked by script against 2.3 |
