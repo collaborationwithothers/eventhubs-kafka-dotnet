@@ -103,12 +103,14 @@ Full verification checks the generated XML documentation after the Release build
 
 ### CI mapping coverage
 
-The .NET verification workflow runs the XML inventory check through `./scripts/verify-dotnet.sh`, then installs the pinned collector outside the repository under `RUNNER_TEMP` and runs the mapping coverage gate. The coverage steps follow the foundation build because the checker requires its Release assemblies and matching portable PDB. [Workflow][workflow], [coverage entry point][coverage-script], [approved collector pin][plan], [tool CLI][coverage-cli].
+The .NET verification workflow runs the XML inventory check through `./scripts/verify-dotnet.sh`. In the Kafka test project's matrix job, it then runs the coverage steps after `./scripts/verify-dotnet.sh --project Parchwell.Kafka.Tests`: it installs the pinned collector outside the repository under `RUNNER_TEMP` and runs the mapping coverage gate. The coverage steps follow that job's build because the checker requires its Release assemblies and matching portable PDB. [Workflow][workflow], [coverage entry point][coverage-script], [approved collector pin][plan], [tool CLI][coverage-cli].
 
 ```yaml
 - name: Install mapping coverage collector
+  if: matrix.project == 'Parchwell.Kafka.Tests'
   run: dotnet tool install dotnet-coverage --version 18.12.0 --tool-path "$RUNNER_TEMP/parchwell-coverage"
 - name: Verify Kafka mapping coverage
+  if: matrix.project == 'Parchwell.Kafka.Tests'
   run: ./scripts/verify-kafka-coverage.sh "$RUNNER_TEMP/parchwell-coverage/dotnet-coverage"
 ```
 
