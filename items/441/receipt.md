@@ -10,6 +10,7 @@
 - Deliverable: workflow job split, `scripts/check-dotnet-matrix.py` and tests, hash update, two doc updates.
 - Authorization: the approved plan above. The workflow path is protected; Hari merges.
 - Mandatory gates: plan acceptance commands A1 to A6; cold review; Codex review of the head.
+- Earliest authorized publication checkpoint: after a cold review round with no unanswered P0 or P1 and the local gates in Commands run; the hosted run (A5) needs a pushed head, so the pull request is opened at that point.
 - Review budget: two comprehensive passes, then two focused rounds (rule 8). Exhaustion: hand off to Hari.
 - Hosted-run cap (plan section 10a): three failing A5 runs caused by this change, then push -wip and hand off.
 
@@ -24,6 +25,9 @@ The plan's section 6 (T1 to T24) is the map; each test is implemented in `script
 2. `docs/engineering/dotnet-verification.md` "Hosted CI and completion" lists the upload-artifact v4.6.2 pin as well as the download-artifact pin. Tags checked with `git ls-remote` on 2026-11-13; the release pages were not read.
 3. Step 7 `run` block text (plan 3.1 leaves it to the implementer): uses `if` statements, not `[ ] && cp`, so the step's `-e` shell does not fail on an absent optional file.
 4. The checker reports `missing-file` for `results.xml` and the other three files in the order summary.json, stage-timing.tsv, unit-projects.txt, results.xml (plan R7 order).
+
+## Correction to the approved plan (not an amendment)
+Plan section 9's estimate says the new workflow uses eight runners at once instead of three. Counted by script from the head workflow (jobs without `needs`, matrix legs expanded): nine jobs start at once (six test legs, worker image smoke, lifecycle verification, Terraform verification), against three today. The plan file is not edited, because that would be an amendment. Nothing in the plan relies on the figure.
 
 ## Fixture changes forced by new checks (standing fixture rule)
 - `infra/scripts/phase/tests/test_workflow.py`: the SHA-256 for `dotnet-verification.yml` takes the new file's hash (rule (a)); the assertion is unchanged. The comment line gains the issue reference (R12).
