@@ -16,7 +16,7 @@ Scientific B10 now has a final phase sweep and independent timeout/restart rule 
 
 ## Direct task authorization and implementer choices
 
-After the exposed synthetic-population scope conflict, Hari instructed in this task: "Just keep going and do what's right and maintain quality". This direct user instruction takes precedence over local plan restrictions for the necessary compatibility edits below. It is not represented as an invented GitHub decision.
+After the exposed synthetic-population scope conflict, Hari instructed the Codex session in chat: "Just keep going and do what's right and maintain quality". That instruction is not a `## Decision` or `## Approval` comment, so it is not a decision recognized under docs/agents/factory.md "Item lifecycle" step 3. The three edits below rest on it, and each lies outside the plan's section 2 file list or its section 3.3 required options. They are listed in the pull request description for Hari's merge decision. The takeover session did not make them and does not claim authority for them; Hari's later decisions 6863928885 and 6864229138 do not name them.
 
 1. The synthetic aggregation total now equals the configured target count, preserving exact numerator/denominator equality and every per-target, crossing, completeness and score assertion. The measured 17-target corpus is unchanged.
 2. The one C5 workflow hash expectation in `infra/scripts/phase/tests/test_workflow.py` recognizes only the already-approved appended matrix rows. Every other workflow hash/assertion remains unchanged.
@@ -86,13 +86,13 @@ All program logs/manifests below remain outside the repository. This is an autho
 | A2: `python3 -m unittest discover -s infra/scripts/phase/tests -p 'test_*.py'` | 326 passed, exit 0, 116.475 s; `404-a2-phase-final.log`. |
 | A3: `bash infra/scripts/lifecycle/check-offline.sh` | Exit 0; `404-a3-offline.log`. Chart, schema, shell and action checks passed. No Azure action. |
 | A4: `npm run check:docs` | Latest completed run reported nine pre-existing warnings in unchanged files; all changed files were clean (`404-docs-final.log`). The first pre-cold scan also exited 0 with the same nine warnings; rerun the mandatory scan on this consolidated prose before the second comprehensive review. |
-| A5 scope script | 42 authored files within plan and direct authorizations; seven new production targets; every original 17 target byte-unchanged. The final committed diff against latest main is checked at handoff. |
+| A5 scope script | 42 authored files at the Codex session's last count (43 in the takeover session's diff, the 43rd being `B10ScientificThreeJobLegacyReaderTests.cs`), within plan and direct authorizations; seven new production targets; every original 17 target byte-unchanged. The final committed diff against latest main is checked at handoff. |
 | A6 prerequisite script | Passed against current main as recorded above. |
 | Pre-PR sandbox and final-head CI | Remaining mandatory gates after cold review. Actual source SHA, commands and results go in the PR self-review record; no pass is claimed here. |
 
 A2/A3's source/command/environment hashes are in `/workspace/scratch/404-a2-a3-source.json`; the frozen .NET and Python-input hashes are in `/workspace/scratch/404-final-frozen-source.json`. The LoadGen.Tests Release assembly needed by T0 was built from the unchanged existing project with the same bounded build flags; zero warnings/errors, 70.57 s, `404-loadgen-release-build.log`. No project or reference was added.
 
-The four existing changed test cases are:
+The Codex session changed four existing test cases, listed here; the takeover session added the two legacy-reader tests under "Takeover session", for 6 of 40. `charts/parchwell/tests/test_chart.py` `main()` also changed its enumeration totals (69 to 71 positive cases, a new 58-negative assertion) because the chart gains `b10-final-sweep`, as plan section 2.3 lists under rule (a); they are values inside `main()`, not a test method or `InlineData` row, so they are not counted under the cap. Hari may count them if he reads the unit differently.
 
 | Test | Before | After | Authority |
 | --- | --- | --- | --- |
@@ -254,8 +254,14 @@ Scope: the corrections to the four P1 and two P2 findings of round 1, listed und
 
 Mode: comprehensive, the third and last pass, approved by Hari's decision 6864229138. It reviews the entire authored pull request diff against main `6db39f7`, not only the changes since the last round. Input revision: the commit that contains this section. Specification sources: plan Revision 6 at `07e2f2a3d80d9d0342590919d7a349f38a0d546a`, approval 6849364061, decisions 6847743695, 6856409628, 6857653379, 6863928885 and 6864229138, and the contract `docs/operations/b10-abrupt-contract.md`. Cumulative before this round: two comprehensive, two focused; no focused round remains, so a P0 or P1 from this pass that needs another round goes to Hari.
 
+## Takeover session outcomes after the third comprehensive review
+
+Third comprehensive report (0 P0, 1 P1, 2 P2; reviewer `claude-opus-5-5`): the P1 on the state file's unlinked chat instruction is answered by the rewording above and in `items/404/state.md`, and Hari approved the fix in chat. The P2 on stale counts is corrected above. The P2 on `check_b10_final_candidate_transport` stays: plan acceptance TP3 names it as a manual command, and no plan field asks for it to run in `unittest discover`; its recorded manual result stands. Hari said in chat that the extra review rounds for this fix are covered, "at least 3 more". Partial pre-PR local gate, `./scripts/verify-dotnet.sh --tier sandbox` on source `20786ba36694`, excluding `Tier=CGroupV2`: passed, with 17 Architecture, 56 Enrichment, 491 Kafka, 1,826 LoadGen, 340 Scenarios and 9,033 Verifier tests. It is not the full gate; the hosted check on the final head is.
+
+## Focused correction review 3 (takeover session, extra round approved by Hari in chat)
+
+Mode: focused, outside the numbered budget by Hari's chat approval of the P1 fix and of at least three more rounds (cumulative: three comprehensive, two focused, then this one). Input revision: the commit that contains this section. Comparison revision: `20786ba36694`, the tree the third comprehensive pass reviewed. The full pull request diff against main is context. Scope: the corrections to the third report's P1 and two P2s, which touch only this receipt and `items/404/state.md`, and the claims they make about the sandbox gate and the cap. Specification sources: AGENTS.md, docs/agents/pull-requests.md, docs/agents/factory.md "Item state file" and "Item lifecycle" step 3, and decisions 6863928885 and 6864229138.
+
 ## Remaining publication gates
 
-The cap handoff was saved at `d6108b46ee95f57da4b64947b8a879eab596c3ab`; Hari then directly instructed the controller to continue. Both comprehensive rounds are complete. The documentation scan and both focused rounds have run in the takeover session (sections "Focused correction review 1" and "2"). The remaining round is the third comprehensive pass of decision 6864229138, then the sandbox gate once on the cleared source. The complete reports, dispositions and cumulative counts go in the PR self-review record rather than a self-referential receipt commit.
-
-After clean applicable cold coverage, run the pre-PR sandbox gate once on cleared source. Hosted final-head CI and hosted code/security receipts remain mandatory after the PR opens. The new timeline tooling is used prospectively from its merge; earlier events are not backfilled. Hari merges and dispatches the post-merge main-only C5 run once; this session dispatches no workflow. Live diagnostic/scientific runs still need their separate authorization.
+The sandbox gate has passed on `20786ba36694` (see "Takeover session outcomes"). After clean cold coverage of the corrections, push to the pull request branch, reply in both Codex threads with the fix commits, mark the pull request ready, and request Codex code and security review. Hosted final-head `.NET verification` and both hosted receipts remain mandatory. Hari merges and dispatches the post-merge main-only C5 run once; this session dispatches no workflow. Live diagnostic or scientific runs still need their separate authorization. The complete reports, dispositions and cumulative counts go in the pull request self-review record, not in this receipt.
