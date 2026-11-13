@@ -463,13 +463,18 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
     }
 
     // The sweep later reads these counts unchecked, so a malformed object must be rejected here, inside the guarded block.
+    // The contract gives the nonfinal timeout as exactly these six nonnegative counts, or null.
     internal static void ValidateTimeout(JsonElement timeout)
     {
         if (timeout.ValueKind == JsonValueKind.Null) return;
         Require(timeout.ValueKind == JsonValueKind.Object, "nonfinal_timeout");
-        foreach (string field in new[] { "ok", "loss", "phantom", "reported_failure", "duplicate", "reorder" })
-            if (timeout.TryGetProperty(field, out JsonElement value) && value.ValueKind != JsonValueKind.Null)
-                Require(value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out long count) && count >= 0, "nonfinal_timeout_count");
+        string[] fields = ["ok", "loss", "phantom", "reported_failure", "duplicate", "reorder"];
+        Exact(timeout, fields);
+        foreach (string field in fields)
+        {
+            JsonElement value = timeout.GetProperty(field);
+            Require(value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out long count) && count >= 0, "nonfinal_timeout_count");
+        }
     }
 
     internal static void ValidateArms(JsonElement arms)

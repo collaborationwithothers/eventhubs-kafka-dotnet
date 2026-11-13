@@ -322,6 +322,10 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
     [InlineData("timeout_duplicate_string")]
     [InlineData("timeout_not_object")]
     [InlineData("timeout_array")]
+    [InlineData("timeout_empty")]
+    [InlineData("timeout_missing_member")]
+    [InlineData("timeout_extra_member")]
+    [InlineData("timeout_null_member")]
     [InlineData("problems_number")]
     [InlineData("problems_item_number")]
     [InlineData("problems_object")]
@@ -340,6 +344,10 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
                 case "timeout_duplicate_string": data["timeout"]!["duplicate"] = "0"; break;
                 case "timeout_not_object": data["timeout"] = "none"; break;
                 case "timeout_array": data["timeout"] = new JsonArray(1); break;
+                case "timeout_empty": data["timeout"] = new JsonObject(); break;
+                case "timeout_missing_member": data["timeout"]!.AsObject().Remove("reorder"); break;
+                case "timeout_extra_member": data["timeout"]!["unexpected"] = 0; break;
+                case "timeout_null_member": data["timeout"]!["phantom"] = null; break;
                 case "problems_number": data["problems"] = 5; break;
                 case "problems_item_number": data["problems"] = new JsonArray(5); break;
                 case "problems_object": data["problems"] = new JsonObject(); break;
