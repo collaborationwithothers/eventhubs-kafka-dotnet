@@ -34,6 +34,10 @@
 #       The session found that the environment cut off a command or restarted.
 #   agent.resumed     empty only
 #       The session continues after an interruption or a handoff.
+#   session.start     empty only
+#       The session's first event on its pull request branch, recorded once.
+#       render.sh starts the block at the last one in the log for this branch.
+#       A resume within the same session records agent.resumed instead.
 #   handoff           hari|next-session|completion
 #       Just before a handoff or completion comment.
 #   decision.received [0-9]{1,20}
@@ -56,7 +60,7 @@ case "$event" in
   focused.run) pattern='^(fast|project)$' ;;
   review.start) pattern='^(comprehensive|focused|p2-correction)$' ;;
   review.end) pattern='^(comprehensive|focused|p2-correction) P0=[0-9]{1,6} P1=[0-9]{1,6} P2=[0-9]{1,6}$' ;;
-  env.interrupted | agent.resumed) pattern='^$' ;;
+  env.interrupted | agent.resumed | session.start) pattern='^$' ;;
   handoff) pattern='^(hari|next-session|completion)$' ;;
   decision.received) pattern='^[0-9]{1,20}$' ;;
   *)
