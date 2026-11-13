@@ -41,7 +41,7 @@ VERIFIER_REQUIRED['b10-abrupt-verify']=VERIFIER_COMMON+VERIFIER_REPEAT+('IoTimeo
 VERIFIER_PHASE_KAFKA=('VerifierClientId','NamespaceName','TokenTimeout','MetadataTimeout','WatermarkTimeout','PollSlice','BlobIoTimeout','MaxPartitions','MaxInputDepth')
 VERIFIER_REQUIRED['b10-sweep-line']=VERIFIER_COMMON+VERIFIER_PHASE_KAFKA+('IoTimeout','B10LastVerifierCompletedUtc','B10LastLoadgenTerminatedUtc','B10SettleIntervalMilliseconds')
 VERIFIER_REQUIRED['b10-sweep']=VERIFIER_COMMON+VERIFIER_PHASE_KAFKA+('IoTimeout','B10SettleIntervalMilliseconds','MaxConsumedRecords','MaxConsumedBytes','MaxArtifactBytes','MaxTotalInputBytes','MaxRowBytes','MaxRowsPerArtifact','MaxInputEntries','SafetyStop')
-VERIFIER_REQUIRED['b10-final-sweep']=VERIFIER_REQUIRED['b10-sweep']
+VERIFIER_REQUIRED['b10-final-sweep']=VERIFIER_REQUIRED['b10-sweep']+('LoadGenImage','VerifierImage')
 def verifier_known(key):
     nested='ScenarioLoadOptions__'
     return key[len(nested):] in VERIFIER_SCENARIO_PROPERTIES if key.startswith(nested) else key in VERIFIER_PROPERTIES
@@ -138,6 +138,8 @@ def expected_environment(d):
         else:
           x={'NamespaceName':r['eventhubs']['namespace_name'],'Repeat':repeat,'ExpectedInstanceId':r['loadgen_job_name'],'RepeatPrefix':prefix,'ArtifactPrefix':prefix+'producer/','StartLineOutputName':prefix+'start-line.json','BrokerInventoryOutputName':prefix+'broker-inventory.json','StartLineInputName':prefix+'start-line.json','ResultOutputName':prefix+'result.json'}
         expected.update({f'Verifier__{k}':('value',scalar(v)) for k,v in x.items()})
+        if mode=='b10-final-sweep':
+          expected.update({f'Verifier__{name}':('value',r[key]) for name,key in (('LoadGenImage','loadgen_image'),('VerifierImage','verifier_image'))})
         section='verifier_start_line' if mode in ('start-line','b10-sweep-line') else 'verifier_verify'
         inherited={k:v for k,v in r['bounds'][section].items()
                    if mode not in ('b10-sweep','b10-final-sweep') or k not in ('MaxConsumedRecords','MaxConsumedBytes')}
@@ -324,7 +326,7 @@ def main():
     mut(lambda d:d['runtime'].update(loadgen_job_name='b10-1-1-c1-r1-loadgen'),final)
     mut(lambda d:d.update(scenario_id='A01'),final)
     mut(lambda d:d['runtime'].update(phase='probe'),final)
-    mut(lambda d:d['runtime']['bounds'].pop('b10_sweep'),final)
+    mut(lambda d:d['runtime']['bounds'].update(b10_sweep=None),final)
     assert len(negatives)==58
     for i,d in enumerate(negatives):
       f=td/f'n{i}.yaml';out=td/f'n{i}.out';with_case(d,f)

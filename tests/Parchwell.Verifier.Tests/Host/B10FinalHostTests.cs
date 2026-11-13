@@ -27,6 +27,14 @@ public sealed class B10FinalHostTests
         "MaxOutputBytes", "MaxDiagnosticsPerCheck", "MaxDiagnosticBytes"
     ];
 
+    private static readonly string[] RequiredIdentityProperties =
+    [
+        "ScenarioId", "ConfigurationId", "RunId", "Phase", "JobName", "VerifierCommit", "SourceCommit",
+        "PodName", "VerifierClientId", "NamespaceName", "BlobServiceUri", "VerifierContainer", "LedgerContainer",
+        "TenantId", "WorkloadIdentityClientId", "FederatedTokenFilePath", "LoadGenImage", "VerifierImage"
+    ];
+    private static readonly string?[] MissingIdentityValues = [null, "", " \t "];
+
     public static IEnumerable<object?[]> PositiveOptions() => RequiredPositiveOptions.SelectMany(property =>
         new long?[] { null, -1, 0, 1, 2 }.Select(value => new object?[] { property, value }));
 
@@ -57,6 +65,9 @@ public sealed class B10FinalHostTests
         var handler = Assert.IsType<B10FinalSweepHandler>(host.Services.GetRequiredService<IVerifierModeHandler>());
         Assert.Equal(VerifierMode.B10FinalSweep, handler.Mode);
         Assert.NotNull(host.Services.GetRequiredService<ScenarioLoader>());
+        VerifierHostOptions bound = host.Services.GetRequiredService<IOptions<VerifierHostOptions>>().Value;
+        Assert.Equal(options.LoadGenImage, bound.LoadGenImage);
+        Assert.Equal(options.VerifierImage, bound.VerifierImage);
         ScenarioLoadOptions limits = host.Services.GetRequiredService<IOptions<ScenarioLoadOptions>>().Value;
         Assert.Equal(options.MaxArtifactBytes, limits.MaxDocumentCharacters);
         Assert.Equal(options.MaxInputDepth, limits.MaxNestingDepth);
@@ -64,16 +75,20 @@ public sealed class B10FinalHostTests
         Assert.Equal(options.MaxInputEntries, limits.MaxParserEvents);
     }
 
-    [Fact]
-    public void Given_LargeExistingInputBudgets_When_HostBuilt_Then_ScenarioIntegerLimitsAreCapped()
+    [Theory]
+    [InlineData(2147483646L, 2147483646)]
+    [InlineData(2147483647L, 2147483647)]
+    [InlineData(2147483648L, 2147483647)]
+    [InlineData(long.MaxValue, 2147483647)]
+    public void Given_LargeExistingInputBudgets_When_HostBuilt_Then_ScenarioIntegerLimitsAreCapped(long budget, int expected)
     {
         VerifierHostOptions options = Options();
-        options.MaxArtifactBytes = (long)int.MaxValue + 1;
-        options.MaxInputEntries = long.MaxValue;
+        options.MaxArtifactBytes = budget;
+        options.MaxInputEntries = budget;
         using IHost host = Program.BuildHost(Arguments(options));
         ScenarioLoadOptions limits = host.Services.GetRequiredService<IOptions<ScenarioLoadOptions>>().Value;
-        Assert.Equal(int.MaxValue, limits.MaxDocumentCharacters);
-        Assert.Equal(int.MaxValue, limits.MaxParserEvents);
+        Assert.Equal(expected, limits.MaxDocumentCharacters);
+        Assert.Equal(expected, limits.MaxParserEvents);
     }
 
     [Theory]
@@ -88,6 +103,41 @@ public sealed class B10FinalHostTests
             : Convert.ChangeType(value.Value, type, CultureInfo.InvariantCulture);
         member.SetValue(options, configured);
         Assert.Equal(value > 0, Validate(options).Succeeded);
+    }
+
+    public static IEnumerable<object?[]> RequiredIdentityOptions() => RequiredIdentityProperties.SelectMany(property =>
+        MissingIdentityValues.Select(value => new object?[] { property, value }));
+
+    [Theory]
+    [MemberData(nameof(RequiredIdentityOptions))]
+    public void Given_RequiredIdentityOrStoreInput_When_AbsentOrBlank_Then_Rejects(string property, string? value)
+    {
+        VerifierHostOptions options = Options();
+        typeof(VerifierHostOptions).GetProperty(property)!.SetValue(options, value);
+        Assert.False(Validate(options).Succeeded);
+    }
+
+    [Theory]
+    [InlineData(-1L, false)]
+    [InlineData(0L, false)]
+    [InlineData(1L, true)]
+    public void Given_ProcessLifetimeAtRequiredBudgetSum_When_Validated_Then_RequiresStrictlyGreater(long ticks, bool accepted)
+    {
+        VerifierHostOptions options = Options();
+        options.ProcessLifetime = options.CleanupTimeout + options.IoTimeout + options.TokenTimeout + options.MetadataTimeout +
+            options.WatermarkTimeout + options.BlobIoTimeout + options.SafetyStop + TimeSpan.FromTicks(ticks);
+        Assert.Equal(accepted, Validate(options).Succeeded);
+    }
+
+    [Theory]
+    [InlineData(-1L, true)]
+    [InlineData(0L, true)]
+    [InlineData(1L, false)]
+    public void Given_TimeoutRepresentationBoundary_When_Validated_Then_RejectsOverflow(long ticks, bool accepted)
+    {
+        VerifierHostOptions options = Options();
+        options.PollSlice = TimeSpan.FromMilliseconds(int.MaxValue) + TimeSpan.FromTicks(ticks);
+        Assert.Equal(accepted, Validate(options).Succeeded);
     }
 
     [Theory]
@@ -215,15 +265,51 @@ public sealed class B10FinalHostTests
         options.RunId = "b10d-1-1";
         options.JobName = "b10d-1-1-c0-b10-final-sweep";
         var store = new CountingStore();
+        bool configured = false;
         int exit = await Program.RunAsync(Arguments(options), services =>
         {
+            configured = true;
             services.RemoveAll<IVerifierArtifactStore>();
             services.RemoveAll<IProducerArtifactStore>();
             services.AddSingleton<IVerifierArtifactStore>(store);
             services.AddSingleton<IProducerArtifactStore>(store);
         });
         Assert.Equal(1, exit);
+        Assert.False(configured);
         Assert.Equal(0, store.Reads);
+    }
+
+    [Theory]
+    [InlineData("LoadGenImage", null)]
+    [InlineData("VerifierImage", null)]
+    [InlineData("LoadGenImage", "")]
+    [InlineData("VerifierImage", "")]
+    [InlineData("LoadGenImage", "synthetic/loadgen:latest")]
+    [InlineData("VerifierImage", "synthetic/verifier:latest")]
+    [InlineData("LoadGenImage", "synthetic/loadgen@sha256:bad")]
+    [InlineData("VerifierImage", "synthetic/verifier@sha256:bad")]
+    public async Task Given_MissingOrInvalidImage_When_RealHostRuns_Then_ExitsOneBeforeComposition(string property, string? value)
+    {
+        VerifierHostOptions options = Options();
+        typeof(VerifierHostOptions).GetProperty(property)!.SetValue(options, value);
+        bool configured = false;
+        int exit = await Program.RunAsync(Arguments(options), _ => configured = true);
+        Assert.Equal(1, exit);
+        Assert.False(configured);
+    }
+
+    [Theory]
+    [InlineData("LoadGenImage", 63, false)]
+    [InlineData("LoadGenImage", 64, true)]
+    [InlineData("LoadGenImage", 65, false)]
+    [InlineData("VerifierImage", 63, false)]
+    [InlineData("VerifierImage", 64, true)]
+    [InlineData("VerifierImage", 65, false)]
+    public void Given_ImageDigestLength_When_Validated_Then_RequiresExactlySixtyFourHexCharacters(string property, int length, bool accepted)
+    {
+        VerifierHostOptions options = Options();
+        typeof(VerifierHostOptions).GetProperty(property)!.SetValue(options, "synthetic/image@sha256:" + new string('a', length));
+        Assert.Equal(accepted, Validate(options).Succeeded);
     }
 
     [Fact]
@@ -259,6 +345,8 @@ public sealed class B10FinalHostTests
         options.ResultOutputName = null;
         options.ScenarioRoot = null;
         options.ScenarioLoadOptions = null;
+        options.LoadGenImage = "synthetic/loadgen@sha256:" + new string('a', 64);
+        options.VerifierImage = "synthetic/verifier@sha256:" + new string('b', 64);
         options.TokenTimeout = TimeSpan.FromSeconds(10);
         options.ProcessLifetime = TimeSpan.FromMinutes(1);
         options.B10SettleIntervalMilliseconds = 60000;
@@ -293,7 +381,7 @@ public sealed class B10FinalHostTests
     {
         internal int Reads { get; private set; }
         public Task<byte[]?> ReadAsync(string name, CancellationToken cancellationToken) { Reads++; return Task.FromResult<byte[]?>(null); }
-        public Task<BlobListing> ListAsync(string prefix, CancellationToken cancellationToken) { Reads++; return Task.FromResult(new BlobListing([], true)); }
+        public Task<BlobListing> ListAsync(string prefix, CancellationToken cancellationToken) { Reads++; return Task.FromResult(new BlobListing([], 1, true)); }
         public Task CreateAsync(string name, byte[] content, CancellationToken cancellationToken) => throw new InvalidOperationException("Unexpected write.");
     }
 }

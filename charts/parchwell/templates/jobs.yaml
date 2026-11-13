@@ -190,7 +190,7 @@ spec:
               value: {{ $value | quote }}
             {{- end }}
             {{- end }}
-            {{- if eq $mode "b10-abrupt-verify" }}
+            {{- if has $mode (list "b10-abrupt-verify" "b10-final-sweep") }}
             - name: Verifier__LoadGenImage
               value: {{ $r.loadgen_image | quote }}
             - name: Verifier__VerifierImage

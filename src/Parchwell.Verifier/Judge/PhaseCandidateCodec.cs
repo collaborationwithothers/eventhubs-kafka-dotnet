@@ -15,7 +15,8 @@ internal static class PhaseCandidateCodec
     internal static byte[] Write(PhaseCandidate candidate)
     {
         ArgumentNullException.ThrowIfNull(candidate);
-        if (candidate.ScenarioId == "B10" && (candidate.B10Sweep is null || candidate.Repeats.Any(x => x.ClassificationFinal is null)))
+        bool scientificFinal = candidate.ScenarioId == "B10" && VerifierHostOptions.IsB10ScientificRunId(candidate.RunId);
+        if (candidate.ScenarioId == "B10" && ((!scientificFinal && candidate.B10Sweep is null) || candidate.Repeats.Any(x => x.ClassificationFinal is null)))
             throw new FormatException("New B10 candidates require explicit sweep and repeat finality evidence.");
         byte[] bytes=DeploymentJson.Write(MaximumBytes, w =>
         {
@@ -27,6 +28,11 @@ internal static class PhaseCandidateCodec
             w.WritePropertyName("repeats");w.WriteStartArray();foreach(var r in candidate.Repeats)WriteRepeat(w,r);w.WriteEndArray();
             if(candidate.Counts is not null)WriteCounts(w,candidate.Counts);
             if(candidate.B10Sweep is not null)WriteSweep(w,candidate.B10Sweep);
+            if (scientificFinal)
+            {
+                w.WritePropertyName("b10_final");
+                JsonSerializer.Serialize(w, candidate.B10Final, B10FinalProjectionCodec.JsonOptions);
+            }
             w.WritePropertyName("reasons");w.WriteStartArray();foreach(string reason in candidate.Reasons)w.WriteStringValue(reason);w.WriteEndArray();w.WriteEndObject();
         });
         using JsonDocument validated=Read(bytes);
@@ -37,10 +43,10 @@ internal static class PhaseCandidateCodec
     {
         if(bytes.Length>MaximumBytes)throw new InputLimitExceededException("Candidate exceeds its output byte limit.");
         var d=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=32});
-        string[] allowed=["schema_version","synthetic","scenario_id","configuration_id","run_id","phase","source_commit","status","gate","versions","image_digests","timings","diagnostics","repeats","counts","reasons","b10_sweep"];
+        string[] allowed=["schema_version","synthetic","scenario_id","configuration_id","run_id","phase","source_commit","status","gate","versions","image_digests","timings","diagnostics","repeats","counts","reasons","b10_sweep","b10_final"];
         try
         {
-            if(d.RootElement.ValueKind!=JsonValueKind.Object||d.RootElement.EnumerateObject().Any(p=>!allowed.Contains(p.Name,StringComparer.Ordinal))||allowed.Where(n=>n is not ("counts" or "b10_sweep")).Any(n=>!d.RootElement.TryGetProperty(n,out _)))throw new FormatException("Candidate has missing or unknown fields.");
+            if(d.RootElement.ValueKind!=JsonValueKind.Object||d.RootElement.EnumerateObject().Any(p=>!allowed.Contains(p.Name,StringComparer.Ordinal))||allowed.Where(n=>n is not ("counts" or "b10_sweep" or "b10_final")).Any(n=>!d.RootElement.TryGetProperty(n,out _)))throw new FormatException("Candidate has missing or unknown fields.");
             CheckDuplicates(d.RootElement);
             CheckNoPrivateKeys(d.RootElement);
             ValidateNested(d.RootElement);
@@ -63,7 +69,11 @@ internal static class PhaseCandidateCodec
             root.GetProperty("status").GetString() is not ("complete_valid" or "invalid" or "incomplete"))throw new FormatException("Candidate identity or status is invalid.");
         bool b10 = root.GetProperty("scenario_id").GetString() == "B10";
         bool hasSweep = root.TryGetProperty("b10_sweep", out JsonElement sweep);
-        bool sweepComplete = false;
+        bool hasFinal = root.TryGetProperty("b10_final", out JsonElement final);
+        bool scientificFinal = b10 && VerifierHostOptions.IsB10ScientificRunId(root.GetProperty("run_id").GetString());
+        if (hasFinal != scientificFinal || hasFinal && hasSweep)
+            throw new FormatException("Final B10 candidates require their own final projection member.");
+        bool sweepComplete = hasFinal && ValidateFinal(root, final);
         if (hasSweep)
         {
             if (!b10) throw new FormatException("Only B10 can carry sweep evidence.");
@@ -138,7 +148,7 @@ internal static class PhaseCandidateCodec
                 throw new FormatException("Candidate finality marker is invalid.");
             bool finalRepeat = hasFinality && marker.GetBoolean();
             bool completeRepeat = repeat.GetProperty("status").GetString() == "complete_valid";
-            if (b10 && (hasSweep && !hasFinality || finalRepeat && (!sweepComplete || !completeRepeat || !repeat.TryGetProperty("counts", out _)) ||
+            if (b10 && ((hasSweep || hasFinal) && !hasFinality || finalRepeat && (!sweepComplete || !completeRepeat || !repeat.TryGetProperty("counts", out _)) ||
                 !finalRepeat && (completeRepeat || repeat.TryGetProperty("counts", out _))))
                 throw new FormatException("B10 repeat finality, status and counts disagree.");
             B10IntakeEvidence? boundIntake = null;
@@ -181,6 +191,75 @@ internal static class PhaseCandidateCodec
             }
         }
     }
+    private static bool ValidateFinal(JsonElement root, JsonElement final)
+    {
+        if (final.ValueKind == JsonValueKind.Null)
+        {
+            if (root.GetProperty("status").GetString() != "invalid" ||
+                !root.GetProperty("reasons").EnumerateArray().Any(x => x.GetString() == "b10_final_projection_untrusted"))
+                throw new FormatException("An unavailable final projection must invalidate the candidate.");
+            return false;
+        }
+        Exact(final, ["projection", "receipt", "scan_complete", "residual_risk", "repeats", "timeout_rule", "restart_rule"]);
+        string run = root.GetProperty("run_id").GetString()!, phase = root.GetProperty("phase").GetString()!;
+        if (phase is not ("C0" or "C1") || final.GetProperty("scan_complete").ValueKind is not (JsonValueKind.True or JsonValueKind.False) ||
+            final.GetProperty("residual_risk").GetString() != B10SweepEvidence.ResidualRisk)
+            throw new FormatException("Candidate final projection flags are invalid.");
+        bool scan = final.GetProperty("scan_complete").GetBoolean();
+        ValidateSweepReference(final.GetProperty("projection"), PhasePaths.B10FinalSweep(run, phase), true);
+        ValidateSweepReference(final.GetProperty("receipt"), PhasePaths.B10FinalSweepCompletion(run, phase), true);
+        B10FinalProjectionCodec.ValidateRepeats(final.GetProperty("repeats"), phase, scan, run);
+        IReadOnlyList<B10FinalRepeat> projected = final.GetProperty("repeats").Deserialize<B10FinalRepeat[]>(B10FinalProjectionCodec.JsonOptions)!;
+        var projection = new B10FinalProjection(new(run, "B10", phase, phase, root.GetProperty("source_commit").GetString()!, "unused", "unused", "unused", "unused"),
+            new(null, scan, B10SweepEvidence.ResidualRisk, projected));
+        B10FinalCandidate expected = B10FinalJudge.BuildFinal(projection,
+            final.GetProperty("projection").Deserialize<ArtifactReference>(B10FinalProjectionCodec.JsonOptions)!,
+            final.GetProperty("receipt").Deserialize<ArtifactReference>(B10FinalProjectionCodec.JsonOptions)!);
+        using JsonDocument expectedDocument = JsonSerializer.SerializeToDocument(expected, B10FinalProjectionCodec.JsonOptions);
+        foreach (string rule in new[] { "timeout_rule", "restart_rule" })
+            if (!JsonElement.DeepEquals(final.GetProperty(rule), expectedDocument.RootElement.GetProperty(rule)))
+                throw new FormatException("Candidate final decision rule disagrees with its repeats.");
+        string expectedStatus = !scan || projected.Any(x => x.Status == "invalid") ? "invalid" :
+            projected.All(x => x.Status == "complete_valid") ? "complete_valid" : "incomplete";
+        OutcomeCounts? total = null;
+        if (projected.All(x => x.Status == "complete_valid"))
+        {
+            try { total = B10FinalJudge.SumCounts(projected.Select(x => x.Timeout!)); }
+            catch (OverflowException) { expectedStatus = "incomplete"; }
+        }
+        if (root.GetProperty("status").GetString() != expectedStatus || root.TryGetProperty("counts", out JsonElement totalElement) != (total is not null))
+            throw new FormatException("Candidate phase status or counts disagree with its final repeats.");
+        if (total is not null)
+        {
+            using JsonDocument totalDocument = JsonSerializer.SerializeToDocument(total, B10FinalProjectionCodec.JsonOptions);
+            if (!JsonElement.DeepEquals(totalElement, totalDocument.RootElement)) throw new FormatException("Candidate phase totals disagree with its final repeats.");
+        }
+        JsonElement reasons = root.GetProperty("reasons");
+        string[] reasonNames = reasons.EnumerateArray().Select(x => x.GetString()!).ToArray();
+        if (reasonNames.Length > 100 || !reasonNames.SequenceEqual(reasonNames.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)) ||
+            total is null && !reasonNames.Contains("j7_counts_unavailable", StringComparer.Ordinal))
+            throw new FormatException("Final candidate reasons are invalid.");
+        JsonElement repeats = root.GetProperty("repeats");
+        if (repeats.ValueKind != JsonValueKind.Array || repeats.GetArrayLength() != 5)
+            throw new FormatException("A final candidate requires five repeat slots.");
+        int index = 0;
+        foreach (JsonElement repeat in repeats.EnumerateArray())
+        {
+            JsonElement source = final.GetProperty("repeats")[index++];
+            foreach (string field in new[] { "repeat", "status", "reasons", "classification_final" })
+                if (!JsonElement.DeepEquals(repeat.GetProperty(field), source.GetProperty(field)))
+                    throw new FormatException("Candidate repeat differs from its final projection.");
+            bool hasCounts = repeat.TryGetProperty("counts", out JsonElement counts);
+            if (hasCounts != (source.GetProperty("timeout").ValueKind != JsonValueKind.Null) ||
+                hasCounts && !JsonElement.DeepEquals(counts, source.GetProperty("timeout")))
+                throw new FormatException("Candidate timeout counts differ from its final projection.");
+            if (repeat.EnumerateObject().Any(x => x.Name is "broker_count" or "b04_recorded_evidence" or "batching_recorded_evidence" or "b10_intake" or "b10_producer_observations") ||
+                repeat.GetProperty("probe_observation").ValueKind != JsonValueKind.Null || repeat.GetProperty("workload_observation").ValueKind != JsonValueKind.Null)
+                throw new FormatException("Final repeats contain unsupported optional evidence.");
+        }
+        return scan;
+    }
+
     private static bool HasFiveFinalRepeats(JsonElement repeats)
     {
         if (repeats.ValueKind != JsonValueKind.Array || repeats.GetArrayLength() != 5) return false;

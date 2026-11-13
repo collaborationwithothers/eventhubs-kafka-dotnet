@@ -2436,7 +2436,8 @@ class ProductionAggregationTests(unittest.TestCase):
         self.assertEqual(0, result)
         self.assertIs(summary["measurement_complete"], True)
         self.assertIs(summary["break_passed"], True)
-        self.assertEqual((17, 17), (summary["numerator"], summary["denominator"]))
+        expected = len(workflow.TARGETS)
+        self.assertEqual((expected, expected), (summary["numerator"], summary["denominator"]))
         for key, (_, count) in workflow.TARGETS.items():
             self.assertEqual(1, summary["targets"][key]["denominator"])
             self.assertEqual(count + (key in EXPECTED_PRIMARY_CUTS), summary["targets"][key]["parts"])

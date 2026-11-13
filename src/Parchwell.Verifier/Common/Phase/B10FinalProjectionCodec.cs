@@ -19,6 +19,16 @@ internal static class B10FinalProjectionCodec
         "b10_final_late_record_unjoined", "b10_final_window_mismatch", "b10_final_timeout_evidence_invalid",
         "b10_final_timeout_absent", "b10_final_repeat_not_started", "b10_final_start_line_invalid"];
 
+    private static readonly string[] EligibilityReasons = ["b10_restart_configuration_invalid", "b10_restart_first_evidence_unavailable",
+        "b10_restart_identity_unauthenticated", "b10_restart_termination_unverified", "b10_restart_native_error_captured",
+        "b10_restart_fatal_captured", "b10_restart_timeout_bookkeeping_unavailable", "b10_abrupt_control_incomplete",
+        "b10_restart_successor_evidence_unavailable", "b10_restart_resend_count_invalid", "b10_abrupt_successor_late",
+        "b10_restart_window_incomplete", "b10_restart_guard_failed", "b10_restart_sweep_unavailable", "b10_restart_late_record_unjoined"];
+    private static readonly string[] Outcomes = ["b10_abrupt_exposure_inconclusive", "b10_abrupt_control_incomplete", "kill_too_early",
+        "b10_abrupt_cut_rejected", "b10_abrupt_sample_missing", "b10_abrupt_warmup_failed", "b10_abrupt_leader_not_up",
+        "b10_abrupt_report_binding_invalid", "b10_abrupt_guard_failed", "b10_abrupt_signal_preflight_failed",
+        "b10_abrupt_deadline_exhausted", "b10_abrupt_capture_gap", "kill_too_late"];
+
     internal static byte[] Write(B10FinalProjection projection)
     {
         ArgumentNullException.ThrowIfNull(projection);
@@ -80,7 +90,7 @@ internal static class B10FinalProjectionCodec
             Require((timeout.ValueKind != JsonValueKind.Null) == final);
             if (final) { Exact(timeout, "ok", "loss", "phantom", "reported_failure", "duplicate", "reorder"); foreach (JsonProperty p in timeout.EnumerateObject()) Count(p.Value); }
             string[] reasons = Strings(repeat.GetProperty("reasons"));
-            Require(reasons.Length <= 100 && reasons.SequenceEqual(reasons.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)) && reasons.All(x => RepeatReasons.Contains(x, StringComparer.Ordinal)));
+            Require((!final || reasons.Length == 0) && reasons.Length <= 100 && reasons.SequenceEqual(reasons.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)) && reasons.All(x => RepeatReasons.Contains(x, StringComparer.Ordinal)));
             JsonElement versions = repeat.GetProperty("producer_versions");
             Require(versions.ValueKind == JsonValueKind.Array);
             string? prior = null;
@@ -89,7 +99,7 @@ internal static class B10FinalProjectionCodec
                 Exact(version, "instance_id", "workload_generator", "confluent_kafka", "librdkafka", "dotnet");
                 string instance = Text(version, "instance_id");
                 Require(prior is null || StringComparer.Ordinal.Compare(prior, instance) < 0); prior = instance;
-                foreach (string field in new[] { "workload_generator", "confluent_kafka", "librdkafka", "dotnet" }) _ = ScalarText(version.GetProperty(field), true);
+                foreach (string field in new[] { "workload_generator", "confluent_kafka", "librdkafka", "dotnet" }) _ = ScalarText(version.GetProperty(field), true, true);
             }
             JsonElement restart = repeat.GetProperty("restart");
             Require(phase == "C0" ? restart.ValueKind == JsonValueKind.Null : restart.ValueKind == JsonValueKind.Object);
@@ -102,17 +112,35 @@ internal static class B10FinalProjectionCodec
         Exact(restart, "eligibility", "eligibility_reasons", "termination", "first_instance_id", "successor_instance_id", "timeout_instance_id", "comparison", "native_errors", "arms");
         string eligibility = Text(restart, "eligibility"); string[] reasons = Strings(restart.GetProperty("eligibility_reasons"));
         Require(eligibility is "eligible" or "ineligible" && reasons.Length <= 100 && reasons.Distinct(StringComparer.Ordinal).Count() == reasons.Length);
+        int previousRank = -1;
+        foreach (string reason in reasons)
+        {
+            int rank = Array.IndexOf(EligibilityReasons, reason);
+            if (rank < 0) rank = Outcomes.Contains(reason, StringComparer.Ordinal) ? 15 : reason == "b10_restart_input_unavailable" ? 16 : -1;
+            Require(rank >= previousRank && rank >= 0); previousRank = rank;
+        }
+        Require(scan != reasons.Contains("b10_restart_sweep_unavailable", StringComparer.Ordinal));
         string comparison = Text(restart, "comparison");
         Require(comparison is "both" or "cross_restart_only" or "same_instance_only" or "neither" or "unavailable");
         Require(eligibility != "eligible" || scan && reasons.Length == 0 && comparison != "unavailable");
         foreach (string field in new[] { "first_instance_id", "successor_instance_id", "timeout_instance_id" }) _ = ScalarText(restart.GetProperty(field), true);
         JsonElement termination = restart.GetProperty("termination"); Exact(termination, "class", "outcome");
-        string? terminationClass = ScalarText(termination.GetProperty("class"), true); _ = ScalarText(termination.GetProperty("outcome"), true);
+        string? terminationClass = ScalarText(termination.GetProperty("class"), true);
+        string? outcome = ScalarText(termination.GetProperty("outcome"), true);
+        Require(terminationClass switch
+        {
+            null => outcome is null,
+            "no_kill" => outcome is not null && Outcomes.Contains(outcome, StringComparer.Ordinal) && outcome != "kill_too_late",
+            "intended_self_kill" => outcome is null or "kill_too_late",
+            "unexpected_exit" => outcome is "b10_abrupt_signal_failed" or "b10_abrupt_unexpected_exit",
+            "unknown" => outcome == "b10_abrupt_exit_unobserved",
+            _ => false
+        });
         Require(terminationClass is null or "intended_self_kill" or "no_kill" or "unexpected_exit" or "unknown");
         JsonElement native = restart.GetProperty("native_errors");
         if (native.ValueKind != JsonValueKind.Null) { Exact(native, "count", "fatal_count", "tail"); Count(native.GetProperty("count")); Count(native.GetProperty("fatal_count")); _ = Text(native, "tail"); Require(native.GetProperty("fatal_count").GetInt64() <= native.GetProperty("count").GetInt64()); }
         JsonElement arms = restart.GetProperty("arms");
-        if (arms.ValueKind == JsonValueKind.Null) return;
+        if (arms.ValueKind == JsonValueKind.Null) { Require(comparison == "unavailable"); return; }
         Require(terminationClass != "no_kill" && arms.ValueKind == JsonValueKind.Array && arms.GetArrayLength() == 2);
         int armIndex = 0;
         foreach (JsonElement arm in arms.EnumerateArray())
@@ -128,15 +156,36 @@ internal static class B10FinalProjectionCodec
             Require(N("originals_seen") is not long originals || N("unconfirmed_count") is not long originalLimit || originals <= originalLimit);
             Require(N("resends_seen") is not long resends || N("resend_invoked") is not long resendLimit || resends <= resendLimit);
             Require(N("unreported_seen") is not long seen || N("unreported_unseen") is not long unseen || N("unreported_attempts") is not long total || seen <= total && unseen == total - seen);
+            Require(N("lost_resends") is not long lost || N("resend_invoked") is not long invokedLimit || lost <= invokedLimit);
             JsonElement witness = arm.GetProperty("witness");
+            Require(N("pair_count") is null || (N("pair_count") >= 1) == (witness.ValueKind != JsonValueKind.Null));
             if (witness.ValueKind != JsonValueKind.Null)
             {
                 Exact(witness, "original_attempt_id", "resend_attempt_id", "original", "resend"); _ = Text(witness, "original_attempt_id"); _ = Text(witness, "resend_attempt_id");
                 foreach (string field in new[] { "original", "resend" }) { JsonElement coordinate = witness.GetProperty(field); Exact(coordinate, "partition", "offset"); Require(coordinate.GetProperty("partition").TryGetInt32(out int partition) && partition >= 0); Count(coordinate.GetProperty("offset")); }
-                Require(witness.GetProperty("original").GetRawText() != witness.GetProperty("resend").GetRawText() && N("pair_count") is >= 1);
+                JsonElement original = witness.GetProperty("original"), resend = witness.GetProperty("resend");
+                Require((original.GetProperty("partition").GetInt32(), original.GetProperty("offset").GetInt64()) !=
+                    (resend.GetProperty("partition").GetInt32(), resend.GetProperty("offset").GetInt64()) &&
+                    N("pair_count") is >= 1 && ids.Contains(Text(witness, "original_attempt_id"), StringComparer.Ordinal) &&
+                    Text(witness, "original_attempt_id") != Text(witness, "resend_attempt_id"));
             }
-            if (!scan) foreach (string field in new[] { "originals_seen", "resends_seen", "pair_count", "unreported_seen", "unreported_unseen", "lost_resends", "witness" }) Require(arm.GetProperty(field).ValueKind == JsonValueKind.Null);
+            bool localUnjoined = reasons.Contains("b10_restart_late_record_unjoined", StringComparer.Ordinal);
+            bool emptyCross = scan && terminationClass == "intended_self_kill" && outcome == "kill_too_late" &&
+                Text(arm, "arm") == "cross_restart" && N("unconfirmed_count") == 0;
+            if (!scan || localUnjoined)
+                foreach (string field in new[] { "originals_seen", "resends_seen", "pair_count", "unreported_seen", "unreported_unseen", "lost_resends", "witness" })
+                {
+                    JsonElement value = arm.GetProperty(field);
+                    Require(value.ValueKind == JsonValueKind.Null || localUnjoined && emptyCross && field != "witness" &&
+                        value.ValueKind == JsonValueKind.Number && value.GetInt64() == 0);
+                }
         }
+        bool unavailable = reasons.Any(reason => reason is not ("b10_restart_native_error_captured" or "b10_restart_fatal_captured" or
+            "b10_restart_timeout_bookkeeping_unavailable" or "b10_restart_guard_failed"));
+        bool HasPair(int index) => arms[index].GetProperty("pair_count").ValueKind == JsonValueKind.Number && arms[index].GetProperty("pair_count").GetInt64() >= 1;
+        string expectedComparison = unavailable ? "unavailable" : (HasPair(0), HasPair(1)) switch
+        { (true, true) => "both", (true, false) => "same_instance_only", (false, true) => "cross_restart_only", _ => "neither" };
+        Require(comparison == expectedComparison);
     }
 
     internal static void Exact(JsonElement value, params string[] fields)
@@ -147,11 +196,11 @@ internal static class B10FinalProjectionCodec
     }
     internal static void Require(bool condition) { if (!condition) throw new FormatException("Final B10 projection is malformed."); }
     internal static string Text(JsonElement value, string name) => ScalarText(value.GetProperty(name), false)!;
-    private static string? ScalarText(JsonElement value, bool nullable)
+    private static string? ScalarText(JsonElement value, bool nullable, bool empty = false)
     {
         if (nullable && value.ValueKind == JsonValueKind.Null) return null;
         Require(value.ValueKind == JsonValueKind.String); string text = value.GetString()!;
-        Require(text.Length is > 0 and <= 256 && text.All(char.IsAscii)); return text;
+        Require((empty || text.Length > 0) && text.Length <= 256 && text.All(char.IsAscii)); return text;
     }
     private static string[] Strings(JsonElement value) { Require(value.ValueKind == JsonValueKind.Array); return value.EnumerateArray().Select(x => ScalarText(x, false)!).ToArray(); }
     private static bool Boolean(JsonElement value) { Require(value.ValueKind is JsonValueKind.True or JsonValueKind.False); return value.GetBoolean(); }

@@ -41,7 +41,15 @@ internal sealed class B10FinalSweepHandler(IOptions<VerifierHostOptions> configu
         B10SweepLine? sweep = null;
         string? globalFailure = null;
         foreach (B10FinalInput repeat in repeats)
-            await reader.ReadAsync(repeat, cancellationToken).ConfigureAwait(false);
+        {
+            try { await reader.ReadAsync(repeat, cancellationToken).ConfigureAwait(false); }
+            catch (Exception exception) when (EvidenceFailure(exception, cancellationToken))
+            {
+                repeat.Started = true;
+                repeat.TimeoutInvalid = true;
+                repeat.RestartInputInvalid = true;
+            }
+        }
         try
         {
             string name = PhasePaths.SweepLine(options.RunId!, options.Phase!);
@@ -105,14 +113,15 @@ internal sealed class B10FinalSweepHandler(IOptions<VerifierHostOptions> configu
             finally
             {
                 safetyTimer?.Dispose();
+                long cleanupStarted = clock.GetTimestamp();
                 using var deadline = new CancellationTokenSource(options.CleanupTimeout!.Value, clock);
                 session?.Cleanup(deadline.Token);
-                deadline.Token.ThrowIfCancellationRequested();
+                CheckDeadline(cleanupStarted, options.CleanupTimeout.Value, deadline.Token);
             }
         }
         cancellationToken.ThrowIfCancellationRequested();
         LoadedScenario? scenario = globalFailure is null
-            ? await Timed(ct => scenarioLoader.LoadAsync(options.ScenarioId!, ct).AsTask(), cancellationToken).ConfigureAwait(false) : null;
+            ? await Timed(ct => scenarioLoader.LoadAsync(options.ScenarioId!, ct).AsTask(), cancellationToken, options.IoTimeout).ConfigureAwait(false) : null;
         IReadOnlyList<B10FinalRepeat> projected = repeats.Select(repeat => B10FinalClassification.Classify(repeat, repeats, records,
             globalFailure, options, scenario, configurationResolver)).ToArray();
         var projection = new B10FinalProjection(new(options.RunId!, "B10", options.ConfigurationId!, options.Phase!, options.SourceCommit!,
@@ -159,17 +168,23 @@ internal sealed class B10FinalSweepHandler(IOptions<VerifierHostOptions> configu
 
     internal static bool EvidenceFailure(Exception exception, CancellationToken caller) =>
         !caller.IsCancellationRequested && exception is FormatException or JsonException or InvalidOperationException or ArgumentException or
-            OverflowException or TimeoutException or InputLimitExceededException or VerifierKafkaOperationException or KafkaException or IOException or Azure.RequestFailedException or OperationCanceledException;
+            InvalidDataException or KeyNotFoundException or OverflowException or TimeoutException or InputLimitExceededException or
+            VerifierKafkaOperationException or KafkaException or IOException or Azure.RequestFailedException or OperationCanceledException;
 
-    private async Task<T> Timed<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken)
+    private async Task<T> Timed<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken, TimeSpan? maximum = null)
     {
-        TimeSpan timeout = configured.Value.BlobIoTimeout!.Value;
+        TimeSpan timeout = maximum ?? configured.Value.BlobIoTimeout!.Value;
         long origin = clock.GetTimestamp();
         using var deadline = new CancellationTokenSource(timeout, clock);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
         T result = await operation(linked.Token).ConfigureAwait(false);
-        linked.Token.ThrowIfCancellationRequested();
-        if (clock.GetElapsedTime(origin) >= timeout) throw new TimeoutException("Final sweep I/O expired.");
+        CheckDeadline(origin, timeout, linked.Token);
         return result;
+    }
+
+    private void CheckDeadline(long origin, TimeSpan timeout, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        if (clock.GetElapsedTime(origin) >= timeout) throw new TimeoutException("Final sweep operation expired.");
     }
 }

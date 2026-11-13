@@ -37,6 +37,8 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
             errors.Add("Verifier:B10SettleIntervalMilliseconds must be a positive integer no greater than Int32.MaxValue.");
         if (mode == VerifierMode.B10FinalSweep)
         {
+            ValidateImageReference(options.LoadGenImage, "Verifier:LoadGenImage", errors);
+            ValidateImageReference(options.VerifierImage, "Verifier:VerifierImage", errors);
             if (!VerifierHostOptions.IsB10ScientificRunId(options.RunId))
                 errors.Add("B10 final-sweep requires a scientific B10 run identifier.");
             if (options.Phase is not ("C0" or "C1"))

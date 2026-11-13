@@ -5,6 +5,7 @@ using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Results;
 using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.Common.Storage;
+using Parchwell.Verifier.Common.Window;
 
 namespace Parchwell.Verifier.Judge;
 
@@ -44,8 +45,9 @@ internal static class B10FinalJudge
                 identity.SourceCommit == options.SourceCommit && identity.ImageReference == options.VerifierImage &&
                 identity.JobName == PhaseIdentity.B10FinalSweepJobName(options.RunId!, options.Phase!));
             byte[]? note = await ReadVerifier(PhasePaths.SweepLine(options.RunId!, options.Phase!)).ConfigureAwait(false);
-            Require(projection.Data.SweepLine == (note is null ? null : Reference(PhasePaths.SweepLine(options.RunId!, options.Phase!), note)));
-            var allInstances = new HashSet<string>(StringComparer.Ordinal);
+            var completions = new List<DateTimeOffset>(5);
+            var allInstances = new Dictionary<string, int>(StringComparer.Ordinal);
+            bool collision = false;
             foreach (B10FinalRepeat repeat in projection.Data.Repeats)
             {
                 string sourceName = options.Phase == "C0" ? PhasePaths.Result(options.RunId!, options.Phase!, repeat.Repeat) :
@@ -55,8 +57,24 @@ internal static class B10FinalJudge
                 B10FinalRegistrations registrations = await B10FinalRegistrationReader.ReadAsync(options, repeat.Repeat, budget,
                     (name, token) => Bounded(ct => producer.ListAsync(name, ct), token),
                     (name, maximum, token) => Bounded(ct => producer.ReadBoundedAsync(name, maximum, ct), token), cancellationToken).ConfigureAwait(false);
-                foreach (string instance in registrations.InstanceIds) Require(allInstances.Add(instance));
-                Require(repeat.ProducerVersions.All(version => version.InstanceId == registrations.Timeout?.Identity.InstanceId));
+                foreach (string instance in registrations.InstanceIds)
+                {
+                    if (allInstances.TryGetValue(instance, out int owner) && owner != repeat.Repeat) collision = true;
+                    else allInstances.TryAdd(instance, repeat.Repeat);
+                }
+                Require(repeat.ProducerVersions.All(version => registrations.Ordinary.Any(registration => version.InstanceId == registration.Identity.InstanceId)));
+                bool globalNegative = !projection.Data.ScanComplete && repeat.Status == "invalid";
+                bool notStarted = repeat.Reasons.Contains("b10_final_repeat_not_started", StringComparer.Ordinal);
+                bool ordinaryCountPass = registrations.Ordinary.Count == 1;
+                if (!ordinaryCountPass)
+                {
+                    string failure = options.Phase == "C0" ? "b10_final_repeat_input_invalid" : registrations.Ordinary.Count == 0 ? "b10_final_timeout_absent" : "b10_final_timeout_evidence_invalid";
+                    Require(globalNegative || registrations.Ordinary.Count == 0 && notStarted || repeat.Reasons.Contains(failure, StringComparer.Ordinal));
+                }
+                bool registrationPass = ordinaryCountPass && (options.Phase == "C0" || registrations.RestartCountPass);
+                if (options.Phase == "C1" && !registrations.RestartCountPass)
+                    Require(globalNegative || notStarted || repeat.Restart is { Eligibility: "ineligible" } negative &&
+                        negative.EligibilityReasons.Contains("b10_restart_input_unavailable", StringComparer.Ordinal));
                 if (repeat.Restart is { } restart)
                 {
                     Require(restart.TimeoutInstanceId is null || restart.TimeoutInstanceId == registrations.Timeout?.Identity.InstanceId);
@@ -64,53 +82,104 @@ internal static class B10FinalJudge
                     Require(restart.SuccessorInstanceId is null || restart.SuccessorInstanceId == registrations.Successor?.InstanceId);
                 }
                 bool present = false, accepted = false, coverage = false;
-                byte[]? startReceipt = await ReadVerifier(PhasePaths.StartLineCompletion(options.RunId!, options.Phase!, repeat.Repeat)).ConfigureAwait(false);
+                byte[]? startReceipt = await ReadOptionalVerifier(PhasePaths.StartLineCompletion(options.RunId!, options.Phase!, repeat.Repeat)).ConfigureAwait(false);
                 present = startReceipt is not null;
                 if (startReceipt is not null)
                 {
                     try
                     {
                         WorkerReceipt start = PhaseWireCodec.ReadReceipt(startReceipt);
-                        DateTimeOffset startTime = PhaseWireCodec.ParseUtc(start.StartedUtc);
-                        if (phaseStarted is null || startTime < phaseStarted) phaseStarted = startTime;
+                        string expectedJob = PhaseIdentity.JobName(options.RunId!, options.Phase!, repeat.Repeat);
+                        string noteName = PhasePaths.StartLine(options.RunId!, options.Phase!, repeat.Repeat);
+                        string inventoryName = PhasePaths.BrokerInventory(options.RunId!, options.Phase!, repeat.Repeat);
+                        byte[]? startNote = await ReadOptionalVerifier(noteName).ConfigureAwait(false);
+                        byte[]? inventory = await ReadOptionalVerifier(inventoryName).ConfigureAwait(false);
+                        if (start.Mode == "start-line" && start.RunId == options.RunId && start.Phase == options.Phase &&
+                            start.Repeat == repeat.Repeat && start.SourceCommit == options.SourceCommit && start.Identity is { } startIdentity &&
+                            startIdentity.ScenarioId == "B10" && startIdentity.ConfigurationId == options.ConfigurationId &&
+                            startIdentity.InstanceId == expectedJob && startIdentity.ExpectedInstanceId == expectedJob &&
+                            startNote is not null && inventory is not null && start.Artifacts.Count == 2 &&
+                            start.Artifacts[0] == Reference(noteName, startNote) && start.Artifacts[1] == Reference(inventoryName, inventory))
+                        {
+                            var parsedNote = StartLineNoteCodec.Read(startNote, noteName, Limits, 100_000);
+                            var parsedInventory = BrokerInventoryReader.Read(inventory, inventoryName, startIdentity, options.SourceCommit!, Limits);
+                            string[] jobs = options.Phase == "C0" ? [expectedJob] : [expectedJob, expectedJob + "-restart", expectedJob + "-successor"];
+                            if (parsedNote.IsSuccess && parsedInventory.IsSuccess && parsedNote.Value!.Identity == startIdentity &&
+                                parsedNote.Value.VerifierCommit == options.SourceCommit && parsedNote.Value.ExpectedJobNames?.SequenceEqual(jobs, StringComparer.Ordinal) == true)
+                            {
+                                DateTimeOffset startTime = B10FinalRegistrationReader.ParseUtc(start.StartedUtc);
+                                if (phaseStarted is null || startTime < phaseStarted) phaseStarted = startTime;
+                            }
+                        }
                     }
                     catch (Exception exception) when (Malformed(exception)) { /* Timing is independently optional. */ }
                 }
-                if (source is not null)
+                string inputReceiptName = options.Phase == "C0" ? PhasePaths.VerifyCompletion(options.RunId!, options.Phase!, repeat.Repeat) :
+                    $"{options.RunId}/C1/r{repeat.Repeat}/b10-abrupt/verify-completion.json";
+                byte[]? inputReceiptBytes = await ReadOptionalVerifier(inputReceiptName).ConfigureAwait(false);
+                if (inputReceiptBytes is not null)
                 {
-                    using JsonDocument sourceDocument = JsonDocument.Parse(source);
-                    JsonElement root = sourceDocument.RootElement;
-                    string inputReceiptName = options.Phase == "C0" ? PhasePaths.VerifyCompletion(options.RunId!, options.Phase!, repeat.Repeat) :
-                        $"{options.RunId}/C1/r{repeat.Repeat}/b10-abrupt/verify-completion.json";
-                    byte[]? inputReceiptBytes = await ReadVerifier(inputReceiptName).ConfigureAwait(false);
-                    if (inputReceiptBytes is not null)
+                    try
                     {
-                        try
-                        {
-                            WorkerReceipt inputReceipt = PhaseWireCodec.ReadReceipt(inputReceiptBytes);
-                            accepted = inputReceipt.RunId == options.RunId && inputReceipt.Phase == options.Phase &&
-                                inputReceipt.Repeat == repeat.Repeat && inputReceipt.SourceCommit == options.SourceCommit &&
-                                inputReceipt.Artifacts.Count == 1 && inputReceipt.Artifacts[0] == repeat.Source;
-                            if (options.Phase == "C0")
-                            {
-                                accepted = accepted && inputReceipt.Mode == "verify" && root.GetProperty("status").GetString() == "incomplete" &&
-                                    root.TryGetProperty("b10_window_checks_complete", out JsonElement complete) && complete.ValueKind == JsonValueKind.True;
-                                coverage = inputReceipt.RepeatChecks?.BrokerInventoryCoverage == "pass";
-                            }
-                            else
-                            {
-                                accepted = accepted && inputReceipt.Mode == "b10-abrupt-verify";
-                                coverage = !root.GetProperty("data").GetProperty("problems").EnumerateArray().Any(problem =>
-                                    problem.ValueKind == JsonValueKind.String && problem.GetString() == "b10_abrupt_verify_configuration_invalid");
-                            }
-                        }
-                        catch (Exception exception) when (Malformed(exception)) { accepted = false; }
+                        WorkerReceipt observed = PhaseWireCodec.ReadReceipt(inputReceiptBytes);
+                        if (observed.Mode == (options.Phase == "C0" ? "verify" : "b10-abrupt-verify") && observed.RunId == options.RunId &&
+                            observed.ConfigurationId == options.ConfigurationId && observed.Phase == options.Phase && observed.Repeat == repeat.Repeat && observed.SourceCommit == options.SourceCommit)
+                            completions.Add(B10FinalRegistrationReader.ParseUtc(observed.CompletedUtc));
                     }
+                    catch (Exception exception) when (Malformed(exception)) { /* An unauthenticated completion is not a timing witness. */ }
+                }
+                if (source is not null && inputReceiptBytes is not null)
+                {
+                    try
+                    {
+                        using JsonDocument sourceDocument = JsonDocument.Parse(source);
+                        JsonElement root = sourceDocument.RootElement;
+                        WorkerReceipt inputReceipt = PhaseWireCodec.ReadReceipt(inputReceiptBytes);
+                        accepted = inputReceipt.RunId == options.RunId && inputReceipt.Phase == options.Phase &&
+                            inputReceipt.Repeat == repeat.Repeat && inputReceipt.SourceCommit == options.SourceCommit &&
+                            inputReceipt.Artifacts.Count == 1 && inputReceipt.Artifacts[0] == repeat.Source;
+                        if (options.Phase == "C0")
+                        {
+                            accepted = accepted && inputReceipt.Identity == registrations.Timeout?.Identity && inputReceipt.Mode == "verify" && root.GetProperty("status").GetString() == "incomplete" &&
+                                root.TryGetProperty("b10_window_checks_complete", out JsonElement complete) && complete.ValueKind == JsonValueKind.True &&
+                                !repeat.Reasons.Contains("b10_final_repeat_input_invalid", StringComparer.Ordinal);
+                            coverage = root.TryGetProperty("start_line", out JsonElement startLine) && startLine.ValueKind == JsonValueKind.Array &&
+                                root.TryGetProperty("failed_checks", out JsonElement failedChecks) && failedChecks.ValueKind == JsonValueKind.Array &&
+                                !failedChecks.EnumerateArray().Any(check => check.TryGetInt32(out int number) && number == 7);
+                        }
+                        else
+                        {
+                            accepted = accepted && inputReceipt.Mode == "b10-abrupt-verify";
+                            if (accepted) ValidateNonfinalSource(root, options, repeat.Repeat);
+                            coverage = accepted && !root.GetProperty("data").GetProperty("problems").EnumerateArray().Any(problem =>
+                                problem.ValueKind == JsonValueKind.String && problem.GetString() == "b10_abrupt_verify_start_line_invalid");
+                        }
+                    }
+                    catch (Exception exception) when (Malformed(exception)) { accepted = false; }
+                }
+                else if (options.Phase == "C1" && present && source is null && inputReceiptBytes is null)
+                {
+                    // F4(ii) is a valid input shape even when no termination receipt exists.
+                    try
+                    {
+                        bool successorPermitted = await B10FinalRegistrationReader.SuccessorPermittedAsync(options, repeat.Repeat,
+                            registrations.First, registrations.AbruptNames, budget, (name, maximum, token) => Bounded(ct => producer.ReadBoundedAsync(name, maximum, ct), token),
+                            cancellationToken).ConfigureAwait(false);
+                        accepted = !successorPermitted;
+                    }
+                    catch (Exception exception) when (exception is IOException or TimeoutException ||
+                        exception is OperationCanceledException && !cancellationToken.IsCancellationRequested)
+                    { accepted = false; }
                 }
                 repeats.Add(new(repeat.Repeat, repeat.Status, repeat.Reasons,
-                    new(present, accepted, accepted, true, true, coverage, false), repeat.Timeout, null,
-                    registrations.Timeout?.Identity.InstanceId, ClassificationFinal: repeat.ClassificationFinal));
+                    new(present || source is not null && accepted, accepted, accepted, registrationPass, registrationPass, coverage, false), repeat.Timeout, null,
+                    registrationPass ? registrations.Timeout?.Identity.InstanceId : null, ClassificationFinal: repeat.ClassificationFinal));
             }
+            Require(MatchesSweepReference(projection, note, options, B10FinalRegistrationReader.ParseUtc(receipt.StartedUtc), completions));
+            Require(!collision || !projection.Data.ScanComplete && projection.Data.Repeats.All(repeat => repeat.Status == "invalid" &&
+                repeat.Reasons.Contains("b10_final_ownership_invalid", StringComparer.Ordinal)));
+            if (collision) repeats = repeats.Select(repeat => repeat with
+                { Checks = repeat.Checks with { J4 = false, J5 = false }, Identity = null }).ToList();
             trusted = true;
         }
         catch (Exception exception) when (Malformed(exception) || exception is IOException or TimeoutException ||
@@ -161,7 +230,7 @@ internal static class B10FinalJudge
         byte[] candidateBytes = PhaseCandidateCodec.Write(candidate);
         string candidateName = PhasePaths.Candidate(options.RunId!, options.Phase!);
         if (options.CandidateOutputName != candidateName) throw new InvalidOperationException("Candidate path is not the derived phase path.");
-        await Bounded(ct => verifier.CreateAsync(candidateName, candidateBytes, ct), cancellationToken).ConfigureAwait(false);
+        await BoundedWrite(ct => verifier.CreateAsync(candidateName, candidateBytes, ct), cancellationToken).ConfigureAwait(false);
         int exit = status == "complete_valid" ? 0 : 1;
         var completionReceipt = new WorkerReceipt(1, "judge", "B10", options.ConfigurationId!, options.RunId!, options.Phase!, null,
             PhaseIdentity.JudgeJobName(options.RunId!, options.Phase!), options.PodName!, null, options.SourceCommit!, exit, true,
@@ -170,6 +239,13 @@ internal static class B10FinalJudge
         completion?.SetPendingBlobReceipt(options.VerifierContainer!, PhasePaths.JudgeCompletion(options.RunId!, options.Phase!), PhaseWireCodec.WriteReceipt(completionReceipt));
         return exit;
 
+        async Task<byte[]?> ReadOptionalVerifier(string name)
+        {
+            try { return await ReadVerifier(name).ConfigureAwait(false); }
+            catch (Exception exception) when (exception is IOException or TimeoutException ||
+                exception is OperationCanceledException && !cancellationToken.IsCancellationRequested)
+            { return null; }
+        }
         async Task<byte[]?> ReadVerifier(string name)
         {
             byte[]? content = await Bounded(ct => verifier.ReadBoundedAsync(name, Limits.MaxArtifactBytes, ct), cancellationToken).ConfigureAwait(false);
@@ -182,10 +258,50 @@ internal static class B10FinalJudge
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(token, deadline.Token);
             return await operation(linked.Token).WaitAsync(linked.Token).ConfigureAwait(false);
         }
-        async Task Bounded(Func<CancellationToken, Task> operation, CancellationToken token)
+        async Task BoundedWrite(Func<CancellationToken, Task> operation, CancellationToken token)
         {
             await Bounded(async ct => { await operation(ct).ConfigureAwait(false); return true; }, token).ConfigureAwait(false);
         }
+    }
+
+    private static bool MatchesSweepReference(B10FinalProjection projection, byte[]? note, VerifierHostOptions options,
+        DateTimeOffset sweepStarted, IReadOnlyList<DateTimeOffset> completions)
+    {
+        bool claimsInvalidLine = !projection.Data.ScanComplete && projection.Data.Repeats.All(repeat => repeat.Status == "invalid" &&
+            repeat.Reasons.Contains("b10_final_sweep_line_invalid", StringComparer.Ordinal));
+        if (projection.Data.SweepLine is not null)
+            return !claimsInvalidLine && note is not null && projection.Data.SweepLine == Reference(PhasePaths.SweepLine(options.RunId!, options.Phase!), note);
+        if (!claimsInvalidLine) return false;
+        if (note is null) return true;
+        try
+        {
+            int maxPartitions = options.MaxPartitions ?? 100_000;
+            var policy = new VerifierHostOptions { ScenarioId = "B10", ConfigurationId = options.ConfigurationId, RunId = options.RunId,
+                Phase = options.Phase, SourceCommit = options.SourceCommit, B10SettleIntervalMilliseconds = 60000, MaxPartitions = maxPartitions };
+            B10SweepLine line = B10SweepEvidenceCodec.ReadSweepLine(note, Limits, maxPartitions);
+            return !B10SweepEvidenceCodec.MatchesSweepLine(line, policy, sweepStarted, completions);
+        }
+        catch (Exception exception) when (Malformed(exception)) { return true; }
+    }
+
+    private static void ValidateNonfinalSource(JsonElement root, VerifierHostOptions options, int repeat)
+    {
+        B10FinalProjectionCodec.Exact(root, "schema_version", "dialect", "purpose", "synthetic", "scientific_admissible", "kind", "identity", "data");
+        Require(root.GetProperty("schema_version").GetInt32() == 3 && B10FinalProjectionCodec.Text(root, "dialect") == "b10_abrupt" &&
+            B10FinalProjectionCodec.Text(root, "purpose") == "scientific" && root.GetProperty("synthetic").ValueKind == JsonValueKind.True &&
+            root.GetProperty("scientific_admissible").ValueKind == JsonValueKind.False && B10FinalProjectionCodec.Text(root, "kind") == "nonfinal_result");
+        JsonElement identity = root.GetProperty("identity");
+        B10FinalProjectionCodec.Exact(identity, "run_id", "scenario_id", "configuration_id", "phase", "repeat", "source_commit", "image_reference", "job_name", "pod_name", "pod_uid", "instance_id", "predecessor_instance_id");
+        Require(B10FinalProjectionCodec.Text(identity, "run_id") == options.RunId && B10FinalProjectionCodec.Text(identity, "scenario_id") == "B10" &&
+            B10FinalProjectionCodec.Text(identity, "configuration_id") == "C1" && B10FinalProjectionCodec.Text(identity, "phase") == "C1" &&
+            identity.GetProperty("repeat").GetInt32() == repeat && B10FinalProjectionCodec.Text(identity, "source_commit") == options.SourceCommit &&
+            B10FinalProjectionCodec.Text(identity, "image_reference") == options.VerifierImage &&
+            B10FinalProjectionCodec.Text(identity, "job_name") == $"{options.RunId}-c1-r{repeat}-b10-abrupt-verify" &&
+            B10FinalProjectionCodec.Text(identity, "pod_name") == B10FinalProjectionCodec.Text(identity, "instance_id") &&
+            identity.GetProperty("predecessor_instance_id").ValueKind == JsonValueKind.Null);
+        _ = B10FinalProjectionCodec.Text(identity, "pod_uid");
+        B10FinalProjectionCodec.Exact(root.GetProperty("data"), "first_instance_id", "successor_instance_id", "timeout_instance_id", "timeout", "comparison",
+            "native_errors", "eligibility", "eligibility_reasons", "start_line", "end_line", "window_complete", "window_limit", "arms", "problems", "problem_details", "finality", "earlier_repeat_records");
     }
 
     internal static B10FinalCandidate BuildFinal(B10FinalProjection projection, ArtifactReference reference, ArtifactReference receipt)
@@ -199,7 +315,7 @@ internal static class B10FinalJudge
             long? duplicate = null;
             if (valid == 5)
             {
-                try { long total = 0; foreach (B10FinalRepeat repeat in repeats) total = checked(total + repeat.Timeout!.Duplicate); duplicate = total; }
+                try { duplicate = SumCounts(repeats.Select(repeat => repeat.Timeout!)).Duplicate; }
                 catch (OverflowException) { duplicate = null; }
             }
             timeout = new(valid, duplicate, duplicate is >= 1 ? "confirmed" : duplicate == 0 ? "untestable" : "held");
@@ -219,13 +335,13 @@ internal static class B10FinalJudge
         return new(reference, receipt, projection.Data.ScanComplete, projection.Data.ResidualRisk, repeats, timeout, restart);
     }
 
-    private static OutcomeCounts SumCounts(IEnumerable<OutcomeCounts> counts)
+    internal static OutcomeCounts SumCounts(IEnumerable<OutcomeCounts> counts)
     {
         long ok = 0, loss = 0, phantom = 0, failed = 0, duplicate = 0, reorder = 0;
         foreach (OutcomeCounts count in counts) checked { ok += count.Ok; loss += count.Loss; phantom += count.Phantom; failed += count.ReportedFailure; duplicate += count.Duplicate; reorder += count.Reorder; }
         return new(ok, loss, phantom, failed, duplicate, reorder);
     }
-    private static bool Malformed(Exception exception) => exception is FormatException or JsonException or InvalidOperationException or ArgumentException or OverflowException;
+    private static bool Malformed(Exception exception) => exception is FormatException or JsonException or InvalidOperationException or ArgumentException or OverflowException or InputLimitExceededException or KeyNotFoundException;
     private static void Require(bool condition) => B10FinalProjectionCodec.Require(condition);
     private static ArtifactReference Reference(string name, byte[] bytes) => new("verifier", name, bytes.LongLength, Convert.ToHexStringLower(SHA256.HashData(bytes)));
     private static string? Digest(string? image) => image is not null && image.LastIndexOf('@') is int at && at >= 0 ? image[(at + 1)..] : null;

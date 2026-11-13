@@ -83,6 +83,27 @@ STORAGE_READINESS_ENVIRONMENTS = (
 )
 
 
+def check_b10_final_candidate_transport(content):
+    """TP3: the real judge test supplies its candidate bytes to this phase check."""
+    candidate = json.loads(content)
+    snapshot = {key: candidate[key] for key in ('run_id', 'phase', 'source_commit')}
+    snapshot.update(scenario=candidate['scenario_id'], configuration=candidate['configuration_id'],
+                    images={worker: {'digest': candidate['image_digests'][worker]}
+                            for worker in ('loadgen', 'verifier')})
+    with tempfile.TemporaryDirectory() as directory, \
+            patch.dict(os.environ, {'PARCHWELL_PRIVATE_DIRECTORY': directory}, clear=True):
+        Path(directory, 'phase.json').write_text(json.dumps(snapshot))
+        instance = phase.Phase()
+        assert instance.check_candidate(content) == candidate
+        candidate['b10_final']['dialect'] = 'b10_abrupt'
+        try:
+            instance.check_candidate(json.dumps(candidate).encode())
+        except phase.Failure as error:
+            assert str(error) == 'b10_abrupt_diagnostic_not_scientific'
+        else:
+            raise AssertionError('nested diagnostic dialect accepted')
+
+
 class FlushedOutput(io.StringIO):
     def __init__(self):
         super().__init__()
@@ -271,7 +292,9 @@ class PhaseTests(unittest.TestCase):
         state = instance.state()
         state['modes'] = []
         state['b10_lifecycle'] = {'producers': [], 'verifiers': [], 'gaps': []}
-        producers = ('loadgen',) if configuration == 'C0' else ('loadgen', 'loadgen-restart', 'loadgen-successor')
+        producers = (('loadgen',) if configuration == 'C0' else
+                     ('loadgen', 'loadgen-restart') if no_verifiers else
+                     ('loadgen', 'loadgen-restart', 'loadgen-successor'))
         verifiers = () if no_verifiers else ('verify' if configuration == 'C0' else 'b10-abrupt-verify',)
         for repeat in phase.SLOTS:
             for mode in (*producers, *verifiers):
@@ -326,14 +349,20 @@ class PhaseTests(unittest.TestCase):
                         lifecycle['producers'] = []
                         lifecycle['verifiers'] = []
                     instance.save_state(state)
-                    self.assertEqual(None if failure is None else 'lifecycle_evidence_gap',
-                                     instance.b10_prepare_final_sweep(1000))
+                    with self.mocked():
+                        self.assertEqual(None if failure is None else 'lifecycle_evidence_gap',
+                                         instance.b10_prepare_final_sweep(1000))
                     if failure:
                         self.assertNotIn('b10_lifecycle_inputs', instance.read('phase.json'))
 
     def test_b10_final_no_verifier_uses_latest_producer_time(self):
         instance = self.final_lifecycle(no_verifiers=True)
-        self.assertEqual(None, instance.b10_prepare_final_sweep(1000))
+        lifecycle = instance.state()['b10_lifecycle']
+        self.assertEqual((len(phase.SLOTS) * 2, 0),
+                         tuple(len(lifecycle[key]) for key in ('producers', 'verifiers')))
+        self.assertEqual({'loadgen', 'loadgen-restart'}, {entry['mode'] for entry in lifecycle['producers']})
+        with self.mocked():
+            self.assertEqual(None, instance.b10_prepare_final_sweep(1000))
         inputs = instance.read('phase.json')['b10_lifecycle_inputs']
         self.assertEqual('2025-12-31T23:59:15.1234567+00:00', inputs['b10_last_loadgen_terminated_utc'])
         self.assertEqual(inputs['b10_last_loadgen_terminated_utc'], inputs['b10_last_verifier_completed_utc'])
@@ -347,14 +376,16 @@ class PhaseTests(unittest.TestCase):
             with self.subTest(selected=selected):
                 self.fake = ScriptedCommands()
                 prepare_scientific(self, selected)
-                with patch.object(phase.Phase, 'run', autospec=True, side_effect=self.scientific_command):
+                with patch.object(phase.time, 'time', return_value=1_893_456_120), \
+                        patch.object(phase.Phase, 'run', autospec=True, side_effect=self.scientific_command):
                     self.assertEqual(0, self.main('run-repeats'))
-                    self.assertEqual(1, self.main('judge'))
+                    self.assertEqual(0, self.main('judge'))
                 modes = phase.MODES if selected == 'C0' else (
                     'start-line', 'loadgen', 'loadgen-restart', 'loadgen-successor', 'b10-abrupt-verify')
-                self.assertEqual([(repeat, mode) for repeat in phase.SLOTS for mode in modes],
+                self.assertEqual([(repeat, mode) for repeat in phase.SLOTS for mode in modes]
+                                 + [(None, mode) for mode in ('b10-sweep-line', 'b10-final-sweep', 'judge')],
                                  [(r['repeat'], r['mode']) for r in self.records()])
-                self.assertEqual(15 if selected == 'C0' else 25, len(self.records()))
+                self.assertEqual(len(phase.SLOTS) * len(modes) + 3, len(self.records()))
                 state = phase.Phase().state()['b10_lifecycle']
                 self.assertEqual((5 if selected == 'C0' else 15, 5, []),
                                  (len(state['producers']), len(state['verifiers']), state['gaps']))
