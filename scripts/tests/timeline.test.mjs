@@ -62,12 +62,13 @@ test("event_vocabulary_accepts", () => {
     ["gate.start", "full"], ["gate.pass", "docs"], ["gate.fail", "sandbox"], ["gate.stop", "full"],
     ["focused.run", "fast"], ["focused.run", "project"], ["review.start", "p2-correction"],
     ["review.end", "comprehensive P0=0 P1=0 P2=0"], ["review.end", "focused P0=999999 P1=1 P2=12"],
-    ["env.interrupted"], ["agent.resumed"], ["handoff", "hari"], ["handoff", "next-session"],
+    ["env.interrupted"], ["agent.resumed"], ["session.start"], ["handoff", "hari"], ["handoff", "next-session"],
     ["handoff", "completion"], ["decision.received", "6848185690"], ["decision.received", "12345678901234567890"],
   ];
   for (const call of calls) assert.equal(event(call, log).status, 0, call.join(" "));
   const l = lines(log).map((x) => JSON.parse(x));
-  assert.equal(l.length, 16);
+  assert.equal(l.length, calls.length);
+  assert.equal(l.length, 17);
   calls.forEach((call, i) => {
     assert.equal(l[i].event, call[0]);
     assert.equal(l[i].detail, call[1] ?? "");
@@ -101,7 +102,7 @@ test("event_bad_detail", () => {
     ["gate.start", "/home/user"], ["gate.start"], ["review.end", "comprehensive P0=1 P1=2"],
     ["review.end", "comprehensive P0=-1 P1=0 P2=0"], ["review.end", "comprehensive P0=0 P1=0 P2=1234567"],
     ["review.end", "fast P0=0 P1=0 P2=0"], ["env.interrupted", "x"], ["decision.received", ""],
-    ["decision.received", "123a"], ["decision.received", "123456789012345678901"], ["focused.run", "sandbox"],
+    ["decision.received", "123a"], ["decision.received", "123456789012345678901"], ["focused.run", "sandbox"], ["session.start", "x"],
   ];
   for (const call of calls) {
     const r = event(call, log);
@@ -296,6 +297,7 @@ test("render_full", () => {
 
 hook data: absent
 event log: present
+window start: 2026-11-13T10:00:00Z (earliest log row; no session.start recorded)
 pre-PR local gate: recorded
 Rows: log 9, summary 2, git 2, comment 1, review 1, ci 3.
 Seconds are computed only from recorded start and end pairs.
@@ -365,7 +367,7 @@ test("render_missing_log", () => {
   assert.match(r.stdout, /\| 2026-11-13T10:25:00Z \| comment \| comment \| 1 \|  \|\n/);
 });
 
-const emptyBlock = (gate) => `${NO_ROWS_HEAD}event log: missing\npre-PR local gate: ${gate}\n${NO_ROWS_TAIL}`;
+const emptyBlock = (gate) => `${NO_ROWS_HEAD}event log: missing\nwindow start: none (no log rows; nothing dropped)\npre-PR local gate: ${gate}\n${NO_ROWS_TAIL}`;
 
 test("render_empty", () => {
   const dir = tmp();
@@ -390,6 +392,7 @@ test("render_log_empty_file", () => {
     assert.equal(r.status, 0);
     assert.match(r.stdout, /event log: empty\n/);
     assert.match(r.stdout, /Rows: log 0, /);
+    assert.match(r.stdout, /window start: none \(no log rows; nothing dropped\)\n/);
     assert.match(r.stdout, /No rows from any source\.\n/);
     assert.equal(r.stdout.split("\n").some((l) => l.startsWith("| UTC")), false);
   }
@@ -401,6 +404,7 @@ test("render_log_other_branch", () => {
   assert.equal(r.status, 0);
   assert.match(r.stdout, /event log: no events for this branch\n/);
   assert.match(r.stdout, /Rows: log 0, /);
+  assert.match(r.stdout, /window start: none \(no log rows; nothing dropped\)\n/);
 });
 
 test("render_gate_boundaries", () => {
@@ -414,7 +418,7 @@ test("render_gate_boundaries", () => {
     { rows: [["2026-11-13T10:00:00Z", "gate.start", "full"], ["2026-11-13T10:01:00Z", "gate.pass", "full"]], status: 3 },
     { rows: [start, ["2026-11-13T10:01:00Z", "gate.fail", "sandbox"]], status: 0 },
     { rows: [start, ["2026-11-13T10:01:00Z", "gate.stop", "sandbox"]], status: 0 },
-    { rows: [start, ["2026-11-13T10:01:00Z", "gate.fail", "sandbox"]], status: 0, since: "2026-11-13T10:00:30Z" },
+    { rows: [start, ["2026-11-13T10:01:00Z", "gate.fail", "sandbox"]], status: 3, since: "2026-11-13T10:00:30Z" },
     { rows: [start, ["2026-11-13T10:01:00Z", "gate.pass", "sandbox"]], status: 3, branch: "claude/999-other" },
   ];
   cases.forEach((c, i) => {
@@ -425,10 +429,170 @@ test("render_gate_boundaries", () => {
     if (c.status === 3) assert.match(r.stdout, /pre-PR local gate: MISSING, no recorded start and end\n/);
     else assert.match(r.stdout, /pre-PR local gate: recorded\n/);
     if (c.since) {
-      assert.match(r.stdout, /\| gate\.fail \| sandbox \| 60 \|\n/);
+      assert.match(r.stdout, /\| 2026-11-13T10:01:00Z \| log \| gate\.fail \| sandbox \|  \|\n/);
       assert.equal(r.stdout.includes("| gate.start |"), false);
     }
   });
+});
+
+const mkLog = (dir, name, rows) =>
+  json(
+    dir,
+    name,
+    rows
+      .map(([ts, ev, d, branch = BRANCH]) => JSON.stringify({ v: 1, ts, event: ev, detail: d, branch, head: null }))
+      .join("\n") + "\n",
+  );
+const day = (hms) => `2026-11-13T${hms}Z`;
+
+const TWO_SESSIONS = [
+  [day("09:00:00"), "session.start", ""], [day("09:10:00"), "gate.start", "sandbox"],
+  [day("09:15:00"), "gate.pass", "sandbox"], [day("09:16:00"), "gate.start", "sandbox"],
+  [day("09:20:00"), "handoff", "next-session"], [day("10:00:00"), "session.start", ""],
+  [day("10:05:00"), "focused.run", "fast"], [day("10:06:00"), "gate.pass", "sandbox"],
+];
+const TWO_SESSIONS_COMMENTS = [{ id: 11, created_at: day("09:30:00") }, { id: 12, created_at: day("10:10:00") }];
+
+const BLOCK_A = `<details><summary>Timeline 2026-11-13T10:00:00Z to 2026-11-13T10:10:00Z (UTC)</summary>
+
+hook data: absent
+event log: present
+window start: 2026-11-13T10:00:00Z (session.start)
+pre-PR local gate: MISSING, no recorded start and end
+Rows: log 3, summary absent, git absent, comment 1, review absent, ci absent.
+Seconds are computed only from recorded start and end pairs.
+
+| UTC | Source | Event | Detail | Seconds |
+|---|---|---|---|---|
+| 2026-11-13T10:00:00Z | log | session.start |  |  |
+| 2026-11-13T10:05:00Z | log | focused.run | fast |  |
+| 2026-11-13T10:06:00Z | log | gate.pass | sandbox |  |
+| 2026-11-13T10:10:00Z | comment | comment | 12 |  |
+
+</details>
+`;
+const BLOCK_B = `<details><summary>Timeline 2026-11-13T10:00:00Z to 2026-11-13T10:10:00Z (UTC)</summary>
+
+hook data: absent
+event log: present
+window start: 2026-11-13T10:00:00Z (session.start)
+pre-PR local gate: recorded
+Rows: log 4, summary absent, git absent, comment 1, review absent, ci absent.
+Seconds are computed only from recorded start and end pairs.
+
+| UTC | Source | Event | Detail | Seconds |
+|---|---|---|---|---|
+| 2026-11-13T10:00:00Z | log | session.start |  |  |
+| 2026-11-13T10:05:00Z | log | focused.run | fast |  |
+| 2026-11-13T10:06:00Z | log | gate.start | sandbox |  |
+| 2026-11-13T10:07:00Z | log | gate.pass | sandbox | 60 |
+| 2026-11-13T10:10:00Z | comment | comment | 12 |  |
+
+</details>
+`;
+const BLOCK_C = `<details><summary>Timeline 2026-11-13T09:55:00Z to 2026-11-13T10:30:00Z (UTC)</summary>
+
+hook data: absent
+event log: present
+window start: 2026-11-13T10:00:00Z (session.start)
+pre-PR local gate: MISSING, no recorded start and end
+Rows: log 2, summary absent, git absent, comment 1, review absent, ci absent.
+Seconds are computed only from recorded start and end pairs.
+
+| UTC | Source | Event | Detail | Seconds |
+|---|---|---|---|---|
+| 2026-11-13T09:55:00Z | log | focused.run | fast |  |
+| 2026-11-13T10:00:00Z | log | session.start |  |  |
+| 2026-11-13T10:30:00Z | comment | comment | 22 |  |
+
+</details>
+`;
+
+test("render_two_sessions", () => {
+  const dir = tmp();
+  const r = render(dir, ["--branch", BRANCH, "--log", mkLog(dir, "l.jsonl", TWO_SESSIONS), "--comments", json(dir, "c.json", TWO_SESSIONS_COMMENTS)]);
+  assert.equal(r.status, 3);
+  assert.equal(r.stderr, GATE_ERR);
+  assert.equal(r.stdout, BLOCK_A);
+});
+
+test("render_two_sessions_recorded", () => {
+  const dir = tmp();
+  const rows = [...TWO_SESSIONS.slice(0, 7), [day("10:06:00"), "gate.start", "sandbox"], [day("10:07:00"), "gate.pass", "sandbox"]];
+  const r = render(dir, ["--branch", BRANCH, "--log", mkLog(dir, "l.jsonl", rows), "--comments", json(dir, "c.json", TWO_SESSIONS_COMMENTS)]);
+  assert.equal(r.status, 0);
+  assert.equal(r.stderr, "");
+  assert.equal(r.stdout, BLOCK_B);
+});
+
+test("render_session_start_same_second", () => {
+  const dir = tmp();
+  const log = mkLog(dir, "l.jsonl", [
+    [day("10:00:00"), "gate.start", "sandbox"], [day("10:00:00"), "session.start", ""], [day("10:00:00"), "gate.pass", "sandbox"],
+  ]);
+  const r = render(dir, ["--branch", BRANCH, "--log", log]);
+  assert.equal(r.status, 3);
+  assert.ok(r.stdout.includes("window start: 2026-11-13T10:00:00Z (session.start)\n"));
+  assert.ok(r.stdout.includes("pre-PR local gate: MISSING, no recorded start and end\n"));
+  assert.ok(r.stdout.includes("Rows: log 2, summary absent, git absent, comment absent, review absent, ci absent.\n"));
+  assert.ok(r.stdout.includes("| 2026-11-13T10:00:00Z | log | gate.pass | sandbox |  |\n"));
+  assert.equal(r.stdout.includes("| gate.start |"), false);
+  const withComments = render(dir, [
+    "--branch", BRANCH, "--log", log,
+    "--comments", json(dir, "c.json", [{ id: 31, created_at: day("09:59:59") }, { id: 32, created_at: day("10:00:00") }]),
+  ]);
+  assert.equal(withComments.status, 3);
+  assert.ok(withComments.stdout.includes("Rows: log 2, summary absent, git absent, comment 1, review absent, ci absent.\n"));
+  assert.ok(withComments.stdout.includes("| 2026-11-13T10:00:00Z | comment | comment | 32 |  |\n"));
+  assert.equal(withComments.stdout.includes("| 31 |"), false);
+});
+
+test("render_since_overrides_session_start", () => {
+  const dir = tmp();
+  const log = mkLog(dir, "l.jsonl", [
+    [day("09:30:00"), "handoff", "next-session"], [day("10:00:00"), "session.start", ""],
+    [day("10:05:00"), "gate.start", "sandbox"], [day("10:06:00"), "gate.pass", "sandbox"],
+  ]);
+  const one = render(dir, ["--branch", BRANCH, "--log", log, "--since", day("10:05:00")]);
+  assert.equal(one.status, 0);
+  assert.ok(one.stdout.includes("window start: 2026-11-13T10:05:00Z (--since)\n"));
+  assert.ok(one.stdout.includes("pre-PR local gate: recorded\n"));
+  assert.ok(one.stdout.includes("Rows: log 2, "));
+  assert.ok(one.stdout.includes("| 2026-11-13T10:06:00Z | log | gate.pass | sandbox | 60 |\n"));
+  assert.equal(one.stdout.includes("| session.start |"), false);
+  const two = render(dir, ["--branch", BRANCH, "--log", log, "--since", day("09:00:00"), "--local-gate", "not-applicable"]);
+  assert.equal(two.status, 0);
+  assert.ok(two.stdout.includes("window start: 2026-11-13T09:00:00Z (--since)\n"));
+  assert.ok(two.stdout.includes("Rows: log 4, "));
+  assert.ok(two.stdout.includes("| 2026-11-13T09:30:00Z | log | handoff | next-session |  |\n"));
+});
+
+test("render_session_start_line_order", () => {
+  const dir = tmp();
+  const log = mkLog(dir, "l.jsonl", [
+    [day("10:40:00"), "session.start", ""], [day("10:41:00"), "gate.start", "sandbox"],
+    [day("10:42:00"), "gate.pass", "sandbox"], [day("10:00:00"), "session.start", ""],
+    [day("09:55:00"), "focused.run", "fast"],
+  ]);
+  const comments = json(dir, "c.json", [{ id: 21, created_at: day("09:58:00") }, { id: 22, created_at: day("10:30:00") }]);
+  const r = render(dir, ["--branch", BRANCH, "--log", log, "--comments", comments]);
+  assert.equal(r.status, 3);
+  assert.equal(r.stderr, GATE_ERR);
+  assert.equal(r.stdout, BLOCK_C);
+});
+
+test("render_session_start_other_branch", () => {
+  const dir = tmp();
+  const log = mkLog(dir, "l.jsonl", [
+    [day("09:00:00"), "gate.start", "sandbox"], [day("09:30:00"), "session.start", "", "claude/999-other"],
+    [day("09:35:00"), "session.start", "", null], [day("09:40:00"), "gate.pass", "sandbox"],
+  ]);
+  const r = render(dir, ["--branch", BRANCH, "--log", log]);
+  assert.equal(r.status, 0);
+  assert.ok(r.stdout.includes("window start: 2026-11-13T09:00:00Z (earliest log row; no session.start recorded)\n"));
+  assert.ok(r.stdout.includes("pre-PR local gate: recorded\n"));
+  assert.ok(r.stdout.includes("Rows: log 2, "));
+  assert.ok(r.stdout.includes("| 2026-11-13T09:40:00Z | log | gate.pass | sandbox | 2400 |\n"));
 });
 
 test("render_gate_declared", () => {
@@ -503,7 +667,7 @@ test("render_jobs_no_steps", () => {
 
 const SKILL_SECTION = `## Timeline record
 
-Record this session's events with \`scripts/timeline/event.sh <event> [<detail>]\`, whose header lists each event, the detail it takes and when it applies. Record each event when it happens, not afterwards: \`gate.start\` before, and \`gate.pass\`, \`gate.fail\` or \`gate.stop\` after, each gate command it names; \`focused.run\` for each focused test run; \`review.start\` when cold-review inputs are frozen under docs/agents/pull-requests.md rule 5 and \`review.end\` when the complete report arrives; \`env.interrupted\` and \`agent.resumed\` as they occur; \`decision.received\` for each new decision or approval comment the catch-up or a refresh finds; \`handoff\` just before a handoff or completion comment. A failed \`event.sh\` call does not stop the work; note it in the authored receipt.
+Record this session's events with \`scripts/timeline/event.sh <event> [<detail>]\`, whose header lists each event, the detail it takes and when it applies. Record \`session.start\` once, as this session's first event on its pull request branch, as soon as that branch is checked out; a resume within this session records \`agent.resumed\` instead. Record each event when it happens, not afterwards: \`gate.start\` before, and \`gate.pass\`, \`gate.fail\` or \`gate.stop\` after, each gate command it names; \`focused.run\` for each focused test run; \`review.start\` when cold-review inputs are frozen under docs/agents/pull-requests.md rule 5 and \`review.end\` when the complete report arrives; \`env.interrupted\` and \`agent.resumed\` as they occur; \`decision.received\` for each new decision or approval comment the catch-up or a refresh finds; \`handoff\` just before a handoff or completion comment. A failed \`event.sh\` call does not stop the work; note it in the authored receipt.
 
 Before each edit of the pull request description, fetch the issue's and the pull request's comments, the pull request's reviews and the jobs of each workflow run on its head with \`gh api\`, under AGENTS.md "GitHub issues and pull requests", into files outside the repository. Then run \`scripts/timeline/render.sh\` with the branch, the timeline log, each \`summary.json\` this session produced, the commit range from the merge base with \`origin/main\` to the head, and those files. Pass \`--local-gate not-applicable\` or \`--local-gate earlier-session\`, the value that names the reason, only when docs/agents/pull-requests.md "Verification gates", its last two paragraphs, does not require this session to run its step 3; otherwise leave the default. Put its output under the self-review record's "Timeline record" line, as this session's block, also when it exits 3: that exit means the pre-PR local gate has no recorded start and end, and the block shows it. State any exit 3 in the authored receipt. Each session adds or replaces only its own block and leaves earlier sessions' blocks unchanged. Commit no timeline output (docs/agents/pull-requests.md rule 8).
 `;
@@ -529,7 +693,7 @@ test("vocabulary_header", () => {
     ["gate.start", "sandbox|full|docs"], ["gate.pass", "sandbox|full|docs"], ["gate.fail", "sandbox|full|docs"],
     ["gate.stop", "sandbox|full|docs"], ["focused.run", "fast|project"], ["review.start", "comprehensive|focused|p2-correction"],
     ["review.end", "(comprehensive|focused|p2-correction) P0=[0-9]{1,6} P1=[0-9]{1,6} P2=[0-9]{1,6}"],
-    ["env.interrupted", "empty only"], ["agent.resumed", "empty only"], ["handoff", "hari|next-session|completion"],
+    ["env.interrupted", "empty only"], ["agent.resumed", "empty only"], ["session.start", "empty only"], ["handoff", "hari|next-session|completion"],
     ["decision.received", "[0-9]{1,20}"],
   ];
   for (const [name, pattern] of vocab) {

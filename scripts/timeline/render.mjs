@@ -6,6 +6,10 @@
 // caller fetched. Seconds come only from recorded start and end pairs of the
 // same source row set, never from a gap between unrelated rows.
 //
+// Each block starts at the last session.start line of the log for the branch,
+// in file order, unless --since overrides it. With no session.start it starts
+// at the earliest log row, and the window start line says so.
+//
 // Exit 0: block written. Exit 3: block written, and the pre-PR local gate has
 // no recorded start and end. Exit 2: bad input, one line on standard error.
 
@@ -126,7 +130,7 @@ function isNullable(value) {
 
 function readLog(path, branch) {
   const text = readText(path, "log");
-  if (text === null) return { state: "missing", rows: [] };
+  if (text === null) return { state: "missing", entries: [] };
   const lines = text.split("\n");
   if (lines[lines.length - 1] === "") lines.pop();
   let nonEmpty = 0;
@@ -160,7 +164,31 @@ function readLog(path, branch) {
   let state = "present";
   if (nonEmpty === 0) state = "empty";
   else if (onBranch === 0) state = "no events for this branch";
-  return { state, rows: pairLog(entries) };
+  return { state, entries };
+}
+
+// Chooses the window of the block. Log entries are in file order, which is the
+// order event.sh appended them, so a clock that disagrees between sessions or
+// steps back cannot move the window for log entries.
+function chooseWindow(entries, since) {
+  if (since !== null) {
+    return { start: since, how: "--since", kept: entries.filter((entry) => entry.time >= since) };
+  }
+  let last = -1;
+  entries.forEach((entry, position) => {
+    if (entry.event === "session.start") last = position;
+  });
+  if (last >= 0) {
+    return { start: entries[last].time, how: "session.start", kept: entries.slice(last) };
+  }
+  if (entries.length > 0) {
+    return {
+      start: Math.min(...entries.map((entry) => entry.time)),
+      how: "earliest log row; no session.start recorded",
+      kept: entries,
+    };
+  }
+  return { start: null, how: null, kept: entries };
 }
 
 // Pairs end events with the latest earlier unpaired start, in time order.
@@ -335,7 +363,9 @@ function render() {
   }
 
   const log = readLog(single.log, single.branch);
-  const groups = [{ source: "log", present: log.state !== "missing", rows: log.rows }];
+  const window = chooseWindow(log.entries, since);
+  const logRows = pairLog(window.kept);
+  const groups = [{ source: "log", present: log.state !== "missing", rows: logRows, windowed: true }];
   groups.push({ source: "summary", present: repeated.summary.length > 0, rows: repeated.summary.flatMap((f) => summaryRows(readJson(f, "summary"), "summary")) });
   const comments = repeated.comments.flatMap((f) => commentRows(readJson(f, "comments"), "comments"));
   const reviews = repeated.reviews.flatMap((f) => reviewRows(readJson(f, "reviews"), "reviews"));
@@ -345,13 +375,11 @@ function render() {
   groups.push({ source: "review", present: repeated.reviews.length > 0, rows: reviews });
   groups.push({ source: "ci", present: repeated.jobs.length > 0, rows: jobs });
 
-  if (since === null && log.rows.length > 0) since = Math.min(...log.rows.map((row) => row.time));
-
   let index = 0;
   const table = [];
   const counts = {};
   for (const group of groups) {
-    const kept = group.rows.filter((row) => since === null || row.time >= since);
+    const kept = group.windowed ? group.rows : group.rows.filter((row) => window.start === null || row.time >= window.start);
     counts[group.source] = group.present ? String(kept.length) : "absent";
     for (const row of kept) {
       table.push({ ...row, index });
@@ -379,6 +407,7 @@ function render() {
   out.push("");
   out.push(`hook data: ${hookData}`);
   out.push(`event log: ${log.state}`);
+  out.push(window.start === null ? "window start: none (no log rows; nothing dropped)" : `window start: ${formatUtc(window.start)} (${window.how})`);
   out.push(`pre-PR local gate: ${gateLine}`);
   out.push(`Rows: ${SOURCE_ORDER.map((source) => `${source} ${counts[source]}`).join(", ")}.`);
   out.push("Seconds are computed only from recorded start and end pairs.");
