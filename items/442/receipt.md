@@ -14,7 +14,7 @@ Check 6848261407 marks seven P2 findings `apply in implementation`.
 - P2-3 (`jq -e` equality): applied to `failed_stages` and `slowest_tests` comparisons; entry 0 of `slowest` still builds `{name, time_s}` with `jq -c`, as the check says.
 - P2-4 (`DOTNET_PROCESSOR_COUNT` check): applied. The stub appends `${DOTNET_PROCESSOR_COUNT-unset}` to `$STUB_LOG.env`; `run_case` truncates it. The `cpu` case gains the input `DOTNET_PROCESSOR_COUNT=2` (see the fixture rule below).
 - P2-5 (report fixtures): applied. One `<test>` per line, `Nine` carries a `<traits>` child, fixtures are passed as absolute paths.
-- P2-6 (shellcheck): `shellcheck` is not installed in this sandbox, so `shellcheck -x scripts/verify-dotnet.sh scripts/test-verify-dotnet.sh` was not run locally. The hosted `Lifecycle verification` job on the final head is an acceptance item; its result is recorded in the pull request.
+- P2-6 (shellcheck): the hosted `Lifecycle verification` job on the first head (b4a4f80) failed with SC2028 (info) at `scripts/test-verify-dotnet.sh` line 101, an `echo` of a string with backslashes. Fixed by printing that fixture line with `printf '%s\n'`; the bytes written are the same. `shellcheck` 0.11.0 (pip package `shellcheck-py` in a scratch virtual environment) then ran clean on `shellcheck -x scripts/verify-dotnet.sh scripts/test-verify-dotnet.sh`. The hosted `Lifecycle verification` result on the final head is recorded in the pull request.
 - P2-7 (D2 evidence): the hosted `source_sha` is not observed. The hosted run keeps no `summary.json` artifact (plan section 9 item 3).
 
 ## Standing fixture rule (plan section 6)

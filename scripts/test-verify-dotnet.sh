@@ -98,7 +98,7 @@ check_summary() {
     echo '<test id="t31" name="T30b" result="Pass" time="0.030" />'
     echo '<test id="t32" name="Nine" result="Pass" time="9.5"><traits><trait name="Tier" value="Slow" /></traits></test>'
     echo '<test id="t33" name="Angle &lt;a&gt; &apos;b&apos; &amp;lt;" result="Pass" time="0.5" />'
-    echo '<test id="t34" name="Q \&quot;quoted\&quot; &amp; back\\slash" result="Pass" time="12.5" />'
+    printf '%s\n' '<test id="t34" name="Q \&quot;quoted\&quot; &amp; back\\slash" result="Pass" time="12.5" />'
     echo '</collection></assembly></assemblies>'
 } > "$work/slow.xml"
 printf '<assemblies><assembly name="stub"><collection>\n<test id="t1" name="Only" result="Pass" time="0.25" />\n</collection></assembly></assemblies>\n' > "$work/one.xml"
