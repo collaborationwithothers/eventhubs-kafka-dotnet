@@ -2,7 +2,9 @@
 
 Issue: [#452](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/452). This contract-grade plan covers the whole issue as one pull request, `test-shards`. It splits the Verifier tests into three CI jobs and the LoadGen tests into two, by test class, using a committed shard file. The aggregate `.NET verification` job gains a method-level check that every listed test method of every test project ran in exactly one job. Nothing is open for Hari.
 
-Revision: r2. Planned against `main` at `9b13ce03d916bbd14e8d92445966fcfc09f34cfa`, which is still the head of `main` for r2.
+Revision: r3. Planned against `main` at `9b13ce03d916bbd14e8d92445966fcfc09f34cfa`, which is still the head of `main` for r3.
+
+Changes since r2, from the r2 [plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/452#issuecomment-6857700632) B1: the section 7 Docker row states how its evidence was taken (plan-pr plan rule 3). The test map adds S13 to S16 and A5 also compares job `dotnet-tests`, taken from the `apply in implementation` findings of both plan checks (r1 P2-1 and P2-2, r2 N1 and N2) so the implementer reads them in the plan. No contract, requirement, scope or enforced check changes.
 
 Changes since r1, each from the r1 [plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/452#issuecomment-6856819660): section 4.0 states the restore and build time per job with its method (B1), adds the run completed after the r1 measurement (N4) and estimates the LoadGen `rest` shard (N2); R11 and R13 say "valid" instead of "parse" for `methods.json` (N3); section 11 (a) caps reruns for a test flake (N1); section 9 points to the stop rule in section 13, not section 12. No contract, requirement, test, scope or enforced check changes.
 
@@ -23,7 +25,7 @@ Files this pull request may change:
 - `.github/workflows/dotnet-verification.yml`: in job `dotnet-tests`, only `name`, `strategy.matrix`, the `env` and `run` of step `Verify .NET test project`, the `run` of step `Collect verification reports`, and the artifact `name` of step `Upload verification reports`; in job `dotnet-verification`, only the `run` of step `Check every test project passed` (section 3.1).
 - `scripts/dotnet-test-shards.tsv` (new): the shard file (section 3.2).
 - `scripts/verify-dotnet.sh`: the `--shard` option, the test list stage and the `shard` summary key (R1 to R6).
-- `scripts/test-verify-dotnet.sh`: the stub `dotnet run` case and the cases S1 to S12 (section 6.1).
+- `scripts/test-verify-dotnet.sh`: the stub `dotnet run` case and the cases S1 to S16 (section 6.1).
 - `scripts/check-dotnet-matrix.py`: R7 to R16.
 - `scripts/tests/test_check_dotnet_matrix.py`: the fixture changes and tests of section 6.2.
 - `infra/scripts/phase/tests/test_workflow.py`: only the `BASE_WORKFLOWS` value for `.github/workflows/dotnet-verification.yml` and the comment line above the dictionary (R17).
@@ -255,6 +257,10 @@ The stub `dotnet` gains a `run` case: it logs `RUN <project name> <arguments>` t
 | S10 | R4 | default run with `STUB_METHODS='["A.B.C"]'` | exit 0; six `RUN` lines, each containing `--configuration Release --no-build --no-launch-profile -- -list methods/json -noColor`; each project directory's `methods.json` equals `["A.B.C"]` plus newline exactly as the stub printed it; summary has a stage `<P> test list` with exit code 0 for each of the six projects, after `<P> report`; `.shard == null` |
 | S11 | R4 | default run with `STUB_LIST_STATUS=3` | exit 3; `.failed_stages` lists all six projects with exit code 3, in run order; warning control still ran |
 | S12 | R4 | `STUB_FAIL=Parchwell.Kafka.Tests` | no `RUN` line for `Parchwell.Kafka.Tests`; `RUN` lines for the other five |
+| S13 | R6 | existing `help` case (`--help`) | its existing assertions, plus output contains `--shard` and contains `PARCHWELL_TEST_SHARDS_FILE` |
+| S14 | R6 | S1's input | output contains `Partial verification passed` |
+| S15 | section 3.3 | `--project Parchwell.Verifier.Tests --shard` (no value) | exit 2; output contains `Usage: ./scripts/verify-dotnet.sh`; empty stub log; empty `TMPDIR` |
+| S16 | R1 | existing `default` case (no options) | its existing assertions, plus the stub log contains neither `--filter-class` nor `--filter-not-class` |
 
 ### 6.2 Checker tests (`scripts/tests/test_check_dotnet_matrix.py`)
 
@@ -299,7 +305,7 @@ No Azure resource, container image, chart or live connection is involved. Each i
 | A matrix with only `include` runs one job per entry | Run [42357132742](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/42357132742) of `verifier-c5-mutation.yml`, whose `mutation` matrix has only `include` with 61 entries (lines 16 to 28 and on): the jobs API lists 62 jobs, the 61 legs plus `aggregate`. Fresh hosted runners, idle. |
 | The MTP options `--filter-class` (several values after one switch, OR) and `--filter-not-class` (several values, each excluded), combined with another filter type as AND, behave as in section 3.3 | Local run in this planning session, 2026-11-13, SDK 10.0.402, fresh process per command, idle machine: `dotnet test --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release --no-build -- --filter-class Parchwell.Verifier.Tests.A01.A01C3EvidenceRecorderTests Parchwell.Verifier.Tests.A01.WorkloadRecorderTests` ran tests of exactly those two classes (43 and 6); `-- --filter-namespace Parchwell.Verifier.Tests.A01 --filter-not-class <same two>` ran only `A01EvidenceRecorderTests` (66). Sources in section 10. R12 and R13 fail closed if the hosted runner differs. |
 | `dotnet run ... -- -list methods/json -noColor` lists exactly the methods a full run executes | Local run in this planning session, same conditions, on `main` at `9b13ce0`: for each of the six test projects, the listing equalled, as a set and without duplicates, the `type.method` set of the `results.xml` from run 43440889079 (ArchitectureTests 17, Enrichment 21, Kafka 261, LoadGen 790, Scenarios 85, Verifier 1611 methods). Without `-noColor` the listing ends with an ANSI reset sequence, which breaks the JSON; with it the output parsed. The hosted run of A6 repeats this on the runner; any difference fails closed through R11 or R13. |
-| Docker is available to every shard job | Today's Verifier and LoadGen jobs pass their `Tier=Docker` tests on the same runner label (run 43440889079). |
+| Docker is available to every shard job | Today's Verifier and LoadGen jobs pass their `Tier=Docker` tests on the same runner label (run 43440889079). Fresh GitHub-hosted runners, idle apart from the job's own tests, as section 4.0 states for this run. |
 
 Re-runs and runner concurrency: the matrix grows from six to nine test jobs. GitHub's concurrent job limit for this account was not read; queueing would show in A6's measurement, and nothing here relies on the limit.
 
@@ -311,7 +317,7 @@ Re-runs and runner concurrency: the matrix grows from six to nine test jobs. Git
 | A2 | `./scripts/test-verify-dotnet.sh` | prints `verify-dotnet.sh checks passed.`; output in the receipt |
 | A3 | `python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'` | passes, including `test_mirror_and_all_preexisting_workflows_unchanged` with the new hash |
 | A4 | `bash infra/scripts/lifecycle/check-offline.sh`, with the pinned tools from `infra/scripts/lifecycle/install-tools.sh` on `PATH` | passes: trigger check, actionlint and shellcheck |
-| A5 | a script comparing, between `main` and the head parsed with PyYAML: `on`, `permissions`, jobs `worker-images`, `lifecycle-verification`, `terraform-verification`, and every key of `dotnet-verification` except step `Check every test project passed`'s `run` | all equal; output in the receipt |
+| A5 | a script comparing, between `main` and the head parsed with PyYAML: `on`, `permissions`, jobs `worker-images`, `lifecycle-verification`, `terraform-verification`, every key of `dotnet-verification` except step `Check every test project passed`'s `run`, and job `dotnet-tests` after deleting from both sides `name`, `strategy.matrix`, the `env` and `run` of step `Verify .NET test project`, the `run` of step `Collect verification reports` and `with.name` of step `Upload verification reports` | all equal; output in the receipt |
 | A6 | the hosted `.NET verification` run on the pull request head | nine `.NET tests (<unit>)` jobs, `Worker image smoke` and `.NET verification` concluded `success`; nine artifacts `dotnet-verification-<unit>-attempt-<n>`, each with `methods.json`; the aggregate log shows A1's output and the T1-form success line naming six projects. The receipt records, by script from the jobs API, every job's duration and the longest `dotnet-tests` job, beside the section 4.0 table, with run URL and head SHA. |
 | A7 | `npm run check:docs` | warnings fixed or explained under AGENTS.md "Before opening a pull request" rule 8 |
 | A8 | `./scripts/verify-dotnet.sh --project Parchwell.LoadGen.Tests --shard b10-end-to-end` in a session with Docker and cgroup v2, if available | passes with one test in the report; when the session lacks cgroup v2 (docs/engineering/dotnet-verification.md line 70), record that A6 replaces it |
