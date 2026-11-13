@@ -19,7 +19,7 @@
 
 ## Predicate map
 
-The plan's test map (section 7) is the predicate map; every requirement 1 to 25 has a named test in `scripts/tests/timeline.test.mjs`. Not applicable beyond that.
+The plan's test map (section 7) is the predicate map; every requirement 1 to 25 has a named test in `scripts/tests/timeline.test.mjs`. Choice 6 below goes beyond the plan's requirements and has no test of its own; see the round 2 disposition.
 
 ## Choices the plan left to the implementer
 
@@ -37,7 +37,7 @@ No existing test or fixture exercises these scripts; no fixture change was neede
 
 ## Commands and results
 
-Source commit: `1c2ed5e618a0a108e69ca73f4591059e68619fe2` (`origin/main`) plus the working tree under review.
+Source: `origin/main` `1c2ed5e618a0a108e69ca73f4591059e68619fe2` plus commits `620e7bf` and `84ec3da` (the correction after round 1). Command 1 was run again on the tree of `84ec3da`, with the same counts.
 
 1. `node --test scripts/tests/timeline.test.mjs`: 30 tests, 28 pass, 0 fail, 2 skipped. The skipped cases are `event_write_failure` and `render_unreadable`, both skipped because the session runs as root (`process.getuid() === 0`), as plan section 7.3 allows. The exit-1 path of `event.sh` and the `Cannot read` path of `render.mjs` therefore did not run here.
 2. `scripts/timeline/event.sh gate.start sandbox`, `./scripts/verify-dotnet.sh --tier sandbox`, `gate.pass sandbox`: exit 0, outcome `partial_passed` (a partial run that excludes `Tier=CGroupV2`, not the full gate; the plan makes no gate mandatory, see the execution card). `scripts/timeline/render.sh --branch claude/443-session-timeline --log <log> --summary <summary.json>` exit 0: block with `hook data: absent`, `event log: present`, `pre-PR local gate: recorded`, the `verify.run` row `tier=sandbox outcome=partial_passed exit=0` with 1411 seconds and the paired `gate.pass sandbox` row with 1417 seconds.
@@ -50,3 +50,5 @@ Source commit: `1c2ed5e618a0a108e69ca73f4591059e68619fe2` (`origin/main`) plus t
 - Complete reports, dispositions and later rounds are recorded in the pull request's self-review record.
 - Round 1 report (complete): 2 P1 and 1 P2, all fixed in the correction (choices 6 and 7 above; the state file's first decision line now claims only what the issue body says). Dispositions in the pull request's self-review record.
 - Round 2: mode focused (focused round 1 of at most 2; comprehensive passes used 1 of 2). Input revision: the staged tree on top of commit `620e7bf9edf5e6ba3854706fcceb03fde77ae1d0`; comparison revision: `620e7bf9edf5e6ba3854706fcceb03fde77ae1d0`, the revision round 1 reviewed. Scope: the correction diff, with the full diff as context.
+- Round 2 report (complete): no P0 or P1, 2 P2. P2 on the receipt's source line: fixed (the source line and the rerun above). P2 on tests for choice 6: left, reason: a test for a rejection the plan does not list is new code, so it needs its own review, and the rejection may not be wanted for real `--jobs` data; acceptance command 3 renders real responses and shows whether such times occur. The next session or Hari may drop or test the check.
+- Round 3: mode focused, P2-correction (focused round 2 of at most 2; comprehensive passes used 1 of 2). Comparison revision `84ec3da`; scope: this receipt's prose changes only.
