@@ -17,7 +17,7 @@ internal sealed class LocalKafkaFixture : IAsyncDisposable
 
     private LocalKafkaFixture(IOutputConsumer? outputConsumer, string? advertisedAddress)
     {
-        var docker = new BoundedDockerAuthentication(TestcontainersSettings.OS.DockerEndpointAuthConfig);
+        var docker = new BoundedDockerAuthentication(RequireDockerEndpoint(TestcontainersSettings.OS.DockerEndpointAuthConfig));
         container = new ContainerBuilder(Image)
             .WithDockerEndpoint(docker)
             .WithOutputConsumer(outputConsumer ?? Consume.DoNotConsumeStdoutAndStderr())
@@ -56,6 +56,14 @@ internal sealed class LocalKafkaFixture : IAsyncDisposable
             .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged(".*Transitioning from RECOVERY to RUNNING.*"))
             .Build();
     }
+
+    /// <summary>
+    /// Testcontainers leaves its detected Docker configuration null when no Docker endpoint answers.
+    /// Failing here names Docker instead of surfacing a <see cref="NullReferenceException"/> later.
+    /// </summary>
+    internal static IDockerEndpointAuthenticationConfiguration RequireDockerEndpoint(
+        IDockerEndpointAuthenticationConfiguration? detected) =>
+        detected ?? throw new InvalidOperationException("Docker daemon not reachable; this test is Tier=Docker");
 
     internal string BootstrapServers => $"127.0.0.1:{container.GetMappedPublicPort(KafkaPort)}";
 
