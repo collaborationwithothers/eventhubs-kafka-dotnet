@@ -10,6 +10,7 @@ internal sealed class B10AbruptJournal : IAsyncDisposable
     private readonly FileStream file;
     private readonly B10AbruptWire.Identity identity;
     private readonly TimeProvider clock;
+    private readonly string purpose;
     private readonly Func<CancellationToken, Task>? beforeFlush;
     private readonly object sync = new();
     private readonly List<B10AbruptWire.Frame> frames = [];
@@ -22,9 +23,9 @@ internal sealed class B10AbruptJournal : IAsyncDisposable
     private bool gapWritten;
     private int queueFull;
 
-    internal B10AbruptJournal(string path, B10AbruptWire.Identity identity, TimeProvider timeProvider, Func<CancellationToken, Task>? beforeFlush = null)
+    internal B10AbruptJournal(string path, B10AbruptWire.Identity identity, TimeProvider timeProvider, Func<CancellationToken, Task>? beforeFlush = null, string purpose = "diagnostic_trial")
     {
-        Path = path; this.identity = identity; clock = timeProvider; this.beforeFlush = beforeFlush;
+        this.purpose = purpose; Path = path; this.identity = identity; clock = timeProvider; this.beforeFlush = beforeFlush;
         Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
         file = new FileStream(path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.Read);
     }
@@ -70,7 +71,7 @@ internal sealed class B10AbruptJournal : IAsyncDisposable
             AppendLocked("gap", B10AbruptWire.Element(new { reason = gaps[0], first_missing_sequence = (long?)null, capture_status = "invalid" }), now, cancellationToken);
         }
         var frame = new B10AbruptWire.Frame(identity, checked(frames.Count + 1L), now.ToString("O", CultureInfo.InvariantCulture), clock.GetTimestamp(), clock.TimestampFrequency, kind, data.Clone());
-        byte[] bytes = B10AbruptWire.WriteFrame(frame);
+        byte[] bytes = B10AbruptWire.WriteFrame(frame, purpose);
         string? gap = bytes.Length > B10AbruptWire.MaximumBodyBytes ? "frame_oversize" : frames.Count >= 4096 ? "journal_entries_exceeded" : !FitsByteBudget(file.Length, bytes.LongLength + 1) ? "journal_bytes_exceeded" : null;
         if (gap is not null) { LatchGap(gap); throw B10AbruptWire.Gap(gap); }
         try
@@ -139,7 +140,7 @@ internal sealed class B10AbruptJournal : IAsyncDisposable
         await file.DisposeAsync().ConfigureAwait(false);
     }
     internal sealed record Snapshot(IReadOnlyList<B10AbruptWire.Frame> Frames, IReadOnlyList<string> Gaps, IReadOnlyDictionary<string, string> Failures, IReadOnlyList<string> ControlUnconfirmedAttemptIds, IReadOnlyList<string> KillUnconfirmedAttemptIds);
-    internal static Snapshot Read(byte[] bytes, B10AbruptWire.Identity? expectedIdentity = null)
+    internal static Snapshot Read(byte[] bytes, B10AbruptWire.Identity? expectedIdentity = null, string purpose = "diagnostic_trial")
     {
         List<B10AbruptWire.Frame> records = []; List<string> missing = []; Dictionary<string, string> failures = new(StringComparer.Ordinal);
         void Gap(string reason) { if (!missing.Contains(reason, StringComparer.Ordinal)) missing.Add(reason); }
@@ -152,7 +153,7 @@ internal sealed class B10AbruptJournal : IAsyncDisposable
             int length = bytes.AsSpan(start).IndexOf((byte)10); if (length < 0) break;
             try
             {
-                var frame = B10AbruptWire.ReadFrame(bytes.AsMemory(start, length));
+                var frame = B10AbruptWire.ReadFrame(bytes.AsMemory(start, length), purpose, expectedIdentity?.Repeat);
                 if (frame.Sequence != next) Gap("sequence_gap"); next = checked(frame.Sequence + 1);
                 expectedIdentity ??= frame.Identity;
                 if (frame.Identity != expectedIdentity || records.Count == 0 && frame.Kind != "child_started" || records.Count > 0 && frame.Kind == "child_started") Gap("malformed_frame");
@@ -174,7 +175,7 @@ internal sealed class B10AbruptJournal : IAsyncDisposable
             {
                 string arm = data.GetProperty("arm").GetString()!;
                 if (!warmups.TryAdd(arm, frame) || id != $"{frame.Identity.InstanceId}-{arm}-warmup"
-                    || data.GetProperty("key").GetString() != $"B10/{frame.Identity.RunId}/C1/1/{arm}"
+                    || data.GetProperty("key").GetString() != B10AbruptWire.ProbeKey(frame.Identity, arm)
                     || arm == "cross_restart" && !ControlCompleteBefore(frame.Sequence)) Gap("malformed_frame");
             }
             if (frame.Kind == "warmup_terminal")
@@ -187,7 +188,7 @@ internal sealed class B10AbruptJournal : IAsyncDisposable
                 if (!prepared.TryAdd(id!,frame)) Gap("malformed_frame");
                 string arm = data.GetProperty("arm").GetString()!;
                 if (arm == "cross_restart" && !ControlCompleteBefore(frame.Sequence)) Gap("malformed_frame");
-                if (data.GetProperty("key").GetString() != $"B10/{frame.Identity.RunId}/C1/1/{arm}" || data.GetProperty("probe_id").GetString() != data.GetProperty("key").GetString()) Gap("malformed_frame");
+                if (data.GetProperty("key").GetString() != B10AbruptWire.ProbeKey(frame.Identity, arm) || data.GetProperty("probe_id").GetString() != data.GetProperty("key").GetString()) Gap("malformed_frame");
                 long ordinal = data.GetProperty("ordinal").GetInt64();
                 if (ordinal == 0 && data.GetProperty("role").GetString() == "original"
                     && (!warmups.TryGetValue(arm, out var warmup)

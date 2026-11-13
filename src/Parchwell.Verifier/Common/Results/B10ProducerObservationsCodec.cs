@@ -14,7 +14,7 @@ internal static class B10ProducerObservationsCodec
 
     internal static IReadOnlyList<B10ProducerObservation> Read(JsonElement value, B10IntakeEvidence intake)
     {
-        if (value.ValueKind != JsonValueKind.Array || value.GetArrayLength() != 2)
+        if (value.ValueKind != JsonValueKind.Array || value.GetArrayLength() != intake.Producers.Count)
             throw new FormatException("B10 producer observations require an ordered pair.");
         var observations = new List<B10ProducerObservation>(2);
         foreach (JsonElement entry in value.EnumerateArray())
@@ -46,8 +46,16 @@ internal static class B10ProducerObservationsCodec
 
     internal static void Validate(IReadOnlyList<B10ProducerObservation> observations, B10IntakeEvidence intake)
     {
-        if (observations.Count != 2 || intake.Producers.Count != 2 || intake.Producers.Any(p => p.Identity.ScenarioId != "B10"))
+        bool oneProducer = intake.Producers.Count == 1 && intake.Producers[0].Identity.ConfigurationId == "C0" &&
+            VerifierHostOptions.IsB10ScientificRunId(intake.Producers[0].Identity.RunId);
+        if (observations.Count != intake.Producers.Count || !oneProducer && intake.Producers.Count != 2 ||
+            intake.Producers.Any(p => p.Identity.ScenarioId != "B10"))
             throw new FormatException("B10 producer observations require a B10 intake pair.");
+        if (oneProducer && (intake.Phase != "C0" || intake.RepeatNumber is < 1 or > 5 ||
+            intake.Producers[0].Identity.InstanceId != intake.Producers[0].Identity.ExpectedInstanceId ||
+            intake.Producers[0].PredecessorInstanceId is not null ||
+            intake.Producers[0].JobName != PhaseIdentity.JobName(intake.Producers[0].Identity.RunId, intake.Phase, intake.RepeatNumber)))
+            throw new FormatException("B10 C0 producer observation has an invalid producer role.");
         for (int index = 0; index < observations.Count; index++)
         {
             B10ProducerObservation observation = observations[index];

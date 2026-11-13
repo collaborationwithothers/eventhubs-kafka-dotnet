@@ -48,7 +48,8 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
         if(!registrations.IsComplete)throw new InvalidOperationException(registrations.FailureCode??"listing_incomplete");
         string[] registrationNames=registrations.Names.Where(n=>n.EndsWith("/registration.json",StringComparison.Ordinal)).Order(StringComparer.Ordinal).ToArray();
         bool b10=options.ScenarioId=="B10";
-        if(b10&&registrationNames.Length!=2)throw new InvalidOperationException("b10_registration_count_invalid");
+        bool oneProducer=b10&&options.ConfigurationId=="C0"&&VerifierHostOptions.IsB10ScientificRunId(options.RunId);
+        if(b10&&registrationNames.Length!=(oneProducer?1:2))throw new InvalidOperationException("b10_registration_count_invalid");
         if(!b10&&registrationNames.Length!=1)throw new InvalidOperationException(registrationNames.Length==0?"producer_registration_missing":"producer_registration_not_singleton");
         var discovered=new List<(ProducerRegistration Registration,string PathInstance)>();
         foreach(string name in registrationNames)
@@ -136,21 +137,28 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                     IReadOnlyList<ConsumedRecord> records=drain?.Records??[];
                     if(b10)
                         records=records.Where(record=>record.InstanceId is null||!earlierInstances.Contains(record.InstanceId))
-                            .Where(record=>producerIndex==1
+                            .Where(record=>oneProducer|| (producerIndex==1
                             ?record.InstanceId==producers[1].Identity.InstanceId
-                            :record.InstanceId!=producers[1].Identity.InstanceId).ToArray();
+                            :record.InstanceId!=producers[1].Identity.InstanceId)).ToArray();
                     var perInstance=new RunJudgementRequest(input.Registration.Identity,input.Index,input.Ledger,input.Manifest,input.Statistics,
                         input.Lifecycle,input.Capabilities,input.Reports,expectedBrokers,configurations[producerIndex],records,assessments,
                         outputLimits,inventory.Value is not null,input.Check6Problems);
                     requests.Add(perInstance);
                     RunJudgementResult evaluated=input.DiagnosticsSelected||input.Index.IsExecutionFailure
                         ?RunJudgement.EvaluateDiagnostic(perInstance):RunJudgement.Evaluate(perInstance);
+                    if(oneProducer)evaluated=B10OneProducerChecks.Evaluate(perInstance,evaluated);
                     judgements.Add(ApplyPublicationOutcome(evaluated,input.Acceptance));
                 }
                 RunJudgementRequest request=requests[0];
-                B10RepeatJudgement? b10Evaluation=b10?B10RepeatChecks.Evaluate(requests[0],requests[1],judgements[0],judgements[1],
+                B10RepeatJudgement? b10Evaluation=b10&&!oneProducer?B10RepeatChecks.Evaluate(requests[0],requests[1],judgements[0],judgements[1],
                     producers.Select(producer=>producer.Identity.InstanceId).ToArray(),outputLimits):null;
                 RunJudgementResult judgement=b10Evaluation?.Judgement??judgements[0];
+                bool oneProducerComplete=oneProducer&&judgement.Status==VerifierResultStatus.CompleteValid;
+                if(oneProducer)judgement=judgement with
+                {
+                    Status=judgement.Status==VerifierResultStatus.Invalid?VerifierResultStatus.Invalid:VerifierResultStatus.Incomplete,
+                    Counts=null
+                };
                 A01EvidenceRecording a01=b10?new(null,null,[]):options.ConfigurationId=="C3"?A01EvidenceRecorder.RecordC3(request,judgement):A01EvidenceRecorder.Record(request,judgement);
                 B04EvidenceRecording b04=b10?new(null,[],null):B04EvidenceRecorder.Record(request);
                 BatchingEvidenceRecording batching=b10?new(null,[],null):BatchingEvidenceRecorder.Record(request,judgement);
@@ -171,9 +179,9 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                     Milliseconds(drain?.DrainDuration),Milliseconds(drain?.StopDuration),judgement.Counts,judgement.BrokerCount,judgement.ConfigurationFidelity,a01.ProbeObservation,a01.RecordedEvidence,hashes,
                     judgement.Diagnostics.Concat(a01.Diagnostics).Concat(b04.Diagnostics).Concat(batching.Diagnostics).ToArray(),
                     a01.WorkloadObservation??b04.WorkloadObservation??batching.WorkloadObservation,
-                    b04.Evidence,batching.Evidence,b10Intake,b10?false:null,b10?b10Evaluation!.InWindowCounts is not null:null,observations);
+                    b04.Evidence,batching.Evidence,b10Intake,b10?false:null,b10?oneProducer?oneProducerComplete:b10Evaluation!.InWindowCounts is not null:null,observations);
                 resultBytes=VerifierResultCodec.Write(result,outputLimits);
-                coverage=b10?B10IntakeChecks.BrokerInventoryCoverage(judgements[0],judgements[1]):judgement.Assessments.FirstOrDefault(a=>a.CheckNumber==24) is { Evaluation:AssessmentEvaluation.Evaluated,Disposition:AssessmentDisposition.Pass }?"pass":
+                coverage=b10&&!oneProducer?B10IntakeChecks.BrokerInventoryCoverage(judgements[0],judgements[1]):judgement.Assessments.FirstOrDefault(a=>a.CheckNumber==24) is { Evaluation:AssessmentEvaluation.Evaluated,Disposition:AssessmentDisposition.Pass }?"pass":
                     judgement.Assessments.FirstOrDefault(a=>a.CheckNumber==24)?.Disposition==AssessmentDisposition.Fail?"fail":"unavailable";
             }
             finally

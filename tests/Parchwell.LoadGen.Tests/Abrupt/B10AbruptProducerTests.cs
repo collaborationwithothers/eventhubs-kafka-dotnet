@@ -839,7 +839,7 @@ public sealed class B10AbruptProducerTests
         private Task? reportTask;
         private readonly KafkaStatisticsIdentity statisticsIdentity;
         internal Fixture(long sequence = 0, TimeProvider? clock = null, B10AbruptTimeline? timeline = null, B10AbruptWire.Identity? diagnosticIdentity = null,
-            Action<TimeSpan>? advanceWarmupClock = null)
+            Action<TimeSpan>? advanceWarmupClock = null, string purpose = "diagnostic_trial")
         {
             Advancing.EnterManual();
             Clock = new ReleaseWindowClock(clock ?? Advancing);
@@ -853,7 +853,7 @@ public sealed class B10AbruptProducerTests
             Statistics = new(statisticsIdentity, ["broker"], new Dictionary<string, string>(), new Dictionary<string, string>(), initialSequence: sequence);
             var wireIdentity = diagnosticIdentity ?? new B10AbruptWire.Identity("run-1", "B10", "C1", "C1", 1, new string('a', 40),
                 "image@sha256:" + new string('b', 64), "run-1-c1-r1-loadgen-restart", "pod-1", "uid-1", "pod-1", null);
-            Journal = new(Path.Combine(Root, "abrupt", "journal.jsonl"), wireIdentity, Clock, _ => FlushHook());
+            Journal = new(Path.Combine(Root, "abrupt", "journal.jsonl"), wireIdentity, Clock, _ => FlushHook(), purpose);
             var native = DispatchProxy.Create<IProducer<byte[], byte[]>, NativeProducer>();
             Native = (NativeProducer)(object)native;
             if (warmupOnSuppliedClock)
@@ -868,7 +868,7 @@ public sealed class B10AbruptProducerTests
                 };
             Native.OnFlush = () => Observe();
             Runner = new(() => { Constructions++; return native; }, Clock, Statistics, Journal, diagnosticIdentity: wireIdentity,
-                timeline: timeline, selfKill: () => { AtKill(); throw new SimulatedDeathException(); }, exit: code => Exits.Add(code));
+                timeline: timeline, selfKill: () => { AtKill(); throw new SimulatedDeathException(); }, exit: code => Exits.Add(code), purpose: purpose);
         }
         internal static Fixture ForCutRace()
         {

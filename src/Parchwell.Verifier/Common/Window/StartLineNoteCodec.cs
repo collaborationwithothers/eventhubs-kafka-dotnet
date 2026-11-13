@@ -42,8 +42,12 @@ internal static class StartLineNoteCodec
 
         if (note.Identity.ScenarioId == "B10")
         {
-            int expectedCount = VerifierHostOptions.IsB10TrialRunId(note.Identity.RunId) ? 3 : 2;
-            if (note.ExpectedJobNames?.Count != expectedCount || note.ExpectedJobNames.Any(name =>
+            bool scientific = VerifierHostOptions.IsB10ScientificRunId(note.Identity.RunId);
+            int expectedCount = VerifierHostOptions.IsB10TrialRunId(note.Identity.RunId) ||
+                scientific && note.Identity.ConfigurationId == "C1" ? 3 :
+                scientific && note.Identity.ConfigurationId == "C0" ? 1 : 2;
+            if (note.ExpectedJobNames?.Count != expectedCount ||
+                note.ExpectedJobNames.Distinct(StringComparer.Ordinal).Count() != expectedCount || note.ExpectedJobNames.Any(name =>
                 string.IsNullOrWhiteSpace(name) || name.Length > 253 ||
                 name.Any(c => char.IsControl(c) || c is '/' or '\\')))
                 throw new ArgumentException($"B10 start-line notes require {expectedCount} bounded expected Job names.", nameof(note));

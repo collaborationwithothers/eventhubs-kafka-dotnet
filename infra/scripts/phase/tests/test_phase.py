@@ -23,7 +23,7 @@ PERSISTENT = {'acr': {'value': {'name': 'parchwellacr', 'login_server': 'parchwe
 ACCOUNTS = {'loadgen': {'name': 'loadgen', 'client_id': 'synthetic-loadgen', 'subject': 'system:serviceaccount:parchwell:loadgen'}, 'verifier': {'name': 'verifier', 'client_id': 'synthetic-verifier', 'subject': 'system:serviceaccount:parchwell:verifier'}, 'enrichment-consumer': {'name': 'unused'}}
 EPHEMERAL = {'eventhubs': {'value': {'namespace_name': 'eh-synthetic', 'bootstrap_servers': 'eh-synthetic.servicebus.windows.net:9093', 'topics': {'events': 'document-events', 'state': 'document-state', 'dlq': 'document-events-dlq'}}}, 'blob': {'value': {'account_url': 'https://synthetic.blob.core.windows.net', 'containers': {'ledger': 'ledger', 'verifier': 'verifier', 'claim_check': 'claim-check'}}}, 'private_endpoint_ips': {'value': {'eventhubs': '10.0.0.4', 'blob': '10.0.0.5'}}}
 DEADLINES = {'start-line': 150, 'loadgen': 1140, 'verify': 750, 'judge': 90,
-             'loadgen2': 1140, 'b10-sweep-line': 150, 'b10-sweep': 750}
+             'loadgen2': 1140, 'loadgen-restart': 1140, 'loadgen-successor': 1140, 'b10-abrupt-verify': 750, 'b10-sweep-line': 150, 'b10-sweep': 750}
 BATCH_DEADLINES = {'single-action': 1980, 'single-action-judge': 120, 'single-action-seed': 420}
 BATCH_MATRIX = (
     ('B01', 'C0', 'loadgen'), ('B01', 'C1', 'loadgen'),
@@ -225,7 +225,7 @@ class PhaseTests(unittest.TestCase):
 
     def prepare_b10(self, selected='C0'):
         os.environ['PARCHWELL_SCENARIO'] = 'B10'
-        self.prepare(selected)
+        self.prepare(selected, run='legacy-b10-40121134428-1')
         self.clock = 100.0
         self.wall = 1_767_225_600.0  # Synthetic 2026-01-01 UTC.
         self.addCleanup(patch.stopall)
@@ -263,30 +263,26 @@ class PhaseTests(unittest.TestCase):
             self.fake.blobs[f'{self.run_id}/{selected}/r{repeat}/verify-completion.json'] = json.dumps(receipt).encode()
 
     def test_b10_runs_twenty_ordered_modes_then_repeat_free_capture_and_sweep(self):
+        try:
+            from .test_b10_scientific import prepare_scientific
+        except ImportError:
+            from test_b10_scientific import prepare_scientific
         for selected in ('C0', 'C1'):
             with self.subTest(selected=selected):
                 self.fake = ScriptedCommands()
-                self.prepare_b10(selected)
-                with self.mocked():
+                prepare_scientific(self, selected)
+                with patch.object(phase.Phase, 'run', autospec=True, side_effect=self.scientific_command):
                     self.assertEqual(0, self.main('run-repeats'))
-                    self.assertEqual(0, self.main('judge'))
-                self.assertEqual([(repeat, mode) for repeat in phase.SLOTS for mode in phase.B10_MODES]
-                                 + [(None, 'b10-sweep-line'), (None, 'b10-sweep'), (None, 'judge')],
+                    self.assertEqual(1, self.main('judge'))
+                modes = phase.MODES if selected == 'C0' else (
+                    'start-line', 'loadgen', 'loadgen-restart', 'loadgen-successor', 'b10-abrupt-verify')
+                self.assertEqual([(repeat, mode) for repeat in phase.SLOTS for mode in modes],
                                  [(r['repeat'], r['mode']) for r in self.records()])
-                self.assertEqual(('start-line', 'loadgen', 'verify'), phase.MODES)
-                second = json.loads((self.private / f"values-{self.name('loadgen2')}.json").read_text())['runtime']
-                self.assertEqual(self.name('loadgen'), second['loadgen_job_name'])
-                for mode in (*phase.B10_PHASE_MODES, 'judge'):
-                    runtime = json.loads((self.private / f"values-{self.name(mode, None)}.json").read_text())['runtime']
-                    self.assertNotIn('repeat', runtime)
-                    self.assertNotIn('loadgen_job_name', runtime)
-                    self.assertEqual(mode == 'b10-sweep-line', 'b10_last_loadgen_terminated_utc' in runtime)
-                self.assertEqual([60.0] * (1 if selected == 'C0' else 2), self.delays)
+                self.assertEqual(15 if selected == 'C0' else 25, len(self.records()))
                 state = phase.Phase().state()['b10_lifecycle']
-                self.assertEqual((10, 5, []), (len(state['producers']), len(state['verifiers']), state['gaps']))
+                self.assertEqual((5 if selected == 'C0' else 15, 5, []),
+                                 (len(state['producers']), len(state['verifiers']), state['gaps']))
                 self.assertTrue(all(item['exit_code'] == 1 for item in state['producers']))
-                shows = [call for call in self.fake.calls if call[0][:4] == ['az', 'storage', 'blob', 'show']]
-                self.assertEqual(5, len(shows))
 
     def test_b10_nonfinal_verifier_failure_is_retained_and_later_slots_run(self):
         self.prepare_b10()

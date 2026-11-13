@@ -7,7 +7,7 @@ using Xunit;
 namespace Parchwell.Verifier.Tests.Window;
 
 #pragma warning disable CA1707
-// Trial notes require three producer names while the scientific B10 codec retains its two-name rule.
+// Trial notes require three producer names and scientific C1 notes require three distinct producer names.
 public sealed class B10TrialStartLineCodecTests
 {
     [Theory]
@@ -16,8 +16,8 @@ public sealed class B10TrialStartLineCodecTests
     [InlineData("b10d-1-1", 3, true)]
     [InlineData("b10d-1-1", 4, false)]
     [InlineData("b10-1-1", 1, false)]
-    [InlineData("b10-1-1", 2, true)]
-    [InlineData("b10-1-1", 3, false)]
+    [InlineData("b10-1-1", 2, false)]
+    [InlineData("b10-1-1", 3, true)]
     public void Given_ExpectedJobCountAtTrialBoundary_When_NoteWritten_Then_RequiresExactCount(
         string runId, int count, bool accepted)
     {

@@ -13,10 +13,14 @@ internal static class B10IntakeChecks
         string scenarioId, string configurationId, string runId, string phase, int repeatNumber,
         string sourceCommit, IReadOnlyList<string> expectedJobNames)
     {
-        if (registrations.Count != 2) throw new InvalidOperationException("b10_registration_count_invalid");
-        if (registrations[0].Registration.Identity.InstanceId == registrations[1].Registration.Identity.InstanceId)
+        bool oneProducer = scenarioId == "B10" && configurationId == "C0" && VerifierHostOptions.IsB10ScientificRunId(runId);
+        int expectedCount = oneProducer ? 1 : 2;
+        if (registrations.Count != expectedCount) throw new InvalidOperationException("b10_registration_count_invalid");
+        if (!oneProducer && registrations[0].Registration.Identity.InstanceId == registrations[1].Registration.Identity.InstanceId)
             throw new InvalidOperationException("b10_registration_identity_duplicate");
-        if (expectedJobNames.Count != 2 || expectedJobNames[0] == expectedJobNames[1] ||
+        if (expectedJobNames.Count != expectedCount ||
+            expectedJobNames.Distinct(StringComparer.Ordinal).Count() != expectedCount ||
+            oneProducer && expectedJobNames[0] != PhaseIdentity.JobName(runId, phase, repeatNumber) ||
             expectedJobNames.Any(job => registrations.Count(item => item.Registration.JobName == job) != 1))
             throw new InvalidOperationException("b10_registration_job_binding_invalid");
 
@@ -32,7 +36,7 @@ internal static class B10IntakeChecks
                 throw new InvalidOperationException("b10_registration_binding_invalid");
         }
         if (ordered[0].Registration.PredecessorInstanceId is not null ||
-            ordered[1].Registration.PredecessorInstanceId != ordered[0].Registration.Identity.InstanceId)
+            !oneProducer && ordered[1].Registration.PredecessorInstanceId != ordered[0].Registration.Identity.InstanceId)
             throw new InvalidOperationException("b10_registration_predecessor_invalid");
         return ordered.Select(item => item.Registration).ToArray();
     }

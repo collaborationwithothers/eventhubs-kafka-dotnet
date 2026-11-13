@@ -20,6 +20,7 @@ internal sealed class B10AbruptProducer
 {
     private readonly Func<IProducer<byte[], byte[]>> producerFactory;
     private readonly TimeProvider clock;
+    private readonly string purpose;
     private readonly B10AbruptStatistics statistics;
     private readonly B10AbruptJournal? journal;
     private readonly RunEvidenceSession? evidence;
@@ -50,9 +51,9 @@ internal sealed class B10AbruptProducer
         B10AbruptStatistics statistics, B10AbruptJournal? journal = null, RunEvidenceSession? evidence = null,
         B10AbruptWire.Identity? diagnosticIdentity = null, SuccessorCompletion? completion = null,
         B10AbruptTimeline? timeline = null, Func<(int ReturnValue, int Errno)>? selfKill = null,
-        Action<int>? exit = null)
+        Action<int>? exit = null, string purpose = "diagnostic_trial")
     {
-        this.producerFactory = producerFactory; this.clock = clock; this.statistics = statistics; this.journal = journal;
+        this.purpose = purpose; this.producerFactory = producerFactory; this.clock = clock; this.statistics = statistics; this.journal = journal;
         this.evidence = evidence; this.diagnosticIdentity = diagnosticIdentity; this.completion = completion;
         this.timeline = timeline ?? new B10AbruptTimeline(clock, "child", null);
         this.selfKill = selfKill ?? B10AbruptProcess.SelfKill; this.exit = exit ?? Environment.Exit;
@@ -168,7 +169,7 @@ internal sealed class B10AbruptProducer
         await WaitForPostDrainAsync(1, drained, cancellationToken).ConfigureAwait(false);
         await BindReportAsync("same_instance", null, statistics.SelectPostDrain(drained)!, true, cancellationToken).ConfigureAwait(false);
         CheckGuards();
-        var snapshot = B10AbruptJournal.Read(await B10AbruptPublisher.ReadFileAsync(journal.Path, 16777216, cancellationToken).ConfigureAwait(false));
+        var snapshot = B10AbruptJournal.Read(await B10AbruptPublisher.ReadFileAsync(journal.Path, 16777216, cancellationToken).ConfigureAwait(false), diagnosticIdentity, purpose);
         if (snapshot.Gaps.Count != 0) throw B10AbruptWire.Gap(snapshot.Gaps[0]);
         if (snapshot.Failures.Count != 0) throw Attach(new InvalidDataException(snapshot.Failures.Values.First()));
         controlComplete = true;
@@ -200,7 +201,7 @@ internal sealed class B10AbruptProducer
             _ = statistics.SelectPreAcceptance(clock.GetUtcNow()) ?? throw Attach(new InvalidDataException("b10_abrupt_sample_missing"));
             throw Attach(new InvalidDataException("b10_abrupt_guard_failed"));
         }
-        string key = $"B10/{identity.RunId}/{identity.ConfigurationId}/1/{arm}";
+        string key = B10AbruptWire.ProbeKey(diagnosticIdentity ?? throw Attach(new InvalidDataException("b10_abrupt_configuration_invalid")), arm);
         string attemptId = identity.InstanceId + "-" + arm + "-" + probes.Count.ToString(CultureInfo.InvariantCulture);
         var attempt = new ProbeAttempt(attemptId, key, payload, predecessorAttemptId, probes.Count) { Sequence = sequence };
         var prepared = await journal.AppendAsync("prepared", B10AbruptWire.Element(new { attempt_id = attemptId, arm, role = predecessorAttemptId is null ? "original" : "resend", ordinal = sequence, probe_id = key, key, sequence, payload_length = payload.Length, payload_sha256 = Hash(payload), predecessor_attempt_id = predecessorAttemptId }), cancellationToken).ConfigureAwait(false);
@@ -249,7 +250,7 @@ internal sealed class B10AbruptProducer
         if (journal is null || arm is not ("same_instance" or "cross_restart") || arm == "cross_restart" && !controlComplete)
             throw Attach(new InvalidDataException("b10_abrupt_control_incomplete"));
         string attemptId = identity.InstanceId + "-" + arm + "-warmup";
-        string key = $"B10/{identity.RunId}/{identity.ConfigurationId}/1/{arm}";
+        string key = B10AbruptWire.ProbeKey(diagnosticIdentity ?? throw Attach(new InvalidDataException("b10_abrupt_configuration_invalid")), arm);
         byte[] payload = ProbePayload();
         await journal.AppendAsync("warmup_prepared", B10AbruptWire.Element(new { attempt_id = attemptId, arm, key, payload_length = payload.Length, payload_sha256 = Hash(payload) }), cancellationToken).ConfigureAwait(false);
         long begin = clock.GetTimestamp();
@@ -332,7 +333,7 @@ internal sealed class B10AbruptProducer
         if (selectedEntries.ValueKind != JsonValueKind.Array || selectedEntries.GetArrayLength() is < 1 or > 5) throw Attach(new InvalidDataException("b10_abrupt_successor_binding_invalid"));
         byte[] payload = WorkloadGenerator.GeneratePayload(WorkloadGenerator.Generate(workload, executionOptions.MaxAttempts, executionOptions.MaxPayloadBytes, cancellationToken).First(), workload.Seed);
         foreach (var selected in selectedEntries.EnumerateArray())
-            if (selected.GetProperty("key").GetString() != $"B10/{runIdentity.RunId}/C1/1/cross_restart" || selected.GetProperty("sequence").GetInt64() is < 0 or > 4 || selected.GetProperty("payload_length").GetInt64() != payload.Length || selected.GetProperty("payload_sha256").GetString() != Hash(payload) || selected.GetProperty("attempt_id").GetString()!.StartsWith(runIdentity.InstanceId + "-",StringComparison.Ordinal)) throw Attach(new InvalidDataException("b10_abrupt_successor_binding_invalid"));
+            if (selected.GetProperty("key").GetString() != B10AbruptWire.ProbeKey(diagnosticIdentity ?? throw Attach(new InvalidDataException("b10_abrupt_configuration_invalid")), "cross_restart") || selected.GetProperty("sequence").GetInt64() is < 0 or > 4 || selected.GetProperty("payload_length").GetInt64() != payload.Length || selected.GetProperty("payload_sha256").GetString() != Hash(payload) || selected.GetProperty("attempt_id").GetString()!.StartsWith(runIdentity.InstanceId + "-",StringComparison.Ordinal)) throw Attach(new InvalidDataException("b10_abrupt_successor_binding_invalid"));
         Initialize(workload, runIdentity, executionOptions);
         DateTimeOffset ready = clock.GetUtcNow();
         timeline.Mark(B10AbruptStage.SuccessorReady);
@@ -544,7 +545,7 @@ internal sealed class B10AbruptProducer
     private byte[] Envelope(string kind, object data)
     {
         if (diagnosticIdentity is null) throw Attach(new InvalidDataException("b10_abrupt_configuration_invalid"));
-        return B10AbruptWire.SerializeEnvelope(kind, diagnosticIdentity, data);
+        return B10AbruptWire.SerializeEnvelope(kind, diagnosticIdentity, data, purpose);
     }
 
     private static object Describe(string path)

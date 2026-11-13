@@ -49,14 +49,14 @@ internal static class AbruptEvidenceCodec
             ? ["schema_version", "dialect", "purpose", "synthetic", "scientific_admissible", "kind", "identity", "data", "sequence", "observed_utc", "monotonic_ticks", "clock_frequency"]
             : ["schema_version", "dialect", "purpose", "synthetic", "scientific_admissible", "kind", "identity", "data"]);
         Require(root.GetProperty("schema_version").GetInt32() == 3 && Text(root, "dialect") == "b10_abrupt" &&
-            Text(root, "purpose") == "diagnostic_trial" && root.GetProperty("synthetic").GetBoolean() &&
+            Text(root, "purpose") == (VerifierHostOptions.IsB10ScientificRunId(options.RunId) ? "scientific" : "diagnostic_trial") && root.GetProperty("synthetic").GetBoolean() &&
             !root.GetProperty("scientific_admissible").GetBoolean() && Text(root, "kind") == kind, "envelope");
         JsonElement identity = root.GetProperty("identity");
         Exact(identity, "run_id", "scenario_id", "configuration_id", "phase", "repeat", "source_commit", "image_reference", "job_name", "pod_name", "pod_uid", "instance_id", "predecessor_instance_id");
         Require(Text(identity, "run_id") == options.RunId && Text(identity, "scenario_id") == "B10" &&
-            Text(identity, "configuration_id") == "C1" && Text(identity, "phase") == "C1" && identity.GetProperty("repeat").GetInt32() == 1 &&
+            Text(identity, "configuration_id") == "C1" && Text(identity, "phase") == "C1" && identity.GetProperty("repeat").GetInt32() == (options.Repeat ?? 1) &&
             Text(identity, "source_commit") == options.VerifierCommit && Text(identity, "image_reference") == options.LoadGenImage &&
-            Text(identity, "job_name") == options.RunId + (predecessor is null ? "-c1-r1-loadgen-restart" : "-c1-r1-loadgen-successor") &&
+            Text(identity, "job_name") == options.RunId + $"-c1-r{options.Repeat ?? 1}-loadgen-" + (predecessor is null ? "restart" : "successor") &&
             Text(identity, "pod_name") == pod && Text(identity, "instance_id") == pod &&
             NullableText(identity, "predecessor_instance_id") == predecessor && (uid is null || Text(identity, "pod_uid") == uid), "identity");
         _ = Text(identity, "pod_uid");

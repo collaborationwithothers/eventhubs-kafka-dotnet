@@ -1,6 +1,6 @@
 # B10 abrupt diagnostic contract
 
-The B10 diagnostic trial runs an ordinary timeout producer, a parent with a self-killing producer child, and a fresh successor in sequence. A diagnostic verifier then reports observed copies of the journaled unconfirmed probes. This execution is diagnostic-only, inactive for scientific publication.
+The B10 abrupt path runs an ordinary timeout producer, a parent with a self-killing producer child, and a permitted fresh successor in sequence. Its per-repeat verifier reports nonfinal evidence. The diagnostic trial retains its existing contracts; [scientific execution](#scientific-execution) extends the path to five repeats without authorizing final publication.
 
 [ADR-021](../blueprint.md#adr-021-b10-accepts-timed-out-sends-application-retries-and-one-producer-restart-in-a-second-job-and-classifies-late-appends-up-to-a-sweep-line) owns the restart protocol and scientific rules. The [approved part 1 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/fc1a4f36452b2d302f1d73987e1ba5eb967b3d65/items/404/plan-b10-execution-loadgen.md), section 3, owns the LoadGen and schema-3 interfaces below. The [approved part 2 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/0c73e5139e1670d5b675a51fc52dbd99c4b1af49/items/404/plan-b10-execution-trial.md), section 3, owns trial orchestration and collection. The [approved warm-leader plan, Revision 3](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/34aae8485053429a5b183e86a5f2c39dda570d25/items/404/plan-b10-warm-leader.md), section 3, amends the probe settings, warm-up records, leader gate and child deadline. The [approved classification plan, Revision 4](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/aedb21c045b1a9aef962bdea955e62475c0a1590/items/404/plan-pr3b-classification.md), sections 3 and 4, owns the diagnostic verifier contracts, with the [implementation corrections](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6816937259). This page owns their wire formats and reader details; ADR-021 owns the design rules. These replace the stop/checkpoint/pipe protocol; the [workflow page](b10-workflow.md#diagnostic-trial-inactive-for-science) records dispatch and trial limits.
 
@@ -17,7 +17,7 @@ Part 1 sections 3.1 and 3.2 own these commands, exit codes and settings. Parent 
 
 `--b10-abrupt-supervisor` is removed and rejected as an unknown argument. Settings come only from environment variables with prefix `B10Abrupt__`. The closed identity/path keys are `Enabled`, `Purpose`, `Role`, `ScenarioId`, `ConfigurationId`, `Phase`, `Repeat`, `RunId`, `SourceCommit`, `ImageReference`, `JobName`, `PodName`, `PodUid`, `NamespaceName`, `BlobEndpoint`, `ScenarioSourceRoot`, `OutputRoot`, `StartLineBindingPath` and `PredecessorBindingPath`.
 
-Required values are `Enabled=true`, `Purpose=diagnostic_trial`, `ScenarioId=B10`, `ConfigurationId=C1`, `Phase=C1` and `Repeat=1`. Role is `parent`, `child` or `successor`; `supervisor` is rejected with `validation_detail=Role`. Parent and child use `StartLineBindingPath`; only the successor uses `PredecessorBindingPath`. The parent passes its settings to the child with role `child`, adding no other key; the child refuses `PredecessorBindingPath`.
+For the diagnostic trial, required values are `Enabled=true`, `Purpose=diagnostic_trial`, `ScenarioId=B10`, `ConfigurationId=C1`, `Phase=C1` and `Repeat=1`. Role is `parent`, `child` or `successor`; `supervisor` is rejected with `validation_detail=Role`. Parent and child use `StartLineBindingPath`; only the successor uses `PredecessorBindingPath`. The parent passes its settings to the child with role `child`, adding no other key; the child refuses `PredecessorBindingPath`. Scientific identities follow [scientific execution](#scientific-execution).
 
 These fixed policy values are not measurements. A different value is rejected with `validation_detail=FixedPolicy`:
 
@@ -64,9 +64,11 @@ After timeout wait outcome `complete` or `failed`, before any later render, the 
 
 An exception in the timeout-Job step records fallback `b10_abrupt_publication_failed` at boundary `timeout_job` and starts no later Job. A failed timeout Job does not repair or fail the restart chain; ADR-021 protocol rule 12 owns independent per-instance checks. All Jobs share the existing 18000 s orchestration deadline. No log collection delays successor release.
 
-For B10 run IDs matching `^b10d-[0-9]+-[0-9]+$`, the start line expects exactly `[{run}-c1-r1-loadgen, {run}-c1-r1-loadgen-restart, {run}-c1-r1-loadgen-successor]`, including the successor name even when no successor starts. Other B10 run IDs retain `[loadgen, loadgen2]`; other scenarios retain their one expected name. The codec writes B10 notes only with three names for a matching run ID and two otherwise. Trial metadata requires the three names. Scientific readers retain their existing checks and reject three-name trial notes against two-producer science. Authority: [PR3c approval](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6828172387).
+For B10 run IDs matching `^b10d-[0-9]+-[0-9]+$`, the start line expects exactly `[{run}-c1-r1-loadgen, {run}-c1-r1-loadgen-restart, {run}-c1-r1-loadgen-successor]`, including the successor name even when no successor starts. Trial metadata requires that list. Scientific and legacy name rules are defined in [scientific execution](#scientific-execution); no diagnostic-trial object becomes scientific evidence. Authority: [PR3c approval](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6828172387) and the scientific plan linked below.
 
 ## Schema-3 envelope and journal
+
+The formats below describe the diagnostic trial. Scientific execution changes only the purpose, repeat-derived identities and paths, chart admission, and per-repeat verifier contract listed in [scientific execution](#scientific-execution).
 
 Part 1 sections 3.4 and 3.5 own the closed formats. Every abrupt JSON object and journal record carries `schema_version: 3`, `dialect: "b10_abrupt"`, `purpose: "diagnostic_trial"`, `synthetic: true`, `scientific_admissible: false`, `kind`, `identity` and `data`. New readers reject schema 2, duplicate or unknown members, trailing content and depth above 32. UTC strings use the exact 33-character `O` representation ending `+00:00`.
 
@@ -186,7 +188,7 @@ After registration with the first pod as predecessor, it waits for that release 
 
 ## Diagnostic verifier mode
 
-The [approved full-classification plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/48c52669fd40a3bb80ca0378e061f1d6153d6a22/items/404/plan-pr3c-full-classification.md), sections 3 and 4, owns mode `b10-abrupt-verify`. It reconciles the timeout, first restart and successor instances, classifies the timeout cohort and counts each arm's copies in one bounded original window. Eligibility is diagnostic and pending the sweep; this mode selects no verdict and admits no evidence to science.
+The [approved full-classification plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/48c52669fd40a3bb80ca0378e061f1d6153d6a22/items/404/plan-pr3c-full-classification.md), sections 3 and 4, owns mode `b10-abrupt-verify`. It reconciles the timeout, first restart and successor instances, classifies the timeout cohort and counts each arm's copies in one bounded original window. For the trial, eligibility is diagnostic and pending the sweep; this mode selects no verdict. The scientific extension is defined in [scientific per-repeat C1 verifier](#scientific-per-repeat-c1-verifier).
 
 ### Mode, options and publication
 
@@ -198,7 +200,7 @@ The required option names, under `Verifier__` in the environment, are:
 - Repeat: `Repeat`, `RepeatPrefix`, `ExpectedInstanceId`, `VerifierClientId`, `NamespaceName`, `TokenTimeout`, `MetadataTimeout`, `WatermarkTimeout`, `PollSlice` and `BlobIoTimeout`.
 - Mode: `IoTimeout`, `SafetyStop`, `MaxConsumedRecords`, `MaxConsumedBytes`, `MaxArtifactBytes`, `MaxTotalInputBytes`, `MaxPartitions`, `MaxInputDepth`, `StartLineInputName`, `LoadGenImage`, `VerifierImage`, `ScenarioRoot`, `ArtifactPrefix`, `MaxRowBytes`, `MaxRowsPerArtifact`, `MaxInventoryEntries`, `MaxInputEntries`, `MaxNativeReportBytes` and `MaxBrokerEntries`, plus the scenario-parsing options required by `verify`. `ArtifactPrefix` must equal `<RunId>/C1/r1/producer/`; a different value exits 1 before any read.
 
-`JobName`, `PodName` and `PodUid` use the existing `PARCHWELL_*` environment fallbacks. The chart restricts this mode to run IDs matching `^b10d-[0-9]+-[0-9]+$`, with the fixed scenario/configuration/phase/repeat above and no `b10_abrupt_diagnostic` or `b10_abrupt_binding_configmap` setting. It renders one verifier-role Job on `workload`, using the verifier service account, the existing `verify_job_seconds` deadline and no abrupt binding volume.
+`JobName`, `PodName` and `PodUid` use the existing `PARCHWELL_*` environment fallbacks. For the trial, the chart restricts this mode to run IDs matching `^b10d-[0-9]+-[0-9]+$`, with the fixed scenario/configuration/phase/repeat above and no `b10_abrupt_diagnostic` or `b10_abrupt_binding_configmap` setting. It renders one verifier-role Job on `workload`, using the verifier service account, the existing `verify_job_seconds` deadline and no abrupt binding volume.
 
 The mode creates one object in container `verifier` at `<RunId>/C1/r1/b10-abrupt-diagnostic/nonfinal-result.json`. It writes no `WorkerReceipt`, `result.json` or `verify-completion.json`. Exit 0 means that object was created and read back byte-identical, whatever diagnostic problems it records. An existing object, differing read-back or other publication failure exits nonzero.
 
@@ -349,6 +351,64 @@ The reason literals are ordered policy diagnostics. No reason represents the mis
 
 The existing `PhaseWireCodec`, `VerifierResultCodec` and `B10SweepEvidenceCodec` reject the produced bytes. Successful diagnostic publication never authorizes finality or scientific counts.
 
+## Scientific execution
+
+The [approved scientific three-Job plan, Revision 7](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/4196a0325fd91534239efbc70ef3dbafd6dfe10e/items/404/plan-b10-scientific-three-job.md), sections 3.1 to 3.8, extends the existing path to scientific run IDs. Pattern S is `^b10-[0-9]+-[0-9]+$`; pattern T is `^b10d-[0-9]+-[0-9]+$`. Scientific prepare generates S IDs and retains the existing 29-character run-ID limit. The [workflow contract](b10-workflow.md#scientific-execution) owns sequencing, lifecycle records and phase gaps; [scientific C0 verify](verifier-contract.md#scientific-c0-verify) owns the one-producer C0 evidence.
+
+For an S run ID `R` and repeat N from 1 to 5, the expected producer names in the options and start line are:
+
+| Configuration | Ordered expected Job names |
+| --- | --- |
+| C0 | `R-c0-rN-loadgen` |
+| C1 | `R-c1-rN-loadgen`, `R-c1-rN-loadgen-restart`, `R-c1-rN-loadgen-successor` |
+
+The C1 list includes the successor even when it does not start. T keeps the trial's three C1 names. Other run IDs keep the legacy two-name list, `loadgen` then `loadgen2`, for each configuration. The frozen sweep and judge readers reject the new scientific start lines and schema-3 per-repeat objects; their legacy contracts do not supply scientific finality.
+
+### Scientific LoadGen identities and publication
+
+`B10Abrupt__Purpose` accepts `diagnostic_trial` or `scientific`. The diagnostic purpose retains its existing validation, including `Repeat=1`, for any run ID. The scientific purpose requires an S run ID and `Repeat` 1 to 5 written without a leading zero. `ScenarioId`, `ConfigurationId` and `Phase` remain `B10`, `C1` and `C1`. Failure uses `ValidationDetail.DiagnosticIdentity` before registration.
+
+For scientific purpose, restart and successor Jobs are `{RunId}-c1-r{Repeat}-loadgen-restart` and `{RunId}-c1-r{Repeat}-loadgen-successor`. Probe keys and IDs are `B10/{RunId}/C1/{Repeat}/same_instance` and `B10/{RunId}/C1/{Repeat}/cross_restart`. Publication uses ledger prefix `{RunId}/C1/r{Repeat}/b10-abrupt/{pod}/`; the trial keeps `{RunId}/C1/r1/b10-abrupt-diagnostic/{pod}/`. Every object and journal record uses the configured repeat in its identity.
+
+The schema-3 envelope uses the configured purpose, with `scientific_admissible=false` for both purposes. Its schema, dialect, synthetic marker and all other members keep the formats above. The successor reader requires purpose and identity repeat equal to its own configured values. Phase and verifier readers require `scientific` for S and `diagnostic_trial` for other run IDs; governed trial IDs match T. A mismatch follows the existing envelope failure: `malformed_frame` in LoadGen, `b10_abrupt_publication_failed` in the phase, and problem 2 or 4 for the verifier's first or successor evidence.
+
+### Scientific chart admission
+
+Runtime key `b10_abrupt_science` defaults to false. When true, schema validation requires scenario `B10`, configuration and phase `C1`, repeat 1 to 5, an S run ID, `b10_abrupt_binding_configmap` and `bounds.b10_abrupt`. `b10_abrupt_diagnostic` must be false or absent. The [diagnostic schema branch's](../../charts/parchwell/values.schema.json) excluded keys remain excluded; science adds no constraint on `run_kind`.
+
+Modes `loadgen-restart` and `loadgen-successor` require exactly one of `b10_abrupt_diagnostic` and `b10_abrupt_science` true. The binding configmap is forbidden when neither is true. The chart renders `B10Abrupt__Purpose=scientific` for science and `diagnostic_trial` otherwise, and renders the configured `B10Abrupt__Repeat`.
+
+Mode `b10-abrupt-verify` admits T with repeat 1 or S with repeat 1 to 5. Its `Verifier__ArtifactPrefix` is `<run>/C1/r<repeat>/producer/`. The configured deadlines remain 1140 seconds for producer Jobs, 750 for verify and 150 for start-line.
+
+### Scientific per-repeat C1 verifier
+
+For S, mode `b10-abrupt-verify` requires `ScenarioId=B10`, `ConfigurationId=C1`, `Phase=C1`, `Repeat` 1 to 5 and `ArtifactPrefix=<RunId>/C1/r<Repeat>/producer/`. Any other value exits 1 before any read. Checks 1 to 29 above apply with repeat N replacing repeat 1, `r1`, `/C1/1/` and `c1-r1`. Check 3 lists `<RunId>/C1/rN/b10-abrupt/`; check 4 requires purpose `scientific`; check 16 lists `<RunId>/C1/rN/producer/` and binds `{RunId}-c1-rN-loadgen`.
+
+30. Earlier-repeat records. Evaluate only when the window was drained and N is at least 2. For each earlier repeat M in the same phase, list `<RunId>/C1/rM/producer/` and `<RunId>/C1/rM/b10-abrupt/` under the existing listing bounds and read each `registration.json` with the existing registration reader. Empty listings are valid. Hold a window record whose `instance-id` equals an instance registered there out of checks 19 and 20 and every cohort count, and count it in `earlier_repeat_records`. A failed or incomplete listing, an unreadable or invalid listed registration, or an instance ID shared between repeat N and an earlier repeat gives problem 10, `b10_abrupt_verify_earlier_repeat_unavailable`, and E3, `b10_restart_identity_unauthenticated`; `earlier_repeat_records` is null. When N is at least 2 and the window was not drained, do not evaluate check 30, add no problem 10 and set `earlier_repeat_records` to null. For N equal to 1, do not evaluate check 30 and set `earlier_repeat_records` to 0.
+
+The output is create-only, with byte-identical read-back, in container `verifier` at `<RunId>/C1/rN/b10-abrupt/nonfinal-result.json`. It has exactly the diagnostic result's schema-3 envelope and identity members, with purpose `scientific` and identity repeat N. `synthetic=true` and `scientific_admissible=false`. Its `data` has exactly the members in [Output `nonfinal_result`](#output-nonfinal_result), plus `earlier_repeat_records`, a nonnegative integer or null under check 30. Problems 1 to 9 keep their order, followed by problem 10; E1 to E13 keep their order. `finality` remains `nonfinal`, and `eligibility` is `ineligible` or `pending_sweep`.
+
+### Scientific C1 completion receipt
+
+For S only, after creating and reading back the result byte-identical, the mode creates `<RunId>/C1/rN/b10-abrupt/verify-completion.json` once in container `verifier` and reads it back byte-identical. This is its last external write. Exit 0 requires both publications; an existing receipt or a failed write or read-back exits nonzero, and the result is never rewritten.
+
+The receipt is an existing schema-1 `WorkerReceipt` with these mode-specific values:
+
+| Member | Required value |
+| --- | --- |
+| `schema_version`, `mode` | `1`, `b10-abrupt-verify` |
+| `scenario_id`, `configuration_id`, `phase` | `B10`, `C1`, `C1` |
+| `run_id`, `repeat` | S run ID, N in 1 to 5 |
+| `job_name`, `pod_name` | `{RunId}-c1-rN-b10-abrupt-verify`, verifier pod |
+| `identity` | null |
+| `source_commit` | `VerifierCommit` |
+| `handler_exit_code`, `cleanup_completed` | `0`, true |
+| `started_utc`, `completed_utc` | Existing UTC receipt timestamps |
+| `artifacts` | Exactly one reference: `{container: "verifier", name: "<RunId>/C1/rN/b10-abrupt/nonfinal-result.json", length, sha256}`, binding the result's exact bytes |
+| `publication_acceptance`, `repeat_checks`, `b10_intake` | null |
+
+`PhaseWireCodec.ReadReceipt` and `WriteReceipt` apply the same rules and throw `FormatException` for any other value for this mode. The null identity is an exception for this mode only to the ordinary repeat-receipt identity requirement. Other receipt modes retain their existing rules. T retains the diagnostic result without an `earlier_repeat_records` member and writes no completion receipt.
+
 ## Failure names and collection
 
 Part 1 section 3.9 owns the retained names and outcomes; warm-leader plan section 3.6 adds the warm-up and leader names, whose conditions ADR-021 protocol rule 7 defines. The warm-up failure also covers a synchronous `Produce` exception or a terminal with `delivered` false or a nonzero `error_code`. Part 2 section 3.3 adds `b10_abrupt_timeout_job_unknown`; classification plan section 3.6 adds `b10_abrupt_verify_failed`:
@@ -392,4 +452,4 @@ Part 2 section 3.5 and classification plan requirements P4 and P5 own collection
 
 After an accepted first publication, the phase runs `b10-abrupt-verify` after the successor step, including successor failure, unknown outcome or exception. Rejected publication, no-kill, an empty kill set or unknown first termination starts no verify Job. A verify outcome of `failed`, `unknown`, `apply_failed` or `render_failed` records `b10_abrupt_verify_failed` at `verify_job`, preserves the prior `safety_stop` value and returns 1. A complete verify Job preserves the return value the trial would otherwise have had. No producer starts after verify.
 
-The ordinary timeout host publishes under `producer/`. Part 2 section 3.7's production-byte export/checker verifies that scientific paths reject its evidence in frozen diagnostic trial state and that the exported documents contain no diagnostic marker keys. The phase test `test_trial_and_science_run_ids_never_collide` (part 2 section 8.1, T-P1) verifies distinct trial and scientific run-ID prefixes and noncollision. This trial produces no scientific candidate. The [verifier contract](verifier-contract.md) cites this diagnostic mode; scientific admission and the late-write sweep remain later work.
+The ordinary timeout host publishes under `producer/`. Part 2 section 3.7's production-byte export/checker verifies that scientific paths reject its evidence in frozen diagnostic trial state and that the exported documents contain no diagnostic marker keys. The phase test `test_trial_and_science_run_ids_never_collide` (part 2 section 8.1, T-P1) verifies distinct trial and scientific run-ID prefixes and noncollision. This trial produces no scientific candidate. The [verifier contract](verifier-contract.md) cites this diagnostic mode; the scientific extension above remains nonfinal, with the late-write sweep and final judgement left to later work.

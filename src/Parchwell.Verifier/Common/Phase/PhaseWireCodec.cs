@@ -103,6 +103,8 @@ internal static partial class PhaseWireCodec
         bool hasB10Intake = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("b10_intake", out _);
         Exact(root, hasB10Intake ? [.. ReceiptFields, "b10_intake"] : ReceiptFields);
         string mode = Str(root, "mode");
+        if (mode == "b10-abrupt-verify" && !hasB10Intake)
+            throw new FormatException("B10 abrupt verifier receipt requires a null intake member.");
         JsonElement repeatElement = Prop(root, "repeat");
         int? repeat = repeatElement.ValueKind == JsonValueKind.Null ? null : Integer(repeatElement);
         JsonElement identityElement = Prop(root, "identity");
@@ -114,7 +116,7 @@ internal static partial class PhaseWireCodec
         JsonElement artifacts = Prop(root, "artifacts");
         if (artifacts.ValueKind != JsonValueKind.Array) throw new FormatException("Receipt artifacts must be an array.");
         var refs = artifacts.EnumerateArray().Select(ReadReference).ToArray();
-        var receipt = new WorkerReceipt(Int(root, "schema_version"), mode, Str(root, "scenario_id"), Str(root, "configuration_id"), Str(root, "run_id"), Str(root, "phase"), repeat, Str(root, "job_name"), Str(root, "pod_name"), identity, Str(root, "source_commit"), Int(root, "handler_exit_code"), Bool(root, "cleanup_completed"), Str(root, "started_utc"), Str(root, "completed_utc"), refs, acceptance, checks, hasB10Intake ? ReadB10Intake(Prop(root, "b10_intake")) : null);
+        var receipt = new WorkerReceipt(Int(root, "schema_version"), mode, Str(root, "scenario_id"), Str(root, "configuration_id"), Str(root, "run_id"), Str(root, "phase"), repeat, Str(root, "job_name"), Str(root, "pod_name"), identity, Str(root, "source_commit"), Int(root, "handler_exit_code"), Bool(root, "cleanup_completed"), Str(root, "started_utc"), Str(root, "completed_utc"), refs, acceptance, checks, hasB10Intake && !(mode == "b10-abrupt-verify" && Prop(root, "b10_intake").ValueKind == JsonValueKind.Null) ? ReadB10Intake(Prop(root, "b10_intake")) : null);
         ValidateUntrustedCoordinates(receipt.Phase, receipt.Repeat, "Receipt");
         try { ValidateReceipt(receipt); }
         catch (ArgumentException ex) { throw new PhaseWireIdentityException($"Receipt identity is invalid: {ex.Message}"); }
@@ -145,19 +147,24 @@ internal static partial class PhaseWireCodec
         if (r.PublicationAcceptance is null) w.WriteNull("publication_acceptance"); else WriteAcceptance(w, r.PublicationAcceptance);
         if (r.RepeatChecks is null) w.WriteNull("repeat_checks"); else { w.WritePropertyName("repeat_checks"); w.WriteStartObject(); w.WriteString("producer_job_binding", r.RepeatChecks.ProducerJobBinding); w.WriteString("registered_producer_count", r.RepeatChecks.RegisteredProducerCount); w.WriteString("broker_inventory_coverage", r.RepeatChecks.BrokerInventoryCoverage); w.WriteEndObject(); }
         if (r.B10Intake is not null) WriteB10Intake(w, r.B10Intake);
+        else if (r.Mode == "b10-abrupt-verify") w.WriteNull("b10_intake");
         w.WriteEndObject();
     }
 
     private static void ValidateReceipt(WorkerReceipt r)
     {
+        if (r.Mode == "b10-abrupt-verify" &&
+            (r.ScenarioId != "B10" || r.ConfigurationId != "C1" || r.Phase != "C1" || r.Repeat is not (>= 1 and <= 5)))
+            throw new FormatException("B10 abrupt verifier receipt coordinates are invalid.");
         if (r.Mode == "start-line" && (!ScenarioPhases.TryGetConfiguration(r.ScenarioId, r.Phase, out string? startConfiguration) || r.ConfigurationId != startConfiguration ||
             r.Identity is { } startIdentity && (startIdentity.ScenarioId != r.ScenarioId || startIdentity.ConfigurationId != r.ConfigurationId ||
                 startIdentity.RunId != r.RunId || startIdentity.InstanceId != startIdentity.ExpectedInstanceId)))
             throw new PhaseWireIdentityException("Start-line receipt identity does not bind to its phase.");
-        if (r.SchemaVersion != 1 || r.Mode is not ("start-line" or "verify" or "judge" or "b10-sweep-line" or "b10-sweep") || !PhaseIdentity.IsRunId(r.RunId) || r.SourceCommit.Length != 40 || !CommitRegex().IsMatch(r.SourceCommit)) throw new FormatException("Receipt has invalid fixed identity fields.");
+        if (r.SchemaVersion != 1 || r.Mode is not ("start-line" or "verify" or "judge" or "b10-sweep-line" or "b10-sweep" or "b10-abrupt-verify") || !PhaseIdentity.IsRunId(r.RunId) || r.SourceCommit.Length != 40 || !CommitRegex().IsMatch(r.SourceCommit)) throw new FormatException("Receipt has invalid fixed identity fields.");
         PhaseIdentity.ValidatePhase(r.Phase);
         if (!ScenarioPhases.TryGetConfiguration(r.ScenarioId, r.Phase, out string? expectedConfiguration) || r.ConfigurationId != expectedConfiguration) throw new FormatException("Receipt scenario or configuration does not match its phase.");
-        if (r.Mode is "judge" or "b10-sweep-line" or "b10-sweep" ? r.Repeat is not null || r.Identity is not null : r.Repeat is null || r.Identity is null) throw new FormatException("Receipt nullable identity fields do not match its mode.");
+        if (r.Mode == "b10-abrupt-verify" ? r.Repeat is null || r.Identity is not null :
+            r.Mode is "judge" or "b10-sweep-line" or "b10-sweep" ? r.Repeat is not null || r.Identity is not null : r.Repeat is null || r.Identity is null) throw new FormatException("Receipt nullable identity fields do not match its mode.");
         if (r.Repeat is int repeat) PhaseIdentity.ValidateRepeat(repeat);
         if (!Text(r.JobName,253,true) || !Text(r.PodName,253,true)) throw new FormatException("Receipt Job and pod names must be bounded text.");
         DateTimeOffset started = ParseUtc(r.StartedUtc); DateTimeOffset completed = ParseUtc(r.CompletedUtc);
@@ -175,7 +182,17 @@ internal static partial class PhaseWireCodec
             (r.HandlerExitCode != 1 || r.PublicationAcceptance is not null || r.B10Intake is null))
             throw new FormatException("B10 verify receipts require nonfinal independent intake evidence.");
         if (r.Mode is "judge" or "b10-sweep-line" or "b10-sweep" && r.Artifacts.Count != 1 || r.Mode == "start-line" && r.Artifacts.Count != 2 || r.Mode == "verify" && r.Artifacts.Count != 1) throw new FormatException("Receipt artifact list has the wrong role-specific size.");
-        if (r.Mode == "b10-sweep-line")
+        if (r.Mode == "b10-abrupt-verify")
+        {
+            if (r.ScenarioId != "B10" || r.ConfigurationId != "C1" || r.Phase != "C1" ||
+                !VerifierHostOptions.IsB10ScientificRunId(r.RunId) || r.HandlerExitCode != 0 || r.B10Intake is not null ||
+                r.JobName != $"{r.RunId}-c1-r{r.Repeat}-b10-abrupt-verify" || r.Artifacts.Count != 1 ||
+                r.Artifacts[0].Container != "verifier" ||
+                r.Artifacts[0].Name != $"{r.RunId}/C1/r{r.Repeat}/b10-abrupt/nonfinal-result.json" ||
+                r.Artifacts[0].Length < 0 || !ShaRegex().IsMatch(r.Artifacts[0].Sha256))
+                throw new FormatException("B10 abrupt verifier receipt does not bind its scientific result.");
+        }
+        else if (r.Mode == "b10-sweep-line")
         {
             ArtifactReference line = r.Artifacts[0];
             if (r.ScenarioId != "B10" || r.HandlerExitCode != 0 ||
@@ -243,16 +260,19 @@ internal static partial class PhaseWireCodec
 
     internal static void ValidateB10Intake(B10IntakeEvidence intake, RunIdentity rootIdentity, string sourceCommit)
     {
+        bool oneProducer = rootIdentity.ConfigurationId == "C0" &&
+            VerifierHostOptions.IsB10ScientificRunId(rootIdentity.RunId) && intake.Producers.Count == 1;
         if (rootIdentity.ScenarioId != "B10" || !PhaseIdentity.IsRunId(rootIdentity.RunId) ||
             !ScenarioPhases.TryGetConfiguration(rootIdentity.ScenarioId, intake.Phase, out string? configuration) ||
-            configuration != rootIdentity.ConfigurationId || intake.RepeatNumber is < 1 or > 5 || intake.Producers.Count != 2)
+            configuration != rootIdentity.ConfigurationId || intake.RepeatNumber is < 1 or > 5 || !oneProducer && intake.Producers.Count != 2)
             throw new FormatException("B10 intake coordinates or producer count are invalid.");
         B10ProducerEvidence first = intake.Producers[0];
-        B10ProducerEvidence second = intake.Producers[1];
-        if (first.Identity != rootIdentity || first.Identity.InstanceId == second.Identity.InstanceId ||
+        if (first.Identity != rootIdentity ||
             first.JobName != PhaseIdentity.JobName(rootIdentity.RunId, intake.Phase, intake.RepeatNumber) ||
-            second.JobName != PhaseIdentity.RestartJobName(rootIdentity.RunId, intake.Phase, intake.RepeatNumber) ||
-            first.PredecessorInstanceId is not null || second.PredecessorInstanceId != first.Identity.InstanceId)
+            first.PredecessorInstanceId is not null || !oneProducer &&
+            (first.Identity.InstanceId == intake.Producers[1].Identity.InstanceId ||
+            intake.Producers[1].JobName != PhaseIdentity.RestartJobName(rootIdentity.RunId, intake.Phase, intake.RepeatNumber) ||
+            intake.Producers[1].PredecessorInstanceId != first.Identity.InstanceId))
             throw new FormatException("B10 intake producer roles are invalid.");
         foreach (B10ProducerEvidence producer in intake.Producers)
         {

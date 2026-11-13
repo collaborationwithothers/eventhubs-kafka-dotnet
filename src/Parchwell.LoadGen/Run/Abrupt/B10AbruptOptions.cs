@@ -73,8 +73,10 @@ internal sealed class B10AbruptOptions
 
     internal void Validate(string? expectedRole = null)
     {
-        if (!Enabled || Purpose != "diagnostic_trial" || ScenarioId != "B10" || ConfigurationId != "C1" || Phase != "C1" ||
-            Get("Repeat") != "1" || (expectedRole is not null && Role != expectedRole)) throw Invalid(ValidationDetail.DiagnosticIdentity);
+        bool identityValid = Purpose == "diagnostic_trial" ? Get("Repeat") == "1" :
+            Purpose == "scientific" && Regex.IsMatch(RunId, @"\Ab10-[0-9]+-[0-9]+\z", RegexOptions.CultureInvariant) &&
+            Get("Repeat") is "1" or "2" or "3" or "4" or "5";
+        if (!Enabled || !identityValid || ScenarioId != "B10" || ConfigurationId != "C1" || Phase != "C1" || (expectedRole is not null && Role != expectedRole)) throw Invalid(ValidationDetail.DiagnosticIdentity);
         ValidateRole();
         foreach (string name in new[] { "RunId", "SourceCommit", "ImageReference", "JobName", "PodName", "PodUid", "NamespaceName", "BlobEndpoint", "ScenarioSourceRoot", "OutputRoot" })
             if (string.IsNullOrWhiteSpace(Get(name)) || Get(name).Any(char.IsControl)) throw Invalid(ValidationDetail.RequiredIdentity);
@@ -83,7 +85,7 @@ internal sealed class B10AbruptOptions
             !Regex.IsMatch(ImageReference, "^[a-z0-9][a-z0-9./:_-]*@sha256:[a-f0-9]{64}$", RegexOptions.CultureInvariant)) throw Invalid(ValidationDetail.RunSourceOrImage);
         foreach (string value in new[] { PodName, PodUid, NamespaceName })
             if (value.Any(char.IsWhiteSpace) || value.Contains('/', StringComparison.Ordinal) || value is "." or ".." or "seed") throw Invalid(ValidationDetail.PodOrNamespace);
-        if (JobName != $"{RunId}-c1-r1-loadgen-{(Role == "successor" ? "successor" : "restart")}") throw Invalid(ValidationDetail.JobName);
+        if (JobName != $"{RunId}-c1-r{Repeat.ToString(CultureInfo.InvariantCulture)}-loadgen-{(Role == "successor" ? "successor" : "restart")}") throw Invalid(ValidationDetail.JobName);
         if (!Uri.TryCreate(BlobEndpoint, UriKind.Absolute, out var endpoint) || endpoint.Scheme != "https" ||
             endpoint.AbsolutePath != "/" || endpoint.UserInfo.Length != 0 || endpoint.Query.Length != 0 || endpoint.Fragment.Length != 0) throw Invalid(ValidationDetail.BlobEndpoint);
         foreach (string path in new[] { ScenarioSourceRoot, OutputRoot, Role == "successor" ? PredecessorBindingPath : StartLineBindingPath })

@@ -40,7 +40,7 @@ internal sealed class B10AbruptParent(B10AbruptOptions options, TimeProvider clo
             {
                 byte[] bytes = File.Exists(Path.Combine(options.OutputRoot,"abrupt","journal.jsonl"))
                     ? await B10AbruptPublisher.ReadFileAsync(Path.Combine(options.OutputRoot,"abrupt","journal.jsonl"),16777216,CancellationToken.None).ConfigureAwait(false) : [];
-                await B10AbruptDiagnostics.WriteFailureAsync(options,clock,exception,B10AbruptJournal.Read(bytes,options.Identity()),timeline).ConfigureAwait(false);
+                await B10AbruptDiagnostics.WriteFailureAsync(options,clock,exception,B10AbruptJournal.Read(bytes,options.Identity(),options.Purpose),timeline).ConfigureAwait(false);
             }
             catch (Exception) { }
             throw;
@@ -75,7 +75,7 @@ internal sealed class B10AbruptParent(B10AbruptOptions options, TimeProvider clo
         byte[] bytes;
         try { bytes = await B10AbruptPublisher.ReadFileAsync(Path.Combine(options.OutputRoot, "abrupt", "journal.jsonl"), 16777216, cancellationToken).ConfigureAwait(false); }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { bytes = []; extraGaps.Add("writer_failed"); }
-        var snapshot = B10AbruptJournal.Read(bytes, options.Identity());
+        var snapshot = B10AbruptJournal.Read(bytes, options.Identity(), options.Purpose);
         if (exited && validateCapturedStatistics is not null)
         {
             try { await validateCapturedStatistics(cancellationToken).ConfigureAwait(false); }
@@ -97,7 +97,7 @@ internal sealed class B10AbruptParent(B10AbruptOptions options, TimeProvider clo
             reports.Add(descriptor);
         }
         string[] gaps = snapshot.Gaps.Concat(extraGaps).Concat(snapshot.Failures.Values).Distinct(StringComparer.Ordinal).ToArray();
-        files["abrupt-manifest.json"] = B10AbruptWire.SerializeEnvelope("abrupt_manifest", options.Identity(), new { journal = B10AbruptPublisher.Describe("journal.jsonl", bytes), journal_records = snapshot.Frames.Count, report_files = reports, gaps });
+        files["abrupt-manifest.json"] = B10AbruptWire.SerializeEnvelope("abrupt_manifest", options.Identity(), new { journal = B10AbruptPublisher.Describe("journal.jsonl", bytes), journal_records = snapshot.Frames.Count, report_files = reports, gaps }, options.Purpose);
         var started = snapshot.Frames.FirstOrDefault(frame => frame.Kind == "child_started");
         files["termination.json"] = B10AbruptWire.SerializeEnvelope("termination", options.Identity(), new
         {
@@ -109,11 +109,11 @@ internal sealed class B10AbruptParent(B10AbruptOptions options, TimeProvider clo
             native_error_count = snapshot.Frames.Count(frame => frame.Kind == "native_error"), native_fatal_count = snapshot.Frames.Count(frame => frame.Kind == "native_error" && frame.Data.GetProperty("is_fatal").GetBoolean()),
             native_tail = result.Termination == "intended_self_kill" ? "unknown_due_to_intended_kill" : null,
             manifest = B10AbruptPublisher.Describe("abrupt-manifest.json", files["abrupt-manifest.json"])
-        });
+        }, options.Purpose);
         if (exited) child.Dispose();
         await publisher.PublishFirstAsync(options.Identity(), files, cancellationToken, timeline).ConfigureAwait(false);
         timeline.Mark(B10AbruptStage.PublicationComplete);
-        return B10AbruptWire.ReadEnvelope(files["termination.json"], "termination");
+        return B10AbruptWire.ReadEnvelope(files["termination.json"], "termination", options.Purpose, options.Repeat);
     }
     internal static string FailureName(Exception exception)
     {

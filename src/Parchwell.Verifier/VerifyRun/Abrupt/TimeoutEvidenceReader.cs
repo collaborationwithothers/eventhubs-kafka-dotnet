@@ -33,7 +33,7 @@ internal sealed class TimeoutEvidenceReader(VerifierHostOptions options,
 
     internal async Task<TimeoutRegistration> ReadListingAsync(CancellationToken cancellationToken)
     {
-        string root = PhasePaths.ProducersPrefix(options.RunId!, "C1", 1);
+        string root = PhasePaths.ProducersPrefix(options.RunId!, "C1", (options.Repeat ?? 1));
         BlobListing listing = await listLedger(root, cancellationToken).ConfigureAwait(false);
         Require(listing.Names.Count <= BoundedBlobListing.MaximumEntries, "timeout_listing_incomplete");
         long nameBytes = listing.Names.Sum(name => (long)Encoding.UTF8.GetByteCount(name));
@@ -54,12 +54,12 @@ internal sealed class TimeoutEvidenceReader(VerifierHostOptions options,
             int separator = tail.IndexOf('/', StringComparison.Ordinal);
             Require(separator > 0 && separator < tail.Length - 1, "timeout_listing_path");
             string candidate = tail[..separator];
-            _ = PhasePaths.ProducerPrefix(options.RunId!, "C1", 1, candidate);
+            _ = PhasePaths.ProducerPrefix(options.RunId!, "C1", (options.Repeat ?? 1), candidate);
             Require(instance is null || instance == candidate, "timeout_registration_count");
             instance = candidate;
         }
         Require(instance is not null, "timeout_registration_count");
-        string registrationName = PhasePaths.Registration(options.RunId!, "C1", 1, instance!);
+        string registrationName = PhasePaths.Registration(options.RunId!, "C1", (options.Repeat ?? 1), instance!);
         Require(listing.Names.Count(name => name == registrationName) == 1 &&
             listing.Names.Count(name => name.EndsWith("/registration.json", StringComparison.Ordinal)) == 1,
             "timeout_registration_count");
@@ -69,8 +69,8 @@ internal sealed class TimeoutEvidenceReader(VerifierHostOptions options,
         Require(registration.Identity.RunId == options.RunId && registration.Identity.ScenarioId == "B10" &&
             registration.Identity.ConfigurationId == "C1" && registration.Identity.InstanceId == instance &&
             registration.Identity.ExpectedInstanceId == instance && registration.PodName == instance &&
-            registration.Phase == "C1" && registration.RepeatNumber == 1 &&
-            registration.JobName == PhaseIdentity.JobName(options.RunId!, "C1", 1) &&
+            registration.Phase == "C1" && registration.RepeatNumber == (options.Repeat ?? 1) &&
+            registration.JobName == PhaseIdentity.JobName(options.RunId!, "C1", (options.Repeat ?? 1)) &&
             registration.PredecessorInstanceId is null && registration.SourceCommit == options.VerifierCommit,
             "timeout_registration_binding");
         return new(instance!, registration, listing);
@@ -79,11 +79,11 @@ internal sealed class TimeoutEvidenceReader(VerifierHostOptions options,
     internal async Task<TimeoutEvidence> ReadPublicationAsync(TimeoutRegistration registered,
         StartLineEvidence start, CancellationToken cancellationToken)
     {
-        string producerPrefix = PhasePaths.ProducerPrefix(options.RunId!, "C1", 1, registered.InstanceId);
-        string completionName = PhasePaths.ProducerCompletion(options.RunId!, "C1", 1, registered.InstanceId);
+        string producerPrefix = PhasePaths.ProducerPrefix(options.RunId!, "C1", (options.Repeat ?? 1), registered.InstanceId);
+        string completionName = PhasePaths.ProducerCompletion(options.RunId!, "C1", (options.Repeat ?? 1), registered.InstanceId);
         byte[] completionBytes = await ReadRequired(completionName, cancellationToken).ConfigureAwait(false);
         budget.ConsumeBytes(completionBytes.LongLength);
-        ProducerCompletionReceipt completion = PhaseWireCodec.ReadProducerCompletion(completionBytes, "C1", 1, registered.Registration);
+        ProducerCompletionReceipt completion = PhaseWireCodec.ReadProducerCompletion(completionBytes, "C1", (options.Repeat ?? 1), registered.Registration);
         var raw = new Dictionary<string, byte[]?>(StringComparer.Ordinal);
         foreach (string name in TimeoutPublicationAcceptance.PublicationNames)
             raw[name] = await readLedger(producerPrefix + "publication/" + name,
@@ -111,13 +111,13 @@ internal sealed class TimeoutEvidenceReader(VerifierHostOptions options,
         ReadOnlyMemory<byte>? Memory(string name) => raw[name] is { } bytes ? new ReadOnlyMemory<byte>(bytes) : null;
     }
 
-    internal static TimeoutRecordJoin Join(TimeoutEvidence evidence, IReadOnlyList<ConsumedRecord> records, string runId)
+    internal static TimeoutRecordJoin Join(TimeoutEvidence evidence, IReadOnlyList<ConsumedRecord> records, string runId, int repeat = 1)
     {
         var rows = evidence.Ledger.Value?.ToLookup(row => row.Attempt.AttemptId, StringComparer.Ordinal);
         var joined = new List<ConsumedRecord>();
         bool unjoined = false;
-        string crossKey = $"B10/{runId}/C1/1/cross_restart";
-        string sameKey = $"B10/{runId}/C1/1/same_instance";
+        string crossKey = $"B10/{runId}/C1/{repeat}/cross_restart";
+        string sameKey = $"B10/{runId}/C1/{repeat}/same_instance";
         foreach (ConsumedRecord record in records.Where(record => record.InstanceId == evidence.InstanceId))
         {
             LedgerRow[] matches = record.AttemptId is null || rows is null ? [] : rows[record.AttemptId].ToArray();
@@ -133,8 +133,8 @@ internal sealed class TimeoutEvidenceReader(VerifierHostOptions options,
     internal static OutcomeCounts? Judge(TimeoutEvidence evidence, IReadOnlyList<ConsumedRecord> records,
         ResolvedRoleConfiguration configuration, IReadOnlyList<string> expectedBrokerNames, OutputLimits outputLimits)
     {
-        // The caller has established the diagnostic mode's start-line and drain
-        // checks. Scientific two-producer start-line checks are not substituted.
+        // The caller has established this mode's start-line and drain checks.
+        // The timeout instance retains its independent per-instance checks.
         CheckAssessment[] window = Enumerable.Range(7, 5).Select(check => CheckResult.Pass(check).Assessment).ToArray();
         var request = new RunJudgementRequest(evidence.Registered.Registration.Identity, evidence.Index,
             evidence.Ledger, evidence.Manifest, evidence.Statistics, evidence.Lifecycle, evidence.Capabilities,
@@ -164,7 +164,7 @@ internal sealed class TimeoutEvidenceReader(VerifierHostOptions options,
         int separator = tail.IndexOf('/', StringComparison.Ordinal);
         if (separator <= 0 || separator == tail.Length - 1) return null;
         string instance = tail[..separator];
-        try { _ = PhasePaths.ProducerPrefix(options.RunId!, "C1", 1, instance); }
+        try { _ = PhasePaths.ProducerPrefix(options.RunId!, "C1", (options.Repeat ?? 1), instance); }
         catch (ArgumentException) { return null; }
         return instance;
     }

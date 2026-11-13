@@ -47,6 +47,14 @@ internal sealed class AbruptEvidenceReader(VerifierHostOptions options,
         return Text(registration.GetProperty("identity"), "pod_uid");
     }
 
+    internal async Task<(string Uid, string? Predecessor)> ReadScientificRegistrationAsync(string prefix, string pod, CancellationToken ct)
+    {
+        byte[] bytes = await RequiredAsync(prefix + pod + "/registration.json", 65536, ct).ConfigureAwait(false);
+        string? predecessor = NullableText(Parse(bytes).GetProperty("identity"), "predecessor_instance_id");
+        JsonElement registration = Envelope(bytes, "registration", options, pod, predecessor);
+        return (Text(registration.GetProperty("identity"), "pod_uid"), predecessor);
+    }
+
     internal async Task<AbruptFirstEvidence> ReadFirstAsync(string prefix, string pod, string uid,
         IReadOnlyList<string> names, CancellationToken ct)
     {
@@ -116,7 +124,7 @@ internal sealed class AbruptEvidenceReader(VerifierHostOptions options,
                 long ordinal = data.GetProperty("ordinal").GetInt64();
                 string key = Text(data, "key"), hash = Text(data, "payload_sha256");
                 Require(arm is "same_instance" or "cross_restart" && role is "original" or "resend" && ordinal is >= 0 and <= 4 &&
-                    data.GetProperty("sequence").GetInt64() == ordinal && key == "B10/" + options.RunId + "/C1/1/" + arm &&
+                    data.GetProperty("sequence").GetInt64() == ordinal && key == "B10/" + options.RunId + "/C1/" + (options.Repeat ?? 1) + "/" + arm &&
                     hash.Length == 64 && hash.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f'), "prepared");
                 Require(attempts.TryAdd(id, new(id, arm, role, ordinal, key, ordinal, hash,
                     NullableText(data, "predecessor_attempt_id"), frameSequence)), "attempt_duplicate");
