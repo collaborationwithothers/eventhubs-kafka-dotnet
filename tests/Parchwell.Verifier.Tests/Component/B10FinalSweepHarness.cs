@@ -36,6 +36,7 @@ internal sealed class B10FinalSweepHarness : IDisposable
     internal JsonObject Result => JsonNode.Parse(Verifier[$"{Run}/{Phase}/b10-final-sweep.json"])!.AsObject();
     internal JsonObject Data => Result["data"]!.AsObject();
     internal int Reads => host.Reads;
+    internal Action<string>? BeforeRead { set => host.BeforeRead = value; }
     internal B10AbruptVerifyEvidence[] Evidence { get; } = new B10AbruptVerifyEvidence[5];
     internal static string First(int repeat) => $"{Run}-first-r{repeat}";
     internal static string Second(int repeat) => $"{Run}-second-r{repeat}";

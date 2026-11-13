@@ -147,8 +147,18 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
     {
         string root = $"{options.RunId}/C1/r{input.Number}/b10-abrupt/";
         string name = root + "nonfinal-result.json";
-        byte[]? dataBytes = await readVerifier(name, ct).ConfigureAwait(false);
-        byte[]? receiptBytes = await readVerifier(root + "verify-completion.json", ct).ConfigureAwait(false);
+        byte[]? dataBytes = null, receiptBytes = null;
+        bool readFailed = false;
+        try
+        {
+            dataBytes = await readVerifier(name, ct).ConfigureAwait(false);
+            receiptBytes = await readVerifier(root + "verify-completion.json", ct).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (B10FinalSweepHandler.EvidenceFailure(exception, ct))
+        {
+            // An unreadable restart input is a restart-only failure; the ordinary timeout publication is read below.
+            readFailed = true; dataBytes = null; receiptBytes = null; input.RestartInputInvalid = true;
+        }
         if (dataBytes is not null) input.Source = B10FinalSweepHandler.Reference("verifier", name, dataBytes);
         try
         {
@@ -184,7 +194,9 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
             if (starts is not null && ends is not null && input.Start is not null)
                 Require(SameVector(starts, input.Start.Start.Value!.PartitionHighs.ToDictionary(high => high.Partition, high => high.High)), "nonfinal_start_mismatch");
             input.Nonfinal = data;
-            input.RestartReasons.UnionWith(Strings(data.GetProperty("eligibility_reasons")));
+            string[] reasons = Strings(data.GetProperty("eligibility_reasons")).ToArray();
+            Require(reasons.All(B10FinalProjectionCodec.IsRestartReason), "nonfinal_eligibility_reason");
+            input.RestartReasons.UnionWith(reasons);
             if (starts is not null && ends is not null) { input.Starts = starts; input.Ends = ends; }
             input.InputValid = true;
         }
@@ -238,7 +250,7 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
             }
             catch (Exception exception) when (B10FinalSweepHandler.EvidenceFailure(exception, ct)) { input.RestartInputInvalid = true; }
         }
-        else if (dataBytes is null && receiptBytes is null && input.Termination.Class is not null)
+        else if (!readFailed && dataBytes is null && receiptBytes is null && input.Termination.Class is not null)
         {
             if (input.Termination.Class == "no_kill") input.RestartReasons.Add(input.Termination.Outcome!);
             else if (input.Termination.Class is "unexpected_exit" or "unknown") input.RestartReasons.Add(AbruptDiagnostics.ReasonNames[3]);

@@ -29,6 +29,10 @@ internal static class B10FinalProjectionCodec
         "b10_abrupt_report_binding_invalid", "b10_abrupt_guard_failed", "b10_abrupt_signal_preflight_failed",
         "b10_abrupt_deadline_exhausted", "b10_abrupt_capture_gap", "kill_too_late"];
 
+    /// <summary>Whether a restart eligibility reason is one the projection can carry.</summary>
+    internal static bool IsRestartReason(string reason) => Array.IndexOf(EligibilityReasons, reason) >= 0 ||
+        Outcomes.Contains(reason, StringComparer.Ordinal) || reason == "b10_restart_input_unavailable";
+
     internal static byte[] Write(B10FinalProjection projection)
     {
         ArgumentNullException.ThrowIfNull(projection);

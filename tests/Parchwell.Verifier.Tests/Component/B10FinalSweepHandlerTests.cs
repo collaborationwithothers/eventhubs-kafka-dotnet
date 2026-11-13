@@ -326,6 +326,9 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
     [InlineData("timeout_missing_member")]
     [InlineData("timeout_extra_member")]
     [InlineData("timeout_null_member")]
+    [InlineData("reasons_unknown")]
+    [InlineData("reasons_empty_text")]
+    [InlineData("reasons_not_array")]
     [InlineData("problems_number")]
     [InlineData("problems_item_number")]
     [InlineData("problems_object")]
@@ -348,6 +351,9 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
                 case "timeout_missing_member": data["timeout"]!.AsObject().Remove("reorder"); break;
                 case "timeout_extra_member": data["timeout"]!["unexpected"] = 0; break;
                 case "timeout_null_member": data["timeout"]!["phantom"] = null; break;
+                case "reasons_unknown": data["eligibility"] = "ineligible"; data["eligibility_reasons"] = new JsonArray("bogus"); break;
+                case "reasons_empty_text": data["eligibility"] = "ineligible"; data["eligibility_reasons"] = new JsonArray(""); break;
+                case "reasons_not_array": data["eligibility_reasons"] = "b10_restart_window_incomplete"; break;
                 case "problems_number": data["problems"] = 5; break;
                 case "problems_item_number": data["problems"] = new JsonArray(5); break;
                 case "problems_object": data["problems"] = new JsonObject(); break;
@@ -361,6 +367,24 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
         Assert.Equal("ineligible", Text(item["restart"]!["eligibility"]));
         Assert.Equal(["b10_restart_input_unavailable"], Strings(item["restart"]!["eligibility_reasons"]));
         Assert.Null(item["restart"]!["arms"]);
+    }
+
+    [Theory]
+    [InlineData("object")]
+    [InlineData("receipt")]
+    public async Task Given_NonfinalReadFails_When_FinalSweepRuns_Then_TimeoutCohortsSurviveAndOnlyRestartIsRejected_P1_Codex_ReadFailure(string which)
+    {
+        using var run = await B10FinalSweepHarness.CreateAsync(kafka);
+        string target = which == "object" ? B10FinalSweepHarness.A3(3) : B10FinalSweepHarness.Prefix(3) + "verify-completion.json";
+        run.BeforeRead = name => { if (name == target) throw new IOException("synthetic storage failure"); };
+        Assert.Equal(0, await run.RunAsync());
+        Assert.True(run.Data["scan_complete"]!.GetValue<bool>(), run.Data.ToJsonString());
+        for (int repeat = 1; repeat <= 5; repeat++) AssertComplete(run.Repeat(repeat));
+        JsonObject item = run.Repeat(3);
+        Assert.Equal("ineligible", Text(item["restart"]!["eligibility"]));
+        Assert.Equal(["b10_restart_input_unavailable"], Strings(item["restart"]!["eligibility_reasons"]));
+        Assert.Null(item["restart"]!["arms"]);
+        foreach (int repeat in new[] { 1, 2, 4, 5 }) Assert.Equal("eligible", Text(run.Repeat(repeat)["restart"]!["eligibility"]));
     }
 
     [Theory]
