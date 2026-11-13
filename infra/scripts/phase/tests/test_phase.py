@@ -84,7 +84,10 @@ STORAGE_READINESS_ENVIRONMENTS = (
 
 
 def check_b10_final_candidate_transport(content):
-    """TP3: the real judge test supplies its candidate bytes to this phase check."""
+    """TP3: check_candidate accepts a final-shaped candidate and rejects a nested diagnostic dialect.
+
+    The real judge test only exports its candidate bytes; running this check on them is an external step.
+    """
     candidate = json.loads(content)
     snapshot = {key: candidate[key] for key in ('run_id', 'phase', 'source_commit')}
     snapshot.update(scenario=candidate['scenario_id'], configuration=candidate['configuration_id'],
