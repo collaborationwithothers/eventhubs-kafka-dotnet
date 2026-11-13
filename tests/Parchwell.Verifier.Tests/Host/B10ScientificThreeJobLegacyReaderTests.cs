@@ -22,7 +22,7 @@ public sealed class B10ScientificThreeJobLegacyReaderTests
 {
     [Theory]
     [InlineData("C1")]
-    public async Task Given_ProducedScientificStartLine_When_LegacySweepAndJudgeRead_Then_RejectStartLine(string phase)
+    public async Task Given_ProducedScientificStartLine_When_LegacySweepRunsAndFinalJudgeReads_Then_SweepRejectsStartLineAndJudgeFindsNoFinalSweep(string phase)
     {
         using var authentication = new KafkaSessionTestSupport();
         var store = new Store();
@@ -104,12 +104,11 @@ public sealed class B10ScientificThreeJobLegacyReaderTests
             .ExecuteAsync(TestContext.Current.CancellationToken));
         // A scientific run ID now reaches the final judge, which finds no authenticated final sweep for this legacy-only evidence.
         using JsonDocument candidate = JsonDocument.Parse(store.Objects[options.CandidateOutputName]);
-        Assert.Contains(candidate.RootElement.GetProperty("reasons").EnumerateArray(),
-            reason => reason.GetString() == "b10_final_projection_untrusted");
+        AssertNoFinalSweep(candidate.RootElement);
     }
 
     [Fact]
-    public async Task Given_ActualOneProducerC0Output_When_LegacyJudgeReads_Then_RejectsIntakeCount()
+    public async Task Given_ActualOneProducerC0Output_When_LegacySweepRunsAndFinalJudgeReads_Then_SweepRejectsIntakeCountAndJudgeFindsNoFinalSweep()
     {
         using HostEvidenceBuilder fixture = B10OneJobC0VerifyTests.Fixture();
         var completion = new VerifierCompletionState();
@@ -149,8 +148,14 @@ public sealed class B10ScientificThreeJobLegacyReaderTests
             .ExecuteAsync(TestContext.Current.CancellationToken));
         // A scientific run ID now reaches the final judge, which finds no authenticated final sweep for this legacy-only evidence.
         using JsonDocument candidate = JsonDocument.Parse(store.Objects[fixture.Options.CandidateOutputName]);
-        Assert.Contains(candidate.RootElement.GetProperty("reasons").EnumerateArray(),
-            reason => reason.GetString() == "b10_final_projection_untrusted");
+        AssertNoFinalSweep(candidate.RootElement);
+    }
+
+    private static void AssertNoFinalSweep(JsonElement candidate)
+    {
+        Assert.Equal("invalid", candidate.GetProperty("status").GetString());
+        Assert.Equal(["b10_final_projection_untrusted", "j7_counts_unavailable", "timing_unavailable", "version_unavailable"],
+            candidate.GetProperty("reasons").EnumerateArray().Select(reason => reason.GetString()).ToArray());
     }
 
     private static ArtifactReference Reference(string name, byte[] bytes) => new("verifier", name, bytes.LongLength, Convert.ToHexStringLower(SHA256.HashData(bytes)));

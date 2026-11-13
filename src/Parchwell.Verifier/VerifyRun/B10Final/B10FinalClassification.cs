@@ -209,23 +209,42 @@ internal static class B10FinalClassification
     {
         if (expected.ValueKind == JsonValueKind.Null) return true;
         if (actual is null || expected.GetArrayLength() != actual.Count) return false;
+        // Key, unconfirmed_count, resend_invoked, unreported_attempts and the member list are authenticated earlier by SameMembers.
         foreach (JsonElement arm in expected.EnumerateArray())
         {
             AbruptArm? found = actual.SingleOrDefault(item => item.Arm == arm.GetProperty("arm").GetString());
             if (found is null) return false;
-            if (!Agree(arm, "unconfirmed_count", found.UnconfirmedCount) || !Agree(arm, "resend_invoked", found.ResendInvoked) ||
-                !Agree(arm, "originals_seen", found.OriginalsSeen) || !Agree(arm, "resends_seen", found.ResendsSeen) ||
-                !Agree(arm, "pair_count", found.PairCount) || !Agree(arm, "unreported_attempts", found.UnreportedAttempts) ||
-                !Agree(arm, "unreported_seen", found.UnreportedSeen) || !Agree(arm, "unreported_unseen", found.UnreportedUnseen) ||
-                !Agree(arm, "lost_resends", found.LostResends) || arm.GetProperty("members").GetArrayLength() != found.Members.Count) return false;
+            if (!Agree(arm, "originals_seen", found.OriginalsSeen) || !Agree(arm, "resends_seen", found.ResendsSeen) ||
+                !Agree(arm, "pair_count", found.PairCount) || !Agree(arm, "unreported_seen", found.UnreportedSeen) ||
+                !Agree(arm, "unreported_unseen", found.UnreportedUnseen) || !Agree(arm, "lost_resends", found.LostResends) ||
+                !AgreeWitness(arm.GetProperty("witness"), found.Witness)) return false;
             foreach (JsonElement member in arm.GetProperty("members").EnumerateArray())
             {
                 AbruptMember? match = found.Members.SingleOrDefault(item => item.OriginalAttemptId == member.GetProperty("original_attempt_id").GetString());
                 if (match is null || !Agree(member, "copy_count", match.CopyCount) || !Agree(member, "original_copies", match.OriginalCopies) ||
                     !Agree(member, "resend_copies", match.ResendCopies) || !Agree(member, "other_copies", match.OtherCopies) ||
                     !Agree(member, "pair_count", match.PairCount) || !AgreeFlag(member, "copies_truncated", match.CopiesTruncated) ||
-                    !AgreeFlag(member, "resend_lost", match.ResendLost)) return false;
+                    !AgreeFlag(member, "resend_lost", match.ResendLost) || !AgreeCopies(member.GetProperty("copies"), match.Copies)) return false;
             }
+        }
+        return true;
+    }
+    private static bool AgreeWitness(JsonElement expected, AbruptWitness? actual) =>
+        expected.ValueKind == JsonValueKind.Null || actual is not null &&
+        expected.GetProperty("original_attempt_id").GetString() == actual.OriginalAttemptId && expected.GetProperty("resend_attempt_id").GetString() == actual.ResendAttemptId &&
+        expected.GetProperty("original").GetProperty("partition").GetInt32() == actual.Original.Partition && expected.GetProperty("original").GetProperty("offset").GetInt64() == actual.Original.Offset &&
+        expected.GetProperty("resend").GetProperty("partition").GetInt32() == actual.Resend.Partition && expected.GetProperty("resend").GetProperty("offset").GetInt64() == actual.Resend.Offset;
+    private static bool AgreeCopies(JsonElement expected, IReadOnlyList<AbruptCopy>? actual)
+    {
+        if (expected.ValueKind == JsonValueKind.Null) return true;
+        if (actual is null || expected.GetArrayLength() != actual.Count) return false;
+        int index = 0;
+        foreach (JsonElement copy in expected.EnumerateArray())
+        {
+            AbruptCopy other = actual[index++];
+            if (copy.GetProperty("partition").GetInt32() != other.Partition || copy.GetProperty("offset").GetInt64() != other.Offset ||
+                copy.GetProperty("instance_id").GetString() != other.InstanceId || copy.GetProperty("attempt_id").GetString() != other.AttemptId ||
+                copy.GetProperty("role").GetString() != other.Role) return false;
         }
         return true;
     }

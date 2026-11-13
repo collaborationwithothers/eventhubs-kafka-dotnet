@@ -177,15 +177,13 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
             Exact(data, "first_instance_id", "successor_instance_id", "timeout_instance_id", "timeout", "comparison", "native_errors", "eligibility", "eligibility_reasons", "start_line", "end_line", "window_complete", "window_limit", "arms", "problems", "problem_details", "finality", "earlier_repeat_records");
             Require(Text(data, "finality") == "nonfinal" && Text(data, "eligibility") is "pending_sweep" or "ineligible", "nonfinal_finality");
             ValidateArms(data.GetProperty("arms"));
+            Dictionary<int, long>? starts = JsonVector(data.GetProperty("start_line")), ends = JsonVector(data.GetProperty("end_line"));
+            // Validate before keeping anything: a rejected object must not install vectors, timeout counts or eligibility reasons.
+            if (starts is not null && ends is not null && input.Start is not null)
+                Require(SameVector(starts, input.Start.Start.Value!.PartitionHighs.ToDictionary(high => high.Partition, high => high.High)), "nonfinal_start_mismatch");
             input.Nonfinal = data;
             input.RestartReasons.UnionWith(Strings(data.GetProperty("eligibility_reasons")));
-            Dictionary<int, long>? starts = JsonVector(data.GetProperty("start_line")), ends = JsonVector(data.GetProperty("end_line"));
-            if (starts is not null && ends is not null)
-            {
-                // Validate before installing: a rejected vector must not replace the authenticated start-line window.
-                if (input.Start is not null) Require(SameVector(starts, input.Start.Start.Value!.PartitionHighs.ToDictionary(high => high.Partition, high => high.High)), "nonfinal_start_mismatch");
-                input.Starts = starts; input.Ends = ends;
-            }
+            if (starts is not null && ends is not null) { input.Starts = starts; input.Ends = ends; }
             input.InputValid = true;
         }
         catch (Exception exception) when (B10FinalSweepHandler.EvidenceFailure(exception, ct))

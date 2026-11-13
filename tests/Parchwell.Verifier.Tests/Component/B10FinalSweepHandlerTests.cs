@@ -176,52 +176,128 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
     }
 
     [Theory]
-    [InlineData(0, "pair_count")]
-    [InlineData(0, "originals_seen")]
-    [InlineData(0, "resends_seen")]
-    [InlineData(0, "unreported_seen")]
-    [InlineData(0, "unreported_unseen")]
-    [InlineData(0, "lost_resends")]
-    [InlineData(1, "pair_count")]
-    [InlineData(1, "originals_seen")]
-    public async Task Given_NonfinalAggregateArmCountDisagrees_When_FinalSweepRuns_Then_OnlyRestartIsRejected_P1_4567914709(int arm, string field)
+    [InlineData(0, "pair_count", 1)]
+    [InlineData(0, "pair_count", -1)]
+    [InlineData(0, "originals_seen", 1)]
+    [InlineData(0, "originals_seen", -1)]
+    [InlineData(0, "resends_seen", 1)]
+    [InlineData(0, "resends_seen", -1)]
+    [InlineData(0, "unreported_seen", 1)]
+    [InlineData(0, "unreported_unseen", 1)]
+    [InlineData(0, "lost_resends", 1)]
+    [InlineData(1, "pair_count", 1)]
+    [InlineData(1, "pair_count", -1)]
+    [InlineData(1, "originals_seen", 1)]
+    [InlineData(1, "originals_seen", -1)]
+    [InlineData(1, "resends_seen", 1)]
+    [InlineData(1, "resends_seen", -1)]
+    [InlineData(1, "unreported_seen", 1)]
+    [InlineData(1, "unreported_seen", -1)]
+    [InlineData(1, "unreported_unseen", 1)]
+    [InlineData(1, "lost_resends", 1)]
+    public async Task Given_NonfinalAggregateArmCountDisagrees_When_FinalSweepRuns_Then_OnlyRestartIsRejected_P1_4567914709(int arm, string field, int delta)
     {
         using var run = await B10FinalSweepHarness.CreateAsync(kafka);
-        run.RewriteA3(3, root =>
-        {
-            JsonNode value = root["data"]!["arms"]![arm]![field]!;
-            root["data"]!["arms"]![arm]![field] = value.GetValue<long>() + 1;
-        });
-        Assert.Equal(0, await run.RunAsync()); JsonObject item = run.Repeat(3);
-        AssertComplete(item);
-        Assert.Equal("ineligible", Text(item["restart"]!["eligibility"]));
-        Assert.Equal(["b10_restart_late_record_unjoined"], Strings(item["restart"]!["eligibility_reasons"]));
-        AssertUnknownSweepCounts(item);
+        run.RewriteA3(3, root => root["data"]!["arms"]![arm]![field] = root["data"]!["arms"]![arm]![field]!.GetValue<long>() + delta);
+        Assert.Equal(0, await run.RunAsync());
+        AssertArmDisagreement(run.Repeat(3));
     }
 
     [Theory]
-    [InlineData("pair_count")]
-    [InlineData("copy_count")]
-    public async Task Given_NonfinalMemberCountDisagrees_When_FinalSweepRuns_Then_OnlyRestartIsRejected_P1_4567914709(string field)
+    [InlineData(0, "pair_count", 1)]
+    [InlineData(0, "pair_count", -1)]
+    [InlineData(0, "copy_count", 1)]
+    [InlineData(0, "copy_count", -1)]
+    [InlineData(0, "original_copies", 1)]
+    [InlineData(0, "original_copies", -1)]
+    [InlineData(0, "resend_copies", 1)]
+    [InlineData(0, "resend_copies", -1)]
+    [InlineData(0, "other_copies", 1)]
+    [InlineData(1, "pair_count", 1)]
+    [InlineData(1, "pair_count", -1)]
+    [InlineData(1, "copy_count", 1)]
+    [InlineData(1, "copy_count", -1)]
+    [InlineData(1, "original_copies", 1)]
+    [InlineData(1, "original_copies", -1)]
+    [InlineData(1, "resend_copies", 1)]
+    [InlineData(1, "resend_copies", -1)]
+    [InlineData(1, "other_copies", 1)]
+    public async Task Given_NonfinalMemberCountDisagrees_When_FinalSweepRuns_Then_OnlyRestartIsRejected_P1_4567914709(int arm, string field, int delta)
     {
         using var run = await B10FinalSweepHarness.CreateAsync(kafka);
         run.RewriteA3(3, root =>
         {
-            JsonNode member = root["data"]!["arms"]![1]!["members"]![0]!;
-            member[field] = member[field]!.GetValue<long>() + 1;
+            JsonNode member = root["data"]!["arms"]![arm]!["members"]![0]!;
+            member[field] = member[field]!.GetValue<long>() + delta;
         });
-        Assert.Equal(0, await run.RunAsync()); JsonObject item = run.Repeat(3);
-        AssertComplete(item);
-        Assert.Equal("ineligible", Text(item["restart"]!["eligibility"]));
-        Assert.Equal(["b10_restart_late_record_unjoined"], Strings(item["restart"]!["eligibility_reasons"]));
+        Assert.Equal(0, await run.RunAsync());
+        AssertArmDisagreement(run.Repeat(3));
     }
 
-    [Fact]
-    public async Task Given_NonfinalStartDisagreesWithAuthenticatedStartNote_When_FinalSweepRuns_Then_AuthenticatedWindowsSurviveAndOnlyRestartIsRejected_P1_4567914700()
+    [Theory]
+    [InlineData(0, "copies_truncated")]
+    [InlineData(0, "resend_lost")]
+    [InlineData(1, "copies_truncated")]
+    [InlineData(1, "resend_lost")]
+    public async Task Given_NonfinalMemberFlagDisagrees_When_FinalSweepRuns_Then_OnlyRestartIsRejected_P1_4567914709(int arm, string field)
+    {
+        using var run = await B10FinalSweepHarness.CreateAsync(kafka);
+        run.RewriteA3(3, root => root["data"]!["arms"]![arm]!["members"]![0]![field] = true);
+        Assert.Equal(0, await run.RunAsync());
+        AssertArmDisagreement(run.Repeat(3));
+    }
+
+    [Theory]
+    [InlineData(0, "witness_original_offset")]
+    [InlineData(0, "witness_resend_offset")]
+    [InlineData(0, "witness_original_attempt")]
+    [InlineData(1, "witness_original_offset")]
+    [InlineData(1, "witness_resend_offset")]
+    [InlineData(0, "copy_offset")]
+    [InlineData(0, "copy_role")]
+    [InlineData(0, "copy_removed")]
+    [InlineData(1, "copy_instance")]
+    [InlineData(1, "copy_offset")]
+    public async Task Given_NonfinalWitnessOrCopiesDisagree_When_FinalSweepRuns_Then_OnlyRestartIsRejected_P1_4567914709(int arm, string change)
+    {
+        using var run = await B10FinalSweepHarness.CreateAsync(kafka);
+        run.RewriteA3(3, root =>
+        {
+            JsonNode node = root["data"]!["arms"]![arm]!;
+            JsonNode member = node["members"]![0]!;
+            switch (change)
+            {
+                case "witness_original_offset": node["witness"]!["original"]!["offset"] = node["witness"]!["original"]!["offset"]!.GetValue<long>() + 1; break;
+                case "witness_resend_offset": node["witness"]!["resend"]!["offset"] = node["witness"]!["resend"]!["offset"]!.GetValue<long>() - 1; break;
+                case "witness_original_attempt": node["witness"]!["original_attempt_id"] = "other"; break;
+                case "copy_offset": member["copies"]![0]!["offset"] = member["copies"]![0]!["offset"]!.GetValue<long>() + 1; break;
+                case "copy_role": member["copies"]![1]!["role"] = "other"; break;
+                case "copy_removed": member["copies"]!.AsArray().RemoveAt(1); break;
+                case "copy_instance": member["copies"]![1]!["instance_id"] = "other"; break;
+                default: throw new InvalidOperationException(change);
+            }
+        });
+        Assert.Equal(0, await run.RunAsync());
+        AssertArmDisagreement(run.Repeat(3));
+    }
+
+    [Theory]
+    [InlineData("below")]
+    [InlineData("above")]
+    public async Task Given_NonfinalStartDisagreesWithAuthenticatedStartNote_When_FinalSweepRuns_Then_RejectedObjectContributesNothing_P1_4567914700(string side)
     {
         using var run = await B10FinalSweepHarness.CreateAsync(kafka);
         long previousEnd = JsonNode.Parse(run.Verifier[B10FinalSweepHarness.A3(2)])!["data"]!["end_line"]![0]!["offset"]!.GetValue<long>();
-        run.RewriteA3(3, root => root["data"]!["start_line"]![0]!["offset"] = previousEnd - 1);
+        long start = JsonNode.Parse(run.Verifier[B10FinalSweepHarness.A3(3)])!["data"]!["start_line"]![0]!["offset"]!.GetValue<long>();
+        Assert.Equal(previousEnd, start);
+        run.RewriteA3(3, root =>
+        {
+            root["data"]!["start_line"]![0]!["offset"] = side == "below" ? start - 1 : start + 1;
+            // Everything else the rejected object carries must be ignored, not only its vectors.
+            root["data"]!["timeout"]!["duplicate"] = 1;
+            root["data"]!["eligibility"] = "ineligible";
+            root["data"]!["eligibility_reasons"] = new JsonArray("b10_restart_window_incomplete");
+        });
         Assert.Equal(0, await run.RunAsync());
         Assert.True(run.Data["scan_complete"]!.GetValue<bool>(), run.Data.ToJsonString());
         for (int repeat = 1; repeat <= 5; repeat++) AssertComplete(run.Repeat(repeat));
@@ -608,6 +684,13 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
         Assert.True(Text(item["status"]) == "complete_valid", item.ToJsonString()); Assert.True(item["classification_final"]!.GetValue<bool>());
         Assert.Equal(1, item["timeout"]!["ok"]!.GetValue<long>()); Assert.Empty(item["reasons"]!.AsArray());
         foreach (string field in new[] { "loss", "phantom", "reported_failure", "reorder" }) Assert.Equal(0, item["timeout"]![field]!.GetValue<long>());
+    }
+    private static void AssertArmDisagreement(JsonObject item)
+    {
+        AssertComplete(item);
+        Assert.Equal("ineligible", Text(item["restart"]!["eligibility"]));
+        Assert.Equal(["b10_restart_late_record_unjoined"], Strings(item["restart"]!["eligibility_reasons"]));
+        AssertUnknownSweepCounts(item);
     }
     private static void AssertUnknownSweepCounts(JsonObject item)
     {
