@@ -12,7 +12,7 @@
 - Finding 1 (Testcontainers line numbers in the plan text): no change. It concerns plan text only, the code the plan cites was checked by the check itself, and the implementation does not use the line numbers.
 - Finding 3 (mis-cited dotnet.md rule in plan section 5): no change. It concerns plan text only; the no-retagging constraint comes from the plan's scope list, which this diff meets.
 - Finding 4 (no acceptance command shows the new message for other fixture callers): no change. Those callers reach the check through `LocalKafkaFixture` construction (R2), and the plan's requirements name only the three tests of the issue.
-- Finding 5 (broken link and footer in the pointer comment): no change. It is comment text only; its path and SHA are correct, and an agent cannot control the footer the harness appends.
+- Finding 5 (broken link and footer in the pointer comment): no change. It is comment text only; its path and SHA are correct.
 
 ## Standing fixture rule (plan section 6)
 Existing tests changed: 0.
