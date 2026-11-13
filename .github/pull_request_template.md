@@ -13,6 +13,7 @@
 - Scripted checks run and warning dispositions:
 - Cold review (repo-review; AGENTS.md "Before opening a pull request" rule 8): reviewed revisions, cumulative comprehensive/focused counts, last complete report and final result line:
 - Hosted Codex review and final-head CI (separate from cold review):
+- Timeline record (one block per session from `scripts/timeline/render.sh`; implement-plan "Timeline record"):
 - Models, with effort where visible: authoring session; cold reviewer; Codex:
 
 </details>
