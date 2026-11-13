@@ -6,16 +6,18 @@ cd "$repository_root"
 
 usage() {
     cat <<'USAGE'
-Usage: ./scripts/verify-dotnet.sh [--tier fast|all] [--project <test project name>]...
+Usage: ./scripts/verify-dotnet.sh [--tier fast|sandbox|all] [--project <test project name>]...
 
 With no options the script runs the full gate: every test project, every test.
-  --tier all    Run every test (default).
-  --tier fast   Leave out tests marked with the xUnit trait Tier=Docker, Tier=Slow or Tier=CGroupV2.
-  --project     Run only the named test project, for example Parchwell.Verifier.Tests. Repeatable.
+  --tier all      Run every test (default).
+  --tier fast     Leave out tests marked with the xUnit trait Tier=Docker, Tier=Slow or Tier=CGroupV2.
+  --tier sandbox  Leave out only tests marked with the xUnit trait Tier=CGroupV2, which need the host's
+                  cgroup v2 memory files. The pre-PR local gate of docs/agents/pull-requests.md "Verification gates".
+  --project       Run only the named test project, for example Parchwell.Verifier.Tests. Repeatable.
 Environment:
   PARCHWELL_BUILD_MAX_CPU  Positive integer. Adds -maxcpucount:<n> to restore, build and project
                            evaluation only. Tests keep the machine's real processor count.
-A run with --tier fast or --project prints that it is not the full gate.
+A run with --tier fast, --tier sandbox or --project prints that it is not the full gate.
 Each run writes summary.json and stage-timing.tsv to its results directory.
 USAGE
 }
@@ -56,8 +58,9 @@ done
 case "$tier" in
     all) tier_args=() ;;
     fast) tier_args=(--filter-not-trait "Tier=Docker" "Tier=Slow" "Tier=CGroupV2") ;;
+    sandbox) tier_args=(--filter-not-trait "Tier=CGroupV2") ;;
     *)
-        echo "Unknown tier: $tier (expected fast or all)." >&2
+        echo "Unknown tier: $tier (expected all, fast or sandbox)." >&2
         exit 2
         ;;
 esac
@@ -322,8 +325,8 @@ run_tests() {
         --minimum-expected-tests 1 --results-directory "$results" -- \
         ${tier_args[@]+"${tier_args[@]}"} \
         --report-xunit-xml --report-xunit-xml-filename results.xml || test_status=$?
-    # The spike evidence comes from the Docker spike test, which the fast tier leaves out.
-    if [[ "$name" == "Parchwell.Kafka.Tests" && "$tier" == all ]]; then
+    # The spike evidence comes from the Docker spike test, which only the fast tier leaves out.
+    if [[ "$name" == "Parchwell.Kafka.Tests" && "$tier" != fast ]]; then
         dotnet msbuild scripts/dotnet-verification.proj -t:PublishSpikeEvidence \
             "-p:EvidenceDirectory=$PARCHWELL_SPIKE_EVIDENCE_DIRECTORY" -nologo || evidence_status=$?
         unset PARCHWELL_SPIKE_EVIDENCE_DIRECTORY
