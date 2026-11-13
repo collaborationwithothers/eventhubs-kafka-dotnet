@@ -624,6 +624,67 @@ class CleanupWipBranchesTests(unittest.TestCase):
         self.assertIn('deleted: 1\n', report.render())
         self.assertIn('retained_error: 1\n', report.render())
 
+    def test_hidden_bypass_actors_require_reviewed_policy_and_safe_caller(self):
+        for caller, timestamp in ((caller, timestamp) for caller in ('never', 'pull_requests_only')
+                                  for timestamp in ('2026-10-31T18:09:49.042Z', '2026-10-31T18:09:49.042+00:00')):
+            with self.subTest(caller=caller, timestamp=timestamp):
+                ruleset = deepcopy(RULESET)
+                del ruleset['bypass_actors']
+                ruleset['updated_at'] = timestamp
+                ruleset['current_user_can_bypass'] = caller
+                self.repository.set(BACKUP, self.repository.a)
+                report = self.run_cleanup(opener=Opener(ruleset=ruleset))
+                self.assertEqual(report.exit_code, 0)
+                self.assertEqual(self.rows(report)[BACKUP].status, 'deleted')
+                self.assertIsNone(self.repository.ref(BACKUP))
+        baseline = deepcopy(RULESET)
+        del baseline['bypass_actors']
+        baseline['updated_at'] = '2026-10-31T18:09:49.042Z'
+        baseline['current_user_can_bypass'] = 'never'
+        variants = []
+        for field in ('updated_at', 'current_user_can_bypass'):
+            value = deepcopy(baseline)
+            del value[field]
+            variants.append(value)
+        for field, values in (
+                ('updated_at', ('2026-10-31T18:09:49.041Z', '2026-10-31T18:09:49.043Z', None)),
+                ('current_user_can_bypass', ('always', 'exempt', 'unknown', None, [], {})),
+                ('bypass_actors', (None, [{'bypass_mode': 'always'}], [{'bypass_mode': 'exempt'}]))):
+            for invalid in values:
+                value = deepcopy(baseline)
+                value[field] = invalid
+                variants.append(value)
+        for ruleset in variants:
+            with self.subTest(ruleset=ruleset):
+                self.repository.set(BACKUP, self.repository.a)
+                runner, calls = self.recording_runner()
+                report = self.run_cleanup(runner=runner, opener=Opener(ruleset=ruleset))
+                self.assertEqual(report.exit_code, 1)
+                self.assertEqual(self.rows(report)[BACKUP].reason, 'main protection could not be established')
+                self.assertEqual(self.repository.ref(BACKUP), self.repository.a)
+                self.assert_no_push(calls)
+                self.assertTrue(report.diagnostics)
+
+    def test_reviewed_policy_is_rechecked_before_deletion(self):
+        self.repository.set(BACKUP, self.repository.a)
+        def respond(req, timeout, index):
+            if req.full_url == CLEANUP.RULES_URL:
+                value = RULES
+            else:
+                value = deepcopy(RULESET)
+                del value['bypass_actors']
+                value['current_user_can_bypass'] = 'never'
+                value['updated_at'] = ('2026-10-31T18:09:49.042Z' if index == 1
+                                       else '2026-10-31T18:09:49.043Z')
+            return Response(req.full_url, json.dumps(value).encode())
+        runner, calls = self.recording_runner()
+        report = self.run_cleanup(runner=runner, opener=Opener(respond=respond))
+        self.assertEqual(report.exit_code, 1)
+        self.assertEqual(self.repository.ref(BACKUP), self.repository.a)
+        self.assert_no_push(calls)
+        self.assertIn('ruleset: bypass list is hidden and reviewed policy or caller status does not match',
+                      report.diagnostics)
+
     def test_workflow_contract_and_mirror(self):
         workflow = ROOT / '.github/workflows/cleanup-wip-branches.yml'
         self.assertEqual(workflow.read_bytes(), (ROOT / 'docs/operations/workflows/cleanup-wip-branches.yml.txt').read_bytes())

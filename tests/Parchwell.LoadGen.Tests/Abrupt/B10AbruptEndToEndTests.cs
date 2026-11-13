@@ -18,6 +18,7 @@ namespace Parchwell.LoadGen.Tests.Abrupt;
 #pragma warning disable CA1707 // Binding engineering standards require Given_When_Then names.
 
 [Trait("Tier", "Docker")]
+[Trait("Tier", "CGroupV2")]
 public sealed class B10AbruptEndToEndTests(ITestOutputHelper output)
 {
     [Fact]
