@@ -86,6 +86,25 @@ public sealed class B10ScientificThreeJobVerifyTests(B10AbruptVerifyKafkaFixture
     }
 
     [Theory]
+    [InlineData("journal.jsonl")]
+    [InlineData("registration.json")]
+    public async Task Given_SuccessorRegistrationReusesEarlierIdentityAndFirstEvidenceIsInvalid_When_Verified_Then_BothIndependentChecksFail(string firstFile)
+    {
+        await kafka.ResetAsync(); using var run = NewRun();
+        RegisterEarlier(run, 1, Run + "-second");
+        run.Ledger[$"{Run}/C1/r3/b10-abrupt/{Run}-first/{firstFile}"] = Encoding.UTF8.GetBytes("{}\n");
+        Assert.Equal(0, await run.RunAsync());
+        Assert.Equal(["b10_abrupt_verify_first_evidence_invalid", "b10_abrupt_verify_earlier_repeat_unavailable"], Strings(run.Data["problems"]!));
+        string[] expectedReasons = firstFile == "registration.json"
+            ? ["b10_restart_first_evidence_unavailable", "b10_restart_identity_unauthenticated"]
+            : ["b10_restart_identity_unauthenticated"];
+        Assert.Equal(expectedReasons, Strings(run.Data["eligibility_reasons"]!));
+        Assert.True(run.Data["window_complete"]!.GetValue<bool>());
+        Assert.Null(run.Data["earlier_repeat_records"]);
+        Assert.NotNull(run.Data["timeout"]); Assert.Null(run.Data["arms"]);
+    }
+
+    [Theory]
     [InlineData(1)]
     [InlineData(3)]
     public async Task Given_UndrainedRepeat_When_Verified_Then_EarlierCheckIsNotEvaluated(int repeat)

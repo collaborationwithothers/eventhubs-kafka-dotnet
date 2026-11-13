@@ -105,6 +105,13 @@ internal sealed class B10AbruptVerifyHandler(IOptions<VerifierHostOptions> confi
             {
                 try
                 {
+                    if (scientific)
+                    {
+                        var registration = await reader.ReadScientificRegistrationAsync(prefix, pod, cancellationToken).ConfigureAwait(false);
+                        registeredAbruptInstances.Add(pod);
+                        if (registration.Predecessor is null) candidates.Add((pod, registration.Uid));
+                        continue;
+                    }
                     string? uid = await reader.ReadRegistrationAsync(prefix, pod, null, cancellationToken).ConfigureAwait(false);
                     candidates.Add((pod, uid!));
                     registeredAbruptInstances.Add(pod);

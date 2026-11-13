@@ -47,6 +47,14 @@ internal sealed class AbruptEvidenceReader(VerifierHostOptions options,
         return Text(registration.GetProperty("identity"), "pod_uid");
     }
 
+    internal async Task<(string Uid, string? Predecessor)> ReadScientificRegistrationAsync(string prefix, string pod, CancellationToken ct)
+    {
+        byte[] bytes = await RequiredAsync(prefix + pod + "/registration.json", 65536, ct).ConfigureAwait(false);
+        string? predecessor = NullableText(Parse(bytes).GetProperty("identity"), "predecessor_instance_id");
+        JsonElement registration = Envelope(bytes, "registration", options, pod, predecessor);
+        return (Text(registration.GetProperty("identity"), "pod_uid"), predecessor);
+    }
+
     internal async Task<AbruptFirstEvidence> ReadFirstAsync(string prefix, string pod, string uid,
         IReadOnlyList<string> names, CancellationToken ct)
     {
