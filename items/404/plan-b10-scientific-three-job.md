@@ -1,10 +1,16 @@
 # B10 scientific three-Job path contract-grade plan
 
-Revision 3. Issue 404, pull request short name `B10 scientific three-Job path`. Status: not approved. Implementing tool: Codex ([6846521676](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6846521676) point 1). Hari merges, because the change touches `Parchwell.Verifier*/` (`.github/CODEOWNERS`).
+Revision 4. Issue 404, pull request short name `B10 scientific three-Job path`. Status: not approved. Implementing tool: Codex ([6846521676](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6846521676) point 1). Hari merges, because the change touches `Parchwell.Verifier*/` (`.github/CODEOWNERS`).
 
 This pull request moves the scientific B10 path that `scenario.yml` runs to ADR-021's Job shape: one ordinary producer Job per C0 repeat, and three sequential producer Jobs per C1 repeat. Each scientific repeat then publishes the per-repeat evidence that the later final-judgement pull request reads. It authorizes no dispatch, verdict, result or expected outcome, and leaves the phase sweep and the five-repeat judgement to that later pull request.
 
 ## 0. Changes
+
+Since Revision 3 (`86e39b00`), under decision [6846854445](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6846854445) and plan check [6846805964](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6846805964):
+- B2 (decision point 1): C0 `verify` keeps `main`'s nonfinal B10 shape; 2.2 adds one-producer C0 branches in `PhaseWireCodec.cs`, `VerifierResultCodec.cs` and `B10ProducerObservationsCodec.cs`, C1 branches unchanged (3.8, R14, T23, T27, T32).
+- Q10 (decision point 2): option A, the C0 gap `b10_c0_final_judgement_unavailable`. Section 11 now states `None`.
+- B1: 3.2 states that a phase stop wins over a repeat end, and rows 1 and 3 name every trial path that sets `safety_stop` (T9g, T9h).
+- P2-B and P2-C folded into T2 and T28. P2-A stays apply in implementation (6846854445).
 
 Since Revision 2 (`0fb9caa4`), under decision [6846521676](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6846521676) and plan check [6846375050](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6846375050):
 - Q1 to Q9 are decided (6846521676 points 1 to 9). Their text moves out of section 11 into the sections they govern.
@@ -37,8 +43,9 @@ Authority, in creation order, under docs/agents/factory.md "Item lifecycle" step
 - [6845612916](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6845612916): this plan, item (a). Point 2 in sections 2, 9 and 3.6/3.8's contract with item (b); point 3 in the plan-branch commit; point 4 in this file's status line.
 - [6846521676](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6846521676): answers to Q1 to Q9, and the Revision 3 instructions.
 - [6846551008](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6846551008): answers to item (b)'s questions. Point 9 (item (b)'s Q9 option B, as item (b)'s plan at `51a34df2` line 371 states it: "ask (a) to add a create-only `WorkerReceipt` for the scientific `b10-abrupt-verify` Job") binds 3.6. Point 2 confirms C0 here. Its sign-in scope widening applies to every verifier mode that opens a Kafka session, in the sign-in fix's own pull request.
+- [6846854445](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6846854445): check B2 option A (C0 nonfinal shape, three codec branches) and Q10 option A.
 
-Catch-up at this revision's refresh: 327 comments on 4 pages, issue `updated_at` 2026-11-13T07:05:56Z. Read in full: every comment after 6830544567, with three exceptions read in part: item (b)'s plan checks 6846147228 and 6846466122, of which only the lines naming item (a) or C0 were read, selected by script; and this plan's check 6846375050, of which the findings and the plan-check answers were read but not its claims table.
+Catch-up at this revision's refresh: 330 comments on 4 pages; added since Revision 3: 6846805964 (this plan's check, read in full), 6846818616 (handoff) and 6846854445 (decision), each read in full. Read in full: every comment after 6830544567, with three exceptions read in part: item (b)'s plan checks 6846147228 and 6846466122, of which only the lines naming item (a) or C0 were read, selected by script; and this plan's check 6846375050, of which the findings and the plan-check answers were read but not its claims table.
 
 Reading limit: the prompt that started the first session asked for every `## Decision` and `## Approval` on the issue to be read in full (170 at Revision 1, 335783 bytes by script). This session read the new ones, those selected by script for this plan's terms (listed in Revision 1, section 1) and, for this revision, 6827265635 and 6827960705, in full; for the rest it relied on `items/404/state.md`. Parent items 347 and 348 were not re-read; the Revision 1 and 2 checks found no new decision on them.
 
@@ -63,7 +70,7 @@ The plan freezes files and contracts, not lines (6845612916 point 2). Line numbe
 1. `infra/scripts/phase/phase.py`, `infra/scripts/phase/b10_abrupt.py`, and tests under `infra/scripts/phase/tests/`. The trial's behaviour and outputs stay as on `main` (I1).
 2. `src/Parchwell.LoadGen/Run/Abrupt/**`, for 3.4 only. `tests/Parchwell.LoadGen.Tests/Abrupt/**` and `tests/Parchwell.LoadGen.Tests/Host/RestartJobIdentityTests.cs`.
 3. `charts/parchwell/templates/jobs.yaml`, `templates/_helpers.tpl`, `values.schema.json`, `charts/parchwell/tests/**`, for 3.5.
-4. Verifier, for 3.1, 3.6 and 3.8: `VerifierHostOptions.cs`, `VerifierHostOptionsValidator.cs`, `Common/Window/StartLineNoteCodec.cs`, `Common/Phase/PhaseWireCodec.cs` (the receipt mode of 3.6 only), `VerifyRun/Abrupt/**`, `VerifyRun/VerifyRunHandler.cs`, `VerifyRun/Judgement/B10IntakeChecks.cs`, `VerifyRun/Input/B10PhaseRegistrationReader.cs`, `VerifyRun/Publication/PublicationAcceptance.cs`, and new files under `VerifyRun/`. The last three are C5 `mutate` targets whose freeze 6846521676 point 2 lifts.
+4. Verifier, for 3.1, 3.6 and 3.8: `VerifierHostOptions.cs`, `VerifierHostOptionsValidator.cs`, `Common/Window/StartLineNoteCodec.cs`, `Common/Phase/PhaseWireCodec.cs` (the receipt mode of 3.6 and the one-producer C0 intake branch of 3.8), `Common/Results/VerifierResultCodec.cs` and `Common/Results/B10ProducerObservationsCodec.cs` (the one-producer C0 branch of 3.8 only; 6846854445 point 1), `VerifyRun/Abrupt/**`, `VerifyRun/VerifyRunHandler.cs`, `VerifyRun/Judgement/B10IntakeChecks.cs`, `VerifyRun/Input/B10PhaseRegistrationReader.cs`, `VerifyRun/Publication/PublicationAcceptance.cs`, and new files under `VerifyRun/`. The last three are C5 `mutate` targets whose freeze 6846521676 point 2 lifts.
 5. Verifier tests: any file under `tests/Parchwell.Verifier.Tests/` that 2.4 lists, `Support/HostEvidenceBuilder.cs` and `Support/B10SweepFixture.cs` for the legacy-fixture rule, and new files prefixed `B10ScientificThreeJob` or `B10OneJobC0`.
 6. `docs/operations/b10-abrupt-contract.md` (owner of 3.4 to 3.6), `docs/operations/verifier-contract.md` (owner of 3.8), `docs/operations/b10-workflow.md`, `docs/operations/loadgen-contract.md` and `docs/operations/chart-contract.md`, only where they state the rules this plan changes.
 7. `items/404/state.md` and a new receipt `items/404/b10-scientific-three-job-receipt.md`.
@@ -118,18 +125,19 @@ C1, for N = 1..5:
 
 | Order | Job | Runs when | Ends (trial mapping, `b10_abrupt.py` at `675f8372`) |
 |---|---|---|---|
-| 1 | `R-c1-rN-start-line` | always, unless the phase has stopped | Outcome not `complete`: `b10_abrupt_publication_failed` at `metadata`, repeat end. Then the metadata check of 3.3 |
+| 1 | `R-c1-rN-start-line` | always, unless the phase has stopped | `run_mode` sets `safety_stop` after `unknown` or `apply_failed` when it cannot confirm no pod remains (`phase.py` lines 739-756): phase stop. Otherwise outcome not `complete`: `b10_abrupt_publication_failed` at `metadata`, repeat end. Then the metadata check of 3.3 |
 | 2 | `R-c1-rN-loadgen` | metadata accepted | `render_failed`: `b10_abrupt_configuration_invalid` at `timeout_job`, repeat end, `safety_stop` unchanged (6787982173 point 2). `unknown`, `apply_failed`, or a failed pod read (which makes the outcome `unknown`, lines 392-416): `b10_abrupt_timeout_job_unknown`, `safety_stop` true, phase stop. `complete` or `failed` with the pod check passed: continue |
-| 3 | `R-c1-rN-loadgen-restart` | timeout step continued | The first-termination pod read always runs (line 936). It fails after a render failure, `apply_failed` or a failed read: `b10_abrupt_first_termination_unknown`, `safety_stop` true, phase stop (lines 431, 458). Outcome not `complete` after a passed read: `b10_abrupt_publication_failed` at `first_termination` (lines 935-938), repeat end. Rejected first publication (including `successor_permitted` not true, no-kill end, empty kill set; line 717): its failure name at `first_publication`, repeat end, no successor, no verify |
+| 3 | `R-c1-rN-loadgen-restart` | timeout step continued | Outcome `unknown` or `apply_failed` sets `safety_stop` in `job()` (lines 387-388): phase stop, whatever the pod read shows. A first-publication identity mismatch records `b10_abrupt_first_termination_unknown` with `safety_stop` (lines 704-705), and `record_failure` sets `safety_stop` for every `b10_abrupt_first_termination_unknown` (lines 248-249): phase stop. The first-termination pod read always runs (line 936). It fails after a render failure, `apply_failed` or a failed read: `b10_abrupt_first_termination_unknown`, `safety_stop` true, phase stop (lines 431, 458). Outcome not `complete` after a passed read: `b10_abrupt_publication_failed` at `first_termination` (lines 935-938), repeat end. Rejected first publication (including `successor_permitted` not true, no-kill end, empty kill set; line 717): its failure name at `first_publication`, repeat end, no successor, no verify |
 | 4 | `R-c1-rN-loadgen-successor` | first publication accepted | Late release: `b10_abrupt_successor_late`. Render failure or outcome not `complete`: `b10_abrupt_publication_ambiguous`, or `b10_abrupt_deadline_exhausted` when wait exits 124, at `successor_job` (lines 950-952); `unknown` or `apply_failed` also sets `safety_stop` (lines 386-388). Then the successor checks of `collect(files, observation)` (lines 973-1016), run here inside `run-repeats` for any applied successor: a failed pod read gives `b10_abrupt_first_termination_unknown` with `safety_stop` true; other failures their trial names at `successor_publication` or `successor_receipt` |
 | 5 | `R-c1-rN-b10-abrupt-verify` | first publication accepted, whatever row 4 recorded, including `safety_stop` set in row 4 (6816117386 point 3; contract "Failure names and collection") | Outcome not `complete`: `b10_abrupt_verify_failed` at `verify_job`, `safety_stop` unchanged. Then download of the 3.6 object; failure `b10_abrupt_verify_failed` at `verify_collection` |
 
+- Precedence: a phase stop wins over a repeat end. Whenever a row's event sets `safety_stop`, the phase-stop rule applies, even if the same row also names a repeat-end failure.
 - Phase stop: when `safety_stop` is true, no Job of a later repeat is applied, and every later slot is recorded with reason `safety_stop`. Within the current repeat only row 5 may still run, and only under its own condition.
 - Repeat end: the remaining rows of repeat N are not applied, and repeat N+1 starts at row 1.
 - After each applied Job, `collect-job` copies its folder as the trial does; collection exit codes map as the trial maps them (contract "Failure names and collection") and end nothing.
 - At most one producer pod runs at a time across repeats: rows 2 to 4 each confirm pod termination before the next producer Job renders, or stop the phase.
 - All repeats of a phase share the existing 18000 s orchestration deadline (`phase.py` line 28), unchanged with the 360-minute job timeout (6846521676 point 6). Exhaustion records later slots as `orchestration_deadline`.
-- After repeat 5, neither configuration runs `b10-sweep-line`, `b10-sweep` or `judge`. `judge` and `candidate` record `b10_c1_final_judgement_unavailable` for C1 (6846521676 point 7) and, pending Q10, `b10_c0_final_judgement_unavailable` for C0; each writes no candidate, keeps `full_allowed` false and exits 1.
+- After repeat 5, neither configuration runs `b10-sweep-line`, `b10-sweep` or `judge`. `judge` and `candidate` record `b10_c1_final_judgement_unavailable` for C1 (6846521676 point 7) and, `b10_c0_final_judgement_unavailable` for C0 (6846854445 point 2); each writes no candidate, keeps `full_allowed` false and exits 1.
 - `run-repeats` exits 1 when any record's outcome is in `BAD_OUTCOMES` (as on `main`) or any failure name was recorded; otherwise 0.
 - The scientific path never sets `b10_abrupt_diagnostic`, `purpose` `diagnostic_trial` or `run_kind` `smoke` in `phase.json`, so `reject_b10_abrupt_science` is unchanged and passes it.
 
@@ -172,7 +180,7 @@ Mode `b10-abrupt-verify` is unchanged for pattern T. For pattern S:
 ### 3.7 New literals
 
 - Verifier problem 10: `b10_abrupt_verify_earlier_repeat_unavailable`.
-- Phase gaps: `b10_c1_final_judgement_unavailable`; `b10_c0_final_judgement_unavailable` (Q10).
+- Phase gaps: `b10_c1_final_judgement_unavailable`; `b10_c0_final_judgement_unavailable` (6846854445 point 2).
 - No other new literal.
 
 ### 3.8 Scientific C0 verify (external contract with item (b))
@@ -182,7 +190,8 @@ Mode `b10-abrupt-verify` is unchanged for pattern T. For pattern S:
 - `B10PhaseRegistrationReader` for C0: exactly one registration per earlier repeat, bound to `[JobName]`. C1 unchanged.
 - `PublicationAcceptance` for B10 C0: start line `expected_job_names` exactly `[R-c0-rN-loadgen]`, manifest `Restart` absent, failure `start_line_invalid` or `publication_restart_role_mismatch` as on `main`. C1 unchanged.
 - The one instance is judged with per-instance checks 1 to 27 of `docs/operations/verifier-contract.md` as `RunJudgement.Evaluate` applies them to a B10 instance, ADR-021 "Permitted conditions" through the unchanged `B10RepeatChecks.IsPermittedTimeout` and `IsPermittedGuardMarker`, and the ADR-021 "Retries" rule as `b10-abrupt-contract.md` check 18 states it. `B10RepeatChecks.Evaluate` is not called for C0 and is unchanged.
-- Outputs: `R/C0/rN/result.json` and `R/C0/rN/verify-completion.json` in their `main` formats, with the B10 intake holding exactly one producer. Item (b)'s F3 reads them.
+- Outputs keep `main`'s nonfinal B10 shape (6846854445 point 1): `R/C0/rN/result.json` with status `incomplete` or `invalid`, never `complete_valid`, `classification_final` false and `b10_window_checks_complete` true when the window checks passed; `R/C0/rN/verify-completion.json` with `handler_exit_code` 1, `publication_acceptance` null and B10 intake present; the handler exits 1. The B10 intake holds exactly one producer, `R-c0-rN-loadgen` with null predecessor.
+- Codec branches (6846854445 point 1). `PhaseWireCodec.ValidateB10Intake` (lines 244-256), `VerifierResultCodec` (lines 213-215, 250-251) and `B10ProducerObservationsCodec.Validate` (line 49) accept, for configuration C0 only, exactly one producer (and one observation) bound to `R-c0-rN-loadgen` with null predecessor. For C1 they keep `main`'s two-producer rule unchanged. Any other count fails as a wrong count fails on `main`. Item (b)'s F3 reads these outputs.
 
 ## 4. Requirements
 
@@ -196,10 +205,11 @@ Mode `b10-abrupt-verify` is unchanged for pattern T. For pattern S:
 - R8. WHEN the verifier runs for pattern S and repeat N with valid evidence, THEN it writes 3.6's object with `problems` [], `eligibility` `pending_sweep`, identity `repeat` N and `purpose` `scientific`.
 - R9. WHEN repeat N's window holds a record from an earlier repeat's instance, THEN it is held out and counted in `earlier_repeat_records`, with no problem 8 for it.
 - R10. WHEN an earlier listing fails or is incomplete, a listed registration is unreadable or invalid, or an instance ID repeats, THEN problem 10 and E3, and `earlier_repeat_records` null; WHEN earlier listings are empty, THEN no problem.
-- R11. WHEN a frozen legacy reader (`B10SweepHandler`, `JudgeHandler`, `PhaseWireCodec`, `VerifierResultCodec`, `B10SweepEvidenceCodec`) reads a start line this pull request writes for B10, or a 3.6 object, THEN it rejects it.
+- R11. WHEN a legacy reader (the frozen `B10SweepHandler`, `JudgeHandler` and `B10SweepEvidenceCodec`, or `PhaseWireCodec` and `VerifierResultCodec` outside their 3.6 and 3.8 branches) reads a start line this pull request writes for B10, or a 3.6 object, THEN it rejects it.
 - R12. WHEN the trial runs (pattern T), THEN its Jobs, names, prefixes, envelopes, output path and members are as on `main`.
 - R13. WHEN `run-repeats` runs B10 C0 science, THEN for each N it applies `start-line`, `loadgen`, `verify` and never `loadgen2`.
-- R14. WHEN C0 `verify` finds exactly one registration bound to `R-c0-rN-loadgen`, THEN it judges it under 3.8 and writes `result.json` and `verify-completion.json` with one producer; WHEN it finds zero or two, THEN `b10_registration_count_invalid`.
+- R14. WHEN C0 `verify` finds exactly one registration bound to `R-c0-rN-loadgen`, THEN it judges it under 3.8 and writes the nonfinal `result.json` and `verify-completion.json` of 3.8 with one producer and exits 1; WHEN it finds zero or two, THEN `b10_registration_count_invalid`.
+- R19. WHEN the three codecs of 3.8 read or write a B10 C0 intake with other than one producer, or a B10 C1 intake with other than two, THEN they fail; WHEN `VerifierResultCodec` writes or reads a B10 result with status `complete_valid`, THEN it fails, as on `main`.
 - R15. WHEN a C0 instance has a retry whose latest earlier attempt with the same key and sequence lacks a permitted timeout row, THEN the repeat is not complete-valid, as check 18 fails for the C1 timeout instance.
 - R16. WHEN `PublicationAcceptance` reads a B10 C0 publication whose start line carries other than `[R-c0-rN-loadgen]`, THEN `start_line_invalid`.
 - R17. WHEN `B10PhaseRegistrationReader` reads an earlier C0 repeat with other than one registration, THEN it fails as it fails for a wrong count on `main`.
@@ -218,7 +228,7 @@ Mode `b10-abrupt-verify` is unchanged for pattern T. For pattern S:
 | Test | Inputs | Expected |
 |---|---|---|
 | T1 names | `ExpectedProducerJobNames`, B10, repeat 5, run IDs `b10-1-1`, `b10d-1-1`, `run-1`; C1 and C0 | C1: `[x-c1-r5-loadgen, x-c1-r5-loadgen-restart, x-c1-r5-loadgen-successor]`; C0: `[x-c0-r5-loadgen]` |
-| T2 codec | B10 notes: `b10d-1-1` with 1, 2, 3 names; `b10-1-1` with 0, 1, 2, 3, 4 names | `b10d`: only 3 writes; `b10-1-1`: 1, 2 and 3 write, 0 and 4 throw `ArgumentException` |
+| T2 codec | B10 notes: `b10d-1-1` with 1, 2, 3 names; `b10-1-1` with 0, 1, 2, 3, 4 names; `b10-1-1` with `["b10-1-1-c1-r1-loadgen", "b10-1-1-c1-r1-loadgen"]` | `b10d`: only 3 writes; `b10-1-1`: 1, 2 and 3 write, 0 and 4 throw `ArgumentException`; the duplicate pair throws `ArgumentException` |
 | T3 LoadGen scientific | `Purpose` `scientific`, run ID `b10-1-1`, `Repeat` "1", "3", "5" | valid; repeat 3: Job `b10-1-1-c1-r3-loadgen-restart`, key `B10/b10-1-1/C1/3/cross_restart`, prefix `b10-1-1/C1/r3/b10-abrupt/`, identity `repeat` 3 |
 | T4 LoadGen rejects | `scientific` with run ID `b10d-1-1`, `synthetic`; `Repeat` "0", "6", "03"; `diagnostic_trial` with `Repeat` "2" | each `DiagnosticIdentity` |
 | T5 envelope purpose | scientific journal to a trial reader; trial journal to a scientific reader; successor configured `scientific` reading a journal with identity `repeat` 2 at `Repeat` 3; `diagnostic_trial` with run ID `synthetic` and with `b10-1-1` | first three rejected: `malformed_frame` in LoadGen, `b10_abrupt_publication_failed` in the phase, problem 2 in the verifier; the last two accepted by LoadGen as on `main` |
@@ -230,6 +240,8 @@ Mode `b10-abrupt-verify` is unchanged for pattern T. For pattern S:
 | T9c pod reads | as T8, three subcases: repeat 2 timeout pod read fails; restart pod read fails; successor pod read fails | timeout: `b10_abrupt_timeout_job_unknown`, `safety_stop` true, no restart Job; restart: `b10_abrupt_first_termination_unknown`, `safety_stop` true, no successor or verify; successor: `b10_abrupt_first_termination_unknown`, `safety_stop` true, verify still runs; in each, repeats 3 to 5 not applied |
 | T9d successor check | as T8, repeat 2 successor `completion.json` with `cleanup_completed` false | `b10_abrupt_publication_failed` at `successor_receipt`; verify runs; repeat 3 runs |
 | T9e successor unknown | as T8, repeat 2 successor wait outcome `unknown` | `safety_stop` true; `b10_abrupt_publication_ambiguous` at `successor_job`; repeat 2 verify applied; repeats 3 to 5 not applied |
+| T9g restart unknown | as T8, repeat 2 restart wait outcome `unknown`, pod read passes | `safety_stop` true; no successor or verify for repeat 2; repeats 3 to 5 not applied, reason `safety_stop` |
+| T9h identity mismatch | as T8, repeat 2 first publication with a wrong `pod_uid` in `termination.json` identity | `b10_abrupt_first_termination_unknown`, `safety_stop` true; no successor or verify; repeats 3 to 5 not applied |
 | T9f timeout render failure | as T8, repeat 2 timeout render fails | `b10_abrupt_configuration_invalid` at `timeout_job`, `safety_stop` false; repeat 3 starts |
 | T10 metadata | repeat 2 start line with `[loadgen, loadgen2]` names; separately, repeat 2 `start-line.json` missing | `b10_abrupt_publication_failed` at `metadata`; `b10_abrupt_publication_ambiguous` at `metadata`; no producer Job for repeat 2; repeat 3 runs |
 | T12 lifecycle | T8 run; T22 run | C1: `producers` 15, `verifiers` 5, `gaps` []; C0: `producers` 5, `verifiers` 5; each entry with the 7 members of 3.2 |
@@ -244,13 +256,14 @@ Mode `b10-abrupt-verify` is unchanged for pattern T. For pattern S:
 | T20 trial unchanged | existing trial tests in `test_b10_abrupt.py`, `test_b10_abrupt_chart.py`, `B10AbruptVerify*`, `B10AbruptOptionsTests` | pass with their existing expected values |
 | T21 science not diagnostic | scientific `phase.json` after T8 | `reject_b10_abrupt_science` passes; no `b10_abrupt_diagnostic` key |
 | T22 C0 order | fake kubectl/helm, C0 science, every Job complete | 15 records: for N = 1..5 start-line, loadgen, verify; no `loadgen2`; exit 0 |
-| T23 C0 verify valid | host test, B10 C0 repeat 2, one registration `run-1-c0-r2-loadgen`, start line `[run-1-c0-r2-loadgen]` | exit 0; `result.json` complete-valid; `verify-completion.json` intake with 1 producer |
+| T23 C0 verify valid | host test, B10 C0 repeat 2, one registration `run-1-c0-r2-loadgen`, start line `[run-1-c0-r2-loadgen]`, valid evidence | handler exit 1; `verify-completion.json` `handler_exit_code` 1, intake with 1 producer; `result.json` status `incomplete`, `classification_final` false, `b10_window_checks_complete` true |
 | T24 C0 count | as T23 with 0 and with 2 registrations | exit 1, `b10_registration_count_invalid` |
 | T25 C0 start line | as T23 with start line `[run-1-c0-r2-loadgen, run-1-c0-r2-loadgen2]` | `start_line_invalid` |
 | T26 C0 restart manifest | as T23 with a manifest carrying `Restart` | `publication_restart_role_mismatch` |
-| T27 C0 retry rule | as T23: attempts a1 (k1, seq 0) callback delivered false, -192, persistence 1, then a2 (k1, seq 0) delivered; and the same with a1 delivered false, error -1 | first complete-valid; second not complete-valid |
-| T28 C0 earlier repeat | as T23 at repeat 3, repeat 2 producer prefix with 2 registrations | the reader's wrong-count failure |
+| T27 C0 retry rule | as T23: attempts a1 (k1, seq 0) callback delivered false, -192, persistence 1, then a2 (k1, seq 0) delivered; and the same with a1 delivered false, error -1 | first: T23's eligible shape; second: `result.json` status `invalid` |
+| T28 C0 earlier repeat | as T23 at repeat 3, repeat 2 producer prefix with 2 registrations | `InvalidOperationException` with message `b10_registration_count_invalid` (`B10PhaseRegistrationReader.cs` line 42 on `main`) |
 | T29 C1 legacy branch | `B10IntakeChecks.BindRegistrations` and `PublicationAcceptance` with C1 two-producer inputs from `main`'s tests | unchanged results |
+| T32 C0 codecs | `ValidateB10Intake`, `VerifierResultCodec` and `B10ProducerObservationsCodec` with: C0 one producer; C0 two producers; C1 one producer; C1 two producers as on `main`; a B10 C0 result with status `complete_valid` | C0 one accepted; C0 two rejected; C1 one rejected; C1 two accepted; `complete_valid` rejected |
 | T31 C1 receipt | T14 run; T14 with a pre-existing receipt; trial run as T20 | receipt with the 3.6 members, `artifacts[0]` length and SHA-256 equal to the object's bytes, exit 0; exit nonzero and the object unchanged; no receipt object |
 | T30 legacy fixtures | the tests 2.4 puts under the legacy-fixture rule | pass with every existing assertion |
 
@@ -275,8 +288,8 @@ Status of all of these: accepted by Hari for planning only, and not for any run 
 
 | # | Command | Evidence |
 |---|---|---|
-| A1 | `./scripts/verify-dotnet.sh` | `Verification passed.`; reports include T1 to T5, T14 to T20, T23 to T31 |
-| A2 | `python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'` and the same for `infra/scripts/phase/tests` | `OK`; includes T8 to T13, T9b to T9f, T21, T22 |
+| A1 | `./scripts/verify-dotnet.sh` | `Verification passed.`; reports include T1 to T5, T14 to T20, T23 to T32 |
+| A2 | `python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'` and the same for `infra/scripts/phase/tests` | `OK`; includes T8 to T13, T9b to T9h, T21, T22 |
 | A3 | `bash infra/scripts/lifecycle/check-offline.sh` | exit 0; includes T6, T7 |
 | A4 | `npm run check:docs` | each warning fixed or explained (docs/agents/pull-requests.md rule 8) |
 | A5 | `git diff --name-only origin/main...HEAD` | a subset of 2.2, checked by script against 2.3 |
@@ -308,9 +321,9 @@ External behaviour (plan-pr "Plan rules" rule 1): from Kubernetes v1.31 the Job 
 
 ## 11. Open questions for Hari
 
-- Q10. C0 `judge` and `candidate` before item (b) merges. With one C0 Job, the frozen legacy sweep and judge reject C0 evidence. Options: A, the same rule as decided for C1 (6846521676 point 7) with literal `b10_c0_final_judgement_unavailable`, and no C0 `b10-sweep-line`, `b10-sweep` or `judge` Job (as 3.2 pins); B, keep running the legacy C0 sweep-line, sweep and judge, which then fail on the one-producer evidence. Recommendation: A, a named gap instead of an incidental rejection. Counterargument: none beyond one more literal.
+None.
 
-Decided, no longer open: Q1 to Q9 (6846521676 points 1 to 9).
+Decided, no longer open: Q1 to Q9 (6846521676 points 1 to 9); check B2 and Q10 (6846854445 points 1 and 2).
 
 ## 12. Stop rule
 
