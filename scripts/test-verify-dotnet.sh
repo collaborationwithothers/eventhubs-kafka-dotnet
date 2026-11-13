@@ -107,6 +107,7 @@ run_case default --
 [[ $status -eq 0 ]] || fail "default run exited $status"
 [[ $tested -eq 6 ]] || fail "default run invoked $tested test projects, expected 6"
 [[ "$log" != *filter-not-trait* ]] || fail "default run must not filter tests"
+[[ $(grep -c 'msbuild scripts/dotnet-verification.proj -t:PublishSpikeEvidence' "$STUB_LOG") -eq 1 ]] || fail "tier all must publish the spike evidence once"
 [[ "$output" == *"Verification passed. Per-project reports"* ]] || fail "default run must print the full-gate pass line"
 awk -F '\t' -v pattern="^$timestamp\$" 'NF != 4 || $3 !~ pattern || $4 !~ pattern { bad = 1 } END { exit bad }' "$results_dir/stage-timing.tsv" \
     || fail "every stage-timing.tsv line must have 4 tab fields with UTC start and end"
@@ -132,6 +133,28 @@ run_case fast -- --tier fast
 [[ "$output" == *"Partial verification passed"* && "$output" != *"Verification passed. Per-project reports"* ]] \
     || fail "fast tier must say it is not the full gate"
 check_summary "fast tier" '.outcome == "partial_passed" and .tier == "fast" and .projects == null'
+[[ $(grep -c 'msbuild scripts/dotnet-verification.proj -t:PublishSpikeEvidence' "$STUB_LOG") -eq 0 ]] || fail "fast tier must not publish the spike evidence"
+
+run_case sandbox -- --tier sandbox
+[[ $status -eq 0 ]] || fail "sandbox tier exited $status"
+[[ $tested -eq 6 ]] || fail "sandbox tier invoked $tested test projects, expected 6"
+[[ $(grep '^TEST ' "$STUB_LOG" | grep -c -- '--filter-not-trait Tier=CGroupV2') -eq 6 ]] \
+    || fail "every sandbox-tier test run must carry --filter-not-trait Tier=CGroupV2"
+[[ "$log" != *Tier=Docker* && "$log" != *Tier=Slow* ]] || fail "sandbox tier must not exclude Tier=Docker or Tier=Slow"
+[[ "$output" == *"Partial verification passed (tier sandbox, projects: all). This is not the full gate"* && "$output" != *"Verification passed. Per-project reports"* ]] \
+    || fail "sandbox tier must say it is not the full gate"
+check_summary "sandbox tier" '.outcome == "partial_passed" and .tier == "sandbox" and .projects == null'
+[[ $(grep -c 'msbuild scripts/dotnet-verification.proj -t:PublishSpikeEvidence' "$STUB_LOG") -eq 1 ]] || fail "sandbox tier must publish the spike evidence once"
+
+run_case sandbox_equals -- --tier=sandbox
+[[ $status -eq 0 && $tested -eq 6 ]] || fail "--tier=sandbox exited $status and invoked $tested projects"
+[[ $(grep '^TEST ' "$STUB_LOG" | grep -c -- '--filter-not-trait Tier=CGroupV2') -eq 6 ]] || fail "--tier=sandbox must filter every test run"
+check_summary "sandbox tier with equals sign" '.tier == "sandbox"'
+
+run_case sandbox_project -- --tier sandbox --project Parchwell.Scenarios.Tests
+[[ $status -eq 0 && $tested -eq 1 ]] || fail "sandbox with --project exited $status and invoked $tested projects"
+[[ $(grep '^TEST ' "$STUB_LOG") == *"Parchwell.Scenarios.Tests"*"--filter-not-trait Tier=CGroupV2"* ]] || fail "sandbox with --project must run Parchwell.Scenarios.Tests with the filter"
+check_summary "sandbox tier with --project" '.tier == "sandbox" and .projects == ["Parchwell.Scenarios.Tests"]'
 
 run_case fail_late STUB_FAIL="Parchwell.Kafka.Tests Parchwell.Verifier.Tests" --
 [[ $status -eq 2 ]] || fail "fail-late run exited $status, expected the first failure's status 2"
@@ -155,6 +178,7 @@ mkdir "$work/tmp-unknown_tier"
 run_case unknown_tier TMPDIR="$work/tmp-unknown_tier" -- --tier slow
 [[ $status -eq 2 && ! -s "$STUB_LOG" ]] || fail "unknown --tier must exit 2 before any dotnet call (status $status)"
 [[ -z "$(ls -A "$work/tmp-unknown_tier")" ]] || fail "unknown --tier must not create a results directory"
+[[ "$output" == "Unknown tier: slow (expected all, fast or sandbox)." ]] || fail "unknown --tier message: $output"
 mkdir "$work/tmp-bad_cpu"
 run_case bad_cpu TMPDIR="$work/tmp-bad_cpu" PARCHWELL_BUILD_MAX_CPU=0 --
 [[ $status -eq 2 && ! -s "$STUB_LOG" ]] || fail "invalid PARCHWELL_BUILD_MAX_CPU must exit 2 before any dotnet call (status $status)"
@@ -163,6 +187,9 @@ mkdir "$work/tmp-help"
 run_case help TMPDIR="$work/tmp-help" -- --help
 [[ $status -eq 0 && "$output" == *"Each run writes summary.json and stage-timing.tsv to its results directory."* ]] || fail "--help must exit 0 and name summary.json (status $status)"
 [[ -z "$(ls -A "$work/tmp-help")" ]] || fail "--help must not create a results directory"
+grep -qF '[--tier fast|sandbox|all]' "$work/help.out" || fail "--help must show the sandbox tier in the synopsis"
+grep -Eq '^ *--tier sandbox .*Tier=CGroupV2' "$work/help.out" || fail "--help must describe --tier sandbox"
+grep -qxF 'A run with --tier fast, --tier sandbox or --project prints that it is not the full gate.' "$work/help.out" || fail "--help must name the sandbox tier as a partial run"
 
 run_case cpu PARCHWELL_BUILD_MAX_CPU=3 DOTNET_PROCESSOR_COUNT=2 --
 [[ $status -eq 0 ]] || fail "cpu-capped run exited $status"
