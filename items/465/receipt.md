@@ -23,7 +23,7 @@ Fixture choice: the plan's `render_two_sessions_recorded` input says "the first 
 
 The three literal blocks A, B and C in the test file were extracted from the plan file by script, not retyped. The skill sentence is the literal of plan 3.4.
 
-## Results at base `8e8d5715b89e610ec221bfb0c997c0ea1cb952b7`
+## Results on the tree of commit 551e657e (base `8e8d5715b89e610ec221bfb0c997c0ea1cb952b7`)
 
 - `node --test scripts/tests/timeline.test.mjs`: 36 tests, 34 passed, 0 failed, 2 skipped (`event_write_failure` and `render_unreadable`, skipped when the session runs as root). The plan's 7.2 lists 6 new cases; the file went from 30 to 36 cases.
 - Plan section 9, item 2, run with the real scripts in a temporary directory: exit 3; `window start: 2026-11-13T18:11:10Z (session.start)`; `pre-PR local gate: MISSING, no recorded start and end`; table rows are the second `session.start` and `focused.run` only.
@@ -34,3 +34,14 @@ The three literal blocks A, B and C in the test file were extracted from the pla
 - `session.start` did not exist in `main`'s `event.sh` when this session started, so this session's first event on this branch was recorded after the script change. The session's earlier events (plan, plan checks, `agent.resumed`, `decision.received`) were recorded on branches `claude/465-plan` and `main` and do not appear in the branch block.
 - One extra `agent.resumed` was recorded by mistake after the first test run on this branch.
 - `render.sh` was run with `--local-gate not-applicable`: this pull request changes no file that docs/agents/pull-requests.md "Verification gates" last paragraph names.
+
+## Review record
+
+Cumulative before this round: comprehensive 0, focused 0, hosted 0.
+
+Reports are held in the session transcript and have no URL; the pull request description records the counts and the last round. Round 1, comprehensive, input revision the staged tree later committed as 551e657e, comparison `origin/main` 8e8d5715: complete report, no P0 or P1, 2 P2, both prose.
+- P2 `render.mjs` header comment said every block starts at the last `session.start`, without the fallback: fixed (the comment now states the earliest-row fallback).
+- P2 receipt heading named the base as the source of the results: fixed (the heading now names commit 551e657e).
+- Pre-existing, not changed: the `agent.resumed` description in `event.sh` ("or a handoff"), left because the new skill sentence and the `session.start` entry settle it and the plan does not change that line; the `Math.min` spread, unchanged behaviour carried over from `main`.
+
+Round 2, focused P2-correction (reports P0 or P1 only), comparison 551e657e: cumulative before this round comprehensive 1, focused 0, hosted 0. Its report and the final-head CI run are in the pull request description.

@@ -6,8 +6,9 @@
 // caller fetched. Seconds come only from recorded start and end pairs of the
 // same source row set, never from a gap between unrelated rows.
 //
-// Each block covers one session: it starts at the last session.start line of
-// the log for the branch, in file order, unless --since overrides it.
+// Each block starts at the last session.start line of the log for the branch,
+// in file order, unless --since overrides it. With no session.start it starts
+// at the earliest log row, and the window start line says so.
 //
 // Exit 0: block written. Exit 3: block written, and the pre-PR local gate has
 // no recorded start and end. Exit 2: bad input, one line on standard error.
