@@ -1,6 +1,7 @@
 """Synthetic offline Git repositories exercise the main-only cleanup contract."""
 
 from copy import deepcopy
+from http.client import HTTPResponse
 import importlib.util
 import io
 import json
@@ -564,12 +565,21 @@ class CleanupWipBranchesTests(unittest.TestCase):
                 'https://unrelated.invalid' if redirected else req.full_url, data, status)
         def timed_out(req, timeout, index):
             raise TimeoutError(TOKEN)
+        def truncated_body(req, timeout, index):
+            class Socket:
+                def makefile(self, *arguments):
+                    return io.BytesIO(b'HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nab')
+            wire = HTTPResponse(Socket())
+            wire.begin()
+            response = Response(req.full_url, b'')
+            response.read = wire.read
+            return response
         missing = deepcopy(RULES)
         del missing[0]['ruleset_source_type']
         error_responders = [http_error(code) for code in (403, 404, 500, 302)] + [
             response_bytes(b'not JSON'), response_bytes(b'{}'), response_bytes(b'[null]'),
             response_bytes(json.dumps(missing).encode()), response_bytes(b'[]', redirected=True),
-            timed_out, response_bytes(b' ' * (CLEANUP.HTTP_BYTES + 1))]
+            timed_out, truncated_body, response_bytes(b' ' * (CLEANUP.HTTP_BYTES + 1))]
         for respond in error_responders:
             with self.subTest(respond=respond):
                 self.repository.set(BACKUP, self.repository.a)
@@ -597,6 +607,22 @@ class CleanupWipBranchesTests(unittest.TestCase):
         self.assertEqual(report.errors, ['main protection could not be established'])
         self.assertTrue(any(isinstance(handler, CLEANUP.NoRedirect)
                             for handler in CLEANUP.Protection(TOKEN, CLEANUP.Deadline(Clock())).opener.handlers))
+        refs = ['refs/heads/codex/protocol-a-wip', 'refs/heads/codex/protocol-b-wip']
+        for ref in refs:
+            self.repository.set(ref, self.repository.a)
+        def fail_after_first_deletion(req, timeout, index):
+            if index == 4:
+                return truncated_body(req, timeout, index)
+            value = RULES if req.full_url == CLEANUP.RULES_URL else RULESET
+            return Response(req.full_url, json.dumps(value).encode())
+        report = self.run_cleanup(opener=Opener(respond=fail_after_first_deletion))
+        self.assertEqual(report.exit_code, 1)
+        self.assertEqual([row.status for row in report.rows], ['deleted', 'retained_error'])
+        self.assertEqual(report.errors, ['main protection could not be established'])
+        self.assertIsNone(self.repository.ref(refs[0]))
+        self.assertEqual(self.repository.ref(refs[1]), self.repository.a)
+        self.assertIn('deleted: 1\n', report.render())
+        self.assertIn('retained_error: 1\n', report.render())
 
     def test_workflow_contract_and_mirror(self):
         workflow = ROOT / '.github/workflows/cleanup-wip-branches.yml'

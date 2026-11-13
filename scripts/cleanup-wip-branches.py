@@ -5,6 +5,7 @@ from collections import Counter
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 import html
+from http.client import HTTPException
 import json
 import os
 from pathlib import Path
@@ -195,7 +196,7 @@ class Protection:
                 if len(data) > HTTP_BYTES:
                     raise ProtectionError(PROTECTION_REASON)
                 result = json.loads(data)
-        except (error.URLError, OSError, TimeoutError, ValueError):
+        except (HTTPException, error.URLError, OSError, TimeoutError, ValueError):
             raise ProtectionError(PROTECTION_REASON) from None
         self.deadline.remaining(HTTP_SECONDS)
         return result
