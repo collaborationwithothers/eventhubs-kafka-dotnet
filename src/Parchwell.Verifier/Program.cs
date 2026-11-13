@@ -193,6 +193,7 @@ internal static partial class Program
         }
         if (mode == "b10-abrupt-verify")
         {
+            VerifyRun.Abrupt.AbruptKafkaTokenProvider.Register(services);
             services.AddParchwellScenarios(options =>
                 configuration.GetSection("Verifier:ScenarioLoadOptions").Bind(options));
             services.AddSingleton<IScenarioSource>(provider => new FileSystemScenarioSource(
