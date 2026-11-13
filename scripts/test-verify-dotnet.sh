@@ -127,8 +127,8 @@ jq -e --arg pattern "^$timestamp\$" '(.started_utc | test($pattern)) and (.ended
 run_case fast -- --tier fast
 [[ $status -eq 0 ]] || fail "fast tier exited $status"
 [[ $tested -eq 6 ]] || fail "fast tier invoked $tested test projects, expected 6"
-[[ $(grep -c '^TEST .*--filter-not-trait Tier=Docker Tier=Slow Tier=Host' "$STUB_LOG") -eq 6 ]] \
-    || fail "every fast-tier test run must exclude Tier=Docker, Tier=Slow and Tier=Host"
+[[ $(grep -c '^TEST .*--filter-not-trait Tier=Docker Tier=Slow Tier=CGroupV2' "$STUB_LOG") -eq 6 ]] \
+    || fail "every fast-tier test run must exclude Tier=Docker, Tier=Slow and Tier=CGroupV2"
 [[ "$output" == *"Partial verification passed"* && "$output" != *"Verification passed. Per-project reports"* ]] \
     || fail "fast tier must say it is not the full gate"
 check_summary "fast tier" '.outcome == "partial_passed" and .tier == "fast" and .projects == null'

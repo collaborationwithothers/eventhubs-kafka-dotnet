@@ -10,7 +10,7 @@ Usage: ./scripts/verify-dotnet.sh [--tier fast|all] [--project <test project nam
 
 With no options the script runs the full gate: every test project, every test.
   --tier all    Run every test (default).
-  --tier fast   Leave out tests marked with the xUnit trait Tier=Docker, Tier=Slow or Tier=Host.
+  --tier fast   Leave out tests marked with the xUnit trait Tier=Docker, Tier=Slow or Tier=CGroupV2.
   --project     Run only the named test project, for example Parchwell.Verifier.Tests. Repeatable.
 Environment:
   PARCHWELL_BUILD_MAX_CPU  Positive integer. Adds -maxcpucount:<n> to restore, build and project
@@ -55,7 +55,7 @@ while (($# > 0)); do
 done
 case "$tier" in
     all) tier_args=() ;;
-    fast) tier_args=(--filter-not-trait "Tier=Docker" "Tier=Slow" "Tier=Host") ;;
+    fast) tier_args=(--filter-not-trait "Tier=Docker" "Tier=Slow" "Tier=CGroupV2") ;;
     *)
         echo "Unknown tier: $tier (expected fast or all)." >&2
         exit 2
