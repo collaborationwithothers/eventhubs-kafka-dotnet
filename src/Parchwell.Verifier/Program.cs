@@ -161,6 +161,7 @@ internal static partial class Program
                 options.ClientId = configuration["Verifier:WorkloadIdentityClientId"] ?? configuration["AZURE_CLIENT_ID"];
                 options.TokenFilePath = configuration["Verifier:FederatedTokenFilePath"] ?? configuration["AZURE_FEDERATED_TOKEN_FILE"];
             });
+            VerifierKafkaTokenProvider.Register(services);
             services.AddSingleton<VerifierKafkaSessionFactory>();
         }
         services.AddSingleton<IVerifierArtifactStore>(provider =>
