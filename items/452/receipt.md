@@ -58,4 +58,4 @@ Round 1: comprehensive pass 1 of at most 2. Input: the staged tree on top of loc
 - P2, shard file header and doc refer to each other: valid. Fixed: the doc states the validation rules and the header points to that section.
 - P2, choice 1 covers only the dropped-test case: valid. Left as the plan has it, with the duplicate case stated in implementer choice 1; the alternative extends R11, which the stop rule reserves for Hari.
 
-Round 2: comprehensive pass 2 of at most 2. Input: the staged tree on top of the local commit that the `-wip` branch holds, against the same `origin/main`. Comparison revision: round 1's input. Cumulative counts after round 2 starts: comprehensive 2, focused 0.
+Round 2: comprehensive pass 2 of at most 2. Input: the branch head after the rebase onto `origin/main` at `1c2ed5e618a0a108e69ca73f4591059e68619fe2`, with this receipt as committed in that head, diffed against that `origin/main`. Comparison revision: round 1's input (`11ba353`, before the rebase and the round 1 fixes). The round 1 report was complete, and the findings above were all answered before this round. Cumulative counts after round 2 starts: comprehensive 2, focused 0.
