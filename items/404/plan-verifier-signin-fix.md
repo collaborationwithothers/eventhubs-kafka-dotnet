@@ -1,16 +1,24 @@
 # Verifier sign-in fix contract-grade plan
 
-Revision 2. Issue 404, pull request short name `verifier sign-in fix`. Status: not approved. Implementing tool: Claude Code ([decision 6837975192](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6837975192) point 2). Hari merges.
+Revision 3. Issue 404, pull request short name `verifier sign-in fix`. Status: not approved. Implementing tool: Claude Code ([decision 6837975192](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6837975192) point 2). Hari merges.
 
-In run 43318281268 one HTTP request to the Microsoft Entra token endpoint got no response, and the verifier's 10 s `TokenTimeout` cancelled it before the Azure SDK's own retry could act, because the SDK's per-request timeout is 100 s by default. This pull request gives the `b10-abrupt-verify` mode's Kafka credential its own retry settings: a 1.5 s per-request timeout, one retry and a fixed 0.2 s delay, so a single stalled request is abandoned and sent again well inside `TokenTimeout`. No check, problem, reason, output member, configuration key, deadline or load generator behaviour changes.
+In run 43318281268 one HTTP request to the Microsoft Entra token endpoint got no response, and the verifier's 10 s `TokenTimeout` cancelled it before the Azure SDK's own retry could act, because the SDK's per-request timeout is 100 s by default. This pull request gives the `b10-abrupt-verify` mode's Kafka credential its own retry settings: a 2.0 s per-request timeout, one retry and a fixed 0.2 s delay, so a single stalled request is abandoned and sent again well inside `TokenTimeout`. No check, problem, reason, output member, configuration key, deadline or load generator behaviour changes.
 
-## 0. Changes since Revision 1
+## 0. Changes since Revision 2
 
-Revision 2 follows [decision 6844950677](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6844950677), which did not approve Revision 1 and did not accept its DA-1.
+Revision 3 follows [decision 6845385609](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6845385609), which answers Revision 2's open questions Q1 and Q2 and its plan check's blocking findings B1 and B2.
+
+- `NetworkTimeout` is 2.0 s instead of 1.5 s (decision point 1). `MaxRetries` 1, `Mode` `Fixed` and `Delay` 0.2 s are unchanged. Sections 3.2, 3.3 (e), 6 (T2 value, T4 and T5 lower bounds) and 9 (c) follow the new value; no requirement text in section 4 names it. The section 3.3 (e) table is recomputed by the same script.
+- DA-1 and DA-2 are restated at 2.0 s and accepted by name in decision 6845385609 points 2 and 3. Section 7 records them with a link to that decision and the 30-day Application Insights table the decision gives as evidence. Section 11 states `None`.
+- Section 1 adds plan check 6845326893 and decision 6845385609 to the authority list, and section 3.2's constants comment also names decision 6845385609. Nothing else changes.
+
+### Revision 2 changes since Revision 1
+
+Revision 2 followed [decision 6844950677](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6844950677), which did not approve Revision 1 and did not accept its DA-1.
 
 - Mechanism replaced. Revision 1 retried the whole Kafka client install in `B10AbruptVerifyHandler`. Revision 2 removes that retry and instead sets `RetryOptions` on the `WorkloadIdentityCredential` that the abrupt mode's Kafka token provider uses (decision point 2). The handler, check 14 and `docs/operations/b10-abrupt-contract.md` no longer change.
 - Scope moved: `src/Parchwell.Verifier/Program.cs` (abrupt-mode branch only) and one new internal file under `src/Parchwell.Verifier/VerifyRun/Abrupt/` are allowed; `B10AbruptVerifyHandler.cs` and the contract file are now frozen.
-- Section 3.3 answers decision point 3 (a) to (e) from pinned source and official documentation, with a scripted worst case.
+- Section 3.3 answered decision point 3 (a) to (e) from pinned source and official documentation, with a scripted worst case.
 - Section 1 and DA-1 use the Application Insights evidence [6844977688](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6844977688) (decision point 4).
 - Requirements, test map, deployment assumptions and open questions are rewritten for the new mechanism. Revision 1's check findings P2-A, P2-B and N1 to N3 were about the removed handler retry and no longer apply.
 
@@ -27,8 +35,10 @@ Authority, in creation order:
 - [Evidence reading 6838450660](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6838450660) (evidence): rerun 43322351104 had no token failure; one run cannot show whether the timeout recurs.
 - [Decision 6844950677](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6844950677): Revision 1 not approved and DA-1 not accepted (point 1); Revision 2 uses the credential's own retry settings, verifier only, load generator sign-in unchanged (point 2); the facts (a) to (e) established before proposing values (point 3); telemetry evidence first, if Hari supplies it (point 4). It is not plan approval.
 - [Application Insights evidence 6844977688](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6844977688) (evidence, not a decision), supplied under decision point 4 for run 43318281268's verify pod: a discovery GET (105.2 ms) and two token POSTs (40.6 ms, 36.7 ms), all 200; then one `WorkloadIdentityCredential.GetToken` span of 10014.2 ms and one token POST of 10004.9 ms, failed, result code 0; storage calls before and after succeeded, including an upload at 22:37:41. Exactly one POST and one `GetToken` span: neither Azure.Core nor MSAL retried within 10 s. Its closing statement, that a per-request `NetworkTimeout` of a few seconds would have let the SDK retry inside `TokenTimeout`, is labelled there as an inference, not established. This plan does not rely on it as fact; DA-1 carries it.
+- [Plan check 6845326893](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6845326893) of Revision 2 (evidence, not a decision): blocking findings B1 (DA-1) and B2 (DA-2). Its `apply in implementation` marker on P2-A applies to Revision 2 only (docs/agents/factory.md "Item lifecycle" step 1).
+- [Decision 6845385609](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6845385609): `NetworkTimeout` 2.0 s, with `MaxRetries` 1, `Mode` `Fixed` and `Delay` 0.2 s as Revision 2 proposed (point 1); DA-1 accepted by name at 2.0 s (point 2); DA-2 accepted by name at 2.0 s, with the 30-day `AppDependencies` table as evidence (point 3); Revision 3 gets one fresh plan check, and approval then follows the standing approval of decision 6837975192 point 2 if that check states `Blocking findings: none`. It authorizes no trial, dispatch, `results/` or expected-outcome change.
 
-Parent items #347 and #348 have no decision or approval comment created or edited after 2026-11-12T20:28:03Z (read by script at planning time); no parent decision is adopted for this pull request.
+Parent items #347 and #348 have no decision or approval comment created or edited after 2026-11-12T20:28:03Z (read by script when Revision 3 was written); no parent decision is adopted for this pull request.
 
 Scope reading: decision 6844950677 point 2 says the values "apply to the verifier only". Decision 6837975192 point 1 limits this pull request to the `b10-abrupt-verify` mode. The plan therefore applies the settings in that mode only; the other verifier modes keep their current credential. This follows from the two decisions and is not an open question.
 
@@ -70,21 +80,21 @@ Scope reading: decision 6844950677 point 2 says the values "apply to the verifie
 
 The mode name, every option name and value, every problem and reason literal, the `nonfinal_result` envelope and `data` members, check numbering and text, exit codes, `TokenTimeout` 00:00:10, `ProcessLifetime` 00:12:00 and the Job deadline `verify_job_seconds` 750 are unchanged. No configuration key, chart value, environment variable or log line is added or pinned. The credential's tenant ID, client ID and token file path are the same values `AddParchwellKafkaAuthentication` receives (`Program.cs` lines 158 to 163). Load generator, enrichment and every other verifier mode keep the Parchwell.Kafka credential with Azure.Core defaults.
 
-### 3.2 Pinned retry settings (policy proposal, not measured)
+### 3.2 Pinned retry settings (policy, not measured)
 
 The abrupt-mode Kafka credential is a `WorkloadIdentityCredential` whose `WorkloadIdentityCredentialOptions.Retry` has exactly:
 
 | Setting | Value | Default it replaces |
 |---|---|---|
-| `NetworkTimeout` | `00:00:01.500` | `00:01:40` |
+| `NetworkTimeout` | `00:00:02` | `00:01:40` |
 | `MaxRetries` | `1` | `3` |
 | `Mode` | `RetryMode.Fixed` | `RetryMode.Exponential` |
 | `Delay` | `00:00:00.200` | `00:00:00.800` |
 | `MaxDelay` | `00:01:00`, unchanged | `00:01:00` |
 
-`RetryPolicy` stays null, so these values build the standard `RetryPolicy` (section 3.3). The values are constants in the new file, with a comment naming decision 6844950677; they are not configuration. This table is the one statement of the values; other files cite it.
+`RetryPolicy` stays null, so these values build the standard `RetryPolicy` (section 3.3). The values are constants in the new file, with a comment naming decisions 6844950677 and 6845385609; they are not configuration. This table is the one statement of the values; other files cite it.
 
-Why these values: 1.5 s is about 14 times the slowest successful token-endpoint call in the evidence (105.2 ms), while two attempts of every request in a first acquisition still end 3.6 s before `TokenTimeout` (section 3.3 (e)). `Fixed` mode keeps each delay at or below `Delay` exactly. Alternatives computed by the same script are in section 3.3 (e). These are design choices for Hari's approval; none is a measured optimum.
+Why these values: Hari chose `NetworkTimeout` 2.0 s in decision 6845385609 point 1, and kept `MaxRetries` 1, `Mode` `Fixed` and `Delay` 0.2 s from Revision 2. In the 30-day Application Insights query that decision gives as evidence, no healthy call to the token endpoint took over 1500 ms, and only the stalled request of run 43318281268 took over 2000 ms (section 7). Two attempts of every request in a first acquisition still end 1.6 s before `TokenTimeout` (section 3.3 (e)). `Fixed` mode keeps each delay at or below `Delay` exactly. Alternatives computed by the same script are in section 3.3 (e). The values are policy; none is a measured optimum.
 
 ### 3.3 Facts required by decision 6844950677 point 3
 
@@ -110,11 +120,35 @@ How the settings reach the token call: `WorkloadIdentityCredential` clones its o
 
 | Settings | Attempts per request | Later acquisition (s) | First acquisition (s) | Margin to `TokenTimeout` 10 s |
 |---|---|---|---|---|
-| Proposed: 1.5 s, 1, Fixed, 0.2 s | 2 | 3.2 | 6.4 | 3.6 s |
+| Pinned: 2.0 s, 1, Fixed, 0.2 s | 2 | 4.2 | 8.4 | 1.6 s |
+| Revision 2: 1.5 s, 1, Fixed, 0.2 s | 2 | 3.2 | 6.4 | 3.6 s |
 | 1.0 s, 1, Fixed, 0.2 s | 2 | 2.2 | 4.4 | 5.6 s |
-| 2.0 s, 1, Fixed, 0.2 s | 2 | 4.2 | 8.4 | 1.6 s |
 | 1.0 s, 2, Fixed, 0.2 s | 3 | 3.4 | 6.8 | 3.2 s |
-| Defaults: 100 s, 3, Exponential, 0.8 s | 4 | 406.72 per request | | none |
+| Defaults: 100 s, 3, Exponential, 0.8 s | 4 | 406.72 | 813.44 | none |
+
+The script used for this table, run with `python3 -I` on 2026-11-13, is below. The implementer copies it and its output into the receipt (section 8). For `Exponential` it takes the upper jitter factor 1.2 on each delay; for `Fixed` the delay is at most `Delay` (section 3.3 (c)).
+
+```python
+from decimal import Decimal as D
+T = D("10")  # TokenTimeout seconds
+rows = [
+    ("Pinned: 2.0 s, 1, Fixed, 0.2 s", D("2.0"), 1, "fixed", D("0.2")),
+    ("Revision 2: 1.5 s, 1, Fixed, 0.2 s", D("1.5"), 1, "fixed", D("0.2")),
+    ("1.0 s, 1, Fixed, 0.2 s", D("1.0"), 1, "fixed", D("0.2")),
+    ("1.0 s, 2, Fixed, 0.2 s", D("1.0"), 2, "fixed", D("0.2")),
+    ("Defaults: 100 s, 3, Exponential, 0.8 s", D("100"), 3, "exp", D("0.8")),
+]
+J = D("1.2")  # upper jitter for Exponential; Fixed caps at Delay (factor 1.0)
+for name, nt, r, mode, d in rows:
+    if mode == "fixed":
+        delays = d * r
+    else:
+        delays = sum((2 ** (n - 1)) * d * J for n in range(1, r + 1))
+    per = (r + 1) * nt + delays
+    later, first = per, 2 * per
+    margin = T - first
+    print(f"| {name} | {r+1} | {later.normalize():f} | {first.normalize():f} | " + (f"{margin.normalize():f} s |" if margin >= 0 else "none |"))
+```
 
 The bound holds when each attempt ends within `NetworkTimeout`: a response with a `Retry-After` header (c), or a body delivered in many slow reads (a), can take longer. In those cases, and in every other case, `TokenTimeout` still cancels the call at 10 s, exactly as today. The verify Job's configured budgets are unchanged: the sum that `VerifierHostOptionsValidator.ValidateAbrupt` collects (lines 237 to 241: `TokenTimeout` 10, `MetadataTimeout` 10, `WatermarkTimeout` 10, `BlobIoTimeout` 30, `IoTimeout` 10, `CleanupTimeout` 10, `SafetyStop` 600 seconds) is 680 s, below `ProcessLifetime` 720 s and the Job deadline 750 s. This pull request adds no session and no wait, so that sum and the process watchdog's end at `ProcessLifetime` are unchanged.
 
@@ -144,23 +178,30 @@ T1 to T3 build the host through `Program.BuildHost` and count descriptors throug
 | Test | Requirement | Inputs | Expected |
 |---|---|---|---|
 | T1 | R1 | Mode `b10-abrupt-verify`. | Exactly 1 `IKafkaTokenProvider` descriptor; the resolved instance is the R2 provider type. |
-| T2 | R3 | The resolved provider's credential options, read through the R3 seam, in the T1 host. | `Retry.NetworkTimeout` `00:00:01.500`; `Retry.MaxRetries` 1; `Retry.Mode` `Fixed`; `Retry.Delay` `00:00:00.200`; `Retry.MaxDelay` `00:01:00`; `RetryPolicy` null; `IsAzureProxyEnabled` false; `TenantId` `synthetic-tenant`; `ClientId` `synthetic-client`; `TokenFilePath` `/tmp/synthetic-token`. |
+| T2 | R3 | The resolved provider's credential options, read through the R3 seam, in the T1 host. | `Retry.NetworkTimeout` `00:00:02`; `Retry.MaxRetries` 1; `Retry.Mode` `Fixed`; `Retry.Delay` `00:00:00.200`; `Retry.MaxDelay` `00:01:00`; `RetryPolicy` null; `IsAzureProxyEnabled` false; `TenantId` `synthetic-tenant`; `ClientId` `synthetic-client`; `TokenFilePath` `/tmp/synthetic-token`. |
 | T3 | R8 | Theory over modes `start-line`, `verify`, `b10-sweep-line`, `b10-sweep`. | Exactly 1 `IKafkaTokenProvider` descriptor; the resolved instance's type full name is `Parchwell.Kafka.Authentication.WorkloadIdentityTokenProvider`. |
-| T4 | R2, R4 | POST 1 blocks. POST 2 answers 200 with `access_token` `synthetic-2`. | Returns a token whose `Token` is `synthetic-2`; POST count 2; elapsed at least 1.4 s and less than 10 s; the caller token is not cancelled on return. |
-| T5 | R5 | Every POST blocks. | Throws; POST count 2; elapsed at least 2.9 s and less than 10 s; the caller token is not cancelled on return; POST count is still 2 after a further 2 s. |
+| T4 | R2, R4 | POST 1 blocks. POST 2 answers 200 with `access_token` `synthetic-2`. | Returns a token whose `Token` is `synthetic-2`; POST count 2; elapsed at least 1.9 s and less than 10 s; the caller token is not cancelled on return. |
+| T5 | R5 | Every POST blocks. | Throws; POST count 2; elapsed at least 3.9 s and less than 10 s; the caller token is not cancelled on return; POST count is still 2 after a further 2 s. |
 | T6 | R6 | Every POST answers 503 at once, with no `Retry-After` header. | Throws; POST count 2; POST count is still 2 after a further 2 s. |
 | T7 | R7 | POST 1 blocks. The caller token is cancelled 0.5 s after `GetToken` starts. | Throws; POST count 1; POST count is still 1 after a further 2 s. |
 
-Lower time bounds come from section 3.3: T4 is at least one `NetworkTimeout` (1.5 s) less 0.1 s of timer tolerance; T5 is two `NetworkTimeout`s (3.0 s) less 0.1 s. The 0.1 s tolerance is a test choice, not a measurement. The lower delay bound 0.16 s is not asserted, because a timer test cannot separate it reliably from scheduling noise.
+Lower time bounds come from section 3.3: T4 is at least one `NetworkTimeout` (2.0 s) less 0.1 s of timer tolerance; T5 is two `NetworkTimeout`s (4.0 s) less 0.1 s. The 0.1 s tolerance is a test choice, not a measurement. The lower delay bound 0.16 s is not asserted, because a timer test cannot separate it reliably from scheduling noise.
 
 Every existing test in every test project passes unchanged.
 
 ## 7. Deployment assumptions
 
-None is covered by an offline test. Each is listed under section 11 until a decision or approval by Hari accepts it by name.
+None is covered by an offline test. Both are accepted by name, at 2.0 s, in [decision 6845385609](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6845385609) points 2 and 3.
 
-- DA-1. In the deployed verifier pod, after a token POST gets no response within 1.5 s, the one retry gets a response within 1.5 s. T4 shows only that the credential sends the retry. Evidence: run 43318281268 ([6844977688](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6844977688)): one fresh pod at start, idle apart from the verifier's own work (about 30 blob reads between 22:37:28.26 and 22:37:30.83). One POST got no response in 10 s (result code 0), while two POSTs 2.6 s earlier took 40.6 ms and 36.7 ms and storage calls before and after succeeded. Whether the earlier calls used an already-open or a fresh connection is not recorded. Whether the stalled request's connection is closed when it is abandoned, and whether the retry uses a new connection, is not established from the evidence or from the sources read. Run 43322351104 had no token failure ([6838450660](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6838450660)); its call durations were not reported.
-- DA-2. In the deployed verifier pod, a healthy token POST or instance-discovery GET completes within 1.5 s. If it does not, a call that would have succeeded in 1.5 s to 10 s today fails after two attempts, and the mode records problem 5 where it does not today. Evidence: the same run and conditions as DA-1: discovery GET 105.2 ms, token POSTs 40.6 ms and 36.7 ms, all on one fresh, otherwise idle pod at start; connection state not recorded. Three calls from one run are not a distribution.
+- DA-1. In the deployed verifier pod, after a token POST gets no response within 2.0 s, the one retry gets a response within 2.0 s. Accepted by name in decision 6845385609 point 2. T4 shows only that the credential sends the retry. Evidence: run 43318281268 ([6844977688](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6844977688)): one fresh pod at start, idle apart from the verifier's own work (about 30 blob reads between 22:37:28.26 and 22:37:30.83). One POST got no response in 10 s (result code 0), while two POSTs 2.6 s earlier took 40.6 ms and 36.7 ms and storage calls before and after succeeded. Whether the earlier calls used an already-open or a fresh connection is not recorded. Whether the stalled request's connection is closed when it is abandoned, and whether the retry uses a new connection, is not established from the evidence or from the sources read. Run 43322351104 had no token failure ([6838450660](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6838450660)). The 30-day table under DA-2 does not show whether any request was retried.
+- DA-2. In the deployed verifier pod, a healthy token POST or instance-discovery GET completes within 2.0 s. Accepted by name in decision 6845385609 point 3. If it does not, a call that would have succeeded in 2.0 s to 10 s today fails after two attempts, and the mode records problem 5 where it does not today. Evidence, as decision 6845385609 gives it: Application Insights `AppDependencies` in the persistent Log Analytics workspace, last 30 days, `Target == "login.microsoftonline.com"`, all pods (identifiers omitted):
+
+| Call | Calls | P50 (ms) | P99 (ms) | P99.9 (ms) | Max (ms) | Over 1500 ms | Over 2000 ms | Failed |
+|---|---|---|---|---|---|---|---|---|
+| GET (instance discovery) | 515 | 109.9 | 172.8 | 193.8 | 193.8 | 0 | 0 | 0 |
+| POST (token) | 1057 | 76.2 | 349.4 | 1207.0 | 10004.9 | 1 | 1 | 1 |
+
+The decision states that the single POST over 1500 ms is the stalled request of run 43318281268, and that no healthy call exceeded 1500 ms.
 
 ## 8. Acceptance commands
 
@@ -178,7 +219,7 @@ Caps ([decision 6837975192](https://github.com/collaborationwithothers/eventhubs
 
 (b) Stricter than the parent plan: the item plan (Revision 5) and the decisions before 6837975192 say nothing about token acquisition. This plan sets retry values for one verifier mode's credential and changes no parent rule. It is not stricter.
 
-(c) Tests or checks that depend on code, data or behaviour neither on `main` nor in the pull request: (1) the token endpoint's live behaviour on a retry, DA-1, and its healthy latency, DA-2; neither is settled by recorded output (the evidence has three successful calls and one stalled call from one run) nor by source. (2) Azure.Core 1.63.0 and MSAL 4.90.0 behaviour, which T4 to T7 exercise through the real packages already resolved by the test project, and which section 3.3 reads at their pinned sources. (3) `HttpClient` behaviour at runtime 10.0.13 in the image, read at its source (section 3.3 (d)); the test host runs the SDK in `global.json` (10.0.402), whose runtime patch is not checked against 10.0.13 here.
+(c) Tests or checks that depend on code, data or behaviour neither on `main` nor in the pull request: (1) the token endpoint's live behaviour on a retry, DA-1, and its healthy latency, DA-2, at 2.0 s; neither is settled by source, and the recorded output (run 43318281268 and the 30-day table in section 7) does not settle DA-1. Both are accepted by name in decision 6845385609 points 2 and 3. (2) Azure.Core 1.63.0 and MSAL 4.90.0 behaviour, which T4 to T7 exercise through the real packages already resolved by the test project, and which section 3.3 reads at their pinned sources. (3) `HttpClient` behaviour at runtime 10.0.13 in the image, read at its source (section 3.3 (d)); the test host runs the SDK in `global.json` (10.0.402), whose runtime patch is not checked against 10.0.13 here.
 
 ## 10. Sources
 
@@ -193,8 +234,7 @@ Documentation tools used: Microsoft Learn MCP (`microsoft_docs_fetch`), and sour
 
 ## 11. Open questions for Hari
 
-- Q1. Accept DA-1 by name (the one retry gets a response within 1.5 s after a stalled POST), or say what evidence it needs. No offline test covers it (docs/agents/factory.md "Item lifecycle" step 1).
-- Q2. Accept DA-2 by name (healthy token-endpoint calls in the pod complete within 1.5 s), or choose other values from section 3.3 (e) or elsewhere. No offline test covers it.
+None. Revision 2's Q1 and Q2 are answered by [decision 6845385609](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6845385609) points 1 to 3.
 
 ## 12. Stop rule
 
