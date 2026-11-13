@@ -2,7 +2,14 @@
 
 Issue: [#461](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/461). Pull request name: `apply-in-revision`. This is the contract-grade plan for the issue's single pull request under docs/agents/factory.md "Item lifecycle" step 3.
 
-Revision 1. Base: `main` at 1c2ed5e618a0a108e69ca73f4591059e68619fe2. Line numbers below are on that commit.
+Revision 2. Base: `main` at 1c2ed5e618a0a108e69ca73f4591059e68619fe2, still `main` when this revision was written. Line numbers below are on that commit.
+
+Changes since Revision 1, each from [decision 6859607724](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/461#issuecomment-6859607724):
+
+- 3.2: when the script check of the applying commit fails, the session does not edit the plan comment or spawn a check, and hands off to Hari; the closing hand-off sentence names that case and says "to Hari" (decision point B1; requirements 7, 8 and 10).
+- 3.2: the exception applies only to a check from a check subagent that the implementing session itself spawned under "Standing approval"; the words "is not by a Codex subagent" are removed (decision point B2; requirement 9; sections 5 and 10(b)).
+- 3.3: a second insertion carries the keep-the-lists clause into the planning bullet (decision point A1; requirement 11; check A3).
+- Section 1 lists the decision as an authority and the check and handoff as evidence.
 
 ## 1. Goal and authority
 
@@ -10,15 +17,19 @@ Under standing approval, a plan whose newest check lists any blocking finding ha
 
 Authorities, in creation order (docs/agents/factory.md "Item lifecycle" step 3):
 
-1. The issue body (created 2026-11-13T16:38:02Z, `updated_at` 2026-11-13T16:38:34Z). Its "Proposal" items 1 to 5 define the work; its "Counterargument" states that "A Codex check still cannot approve under standing approval (factory.md step 3), so this changes nothing for Codex-checked plans"; its "Files likely touched" names `docs/agents/factory.md` "Item lifecycle" steps 1 and 3, `.agents/skills/plan-check/SKILL.md` and `.agents/skills/implement-plan/SKILL.md`.
+1. The issue body (created 2026-11-13T16:38:02Z; issue `updated_at` 2026-11-13T17:04:09Z at this revision, the time of the decision comment; the body text quoted here was read again for this revision). Its "Proposal" items 1 to 5 define the work; its "Counterargument" states that "A Codex check still cannot approve under standing approval (factory.md step 3), so this changes nothing for Codex-checked plans"; its "Files likely touched" names `docs/agents/factory.md` "Item lifecycle" steps 1 and 3, `.agents/skills/plan-check/SKILL.md` and `.agents/skills/implement-plan/SKILL.md`.
 
-`ready-for-agent` was applied at 2026-11-13T16:38:34Z (issue events). The issue had no comments when this plan was written, so no comment names the implementing tool: Claude Code by default (docs/agents/factory.md "Item lifecycle" step 2). There is no item state file (`items/461/` does not exist on the base), no approved item plan, no parent issue and no split. The evidence links in the issue body (#445, #443, #452, #440) are evidence, not authority; no decision on this issue adopts them, and this plan relies on none of their text.
+2. The decision of Hari, [decision 6859607724](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/461#issuecomment-6859607724) (created 2026-11-13T17:04:09Z), answering the handoff on Revision 1. Point B1: "in 3.2, when the script check of the applying commit fails, the session does not edit the plan comment or spawn a check, and hands off to Hari; add that case to the closing hand-off sentence." Point B2: "the exception applies only to a check that the implementing session itself spawned under "Standing approval"; remove the "not by a Codex subagent" wording, since Codex-spawned checks already cannot approve under that bullet." Point A1: "carry the keep-the-lists clause into the planning bullet as well." It ends: "Revise, get a fresh plan check, then implement under standing approval if it states `Blocking findings: none`."
+
+Evidence, not authority: the Revision 1 [plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/461#issuecomment-6859267921) (findings B1, B2, advisories A1, A2) and the [handoff](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/461#issuecomment-6859278161). The decision adopts the check's B1, B2 and A1 only in the words quoted above; this plan follows the decision's words. Advisory A2 (which model row covers the session that applies marked texts) is not addressed by the decision and is outside this plan's scope: the plan changes no model binding and `CLAUDE.md` is not in scope.
+
+`ready-for-agent` was applied at 2026-11-13T16:38:34Z (issue events; the only event). No comment on the issue names the implementing tool, so Claude Code by default (docs/agents/factory.md "Item lifecycle" step 2). There is no item state file (`items/461/` does not exist on the base), no approved item plan, no parent issue and no split. The evidence links in the issue body (#445, #443, #452, #440) are evidence, not authority; no decision on this issue adopts them, and this plan relies on none of their text.
 
 ## 2. Scope
 
 Files this pull request may change:
 
-- `docs/agents/factory.md`: line 5 (status line), line 49 (implementation row of "Authority reads"), line 101 ("Item lifecycle" step 1), line 111 (first sentence of the planning-session bullet of step 3) and line 114 (the "Standing approval" bullet of step 3), only as section 3 pins.
+- `docs/agents/factory.md`: line 5 (status line), line 49 (implementation row of "Authority reads"), line 101 ("Item lifecycle" step 1), line 111 (the planning-session bullet of step 3: after its first sentence, and after its sentence `A revision edits that comment to the new commit and label.`) and line 114 (the "Standing approval" bullet of step 3), only as section 3 pins.
 - `.agents/skills/plan-check/SKILL.md`: line 21 (step 6) only.
 - `.agents/skills/implement-plan/SKILL.md`: line 16 (step 1) only.
 - `items/461/`: this plan, the authored receipt `items/461/receipt.md`, and the item state file `items/461/state.md` under docs/agents/factory.md "Item state file".
@@ -52,15 +63,23 @@ A current plan whose newest check lists blocking findings is not revised this wa
 with, literal:
 
 ```
-A current plan whose newest check lists blocking findings is not revised this way; the session hands off, except as follows. When the newest check identifies the current plan revision under step 1, is not by a Codex subagent, and marks every blocking finding `apply in revision` under step 1, the plan's "Open questions for Hari" states `None`, and fewer than 2 revisions of this plan have been made under this exception, the session itself makes one revision. It applies exactly the marked texts, as a new commit on the plan branch that changes only the plan file, at the places the findings name and, where the file has them, its revision label and its list of changes since the previous revision; it checks by script that the commit changes nothing else. It edits the plan comment under the planning bullet above. The comment lists, under the line `Applied check findings:`, each applied finding with a link to its check, under the new revision label; this and any later edit of the comment keep the lists of earlier revisions made under this exception. The number of revision labels under `Applied check findings:` is the count for the cap. It then spawns a new fresh-context check subagent, as above, whether or not step 1 requires a new check, and selects again. When the cap is reached, a blocking finding is not marked, or an open question remains, the session hands off. Basis: [#461](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/461) proposals 2 to 5.
+A current plan whose newest check lists blocking findings is not revised this way; the session hands off, except as follows. When the newest check identifies the current plan revision under step 1, came from a check subagent that this session itself spawned under this bullet, and marks every blocking finding `apply in revision` under step 1, the plan's "Open questions for Hari" states `None`, and fewer than 2 revisions of this plan have been made under this exception, the session itself makes one revision. It applies exactly the marked texts, as a new commit on the plan branch that changes only the plan file, at the places the findings name and, where the file has them, its revision label and its list of changes since the previous revision; it checks by script that the commit changes nothing else. If that script check fails, the session does not edit the plan comment or spawn a check, and hands off to Hari. Otherwise it edits the plan comment under the planning bullet above. The comment lists, under the line `Applied check findings:`, each applied finding with a link to its check, under the new revision label; this and any later edit of the comment keep the lists of earlier revisions made under this exception. The number of revision labels under `Applied check findings:` is the count for the cap. It then spawns a new fresh-context check subagent, as above, whether or not step 1 requires a new check, and selects again. When the cap is reached, a blocking finding is not marked, an open question remains, or the script check fails, the session hands off to Hari. Basis: [#461](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/461) proposals 2 to 5, and [decision 6859607724](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/461#issuecomment-6859607724).
 ```
 
-### 3.3 Who writes the revision (factory.md "Item lifecycle" step 3, line 111)
+### 3.3 Who writes the revision, and keeping the lists (factory.md "Item lifecycle" step 3, line 111)
 
-Append, after the line's first sentence `A planning session, or a planning subagent under "Standing approval" (next bullet), writes or revises a contract-grade plan for one pull request.` and before `It edits no file on`, literal (followed by one space before `It edits`):
+Two insertions on this line.
+
+First, append, after the line's first sentence `A planning session, or a planning subagent under "Standing approval" (next bullet), writes or revises a contract-grade plan for one pull request.` and before `It edits no file on`, literal (followed by one space before `It edits`):
 
 ```
 The implementing session under that bullet revises a plan only as its `apply in revision` exception allows, and follows the rest of this paragraph for that revision.
+```
+
+Second, append, after the sentence `A revision edits that comment to the new commit and label.` (occurring once in the file on the base, on this line) and before ` After posting or editing`, literal (followed by one space before `After posting`):
+
+```
+Each edit keeps every `Applied check findings:` list the comment holds ("Standing approval" below).
 ```
 
 ### 3.4 What the implementing session reads (factory.md "Authority reads", line 49)
@@ -108,21 +127,21 @@ Each requirement states what the changed rule text makes a session do; section 3
 1. WHEN a plan check finds a blocking finding whose fix is not design-changing under step 1, gives the literal replacement or deletion text for each changed place, and changes no gate, contract, requirement, scope, policy value, verdict rule or open question THEN it may mark that finding `apply in revision` (3.1, 3.6).
 2. WHEN any of the conditions in requirement 1 fails THEN the finding is not marked, and it is handled as today (3.1).
 3. WHEN a finding is marked `apply in revision` THEN it still counts as a blocking finding, so the check still lists it under `Blocking findings:` and does not state `Blocking findings: none` (3.1).
-4. WHEN, under standing approval, the newest check identifies the current revision, is not by a Codex subagent, marks every blocking finding `apply in revision`, the plan's open questions state `None`, and fewer than 2 revisions were made under the exception THEN the implementing session applies exactly the marked texts as one new commit on the plan branch, edits the plan comment with the `Applied check findings:` list, spawns a new fresh-context check subagent and selects again (3.2, 3.3, 3.7).
+4. WHEN, under standing approval, the newest check identifies the current revision, came from a check subagent that the implementing session itself spawned under the "Standing approval" bullet, marks every blocking finding `apply in revision`, the plan's open questions state `None`, and fewer than 2 revisions were made under the exception THEN the implementing session applies exactly the marked texts as one new commit on the plan branch, edits the plan comment with the `Applied check findings:` list, spawns a new fresh-context check subagent and selects again (3.2, 3.3, 3.7).
 5. WHEN the fresh check of requirement 4 states `Blocking findings: none` and the other approval conditions of the "Standing approval" bullet hold THEN the revision is approved under that bullet, unchanged (3.2 leaves those conditions as they are).
 6. WHEN the fresh check again marks every blocking finding and the cap is not reached THEN requirement 4 applies again (3.2).
 7. WHEN 2 revisions were already made under the exception and the newest check lists any blocking finding THEN the session hands off to Hari (3.2; issue proposal 3).
-8. WHEN any blocking finding of the newest check is not marked, or the plan's open questions are not `None` THEN the session hands off, as today (3.2; issue proposal 4).
-9. WHEN the newest check is by a Codex subagent THEN the exception does not apply and the session hands off, as today (3.2; issue "Counterargument").
-10. WHEN the applying commit changes anything in the plan file beyond the named places, the revision label and the changes list, or any other file THEN the session's script check fails and it does not edit the plan comment or spawn a check (3.2).
-11. WHEN any session later edits a plan comment that has `Applied check findings:` lists THEN it keeps those lists (3.2).
+8. WHEN any blocking finding of the newest check is not marked, or the plan's open questions are not `None` THEN the session hands off to Hari, as today (3.2; issue proposal 4).
+9. WHEN the newest check did not come from a check subagent that the implementing session itself spawned under the "Standing approval" bullet, for example a check from a planning session's checker or from an earlier session THEN the exception does not apply and the session hands off, as today (3.2; decision point B2).
+10. WHEN the applying commit changes anything in the plan file beyond the named places, the revision label and the changes list, or any other file THEN the session's script check fails, and the session does not edit the plan comment or spawn a check, and hands off to Hari (3.2; decision point B1).
+11. WHEN any session later edits a plan comment that has `Applied check findings:` lists, including a planning session revising the plan THEN it keeps those lists (3.2, 3.3 second insertion; decision point A1).
 12. WHEN the implementing session needs the check's marked texts THEN its authority reads include the current plan comment, plan file and newest check of the current revision (3.4).
 
 ## 5. Invariants and safety rules
 
 - Design-changing fixes, open questions, and gates, contracts, requirements, scope, policy values and verdict rules still reach Hari before implementation (issue proposals 1 and 4; factory.md step 1's design-changing list is unchanged).
 - The approval conditions of the "Standing approval" bullet are unchanged: a check of the exact revision from that bullet's check subagent, `Blocking findings: none`, and open questions `None`.
-- A Codex check still cannot approve under standing approval, and a Codex check's markers trigger nothing (issue "Counterargument"; factory.md line 113 unchanged).
+- A Codex check still cannot approve under standing approval, and a plan a Codex subagent checked still needs Hari's `## Approval` (factory.md line 113 unchanged). Inferred from line 113, not stated by it: a revision made under the exception by a Codex implementing session is re-checked by a Codex check subagent, whose check cannot approve, so that plan still reaches Hari before implementation, which is the issue's "Counterargument" (decision point B2).
 - A plan revised after it is approved is still an amendment needing Hari's approval (line 114's last sentences unchanged).
 - The rule is stated once, in factory.md; the two skills cite it (factory.md "Item lifecycle" step 3, contract-grade definition; AGENTS.md "Skills", last paragraph but one).
 - No workflow, Azure, secret, verdict or `results/` change (AGENTS.md hard safety rules 2, 3, 7 and 8; "Verdict integrity").
@@ -135,7 +154,7 @@ The changes are rule text with no code. Each requirement maps to a scripted text
 |---|---|---|---|
 | 1, 2, 3 | A1 | `docs/agents/factory.md` | the text block of 3.1 occurs exactly once, on the line that begins `1. **Plan.**` |
 | 4 to 10 | A2 | `docs/agents/factory.md` | the replacement block of 3.2 occurs exactly once, on the line that begins `   - Standing approval (#104).`, and the old sentence of 3.2, with its final full stop, occurs zero times |
-| 4, 11 | A3 | `docs/agents/factory.md` | the text of 3.3 occurs exactly once, on the line that begins `   - A planning session, or a planning subagent` |
+| 4, 11 | A3 | `docs/agents/factory.md` | each of the two texts of 3.3 occurs exactly once, both on the line that begins `   - A planning session, or a planning subagent`; the second immediately follows `A revision edits that comment to the new commit and label. ` |
 | 12 | A4 | `docs/agents/factory.md` | the text of 3.4 occurs exactly once, on the line that begins `| Implementation (\`implement-plan\`) |`, and that line still ends with ` |` |
 | record | A5 | `docs/agents/factory.md` | the text of 3.5, with a date matching `[0-9]{4}-[0-9]{2}-[0-9]{2}`, occurs exactly once, on line 5 |
 | 1 | A6 | `.agents/skills/plan-check/SKILL.md` | the text of 3.6 occurs exactly once, on the line that begins `6. Post the findings` |
@@ -162,11 +181,12 @@ Run on the pull request branch after the changes, before the cold review, and re
 
 ## 9. Sources
 
-1. [Issue #461 body](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/461), read 2026-11-13, `updated_at` 2026-11-13T16:38:34Z.
-2. `docs/agents/factory.md` at 1c2ed5e618a0a108e69ca73f4591059e68619fe2: line 5, line 49, line 101 (step 1: design-changing list, `apply in implementation`, check-comment format), lines 109 to 115 (step 3: selection, planning bullet, checker, "Standing approval", implementation).
-3. `.agents/skills/plan-check/SKILL.md` and `.agents/skills/implement-plan/SKILL.md` at the same commit, lines 21 and 16.
-4. `docs/agents/pull-requests.md` at the same commit: rule 8 (plan-branch pushes; docs check), "Verification gates" last paragraph.
-5. `.github/CODEOWNERS` at the same commit, lines 5 and 7.
+1. [Issue #461 body](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/461), read 2026-11-13; issue `updated_at` 2026-11-13T17:04:09Z.
+2. [decision 6859607724](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/461#issuecomment-6859607724), read in full 2026-11-13.
+3. `docs/agents/factory.md` at 1c2ed5e618a0a108e69ca73f4591059e68619fe2: line 5, line 49, line 101 (step 1: design-changing list, `apply in implementation`, check-comment format), lines 109 to 115 (step 3: selection, planning bullet, checker, "Standing approval", implementation).
+4. `.agents/skills/plan-check/SKILL.md` and `.agents/skills/implement-plan/SKILL.md` at the same commit, lines 21 and 16.
+5. `docs/agents/pull-requests.md` at the same commit: rule 8 (plan-branch pushes; docs check), "Verification gates" last paragraph.
+6. `.github/CODEOWNERS` at the same commit, lines 5 and 7.
 
 External behaviour (plan-pr "Plan rules" rule 1): none. The plan relies on no Kafka, librdkafka, Confluent.Kafka or Azure Event Hubs behaviour, so no documentation tool was needed.
 
@@ -176,10 +196,10 @@ External behaviour (plan-pr "Plan rules" rule 1): none. The plan relies on no Ka
 
 (b) Where the plan is stricter than its authority, and why. There is no parent plan; compared with the issue body:
 - The newest check must identify the current revision. Without this, a stale check could drive a revision; step 1 already ties checks to revisions.
-- A Codex check's markers do not trigger the exception. The issue's counterargument says the change "changes nothing for Codex-checked plans"; this reads that literally.
+- Only a check from a check subagent the implementing session itself spawned under "Standing approval" triggers the exception. This is decision point B2, not a choice of this plan.
 - The plan's open questions must state `None` before applying. The issue's proposal 4 hands off on any open question; applying first would spend a revision and a check on a plan that must hand off anyway.
 - A marked finding stays a blocking finding. This keeps every existing reader of `Blocking findings: none` correct, including the approval condition.
-- A script check that the commit changes nothing but the named places, and that `Applied check findings:` lists survive later edits. These make "applies exactly those texts" (proposal 2) and the per-plan cap (proposal 3) checkable from GitHub alone.
+- A script check that the commit changes nothing but the named places, with a hand-off to Hari when it fails (decision point B1), and that `Applied check findings:` lists survive later edits, in the planning bullet too (decision point A1). These make "applies exactly those texts" (proposal 2) and the per-plan cap (proposal 3) checkable from GitHub alone.
 - The applying commit may also update the plan file's revision label and changes list. Contract-grade plan files carry both; without this allowance "exactly the marked texts" would leave the file's label wrong.
 
 (c) Tests or checks that depend on code, data or behaviour neither on `main` nor in the pull request: none. Every check in section 6 reads files on the base or in the pull request.
