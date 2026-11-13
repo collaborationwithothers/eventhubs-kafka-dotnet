@@ -534,10 +534,11 @@ public sealed class B10FinalJudgeTests
             Assert.Equal(JsonValueKind.Null, repeat.GetProperty("probe_observation").ValueKind);
             Assert.Equal(JsonValueKind.Null, repeat.GetProperty("workload_observation").ValueKind);
         }
-        // TP3 in infra/scripts/phase/tests/test_phase.py holds these bytes and asserts the same SHA-256, so the phase check runs on the real Judge output.
-        Assert.Equal("ffd1a9359a43d60c7830cd3d40f63008582a7e11ebfa5dfe9626735b087a1712", Convert.ToHexStringLower(SHA256.HashData(fixture.Verifier[fixture.Options.CandidateOutputName!])));
+        // Export first, so the hash below can be regenerated when the candidate changes: B10_FINAL_T17_EXPORT=<path> dotnet test ...
         string? export = Environment.GetEnvironmentVariable("B10_FINAL_T17_EXPORT");
         if (export is not null) await File.WriteAllBytesAsync(export, fixture.Verifier[fixture.Options.CandidateOutputName!], TestContext.Current.CancellationToken);
+        // TP3 in infra/scripts/phase/tests/test_phase.py holds these bytes and asserts the same SHA-256, so the phase check runs on the real Judge output.
+        Assert.Equal("ffd1a9359a43d60c7830cd3d40f63008582a7e11ebfa5dfe9626735b087a1712", Convert.ToHexStringLower(SHA256.HashData(fixture.Verifier[fixture.Options.CandidateOutputName!])));
     }
 
     [Theory]
