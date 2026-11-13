@@ -1,7 +1,5 @@
-using System.Text;
 using System.Text.Json;
 using Parchwell.Verifier.Common.Phase;
-using Parchwell.Verifier.Tests.Judge;
 using Xunit;
 
 namespace Parchwell.Verifier.Tests.Component;
@@ -15,7 +13,7 @@ public sealed class B10FinalJudgeIntegrationTests(B10AbruptVerifyKafkaFixture ka
     [InlineData("C0", 0)]
     [InlineData("C1", 0)]
     [InlineData("C1", 2)]
-    public async Task Given_RealFinalSweep_When_RealJudgeRuns_Then_CandidateCarriesCheckedRepeatsAndPassesPhaseTransport(string phase, int differentVersionRepeat)
+    public async Task Given_RealFinalSweep_When_RealJudgeRuns_Then_CandidateCarriesCheckedRepeatsAndExportsForPhaseTransport(string phase, int differentVersionRepeat)
     {
         using B10FinalSweepHarness fixture = phase == "C0" ? await B10FinalSweepHarness.CreateC0Async(kafka) : await B10FinalSweepHarness.CreateAsync(kafka, differentVersionRepeat: differentVersionRepeat);
         Assert.Equal(0, await fixture.RunAsync());
@@ -52,7 +50,14 @@ public sealed class B10FinalJudgeIntegrationTests(B10AbruptVerifyKafkaFixture ka
         Assert.Equal(differentVersionRepeat == 0 ? B10FinalSweepHarness.NativeVersion : null, versions.GetProperty("librdkafka").GetString());
         Assert.Equal(differentVersionRepeat != 0, candidate.RootElement.GetProperty("reasons").EnumerateArray().Any(reason => reason.GetString() == "version_unavailable"));
         Assert.False(candidate.RootElement.TryGetProperty("b10_sweep", out _));
-        await B10FinalJudgeTests.CheckPythonTransportAsync(Encoding.UTF8.GetString(bytes));
+        // TP3 consumes these actual integration candidate bytes from outside the .NET test process.
+        string? exportDirectory = Environment.GetEnvironmentVariable("B10_FINAL_INTEGRATION_EXPORT_DIR");
+        if (exportDirectory is not null)
+        {
+            Directory.CreateDirectory(exportDirectory);
+            string name = FormattableString.Invariant($"b10-final-integration-{phase}-different-version-{differentVersionRepeat}.json");
+            await File.WriteAllBytesAsync(Path.Combine(exportDirectory, name), bytes, TestContext.Current.CancellationToken);
+        }
     }
 }
 #pragma warning restore CA1707

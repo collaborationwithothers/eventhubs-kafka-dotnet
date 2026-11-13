@@ -155,6 +155,7 @@ internal static class B10FinalProjectionCodec
             Require(N("resend_invoked") is not long invoked || N("unconfirmed_count") is not long unconfirmed || invoked <= unconfirmed);
             Require(N("originals_seen") is not long originals || N("unconfirmed_count") is not long originalLimit || originals <= originalLimit);
             Require(N("resends_seen") is not long resends || N("resend_invoked") is not long resendLimit || resends <= resendLimit);
+            Require(N("pair_count") is not >= 1 || N("originals_seen") is >= 1 && N("resends_seen") is >= 1);
             Require(N("unreported_seen") is not long seen || N("unreported_unseen") is not long unseen || N("unreported_attempts") is not long total || seen <= total && unseen == total - seen);
             Require(N("lost_resends") is not long lost || N("resend_invoked") is not long invokedLimit || lost <= invokedLimit);
             JsonElement witness = arm.GetProperty("witness");

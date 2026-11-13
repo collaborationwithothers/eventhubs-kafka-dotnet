@@ -164,6 +164,56 @@ public sealed class B10FinalProjectionCodecTests
         Assert.Throws<FormatException>(() => Read(root));
     }
 
+    [Theory]
+    [InlineData(0, "originals_seen", 0L)] [InlineData(0, "originals_seen", null)]
+    [InlineData(0, "resends_seen", 0L)] [InlineData(0, "resends_seen", null)]
+    [InlineData(1, "originals_seen", 0L)] [InlineData(1, "originals_seen", null)]
+    [InlineData(1, "resends_seen", 0L)] [InlineData(1, "resends_seen", null)]
+    public void Given_PositivePairsWithoutKnownSeenMember_When_Read_Then_Rejects(int armIndex, string field, long? count)
+    {
+        var fixture = Fixture();
+        fixture.Repeats[0] = fixture.Repeats[0] with { Restart = fixture.Repeats[0].Restart! with
+        { Comparison = "both", Arms = [B10FinalJudgeFixture.Arm("same_instance", true), B10FinalJudgeFixture.Arm("cross_restart", true)] } };
+        JsonObject root = JsonNode.Parse(B10FinalProjectionCodec.Write(fixture.Projection()))!.AsObject();
+        root["data"]!["repeats"]![0]!["restart"]!["arms"]![armIndex]![field] = count;
+        Assert.Throws<FormatException>(() => Read(root));
+    }
+
+    [Theory]
+    [InlineData(0, "originals_seen", 1L)] [InlineData(0, "originals_seen", 2L)]
+    [InlineData(0, "resends_seen", 1L)] [InlineData(0, "resends_seen", 2L)]
+    [InlineData(1, "originals_seen", 1L)] [InlineData(1, "originals_seen", 2L)]
+    [InlineData(1, "resends_seen", 1L)] [InlineData(1, "resends_seen", 2L)]
+    public void Given_PositivePairsWithSeenMemberBoundary_When_Read_Then_AcceptsAtAndAboveOne(int armIndex, string field, long count)
+    {
+        var fixture = Fixture();
+        fixture.Repeats[0] = fixture.Repeats[0] with { Restart = fixture.Repeats[0].Restart! with
+        { Comparison = "both", Arms = [B10FinalJudgeFixture.Arm("same_instance", true), B10FinalJudgeFixture.Arm("cross_restart", true)] } };
+        JsonObject root = JsonNode.Parse(B10FinalProjectionCodec.Write(fixture.Projection()))!.AsObject();
+        JsonObject arm = root["data"]!["repeats"]![0]!["restart"]!["arms"]![armIndex]!.AsObject();
+        arm["unconfirmed_attempt_ids"] = new JsonArray("original", "other-original");
+        arm["unconfirmed_count"] = 2; arm["resend_invoked"] = 2;
+        arm[field] = count;
+        B10FinalArm actual = Read(root).Data.Repeats[0].Restart!.Arms![armIndex];
+        Assert.Equal(count, field == "originals_seen" ? actual.OriginalsSeen : actual.ResendsSeen);
+        Assert.Equal(1, actual.PairCount);
+    }
+
+    [Theory]
+    [InlineData(0)] [InlineData(1)]
+    public void Given_MultipleCopyPairsForOneMember_When_Read_Then_PairCountMayExceedSeenMemberCounts(int armIndex)
+    {
+        var fixture = Fixture();
+        B10FinalArm[] arms = [B10FinalJudgeFixture.Arm("same_instance", true), B10FinalJudgeFixture.Arm("cross_restart", true)];
+        // One member with two original copies and three resend copies contributes six pairs (F13).
+        arms[armIndex] = arms[armIndex] with { PairCount = 6 };
+        fixture.Repeats[0] = fixture.Repeats[0] with { Restart = fixture.Repeats[0].Restart! with { Comparison = "both", Arms = arms } };
+        B10FinalArm actual = Read(JsonNode.Parse(B10FinalProjectionCodec.Write(fixture.Projection()))!.AsObject()).Data.Repeats[0].Restart!.Arms![armIndex];
+        Assert.Equal(6, actual.PairCount);
+        Assert.Equal(1, actual.OriginalsSeen);
+        Assert.Equal(1, actual.ResendsSeen);
+    }
+
     [Fact]
     public void Given_GlobalFailureAndUnknownSweepCounts_When_Read_Then_RetainsNullsAndFalseAdmission()
     {

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -196,6 +195,71 @@ public sealed class B10FinalJudgeTests
     }
 
     [Theory]
+    [InlineData(0, "originals_seen", 0L)] [InlineData(0, "originals_seen", null)]
+    [InlineData(0, "resends_seen", 0L)] [InlineData(0, "resends_seen", null)]
+    [InlineData(1, "originals_seen", 0L)] [InlineData(1, "originals_seen", null)]
+    [InlineData(1, "resends_seen", 0L)] [InlineData(1, "resends_seen", null)]
+    public async Task Given_BoundPositivePairsWithoutKnownSeenMember_When_Judged_Then_RejectsFinalProjection(int armIndex, string field, long? count)
+    {
+        var fixture = new B10FinalJudgeFixture("C1");
+        fixture.Repeats[0] = fixture.Repeats[0] with { Restart = fixture.Repeats[0].Restart! with
+        { Comparison = "both", Arms = [B10FinalJudgeFixture.Arm("same_instance", true), B10FinalJudgeFixture.Arm("cross_restart", true)] } };
+        fixture.Publish();
+        fixture.Mutate(PhasePaths.B10FinalSweep(B10FinalJudgeFixture.Run, "C1"), node =>
+            node["data"]!["repeats"]![0]!["restart"]!["arms"]![armIndex]![field] = count);
+        fixture.RebindProjection();
+        using JsonDocument candidate = await fixture.JudgeAsync(false);
+        Assert.Equal("invalid", candidate.RootElement.GetProperty("status").GetString());
+        Assert.Contains("b10_final_projection_untrusted", Strings(candidate.RootElement.GetProperty("reasons")));
+        Assert.Equal(JsonValueKind.Null, candidate.RootElement.GetProperty("b10_final").ValueKind);
+    }
+
+    [Theory]
+    [InlineData(0, "originals_seen", 1L)] [InlineData(0, "originals_seen", 2L)]
+    [InlineData(0, "resends_seen", 1L)] [InlineData(0, "resends_seen", 2L)]
+    [InlineData(1, "originals_seen", 1L)] [InlineData(1, "originals_seen", 2L)]
+    [InlineData(1, "resends_seen", 1L)] [InlineData(1, "resends_seen", 2L)]
+    public async Task Given_PositivePairsWithSeenMemberBoundary_When_Judged_Then_AcceptsAtAndAboveOne(int armIndex, string field, long count)
+    {
+        var fixture = new B10FinalJudgeFixture("C1");
+        B10FinalArm[] arms = [B10FinalJudgeFixture.Arm("same_instance", true), B10FinalJudgeFixture.Arm("cross_restart", true)];
+        arms[armIndex] = arms[armIndex] with { UnconfirmedAttemptIds = ["original", "other-original"], UnconfirmedCount = 2, ResendInvoked = 2,
+            OriginalsSeen = field == "originals_seen" ? count : 1, ResendsSeen = field == "resends_seen" ? count : 1 };
+        fixture.Repeats[0] = fixture.Repeats[0] with { Restart = fixture.Repeats[0].Restart! with { Comparison = "both", Arms = arms } };
+        using JsonDocument candidate = await fixture.JudgeAsync();
+        Assert.Equal("complete_valid", candidate.RootElement.GetProperty("status").GetString());
+        JsonElement final = candidate.RootElement.GetProperty("b10_final");
+        JsonElement actual = final.GetProperty("repeats")[0].GetProperty("restart").GetProperty("arms")[armIndex];
+        Assert.Equal(count, actual.GetProperty(field).GetInt64());
+        Assert.Equal(1, actual.GetProperty("pair_count").GetInt64());
+        Assert.Equal("confirmed", final.GetProperty("restart_rule").GetProperty("rule_selection").GetString());
+        Assert.Equal([1], Numbers(final.GetProperty("restart_rule").GetProperty("qualifying_pair_repeats")));
+    }
+
+    [Fact]
+    public async Task Given_MultipleCopyPairsForOneMember_When_Judged_Then_PreservesPairsAndConfirmsRestart()
+    {
+        var fixture = new B10FinalJudgeFixture("C1");
+        for (int index = 0; index < 5; index++) fixture.Repeats[index] = fixture.Repeats[index] with
+        { Restart = fixture.Repeats[index].Restart! with { Comparison = "both", Arms =
+            [B10FinalJudgeFixture.Arm("same_instance", true) with { PairCount = 6 }, B10FinalJudgeFixture.Arm("cross_restart", true) with { PairCount = 6 }] } };
+        using JsonDocument candidate = await fixture.JudgeAsync();
+        Assert.Equal("complete_valid", candidate.RootElement.GetProperty("status").GetString());
+        JsonElement final = candidate.RootElement.GetProperty("b10_final");
+        Assert.All(final.GetProperty("repeats").EnumerateArray(), repeat =>
+            Assert.All(repeat.GetProperty("restart").GetProperty("arms").EnumerateArray(), arm =>
+            {
+                Assert.Equal(6, arm.GetProperty("pair_count").GetInt64());
+                Assert.Equal(1, arm.GetProperty("originals_seen").GetInt64());
+                Assert.Equal(1, arm.GetProperty("resends_seen").GetInt64());
+            }));
+        JsonElement rule = final.GetProperty("restart_rule");
+        Assert.Equal("confirmed", rule.GetProperty("rule_selection").GetString());
+        Assert.Equal(Enumerable.Range(1, 5), Numbers(rule.GetProperty("qualifying_pair_repeats")));
+        Assert.Equal(B10FinalJudgeFixture.ExpectedRestartSubject, rule.GetProperty("subject").GetString());
+    }
+
+    [Theory]
     [InlineData("wrong-count")]
     [InlineData("ownership-collision")]
     public async Task Given_AuthenticatedNegativeRegistrationJudgement_When_Judged_Then_RetainsProjectionAndHeldRule(string change)
@@ -388,9 +452,9 @@ public sealed class B10FinalJudgeTests
             Assert.Equal(JsonValueKind.Null, repeat.GetProperty("probe_observation").ValueKind);
             Assert.Equal(JsonValueKind.Null, repeat.GetProperty("workload_observation").ValueKind);
         }
-        await CheckPythonTransportAsync(fixture.CandidateText);
+        // TP3 consumes these actual Judge bytes from the external phase acceptance command.
         string? export = Environment.GetEnvironmentVariable("B10_FINAL_T17_EXPORT");
-        if (export is not null) await File.WriteAllTextAsync(export, fixture.CandidateText, TestContext.Current.CancellationToken);
+        if (export is not null) await File.WriteAllBytesAsync(export, fixture.Verifier[fixture.Options.CandidateOutputName!], TestContext.Current.CancellationToken);
     }
 
     [Theory]
@@ -435,24 +499,6 @@ public sealed class B10FinalJudgeTests
         using JsonDocument candidate = await fixture.JudgeAsync(false);
         Assert.True(candidate.RootElement.TryGetProperty("b10_sweep", out _));
         Assert.False(candidate.RootElement.TryGetProperty("b10_final", out _));
-    }
-
-    internal static async Task CheckPythonTransportAsync(string candidate)
-    {
-        DirectoryInfo? root = new(AppContext.BaseDirectory);
-        while (root is not null && !File.Exists(Path.Combine(root.FullName, "infra", "scripts", "phase", "tests", "test_phase.py"))) root = root.Parent;
-        Assert.NotNull(root);
-        var start = new ProcessStartInfo("python3") { RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
-        start.ArgumentList.Add("-c");
-        start.ArgumentList.Add("import importlib.util,sys; s=importlib.util.spec_from_file_location('phase_tests',sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);m.check_b10_final_candidate_transport(sys.stdin.buffer.read())");
-        start.ArgumentList.Add(Path.Combine(root.FullName, "infra", "scripts", "phase", "tests", "test_phase.py"));
-        using Process process = Process.Start(start)!;
-        Task<string> error = process.StandardError.ReadToEndAsync(TestContext.Current.CancellationToken);
-        Task<string> output = process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
-        await process.StandardInput.WriteAsync(candidate.AsMemory(), TestContext.Current.CancellationToken);
-        process.StandardInput.Close();
-        await process.WaitForExitAsync(TestContext.Current.CancellationToken);
-        Assert.True(process.ExitCode == 0, await error + await output);
     }
 
     private static string[] Strings(JsonElement value) => value.EnumerateArray().Select(x => x.GetString()!).ToArray();

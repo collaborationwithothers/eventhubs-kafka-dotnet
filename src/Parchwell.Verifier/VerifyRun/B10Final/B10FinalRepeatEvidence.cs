@@ -176,6 +176,7 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
             JsonElement data = envelope.GetProperty("data");
             Exact(data, "first_instance_id", "successor_instance_id", "timeout_instance_id", "timeout", "comparison", "native_errors", "eligibility", "eligibility_reasons", "start_line", "end_line", "window_complete", "window_limit", "arms", "problems", "problem_details", "finality", "earlier_repeat_records");
             Require(Text(data, "finality") == "nonfinal" && Text(data, "eligibility") is "pending_sweep" or "ineligible", "nonfinal_finality");
+            ValidateArms(data.GetProperty("arms"));
             input.Nonfinal = data;
             input.RestartReasons.UnionWith(Strings(data.GetProperty("eligibility_reasons")));
             Dictionary<int, long>? starts = JsonVector(data.GetProperty("start_line")), ends = JsonVector(data.GetProperty("end_line"));
@@ -229,9 +230,12 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
         }
         if (input.Nonfinal is { } nonfinal && input.InputValid)
         {
-            if (NullableText(nonfinal, "timeout_instance_id") != input.TimeoutInstance || NullableText(nonfinal, "first_instance_id") != input.First?.Pod ||
-                NullableText(nonfinal, "successor_instance_id") != input.Successor?.Pod || !SameMembers(input, nonfinal))
-                input.RestartInputInvalid = true;
+            try
+            {
+                Require(NullableText(nonfinal, "timeout_instance_id") == input.TimeoutInstance && NullableText(nonfinal, "first_instance_id") == input.First?.Pod &&
+                    NullableText(nonfinal, "successor_instance_id") == input.Successor?.Pod && SameMembers(input, nonfinal), "nonfinal_restart_agreement");
+            }
+            catch (Exception exception) when (B10FinalSweepHandler.EvidenceFailure(exception, ct)) { input.RestartInputInvalid = true; }
         }
         else if (dataBytes is null && receiptBytes is null && input.Termination.Class is not null)
         {
@@ -457,7 +461,71 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
             !terminals.ContainsKey(attempt.Id) && !rejected.Contains(attempt.Id)).OrderBy(attempt => attempt.JournalSequence).Select(attempt => attempt.Id).ToArray();
     }
 
-    private static bool SameMembers(B10FinalInput input, JsonElement nonfinal)
+    internal static void ValidateArms(JsonElement arms)
+    {
+        if (arms.ValueKind == JsonValueKind.Null) return;
+        Require(arms.GetArrayLength() == 2, "nonfinal_arms");
+        int index = 0;
+        foreach (JsonElement arm in arms.EnumerateArray())
+        {
+            Exact(arm, "arm", "key", "unconfirmed_count", "resend_invoked", "originals_seen", "resends_seen", "pair_count", "witness", "members",
+                "unreported_attempts", "unreported_seen", "unreported_unseen", "lost_resends");
+            Require(Text(arm, "arm") == (index++ == 0 ? "same_instance" : "cross_restart"), "nonfinal_arm_order");
+            _ = Text(arm, "key");
+            Count(arm.GetProperty("unconfirmed_count"), false);
+            Count(arm.GetProperty("unreported_attempts"), false);
+            foreach (string field in new[] { "resend_invoked", "originals_seen", "resends_seen", "pair_count", "unreported_seen", "unreported_unseen", "lost_resends" })
+                Count(arm.GetProperty(field));
+            JsonElement witness = arm.GetProperty("witness");
+            if (witness.ValueKind != JsonValueKind.Null)
+            {
+                Exact(witness, "original_attempt_id", "resend_attempt_id", "original", "resend");
+                _ = Text(witness, "original_attempt_id");
+                _ = Text(witness, "resend_attempt_id");
+                Coordinate(witness.GetProperty("original"));
+                Coordinate(witness.GetProperty("resend"));
+            }
+            foreach (JsonElement member in arm.GetProperty("members").EnumerateArray())
+            {
+                Exact(member, "original_attempt_id", "sequence", "payload_sha256", "resend_attempt_id", "resend_terminal", "copy_count", "original_copies",
+                    "resend_copies", "other_copies", "pair_count", "copies", "copies_truncated", "resend_lost");
+                _ = Text(member, "original_attempt_id");
+                Count(member.GetProperty("sequence"), false);
+                _ = Text(member, "payload_sha256");
+                _ = NullableText(member, "resend_attempt_id");
+                JsonElement terminal = member.GetProperty("resend_terminal");
+                if (terminal.ValueKind != JsonValueKind.Null)
+                {
+                    Exact(terminal, "delivered", "error_code", "persistence_status");
+                    _ = terminal.GetProperty("delivered").GetBoolean();
+                    _ = terminal.GetProperty("error_code").GetInt32();
+                    if (terminal.GetProperty("persistence_status").ValueKind != JsonValueKind.Null) _ = terminal.GetProperty("persistence_status").GetInt32();
+                }
+                foreach (string field in new[] { "copy_count", "original_copies", "resend_copies", "other_copies", "pair_count" }) Count(member.GetProperty(field));
+                foreach (string field in new[] { "copies_truncated", "resend_lost" })
+                    if (member.GetProperty(field).ValueKind != JsonValueKind.Null) _ = member.GetProperty(field).GetBoolean();
+                JsonElement copies = member.GetProperty("copies");
+                if (copies.ValueKind == JsonValueKind.Null) continue;
+                foreach (JsonElement copy in copies.EnumerateArray())
+                {
+                    Exact(copy, "partition", "offset", "instance_id", "attempt_id", "role");
+                    Require(copy.GetProperty("partition").GetInt32() >= 0 && copy.GetProperty("offset").GetInt64() >= 0, "nonfinal_copy_coordinate");
+                    _ = copy.GetProperty("instance_id").GetString();
+                    _ = copy.GetProperty("attempt_id").GetString();
+                    Require(Text(copy, "role") is "original" or "resend" or "other", "nonfinal_copy_role");
+                }
+            }
+        }
+
+        static void Count(JsonElement value, bool nullable = true) => Require(nullable && value.ValueKind == JsonValueKind.Null || value.GetInt64() >= 0, "nonfinal_count");
+        static void Coordinate(JsonElement value)
+        {
+            Exact(value, "partition", "offset");
+            Require(value.GetProperty("partition").GetInt32() >= 0 && value.GetProperty("offset").GetInt64() >= 0, "nonfinal_witness_coordinate");
+        }
+    }
+
+    internal static bool SameMembers(B10FinalInput input, JsonElement nonfinal)
     {
         if (input.First is null) return nonfinal.GetProperty("arms").ValueKind == JsonValueKind.Null;
         JsonElement arms = nonfinal.GetProperty("arms");
@@ -466,14 +534,29 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
         {
             string name = Text(arm, "arm");
             IReadOnlyList<string> ids = name == "same_instance" ? input.First.Control : input.First.Kill;
+            IReadOnlyDictionary<string, string>? resends = name == "same_instance" ? input.First.ControlResends : input.Successor?.Resends;
+            IReadOnlyDictionary<string, AbruptTerminal>? terminals = name == "same_instance" ? input.First.Terminals : input.Successor?.Terminals;
+            long unreported = input.First.Attempts.Values.LongCount(attempt => attempt.Arm == name && input.First.Accepted.Contains(attempt.Id) &&
+                !input.First.Terminals.ContainsKey(attempt.Id) && !input.First.Rejected.Contains(attempt.Id));
+            string key = input.First.Attempts.Values.First(attempt => attempt.Arm == name && attempt.Role == "original").Key;
+            if (Text(arm, "key") != key || arm.GetProperty("unconfirmed_count").GetInt64() != ids.Count ||
+                arm.GetProperty("unreported_attempts").GetInt64() != unreported ||
+                (arm.GetProperty("resend_invoked").ValueKind == JsonValueKind.Null ? resends is not null :
+                    resends is null || arm.GetProperty("resend_invoked").GetInt64() != resends.Count)) return false;
             JsonElement[] members = arm.GetProperty("members").EnumerateArray().ToArray();
             if (!members.Select(member => Text(member, "original_attempt_id")).SequenceEqual(ids, StringComparer.Ordinal)) return false;
             foreach (JsonElement member in members)
             {
                 string original = Text(member, "original_attempt_id");
-                string? resend = name == "same_instance" ? input.First.ControlResends[original] : input.Successor?.Resends[original];
+                string? resend = resends?[original];
                 if (NullableText(member, "resend_attempt_id") != resend || member.GetProperty("sequence").GetInt64() != input.First.Attempts[original].Sequence ||
                     Text(member, "payload_sha256") != input.First.Attempts[original].PayloadSha256) return false;
+                AbruptTerminal? terminal = resend is null ? null : terminals?.GetValueOrDefault(resend);
+                JsonElement supplied = member.GetProperty("resend_terminal");
+                if (terminal is null ? supplied.ValueKind != JsonValueKind.Null : supplied.ValueKind == JsonValueKind.Null ||
+                    supplied.GetProperty("delivered").GetBoolean() != terminal.Delivered || supplied.GetProperty("error_code").GetInt32() != terminal.ErrorCode ||
+                    (supplied.GetProperty("persistence_status").ValueKind == JsonValueKind.Null ? terminal.PersistenceStatus is not null :
+                        supplied.GetProperty("persistence_status").GetInt32() != terminal.PersistenceStatus)) return false;
             }
         }
         return true;
