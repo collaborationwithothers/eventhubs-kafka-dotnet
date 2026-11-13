@@ -49,6 +49,12 @@ case "$1" in
             previous=$argument
         done
         ;;
+    run)
+        project=$3
+        printf 'RUN %s %s\n' "$(basename "${project%.csproj}")" "$*" >> "$STUB_LOG"
+        printf '%s\n' "${STUB_METHODS:-[]}"
+        exit "${STUB_LIST_STATUS:-0}"
+        ;;
     build)
         if [[ "$*" == *Parchwell.slnx* ]]; then exit "${STUB_BUILD_STATUS:-0}"; fi
         if [[ "$*" == *Forbidden.cs* && "${STUB_ACCEPT_WARNING:-}" != 1 ]]; then
@@ -107,6 +113,7 @@ run_case default --
 [[ $status -eq 0 ]] || fail "default run exited $status"
 [[ $tested -eq 6 ]] || fail "default run invoked $tested test projects, expected 6"
 [[ "$log" != *filter-not-trait* ]] || fail "default run must not filter tests"
+[[ "$log" != *--filter-class* && "$log" != *--filter-not-class* ]] || fail "default run must not pass a class filter"
 [[ $(grep -c 'msbuild scripts/dotnet-verification.proj -t:PublishSpikeEvidence' "$STUB_LOG") -eq 1 ]] || fail "tier all must publish the spike evidence once"
 [[ "$output" == *"Verification passed. Per-project reports"* ]] || fail "default run must print the full-gate pass line"
 awk -F '\t' -v pattern="^$timestamp\$" 'NF != 4 || $3 !~ pattern || $4 !~ pattern { bad = 1 } END { exit bad }' "$results_dir/stage-timing.tsv" \
@@ -124,6 +131,105 @@ jq -e --argjson cpus "$(nproc)" --argjson memory "${expected_memory:-null}" '.np
 check_summary "tier, projects, sdk and environment values" '.tier == "all" and .projects == null and .sdk_version == "10.0.402" and .dotnet_processor_count == null and .parchwell_build_max_cpu == null'
 jq -e --arg pattern "^$timestamp\$" '(.started_utc | test($pattern)) and (.ended_utc | test($pattern))' "$summary" >/dev/null || fail "started_utc and ended_utc"
 [[ "${output##*$'\n'}" == "Verification logs and reports: "* ]] || fail "the exit line must stay the last line"
+
+# Shards (issue 452). Fixture shard files use real tabs.
+verifier=Parchwell.Verifier.Tests
+verifier_a_classes=""
+for class_name in PredicateBoundary Boundary TimeoutPrecedence TerminalOutcome BoundedRead; do
+    verifier_a_classes+="$verifier.Component.B10AbruptVerify${class_name}Tests "
+done
+verifier_a_expected="-- --filter-class ${verifier_a_classes}--report-xunit-xml"
+verifier_all_classes=$(grep -v '^#' "$repository_root/scripts/dotnet-test-shards.tsv" | awk -F '\t' -v p="$verifier" '$1 == p { printf "%s ", $3 }')
+
+run_case shard_a -- --project $verifier --shard b10-verify-a
+[[ $status -eq 0 && $tested -eq 1 ]] || fail "S1: shard run exited $status and ran $tested test commands"
+[[ "$(grep '^TEST ' "$STUB_LOG")" == *"$verifier_a_expected"* ]] || fail "S1: TEST line must carry the shard's classes in file order"
+[[ "$(grep '^TEST ' "$STUB_LOG")" != *--filter-not-class* ]] || fail "S1: a named shard must not pass --filter-not-class"
+check_summary "S1 shard summary" '.shard == "b10-verify-a" and .projects == ["Parchwell.Verifier.Tests"] and .outcome == "partial_passed"'
+[[ "$output" == *"Partial verification passed"* ]] || fail "S14: a shard run must say it is not the full gate"
+
+run_case shard_rest -- --project $verifier --shard rest
+[[ $status -eq 0 && $tested -eq 1 ]] || fail "S2: rest run exited $status"
+[[ "$(grep '^TEST ' "$STUB_LOG")" == *"-- --filter-not-class ${verifier_all_classes}--report-xunit-xml"* ]] || fail "S2: rest must exclude every listed class in file order"
+[[ "$(grep '^TEST ' "$STUB_LOG")" != *"--filter-class "* ]] || fail "S2: rest must not pass --filter-class"
+[[ "$(grep -o 'Parchwell.Verifier.Tests.Component' <<<"$verifier_all_classes" | wc -l)" -eq 9 ]] || fail "S2: the Verifier shard file must list nine classes"
+
+run_case shard_equals -- --project=Parchwell.LoadGen.Tests --shard=b10-end-to-end
+[[ $status -eq 0 && $tested -eq 1 ]] || fail "S3: equals form exited $status"
+[[ "$(grep '^TEST ' "$STUB_LOG")" == *"-- --filter-class Parchwell.LoadGen.Tests.Abrupt.B10AbruptEndToEndTests --report-xunit-xml"* ]] || fail "S3: end-to-end shard filter"
+
+run_case shard_fast -- --tier fast --project Parchwell.LoadGen.Tests --shard rest
+[[ "$(grep '^TEST ' "$STUB_LOG")" == *"-- --filter-not-trait Tier=Docker Tier=Slow Tier=CGroupV2 --filter-not-class Parchwell.LoadGen.Tests.Abrupt.B10AbruptEndToEndTests --report-xunit-xml"* ]] || fail "S4: tier arguments must come before the class filter"
+
+run_case shard_sandbox -- --tier sandbox --project Parchwell.LoadGen.Tests --shard rest
+[[ $status -eq 0 ]] || fail "S19: sandbox shard run exited $status"
+[[ "$(grep '^TEST ' "$STUB_LOG")" == *"-- --filter-not-trait Tier=CGroupV2 --filter-not-class Parchwell.LoadGen.Tests.Abrupt.B10AbruptEndToEndTests --report-xunit-xml"* ]] || fail "S19: sandbox shard filter"
+check_summary "S19 sandbox shard summary" '.tier == "sandbox" and .shard == "rest"'
+
+# reject_shard <case> <expected message> <env assignments...> -- <arguments>: exit 2, no dotnet call, no results directory.
+reject_shard() {
+    local name=$1 message=$2
+    shift 2
+    mkdir "$work/tmp-$name"
+    run_case "$name" TMPDIR="$work/tmp-$name" "$@"
+    [[ $status -eq 2 ]] || fail "$name: exited $status, expected 2"
+    [[ ! -s "$STUB_LOG" ]] || fail "$name: must not call dotnet"
+    [[ -z "$(ls -A "$work/tmp-$name")" ]] || fail "$name: must not create a results directory"
+    [[ "$output" == *"$message"* ]] || fail "$name: expected '$message', got: $output"
+}
+reject_shard shard_no_project "--shard needs exactly one --project." -- --shard rest
+reject_shard shard_two_projects "--shard needs exactly one --project." -- --project $verifier --project Parchwell.LoadGen.Tests --shard rest
+reject_shard shard_twice "--shard may be given once." -- --project $verifier --shard rest --shard rest
+reject_shard shard_unknown "Unknown --shard 'nope' for $verifier. Shards: b10-verify-a b10-verify-b rest" -- --project $verifier --shard nope
+reject_shard shard_unsharded "Parchwell.Scenarios.Tests has no shards in $repository_root/scripts/dotnet-test-shards.tsv." -- --project Parchwell.Scenarios.Tests --shard rest
+reject_shard shard_no_value "Usage: ./scripts/verify-dotnet.sh" -- --project $verifier --shard
+
+shards_fixture="$work/shards-fixture.tsv"
+reject_shard shard_file_missing "Cannot read shard file $work/no-such-shards.tsv." PARCHWELL_TEST_SHARDS_FILE="$work/no-such-shards.tsv" -- --project $verifier --shard rest
+# Each fixture is written line by line with printf; the first listed line is line 1 unless a comment comes first.
+malformed_case() {
+    local label=$1 expected_line=$2
+    shift 2
+    printf '%b' "$@" > "$shards_fixture"
+    reject_shard "shard_bad_$label" "Malformed shard file line $expected_line: $shards_fixture." PARCHWELL_TEST_SHARDS_FILE="$shards_fixture" -- --project $verifier --shard rest
+}
+malformed_case two_fields 1 "$verifier\\ts1\\n"
+malformed_case shard_rest 1 "$verifier\\trest\\t$verifier.A\\n"
+malformed_case shard_upper 1 "$verifier\\tBad\\t$verifier.A\\n"
+malformed_case class_prefix 1 "$verifier\\ts1\\tOther.X\\n"
+malformed_case duplicate 3 "$verifier\\ts1\\t$verifier.A\\n# note\\n$verifier\\ts2\\t$verifier.A\\n"
+malformed_case four_fields 1 "$verifier\\ts1\\t$verifier.A\\tx\\n"
+malformed_case project_pattern 1 "Verifier.Tests\\ts1\\tVerifier.Tests.A\\n"
+malformed_case class_space 1 "$verifier\\ts1\\t$verifier.A B\\n"
+
+# S17: CRLF line ends parse like LF.
+sed 's/$/\r/' "$repository_root/scripts/dotnet-test-shards.tsv" > "$shards_fixture"
+run_case shard_crlf PARCHWELL_TEST_SHARDS_FILE="$shards_fixture" -- --project $verifier --shard b10-verify-a
+[[ $status -eq 0 && "$(grep '^TEST ' "$STUB_LOG")" == *"$verifier_a_expected"* ]] || fail "S17: CRLF shard file must give S1's filter (status $status)"
+
+# S18: a file with only ignored lines shards nothing.
+printf '# none\n' > "$shards_fixture"
+reject_shard shard_file_empty "$verifier has no shards in $shards_fixture." PARCHWELL_TEST_SHARDS_FILE="$shards_fixture" -- --project $verifier --shard rest
+
+# Test list stage.
+run_case list STUB_METHODS='["A.B.C"]' --
+[[ $status -eq 0 ]] || fail "S10: list run exited $status"
+[[ $(grep -c '^RUN ' "$STUB_LOG") -eq 6 ]] || fail "S10: expected six RUN lines"
+[[ $(grep '^RUN ' "$STUB_LOG" | grep -c -- '--configuration Release --no-build --no-launch-profile -- -list methods/json -noColor') -eq 6 ]] || fail "S10: every RUN line must carry the list arguments"
+for project in Parchwell.ArchitectureTests Parchwell.Enrichment.Tests Parchwell.Kafka.Tests Parchwell.LoadGen.Tests Parchwell.Scenarios.Tests Parchwell.Verifier.Tests; do
+    [[ "$(cat "$results_dir/$project/methods.json")" == '["A.B.C"]' ]] || fail "S10: $project methods.json"
+    jq -e --arg p "$project" '[.stages[].label] as $l | ($l | index($p + " report")) + 1 == ($l | index($p + " test list")) and ([.stages[] | select(.label == ($p + " test list"))][0].exit_code == 0)' "$summary" >/dev/null \
+        || fail "S10: $project test list stage must follow its report stage and pass"
+done
+check_summary "S10 shard null" '.shard == null'
+
+run_case list_fail STUB_LIST_STATUS=3 --
+[[ $status -eq 3 ]] || fail "S11: failing test list exited $status, expected 3"
+check_summary "S11 failed stages" '[.failed_stages[] | .exit_code] == [3,3,3,3,3,3] and ([.failed_stages[].label] == ["Parchwell.ArchitectureTests","Parchwell.Enrichment.Tests","Parchwell.Kafka.Tests","Parchwell.LoadGen.Tests","Parchwell.Scenarios.Tests","Parchwell.Verifier.Tests"])'
+[[ "$log" == *"build"*"Forbidden.cs"* ]] || fail "S11: warning control must still run"
+
+run_case list_skipped STUB_FAIL=Parchwell.Kafka.Tests --
+[[ $(grep -c '^RUN ' "$STUB_LOG") -eq 5 && "$(grep '^RUN ' "$STUB_LOG")" != *Parchwell.Kafka.Tests* ]] || fail "S12: a failed tests stage must skip the test list stage"
 
 run_case fast -- --tier fast
 [[ $status -eq 0 ]] || fail "fast tier exited $status"
@@ -190,6 +296,8 @@ run_case help TMPDIR="$work/tmp-help" -- --help
 grep -qF '[--tier fast|sandbox|all]' "$work/help.out" || fail "--help must show the sandbox tier in the synopsis"
 grep -Eq '^ *--tier sandbox .*Tier=CGroupV2' "$work/help.out" || fail "--help must describe --tier sandbox"
 grep -qxF 'A run with --tier fast, --tier sandbox or --project prints that it is not the full gate.' "$work/help.out" || fail "--help must name the sandbox tier as a partial run"
+grep -qF -- '--shard' "$work/help.out" || fail "--help must name --shard"
+grep -qF 'PARCHWELL_TEST_SHARDS_FILE' "$work/help.out" || fail "--help must name PARCHWELL_TEST_SHARDS_FILE"
 
 run_case cpu PARCHWELL_BUILD_MAX_CPU=3 DOTNET_PROCESSOR_COUNT=2 --
 [[ $status -eq 0 ]] || fail "cpu-capped run exited $status"

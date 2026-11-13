@@ -1,0 +1,16 @@
+# Test shards for hosted CI (issue 452). One line per test class: <project> TAB <shard> TAB <class>.
+# A project named here is split into its named shards plus an implicit shard "rest" that runs every
+# other class of the project. Each line is read by scripts/verify-dotnet.sh and by
+# scripts/check-dotnet-matrix.py. The format is described in docs/engineering/dotnet-verification.md.
+# The nine Verifier classes are the xUnit collection "B10 abrupt verifier", which runs without
+# parallelization, so they are split across two shards by whole class.
+Parchwell.LoadGen.Tests	b10-end-to-end	Parchwell.LoadGen.Tests.Abrupt.B10AbruptEndToEndTests
+Parchwell.Verifier.Tests	b10-verify-a	Parchwell.Verifier.Tests.Component.B10AbruptVerifyPredicateBoundaryTests
+Parchwell.Verifier.Tests	b10-verify-a	Parchwell.Verifier.Tests.Component.B10AbruptVerifyBoundaryTests
+Parchwell.Verifier.Tests	b10-verify-a	Parchwell.Verifier.Tests.Component.B10AbruptVerifyTimeoutPrecedenceTests
+Parchwell.Verifier.Tests	b10-verify-a	Parchwell.Verifier.Tests.Component.B10AbruptVerifyTerminalOutcomeTests
+Parchwell.Verifier.Tests	b10-verify-a	Parchwell.Verifier.Tests.Component.B10AbruptVerifyBoundedReadTests
+Parchwell.Verifier.Tests	b10-verify-b	Parchwell.Verifier.Tests.Component.B10AbruptVerifyCoverageTests
+Parchwell.Verifier.Tests	b10-verify-b	Parchwell.Verifier.Tests.Component.B10AbruptVerifyTests
+Parchwell.Verifier.Tests	b10-verify-b	Parchwell.Verifier.Tests.Component.B10AbruptVerifyClassificationTests
+Parchwell.Verifier.Tests	b10-verify-b	Parchwell.Verifier.Tests.Component.B10ScientificThreeJobVerifyTests

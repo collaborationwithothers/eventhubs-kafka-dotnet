@@ -11,18 +11,39 @@ permissions:
 
 jobs:
   dotnet-tests:
-    name: .NET tests (${{ matrix.project }})
+    name: .NET tests (${{ matrix.unit }})
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        project:
-          - Parchwell.ArchitectureTests
-          - Parchwell.Enrichment.Tests
-          - Parchwell.Kafka.Tests
-          - Parchwell.LoadGen.Tests
-          - Parchwell.Scenarios.Tests
-          - Parchwell.Verifier.Tests
+        include:
+          - project: Parchwell.ArchitectureTests
+            shard: ''
+            unit: Parchwell.ArchitectureTests
+          - project: Parchwell.Enrichment.Tests
+            shard: ''
+            unit: Parchwell.Enrichment.Tests
+          - project: Parchwell.Kafka.Tests
+            shard: ''
+            unit: Parchwell.Kafka.Tests
+          - project: Parchwell.LoadGen.Tests
+            shard: b10-end-to-end
+            unit: Parchwell.LoadGen.Tests--b10-end-to-end
+          - project: Parchwell.LoadGen.Tests
+            shard: rest
+            unit: Parchwell.LoadGen.Tests--rest
+          - project: Parchwell.Scenarios.Tests
+            shard: ''
+            unit: Parchwell.Scenarios.Tests
+          - project: Parchwell.Verifier.Tests
+            shard: b10-verify-a
+            unit: Parchwell.Verifier.Tests--b10-verify-a
+          - project: Parchwell.Verifier.Tests
+            shard: b10-verify-b
+            unit: Parchwell.Verifier.Tests--b10-verify-b
+          - project: Parchwell.Verifier.Tests
+            shard: rest
+            unit: Parchwell.Verifier.Tests--rest
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -36,7 +57,8 @@ jobs:
       - name: Verify .NET test project
         env:
           PARCHWELL_TEST_PROJECT: ${{ matrix.project }}
-        run: ./scripts/verify-dotnet.sh --project "$PARCHWELL_TEST_PROJECT"
+          PARCHWELL_TEST_SHARD: ${{ matrix.shard }}
+        run: ./scripts/verify-dotnet.sh --project "$PARCHWELL_TEST_PROJECT" ${PARCHWELL_TEST_SHARD:+--shard "$PARCHWELL_TEST_SHARD"}
       - name: Install mapping coverage collector
         if: matrix.project == 'Parchwell.Kafka.Tests'
         run: dotnet tool install dotnet-coverage --version 18.12.0 --tool-path "$RUNNER_TEMP/parchwell-coverage"
@@ -68,11 +90,14 @@ jobs:
           if [ -f "$results_dir/$PARCHWELL_TEST_PROJECT/results.xml" ]; then
             cp "$results_dir/$PARCHWELL_TEST_PROJECT/results.xml" "$artifact/results.xml"
           fi
+          if [ -f "$results_dir/$PARCHWELL_TEST_PROJECT/methods.json" ]; then
+            cp "$results_dir/$PARCHWELL_TEST_PROJECT/methods.json" "$artifact/methods.json"
+          fi
       - name: Upload verification reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: dotnet-verification-${{ matrix.project }}-attempt-${{ github.run_attempt }}
+          name: dotnet-verification-${{ matrix.unit }}-attempt-${{ github.run_attempt }}
           path: ${{ runner.temp }}/dotnet-verification-artifact
           if-no-files-found: error
   worker-images:
@@ -115,7 +140,7 @@ jobs:
         env:
           DOTNET_TESTS_RESULT: ${{ needs.dotnet-tests.result }}
           WORKER_IMAGES_RESULT: ${{ needs.worker-images.result }}
-        run: python3 scripts/check-dotnet-matrix.py "$RUNNER_TEMP/dotnet-verification-reports" "dotnet-tests=$DOTNET_TESTS_RESULT" "worker-images=$WORKER_IMAGES_RESULT"
+        run: python3 scripts/check-dotnet-matrix.py "$RUNNER_TEMP/dotnet-verification-reports" scripts/dotnet-test-shards.tsv "dotnet-tests=$DOTNET_TESTS_RESULT" "worker-images=$WORKER_IMAGES_RESULT"
   lifecycle-verification:
     name: Lifecycle verification
     runs-on: ubuntu-24.04
