@@ -34,7 +34,7 @@ Plan section 9's estimate says the new workflow uses eight runners at once inste
 
 ## Commands run (head before the receipt commit: see git log)
 - A1: `python3 -m unittest discover -s scripts/tests -p test_check_dotnet_matrix.py -v`: 24 tests, OK.
-- A2: `python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'`: 380 tests, 43 failures and 103 errors in this container, in the same 149 test IDs before and after the change (compared by script on `main` and the branch). The hash test `B10AbruptWorkflowTests` passes (6 tests, OK). Likely cause: this container lacks the pinned tools and CPython 3.12; not investigated.
+- A2: `python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'`: 380 tests, 43 failures and 103 errors in this container, in the same 149 test IDs before and after the change (compared by script on `main` and the branch). The hash test `B10AbruptWorkflowTests` passes (6 tests, OK). A2 is therefore not satisfied locally: the hosted Lifecycle verification job, which runs the same command, must supply the passing evidence, and that job is not the required check. Likely cause: this container lacks the pinned tools and CPython 3.12; not investigated.
 - A3: `check-offline.sh` not run: `install-tools.sh` stops with "PyYAML wheel requires CPython 3.12". Instead ran pinned actionlint 1.7.12 (sha256 checked) on the workflow: no findings. The hosted Lifecycle verification job runs the full script on the pull request.
 - A4: PyYAML comparison of `name`, `on`, `permissions`, `jobs.lifecycle-verification`, `jobs.terraform-verification` between `origin/main` and the working tree: all equal.
 - A5: pending, hosted run on the pull request head.

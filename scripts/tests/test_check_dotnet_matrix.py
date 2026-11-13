@@ -1,4 +1,4 @@
-"""Tests for scripts/check-dotnet-matrix.py. Each negative test changes one thing in a valid fixture."""
+"""Tests for scripts/check-dotnet-matrix.py. Negative tests change one thing in a valid fixture, except T14 and T24, which combine changes on purpose."""
 import json
 import os
 import shutil
