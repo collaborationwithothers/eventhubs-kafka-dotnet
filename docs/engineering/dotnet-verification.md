@@ -47,15 +47,16 @@ Those commands check documentation. They are not the .NET build entry point. Doc
 
 ## Tiers, partial runs and failure reporting
 
-`./scripts/verify-dotnet.sh` with no options is the full gate: every test project and every test. Hosted CI runs each test project in its own job with `./scripts/verify-dotnet.sh --project <name>`, so a single hosted job is a partial run; the `.NET verification` aggregate job requires all of them ([Hosted CI and completion](#hosted-ci-and-completion)). These options exist for quicker feedback and never replace it:
+`./scripts/verify-dotnet.sh` with no options is the full gate: every test project and every test. Hosted CI runs each test project in its own job with `./scripts/verify-dotnet.sh --project <name>`, so a single hosted job is a partial run; the `.NET verification` aggregate job requires all of them ([Hosted CI and completion](#hosted-ci-and-completion)). These options give partial runs, for quicker feedback or, with `--tier sandbox`, for the pre-PR local gate, and never replace the full gate:
 
 ```bash
 ./scripts/verify-dotnet.sh --tier fast
+./scripts/verify-dotnet.sh --tier sandbox
 ./scripts/verify-dotnet.sh --project Parchwell.Verifier.Tests --project Parchwell.Kafka.Tests
 PARCHWELL_BUILD_MAX_CPU=1 ./scripts/verify-dotnet.sh
 ```
 
-`--tier fast` passes `--filter-not-trait Tier=Docker Tier=Slow Tier=CGroupV2` to every test project. The option names were read from `dotnet test --help` on SDK 10.0.402 on 2026-11-12, and one run showed the fast tier removing exactly the marked tests. In the recorded fast-tier run (`items/435/receipt.md`) every report passed the check that rejects skips, and the number of removed tests equalled the number of marked tests. From that I infer that the runner leaves filtered-out tests out of the report. No cited source states it. The fast tier also leaves out the spike-evidence publication, because the Docker spike test produces that evidence. `--project` runs only the named test project; give the option more than once to run several. A run with either option prints `Partial verification passed` and states that it is not the full gate. Cite a partial run as a partial run, never as the gate.
+`--tier fast` passes `--filter-not-trait Tier=Docker Tier=Slow Tier=CGroupV2` to every test project. The option names were read from `dotnet test --help` on SDK 10.0.402 on 2026-11-12, and one run showed the fast tier removing exactly the marked tests. In the recorded fast-tier run (`items/435/receipt.md`) every report passed the check that rejects skips, and the number of removed tests equalled the number of marked tests. From that I infer that the runner leaves filtered-out tests out of the report. No cited source states it. The fast tier also leaves out the spike-evidence publication, because the Docker spike test produces that evidence. `--tier sandbox` passes `--filter-not-trait Tier=CGroupV2` to every test project, so it leaves the Docker and Slow tests in and publishes the spike evidence, as `--tier all` does. A `sandbox` run prints the partial line and is cited as a partial run. It is the pre-PR local gate defined in [Verification gates](../agents/pull-requests.md#verification-gates), which is where the rule lives. `--project` runs only the named test project; give the option more than once to run several. A run with `--tier fast`, `--tier sandbox` or `--project` prints `Partial verification passed` and states that it is not the full gate. Cite a partial run as a partial run, never as the gate.
 
 Three values of the xUnit trait `Tier` mark tests that the fast tier leaves out:
 
@@ -80,7 +81,7 @@ On every exit after it creates its results directory, the script also writes `su
 | `source_sha` | string from `git rev-parse HEAD` in the repository root, or `null` when that command fails |
 | `source_dirty` | `true` when `git status --porcelain` prints anything, `false` when it prints nothing, `null` when it fails |
 | `sdk_version` | string, the checked SDK version |
-| `tier` | `"all"` or `"fast"` |
+| `tier` | `"all"`, `"fast"` or `"sandbox"` |
 | `projects` | `null` without `--project`; otherwise array of the given names in the given order |
 | `nproc` | number, output of `nproc` |
 | `mem_total_kib` | number, the `MemTotal` value in kB from `/proc/meminfo`, or `null` when that line is absent or the file cannot be read |
