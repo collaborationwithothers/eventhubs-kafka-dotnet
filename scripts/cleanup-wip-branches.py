@@ -4,6 +4,7 @@
 from collections import Counter
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from datetime import datetime
 import html
 from http.client import HTTPException
 import json
@@ -25,6 +26,10 @@ API = f'https://api.github.com/repos/{REPOSITORY}'
 RULES_URL = f'{API}/rules/branches/main?per_page=100&page=1'
 RULESET_URL = f'{API}/rulesets/{RULESET_ID}'
 REQUIRED_RULES = {'deletion', 'non_fast_forward'}
+# All bypass actors were verified as pull-request-only at this policy revision.
+# A changed revision requires a new review; hidden metadata is never an empty list.
+REVIEWED_RULESET_UPDATED_AT = '2026-10-31T18:09:49.042Z'
+DIRECT_WRITE_SAFE_BYPASS = {'never', 'pull_requests_only'}
 BRANCH_LIMIT = 100
 RUN_SECONDS = 900
 GIT_SECONDS = 60
@@ -43,7 +48,9 @@ class OverallTimeout(CleanupError):
 
 
 class ProtectionError(CleanupError):
-    pass
+    def __init__(self, detail=PROTECTION_REASON):
+        super().__init__(PROTECTION_REASON)
+        self.detail = detail
 
 
 @dataclass
@@ -74,6 +81,7 @@ class Row:
 class Report:
     rows: list = field(default_factory=list)
     errors: list = field(default_factory=list)
+    diagnostics: list = field(default_factory=list)
 
     @property
     def exit_code(self):
@@ -97,6 +105,7 @@ class Report:
         lines += ['', f'Enumerated total: {len(self.rows)}']
         lines += [f'{status}: {totals[status]}' for status in STATUSES]
         lines += ['', *(f'Error: {escape(message)}' for message in self.errors)] if self.errors else ['']
+        lines += [f'Detail: {escape(message)}' for message in self.diagnostics]
         return '\n'.join(lines) + '\n'
 
 
@@ -154,6 +163,17 @@ class NoRedirect(request.HTTPRedirectHandler):
         return None
 
 
+def reviewed_policy_timestamp(value):
+    if not isinstance(value, str):
+        return False
+    try:
+        observed = datetime.fromisoformat(value)
+        reviewed = datetime.fromisoformat(REVIEWED_RULESET_UPDATED_AT)
+    except ValueError:
+        return False
+    return observed.tzinfo is not None and observed == reviewed
+
+
 @contextmanager
 def http_deadline(seconds):
     """Bound the whole HTTP exchange, including headers and response reads."""
@@ -180,8 +200,9 @@ class Protection:
         self.opener = opener if opener is not None else request.build_opener(NoRedirect())
 
     def read(self, url):
+        endpoint = 'ruleset' if url == RULESET_URL else 'effective rules'
         if not self.token:
-            raise ProtectionError(PROTECTION_REASON)
+            raise ProtectionError('workflow token is missing')
         timeout = self.deadline.remaining(HTTP_SECONDS)
         req = request.Request(url, method='GET', headers={
             'Accept': 'application/vnd.github+json',
@@ -190,14 +211,18 @@ class Protection:
         })
         try:
             with http_deadline(timeout), self.opener.open(req, timeout=timeout) as response:
-                if response.status != 200 or response.geturl() != url:
-                    raise ProtectionError(PROTECTION_REASON)
+                if response.status != 200:
+                    raise ProtectionError(f'{endpoint}: HTTP {response.status}')
+                if response.geturl() != url:
+                    raise ProtectionError(f'{endpoint}: unexpected redirect')
                 data = response.read(HTTP_BYTES + 1)
                 if len(data) > HTTP_BYTES:
-                    raise ProtectionError(PROTECTION_REASON)
+                    raise ProtectionError(f'{endpoint}: response exceeds byte limit')
                 result = json.loads(data)
+        except error.HTTPError as failure:
+            raise ProtectionError(f'{endpoint}: HTTP {failure.code}') from None
         except (HTTPException, error.URLError, OSError, TimeoutError, ValueError):
-            raise ProtectionError(PROTECTION_REASON) from None
+            raise ProtectionError(f'{endpoint}: request or JSON decoding failed') from None
         self.deadline.remaining(HTTP_SECONDS)
         return result
 
@@ -205,24 +230,33 @@ class Protection:
         effective = self.read(RULES_URL)
         ruleset = self.read(RULESET_URL)
         if not isinstance(effective, list) or not all(isinstance(rule, dict) for rule in effective):
-            raise ProtectionError(PROTECTION_REASON)
+            raise ProtectionError('effective rules: invalid response shape')
         present = {rule.get('type') for rule in effective
                    if type(rule.get('ruleset_id')) is int and rule['ruleset_id'] == RULESET_ID
                    and rule.get('ruleset_source_type') == 'Repository'
                    and rule.get('ruleset_source') == REPOSITORY and isinstance(rule.get('type'), str)}
         if not REQUIRED_RULES <= present or not isinstance(ruleset, dict):
-            raise ProtectionError(PROTECTION_REASON)
+            raise ProtectionError('effective rules: required protection or provenance is missing')
         if (type(ruleset.get('id')) is not int or ruleset['id'] != RULESET_ID
                 or ruleset.get('target') != 'branch' or ruleset.get('enforcement') != 'active'
                 or ruleset.get('conditions') != {'ref_name': {'include': ['~DEFAULT_BRANCH'], 'exclude': []}}):
-            raise ProtectionError(PROTECTION_REASON)
+            raise ProtectionError('ruleset: identity, enforcement or branch conditions do not match')
         rules = ruleset.get('rules')
-        actors = ruleset.get('bypass_actors')
         if (not isinstance(rules, list) or not all(isinstance(rule, dict) for rule in rules)
-                or not REQUIRED_RULES <= {rule.get('type') for rule in rules if isinstance(rule.get('type'), str)}
-                or not isinstance(actors, list)
-                or not all(isinstance(actor, dict) and actor.get('bypass_mode') == 'pull_request' for actor in actors)):
-            raise ProtectionError(PROTECTION_REASON)
+                or not REQUIRED_RULES <= {rule.get('type') for rule in rules if isinstance(rule.get('type'), str)}):
+            raise ProtectionError('ruleset: deletion or non-fast-forward protection is missing')
+        caller = ruleset.get('current_user_can_bypass')
+        if ('current_user_can_bypass' in ruleset
+                and (not isinstance(caller, str) or caller not in DIRECT_WRITE_SAFE_BYPASS)):
+            raise ProtectionError('ruleset: caller can bypass direct-write protection or has unknown status')
+        if 'bypass_actors' in ruleset:
+            actors = ruleset['bypass_actors']
+            if (not isinstance(actors, list)
+                    or not all(isinstance(actor, dict) and actor.get('bypass_mode') == 'pull_request' for actor in actors)):
+                raise ProtectionError('ruleset: bypass policy permits direct writes or is malformed')
+        elif (not reviewed_policy_timestamp(ruleset.get('updated_at'))
+              or caller not in DIRECT_WRITE_SAFE_BYPASS):
+            raise ProtectionError('ruleset: bypass list is hidden and reviewed policy or caller status does not match')
 
 
 def cleanup(git, protection, deadline):
@@ -268,6 +302,8 @@ def cleanup(git, protection, deadline):
                 row.status, row.reason = 'retained_error', str(failure)
     except CleanupError as failure:
         reason = PROTECTION_REASON if isinstance(failure, ProtectionError) else str(failure)
+        if isinstance(failure, ProtectionError):
+            report.diagnostics.append(failure.detail)
         report.errors.append(reason)
         for row in report.rows:
             if not row.status:
