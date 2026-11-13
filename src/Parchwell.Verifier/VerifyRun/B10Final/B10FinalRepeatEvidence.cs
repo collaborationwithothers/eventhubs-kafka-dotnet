@@ -182,8 +182,9 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
             Dictionary<int, long>? starts = JsonVector(data.GetProperty("start_line")), ends = JsonVector(data.GetProperty("end_line"));
             if (starts is not null && ends is not null)
             {
-                input.Starts = starts; input.Ends = ends;
+                // Validate before installing: a rejected vector must not replace the authenticated start-line window.
                 if (input.Start is not null) Require(SameVector(starts, input.Start.Start.Value!.PartitionHighs.ToDictionary(high => high.Partition, high => high.High)), "nonfinal_start_mismatch");
+                input.Starts = starts; input.Ends = ends;
             }
             input.InputValid = true;
         }

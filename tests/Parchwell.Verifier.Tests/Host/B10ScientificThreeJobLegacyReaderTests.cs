@@ -102,9 +102,10 @@ public sealed class B10ScientificThreeJobLegacyReaderTests
         options.CandidateOutputName = PhasePaths.Candidate("b10-1-1", phase);
         Assert.Equal(1, await new JudgeHandler(Options.Create(options), store, store, authentication.Clock)
             .ExecuteAsync(TestContext.Current.CancellationToken));
+        // A scientific run ID now reaches the final judge, which finds no authenticated final sweep for this legacy-only evidence.
         using JsonDocument candidate = JsonDocument.Parse(store.Objects[options.CandidateOutputName]);
-        Assert.Contains(candidate.RootElement.GetProperty("repeats")[0].GetProperty("reasons").EnumerateArray(),
-            reason => reason.GetString() == "j2_publication_unaccepted");
+        Assert.Contains(candidate.RootElement.GetProperty("reasons").EnumerateArray(),
+            reason => reason.GetString() == "b10_final_projection_untrusted");
     }
 
     [Fact]
@@ -146,9 +147,10 @@ public sealed class B10ScientificThreeJobLegacyReaderTests
         fixture.Options.JobName = PhaseIdentity.JudgeJobName("b10-1-1", "C0");
         Assert.Equal(1, await new JudgeHandler(Options.Create(fixture.Options), store, store, fixture.Kafka.Clock)
             .ExecuteAsync(TestContext.Current.CancellationToken));
+        // A scientific run ID now reaches the final judge, which finds no authenticated final sweep for this legacy-only evidence.
         using JsonDocument candidate = JsonDocument.Parse(store.Objects[fixture.Options.CandidateOutputName]);
-        Assert.Contains(candidate.RootElement.GetProperty("repeats")[0].GetProperty("reasons").EnumerateArray(),
-            reason => reason.GetString() == "j5_registered_producer_count");
+        Assert.Contains(candidate.RootElement.GetProperty("reasons").EnumerateArray(),
+            reason => reason.GetString() == "b10_final_projection_untrusted");
     }
 
     private static ArtifactReference Reference(string name, byte[] bytes) => new("verifier", name, bytes.LongLength, Convert.ToHexStringLower(SHA256.HashData(bytes)));

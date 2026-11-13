@@ -213,14 +213,24 @@ internal static class B10FinalClassification
         {
             AbruptArm? found = actual.SingleOrDefault(item => item.Arm == arm.GetProperty("arm").GetString());
             if (found is null) return false;
+            if (!Agree(arm, "unconfirmed_count", found.UnconfirmedCount) || !Agree(arm, "resend_invoked", found.ResendInvoked) ||
+                !Agree(arm, "originals_seen", found.OriginalsSeen) || !Agree(arm, "resends_seen", found.ResendsSeen) ||
+                !Agree(arm, "pair_count", found.PairCount) || !Agree(arm, "unreported_attempts", found.UnreportedAttempts) ||
+                !Agree(arm, "unreported_seen", found.UnreportedSeen) || !Agree(arm, "unreported_unseen", found.UnreportedUnseen) ||
+                !Agree(arm, "lost_resends", found.LostResends) || arm.GetProperty("members").GetArrayLength() != found.Members.Count) return false;
             foreach (JsonElement member in arm.GetProperty("members").EnumerateArray())
             {
                 AbruptMember? match = found.Members.SingleOrDefault(item => item.OriginalAttemptId == member.GetProperty("original_attempt_id").GetString());
-                if (match is null || !Agree(member, "original_copies", match.OriginalCopies) || !Agree(member, "resend_copies", match.ResendCopies) || !Agree(member, "other_copies", match.OtherCopies)) return false;
+                if (match is null || !Agree(member, "copy_count", match.CopyCount) || !Agree(member, "original_copies", match.OriginalCopies) ||
+                    !Agree(member, "resend_copies", match.ResendCopies) || !Agree(member, "other_copies", match.OtherCopies) ||
+                    !Agree(member, "pair_count", match.PairCount) || !AgreeFlag(member, "copies_truncated", match.CopiesTruncated) ||
+                    !AgreeFlag(member, "resend_lost", match.ResendLost)) return false;
             }
         }
         return true;
     }
+    private static bool AgreeFlag(JsonElement expected, string field, bool? actual) =>
+        !expected.TryGetProperty(field, out JsonElement value) || value.ValueKind == JsonValueKind.Null || value.GetBoolean() == actual;
     private static string Comparison(IReadOnlyList<B10FinalArm>? arms, IReadOnlySet<string> reasons)
     {
         if (arms is null || reasons.Any(reason => reason is not ("b10_restart_native_error_captured" or "b10_restart_fatal_captured" or "b10_restart_timeout_bookkeeping_unavailable" or "b10_restart_guard_failed"))) return "unavailable";

@@ -176,6 +176,63 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
     }
 
     [Theory]
+    [InlineData(0, "pair_count")]
+    [InlineData(0, "originals_seen")]
+    [InlineData(0, "resends_seen")]
+    [InlineData(0, "unreported_seen")]
+    [InlineData(0, "unreported_unseen")]
+    [InlineData(0, "lost_resends")]
+    [InlineData(1, "pair_count")]
+    [InlineData(1, "originals_seen")]
+    public async Task Given_NonfinalAggregateArmCountDisagrees_When_FinalSweepRuns_Then_OnlyRestartIsRejected_P1_4567914709(int arm, string field)
+    {
+        using var run = await B10FinalSweepHarness.CreateAsync(kafka);
+        run.RewriteA3(3, root =>
+        {
+            JsonNode value = root["data"]!["arms"]![arm]![field]!;
+            root["data"]!["arms"]![arm]![field] = value.GetValue<long>() + 1;
+        });
+        Assert.Equal(0, await run.RunAsync()); JsonObject item = run.Repeat(3);
+        AssertComplete(item);
+        Assert.Equal("ineligible", Text(item["restart"]!["eligibility"]));
+        Assert.Equal(["b10_restart_late_record_unjoined"], Strings(item["restart"]!["eligibility_reasons"]));
+        AssertUnknownSweepCounts(item);
+    }
+
+    [Theory]
+    [InlineData("pair_count")]
+    [InlineData("copy_count")]
+    public async Task Given_NonfinalMemberCountDisagrees_When_FinalSweepRuns_Then_OnlyRestartIsRejected_P1_4567914709(string field)
+    {
+        using var run = await B10FinalSweepHarness.CreateAsync(kafka);
+        run.RewriteA3(3, root =>
+        {
+            JsonNode member = root["data"]!["arms"]![1]!["members"]![0]!;
+            member[field] = member[field]!.GetValue<long>() + 1;
+        });
+        Assert.Equal(0, await run.RunAsync()); JsonObject item = run.Repeat(3);
+        AssertComplete(item);
+        Assert.Equal("ineligible", Text(item["restart"]!["eligibility"]));
+        Assert.Equal(["b10_restart_late_record_unjoined"], Strings(item["restart"]!["eligibility_reasons"]));
+    }
+
+    [Fact]
+    public async Task Given_NonfinalStartDisagreesWithAuthenticatedStartNote_When_FinalSweepRuns_Then_AuthenticatedWindowsSurviveAndOnlyRestartIsRejected_P1_4567914700()
+    {
+        using var run = await B10FinalSweepHarness.CreateAsync(kafka);
+        long previousEnd = JsonNode.Parse(run.Verifier[B10FinalSweepHarness.A3(2)])!["data"]!["end_line"]![0]!["offset"]!.GetValue<long>();
+        run.RewriteA3(3, root => root["data"]!["start_line"]![0]!["offset"] = previousEnd - 1);
+        Assert.Equal(0, await run.RunAsync());
+        Assert.True(run.Data["scan_complete"]!.GetValue<bool>(), run.Data.ToJsonString());
+        for (int repeat = 1; repeat <= 5; repeat++) AssertComplete(run.Repeat(repeat));
+        JsonObject item = run.Repeat(3);
+        Assert.Equal("ineligible", Text(item["restart"]!["eligibility"]));
+        Assert.Equal(["b10_restart_input_unavailable"], Strings(item["restart"]!["eligibility_reasons"]));
+        Assert.Null(item["restart"]!["arms"]);
+        foreach (int repeat in new[] { 1, 2, 4, 5 }) Assert.Equal("eligible", Text(run.Repeat(repeat)["restart"]!["eligibility"]));
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task Given_OverlappingRepeatVectors_When_FinalSweepRuns_Then_NoRepeatCanBeFinal_T21_T29(bool changeEnd)
