@@ -257,9 +257,9 @@ class ScientificCases(unittest.TestCase):
                 job = next(document for document in yaml.safe_load_all(rendered)
                            if isinstance(document, dict) and document.get('kind') == 'Job')
                 self.assertEqual(name, job['metadata']['name'])
-                environment = {entry['name']: entry['value'] for entry in
-                               job['spec']['template']['spec']['containers'][0]['env']}
-                self.assertEqual(str(repeat), environment['Verifier__Repeat'])
+                repeat_entry = next(entry for entry in job['spec']['template']['spec']['containers'][0]['env']
+                                    if entry['name'] == 'Verifier__Repeat')
+                self.assertEqual(str(repeat), repeat_entry['value'])
 
     def test_rejected_publication_ends_only_repeat(self):
         self.start()
