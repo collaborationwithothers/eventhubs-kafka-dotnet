@@ -31,4 +31,24 @@ Under plan section 6.2. No case was removed, no assertion loosened, no check cha
 
 ## Results
 
-Filled in below as each command runs.
+Source: branch `claude/452-test-shards` on `main` at `662685a0d54ced8fc97a438bf6fac56023fa0b90`, commit before the receipt results were written. Session sandbox: .NET SDK 10.0.402, Docker running, no cgroup v2 file `memory.events.local`.
+
+| # | Command | Result |
+|---|---|---|
+| A1 | `python3 -m unittest discover -s scripts/tests -p test_check_dotnet_matrix.py` | 47 tests ran, OK (T1 to T47) |
+| A2 | `./scripts/test-verify-dotnet.sh` | `verify-dotnet.sh checks passed.` A mutation of the script (first shard class only; changed rejection text) made 3 checks fail; the restored script passes |
+| A3 | `python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'` | 399 tests, 44 failures and 103 errors. The 150 failing test names are identical, by `diff`, to a run of the same command on `main` without these changes, so they do not come from this pull request. The workflow hash test is in `infra/scripts/phase/tests/test_workflow.py`: `python3 -m unittest discover -s infra/scripts/phase/tests -p test_workflow.py` ran 25 tests, OK |
+| A4 | `bash infra/scripts/lifecycle/check-offline.sh` | Not run. Its installer `install-tools.sh` needs CPython 3.12; this session has 3.13. Run instead, with the installer's pinned versions and SHA-256 values (both matched): `actionlint 1.7.12 -shellcheck=<pinned shellcheck> .github/workflows/dotnet-verification.yml` exit 0; `shellcheck 0.11.0 -x scripts/verify-dotnet.sh scripts/test-verify-dotnet.sh` exit 0. Triggers read with PyYAML: `pull_request`, `push` to `main`, `workflow_dispatch`, as `check-offline.sh` line 87 expects. The hosted `.NET verification` run repeats the checker tests |
+| A5 | PyYAML comparison of `main` and the head | `on`, `permissions`, `worker-images`, `lifecycle-verification`, `terraform-verification` equal; `dotnet-verification` equal except the `run` of `Check every test project passed`; `dotnet-tests` equal after deleting the keys section 8 lists, which also leaves `Collect verification reports` `env` equal |
+| A7 | `npm run check:docs` | 9 warnings, none in a file this pull request changes (the files are `docs/agents/factory.md`, `docs/operations/evidence/issue-124/README.md`, `docs/operations/evidence/issue-140/README.md`, `docs/operations/evidence/issue-211/receipt.md`, `items/404/pr2-receipt.md` and others unchanged here). Blanket line for the pull request under rule 8 |
+| A8 | plan: `--project Parchwell.LoadGen.Tests --shard b10-end-to-end` | Not run: the session has no cgroup v2 file, so A6 replaces it, as the plan allows. Run instead, once, a real shard: `./scripts/verify-dotnet.sh --tier sandbox --project Parchwell.Verifier.Tests --shard b10-verify-b`: exit 0; 313 tests passed (tests stage 310 s); stage `Parchwell.Verifier.Tests test list` passed in 2 s; `methods.json` is a valid array of 1611 distinct strings; the 73 distinct `type.method` strings in `results.xml` all appear in it, and the report's types are exactly the four classes of that shard. A partial run, not the full gate |
+
+Gate order: A1 and A2 (step 1) ran while the change moved. The cold review (step 2) follows. Step 3 does not apply (plan section 8). Step 4 is A6, the hosted run on the final head; it is recorded in the pull request description, with its job durations beside plan section 4.0.
+
+No time saving is stated here. The 310 s tests stage above is one local measurement of one shard, not a CI result.
+
+## Cold review record
+
+- Round 1: comprehensive pass 1 of at most 2. Input revision: the staged tree on top of the local commit that the `-wip` branch holds (backup push under rule 12), diffed against `origin/main` at `662685a0d54ced8fc97a438bf6fac56023fa0b90`. Comparison revision: none (first pass).
+- Specification sources: the approved plan (`items/452/plan-test-shards.md`, r4, commit `2226c77a98bcd937989a1062cae8c7f6e551c494`) and Hari's approval 6858183518 on issue #452. No later decision exists. The issue body is the originating request.
+- Cumulative counts: comprehensive 1, focused 0.
