@@ -100,12 +100,8 @@ else
     exit "$?"
 fi
 
-verification_results=$(mktemp -d "${TMPDIR:-/tmp}/parchwell-dotnet-verification.XXXXXXXX")
-started_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-mkdir -p "$verification_results/manifests"
-export PARCHWELL_REPOSITORY_ROOT="$repository_root"
-export PARCHWELL_PROJECT_MANIFEST_DIRECTORY="$verification_results/manifests"
-stage_timing="$verification_results/stage-timing.tsv"
+started_utc=""
+verification_results=""
 failed_stages=()
 failed_stage_labels=()
 failed_stage_codes=()
@@ -261,7 +257,14 @@ on_exit() {
     fi
     echo "Verification logs and reports: $verification_results"
 }
+
+verification_results=$(mktemp -d "${TMPDIR:-/tmp}/parchwell-dotnet-verification.XXXXXXXX")
 trap on_exit EXIT
+started_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+mkdir -p "$verification_results/manifests"
+export PARCHWELL_REPOSITORY_ROOT="$repository_root"
+export PARCHWELL_PROJECT_MANIFEST_DIRECTORY="$verification_results/manifests"
+stage_timing="$verification_results/stage-timing.tsv"
 
 # Prints "<label>: passed (<n> s, <start> to <end>)" or the failure with the log tail, and records
 # the duration and the UTC start and end.

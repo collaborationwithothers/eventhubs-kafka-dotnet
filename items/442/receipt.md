@@ -25,12 +25,15 @@ Existing cases changed, with the check or harness change that forces each:
 - `default`, `fast`, `select`, `fail_late` and `warning_accepted`: assertions added only.
 No case removed; no assertion loosened.
 
+## Cold review
+- Round 1 (comprehensive, pass 1 of 2) on commit 9db7926f0f149a1ee1dde30b3c52a37bc6841372: one P1 (the EXIT trap moved after `mktemp`, so an early failure lost the exit line and the summary). Fixed by defining the state and functions before `mktemp` and installing the trap immediately after it, as on `main`; regression case `early_failure`. The reviewer's two unpinned-path observations (`nproc` and `source_dirty` become `null` on failure, which keeps the JSON valid) are not findings and are left as is. Counts after round 1: 1 comprehensive, 0 focused.
+
 ## Test map to cases
-All rows of plan section 7 are implemented under the case names given there: `default`, `fast`, `select`, `fail_late`, `warning_accepted`, `build_fail`, `eval_fail`, `unknown_project`, `unknown_tier`, `bad_cpu`, `help`, `slowest`, `slowest_one`, `cpu`, `cpu_text`, `no_git`, plus `summary_unwritable` from P2-1. The case count is 17 (9 on `main`, `grep -c '^run_case '`).
+All rows of plan section 7 are implemented under the case names given there: `default`, `fast`, `select`, `fail_late`, `warning_accepted`, `build_fail`, `eval_fail`, `unknown_project`, `unknown_tier`, `bad_cpu`, `help`, `slowest`, `slowest_one`, `cpu`, `cpu_text`, `no_git`, plus `summary_unwritable` from P2-1 and `early_failure`, added for cold-review round 1's P1 (a failure between `mktemp` and the trap must still print the exit line and write `summary.json`; the case fails on the first commit and passes after the fix). The case count is 18 (9 on `main`, `grep -c '^run_case '`).
 Uncovered, as the plan states: `mem_total_kib` `null` (the script reads the fixed path `/proc/meminfo`; the code path is the `[[ "$memory" =~ ^[0-9]+$ ]]` guard before `mem_total_kib` is set, otherwise the value stays empty and `summary_json` prints `null`).
 
 ## Commands and results (source `origin/main` 2077964, working tree of this branch)
-- Acceptance 1: `./scripts/test-verify-dotnet.sh` printed `verify-dotnet.sh checks passed.`, 17 cases, about 3 s.
+- Acceptance 1: `./scripts/test-verify-dotnet.sh` printed `verify-dotnet.sh checks passed.`, 18 cases, about 3 s.
 - Mutation check of the new assertions (local, not committed): changing `outcome=full_gate_passed`, the sort flags, the `&amp;` decoding step, the `Project evaluation` label, the `head -n 30` cap, the backslash escaping, or making the write failure path exit non-zero each made the test script report FAIL lines.
 - Acceptance 2: `./scripts/verify-dotnet.sh --project Parchwell.Scenarios.Tests` in the sandbox exited 0 (partial pass line). The stage lines carry UTC stamps, for example `Locked restore: passed (6 s, 2026-11-13T08:48:13Z to 2026-11-13T08:48:19Z)`. `jq -e . summary.json` succeeded. `outcome` was `partial_passed`, `exit_code` 0, `slowest_tests` held one key with 30 entries. First entries: `ProbeV2DefinitionTests.Given_MissingDeclaration_When_Loading_Then_RequiresProbeV2(item: \"F06\")` 0.216, `SingleActionDefinitionTests.Given_MissingSingleAction_When_LoadingSelectedItem_Then_RequiresDeclaration` 0.214, `ScenarioLoaderTests.Given_InvalidProfileValues_When_Loading_Then_RejectsProfile(...)` 0.147. Total time 1 m 16 s.
 - Acceptance 4: `npm run check:docs`: no warning in a changed file; 9 warnings, all in files this pull request does not change (one blanket line in the pull request).

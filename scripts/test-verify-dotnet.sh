@@ -208,6 +208,20 @@ run_case no_git GIT_DIR="$work/nogit" --
 [[ $status -eq 0 && "$output" == *"Verification passed. Per-project reports"* ]] || fail "a missing git directory must not change the run (status $status)"
 check_summary "no git" '.source_sha == null and .source_dirty == null'
 
+# A failure right after the results directory exists must still print the exit line and write summary.json.
+mkdir "$work/failbin"
+cat > "$work/failbin/mkdir" <<'FAILMKDIR'
+#!/usr/bin/env bash
+for argument in "$@"; do
+    if [[ "$argument" == */manifests ]]; then echo "mkdir: simulated failure" >&2; exit 1; fi
+done
+exec /bin/mkdir "$@"
+FAILMKDIR
+chmod +x "$work/failbin/mkdir"
+run_case early_failure PATH="$work/failbin:$work/bin:$PATH" --
+[[ $status -eq 1 && "${output##*$'\n'}" == "Verification logs and reports: "* ]] || fail "an early failure must keep its status and print the exit line last (status $status)"
+check_summary "early failure" '.outcome == "failed" and .exit_code == 1 and .stages == [] and .failed_stages == []'
+
 run_case summary_unwritable STUB_BLOCK_SUMMARY=1 --
 [[ $status -eq 0 && "$output" == *"Verification passed. Per-project reports identify the tests executed."* ]] || fail "an unwritable summary must not change the exit status (status $status)"
 mapfile -t summary_unwritable_lines < "$work/summary_unwritable.out"
