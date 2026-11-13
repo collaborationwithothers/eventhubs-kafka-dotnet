@@ -2066,6 +2066,14 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
                         self.assertRegex(text, r'- name: "LoadGen__RepeatNumber"\s+value: "1"')
                         self.assertRegex(text, r'- name: "LoadGen__PodUid"\s+valueFrom: \{fieldRef: \{fieldPath: metadata\.uid\}\}')
 
+    def test_final_candidate_is_accepted_and_a_nested_diagnostic_dialect_is_rejected_tp3(self):
+        """TP3: check_candidate accepts a final-shaped candidate and rejects the same bytes with a nested diagnostic dialect."""
+        candidate = {'schema_version': 1, 'synthetic': True, 'scenario_id': 'B10', 'configuration_id': 'C1', 'run_id': 'b10-1-1',
+                     'phase': 'C1', 'source_commit': SHA, 'status': 'complete_valid', 'gate': None, 'image_digests': DIGESTS,
+                     'repeats': [{'repeat': number, 'status': 'complete_valid'} for number in range(1, 6)],
+                     'b10_final': {'repeats': [{'repeat': number} for number in range(1, 6)]}}
+        check_b10_final_candidate_transport(json.dumps(candidate).encode())
+
 
 if __name__ == '__main__':
     unittest.main()
