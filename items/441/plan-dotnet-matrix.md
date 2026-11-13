@@ -1,8 +1,8 @@
 # Plan: run the .NET verification per test project (dotnet-matrix)
 
-Issue: [#441](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/441). This contract-grade plan covers the whole issue as one pull request, `dotnet-matrix`. It splits the `.NET verification` job into one job per test project, adds a separate worker image job, and keeps the required check name on a new aggregate job that fails unless every test project ran and passed with a validated report. One point is not decided here: whether this pull request also shards the Verifier test project. It is the only entry under "Open questions for Hari".
+Issue: [#441](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/441). This contract-grade plan covers the whole issue as one pull request, `dotnet-matrix`. It splits the `.NET verification` job into one job per test project, adds a separate worker image job, and keeps the required check name on a new aggregate job that fails unless every test project ran and passed with a validated report. It shards no test project: Hari's decision on the issue sends sharding to a follow-up issue. Nothing is open for Hari.
 
-Revision: r1. Planned against `main` at `259a31fca2f53842385d820b5dba9f213d9e787e`.
+Revision: r2. Planned against `main` at `259a31fca2f53842385d820b5dba9f213d9e787e`.
 
 ## 1. Goal and authority
 
@@ -10,10 +10,11 @@ Goal: cut the wall time of the required .NET check without dropping any check it
 
 Authority, in creation order:
 
-1. The issue body (created 2026-11-13T07:05:58Z, read at `updated_at` 2026-11-13T08:28:22Z). Hari applied `ready-for-agent`; no comment names a tool, so Claude Code implements (docs/agents/factory.md "Item lifecycle" step 2). Its proposal items 1, 3 and 4 and its three constraints are planned below. Item 2 (Verifier shards) is the open question.
+1. The issue body (created 2026-11-13T07:05:58Z, read again for r2 at `updated_at` 2026-11-13T11:40:48Z). Hari applied `ready-for-agent`; no comment names a tool, so Claude Code implements (docs/agents/factory.md "Item lifecycle" step 2). Its proposal items 1, 3 and 4 and its three constraints are planned below. Item 2 (Verifier shards) is settled by authority 3.
 2. Comment [6847978940](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/441#issuecomment-6847978940) (2026-11-13T08:28:21Z). It is not headed "## Decision", so it is evidence, not a decision. It records the ruleset read: one required check, context `.NET verification`, integration id 15368, strict policy.
+3. Decision [6851788370](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/441#issuecomment-6851788370) (2026-11-13T11:40:48Z), headed "## Decision", answering the r1 handoff [6851438321](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/441#issuecomment-6851438321). Its words: "Option (a): this pull request does not shard any test project. Implement the per-project matrix and aggregate job only. Sharding of the Verifier and LoadGen tests goes to a follow-up issue, decided from measured per-job times after this change merges."
 
-No decision or approval comment exists on the issue. No item state file exists (`items/441/state.md` is absent on `main`). There is no parent item and no split; the whole issue is the candidate (factory.md "Item lifecycle" step 3).
+No approval comment exists on the issue. No item state file exists (`items/441/state.md` is absent on `main`). There is no parent item and no split; the whole issue is the candidate (factory.md "Item lifecycle" step 3).
 
 ## 2. Scope
 
@@ -35,6 +36,11 @@ Must not change:
 - Any test source, `.csproj`, `Directory.*.props`, lock file, `global.json`.
 - `docs/operations/workflows/`: no committed copy of this workflow exists there (the folder holds `b10-abrupt-trial.yml.txt`, `cleanup-wip-branches.yml.txt`, `scenario.yml.txt` and `sweeper.yml.txt` on `main`), so the byte-for-byte part of hard safety rule 8 does not apply. This confirms the issue's constraint.
 - `AGENTS.md`, `CLAUDE.md`, `docs/agents/`, `results/`, `scenarios/`, any other workflow.
+
+Non-goals (decision 6851788370):
+
+- No test project is sharded. The matrix has exactly one job per test project (section 3.1), no job passes a test filter such as `--filter-namespace`, and `scripts/verify-dotnet.sh` keeps its current options (it is in "Must not change" above).
+- Sharding of the Verifier and LoadGen tests is left to a follow-up issue, decided from measured per-job times after this pull request merges. This pull request neither creates that issue nor prepares for it: no shard list, filter contract or shard coverage rule is added to the checker or the docs.
 
 ## 3. External contracts
 
@@ -258,7 +264,9 @@ Estimate (2026-11-13, computed by script from job 131495744456's timestamps, not
 
 ## 11. Open questions for Hari
 
-1. **Verifier shards (issue proposal item 2).** The issue proposes splitting the Verifier test project into shards and says balance and shared state are not checked yet. This plan does not decide it. Facts for the decision, from the issue's measured stage times: Verifier tests took 666 s and LoadGen tests 655 s, so sharding Verifier alone shortens the longest test stage by at most 11 s, because LoadGen becomes the longest. Sharding also needs a filter option passed through `scripts/verify-dotnet.sh` and recorded in `summary.json`, and a checker rule that proves the shards together cover every test (for example an include shard per namespace plus one shard excluding all of them). Options: (a) leave shards out of this pull request and track them in a follow-up issue; (b) include Verifier shards in this pull request, which needs a new plan revision that pins the shard list and the filter contract; (c) shard both Verifier and LoadGen, which goes beyond the issue text. Source: issue body, "Proposal" item 2 and the stage table.
+None.
+
+The r1 question on Verifier shards is answered by decision 6851788370, option (a); section 2 "Non-goals" records it.
 
 ## 12. Stop rule
 
