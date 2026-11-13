@@ -53,6 +53,11 @@ Those commands check documentation. They are not the .NET build entry point. Doc
 ./scripts/verify-dotnet.sh --tier fast
 ./scripts/verify-dotnet.sh --tier sandbox
 ./scripts/verify-dotnet.sh --project Parchwell.Verifier.Tests --project Parchwell.Kafka.Tests
+```
+
+Setting `PARCHWELL_BUILD_MAX_CPU` without options leaves the run a full gate:
+
+```bash
 PARCHWELL_BUILD_MAX_CPU=1 ./scripts/verify-dotnet.sh
 ```
 
@@ -149,7 +154,7 @@ The exact official [xUnit manifest][xunit-manifest], [ArchUnitNET manifest][arch
 
 `./scripts/verify-worker-images.sh` publishes the LoadGen and Verifier container images and starts each one, so a base image that lacks a framework the app needs fails before any cloud run. The base image rule is in [.NET engineering standards](dotnet.md#kubernetes-workers). The script needs .NET SDK 10.0.402 and a running Docker daemon, and takes no arguments.
 
-For each worker it runs the repository's locked linux-x64 container publish to a local archive and loads the archive into Docker. It then starts the image with `--image-smoke`, no network, a read-only root file system, user `1654:1654`, all capabilities dropped and `no-new-privileges`. It fails when the SDK version differs, Docker is unreachable, a publish or load fails, a container exits non-zero, or a container prints to stdout anything other than `{"native_loaded":true,"scenario_files":2,"uid_expected":1654}`. It stops at the first failing worker. It removes its containers and images on exit and prints its log directory.
+For each worker it runs the repository's locked linux-x64 container publish to a local archive and loads the archive into Docker. It then starts the image with `--image-smoke`, no network, a read-only root file system, user `1654:1654`, all capabilities dropped and `no-new-privileges`. It fails when the SDK version differs, Docker is unreachable, a publish or load fails, a container exits non-zero, or a container prints to stdout anything other than `{"native_loaded":true,"scenario_files":3,"uid_expected":1654}`. It stops at the first failing worker. It removes its containers and images on exit and prints its log directory.
 
 Regression example ([#179](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/179)): with the `mcr.microsoft.com/dotnet/runtime` base image that `main` used at `8afef30`, the LoadGen container exits 150 because the `Microsoft.AspNetCore.App` framework is missing, and the script fails. With the `aspnet` base image both containers exit 0 and the script passes. The receipt in `docs/operations/evidence/issue-179/README.md` records the failing run and the passing hosted `.NET verification` run on the pull request's code head, the last commit before the receipt-only commit that completes the receipt.
 
