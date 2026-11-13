@@ -24,6 +24,32 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task Given_ClockAtReportCapture_When_FirstCrossRestartBinds_Then_ExportFixtureKeepsStrictTimestampOrder()
+    {
+        var identity = TestOptions(NewRoot()).Identity();
+        await using var fixture = ExportFixture(identity, "diagnostic_trial");
+        fixture.ConfigureControl();
+        fixture.Initialize();
+        fixture.StartReports();
+        await fixture.Runner.RunControlAsync(TestContext.Current.CancellationToken);
+        await fixture.Runner.PrepareArmAsync("cross_restart", TestContext.Current.CancellationToken);
+        await fixture.StopReportsAsync();
+        var terminal = fixture.Journal.Frames.Single(frame => frame.Kind == "warmup_terminal" &&
+            frame.Data.GetProperty("attempt_id").GetString() == identity.InstanceId + "-cross_restart-warmup");
+        var selected = fixture.Statistics.SelectLeaderReport(DateTimeOffset.ParseExact(terminal.ObservedUtc, "O", CultureInfo.InvariantCulture),
+            fixture.Options.Topic, 0, out _);
+        Assert.NotNull(selected);
+        fixture.Advancing.AdvanceTo(selected.Report.ReceivedAt);
+        Assert.Equal(selected.Report.ReceivedAt, fixture.Clock.GetUtcNow());
+
+        await fixture.Runner.InvokeProbe("cross_restart", new byte[256], null, 0, TestContext.Current.CancellationToken);
+
+        var snapshot = B10AbruptJournal.Read(await File.ReadAllBytesAsync(fixture.Journal.Path, TestContext.Current.CancellationToken), identity);
+        Assert.Empty(snapshot.Gaps);
+        Assert.Empty(snapshot.Failures);
+    }
+
+    [Fact]
     public async Task Given_WireOutputDirectory_When_Run_Then_WritesProducedArtifacts()
     {
         string? directory = Environment.GetEnvironmentVariable("PARCHWELL_B10_ABRUPT_WIRE_OUTPUT");
@@ -141,7 +167,7 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
             values["JobName"] = $"{values["RunId"]}-c1-r{values["Repeat"]}-loadgen-{(values["Role"] == "successor" ? "successor" : "restart")}";
         }
         Directory.CreateDirectory(destination);
-        await using var fixture = new B10AbruptProducerTests.Fixture(diagnosticIdentity: TestOptions(destination, configure: Configure).Identity(), purpose: purpose);
+        await using var fixture = ExportFixture(TestOptions(destination, configure: Configure).Identity(), purpose);
         var clock = fixture.Advancing;
         var options = TestOptions(fixture.Root, configure: Configure);
         var identity = options.Identity();
@@ -184,6 +210,7 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
         byte[] bytes = await File.ReadAllBytesAsync(fixture.Journal.Path, cancellationToken);
         var snapshot = B10AbruptJournal.Read(bytes, identity, purpose);
         Assert.Empty(snapshot.Gaps);
+        if (!nativeErrors) Assert.Empty(snapshot.Failures);
         var started = snapshot.Frames[0].Data;
         process.Identity = new(started.GetProperty("pid").GetInt32(), started.GetProperty("boot_id").GetString()!, started.GetProperty("start_time_ticks").GetInt64());
         var cgroup = new B10AbruptCgroup.Observation(process.Identity.BootId, "/synthetic", "1:2", 0);
@@ -248,6 +275,18 @@ public sealed class B10AbruptWireProducerTests(ITestOutputHelper output)
             .Select(path => B10AbruptPublisher.Describe(Path.GetRelativePath(destination, path).Replace(Path.DirectorySeparatorChar, '/'), File.ReadAllBytes(path))).ToArray();
         Assert.Equal(14, exported.Length);
         await File.WriteAllBytesAsync(Path.Combine(destination, "export.json"), JsonSerializer.SerializeToUtf8Bytes(new { files = exported }, B10AbruptWire.JsonOptions), cancellationToken);
+    }
+
+    private static B10AbruptProducerTests.Fixture ExportFixture(B10AbruptWire.Identity identity, string purpose)
+    {
+        var fixture = new B10AbruptProducerTests.Fixture(diagnosticIdentity: identity, purpose: purpose);
+        // A selected report must precede its binding even when the report task does not advance the clock between frames.
+        fixture.FlushHook = () =>
+        {
+            fixture.Advancing.Advance(TimeSpan.FromTicks(1));
+            return Task.CompletedTask;
+        };
+        return fixture;
     }
 
     private static string NewRoot() => Path.Combine(Path.GetTempPath(), "b10-produced-" + Guid.NewGuid().ToString("N"));
