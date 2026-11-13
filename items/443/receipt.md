@@ -28,6 +28,8 @@ The plan's test map (section 7) is the predicate map; every requirement 1 to 25 
 3. `hook data` looks at the rows in the table (after `--since`), not at log lines dropped by `--since`. Reason: it describes the displayed rows, as the other lines do.
 4. `render_full` passes fixture files by absolute path and runs with the temporary git repository as the current directory (plan check note).
 5. Plan check P2 `apply in implementation` for a job without `steps`: a missing `steps` is an empty list, with test `render_jobs_no_steps` and the check's literal expectations. The check's P2 on a usage text comment in `render.mjs` is met by not repeating the `--local-gate` rule in `render.mjs`; the usage line names only the values.
+6. A negative duration is invalid input (exit 2, the file's "is not valid input" message): `ended_utc` before `started_utc`, a stage `end_utc` before its `start_utc`, and a job or step `completed_at` before its `started_at`. Reason: plan 3.5 says seconds are "a whole number", and a negative difference would be a gap, not a recorded pair. Paired log rows cannot be negative because pairing runs in time order.
+7. Test input deviation fixed: `event_vocabulary_accepts` calls `gate.start full` as plan 7.1 lists (a first draft used `sandbox`).
 
 ## Standing fixture rule
 
@@ -46,3 +48,5 @@ Source commit: `1c2ed5e618a0a108e69ca73f4591059e68619fe2` (`origin/main`) plus t
 
 - Round 1: mode comprehensive (pass 1 of at most 2; focused rounds used 0 of 2). Input revision: the staged tree on `origin/main` `1c2ed5e618a0a108e69ca73f4591059e68619fe2`; comparison revision: none (first review).
 - Complete reports, dispositions and later rounds are recorded in the pull request's self-review record.
+- Round 1 report (complete): 2 P1 and 1 P2, all fixed in the correction (choices 6 and 7 above; the state file's first decision line now claims only what the issue body says). Dispositions in the pull request's self-review record.
+- Round 2: mode focused (focused round 1 of at most 2; comprehensive passes used 1 of 2). Input revision: the staged tree on top of commit `620e7bf9edf5e6ba3854706fcceb03fde77ae1d0`; comparison revision: `620e7bf9edf5e6ba3854706fcceb03fde77ae1d0`, the revision round 1 reviewed. Scope: the correction diff, with the full diff as context.

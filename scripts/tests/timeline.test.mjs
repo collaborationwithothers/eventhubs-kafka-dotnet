@@ -59,7 +59,7 @@ test("event_line_format", () => {
 test("event_vocabulary_accepts", () => {
   const log = join(tmp(), "log.jsonl");
   const calls = [
-    ["gate.start", "sandbox"], ["gate.pass", "docs"], ["gate.fail", "sandbox"], ["gate.stop", "full"],
+    ["gate.start", "full"], ["gate.pass", "docs"], ["gate.fail", "sandbox"], ["gate.stop", "full"],
     ["focused.run", "fast"], ["focused.run", "project"], ["review.start", "p2-correction"],
     ["review.end", "comprehensive P0=0 P1=0 P2=0"], ["review.end", "focused P0=999999 P1=1 P2=12"],
     ["env.interrupted"], ["agent.resumed"], ["handoff", "hari"], ["handoff", "next-session"],
