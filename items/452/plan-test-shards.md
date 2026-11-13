@@ -2,7 +2,9 @@
 
 Issue: [#452](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/452). This contract-grade plan covers the whole issue as one pull request, `test-shards`. It splits the Verifier tests into three CI jobs and the LoadGen tests into two, by test class, using a committed shard file. The aggregate `.NET verification` job gains a method-level check that every listed test method of every test project ran in exactly one job. Nothing is open for Hari.
 
-Revision: r1. Planned against `main` at `9b13ce03d916bbd14e8d92445966fcfc09f34cfa`.
+Revision: r2. Planned against `main` at `9b13ce03d916bbd14e8d92445966fcfc09f34cfa`, which is still the head of `main` for r2.
+
+Changes since r1, each from the r1 [plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/452#issuecomment-6856819660): section 4.0 states the restore and build time per job with its method (B1), adds the run completed after the r1 measurement (N4) and estimates the LoadGen `rest` shard (N2); R11 and R13 say "valid" instead of "parse" for `methods.json` (N3); section 11 (a) caps reruns for a test flake (N1); section 9 points to the stop rule in section 13, not section 12. No contract, requirement, test, scope or enforced check changes.
 
 ## 1. Goal and authority
 
@@ -10,9 +12,9 @@ Goal: shorten the critical path of the required `.NET verification` check, which
 
 Authority, in creation order:
 
-1. The issue body (created with the issue; `updated_at` 2026-11-13T14:39:24Z, read for r1). Hari applied `ready-for-agent` at 2026-11-13T14:39:24Z. No comment exists on the issue, so no comment names a tool and Claude Code implements (docs/agents/factory.md "Item lifecycle" step 2). Its proposal items 1 to 4 and its constraints are planned below: item 1 in section 4.0, item 2 in R1 to R6, item 3 in R7 to R16, item 4 in A6 and section 9.
+1. The issue body (created with the issue; read again for r2 on 2026-11-13; the issue's `updated_at` of 2026-11-13T15:04:47Z is the time of the newest comment). Hari applied `ready-for-agent` at 2026-11-13T14:39:24Z. The issue's comments are the r1 plan comment, its plan check and a handoff to the next planning session; none names a tool, so Claude Code implements (docs/agents/factory.md "Item lifecycle" step 2). Its proposal items 1 to 4 and its constraints are planned below: item 1 in section 4.0, item 2 in R1 to R6, item 3 in R7 to R16, item 4 in A6 and section 9.
 
-No decision or approval comment exists on the issue. No item state file exists (`items/452/` is absent on `main`). The issue body names no parent item and no split; the whole issue is the candidate (factory.md "Item lifecycle" step 3). Its prerequisite, the per-project matrix of #441, merged as pull request 454 at 2026-11-13T13:15:50Z. Context only, not authority on this issue: #441 decision [6851788370](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/441#issuecomment-6851788370) sent sharding to this follow-up, "decided from measured per-job times after this change merges".
+No decision or approval comment exists on the issue (read for r2 at 2026-11-13, comments 6856499810, 6856819660 and 6856834074). No item state file exists (`items/452/` is absent on `main`). The issue body names no parent item and no split; the whole issue is the candidate (factory.md "Item lifecycle" step 3). Its prerequisite, the per-project matrix of #441, merged as pull request 454 at 2026-11-13T13:15:50Z. Context only, not authority on this issue: #441 decision [6851788370](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/441#issuecomment-6851788370) sent sharding to this follow-up, "decided from measured per-job times after this change merges".
 
 ## 2. Scope
 
@@ -169,30 +171,32 @@ Finding codes, exactly: the ten on `main` (`job-result`, `no-artifacts`, `bad-ar
 
 ### 4.0 Measurement (issue item 1)
 
-Taken 2026-11-13 by `gh api` from the four completed `.NET verification` runs after pull request 454 merged, and from the artifacts of run 43440889079, by script. Each job ran on a fresh GitHub-hosted `ubuntu-24.04` runner with 4 processors (`nproc` in its `summary.json`) and no other load from the run.
+Taken 2026-11-13 by `gh api` from the five completed `.NET verification` runs after pull request 454 merged (four for r1, and run 43444471615, completed at 14:50:51Z, added for r2), and from the artifacts of run 43440889079, by script. Each job ran on a fresh GitHub-hosted `ubuntu-24.04` runner with 4 processors (`nproc` in its `summary.json`) and no other load from the run.
 
 Job durations in seconds (`completed_at` minus `started_at`):
 
-| Job | [43432170016](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43432170016) | [43432234380](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43432234380) | [43434696092](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43434696092) | [43440889079](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43440889079) |
-|---|---|---|---|---|
-| Verifier | 782 | 805 | 764 | 796 |
-| LoadGen | 779 | 777 | 723 | 777 |
-| Kafka | 348 | 381 | 369 | 379 |
-| Scenarios | 114 | 91 | 100 | 85 |
-| ArchitectureTests | 95 | 112 | 107 | 107 |
-| Enrichment | 79 | 89 | 129 | 88 |
-| Worker image smoke | 69 | 58 | 47 | 57 |
-| `.NET verification` (aggregate) | 9 | 8 | 9 | 9 |
+| Job | [43432170016](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43432170016) | [43432234380](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43432234380) | [43434696092](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43434696092) | [43440889079](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43440889079) | [43444471615](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43444471615) |
+|---|---|---|---|---|---|
+| Verifier | 782 | 805 | 764 | 796 | 796 |
+| LoadGen | 779 | 777 | 723 | 777 | 741 |
+| Kafka | 348 | 381 | 369 | 379 | 338 |
+| Scenarios | 114 | 91 | 100 | 85 | 106 |
+| ArchitectureTests | 95 | 112 | 107 | 107 | 79 |
+| Enrichment | 79 | 89 | 129 | 88 | 108 |
+| Worker image smoke | 69 | 58 | 47 | 57 | 61 |
+| `.NET verification` (aggregate) | 9 | 8 | 9 | 9 | 9 |
 
-From run 43440889079's artifacts: Verifier tests stage 690 s (8412 tests), LoadGen 668 s (1828 tests), Kafka 257 s. The time before the tests stage (restore and build) is 70 to 81 s per job.
+The longest test job per run is 782, 805, 764, 796 and 796 s.
+
+From run 43440889079's artifacts: Verifier tests stage 690 s (8412 tests), LoadGen 668 s (1828 tests), Kafka 257 s. Restore and build per job, the `elapsed_s` of the stages `Locked restore` plus `Solution build` in each `summary.json`: Verifier 70, LoadGen 71, Kafka 77, ArchitectureTests 72, Enrichment 59, Scenarios 53 s. Job time minus tests stage time: Verifier 106 s (796 - 690), LoadGen 109 s (777 - 668).
 
 Where the time goes (xUnit report `time` attributes, run 43440889079):
 
 - Verifier: collection `B10 abrupt verifier` (`DisableParallelization = true`) totals 492.5 s: PredicateBoundary 126.5, Coverage 113.7, Boundary 72.5, Verify 71.5, Classification 53.5, TimeoutPrecedence 20.7, TerminalOutcome 11.8, ScientificThreeJob 11.5, BoundedRead 10.7. Shard `b10-verify-a` sums 242.2 s and `b10-verify-b` 250.2 s. Slowest single Verifier test: 40.0 s.
-- LoadGen: `B10AbruptEndToEndTests` is one test of 359.8 s in its own collection. Collection `B10AbruptEnvironment` (`DisableParallelization = true`) totals 264.4 s, mostly `B10AbruptProducerTests` 128.9 and `B10AbruptRealProcessTests` 126.5.
+- LoadGen: `B10AbruptEndToEndTests` is one test of 359.8 s in its own collection. Collection `B10AbruptEnvironment` (`DisableParallelization = true`) totals 264.4 s, mostly `B10AbruptProducerTests` 128.9 and `B10AbruptRealProcessTests` 126.5. The other 78 collections total 216.9 s; the longest of them is `ProbeV2ComponentTests` at 56.6 s.
 - Kafka: `PhantomSpikeTests` is one test of 207.1 s.
 
-Estimate (2026-11-13; basis: the class sums above plus the measured 106 to 109 s between job time and tests stage time; not measured): the longest job after this change is the LoadGen `b10-end-to-end` shard at about 470 s, against 764 to 805 s now. The Verifier B10 shards are about 360 s each, the Verifier `rest` shard about 300 s. Kafka, unchanged, stays at 348 to 381 s. A single test of 359.8 s bounds the LoadGen shard, so further sharding cannot go below it.
+Estimate (2026-11-13; basis: the class and collection sums above plus the measured 106 to 109 s between job time and tests stage time; not measured; the new test list stage of R4 adds time that is not measured and not included): the LoadGen `b10-end-to-end` shard is about 470 s (359.8 + 109). The LoadGen `rest` shard is about 370 to 590 s: its tests stage lies between the 264.4 s of its serial collection and the 481.3 s sum of all its test times (264.4 + 216.9), plus 109 s. The Verifier B10 shards are about 360 s each (242.2 or 250.2, plus 106), the Verifier `rest` shard about 300 s (690 - 492.5, plus 106). Kafka, unchanged, stays at 338 to 381 s. So the longest job is estimated at about 470 to 590 s, against 764 to 805 s now. A single test of 359.8 s bounds the LoadGen `b10-end-to-end` shard, so further sharding cannot go below it.
 
 ### 4.1 Script (`scripts/verify-dotnet.sh`)
 
@@ -211,9 +215,9 @@ Terms: `<U>` is a unit string (section 3.1). `<P>` is its project. Ordinal order
 - **R8 Shard file.** The checker reads the shard file under section 3.2. WHEN a line breaks a rule, or names a project not in the expected set of R14, THEN it reports `bad-shard-file: <shard file>: line <n>` for each such line in line order, and treats the file as sharding nothing. WHEN the file cannot be read, THEN it reports `bad-shard-file: <shard file>: unreadable` and treats it the same way.
 - **R9 Artifact names.** An entry matches when it is a directory named `^dotnet-verification-(.+)-attempt-([1-9][0-9]*)$`, and group 1 either contains no `--` or splits at its first `--` into a nonempty project and a shard that matches the section 3.2 shard pattern or is `rest`. Otherwise `bad-artifact-name: <entry>`. The highest attempt per unit is checked, as on `main` per project.
 - **R10 Per-unit files and summary.** For each checked unit, the `main` rules R7 to R9 of the #441 plan apply with `<U>` in place of `<P>` in every finding detail, with these changes: `methods.json` joins the required files, after `results.xml`; `bad-summary` checks `shard` after `projects`, which must equal the unit's shard as a string, or JSON `null` for an unsharded unit; `projects` must equal `["<P>"]`; `report-stage` also requires a stage labelled `<P> test list` with exit code `0`.
-- **R11 Methods and results.** WHEN `methods.json` exists but is not a JSON array of strings without duplicates, THEN `bad-methods: <U>`. WHEN `results.xml` exists but does not parse as XML, THEN `bad-results: <U>`. WHEN both parse, THEN for each method string of a `<test>` element not in that unit's `methods.json`, in ordinal order without repeats, report `unlisted-test: <U>: <method>`.
+- **R11 Methods and results.** `methods.json` is valid when it parses as JSON and is an array of strings without duplicates. WHEN `methods.json` exists but is not valid, THEN `bad-methods: <U>`. WHEN `results.xml` exists but does not parse as XML, THEN `bad-results: <U>`. WHEN `methods.json` is valid and `results.xml` parses, THEN for each method string of a `<test>` element not in that unit's `methods.json`, in ordinal order without repeats, report `unlisted-test: <U>: <method>`.
 - **R12 Class placement.** For a unit of a sharded project with parseable `results.xml`: WHEN its shard is named and a `<test>` type is not one of that shard's classes, THEN `class-outside-shard: <U>: <type>`; WHEN its shard is `rest` and a `<test>` type is a class listed for `<P>`, THEN the same finding. Each type once, ordinal order. WHEN a class listed for a named shard has no `<test>` element in that unit, THEN `shard-class-not-run: <U>: <class>`, in file order.
-- **R13 Project completeness.** A project is complete-checkable when every expected unit of it (R14) has a checked artifact whose `methods.json` and `results.xml` both parse. This rule reads only the expected units' artifacts; unexpected units are left to R14. For each such project, in ordinal order: WHEN its expected units' `methods.json` sets differ, THEN `methods-mismatch: <P>` and nothing else from this rule for `<P>`. Otherwise, WHEN a method string occurs in `<test>` elements of more than one unit, THEN `method-in-two-shards: <P>: <method>`; WHEN a listed method occurs in no unit's `<test>` elements, THEN `method-not-run: <P>: <method>`. Each in ordinal order of method. A method that occurs many times inside one unit (theory rows) is not a finding.
+- **R13 Project completeness.** A project is complete-checkable when every expected unit of it (R14) has a checked artifact whose `methods.json` is valid under R11 and whose `results.xml` parses. This rule reads only the expected units' artifacts; unexpected units are left to R14. For each such project, in ordinal order: WHEN its expected units' `methods.json` sets differ, THEN `methods-mismatch: <P>` and nothing else from this rule for `<P>`. Otherwise, WHEN a method string occurs in `<test>` elements of more than one unit, THEN `method-in-two-shards: <P>: <method>`; WHEN a listed method occurs in no unit's `<test>` elements, THEN `method-not-run: <P>: <method>`. Each in ordinal order of method. A method that occurs many times inside one unit (theory rows) is not a finding.
 - **R14 Expected units.** The expected projects are as on `main` (R11 of the #441 plan). An unsharded expected project expects unit `<P>`; a sharded one expects `<P>--<s>` for each of its shards. WHEN an expected unsharded unit has no artifact, THEN `missing-project: <P>`. WHEN an expected shard unit has no artifact, THEN `missing-shard: <U>`. WHEN an artifact's project is not expected, THEN `extra-project: <P>` once per project. WHEN an artifact's project is expected but its unit is not, THEN `unexpected-artifact: <U>`. Per-unit checks still run on unexpected and extra units.
 - **R15 Inventory.** As on `main`, with units in place of projects; the reference inventory is the first unit in ordinal order that has `unit-projects.txt`.
 - **R16 Output order.** `job-result` in argument order; `no-artifacts`; `bad-shard-file` in line order; `bad-artifact-name` in ordinal order; then per checked unit in ordinal order its findings in this order: `missing-file`, `leg-not-passed`, `bad-summary`, `report-stage`, `bad-methods`, `bad-results`, `unlisted-test`, `class-outside-shard`, `shard-class-not-run`, `inventory-mismatch`; then R13 findings per project in ordinal order; then `missing-project`, `missing-shard`, `extra-project`, `unexpected-artifact`, each in ordinal order. Every finding is reported; the checker never stops at the first.
@@ -316,7 +320,7 @@ The pull request changes no .NET source or test, so the local full gate is not r
 
 ## 9. Measured saving (issue item 4)
 
-The pull request description and the receipt state a time saving only as A6's measured job durations, beside section 4.0's measured baseline, with run links. The estimate in section 4.0 is not repeated as a result. WHEN A6's longest `dotnet-tests` job is not shorter than 764 s (the smallest longest job of the four baseline runs), THEN the implementer records the measurement and hands off to Hari instead of changing shard membership, which is a contract change (section 12).
+The pull request description and the receipt state a time saving only as A6's measured job durations, beside section 4.0's measured baseline, with run links. The estimate in section 4.0 is not repeated as a result. WHEN A6's longest `dotnet-tests` job is not shorter than 764 s (the smallest longest job of the five baseline runs), THEN the implementer records the measurement and hands off to Hari instead of changing shard membership, which is a contract change (section 13).
 
 ## 10. Sources
 
@@ -332,7 +336,7 @@ Read 2026-11-13. Tools: WebFetch for xunit.net and docs.github.com; the xUnit in
 
 ## 11. Plan-check questions
 
-(a) Effort that scales with a number unknown at planning time: the number of hosted-run failures on the pull request head that need a fix. Cap: three hosted runs of A6 that end in failure caused by this pull request's changes. Exhaustion action: push -wip and hand off to the next session. Reruns of an unchanged head for a test flake do not count. A8 runs at most once. Nothing else scales: the shard file, the matrix, the test map and the doc edits are fixed.
+(a) Effort that scales with a number unknown at planning time: the number of hosted-run failures on the pull request head that need a fix. Cap: three hosted runs of A6 that end in failure caused by this pull request's changes. Exhaustion action: push -wip and hand off to the next session. Reruns of an unchanged head for a test flake do not count toward that cap; they have their own cap of two reruns per pull request, with exhaustion action push -wip and hand off to the next session, which records the flaking test. A8 runs at most once. Nothing else scales: the shard file, the matrix, the test map and the doc edits are fixed.
 
 (b) Stricter than the parent: there is no parent plan. Against the issue: proposal item 3 asks to keep the check that every test ran exactly once. The aggregate on `main` proves it per project only (every project has one passing artifact). This plan proves it per test method for every project, sharded or not (R11 to R13), and adds class placement (R12) and shard-to-matrix agreement (R14). Item 2 allows "another MTP filter"; this plan uses class filters only, so each class fixture and each `DisableParallelization` collection stays within one process per job.
 
