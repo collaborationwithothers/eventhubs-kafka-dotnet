@@ -10,8 +10,73 @@ permissions:
   contents: read
 
 jobs:
-  dotnet-verification:
-    name: .NET verification
+  dotnet-tests:
+    name: .NET tests (${{ matrix.project }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - Parchwell.ArchitectureTests
+          - Parchwell.Enrichment.Tests
+          - Parchwell.Kafka.Tests
+          - Parchwell.LoadGen.Tests
+          - Parchwell.Scenarios.Tests
+          - Parchwell.Verifier.Tests
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Set up pinned .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Verify .NET test project
+        env:
+          PARCHWELL_TEST_PROJECT: ${{ matrix.project }}
+        run: ./scripts/verify-dotnet.sh --project "$PARCHWELL_TEST_PROJECT"
+      - name: Install mapping coverage collector
+        if: matrix.project == 'Parchwell.Kafka.Tests'
+        run: dotnet tool install dotnet-coverage --version 18.12.0 --tool-path "$RUNNER_TEMP/parchwell-coverage"
+      - name: Verify Kafka mapping coverage
+        if: matrix.project == 'Parchwell.Kafka.Tests'
+        run: ./scripts/verify-kafka-coverage.sh "$RUNNER_TEMP/parchwell-coverage/dotnet-coverage"
+      - name: Record passed test job
+        run: mkdir -p "$RUNNER_TEMP/dotnet-verification-artifact" && touch "$RUNNER_TEMP/dotnet-verification-artifact/leg-passed"
+      - name: Collect verification reports
+        if: always()
+        env:
+          PARCHWELL_TEST_PROJECT: ${{ matrix.project }}
+        shell: bash
+        run: |
+          artifact="$RUNNER_TEMP/dotnet-verification-artifact"
+          mkdir -p "$artifact"
+          shopt -s nullglob
+          results_dirs=("${TMPDIR:-/tmp}"/parchwell-dotnet-verification.*)
+          if [ "${#results_dirs[@]}" -ne 1 ]; then
+            echo "Expected one verification results directory; found ${#results_dirs[@]}." >&2
+            exit 1
+          fi
+          results_dir=${results_dirs[0]}
+          for name in summary.json stage-timing.tsv unit-projects.txt; do
+            if [ -f "$results_dir/$name" ]; then
+              cp "$results_dir/$name" "$artifact/$name"
+            fi
+          done
+          if [ -f "$results_dir/$PARCHWELL_TEST_PROJECT/results.xml" ]; then
+            cp "$results_dir/$PARCHWELL_TEST_PROJECT/results.xml" "$artifact/results.xml"
+          fi
+      - name: Upload verification reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dotnet-verification-${{ matrix.project }}-attempt-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/dotnet-verification-artifact
+          if-no-files-found: error
+  worker-images:
+    name: Worker image smoke
     runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
@@ -23,14 +88,34 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
-      - name: Verify .NET foundation
-        run: ./scripts/verify-dotnet.sh
-      - name: Install mapping coverage collector
-        run: dotnet tool install dotnet-coverage --version 18.12.0 --tool-path "$RUNNER_TEMP/parchwell-coverage"
-      - name: Verify Kafka mapping coverage
-        run: ./scripts/verify-kafka-coverage.sh "$RUNNER_TEMP/parchwell-coverage/dotnet-coverage"
       - name: Verify worker images start
         run: ./scripts/verify-worker-images.sh
+  dotnet-verification:
+    name: .NET verification
+    needs: [dotnet-tests, worker-images]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Test the aggregate checker
+        run: python3 -m unittest discover -s scripts/tests -p test_check_dotnet_matrix.py -v
+      - name: Download verification reports
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: dotnet-verification-*
+          path: ${{ runner.temp }}/dotnet-verification-reports
+          merge-multiple: false
+      - name: Check every test project passed
+        if: always()
+        env:
+          DOTNET_TESTS_RESULT: ${{ needs.dotnet-tests.result }}
+          WORKER_IMAGES_RESULT: ${{ needs.worker-images.result }}
+        run: python3 scripts/check-dotnet-matrix.py "$RUNNER_TEMP/dotnet-verification-reports" "dotnet-tests=$DOTNET_TESTS_RESULT" "worker-images=$WORKER_IMAGES_RESULT"
   lifecycle-verification:
     name: Lifecycle verification
     runs-on: ubuntu-24.04
