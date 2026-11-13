@@ -10,8 +10,8 @@
 ## Plan check findings left to the implementer
 - P2-1 (docs paragraph over-claims): applied. The two replacement sentences of check 6849713128 are in `docs/engineering/dotnet-verification.md` line 69 verbatim.
 - P2-2 (receipt correction to plan section 2), literal: Correction to plan section 2: `B10AbruptOfflineImageTests` also reads `memory.events.local`, through the production capture, when `PARCHWELL_B10_OFFLINE_IMAGE` is set (`src/Parchwell.LoadGen/Run/Abrupt/B10AbruptCgroup.cs` line 50). This pull request does not tag it, because the issue's proposal 2 names only `real-kafka` callers; `Tier=Docker` keeps it out of the fast tier.
-- Advisory A1 (uncapped counts in commands 6 and 9): AGENTS.md rule 11 applied; command 6 had 2 failures and command 9 has 9 warnings, none in a file this pull request changes, so no stop.
-- Advisory A2 (how command 10's output reaches this session): see "Command 10" below.
+- Advisory A1 (uncapped counts in commands 6 and 9): AGENTS.md rule 11 applied. Command 6 showed 0 failures in tests without `Tier=CGroupV2` (the 2 failures are the 2 tagged tests, as plan command 6 expects), and command 9 showed 0 warnings in files this pull request changes (9 in files it does not change), so the workload was zero and no stop was needed.
+- Advisory A2 (how command 10's output reaches this session, and its handoff): the implementing session starts the fresh session with a prompt that tells it to run only the two commands, change nothing, send both commands' outputs and exit statuses to the implementing session with `send_message`, and end with the one handoff comment on issue 445 that AGENTS.md GOVERNANCE "Handoffs" requires, starting `**Decision needed:** None;`. The result is recorded under "Command 10" below.
 
 ## Standing fixture rule (plan section 6)
 Not applicable, as the plan states. No check that validates or rejects input is added or tightened.
@@ -20,7 +20,7 @@ Not applicable, as the plan states. No check that validates or rejects input is 
 `main` moved from 92b8128 to 696c686 during the work (the #442 verification-script change merged). The rebase was clean. The lines the plan names moved to `scripts/verify-dotnet.sh` lines 13 and 58, `scripts/test-verify-dotnet.sh` lines 130 and 131, and `docs/engineering/dotnet-verification.md` lines 58 and 66; the replacement text is the plan's.
 
 ## Commands and results
-Commands 1 to 4 and 7 ran on the rebased tree (source: this branch on `origin/main` 696c686). Command 5 and 6 ran on the same changes before the rebase; the rebase changed no test or hook file.
+Source commit of the code under test: 854f3ef8 (the rebased code commit; the later receipt commits change only `items/445/`). Commands 1 to 5 and 7 ran on the rebased tree. Command 6 was re-run on the rebased tree after the cold review found that the first run predated the rebase, which changed `scripts/verify-dotnet.sh`.
 - Command 1: `grep -rn --exclude-dir=items --exclude-dir=.git --exclude-dir=node_modules -e 'Tier=Host' -e '"Tier", "Host"' .` printed nothing, exit 1.
 - Command 2: `./scripts/test-verify-dotnet.sh` printed `verify-dotnet.sh checks passed.`
 - Command 3: `.claude/hooks/tests/start-dockerd.test.sh` printed `start-dockerd.sh checks passed. (9 cases)`. Mutation check by hand: deleting each guard line or adding `wait` to the hook made at least one case fail.

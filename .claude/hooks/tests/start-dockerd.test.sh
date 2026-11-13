@@ -51,8 +51,10 @@ make_path_without() {
     echo "$d"
 }
 
-# run_case <name> <PATH value> <env assignments...>
-# Sets: status, out, calls, elapsed. Kills any stub dockerd afterwards.
+# run_hook <PATH value> <env assignments...>
+# Sets: status, out, elapsed_ms, calls_count (the number of lines in the calls
+# file right after the hook returns). It does not stop any stub dockerd; use
+# stop_stub for that.
 run_hook() {
     local path_value="$1"
     shift
@@ -122,9 +124,11 @@ check running assert_silent_noop
 run_hook "$FULL_PATH" CLAUDE_CODE_REMOTE=true FAKE_UID=0
 assert_start() {
     [[ $status -eq 0 && -z "$out" ]] || return 1
+    local i
+    for i in $(seq 1 50); do [[ -s "$CASE_DIR/calls" ]] && break; sleep 0.1; done
+    calls_count=$(wc -l <"$CASE_DIR/calls")
     [[ $calls_count -eq 1 && "$(cat "$CASE_DIR/calls")" == "0 " ]] || return 1
     [[ $elapsed_ms -lt 5000 ]] || return 1
-    local i
     for i in $(seq 1 50); do [[ -s "$CASE_DIR/pid" ]] && break; sleep 0.1; done
     [[ -s "$CASE_DIR/pid" ]] && kill -0 "$(cat "$CASE_DIR/pid")" 2>/dev/null || return 1
     for i in $(seq 1 50); do
