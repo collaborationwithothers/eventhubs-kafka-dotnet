@@ -53,13 +53,13 @@ Those commands check documentation. They are not the .NET build entry point. Doc
 ./scripts/verify-dotnet.sh --tier fast
 ./scripts/verify-dotnet.sh --tier sandbox
 ./scripts/verify-dotnet.sh --project Parchwell.Verifier.Tests --project Parchwell.Kafka.Tests
+./scripts/verify-dotnet.sh --project Parchwell.Verifier.Tests --shard b10-verify-a
 ```
 
 Setting `PARCHWELL_BUILD_MAX_CPU` without options leaves the run a full gate:
 
 ```bash
 PARCHWELL_BUILD_MAX_CPU=1 ./scripts/verify-dotnet.sh
-./scripts/verify-dotnet.sh --project Parchwell.Verifier.Tests --shard b10-verify-a
 ```
 
 `--tier fast` passes `--filter-not-trait Tier=Docker Tier=Slow Tier=CGroupV2` to every test project. The option names were read from `dotnet test --help` on SDK 10.0.402 on 2026-11-12, and one run showed the fast tier removing exactly the marked tests. In the recorded fast-tier run (`items/435/receipt.md`) every report passed the check that rejects skips, and the number of removed tests equalled the number of marked tests. From that I infer that the runner leaves filtered-out tests out of the report. No cited source states it. The fast tier also leaves out the spike-evidence publication, because the Docker spike test produces that evidence. `--tier sandbox` passes `--filter-not-trait Tier=CGroupV2` to every test project, so it leaves the Docker and Slow tests in and publishes the spike evidence, as `--tier all` does. A `sandbox` run prints the partial line and is cited as a partial run. It is the pre-PR local gate defined in [Verification gates](../agents/pull-requests.md#verification-gates), which is where the rule lives. `--project` runs only the named test project; give the option more than once to run several. A run with `--tier fast`, `--tier sandbox` or `--project` prints `Partial verification passed` and states that it is not the full gate. Cite a partial run as a partial run, never as the gate.
