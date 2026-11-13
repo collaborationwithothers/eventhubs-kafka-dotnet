@@ -248,16 +248,38 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
     }
 
     [Theory]
-    [InlineData(0, "witness_original_offset")]
-    [InlineData(0, "witness_resend_offset")]
+    [InlineData(0, "witness_original_offset_up")]
+    [InlineData(0, "witness_original_offset_down")]
+    [InlineData(0, "witness_resend_offset_up")]
+    [InlineData(0, "witness_resend_offset_down")]
     [InlineData(0, "witness_original_attempt")]
-    [InlineData(1, "witness_original_offset")]
-    [InlineData(1, "witness_resend_offset")]
-    [InlineData(0, "copy_offset")]
+    [InlineData(0, "witness_resend_attempt")]
+    [InlineData(0, "witness_original_partition")]
+    [InlineData(0, "witness_resend_partition")]
+    [InlineData(0, "copy_offset_up")]
+    [InlineData(0, "copy_offset_down")]
+    [InlineData(0, "copy_partition")]
+    [InlineData(0, "copy_attempt")]
+    [InlineData(0, "copy_instance")]
     [InlineData(0, "copy_role")]
     [InlineData(0, "copy_removed")]
+    [InlineData(0, "copy_added")]
+    [InlineData(1, "witness_original_offset_up")]
+    [InlineData(1, "witness_original_offset_down")]
+    [InlineData(1, "witness_resend_offset_up")]
+    [InlineData(1, "witness_resend_offset_down")]
+    [InlineData(1, "witness_original_attempt")]
+    [InlineData(1, "witness_resend_attempt")]
+    [InlineData(1, "witness_original_partition")]
+    [InlineData(1, "witness_resend_partition")]
+    [InlineData(1, "copy_offset_up")]
+    [InlineData(1, "copy_offset_down")]
+    [InlineData(1, "copy_partition")]
+    [InlineData(1, "copy_attempt")]
     [InlineData(1, "copy_instance")]
-    [InlineData(1, "copy_offset")]
+    [InlineData(1, "copy_role")]
+    [InlineData(1, "copy_removed")]
+    [InlineData(1, "copy_added")]
     public async Task Given_NonfinalWitnessOrCopiesDisagree_When_FinalSweepRuns_Then_OnlyRestartIsRejected_P1_4567914709(int arm, string change)
     {
         using var run = await B10FinalSweepHarness.CreateAsync(kafka);
@@ -265,15 +287,26 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
         {
             JsonNode node = root["data"]!["arms"]![arm]!;
             JsonNode member = node["members"]![0]!;
+            JsonNode witness = node["witness"]!;
+            JsonArray copies = member["copies"]!.AsArray();
             switch (change)
             {
-                case "witness_original_offset": node["witness"]!["original"]!["offset"] = node["witness"]!["original"]!["offset"]!.GetValue<long>() + 1; break;
-                case "witness_resend_offset": node["witness"]!["resend"]!["offset"] = node["witness"]!["resend"]!["offset"]!.GetValue<long>() - 1; break;
-                case "witness_original_attempt": node["witness"]!["original_attempt_id"] = "other"; break;
-                case "copy_offset": member["copies"]![0]!["offset"] = member["copies"]![0]!["offset"]!.GetValue<long>() + 1; break;
-                case "copy_role": member["copies"]![1]!["role"] = "other"; break;
-                case "copy_removed": member["copies"]!.AsArray().RemoveAt(1); break;
-                case "copy_instance": member["copies"]![1]!["instance_id"] = "other"; break;
+                case "witness_original_offset_up": witness["original"]!["offset"] = witness["original"]!["offset"]!.GetValue<long>() + 1; break;
+                case "witness_original_offset_down": witness["original"]!["offset"] = witness["original"]!["offset"]!.GetValue<long>() - 1; break;
+                case "witness_resend_offset_up": witness["resend"]!["offset"] = witness["resend"]!["offset"]!.GetValue<long>() + 1; break;
+                case "witness_resend_offset_down": witness["resend"]!["offset"] = witness["resend"]!["offset"]!.GetValue<long>() - 1; break;
+                case "witness_original_attempt": witness["original_attempt_id"] = "other"; break;
+                case "witness_resend_attempt": witness["resend_attempt_id"] = "other"; break;
+                case "witness_original_partition": witness["original"]!["partition"] = witness["original"]!["partition"]!.GetValue<int>() + 1; break;
+                case "witness_resend_partition": witness["resend"]!["partition"] = witness["resend"]!["partition"]!.GetValue<int>() + 1; break;
+                case "copy_offset_up": copies[0]!["offset"] = copies[0]!["offset"]!.GetValue<long>() + 1; break;
+                case "copy_offset_down": copies[0]!["offset"] = copies[0]!["offset"]!.GetValue<long>() - 1; break;
+                case "copy_partition": copies[0]!["partition"] = copies[0]!["partition"]!.GetValue<int>() + 1; break;
+                case "copy_attempt": copies[1]!["attempt_id"] = "other"; break;
+                case "copy_instance": copies[1]!["instance_id"] = "other"; break;
+                case "copy_role": copies[1]!["role"] = "other"; break;
+                case "copy_removed": copies.RemoveAt(1); break;
+                case "copy_added": copies.Add(JsonNode.Parse(copies[1]!.ToJsonString())); break;
                 default: throw new InvalidOperationException(change);
             }
         });
