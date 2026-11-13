@@ -20,16 +20,30 @@ Not applicable, as the plan states. No check that validates or rejects input is 
 `main` moved from 92b8128 to 696c686 during the work (the #442 verification-script change merged). The rebase was clean. The lines the plan names moved to `scripts/verify-dotnet.sh` lines 13 and 58, `scripts/test-verify-dotnet.sh` lines 130 and 131, and `docs/engineering/dotnet-verification.md` lines 58 and 66; the replacement text is the plan's.
 
 ## Commands and results
-Source commit of the code under test: 854f3ef8 (the rebased code commit; the later receipt commits change only `items/445/`). Commands 1 to 5 and 7 ran on the rebased tree. Command 6 was re-run on the rebased tree after the cold review found that the first run predated the rebase, which changed `scripts/verify-dotnet.sh`.
+Source commit of the code under test: 925bb103 (rebased onto `origin/main` 696c686; the receipt commits after it change only `items/445/`). Commands 1 to 6 and 9 ran on it. Command 7 ran on 854f3ef8, which differs only in a blank line of `docs/engineering/dotnet-verification.md` and in `.claude/hooks/tests/start-dockerd.test.sh`, files `verify-dotnet.sh` does not read. Command 5 and 6 first ran before the rebase; the cold review found that the rebase changed `scripts/verify-dotnet.sh`, so both were re-run on 925bb103 and only those results are recorded here.
+
 - Command 1: `grep -rn --exclude-dir=items --exclude-dir=.git --exclude-dir=node_modules -e 'Tier=Host' -e '"Tier", "Host"' .` printed nothing, exit 1.
 - Command 2: `./scripts/test-verify-dotnet.sh` printed `verify-dotnet.sh checks passed.`
 - Command 3: `.claude/hooks/tests/start-dockerd.test.sh` printed `start-dockerd.sh checks passed. (9 cases)`. Mutation check by hand: deleting each guard line or adding `wait` to the hook made at least one case fail.
 - Command 4: `.claude/hooks/tests/require-handoff.test.sh` last line `32 passed, 0 failed`.
-- Command 5: with no `dockerd` running (`pgrep -x dockerd` exit 1), `CLAUDE_CODE_REMOTE=true .claude/hooks/start-dockerd.sh </dev/null` exited 0 in 12 ms with empty stdout; `pgrep -x dockerd` then exited 0; `docker info` succeeded on the first poll; `docker version --format '{{.Server.Version}}'` printed 29.9.2. The log shows "Daemon has completed initialization" at 10:02:25 UTC.
-- Command 6: `./scripts/verify-dotnet.sh --project Parchwell.LoadGen.Tests`: total 1810, failed 2, succeeded 1808, skipped 0, 9 m 10 s. By script from `results.xml`, the 2 failures are `B10AbruptEndToEndTests.Given_RealKafka_When_ParentChildAndSuccessorRunOnce_Then_ConfirmedJournalMembersAreResentWithIdenticalBytes` (traits `Tier=Docker`, `Tier=CGroupV2`; output contains `b10_abrupt_cgroup_unavailable`) and `B10AbruptLocalCgroupCaptureTests.Given_ActualLocalMembership_When_CapturedBeforeAndAfter_Then_RealIdentityAndCounterAgree` (trait `Tier=CGroupV2`; output contains `b10_abrupt_cgroup_unavailable`). So that test fails in this sandbox. No failing test lacks `Tier=CGroupV2`.
+- Command 5: with no `dockerd` running (`pgrep -x dockerd` exit 1), `CLAUDE_CODE_REMOTE=true .claude/hooks/start-dockerd.sh </dev/null` exited 0 in 12 ms with empty stdout; `pgrep -x dockerd` then exited 0; `docker info` succeeded on the first poll; `docker version --format '{{.Server.Version}}'` printed 29.9.2. The log shows "Daemon has completed initialization" at 10:57:01 UTC.
+- Command 6: `./scripts/verify-dotnet.sh --project Parchwell.LoadGen.Tests`: total 1810, failed 2, succeeded 1808, skipped 0, 8 m 50 s. By script from `results.xml`, the 2 failures are `B10AbruptEndToEndTests.Given_RealKafka_When_ParentChildAndSuccessorRunOnce_Then_ConfirmedJournalMembersAreResentWithIdenticalBytes` (traits `Tier=Docker`, `Tier=CGroupV2`; output contains `b10_abrupt_cgroup_unavailable`) and `B10AbruptLocalCgroupCaptureTests.Given_ActualLocalMembership_When_CapturedBeforeAndAfter_Then_RealIdentityAndCounterAgree` (trait `Tier=CGroupV2`; output contains `b10_abrupt_cgroup_unavailable`). So that test fails in this sandbox. No failing test lacks `Tier=CGroupV2`.
 - Command 9: `npm run check:docs`: 9 warnings, all in files this pull request does not change (one blanket line in the pull request); none in `items/445/` or `docs/engineering/dotnet-verification.md`.
 - Command 7: `./scripts/verify-dotnet.sh --tier fast` exited 0; last line `Partial verification passed (tier fast, projects: all). This is not the full gate`. Partial run, not the gate. It shows the `CGroupV2` tests left out of the fast tier in this sandbox.
 - Command 8 (hosted `.NET verification` on the final head) and command 10 (fresh-session hook check): recorded below when taken.
 
 ## Cold review
 - Round 1: mode comprehensive; input revision: this branch's index against merge base `origin/main` 696c686 (the review diff file); specification sources: plan Revision 3 at 386f36bd5b4fa5b2295e6714bbf245a9c2b6916c, decisions 6848081896, 6848259371, 6849531953, check 6849713128 and the plan-check findings P2-1 and P2-2 above. Budget: 2 comprehensive, 2 focused. Counts so far: 1 comprehensive, 0 focused.
+  Round 1 report (complete) reviewed revision 186e3daf. Findings and dispositions:
+  - P1 (no source commit on commands; "the rebase changed no test or hook file" false): fixed. The receipt now names source commit 925bb103, states the rebase did change `scripts/verify-dotnet.sh`, and records commands 5 and 6 re-run on the rebased tree.
+  - P2 (no blank line before the new doc paragraph): fixed.
+  - P2 (false comment on `run_hook` in `start-dockerd.test.sh`): fixed.
+  - P2 (race in case `start`: calls file read before the detached stub wrote): fixed; the case now polls for up to 5 s, as `dockerd_fails` does.
+  - P2 (A1 disposition misstated): fixed, with the counts.
+  - P2 (A2 pointed to a missing section): fixed; the A2 line now records the handling and a "Command 10" section follows.
+  - P2 (state file cited a comment posted after `ready-for-agent`): fixed; the default wording is used and the comment is noted.
+  - Pre-existing, not changed: CLAUDE.md "Both hooks" wording is now ambiguous with two `SessionStart` hooks. Plan section 2 forbids changing CLAUDE.md here; recorded as a follow-up candidate in the pull request.
+- Round 2: mode focused; input revision: this branch at the commit after the round 1 fixes; comparison revision 186e3daf; the full pull request diff is supplied as context. Counts after it: 1 comprehensive, 1 focused.
+
+## Command 10
+Not yet taken.
