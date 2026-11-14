@@ -525,6 +525,8 @@ public sealed class LoadGenWorkerHostTests
         };
         var clock = new TrackingTimeProvider(throwOnWatchdogDispose: outcome == "watchdog-dispose");
         var host = new LifecycleHost(CreateHost(publisher, durationSeconds: 1, lifecycle: lifecycle, timeProvider: clock), outcome, lifecycle);
+        CancellationToken applicationStopping = host.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
+        lifecycle.HostIsStopping = () => applicationStopping.IsCancellationRequested;
         if (outcome == "stop-stall")
             host.Services.GetRequiredService<IOptions<LoadGenHostOptions>>().Value.CleanupTimeout = TimeSpan.FromMilliseconds(100);
         using var output = new StringWriter();
@@ -539,6 +541,8 @@ public sealed class LoadGenWorkerHostTests
         int exitCode = await Program.RunAsync([], completionOutput: output, hostFactory: () => host);
         stopwatch.Stop();
         if (outcome == "stop-stall") await host.DisposeFinished.Task.WaitAsync(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken);
+        if (outcome == "cancel")
+            Assert.True(await lifecycle.RegistrationCanceledByHost.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
         Assert.Equal(outcome is not ("start" or "cancel"), publisher.Called);
         Assert.True(host.Disposed);
         Assert.Equal(1, host.StopAttempts);
@@ -821,6 +825,8 @@ public sealed class LoadGenWorkerHostTests
         public bool Registered { get; private set; }
         public bool WaitForRegistrationCancellation { get; set; }
         public TaskCompletionSource RegistrationEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource<bool> RegistrationCanceledByHost { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Func<bool>? HostIsStopping { get; set; }
         public int RegisterCalls { get; private set; }
         public int DiagnosticsCalls { get; private set; }
         public int CompletionCalls { get; private set; }
@@ -836,10 +842,17 @@ public sealed class LoadGenWorkerHostTests
             cancellationToken.ThrowIfCancellationRequested();
             RegisterCalls++;
             Registered = true;
-            RegistrationEntered.TrySetResult();
             return WaitForRegistrationCancellation
-                ? Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken)
+                ? WaitForRegistrationStopAsync(cancellationToken)
                 : Task.CompletedTask;
+        }
+
+        private async Task WaitForRegistrationStopAsync(CancellationToken cancellationToken)
+        {
+            using CancellationTokenRegistration registration = cancellationToken.Register(
+                () => RegistrationCanceledByHost.TrySetResult(HostIsStopping?.Invoke() == true));
+            RegistrationEntered.TrySetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
         }
 
         public Task PublishDiagnosticsAsync(ProducerRunContext context, RunExecutionResult? result,
