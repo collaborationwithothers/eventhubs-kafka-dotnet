@@ -479,7 +479,7 @@ PROVISIONAL_LAYOUT_HASHES = {
     'Judge/B10FinalJudge.cs': '0edc49b41523422087ea8a0cc90bb2f781fc84074f43e92c42d762c1bd635aad',
     'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': 'a36d5aa3b38d51fa945cd497ab4226a95a7c9496cf923d70f7c162084be19683',
 }
-PROVISIONAL_TIMING_INPUTS_HASH = '1551753219dbba2e7fded1e7c11cc4e94c06db88cb6220e193a2bde9c4004f45'
+PROVISIONAL_TIMING_INPUTS_HASH = 'bf4e7b0bf0f9a5e05070f95e9240d342c3d0bb735929ae44b1152cb0650aaae8'
 PROVISIONAL_STATUS = 'pending_native_report'
 NUMERIC_FIELDS = ('main_mutants', 'main_work_seconds', 'parallelism', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')
 
@@ -596,7 +596,7 @@ def approved_static_owner(path, record, shard, item, source):
 # targeted correction; the first two use a cross-field conservative rate.
 CODEC_TARGET = 'Common/Phase/B10FinalProjectionCodec.cs'
 CODEC_PROVISIONAL_SHARDS = frozenset(f'b10-final-projection-codec-p{i}-{suffix}' for i in (1, 2, 3) for suffix in ('a', 'b'))
-CODEC_TIMING_INPUTS_HASH = '1551753219dbba2e7fded1e7c11cc4e94c06db88cb6220e193a2bde9c4004f45'
+CODEC_TIMING_INPUTS_HASH = 'bf4e7b0bf0f9a5e05070f95e9240d342c3d0bb735929ae44b1152cb0650aaae8'
 CODEC_SOURCE_HASH = 'c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5'
 CODEC_ISOLATED = {
     'b10-final-projection-codec-p1-a': 1248.756, 'b10-final-projection-codec-p1-b': 1236.599,

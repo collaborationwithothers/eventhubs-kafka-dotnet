@@ -1157,7 +1157,8 @@ def isolated_rows(directory: Path, target: str, target_hash: str, item: dict, en
     folder = directory / "isolated" / item["mutant_id"]
     if cohort:
         argv = entry["argv"]
-        require(isinstance(argv, list) and len(argv) >= 9 and all(isinstance(arg, str) for arg in argv),
+        require(isinstance(argv, list) and len(argv) == 9 and argv[:2] == ["dotnet", "stryker"]
+                and all(isinstance(arg, str) for arg in argv),
                 "malformed cohort argv")
         require(argv[-7] == "--config-file" and argv[-5] == "--output"
                 and argv[-3:] == ["--log-to-file", "--verbosity", "debug"]

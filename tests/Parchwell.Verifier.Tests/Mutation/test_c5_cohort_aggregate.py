@@ -162,3 +162,25 @@ class CohortAggregateTests(unittest.TestCase):
         result, summary = self.fixture.invoke()
         self.assertEqual(1, result)
         self.assertTrue(any('cross-shard source mismatch' in reason for reason in summary['incomplete_reasons']))
+
+    def test_cohort_argv_rejects_extra_executable_options(self):
+        folder = self.fixture.input / 'c5-mutation-12345-2-workload-b'
+        path = folder / 'receipt.json'
+        receipt = json.loads(path.read_text())
+        receipt['argv'].insert(2, '--no-mutation')
+        receipt['isolated'][0]['argv'].insert(2, '--no-mutation')
+        write_json(path, receipt)
+        result, summary = self.fixture.invoke()
+        self.assertEqual(1, result)
+        self.assertTrue(any('malformed cohort argv' in reason for reason in summary['incomplete_reasons']))
+
+    def test_cohort_argv_rejects_another_executable(self):
+        folder = self.fixture.input / 'c5-mutation-12345-2-workload-b'
+        path = folder / 'receipt.json'
+        receipt = json.loads(path.read_text())
+        receipt['argv'][0] = '/tmp/fake-dotnet'
+        receipt['isolated'][0]['argv'][0] = '/tmp/fake-dotnet'
+        write_json(path, receipt)
+        result, summary = self.fixture.invoke()
+        self.assertEqual(1, result)
+        self.assertTrue(any('malformed cohort argv' in reason for reason in summary['incomplete_reasons']))
