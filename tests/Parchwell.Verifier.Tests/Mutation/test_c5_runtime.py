@@ -337,26 +337,32 @@ class QualificationTests(unittest.TestCase):
         self.config['targets'] = {path: {'source_sha256': self.targets[path], 'evidence': [], 'shards': {shard: item}}}
         self.assertIn('shard_over_budget', self.errors())
 
-    def test_repeat_merged_estimate_is_pinned_and_required(self):
+    def test_repeat_bounds_are_pinned_and_required(self):
         import copy
         config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
         record = config['targets'][runtime.REPEAT_TARGET]
-        item = record['shards'][runtime.REPEAT_MERGED_SHARD]
         source = (runtime.ROOT / 'src/Parchwell.Verifier' / runtime.REPEAT_TARGET).read_bytes()
-        self.assertTrue(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, record, runtime.REPEAT_MERGED_SHARD, item, source))
-        self.assertLessEqual(item['estimated_seconds'], 1800)
-        for field in runtime.NUMERIC_FIELDS:
-            candidate = copy.deepcopy(config)
-            candidate['targets'][runtime.REPEAT_TARGET]['shards'][runtime.REPEAT_MERGED_SHARD][field] = None
-            with self.subTest(field=field), self.assertRaises(ValueError):
-                runtime.shape(candidate)
-        changed = copy.deepcopy(item)
-        changed['main_work_seconds'] -= 1
-        self.assertFalse(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, record, runtime.REPEAT_MERGED_SHARD, changed, source))
-        changed = copy.deepcopy(record)
-        changed['evidence'] = [e for e in changed['evidence'] if '132540792966' not in e['locator']]
-        self.assertFalse(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, changed, runtime.REPEAT_MERGED_SHARD, item, source))
-        self.assertFalse(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, record, runtime.REPEAT_MERGED_SHARD, item, source + b'changed'))
+        for shard in runtime.REPEAT_BOUNDS:
+            item = record['shards'][shard]
+            with self.subTest(shard=shard):
+                self.assertTrue(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, record, shard, item, source))
+                self.assertLessEqual(item['estimated_seconds'], 1800)
+                for field in runtime.NUMERIC_FIELDS:
+                    candidate = copy.deepcopy(config)
+                    candidate['targets'][runtime.REPEAT_TARGET]['shards'][shard][field] = None
+                    with self.assertRaises(ValueError):
+                        runtime.shape(candidate)
+                changed = copy.deepcopy(item)
+                changed['main_work_seconds'] -= 1
+                self.assertFalse(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, record, shard, changed, source))
+                changed = copy.deepcopy(record)
+                changed['evidence'] = [e for e in changed['evidence'] if '14132774324' not in e['locator']]
+                self.assertFalse(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, changed, shard, item, source))
+                changed = copy.deepcopy(record)
+                job = runtime.REPEAT_BOUND_JOBS[shard][0][0]
+                changed['evidence'] = [e for e in changed['evidence'] if not e['locator'].endswith('/job/' + job)]
+                self.assertFalse(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, changed, shard, item, source))
+                self.assertFalse(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, record, shard, item, source + b'changed'))
 
     def test_pinned_native_geometry_rejects_tampering(self):
         self.workflow_patcher.stop()
