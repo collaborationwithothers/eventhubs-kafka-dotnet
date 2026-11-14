@@ -330,7 +330,8 @@ check_summary "M1 stage" '[.stages[].label] | index("Mutation-only Verifier test
 run_case mutation_rest -- --project Parchwell.Verifier.Tests --shard rest
 [[ "$(grep -c '^MUTATION ' "$STUB_LOG")" -eq 1 ]] || fail "M2: the Verifier rest leg must build the mutation-only configuration once"
 for skipped in "--project Parchwell.Verifier.Tests --shard b10-verify-a" "--project Parchwell.Verifier.Tests --shard b10-verify-b" "--project Parchwell.LoadGen.Tests --shard rest" "--project Parchwell.Kafka.Tests"; do
-    run_case mutation_skipped -- $skipped
+    read -ra skipped_arguments <<<"$skipped"
+    run_case mutation_skipped -- "${skipped_arguments[@]}"
     [[ "$(grep -c '^MUTATION ' "$STUB_LOG")" -eq 0 ]] || fail "M3: '$skipped' must not build the mutation-only configuration"
 done
 run_case mutation_fail STUB_MUTATION_STATUS=1 --
