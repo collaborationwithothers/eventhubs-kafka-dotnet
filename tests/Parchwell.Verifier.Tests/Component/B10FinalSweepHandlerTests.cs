@@ -482,6 +482,40 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
     }
 
     [Theory]
+    [InlineData("garbage", true)]
+    [InlineData("truncated", true)]
+    [InlineData("bad_completed_utc", true)]
+    [InlineData("absent", false)]
+    public async Task Given_C0ResultReadFailsAndReceiptIsBadOrAbsent_When_FinalSweepRuns_Then_ReceiptStillDecidesF2_Decision6871584065(string receiptState, bool globalFailure)
+    {
+        using var run = await B10FinalSweepHarness.CreateC0Async(kafka);
+        string result = PhasePaths.Result(B10FinalSweepHarness.Run, "C0", 3);
+        string receipt = PhasePaths.VerifyCompletion(B10FinalSweepHarness.Run, "C0", 3);
+        run.BeforeRead = name => { if (name == result) throw new IOException("synthetic storage failure"); };
+        switch (receiptState)
+        {
+            case "garbage": run.Verifier[receipt] = Encoding.UTF8.GetBytes("not json"); break;
+            case "truncated": run.Verifier[receipt] = run.Verifier[receipt][..(run.Verifier[receipt].Length / 2)]; break;
+            case "bad_completed_utc":
+                JsonObject parsed = JsonNode.Parse(run.Verifier[receipt])!.AsObject(); parsed["completed_utc"] = "not-a-time";
+                run.Verifier[receipt] = Encoding.UTF8.GetBytes(parsed.ToJsonString()); break;
+            default: run.Verifier.Remove(receipt); break;
+        }
+        Assert.Equal(0, await run.RunAsync());
+        if (globalFailure)
+        {
+            // The receipt exists but cannot be parsed, so F2 fails the sweep line whatever happened to the result read.
+            Assert.False(run.Data["scan_complete"]!.GetValue<bool>(), run.Data.ToJsonString());
+            for (int repeat = 1; repeat <= 5; repeat++) Assert.Equal(["b10_final_sweep_line_invalid"], Strings(run.Repeat(repeat)["reasons"]));
+            return;
+        }
+        // An absent receipt is not an unreadable one: only that repeat's input is invalid.
+        Assert.True(run.Data["scan_complete"]!.GetValue<bool>(), run.Data.ToJsonString());
+        Assert.Equal(["b10_final_repeat_input_invalid"], Strings(run.Repeat(3)["reasons"]));
+        foreach (int repeat in new[] { 1, 2, 4, 5 }) Assert.Equal("complete_valid", Text(run.Repeat(repeat)["status"]));
+    }
+
+    [Theory]
     [InlineData("below")]
     [InlineData("above")]
     public async Task Given_NonfinalStartDisagreesWithAuthenticatedStartNote_When_FinalSweepRuns_Then_RejectedObjectContributesNothing_P1_4567914700(string side)
