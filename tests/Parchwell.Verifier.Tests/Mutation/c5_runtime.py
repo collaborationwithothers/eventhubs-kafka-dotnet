@@ -382,6 +382,8 @@ def project_closure(ref, names):
     while pending:
         project = pending.pop()
         root = ET.fromstring(blob(ref, project))
+        if any('}' in node.tag for node in root.iter()):
+            raise ValueError('unsupported namespaced project')
         directory = PurePosixPath(project).parent
         parents = {child: parent for parent in root.iter() for child in parent}
         for element in root.iter():
@@ -451,6 +453,8 @@ def input_maps(ref):
         data = blob(ref, p)
         if PurePosixPath(p).name in ('Directory.Build.props', 'Directory.Build.targets', 'Directory.Packages.props'):
             build_xml = ET.fromstring(data)
+            if any('}' in node.tag for node in build_xml.iter()):
+                raise ValueError('unsupported namespaced build input')
             if any(node.tag in {'Import', 'ImportGroup', 'Choose', 'Compile', 'Content', 'None', 'ProjectReference', 'Target'} for node in build_xml.iter()):
                 raise ValueError('unsupported build inclusion')
         if p == RUNNER:
@@ -486,6 +490,10 @@ def shape(config):
                 raise ValueError('invalid shard shape')
             if any(not isinstance(item[k], str) for k in ('selection_sha256', 'timing_inputs_sha256', 'basis')):
                 raise ValueError('invalid shard field')
+            if any(not HEX.fullmatch(item[k]) for k in ('selection_sha256', 'timing_inputs_sha256')):
+                raise ValueError('invalid shard hash')
+            if any(type(item[k]) not in (int, float, bool) for k in ('main_mutants', 'main_work_seconds', 'parallelism', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')):
+                raise ValueError('invalid numeric field')
         for evidence in record['evidence']:
             if not isinstance(evidence, dict) or set(evidence) != {'source_commit','locator','sha256','kind','note'}:
                 raise ValueError('invalid evidence shape')
@@ -494,6 +502,27 @@ def shape(config):
             if not HEX.fullmatch(evidence['sha256']) or evidence['kind'] not in {'hosted_complete','local_probe','partial_timing','suite_profile'}:
                 raise ValueError('invalid evidence type')
 
+
+
+def numeric_schema_errors(config):
+    """Reject invalid numeric estimates before any scope shortcut."""
+    for record in config['targets'].values():
+        for item in record['shards'].values():
+            if type(item['main_mutants']) is not int or item['main_mutants'] < 0:
+                return {'invalid_estimate'}
+            if type(item['parallelism']) is not int or item['parallelism'] < 1:
+                return {'invalid_estimate'}
+            keys = ('main_work_seconds', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')
+            if any(type(item[k]) not in (int, float) or not 0 <= item[k] <= sys.float_info.max
+                   or not math.isfinite(item[k]) for k in keys):
+                return {'invalid_estimate'}
+            try:
+                expected = math.ceil(item['setup_seconds'] + item['main_work_seconds'] / item['parallelism'] + item['isolated_seconds'])
+            except (OverflowError, ValueError):
+                return {'invalid_estimate'}
+            if item['estimated_seconds'] != expected:
+                return {'invalid_estimate'}
+    return set()
 
 def validate(config, shared, targets, source, matrix):
     reasons = set()
@@ -575,8 +604,11 @@ def check(base, head, qualification):
             raise ValueError('checker is not running the requested revision')
         config = None
         try:
-            config = json.loads(Path(qualification).read_text())
+            config = json.loads(Path(qualification).read_text(), parse_constant=lambda value: (_ for _ in ()).throw(ValueError('nonfinite JSON')))
             shape(config)
+            numeric_errors = numeric_schema_errors(config)
+            if numeric_errors:
+                return {'status': 'rejected', 'reasons': sorted(numeric_errors)}
         except FileNotFoundError:
             pass
         shared, targets = input_maps(head)

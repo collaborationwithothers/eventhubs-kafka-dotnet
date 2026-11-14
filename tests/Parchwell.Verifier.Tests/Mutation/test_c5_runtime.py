@@ -520,3 +520,94 @@ class FinalReviewRegressionTests(AdditionalQualificationTests):
              mock.patch.object(runtime, 'blob', side_effect=malicious):
             with self.assertRaises(ValueError):
                 runtime.input_maps('HEAD')
+
+class DependencyEndToEndTests(unittest.TestCase):
+    def test_actual_discovery_addition_and_deletion(self):
+        names = runtime.files('HEAD')
+        actual_blob = runtime.blob
+        cache = {}
+        additions = ('tests/fixtures/verifier-v1/runtime-test.json', 'src/Directory.Build.props',
+                     'scenarios/profiles/runtime-test.yaml')
+        def blob(ref, path):
+            if path in additions:
+                return b'<Project />' if path.endswith('.props') else b'synthetic'
+            if path not in cache:
+                cache[path] = runtime.subprocess.check_output(['git', 'show', f'HEAD:{path}'], cwd=ROOT)
+            return cache[path]
+        def files(ref):
+            return names | ({current} if ref == 'added' else set())
+        def git(*args):
+            if args[0] == 'rev-parse': return args[-1].replace('^{commit}', '').encode()
+            if args[0] == 'diff': return (current + '\0').encode()
+            raise AssertionError(args)
+        with mock.patch.object(runtime, 'files', side_effect=files), mock.patch.object(runtime, 'blob', side_effect=blob), \
+             mock.patch.object(runtime, 'git', side_effect=git):
+            base_shared, targets = runtime.input_maps('base')
+            sources = {p: blob('base', 'src/Parchwell.Verifier/' + p) for p in targets}
+            def config(shared):
+                binding = runtime.digest(runtime.canonical({'shared_inputs': shared, 'target_sources': targets}))
+                evidence = {'source_commit': 'a' * 40, 'locator': 'synthetic', 'sha256': 'a' * 64,
+                            'kind': 'hosted_complete', 'note': 'synthetic'}
+                result = {'schema_version': 1, 'budget_seconds': 1800, 'shared_inputs': shared,
+                          'targets': {p: {'source_sha256': h, 'evidence': [evidence], 'shards': {}} for p, h in targets.items()}}
+                for shard, target in runtime.workflow.SHARDS.items():
+                    result['targets'][target]['shards'][shard] = {
+                        'selection_sha256': runtime.digest(runtime.canonical(runtime.workflow.shard_config(shard, sources[target]))),
+                        'timing_inputs_sha256': binding, 'main_mutants': 1, 'main_work_seconds': 20,
+                        'parallelism': 1, 'setup_seconds': 10, 'isolated_seconds': 0,
+                        'estimated_seconds': 30, 'basis': 'synthetic observed_workers=1'}
+                return result
+            with tempfile.TemporaryDirectory() as directory:
+                qualification = Path(directory) / 'q.json'
+                for current in additions:
+                    with self.subTest(current=current):
+                        added_shared, _ = runtime.input_maps('added')
+                        qualification.write_text(json.dumps(config(base_shared)))
+                        self.assertEqual({'status': 'rejected', 'reasons': ['stale_inputs']}, runtime.check('base', 'added', qualification))
+                        qualification.write_text(json.dumps(config(added_shared)))
+                        self.assertEqual({'status': 'rejected', 'reasons': ['stale_inputs']}, runtime.check('added', 'base', qualification))
+
+    def test_namespaced_build_import_rejected(self):
+        names = runtime.files('HEAD')
+        original = runtime.blob
+        new = 'src/Directory.Build.targets'
+        def blob(ref, path):
+            return (b'<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003"><Import Project="../outside.targets" /></Project>'
+                    if path == new else original(ref, path))
+        with mock.patch.object(runtime, 'files', return_value=names | {new}), mock.patch.object(runtime, 'blob', side_effect=blob):
+            with self.assertRaises(ValueError):
+                runtime.input_maps('HEAD')
+
+    def test_numeric_schema_rejects_object_before_bypass(self):
+        case = AdditionalQualificationTests()
+        case.setUp()
+        try:
+            case.config['targets']['a.cs']['shards']['a-p1']['main_mutants'] = {}
+            self.assertEqual({'status': 'rejected', 'reasons': ['invalid_input']}, case.simulated_check('README.md'))
+        finally:
+            case.doCleanups()
+
+    def test_numeric_values_never_bypass_schema(self):
+        for field, value in [('main_mutants', True), ('parallelism', 0), ('main_work_seconds', -1),
+                             ('estimated_seconds', 1399), ('setup_seconds', 10 ** 400)]:
+            with self.subTest(field=field):
+                case = AdditionalQualificationTests()
+                case.setUp()
+                try:
+                    case.config['targets']['a.cs']['shards']['a-p1'][field] = value
+                    self.assertEqual({'status': 'rejected', 'reasons': ['invalid_estimate']}, case.simulated_check('README.md'))
+                finally:
+                    case.doCleanups()
+
+    def test_all_automatically_selected_build_xml_reject_namespaces(self):
+        names = runtime.files('HEAD')
+        original = runtime.blob
+        for name in ('Directory.Build.props', 'Directory.Packages.props', 'src/Directory.Build.targets', runtime.TEST_PROJECT):
+            with self.subTest(name=name):
+                def blob(ref, path):
+                    if path == name:
+                        return b'<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003"><Import Project="other.targets" /></Project>'
+                    return original(ref, path)
+                with mock.patch.object(runtime, 'files', return_value=names | {name}), mock.patch.object(runtime, 'blob', side_effect=blob):
+                    with self.assertRaises(ValueError):
+                        runtime.input_maps('HEAD')
