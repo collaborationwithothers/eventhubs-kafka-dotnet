@@ -29,7 +29,7 @@ Each rule applies when the plan has the case it names. The plan-check skill veri
    - (a) changes the fixture so it passes the new checks, keeping every assertion and the boundary the test exercises;
    - (b) where invalid input is the test's purpose, keeps the input and changes the expected values to exactly what the plan's checks produce.
 
-   The rule never permits removing a case, loosening an assertion or changing a check. The authored receipt lists each change with the check that forces it. The cold review and Codex review check each listed change. Model the rule on [#404 decision 6830544567](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6830544567) point 2.
+   The rule never permits removing a case, loosening an assertion or changing a check. The PR implementation notes list each change with the check that forces it. The cold review and Codex review check each listed change. Model the rule on [#404 decision 6830544567](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6830544567) point 2.
 3. **Live assumptions.** Each deployment assumption under factory.md "Item lifecycle" step 3 states how its evidence was taken: on an already-open or a fresh connection, and idle or under load.
 4. **Size estimate.** For each pull request, estimate the changed lines and files, labelled an estimate under AGENTS.md hard safety rule 11. Size is reported, not enforced: no session trims code to meet a number.
 5. **Base commit.** The plan names the full SHA of the `main` commit it was written against.

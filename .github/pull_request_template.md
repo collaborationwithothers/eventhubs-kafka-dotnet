@@ -9,8 +9,8 @@
 
 - Claims verified (source and pinned version):
 - ADRs and engineering rules checked against:
-- Authored receipt (execution card, specification comparison, verification and predicate map where applicable):
-- Scripted checks run and warning dispositions:
+- Implementation notes, where applicable:
+- Scripted checks and warning dispositions (link routine CI; record otherwise unavailable facts affecting a decision):
 - Cold review (repo-review; AGENTS.md "Before opening a pull request" rule 8): reviewed revisions, cumulative comprehensive/focused counts, last complete report and final result line:
 - Hosted Codex review and final-head CI (separate from cold review):
 - Timeline record (one block per session from `scripts/timeline/render.sh`; implement-plan "Timeline record"):
