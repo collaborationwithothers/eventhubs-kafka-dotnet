@@ -539,7 +539,8 @@ class AggregateFixture:
                 "argv": ["dotnet", "stryker", "--config-file", str(artifact / "shard-config.json"),
                          "--output", str(artifact / "stryker"), "--log-to-file", "--verbosity", "debug"],
                 "cwd": "/synthetic/tests/Parchwell.Verifier.Tests",
-                "environment_overrides": {"ParchwellVerifierMutationOnly": "true"},
+                "environment_overrides": {"ParchwellVerifierMutationOnly": "true",
+                                          "APPLICATIONINSIGHTS_STATSBEAT_DISABLED": "true"},
                 "started_at_utc": "2026-10-25T18:00:00+00:00",
                 "finished_at_utc": "2026-10-25T18:00:01+00:00", "elapsed_seconds": 1.0,
                 "child_exit_code": 0,
@@ -1289,6 +1290,22 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(2, fixture.receipts["phase"]["child_exit_code"])
         self.assertTrue((fixture.output / "summary.md").is_file())
         self.assertTrue((fixture.output / "survivors.json").is_file())
+
+    def test_receipt_requires_statsbeat_disabled_override(self):
+        for value in (None, "false"):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as temp:
+                fixture = AggregateFixture(Path(temp))
+                overrides = fixture.receipts["phase"]["environment_overrides"]
+                if value is None:
+                    del overrides["APPLICATIONINSIGHTS_STATSBEAT_DISABLED"]
+                else:
+                    overrides["APPLICATIONINSIGHTS_STATSBEAT_DISABLED"] = value
+                fixture.save("phase")
+                result, summary = fixture.invoke()
+                self.assertEqual(1, result)
+                self.assertIs(summary["measurement_complete"], False)
+                self.assertTrue(any("malformed invocation receipt" in reason
+                                    for reason in summary["incomplete_reasons"]))
 
     def test_cross_shard_projection_inputs_must_match(self):
         fixture = AggregateFixture(self.directory)
@@ -2286,6 +2303,16 @@ class RunnerTests(unittest.TestCase):
         receipt = json.loads(receipt_path.read_text()) if receipt_path.exists() else None
         return result, receipt, output
 
+    def test_launch_overrides_parent_statsbeat_setting_in_child(self):
+        log = self.root / "environment.log"
+        command = [sys.executable, "-c", 'import os; print(os.environ["APPLICATIONINSIGHTS_STATSBEAT_DISABLED"])']
+        with patch.dict(os.environ, {"APPLICATIONINSIGHTS_STATSBEAT_DISABLED": "false"}):
+            child_exit, reason = workflow.launch(command, self.root, log, 5)
+            self.assertEqual("false", os.environ["APPLICATIONINSIGHTS_STATSBEAT_DISABLED"])
+        self.assertEqual(0, child_exit)
+        self.assertIsNone(reason)
+        self.assertEqual("true", log.read_text().strip())
+
     def test_singleton_configs_preserve_all_other_values(self):
         for shard, (_, _, count) in workflow.PARTS.items():
             if count != 1:
@@ -2308,7 +2335,8 @@ class RunnerTests(unittest.TestCase):
                 self.assertIs(receipt["command_completed"], True)
                 self.assertIsNone(receipt["termination_reason"])
                 self.assertEqual(b"\xffstdout\n\xfestderr\n", (output / "command.log").read_bytes())
-                self.assertEqual({"ParchwellVerifierMutationOnly": "true"}, receipt["environment_overrides"])
+                self.assertEqual({"ParchwellVerifierMutationOnly": "true",
+                                  "APPLICATIONINSIGHTS_STATSBEAT_DISABLED": "true"}, receipt["environment_overrides"])
                 self.assertEqual(workflow.RECEIPT_FIELDS, set(receipt))
                 self.assertNotIn("must-not-be-in-receipt", json.dumps(receipt))
                 self.assertNotIn("SYNTHETIC_SECRET", json.dumps(receipt))
