@@ -476,6 +476,24 @@ mutation_only_build() {
         ${build_cpu_args[@]+"${build_cpu_args[@]}"} || return $?
 }
 
+# Runs the Verifier tests in the mutation-only configuration, the set Stryker's unmutated initial run
+# uses. A test that passes in the normal configuration can still fail there, and Stryker then stops
+# before testing any mutant (issue 404), so pull request verification fails if any of them fails.
+# The tests build and run in the repository's own output directories, not the isolated artifacts path
+# of the build above: several tests locate the repository from the test assembly's directory. This
+# stage runs after every test stage, so replacing the normal Verifier test assembly there is harmless.
+# Same tier filter as the normal test stage.
+mutation_only_test() {
+    local results="$verification_results/mutation-only-tests"
+    mkdir -p "$results" || return $?
+    run_logged "Mutation-only Verifier tests" "$results/test.log" dotnet test \
+        --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release \
+        -p:RestoreLockedMode=true -p:ParchwellVerifierMutationOnly=true \
+        ${build_cpu_args[@]+"${build_cpu_args[@]}"} \
+        --minimum-expected-tests 1 --results-directory "$results" -- \
+        ${tier_args[@]+"${tier_args[@]}"} || { cat "$results/test.log" >&2; return 1; }
+}
+
 # True when no --project option was given or the named project was given.
 is_selected() {
     local name=$1 candidate
@@ -575,9 +593,13 @@ for requested in ${selected_projects[@]+"${selected_projects[@]}"}; do
     fi
 done
 
-# One leg runs the mutation-only build: the one that has no shard or the "rest" shard of the Verifier tests.
+# One leg builds and tests the mutation-only configuration: the one that has no shard or the "rest" shard of the Verifier tests.
 if is_selected Parchwell.Verifier.Tests && [[ -z "$shard" || "$shard" == rest ]]; then
-    mutation_only_build || record_failure "Mutation-only Verifier test build" $?
+    if mutation_only_build; then
+        mutation_only_test || record_failure "Mutation-only Verifier tests" $?
+    else
+        record_failure "Mutation-only Verifier test build" $?
+    fi
 fi
 
 warning_control || record_failure "Warning control" $?

@@ -99,7 +99,7 @@ public sealed class ChartEnvironmentVerifierHostTests(ITestOutputHelper output)
         Activity.Current=null;
         try
         {
-            using var guard=new OfflineRequestGuard();
+            using var guard=new OfflineRequestGuard(syntheticOnly:true);
             guard.RecordPhase("host_starting");
             Guid activityId=Guid.Parse("11111111-1111-1111-1111-111111111111");
             Guid relatedActivityId=Guid.Parse("22222222-2222-2222-2222-222222222222");
@@ -143,9 +143,31 @@ public sealed class ChartEnvironmentVerifierHostTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task GivenRealRequestFromAnotherComponent_WhenSyntheticGuardLives_ThenSyntheticGuardIgnoresIt()
+    {
+        using var observing=new OfflineRequestGuard();
+        using var synthetic=new OfflineRequestGuard(syntheticOnly:true);
+        var listener=new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback,0);
+        listener.Start();
+        try
+        {
+            int port=((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+            using var client=new HttpClient{Timeout=TimeSpan.FromMilliseconds(300)};
+            // "localhost" is a host other than 127.0.0.1, as a leaked telemetry request would be.
+            try{await client.GetAsync(new Uri($"http://localhost:{port}/"),TestContext.Current.CancellationToken);}
+            catch(Exception e)when(e is HttpRequestException or TaskCanceledException){}
+        }
+        finally{listener.Stop();}
+        Assert.True(observing.UnexpectedRequest);
+        Assert.False(synthetic.UnexpectedRequest);
+        Assert.Null(synthetic.LastRequest);
+        Assert.Empty(synthetic.Snapshot().Requests);
+    }
+
+    [Fact]
     public void GivenCurrentActivity_WhenRecorded_ThenRetainsCorrelationWithoutChangingAcceptance()
     {
-        using var guard=new OfflineRequestGuard();
+        using var guard=new OfflineRequestGuard(syntheticOnly:true);
         using var activity=new Activity("synthetic-operation").SetParentId("synthetic-parent").Start();
         guard.RecordRequest("SyntheticRequestStart",1,Guid.Empty,Guid.Empty,["host"],["127.0.0.1"],activity);
         RequestDiagnostic record=Assert.Single(guard.Snapshot().Requests);
@@ -179,7 +201,7 @@ public sealed class ChartEnvironmentVerifierHostTests(ITestOutputHelper output)
     [InlineData(17,16,1)]
     public void GivenDiagnosticRecordBoundary_WhenRecorded_ThenKeepsSeparateDropCounts(int attempted,int retained,int dropped)
     {
-        using var guard=new OfflineRequestGuard();
+        using var guard=new OfflineRequestGuard(syntheticOnly:true);
         for(int i=0;i<attempted;i++)
             guard.RecordRequest("SyntheticRequestStart",1,Guid.Empty,Guid.Empty,["host"],["127.0.0.1"],null);
         for(int i=1;i<attempted;i++)guard.RecordPhase("host_starting");
@@ -196,7 +218,7 @@ public sealed class ChartEnvironmentVerifierHostTests(ITestOutputHelper output)
     [Fact]
     public void GivenLongPayloadAndFailingDiagnosticOutput_WhenRecorded_ThenPreservesRawGuardEvidence()
     {
-        using var guard=new OfflineRequestGuard();
+        using var guard=new OfflineRequestGuard(syntheticOnly:true);
         string payload=new('x',2049);
         guard.RecordRequest("SyntheticRequestStart",1,Guid.Empty,Guid.Empty,["host"],[payload],null);
         Assert.Equal("host="+payload,guard.LastRequest);
@@ -272,7 +294,16 @@ public sealed class ChartEnvironmentVerifierHostTests(ITestOutputHelper output)
         internal string? LastRequest{get;private set;}
         internal bool UnexpectedRequest=>Volatile.Read(ref unexpectedRequest)!=0;
 
-        internal OfflineRequestGuard()=>RecordPhase("guard_created");
+        // The listener sees System.Net.Http events from the whole process. A guard that classifies
+        // synthetic events only must not also record real requests that other tests' hosts make
+        // on background threads (telemetry exporters), or the synthetic assertions race with them.
+        private readonly bool ignoreProcessEvents;
+
+        internal OfflineRequestGuard(bool syntheticOnly=false)
+        {
+            ignoreProcessEvents=syntheticOnly;
+            RecordPhase("guard_created");
+        }
 
         protected override void OnEventSourceCreated(EventSource eventSource)
         {
@@ -280,7 +311,7 @@ public sealed class ChartEnvironmentVerifierHostTests(ITestOutputHelper output)
         }
         protected override void OnEventWritten(EventWrittenEventArgs eventData)
         {
-            if(eventData.EventSource.Name=="System.Net.Http"&&eventData.EventId==1)
+            if(!ignoreProcessEvents&&eventData.EventSource.Name=="System.Net.Http"&&eventData.EventId==1)
                 RecordRequest(eventData.EventName,eventData.EventId,eventData.ActivityId,eventData.RelatedActivityId,
                     eventData.PayloadNames,eventData.Payload,Activity.Current);
         }

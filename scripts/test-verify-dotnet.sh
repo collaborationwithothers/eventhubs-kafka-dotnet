@@ -39,6 +39,11 @@ case "$1" in
     test)
         project=$3
         name=$(basename "${project%.csproj}")
+        if [[ "$*" == *ParchwellVerifierMutationOnly=true* ]]; then
+            printf 'MUTATION_TEST %s\n' "$*" >> "$STUB_LOG"
+            if [[ -n "${STUB_MUTATION_TEST_STATUS:-}" ]]; then echo "stub failure in mutation-only tests"; fi
+            exit "${STUB_MUTATION_TEST_STATUS:-0}"
+        fi
         printf 'TEST %s %s\n' "$name" "$*" >> "$STUB_LOG"
         for failing in ${STUB_FAIL:-}; do
             if [[ "$failing" == "$name" ]]; then echo "stub failure in $name"; exit 2; fi
@@ -337,6 +342,27 @@ done
 run_case mutation_fail STUB_MUTATION_STATUS=1 --
 [[ $status -eq 1 && $tested -eq 6 ]] || fail "M4: a failed mutation-only build must fail the run after all tests (status $status, ran $tested)"
 check_summary "M4 failure" '.failed_stages == [{"label":"Mutation-only Verifier test build","exit_code":1}] and .outcome == "failed"'
+
+# The same configuration is then tested (issue 404): once per full run and rest leg, not after a failed
+# build, with the project and the mutation-only property, and a failure fails the run.
+run_case mutation_test_all --
+[[ "$(grep -c '^MUTATION_TEST ' "$STUB_LOG")" -eq 1 ]] || fail "M5: a full run must test the mutation-only configuration once"
+[[ "$(grep '^MUTATION_TEST ' "$STUB_LOG")" == *"--project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj"*"-p:ParchwellVerifierMutationOnly=true"* && "$(grep '^MUTATION_TEST ' "$STUB_LOG")" != *ArtifactsPath* ]] || fail "M5: the mutation-only tests must use the Verifier test project and the mutation-only property, in the repository's own output directories"
+check_summary "M5 stage" '[.stages[].label] | index("Mutation-only Verifier tests") != null'
+run_case mutation_test_rest -- --project Parchwell.Verifier.Tests --shard rest
+[[ "$(grep -c '^MUTATION_TEST ' "$STUB_LOG")" -eq 1 ]] || fail "M6: the Verifier rest leg must test the mutation-only configuration once"
+run_case mutation_test_tier -- --tier sandbox
+[[ "$(grep '^MUTATION_TEST ' "$STUB_LOG")" == *"--filter-not-trait Tier=CGroupV2"* ]] || fail "M7: the mutation-only tests must apply the tier filter"
+for skipped in "--project Parchwell.Verifier.Tests --shard b10-verify-a" "--project Parchwell.LoadGen.Tests --shard rest" "--project Parchwell.Kafka.Tests"; do
+    read -ra skipped_arguments <<<"$skipped"
+    run_case mutation_test_skipped -- "${skipped_arguments[@]}"
+    [[ "$(grep -c '^MUTATION_TEST ' "$STUB_LOG")" -eq 0 ]] || fail "M8: '$skipped' must not test the mutation-only configuration"
+done
+run_case mutation_test_fail STUB_MUTATION_TEST_STATUS=1 --
+[[ $status -eq 1 && $tested -eq 6 ]] || fail "M9: failing mutation-only tests must fail the run after all tests (status $status, ran $tested)"
+check_summary "M9 failure" '.failed_stages == [{"label":"Mutation-only Verifier tests","exit_code":1}] and .outcome == "failed"'
+run_case mutation_build_fail_no_test STUB_MUTATION_STATUS=1 --
+[[ "$(grep -c '^MUTATION_TEST ' "$STUB_LOG")" -eq 0 ]] || fail "M10: a failed mutation-only build must not run its tests"
 
 run_case build_fail STUB_BUILD_STATUS=4 --
 [[ $status -eq 4 && $tested -eq 0 ]] || fail "a failed build must stop the run with its status (status $status, ran $tested)"
