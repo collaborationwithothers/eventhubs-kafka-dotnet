@@ -533,6 +533,68 @@ def launch(argv: list[str], cwd: Path, log_path: Path, timeout: float) -> tuple[
     return child_exit, reason
 
 
+FAILURE_TAIL_LINES = 40
+FAILURE_KEY_LINES = 20
+FAILURE_LINE_CHARS = 300
+FAILURE_BYTE_LIMIT = 20480
+FAILURE_KEY_PATTERN = re.compile(r"error [A-Z]{2,4}\d+|Initial testrun|failing tests|Stryker\.NET failed|State: failed|^\s*Parchwell\.\S+\.\S+")
+ANSI_PATTERN = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
+
+def annotation_text(text: str) -> str:
+    return text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+
+def failure_reasons(receipt: dict, projection_valid: bool) -> list[str]:
+    reasons = []
+    if receipt["termination_reason"]:
+        reasons.append(f"termination reason {receipt['termination_reason']}")
+    if receipt["child_exit_code"] not in (0, 2):
+        reasons.append(f"Stryker exit code {receipt['child_exit_code']} (expected 0 or 2)")
+    if receipt["isolation_error"]:
+        reasons.append(f"isolation: {receipt['isolation_error']}")
+    if not receipt["tracked_clean_after"] or receipt["source_sha256_before"] != receipt["source_sha256_after"]:
+        reasons.append("tracked source changed or was not clean")
+    if not projection_valid:
+        reasons.append("projection invalid")
+    if receipt["config_sha256_before"] != receipt["config_sha256_after"]:
+        reasons.append("shard config changed")
+    if not receipt["report_sha256"]:
+        reasons.append("no mutation report was written")
+    return reasons or ["unspecified failure"]
+
+
+def report_failure(shard: str, receipt: dict, projection_valid: bool, log_path: Path) -> None:
+    """Prints a failed shard's reason and a bounded tail of Stryker's output to the job log.
+
+    The log is the same file the shard uploads as an artifact. At most FAILURE_KEY_LINES matching
+    lines plus FAILURE_TAIL_LINES final lines are printed, each cut to FAILURE_LINE_CHARS characters,
+    and the output as a whole is cut to FAILURE_BYTE_LIMIT bytes."""
+    reason = "; ".join(failure_reasons(receipt, projection_valid))
+    lines: list[str] = []
+    try:
+        data, _ = bounded_read(log_path, LOG_BYTE_LIMIT)
+        lines = [ANSI_PATTERN.sub("", line)[:FAILURE_LINE_CHARS]
+                 for line in data.decode("utf-8", "replace").splitlines()]
+    except OSError:
+        pass
+    tail = lines[-FAILURE_TAIL_LINES:]
+    earlier = lines[:len(lines) - len(tail)]
+    key = [line for line in earlier if FAILURE_KEY_PATTERN.search(line)][-FAILURE_KEY_LINES:]
+    header = f"C5 shard {shard} failed: {reason}"
+    body = []
+    if key:
+        body += [f"--- matching lines before the tail ({len(key)}) ---", *key]
+    body += [f"--- last {len(tail)} lines of Stryker output (command.log) ---", *tail]
+    encoded = "\n".join(body).encode("utf-8")
+    text = encoded.decode("utf-8", "replace")
+    if len(encoded) > FAILURE_BYTE_LIMIT:
+        text = (f"[output cut to the last {FAILURE_BYTE_LIMIT} bytes]\n"
+                + encoded[-FAILURE_BYTE_LIMIT:].decode("utf-8", "ignore"))
+    print(header + "\n" + text, flush=True)
+    print(f"::error title=C5 shard {annotation_text(shard)} failed::{annotation_text(reason)}", flush=True)
+
+
 def run_shard(shard: str, output_dir: Path, *, repository: Path | None = None,
               command_prefix: list[str] | None = None, timeout: float = 16200) -> int:
     repository = (repository or Path(__file__).resolve().parents[3]).resolve()
@@ -638,9 +700,12 @@ def run_shard(shard: str, output_dir: Path, *, repository: Path | None = None,
             "isolated": isolated, "isolation_error": isolation_error,
         }
         write_json(output_dir / "receipt.json", receipt)
-    return 0 if (receipt["command_completed"] and child_exit in (0, 2)
-                 and clean_after and before == after and before and isolation_error is None
-                 and projection_valid and config_before == config_after and receipt["report_sha256"]) else 1
+    passed = bool(receipt["command_completed"] and child_exit in (0, 2)
+                  and clean_after and before == after and before and isolation_error is None
+                  and projection_valid and config_before == config_after and receipt["report_sha256"])
+    if not passed:
+        diagnostic(report_failure, shard, receipt, projection_valid, log_path)
+    return 0 if passed else 1
 
 
 def retain_test_server_logs(directory: Path) -> None:

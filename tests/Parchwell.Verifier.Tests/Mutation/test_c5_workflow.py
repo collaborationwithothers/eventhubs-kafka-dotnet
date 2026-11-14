@@ -1280,6 +1280,15 @@ with (observed / 'calls.txt').open('a') as calls:
     calls.write('called\n')
 os.write(1, b'\xffstdout\n')
 os.write(2, b'\xfestderr\n')
+if mode == 'initial-fail':
+    print('src/Early.cs(3,9): error CS0234: The type or namespace name Missing does not exist')
+    for index in range(500):
+        print('[07:35:59 DBG] noise line %d ' % index + 'x' * 400)
+    print('\x1b[38;5;11mStryker.NET failed to mutate your project.\x1b[0m')
+    print('Initial testrun has more than 50% failing tests.')
+    print('Parchwell.Verifier.Tests.Host.SyntheticTests.GivenFailure_ThenNamed')
+    print('State: failed')
+    sys.exit(1)
 if mode == 'timeout':
     child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])
     (observed / 'descendant.pid').write_text(str(child.pid))
@@ -1789,6 +1798,30 @@ class RunnerTests(unittest.TestCase):
             result, _, _ = self.invoke()
         self.assertEqual(1, result)
         self.assertFalse((self.root / "calls.txt").exists())
+
+    def test_failed_shard_prints_bounded_reason_and_annotation(self):
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            result, receipt, _ = self.invoke("initial-fail")
+        text = buffer.getvalue()
+        self.assertEqual(1, result)
+        self.assertIn("C5 shard phase failed: Stryker exit code 1 (expected 0 or 2)", text)
+        self.assertIn("Initial testrun has more than 50% failing tests.", text)
+        self.assertIn("Parchwell.Verifier.Tests.Host.SyntheticTests.GivenFailure_ThenNamed", text)
+        self.assertIn("error CS0234", text)
+        self.assertNotIn("\x1b[", text)
+        self.assertNotIn("must-not-be-in-receipt", text)
+        self.assertLessEqual(len(text.encode()), workflow.FAILURE_BYTE_LIMIT + 1024)
+        self.assertLessEqual(max(len(line) for line in text.splitlines()), workflow.FAILURE_LINE_CHARS + 100)
+        self.assertEqual(1, text.count("::error title=C5 shard phase failed::"))
+        annotation = next(line for line in text.splitlines() if line.startswith("::error"))
+        self.assertIn("Stryker exit code 1", annotation)
+
+    def test_passing_shard_prints_no_failure_report(self):
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            self.invoke("0", shard="phase")
+        self.assertNotIn("::error", buffer.getvalue())
 
     def test_failed_launch_has_explicit_receipt(self):
         result, receipt, _ = self.invoke(command_prefix=[str(self.root / "missing")])
