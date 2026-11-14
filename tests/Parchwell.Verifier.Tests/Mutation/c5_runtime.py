@@ -475,9 +475,9 @@ PROVISIONAL_TARGETS = {
 }
 # Canonical maps of shard ID to generated selection hash for the approved pilot.
 PROVISIONAL_LAYOUT_HASHES = {
-    'Common/Phase/B10FinalProjectionCodec.cs': '10b8f858fb81cb9129f00acba7c3986eb85d6d4d5076104105c71f96d7eabb58',
-    'Judge/B10FinalJudge.cs': '6111fd4ec0d857dc607d3f0f0e44c14de19e551157508df041aee1f986f6af37',
-    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': '1a4a156c924e0e54b07a495a083f2f09efc6f6b12d86d9eed55874894b8133b2',
+    'Common/Phase/B10FinalProjectionCodec.cs': '4c661c3ab0e48fad257130d68436125689c088743159d34b997d413106650b29',
+    'Judge/B10FinalJudge.cs': '0edc49b41523422087ea8a0cc90bb2f781fc84074f43e92c42d762c1bd635aad',
+    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': '46030ff0b8176ee6464ecaa45bb1ebe43d2f3eff0cc2ffbc43a08e6e8e481745',
 }
 PROVISIONAL_TIMING_INPUTS_HASH = '64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22'
 PROVISIONAL_STATUS = 'pending_native_report'
@@ -514,8 +514,10 @@ def shape(config):
             if any(not HEX.fullmatch(item[k]) for k in ('selection_sha256', 'timing_inputs_sha256')):
                 raise ValueError('invalid shard hash')
             if provisional:
-                if any(item[k] is not None for k in NUMERIC_FIELDS):
-                    raise ValueError('provisional estimates must be unknown')
+                if any(item[k] is not None for k in NUMERIC_FIELDS) and not (
+                    path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS
+                    and all(type(item[k]) in (int, float) for k in NUMERIC_FIELDS)):
+                    raise ValueError('provisional estimates must be unknown except the pinned codec owners')
             elif any(type(item[k]) not in (int, float, bool) for k in NUMERIC_FIELDS):
                 raise ValueError('invalid numeric field')
         for evidence in record['evidence']:
@@ -591,6 +593,7 @@ def approved_static_owner(path, record, shard, item, source):
 # Source-bound estimates for the three whole codec declarations in the
 # targeted correction; the first two use a cross-field conservative rate.
 CODEC_TARGET = 'Common/Phase/B10FinalProjectionCodec.cs'
+CODEC_PROVISIONAL_SHARDS = frozenset('b10-final-projection-codec-p' + str(i) for i in (1, 2, 3))
 CODEC_TIMING_INPUTS_HASH = '64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22'
 CODEC_SOURCE_HASH = 'c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5'
 CODEC_ISOLATED = {(614, 1068): 2158.236, (1069, 1706): 2697.795, (1706, 2157): 2225.730}
@@ -693,10 +696,13 @@ def validate(config, shared, targets, source, matrix):
                     reasons.add('layout_mismatch')
             else:
                 reasons.add('layout_mismatch')
-            if provisional:
-                if not item['basis'].strip() or any(item[k] is not None for k in NUMERIC_FIELDS):
+            if provisional and all(item[k] is None for k in NUMERIC_FIELDS):
+                if not item['basis'].strip():
                     reasons.add('invalid_estimate')
                 continue
+            if provisional and (path != CODEC_TARGET or shard not in CODEC_PROVISIONAL_SHARDS
+                                or not approved_codec_static_owner(path, record, shard, item, source[path])):
+                reasons.add('invalid_estimate')
             numeric = ('main_work_seconds', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')
             valid = (type(item['main_mutants']) is int and item['main_mutants'] >= 0
                      and type(item['parallelism']) is int and item['parallelism'] > 0

@@ -363,34 +363,70 @@
           "note": "API ZIP digest and projected source verified; command.log sha256=1037c49f2c7fee6482a553bed2b60b607bd00117c6b1e30b63e1ec915889831a; paired timestamps provide rates only, with no native report, receipt, isolation or acceptance.",
           "sha256": "cfe9779a0ddaf62f8e9d43aa7ab8724904efd07f3a77a51e4c59f9d18633145e",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43625662806 artifact 14127755542",
+          "note": "API archive digest and receipt-bound source, native report, main and isolated logs verified; hosted evidence is not acceptance of this layout.",
+          "sha256": "017a78d3c863b6ca3c8cb5a2e2db5c7a0bf95988612a7e603e68e7259489477d",
+          "source_commit": "dbc25c2005c3409ffd5f079c40b061d82c4b02aa"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43625662806 artifact 14127627878",
+          "note": "API archive digest and receipt-bound source, native report, main and isolated logs verified; hosted evidence is not acceptance of this layout.",
+          "sha256": "a9213fbb44c74a9ad62031227dbb04e89dd2f6b381dce6f77c737f38db63ee33",
+          "source_commit": "dbc25c2005c3409ffd5f079c40b061d82c4b02aa"
         }
       ],
       "geometry_status": "pending_native_report",
       "shards": {
         "b10-final-projection-codec-crossing": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111558997, observed lower-bound selected mutants 618, observed median pair seconds 62, observed log-to-first-test seconds 160.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
           "main_work_seconds": null,
           "parallelism": null,
-          "selection_sha256": "8e034f3c0986de89c4ef54d45a2f2be333fb3726fd2dce6cbe08d0d7316ad4d8",
+          "selection_sha256": "466918206decf5c1a9e9ee69c9e614d92b3fa9888c5d60aaaa4f1aebc68901d0",
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-final-projection-codec-p1": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111558997, observed lower-bound selected mutants 618, observed median pair seconds 62, observed log-to-first-test seconds 160.",
+          "basis": "Whole declaration [614,1068); observed_workers=2. 192s conservative setup includes host job overhead from p2/p10; 13-item isolated total is measured and rounded up, 12/15-item totals use 179.853s rounded-up maximum observed isolate per item across fields, an uncertain conservative estimate; sequential fresh-process isolation.",
+          "estimated_seconds": 2351,
+          "isolated_seconds": 2158.236,
+          "main_mutants": 0,
+          "main_work_seconds": 0,
+          "parallelism": 2,
+          "selection_sha256": "0214219850efbe1c5a4a7f083d9ecdcebb7013266bd79bf28d5e83a0e68e832d",
+          "setup_seconds": 192,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-projection-codec-p10": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
           "main_work_seconds": null,
           "parallelism": null,
-          "selection_sha256": "889c39d14d856ac7c13afc1d2bdb9ec00d4076e4cab63cad14f931a7b3376e17",
+          "selection_sha256": "9cda765e2a778bca859476cb0d09235ff299b99a4f4a70086506edf74acd07dc",
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
-        "b10-final-projection-codec-p10": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111558997, observed lower-bound selected mutants 618, observed median pair seconds 62, observed log-to-first-test seconds 160.",
+        "b10-final-projection-codec-p11": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "579f63b01a33299e63bb5a772bde68d596e40a7380eaa31a6bb5730da7504186",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-projection-codec-p12": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -400,8 +436,8 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
-        "b10-final-projection-codec-p11": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111558997, observed lower-bound selected mutants 618, observed median pair seconds 62, observed log-to-first-test seconds 160.",
+        "b10-final-projection-codec-p13": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -411,8 +447,8 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
-        "b10-final-projection-codec-p12": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111558997, observed lower-bound selected mutants 618, observed median pair seconds 62, observed log-to-first-test seconds 160.",
+        "b10-final-projection-codec-p14": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -423,18 +459,40 @@
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-final-projection-codec-p2": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111558997, observed lower-bound selected mutants 618, observed median pair seconds 62, observed log-to-first-test seconds 160.",
+          "basis": "Whole declaration [1069,1706); observed_workers=2. 192s conservative setup includes host job overhead from p2/p10; 13-item isolated total is measured and rounded up, 12/15-item totals use 179.853s rounded-up maximum observed isolate per item across fields, an uncertain conservative estimate; sequential fresh-process isolation.",
+          "estimated_seconds": 2890,
+          "isolated_seconds": 2697.795,
+          "main_mutants": 0,
+          "main_work_seconds": 0,
+          "parallelism": 2,
+          "selection_sha256": "36ca69fcfa9d35e048fcfdadc12bb3833d9ad7edea6084a6bf9613086ca84e09",
+          "setup_seconds": 192,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-projection-codec-p3": {
+          "basis": "Whole declaration [1706,2157); observed_workers=2. 192s conservative setup includes host job overhead from p2/p10; 13-item isolated total is measured and rounded up, 12/15-item totals use 179.853s rounded-up maximum observed isolate per item across fields, an uncertain conservative estimate; sequential fresh-process isolation.",
+          "estimated_seconds": 2418,
+          "isolated_seconds": 2225.73,
+          "main_mutants": 0,
+          "main_work_seconds": 0,
+          "parallelism": 2,
+          "selection_sha256": "9a211a986b869d5c5757a2392c751162e5a3451cdddbbbf922bbc40d6499e3ee",
+          "setup_seconds": 192,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-projection-codec-p4": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
           "main_work_seconds": null,
           "parallelism": null,
-          "selection_sha256": "ff6aa980dbc59d982cf2e9a79d611aae6af04eae792740d3cc9d2a805949d1cc",
+          "selection_sha256": "072f88fbddbce7f793d9d17c628c7acc66025438248ef14fc48b64e983f2a491",
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
-        "b10-final-projection-codec-p3": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111558997, observed lower-bound selected mutants 618, observed median pair seconds 62, observed log-to-first-test seconds 160.",
+        "b10-final-projection-codec-p5": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -444,8 +502,8 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
-        "b10-final-projection-codec-p4": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111558997, observed lower-bound selected mutants 618, observed median pair seconds 62, observed log-to-first-test seconds 160.",
+        "b10-final-projection-codec-p6": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -455,8 +513,8 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
-        "b10-final-projection-codec-p5": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111558997, observed lower-bound selected mutants 618, observed median pair seconds 62, observed log-to-first-test seconds 160.",
+        "b10-final-projection-codec-p7": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -466,8 +524,8 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
-        "b10-final-projection-codec-p6": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111558997, observed lower-bound selected mutants 618, observed median pair seconds 62, observed log-to-first-test seconds 160.",
+        "b10-final-projection-codec-p8": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -477,36 +535,14 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
-        "b10-final-projection-codec-p7": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111558997, observed lower-bound selected mutants 618, observed median pair seconds 62, observed log-to-first-test seconds 160.",
+        "b10-final-projection-codec-p9": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
           "main_work_seconds": null,
           "parallelism": null,
           "selection_sha256": "d7ee3dcc1d248a665c949b01e02a30d1389403649d9feb9e19722aff598a49a9",
-          "setup_seconds": null,
-          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
-        },
-        "b10-final-projection-codec-p8": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111558997, observed lower-bound selected mutants 618, observed median pair seconds 62, observed log-to-first-test seconds 160.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "9cda765e2a778bca859476cb0d09235ff299b99a4f4a70086506edf74acd07dc",
-          "setup_seconds": null,
-          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
-        },
-        "b10-final-projection-codec-p9": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111558997, observed lower-bound selected mutants 618, observed median pair seconds 62, observed log-to-first-test seconds 160.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "579f63b01a33299e63bb5a772bde68d596e40a7380eaa31a6bb5730da7504186",
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         }
@@ -901,18 +937,18 @@
       "geometry_status": "pending_native_report",
       "shards": {
         "b10-final-judge-crossing": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111392757, observed lower-bound selected mutants 618, observed median pair seconds 59, observed log-to-first-test seconds 97.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
           "main_work_seconds": null,
           "parallelism": null,
-          "selection_sha256": "ab29f6a750636db3c902d1d6bc92f30bda4e2a3e64a7650f4b30551eff1f8aad",
+          "selection_sha256": "88ca31dd691957f9d1c8f8f3db10c363f4b3888f2a69fff06f664ce8046092e6",
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-final-judge-p1": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111392757, observed lower-bound selected mutants 618, observed median pair seconds 59, observed log-to-first-test seconds 97.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -923,18 +959,40 @@
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-final-judge-p10": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111392757, observed lower-bound selected mutants 618, observed median pair seconds 59, observed log-to-first-test seconds 97.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
           "main_work_seconds": null,
           "parallelism": null,
-          "selection_sha256": "484cce186c6def9e87437d0d2354f299c9305a76b07c54869e32a7ac457f9c90",
+          "selection_sha256": "48ee54d475909abd671035f952c87e23b514b5755923d523109f64f420646beb",
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-final-judge-p11": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111392757, observed lower-bound selected mutants 618, observed median pair seconds 59, observed log-to-first-test seconds 97.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "995af1d719eca27ef458ea56615faedbcc8fc0a067eabd154c47b94910bd1743",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-judge-p12": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "e5027710ced6e8dec1b05a3f8306c9c890efce39b37e97634124c66812140259",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-judge-p13": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -945,7 +1003,7 @@
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-final-judge-p2": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111392757, observed lower-bound selected mutants 618, observed median pair seconds 59, observed log-to-first-test seconds 97.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -956,7 +1014,7 @@
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-final-judge-p3": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111392757, observed lower-bound selected mutants 618, observed median pair seconds 59, observed log-to-first-test seconds 97.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -967,7 +1025,7 @@
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-final-judge-p4": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111392757, observed lower-bound selected mutants 618, observed median pair seconds 59, observed log-to-first-test seconds 97.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -978,7 +1036,7 @@
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-final-judge-p5": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111392757, observed lower-bound selected mutants 618, observed median pair seconds 59, observed log-to-first-test seconds 97.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -989,7 +1047,7 @@
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-final-judge-p6": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111392757, observed lower-bound selected mutants 618, observed median pair seconds 59, observed log-to-first-test seconds 97.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -1000,35 +1058,35 @@
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-final-judge-p7": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111392757, observed lower-bound selected mutants 618, observed median pair seconds 59, observed log-to-first-test seconds 97.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
           "main_work_seconds": null,
           "parallelism": null,
-          "selection_sha256": "fdd16710a17419b2b1c3ac92dfe5aa9136e046e565f2611b15482af365154d25",
+          "selection_sha256": "55388f828921d1f84edfe9884e9004acc3066c151b097948d0344673fa06c72b",
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-final-judge-p8": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111392757, observed lower-bound selected mutants 618, observed median pair seconds 59, observed log-to-first-test seconds 97.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "289574259fffcead7ba4705a0b6a545f8adb25d35a042b4520076e169fc690b0",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-judge-p9": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
           "main_work_seconds": null,
           "parallelism": null,
           "selection_sha256": "8236c6e40c55c2abce821a5eae9e7450c2a82918ca1c3dfaeba3d6055e90fdea",
-          "setup_seconds": null,
-          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
-        },
-        "b10-final-judge-p9": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111392757, observed lower-bound selected mutants 618, observed median pair seconds 59, observed log-to-first-test seconds 97.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "48ee54d475909abd671035f952c87e23b514b5755923d523109f64f420646beb",
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         }
@@ -1101,32 +1159,50 @@
           "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout.",
           "sha256": "fff193b3677535c700c7d60525ce9f6772fe00888e9e9a444dc882395f5bf683",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43625662806 artifact 14127825955",
+          "note": "API ZIP digest, source and native report/receipt hash verified; complete selected mutant timing pairs.",
+          "sha256": "0ed76a988701415ab39cd41e2c9e7a9698c18ea05ce842a7e6a933bc9564c2d6",
+          "source_commit": "dbc25c2005c3409ffd5f079c40b061d82c4b02aa"
         }
       ],
       "shards": {
         "b10-sweep-judge-crossing": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers. observed_workers=2.",
-          "estimated_seconds": 91,
+          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers. observed_workers=2. Plus 23 newly crossing measured IDs, 1705 worker-seconds from hosted artifact 14127825955; setup bounded by 247-second prior crossing job.",
+          "estimated_seconds": 1100,
           "isolated_seconds": 0.0,
-          "main_mutants": 0,
-          "main_work_seconds": 0,
+          "main_mutants": 23,
+          "main_work_seconds": 1705,
           "parallelism": 2,
-          "selection_sha256": "70b30e279a304b02725cb1703f6e277577081bb8404d6d351cfc5eca7d553151",
-          "setup_seconds": 91,
+          "selection_sha256": "afa63f9b7d9212093149c02f59bd5029de8a8d342fa7229d6ff2919f52e7d9bc",
+          "setup_seconds": 247,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-sweep-judge-p1": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1780,
-          "isolated_seconds": 0.0,
-          "main_mutants": 75,
-          "main_work_seconds": 3378,
+          "basis": "Fresh hosted artifact 14127825955, matched 27 selected mutant log timings; effective setup includes scheduling imbalance, upload and one-second log resolution; observed_workers=2. Estimate, not next-run guarantee.",
+          "estimated_seconds": 1155,
+          "isolated_seconds": 0,
+          "main_mutants": 27,
+          "main_work_seconds": 1902,
           "parallelism": 2,
-          "selection_sha256": "ff9beb94e0bdcb08b0c692fc5c64feb8c4838380ae09e59e82abf3b602a13da4",
-          "setup_seconds": 91,
+          "selection_sha256": "095473b40cfe31170744940c55fa78b1bd3c04af93faa7688ff086bbce3c34c3",
+          "setup_seconds": 204,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-sweep-judge-p2": {
+          "basis": "Fresh hosted artifact 14127825955, matched 25 selected mutant log timings; effective setup includes scheduling imbalance, upload and one-second log resolution; observed_workers=2. Estimate, not next-run guarantee.",
+          "estimated_seconds": 1089,
+          "isolated_seconds": 0,
+          "main_mutants": 25,
+          "main_work_seconds": 1770,
+          "parallelism": 2,
+          "selection_sha256": "846e663c326eedd879268a44098cc88899a452ea326105e40b9a7ba4c7e45a10",
+          "setup_seconds": 204,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-sweep-judge-p3": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 848,
           "isolated_seconds": 0.0,
@@ -1710,18 +1786,18 @@
       "geometry_status": "pending_native_report",
       "shards": {
         "b10-final-repeat-evidence-crossing": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111653842, observed lower-bound selected mutants 1023, observed median pair seconds 59, observed log-to-first-test seconds 112.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
           "main_work_seconds": null,
           "parallelism": null,
-          "selection_sha256": "04a723e24f8dcb52268c7bfe6413880f29fefe8fac44278b3ba9a539bd3c4054",
+          "selection_sha256": "94291cfb2ee25b2e3a9f5f464f00c52f0b2da5fb045aee502bc3830d7ecf6024",
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-final-repeat-evidence-p1": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111653842, observed lower-bound selected mutants 1023, observed median pair seconds 59, observed log-to-first-test seconds 112.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -1732,7 +1808,29 @@
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-final-repeat-evidence-p10": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111653842, observed lower-bound selected mutants 1023, observed median pair seconds 59, observed log-to-first-test seconds 112.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "a270773b7bafb33b060fb9cbed5f9383f0fa44b998223c33b2ed83536612c187",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-repeat-evidence-p11": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "b327dc3809edc02607a4842bc1c3c09291fe421edce11d850e7ad87193856191",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-repeat-evidence-p12": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -1742,41 +1840,74 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
-        "b10-final-repeat-evidence-p11": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111653842, observed lower-bound selected mutants 1023, observed median pair seconds 59, observed log-to-first-test seconds 112.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "006e7a17227699df96ab33ab2df623e66b7a6c3b4da322f0c96c5b6ea18693fd",
-          "setup_seconds": null,
-          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
-        },
-        "b10-final-repeat-evidence-p12": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111653842, observed lower-bound selected mutants 1023, observed median pair seconds 59, observed log-to-first-test seconds 112.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "0b79cf2640aa7e089b78ae7994783fdc1ea5b52f7eeda4418510f108957f56fc",
-          "setup_seconds": null,
-          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
-        },
         "b10-final-repeat-evidence-p13": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111653842, observed lower-bound selected mutants 1023, observed median pair seconds 59, observed log-to-first-test seconds 112.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
           "main_work_seconds": null,
           "parallelism": null,
-          "selection_sha256": "14d4a8214910565278acce2e02e33b2ad9645caad1a6d39afb43c64ccba85b23",
+          "selection_sha256": "5c3b730f7b766a8cdbb3e399c941af2e96e4959ad1b52fa4215cb7d0dd425629",
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-final-repeat-evidence-p14": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111653842, observed lower-bound selected mutants 1023, observed median pair seconds 59, observed log-to-first-test seconds 112.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "f48e7ae2f11871dc0734803338d65a7e3cd267567f163cfdf525e6e590abc757",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-repeat-evidence-p15": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "1528412179d4c4991259fafaf7521ba1bce47051709f9fb300c2e33671446468",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-repeat-evidence-p16": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "b4d8855adb29c3808ba992d451316ddf1130918d95c959fd4ade96334ec8a20d",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-repeat-evidence-p17": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "c8d2dc603893ba42e13e1b79f5fc416db8f37db5913bda5be834364ef3827852",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-repeat-evidence-p18": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "e3715864ea5577d066519ddb7e0f220fd52b5ecbd13e7074b45fcbe0b0c65665",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-repeat-evidence-p19": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -1786,52 +1917,8 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
-        "b10-final-repeat-evidence-p15": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111653842, observed lower-bound selected mutants 1023, observed median pair seconds 59, observed log-to-first-test seconds 112.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "b238db22a4d24b79c54cd43eceff22b29f0e632341f5f7e7fd5618b5352dc11f",
-          "setup_seconds": null,
-          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
-        },
-        "b10-final-repeat-evidence-p16": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111653842, observed lower-bound selected mutants 1023, observed median pair seconds 59, observed log-to-first-test seconds 112.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "3278215286defffe10be32b9e95864b819990631fc8b324bb9fe395983b54af3",
-          "setup_seconds": null,
-          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
-        },
-        "b10-final-repeat-evidence-p17": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111653842, observed lower-bound selected mutants 1023, observed median pair seconds 59, observed log-to-first-test seconds 112.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "9ce7e7d3ec09bf5e1386adf268402f07bad5b16a17df951d14401f573cc570fa",
-          "setup_seconds": null,
-          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
-        },
-        "b10-final-repeat-evidence-p18": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111653842, observed lower-bound selected mutants 1023, observed median pair seconds 59, observed log-to-first-test seconds 112.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "062447d6b9f6113aa9b2137e0fe5d09b3e5b56d6676138b92cc8970752980cd9",
-          "setup_seconds": null,
-          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
-        },
         "b10-final-repeat-evidence-p2": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111653842, observed lower-bound selected mutants 1023, observed median pair seconds 59, observed log-to-first-test seconds 112.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -1841,8 +1928,74 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
+        "b10-final-repeat-evidence-p20": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "deabe945cb9a3116efb4f83b7693cb02e732825fbd8c5eab92ffbf4a03a95b53",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-repeat-evidence-p21": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "35b2a88365d7c638eaa10b6cd793670990df70ae248f95a4073e978ecc3dfba1",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-repeat-evidence-p22": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "f30459db46e96ee81fc4794641bbc9b011983aae8a31516299764fdd733df41f",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-repeat-evidence-p23": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "3278215286defffe10be32b9e95864b819990631fc8b324bb9fe395983b54af3",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-repeat-evidence-p24": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "9ce7e7d3ec09bf5e1386adf268402f07bad5b16a17df951d14401f573cc570fa",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-repeat-evidence-p25": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "062447d6b9f6113aa9b2137e0fe5d09b3e5b56d6676138b92cc8970752980cd9",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
         "b10-final-repeat-evidence-p3": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111653842, observed lower-bound selected mutants 1023, observed median pair seconds 59, observed log-to-first-test seconds 112.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -1853,7 +2006,7 @@
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-final-repeat-evidence-p4": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111653842, observed lower-bound selected mutants 1023, observed median pair seconds 59, observed log-to-first-test seconds 112.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -1864,7 +2017,7 @@
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-final-repeat-evidence-p5": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111653842, observed lower-bound selected mutants 1023, observed median pair seconds 59, observed log-to-first-test seconds 112.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
@@ -1875,46 +2028,46 @@
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-final-repeat-evidence-p6": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111653842, observed lower-bound selected mutants 1023, observed median pair seconds 59, observed log-to-first-test seconds 112.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
           "main_work_seconds": null,
           "parallelism": null,
-          "selection_sha256": "ea067dd3168d0e0ac51f4adf04eec44b20ee5e6234f549b35f5b361393ee9882",
+          "selection_sha256": "529ed1ba821126f4f3ec12f5facbcd03198e93cc14a9c09c850d3e32e112b0cf",
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "b10-final-repeat-evidence-p7": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111653842, observed lower-bound selected mutants 1023, observed median pair seconds 59, observed log-to-first-test seconds 112.",
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "180111117d5e19b93ab98565f8bab500a5f72fd7536297da2f85d7ed093a2f21",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-repeat-evidence-p8": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "d1684d65cd257d25102a28ddb3736107515b72d165ba45953433ab81fa42e587",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "b10-final-repeat-evidence-p9": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
           "main_mutants": null,
           "main_work_seconds": null,
           "parallelism": null,
           "selection_sha256": "1987fdc54ce4e808af37ac577da7513d88c10d8225f0a9b643f266b73a12d8b5",
-          "setup_seconds": null,
-          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
-        },
-        "b10-final-repeat-evidence-p8": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111653842, observed lower-bound selected mutants 1023, observed median pair seconds 59, observed log-to-first-test seconds 112.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "a270773b7bafb33b060fb9cbed5f9383f0fa44b998223c33b2ed83536612c187",
-          "setup_seconds": null,
-          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
-        },
-        "b10-final-repeat-evidence-p9": {
-          "basis": "Source-spaced provisional cut; native geometry, mutant counts and shard time are unknown. ceil(selected lower bound * median / (2 * (1800 - observed log-to-first-test))); observed partial population and startup are lower bounds; uniform source spacing and unchanged rate are unverified estimates. Partial artifact 14111653842, observed lower-bound selected mutants 1023, observed median pair seconds 59, observed log-to-first-test seconds 112.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "b327dc3809edc02607a4842bc1c3c09291fe421edce11d850e7ad87193856191",
           "setup_seconds": null,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         }
@@ -3427,6 +3580,20 @@
           "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout.",
           "sha256": "ef8ab360348539e7e8d782bd6b39f5d4f23f822112aaed450296a0179d9cc9e9",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43625662806 artifact 14126469937",
+          "note": "API ZIP digest, source and native report/receipt hash verified; complete selected mutant timing pairs.",
+          "sha256": "0eae5de558e1e94904a91a7f44a66c9c4910e5a1dba678f85ccd0bff5984cd39",
+          "source_commit": "dbc25c2005c3409ffd5f079c40b061d82c4b02aa"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43625662806 artifact 14128065254",
+          "note": "API ZIP digest, source and native report/receipt hash verified; complete selected mutant timing pairs.",
+          "sha256": "c5e33657eaad65b45e02ab8d5e6ff463aa97cc7dea6769ab79aaecca5597456d",
+          "source_commit": "dbc25c2005c3409ffd5f079c40b061d82c4b02aa"
         }
       ],
       "shards": {
@@ -3437,7 +3604,7 @@
           "main_mutants": 2,
           "main_work_seconds": 155,
           "parallelism": 2,
-          "selection_sha256": "3ae28cab3c58ceb34ece0ceb614e4a0f93488b89904bceb4d3da4530741471be",
+          "selection_sha256": "6d56ab5c0adfdb0b6f4d1ab39e355a7276ddb06d1ee41e6c341eb409aaa96fb9",
           "setup_seconds": 191,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
@@ -3486,28 +3653,50 @@
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "single-action-repeat-p13": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1725,
-          "isolated_seconds": 0.0,
-          "main_mutants": 68,
-          "main_work_seconds": 3067,
+          "basis": "Fresh hosted artifact 14126469937, matched 30 selected mutant log timings; effective setup includes scheduling imbalance, upload and one-second log resolution; observed_workers=2. Estimate, not next-run guarantee.",
+          "estimated_seconds": 1366,
+          "isolated_seconds": 0,
+          "main_mutants": 30,
+          "main_work_seconds": 2242,
           "parallelism": 2,
-          "selection_sha256": "2ca3fb5cf76b98b9ac1b527aa968550bfa43e6ae84056a337ac1e97552a36501",
-          "setup_seconds": 191,
+          "selection_sha256": "6d7baac733dbeaa30a459bc6296f8905548265daec64a9a9fd23f5afb556b6fa",
+          "setup_seconds": 245,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "single-action-repeat-p14": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1757,
-          "isolated_seconds": 0.0,
-          "main_mutants": 66,
-          "main_work_seconds": 3132,
+          "basis": "Fresh hosted artifact 14126469937, matched 38 selected mutant log timings; effective setup includes scheduling imbalance, upload and one-second log resolution; observed_workers=2. Estimate, not next-run guarantee.",
+          "estimated_seconds": 1646,
+          "isolated_seconds": 0,
+          "main_mutants": 38,
+          "main_work_seconds": 2802,
           "parallelism": 2,
-          "selection_sha256": "d1c9487faca34a0582ef0c354f974ca1de632b0557093e64f1b1adbb435cb111",
-          "setup_seconds": 191,
+          "selection_sha256": "4d4e130ce5380d93d3030b53e46a733224fe657c381a25c11ff0c5dd6bb0ee5d",
+          "setup_seconds": 245,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
         "single-action-repeat-p15": {
+          "basis": "Fresh hosted artifact 14128065254, matched 32 selected mutant log timings; effective setup includes scheduling imbalance, upload and one-second log resolution; observed_workers=2. Estimate, not next-run guarantee.",
+          "estimated_seconds": 1408,
+          "isolated_seconds": 0,
+          "main_mutants": 32,
+          "main_work_seconds": 2377,
+          "parallelism": 2,
+          "selection_sha256": "b915426d361f6f2f68cc88916a9318109280c54d47326b381ecceda416988280",
+          "setup_seconds": 219,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "single-action-repeat-p16": {
+          "basis": "Fresh hosted artifact 14128065254, matched 34 selected mutant log timings; effective setup includes scheduling imbalance, upload and one-second log resolution; observed_workers=2. Estimate, not next-run guarantee.",
+          "estimated_seconds": 1494,
+          "isolated_seconds": 0,
+          "main_mutants": 34,
+          "main_work_seconds": 2549,
+          "parallelism": 2,
+          "selection_sha256": "7affa2ab201b7bc74c6e38522eca9707a1bcf99f10afc13b46cfcc096fe50968",
+          "setup_seconds": 219,
+          "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
+        },
+        "single-action-repeat-p17": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1759,
           "isolated_seconds": 0.0,
@@ -3518,7 +3707,7 @@
           "setup_seconds": 191,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
-        "single-action-repeat-p16": {
+        "single-action-repeat-p18": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1689,
           "isolated_seconds": 0.0,
@@ -3529,7 +3718,7 @@
           "setup_seconds": 191,
           "timing_inputs_sha256": "64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22"
         },
-        "single-action-repeat-p17": {
+        "single-action-repeat-p19": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 489,
           "isolated_seconds": 0.0,

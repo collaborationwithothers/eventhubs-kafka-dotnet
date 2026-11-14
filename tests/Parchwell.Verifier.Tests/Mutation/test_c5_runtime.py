@@ -342,6 +342,41 @@ class QualificationTests(unittest.TestCase):
         self.source[path] += b'changed'
         self.assertIn('shard_over_budget', self.errors())
 
+    def test_provisional_codec_exception_remains_exact(self):
+        path = runtime.CODEC_TARGET
+        data = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+        shard = 'b10-final-projection-codec-p1'
+        self.shards.clear()
+        self.shards[shard] = path
+        self.source = {path: data}
+        self.targets = {path: runtime.digest(data)}
+        timing = runtime.digest(runtime.canonical({'shared_inputs': self.shared, 'target_sources': self.targets}))
+        selection = runtime.digest(runtime.canonical(runtime.workflow.shard_config(shard, data)))
+        evidence = [{'source_commit': 'dbc25c2005c3409ffd5f079c40b061d82c4b02aa',
+                     'locator': 'https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43625662806 artifact ' + artifact,
+                     'sha256': sha, 'kind': 'hosted_complete', 'note': 'hosted'}
+                    for artifact, sha in runtime.CODEC_EVIDENCE]
+        evidence.append({'source_commit': 'e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5',
+                         'locator': 'artifact 42', 'sha256': 'f' * 64, 'kind': 'partial_timing', 'note': 'timing only'})
+        item = {'selection_sha256': selection, 'timing_inputs_sha256': timing, 'main_mutants': 0,
+                'main_work_seconds': 0, 'parallelism': 2, 'setup_seconds': 192,
+                'isolated_seconds': 2158.236, 'estimated_seconds': 2351,
+                'basis': '[614,1068) observed_workers=2'}
+        self.config['targets'] = {path: {'source_sha256': self.targets[path], 'geometry_status': runtime.PROVISIONAL_STATUS,
+                                          'evidence': evidence, 'shards': {shard: item}}}
+        with mock.patch.object(runtime, 'PROVISIONAL_TARGETS', {path: (self.targets[path], '42', 'f' * 64)}), \
+             mock.patch.object(runtime, 'PROVISIONAL_TIMING_INPUTS_HASH', timing), \
+             mock.patch.object(runtime, 'CODEC_TIMING_INPUTS_HASH', timing), \
+             mock.patch.object(runtime, 'PROVISIONAL_LAYOUT_HASHES', {path: runtime.digest(runtime.canonical({shard: selection}))}), \
+             mock.patch.object(runtime.workflow, 'shard_span', return_value=(0, 1068)), \
+             mock.patch.object(runtime.workflow, 'shard_static_regions', return_value=[(374, 614), (614, 1068)]):
+            self.assertEqual(set(), self.errors())
+            item['main_work_seconds'] = 1
+            self.assertIn('invalid_estimate', self.errors())
+            item['main_work_seconds'] = 0
+            evidence[0]['locator'] += 'x'
+            self.assertIn('invalid_estimate', self.errors())
+
     def test_estimate_arithmetic_and_numeric_types(self):
         item = self.config['targets']['a.cs']['shards']['a-p1']
         for field, bad in [('parallelism', True), ('parallelism', 0), ('main_mutants', -1),
