@@ -347,7 +347,7 @@ check_summary "M4 failure" '.failed_stages == [{"label":"Mutation-only Verifier 
 # build, with the project and the mutation-only property, and a failure fails the run.
 run_case mutation_test_all --
 [[ "$(grep -c '^MUTATION_TEST ' "$STUB_LOG")" -eq 1 ]] || fail "M5: a full run must test the mutation-only configuration once"
-[[ "$(grep '^MUTATION_TEST ' "$STUB_LOG")" == *"--project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj"*"-p:ParchwellVerifierMutationOnly=true"* && "$(grep '^MUTATION_TEST ' "$STUB_LOG")" != *ArtifactsPath* ]] || fail "M5: the mutation-only tests must use the Verifier test project and the mutation-only property, in the repository's own output directories"
+[[ "$(grep '^MUTATION_TEST ' "$STUB_LOG")" == *"--project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj"*"-p:ParchwellVerifierMutationOnly=true"* && "$(grep '^MUTATION_TEST ' "$STUB_LOG")" != *--artifacts-path* ]] || fail "M5: the mutation-only tests must use the Verifier test project and the mutation-only property, in the repository's own output directories"
 check_summary "M5 stage" '[.stages[].label] | index("Mutation-only Verifier tests") != null'
 run_case mutation_test_rest -- --project Parchwell.Verifier.Tests --shard rest
 [[ "$(grep -c '^MUTATION_TEST ' "$STUB_LOG")" -eq 1 ]] || fail "M6: the Verifier rest leg must test the mutation-only configuration once"

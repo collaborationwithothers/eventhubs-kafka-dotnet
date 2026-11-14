@@ -276,7 +276,18 @@ public sealed class ChartEnvironmentVerifierHostTests(ITestOutputHelper output)
         {Receipt=bytes;return fixture.CreateAsync(name,bytes,token);}
     }
 
-    private sealed class OfflineRequestGuard:EventListener
+    // The flag lives in a base class so that its field initializer runs before EventListener's
+    // constructor, which already calls OnEventSourceCreated for existing event sources.
+    private abstract class SuppressibleListener(bool ignoreProcessEvents):EventListener
+    {
+        protected readonly bool IgnoreProcessEvents=ignoreProcessEvents;
+        protected override void OnEventSourceCreated(EventSource eventSource)
+        {
+            if(!IgnoreProcessEvents&&eventSource.Name=="System.Net.Http")EnableEvents(eventSource,EventLevel.Informational);
+        }
+    }
+
+    private sealed class OfflineRequestGuard:SuppressibleListener
     {
         private const int RecordLimit=16;
         private const int ScalarLimit=2048;
@@ -294,24 +305,14 @@ public sealed class ChartEnvironmentVerifierHostTests(ITestOutputHelper output)
         internal string? LastRequest{get;private set;}
         internal bool UnexpectedRequest=>Volatile.Read(ref unexpectedRequest)!=0;
 
-        // The listener sees System.Net.Http events from the whole process. A guard that classifies
-        // synthetic events only must not also record real requests that other tests' hosts make
-        // on background threads (telemetry exporters), or the synthetic assertions race with them.
-        private readonly bool ignoreProcessEvents;
+        // The listener sees System.Net.Http events from the whole process. A synthetic-only guard
+        // never enables the source, so it cannot record real requests that other tests' hosts make
+        // on background threads (telemetry exporters); the synthetic assertions cannot race with them.
+        internal OfflineRequestGuard(bool syntheticOnly=false):base(syntheticOnly)=>RecordPhase("guard_created");
 
-        internal OfflineRequestGuard(bool syntheticOnly=false)
-        {
-            ignoreProcessEvents=syntheticOnly;
-            RecordPhase("guard_created");
-        }
-
-        protected override void OnEventSourceCreated(EventSource eventSource)
-        {
-            if(eventSource.Name=="System.Net.Http")EnableEvents(eventSource,EventLevel.Informational);
-        }
         protected override void OnEventWritten(EventWrittenEventArgs eventData)
         {
-            if(!ignoreProcessEvents&&eventData.EventSource.Name=="System.Net.Http"&&eventData.EventId==1)
+            if(!IgnoreProcessEvents&&eventData.EventSource.Name=="System.Net.Http"&&eventData.EventId==1)
                 RecordRequest(eventData.EventName,eventData.EventId,eventData.ActivityId,eventData.RelatedActivityId,
                     eventData.PayloadNames,eventData.Payload,Activity.Current);
         }
