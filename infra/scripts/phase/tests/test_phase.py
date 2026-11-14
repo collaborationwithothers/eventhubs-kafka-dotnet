@@ -378,7 +378,7 @@ class PhaseTests(unittest.TestCase):
         self.assertEqual('2025-12-31T23:59:15.1234567+00:00', inputs['b10_last_loadgen_terminated_utc'])
         self.assertEqual(inputs['b10_last_loadgen_terminated_utc'], inputs['b10_last_verifier_completed_utc'])
 
-    def whole_second_lifecycle(self, configuration, verifier_times, producer_time='2026-11-14T20:49:53.0000000+00:00'):
+    def whole_second_lifecycle(self, configuration, verifier_times, producer_time='2025-12-31T23:49:53.0000000+00:00'):
         instance = self.final_lifecycle(configuration)
         state = instance.state()
         for entry in state['b10_lifecycle']['producers']:
@@ -393,39 +393,39 @@ class PhaseTests(unittest.TestCase):
     def test_b10_final_whole_second_verifier_times_cover_receipts_in_the_same_second(self):
         # Run 43635822755 (#483) retained whole-second pod times in this normalized
         # form, while each verify receipt carried seven decimals.
-        times = ['2026-11-14T20:4' + str(3 + repeat) + ':21.0000000+00:00' for repeat in range(4)]
-        times.append('2026-11-14T20:50:21.0000000+00:00')
+        times = ['2025-12-31T23:4' + str(3 + repeat) + ':21.0000000+00:00' for repeat in range(4)]
+        times.append('2025-12-31T23:50:21.0000000+00:00')
         for configuration in ('C0', 'C1'):
             with self.subTest(configuration=configuration):
                 inputs = self.whole_second_lifecycle(configuration, times)
                 last = phase.Phase.b10_utc(inputs['b10_last_verifier_completed_utc'])[1]
-                self.assertEqual('2026-11-14T20:50:21.9999999+00:00', inputs['b10_last_verifier_completed_utc'])
-                self.assertEqual('2026-11-14T20:49:53.0000000+00:00', inputs['b10_last_loadgen_terminated_utc'])
+                self.assertEqual('2025-12-31T23:50:21.9999999+00:00', inputs['b10_last_verifier_completed_utc'])
+                self.assertEqual('2025-12-31T23:49:53.0000000+00:00', inputs['b10_last_loadgen_terminated_utc'])
                 # The verifier keeps every receipt at or before this value (MatchesSweepLine).
-                for receipt, admitted in (('2026-11-14T20:50:21.4000000+00:00', True),
-                                          ('2026-11-14T20:50:21.9999999+00:00', True),
-                                          ('2026-11-14T20:50:22.0000000+00:00', False)):
+                for receipt, admitted in (('2025-12-31T23:50:21.4000000+00:00', True),
+                                          ('2025-12-31T23:50:21.9999999+00:00', True),
+                                          ('2025-12-31T23:50:22.0000000+00:00', False)):
                     self.assertEqual(admitted, phase.Phase.b10_utc(receipt)[1] <= last, receipt)
 
     def test_b10_final_latest_verifier_is_chosen_across_whole_and_fractional_times(self):
-        times = ['2026-11-14T20:50:21.0000000+00:00', '2026-11-14T20:50:21.5000000+00:00',
-                 '2026-11-14T20:50:20.0000000+00:00', '2026-11-14T20:49:00.0000000+00:00',
-                 '2026-11-14T20:48:00.0000000+00:00']
+        times = ['2025-12-31T23:50:21.0000000+00:00', '2025-12-31T23:50:21.5000000+00:00',
+                 '2025-12-31T23:50:20.0000000+00:00', '2025-12-31T23:49:00.0000000+00:00',
+                 '2025-12-31T23:48:00.0000000+00:00']
         inputs = self.whole_second_lifecycle('C0', times)
-        self.assertEqual('2026-11-14T20:50:21.9999999+00:00', inputs['b10_last_verifier_completed_utc'])
+        self.assertEqual('2025-12-31T23:50:21.9999999+00:00', inputs['b10_last_verifier_completed_utc'])
         inputs = self.whole_second_lifecycle('C0', [times[1].replace('21.5', '22.5'), *times[1:]])
-        self.assertEqual('2026-11-14T20:50:22.5000000+00:00', inputs['b10_last_verifier_completed_utc'])
+        self.assertEqual('2025-12-31T23:50:22.5000000+00:00', inputs['b10_last_verifier_completed_utc'])
 
     def test_b10_final_no_verifier_fallback_keeps_whole_second_producer_time(self):
         instance = self.final_lifecycle(no_verifiers=True)
         state = instance.state()
         for entry in state['b10_lifecycle']['producers']:
-            entry['finished_utc'] = '2026-11-14T20:49:53.0000000+00:00'
+            entry['finished_utc'] = '2025-12-31T23:49:53.0000000+00:00'
         instance.save_state(state)
         with self.mocked():
             self.assertEqual(None, instance.b10_prepare_final_sweep(1000))
         inputs = instance.read('phase.json')['b10_lifecycle_inputs']
-        self.assertEqual('2026-11-14T20:49:53.0000000+00:00', inputs['b10_last_loadgen_terminated_utc'])
+        self.assertEqual('2025-12-31T23:49:53.0000000+00:00', inputs['b10_last_loadgen_terminated_utc'])
         self.assertEqual(inputs['b10_last_loadgen_terminated_utc'], inputs['b10_last_verifier_completed_utc'])
 
     def test_b10_second_upper_bound_tests_ticks_not_text(self):
