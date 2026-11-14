@@ -1,6 +1,6 @@
 # State: #474 verifier mutation runtime
 
-Covers: comment 6884676429, read 2026-11-14
+Covers: comment 6885742783, read 2026-11-14
 Parent items: [#347](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/347)
 Item plan: [mutation runtime plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6876990691)
 Implementing tool: Codex. Source: [approval and direction](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6877906971)
@@ -22,6 +22,7 @@ Decisions in force:
 - Schedule the three codec static declarations as fresh isolated ID cohorts and retain exact logical ownership. Source: [decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6883497065)
 - Disable only Azure Monitor internal Statsbeat in C5 test processes, then run one new-profile main validation. Source: [decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6884210117)
 - Split the two measured tails, reclaim two light repeat spans, and validate the changed layout on main. Source: [decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6884676429)
+- Split the remaining repeat and codec tails, reclaim two classification slots, and validate the changed layout on main. Source: [decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6885742783)
 Open questions:
 - None about the chosen policy. Source: [plan section 10](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/1cdbcdf0407c1b897c7bcec29ef97d261109b473/items/474/plan-mutation-runtime.md#10-open-questions-and-stop-rule)
-Next action: Complete the bounded tail cuts and required gates, then validate the changed layout on main.
+Next action: Complete the final-tail correction and required gates, then validate the changed layout on main.

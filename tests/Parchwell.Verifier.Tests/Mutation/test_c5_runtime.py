@@ -321,6 +321,72 @@ class QualificationTests(unittest.TestCase):
                 with mock.patch.dict(runtime.workflow.COHORTS, {shard: ('wrong', ())}):
                     self.assertFalse(runtime.approved_codec_static_owner(path, record, shard, item, source))
 
+    def test_tail_splits_require_exact_source_cost_and_evidence(self):
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        for shard, (path, _, _, artifact, _) in runtime.TAIL_SPLITS.items():
+            with self.subTest(shard=shard):
+                record = config['targets'][path]
+                source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+                item = record['shards'][shard]
+                self.assertTrue(runtime.approved_tail_split(path, record, shard, item, source))
+                self.assertFalse(runtime.approved_tail_split(path, record, shard, item, source + b'x'))
+                changed = copy.deepcopy(item)
+                changed['main_work_seconds'] -= 1
+                self.assertFalse(runtime.approved_tail_split(path, record, shard, changed, source))
+                changed_record = copy.deepcopy(record)
+                changed_record['evidence'] = [e for e in record['evidence'] if artifact not in e['locator']]
+                self.assertFalse(runtime.approved_tail_split(path, changed_record, shard, item, source))
+                changed_config = copy.deepcopy(config)
+                changed_config['targets'][path]['shards'][shard]['main_mutants'] = None
+                with self.assertRaises(ValueError):
+                    runtime.shape(changed_config)
+
+    def test_tail_split_checks_span_and_each_evidence_field(self):
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        for shard, (path, span, _, artifact, _) in runtime.TAIL_SPLITS.items():
+            record = config['targets'][path]
+            source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+            item = record['shards'][shard]
+            evidence = next(e for e in record['evidence'] if artifact in e['locator'])
+            with self.subTest(shard=shard, case='span'):
+                with mock.patch.object(runtime.workflow, 'shard_span', return_value=(span[0], span[1] + 1)):
+                    self.assertFalse(runtime.approved_tail_split(path, record, shard, item, source))
+            for field, value in [('kind', 'partial_timing'), ('source_commit', '0' * 40),
+                                 ('locator', evidence['locator'] + '-other'), ('sha256', '0' * 64)]:
+                with self.subTest(shard=shard, field=field):
+                    changed = copy.deepcopy(record)
+                    changed['evidence'] = [copy.deepcopy(evidence)]
+                    changed['evidence'][0][field] = value
+                    self.assertFalse(runtime.approved_tail_split(path, changed, shard, item, source))
+            for evidence_list in ([], [e for e in record['evidence'] if artifact not in e['locator']]):
+                changed = copy.deepcopy(record)
+                changed['evidence'] = evidence_list
+                self.assertFalse(runtime.approved_tail_split(path, changed, shard, item, source))
+
+    def test_native_geometry_requires_exact_ownership_evidence(self):
+        self.workflow_patcher.stop()
+        self.config_patcher.stop()
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        for path in (runtime.REPEAT_TARGET, runtime.CODEC_TARGET):
+            record = config['targets'][path]
+            source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+            artifact = record['native_geometry']['ownership_artifact_id']
+            evidence = next(e for e in record['evidence'] if artifact in e['locator'])
+            self.assertTrue(runtime.native_geometry_valid(path, record, source))
+            for field, value in [(None, None), ('kind', 'partial_timing'), ('source_commit', '0' * 40),
+                                 ('locator', evidence['locator'] + '-other'), ('sha256', '0' * 64)]:
+                with self.subTest(path=path, field=field):
+                    changed = copy.deepcopy(record)
+                    changed['evidence'] = [e for e in changed['evidence'] if artifact not in e['locator']]
+                    if field is not None:
+                        altered = copy.deepcopy(evidence)
+                        altered[field] = value
+                        changed['evidence'].append(altered)
+                    self.assertFalse(runtime.native_geometry_valid(path, changed, source))
+
     def test_codec_over_budget_has_no_exception(self):
         path = runtime.CODEC_TARGET
         data = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()

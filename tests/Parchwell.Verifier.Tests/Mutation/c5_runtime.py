@@ -477,9 +477,9 @@ PROVISIONAL_TARGETS = {
 }
 # Canonical maps of shard ID to generated selection hash for the approved pilot.
 PROVISIONAL_LAYOUT_HASHES = {
-    'Common/Phase/B10FinalProjectionCodec.cs': 'ad21dfabb9441f5b8f766e201676ac01d38563f61b21767c34d8f23589b69ff9',
+    'Common/Phase/B10FinalProjectionCodec.cs': 'e2ec8902c5fb6bd30c65859348ef88bb2953a51e8bfa892961c826e3975cb6a3',
     'Judge/B10FinalJudge.cs': '0edc49b41523422087ea8a0cc90bb2f781fc84074f43e92c42d762c1bd635aad',
-    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': 'b1dcdfc584604447104cf8e8ea0ca1126b74da498f0fedbc24c3e6908ae6242a',
+    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': '5df9f551a2f05b2db584b83a6fddc3274685f572995edcf49e04f368405c65d5',
 }
 PROVISIONAL_TIMING_INPUTS_HASH = 'e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463'
 PROVISIONAL_STATUS = 'pending_native_report'
@@ -516,12 +516,12 @@ def shape(config):
             if any(not HEX.fullmatch(item[k]) for k in ('selection_sha256', 'timing_inputs_sha256')):
                 raise ValueError('invalid shard hash')
             if provisional:
-                if ((path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS) or (path == REPEAT_TARGET and shard in REPEAT_BOUNDS)) and any(item[k] is None for k in NUMERIC_FIELDS):
-                    raise ValueError('pinned codec owner requires its estimate')
+                if ((path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS) or (path == REPEAT_TARGET and shard in REPEAT_BOUNDS) or shard in TAIL_SPLITS) and any(item[k] is None for k in NUMERIC_FIELDS):
+                    raise ValueError('pinned owner requires its estimate')
                 if any(item[k] is not None for k in NUMERIC_FIELDS) and not (
-                    ((path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS) or (path == REPEAT_TARGET and shard in REPEAT_BOUNDS))
+                    ((path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS) or (path == REPEAT_TARGET and shard in REPEAT_BOUNDS) or shard in TAIL_SPLITS)
                     and all(type(item[k]) in (int, float) for k in NUMERIC_FIELDS)):
-                    raise ValueError('provisional estimates must be unknown except the pinned codec owners')
+                    raise ValueError('provisional estimates must be unknown except for pinned owners')
             elif any(type(item[k]) not in (int, float, bool) for k in NUMERIC_FIELDS):
                 raise ValueError('invalid numeric field')
         for evidence in record['evidence']:
@@ -662,16 +662,16 @@ REPEAT_TARGET = 'VerifyRun/B10Final/B10FinalRepeatEvidence.cs'
 REPEAT_BOUNDS = {
     'b10-final-repeat-evidence-p1': ((0, 5565), (44, 1255, 1, 107, 0, 1362)),
     'b10-final-repeat-evidence-p2': ((5565, 13837), (167, 961, 1, 107, 0, 1068)),
-    'b10-final-repeat-evidence-p20': ((41582, 42920), (41, 2957, 2, 229, 0, 1708)),
-    'b10-final-repeat-evidence-p21': ((42920, 44372), (39, 2753, 2, 229, 0, 1606)),
+    'b10-final-repeat-evidence-p21': ((41582, 42920), (41, 2957, 2, 229, 0, 1708)),
+    'b10-final-repeat-evidence-p22': ((42920, 44372), (39, 2753, 2, 229, 0, 1606)),
     'b10-final-repeat-evidence-crossing': (None, (36, 1075, 1, 107, 0, 1182)),
 }
 
 REPEAT_BOUND_JOBS = {
     'b10-final-repeat-evidence-p1': (('132582438060', '5f0524883832ef096c14da1c8bd6a86ba0a86e7c8bcb14a28b7c0e4972ab70ca'), ('132582438086', '54d604bdc8ab6abd1fb463aae881875ad02196a8221a70341bcbb62282a4638a')),
     'b10-final-repeat-evidence-p2': (('132582438127', '1b5893a9410de6d5203058a98173d9031db407c2b9c6b5e191786f2ec8542dae'), ('132582438524', 'ebc28d4ca57b5cf4ab5d855ce9c662962eb78d3de1f7c0584cd97ff5d5c2c89b')),
-    'b10-final-repeat-evidence-p20': (('132582438152', '3fdf2cae2513f6a62151d65de56bbb3639bbe5437db4168305b8ac4268fc7726'),),
     'b10-final-repeat-evidence-p21': (('132582438152', '3fdf2cae2513f6a62151d65de56bbb3639bbe5437db4168305b8ac4268fc7726'),),
+    'b10-final-repeat-evidence-p22': (('132582438152', '3fdf2cae2513f6a62151d65de56bbb3639bbe5437db4168305b8ac4268fc7726'),),
     'b10-final-repeat-evidence-crossing': (('132582438212', '462816c11d5b3c3d26fd384242f83c7cbc96ebeee97fb8a10744f5e9a0b7e01f'),),
 }
 
@@ -695,6 +695,27 @@ def approved_repeat_merged_owner(path, record, shard, item, source):
                for e in record['evidence'])
 
 
+# Source-bound split estimates use measured tested work and job overhead.
+TAIL_SPLITS = {
+    'b10-final-repeat-evidence-p9': (REPEAT_TARGET, (24938, 26076), (38, 1951, 2, 183.5, 0, 1159), '14134281282', '2bad7544a96c4c7ff6b84b976667c3f11be18ad77e81febec9c6c9f0b9793d6b'),
+    'b10-final-repeat-evidence-p10': (REPEAT_TARGET, (26076, 27770), (42, 2096, 2, 183.5, 0, 1232), '14134281282', '2bad7544a96c4c7ff6b84b976667c3f11be18ad77e81febec9c6c9f0b9793d6b'),
+    'b10-final-projection-codec-p11': (CODEC_TARGET, (11973, 12732), (39, 2799, 2, 197, 0, 1597), '14133942300', '8cc93fd4ffb21dd8afcc793d8c30906d5cb6f9c79bb43d0947c6c0e0229ce427'),
+    'b10-final-projection-codec-p12': (CODEC_TARGET, (12732, 13486), (32, 2279, 2, 197, 0, 1337), '14133942300', '8cc93fd4ffb21dd8afcc793d8c30906d5cb6f9c79bb43d0947c6c0e0229ce427'),
+}
+
+def approved_tail_split(path, record, shard, item, source):
+    try:
+        target, span, numbers, artifact, sha = TAIL_SPLITS[shard]
+        return (path == target and digest(source) == PROVISIONAL_TARGETS[path][0]
+                and workflow.shard_span(shard, source) == span
+                and tuple(item[k] for k in NUMERIC_FIELDS) == numbers
+                and any(e['kind'] == 'hosted_complete' and e['source_commit'] == 'ed79ae741a082f1cc55d753bb64dec5a74d5a49c'
+                        and e['locator'] == 'https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43642679359 artifact ' + artifact
+                        and e['sha256'] == sha for e in record['evidence']))
+    except (KeyError, ValueError, TypeError):
+        return False
+
+
 # These complete native inventories are taken from receipt-verified hosted reports.
 NATIVE_GEOMETRY_BINDINGS = {
     'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': ('14127456699', '3268e1a3b6c52c469e74f6b5680aa40d2096a1901780c8c0d6416c394ed88d90', 'c9ac4182741b1f87d383ad950806a069d786e4cf8dfc55c5f0a17641f47922a3', '2bc0f8acfd79364d414b7cd46dde2804c930adc2a1fbbb9f6ad05d67a79d298a', 1306),
@@ -705,8 +726,8 @@ NATIVE_GEOMETRY_BINDINGS = {
 
 # Digests of the reviewed compact proofs; the full inventories remain in hosted artifacts.
 NATIVE_PROOF_HASHES = {
-    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': '2e00dec92b249bbc08ae6fedc825305dc78c12a5da2158eddcb65f5fdc522e14',
-    'Common/Phase/B10FinalProjectionCodec.cs': 'c669681346b9a4ce4092d44a0471a9023f8d4f1e15843351e416a0f937092f5c',
+    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': '67f4aa655b8cfaf8dcad31afde11f8574ac40df9a5a0be6312aaeed820700d99',
+    'Common/Phase/B10FinalProjectionCodec.cs': '183e61118dc81c769777241b0ffed5ce87ade1a08c81f270f26deee2837b3a45',
     'Judge/B10FinalJudge.cs': '554f7cc41d40bae23185db9b7e9f7ed4e0dd89154977ea33a0b5d108d9836b48',
 }
 
@@ -727,6 +748,13 @@ def native_geometry_valid(path, record, source):
                    and e['sha256'] == archive and e['locator'] == ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43625662806 artifact ' + artifact)
                    for e in record['evidence']):
             return False
+        if path in (REPEAT_TARGET, CODEC_TARGET):
+            artifact_id = geometry['ownership_artifact_id']
+            archive_hash = geometry['ownership_archive_sha256']
+            if not any(e['kind'] == 'hosted_complete' and e['source_commit'] == 'ed79ae741a082f1cc55d753bb64dec5a74d5a49c'
+                       and e['locator'] == 'https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43642679359 artifact ' + artifact_id
+                       and e['sha256'] == archive_hash for e in record['evidence']):
+                return False
         generated = {name: digest(canonical(workflow.shard_config(name, source)))
                      for name, target in workflow.SHARDS.items() if target == path}
         if digest(canonical(generated)) != geometry['layout_sha256']:
@@ -812,7 +840,8 @@ def validate(config, shared, targets, source, matrix):
                     reasons.add('invalid_estimate')
                 continue
             if provisional and not (approved_codec_static_owner(path, record, shard, item, source[path])
-                                    or approved_repeat_merged_owner(path, record, shard, item, source[path])):
+                                    or approved_repeat_merged_owner(path, record, shard, item, source[path])
+                                    or approved_tail_split(path, record, shard, item, source[path])):
                 reasons.add('invalid_estimate')
             numeric = ('main_work_seconds', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')
             valid = (type(item['main_mutants']) is int and item['main_mutants'] >= 0
