@@ -321,6 +321,27 @@ class QualificationTests(unittest.TestCase):
                 with mock.patch.dict(runtime.workflow.COHORTS, {shard: ('wrong', ())}):
                     self.assertFalse(runtime.approved_codec_static_owner(path, record, shard, item, source))
 
+    def test_tail_splits_require_exact_source_cost_and_evidence(self):
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        for shard, (path, _, _, artifact, _) in runtime.TAIL_SPLITS.items():
+            with self.subTest(shard=shard):
+                record = config['targets'][path]
+                source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+                item = record['shards'][shard]
+                self.assertTrue(runtime.approved_tail_split(path, record, shard, item, source))
+                self.assertFalse(runtime.approved_tail_split(path, record, shard, item, source + b'x'))
+                changed = copy.deepcopy(item)
+                changed['main_work_seconds'] -= 1
+                self.assertFalse(runtime.approved_tail_split(path, record, shard, changed, source))
+                changed_record = copy.deepcopy(record)
+                changed_record['evidence'] = [e for e in record['evidence'] if artifact not in e['locator']]
+                self.assertFalse(runtime.approved_tail_split(path, changed_record, shard, item, source))
+                changed_config = copy.deepcopy(config)
+                changed_config['targets'][path]['shards'][shard]['main_mutants'] = None
+                with self.assertRaises(ValueError):
+                    runtime.shape(changed_config)
+
     def test_codec_over_budget_has_no_exception(self):
         path = runtime.CODEC_TARGET
         data = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
