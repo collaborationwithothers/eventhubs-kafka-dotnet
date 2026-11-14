@@ -5,6 +5,8 @@
 
 The runtime helper prepares and checks evidence for shard sizing. It does not replace the fresh mutation acceptance run or change its score.
 
+The required `.NET verification` check validates the reviewed qualification before a workload or layout change merges. The check compares the pull request base and head; on main and manual runs it validates the whole head. Relevant inputs include configured target sources, mutation-included tests and their build and execution dependencies, runtime limits, profile files, and the mutation runner and workflow. Unrelated changes do not require new measurement. Missing, stale, inconsistent or over-budget qualification rejects a relevant change. The qualification file binds each shard's estimate to its generated selection and current inputs; its estimates are not a mutation result or proof of hosted elapsed time.
+
 Run the commands from the repository root. Keep profiling output outside the repository; the profile runs the full mutation-only test population once and refuses a nonempty output directory.
 
 ```bash

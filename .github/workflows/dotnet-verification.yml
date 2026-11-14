@@ -127,8 +127,28 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+          fetch-depth: 0
       - name: Test the aggregate checker
         run: python3 -m unittest discover -s scripts/tests -p test_check_dotnet_matrix.py -v
+      - name: Install pinned offline tools
+        run: |
+          bash infra/scripts/lifecycle/install-tools.sh "$RUNNER_TEMP/parchwell-qualification-tools" ci
+          printf '%s\n' "$RUNNER_TEMP/parchwell-qualification-tools/venv/bin" >> "$GITHUB_PATH"
+      - name: Qualify verifier mutation runtime
+        env:
+          PARCHWELL_EVENT: ${{ github.event_name }}
+          PARCHWELL_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PARCHWELL_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests/Parchwell.Verifier.Tests/Mutation -p test_c5_runtime.py -v
+          python3 -m unittest discover -s tests/Parchwell.Verifier.Tests/Mutation -p test_c5_workflow.py -v
+          args=(check --head "$PARCHWELL_HEAD_SHA" --qualification tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json)
+          if [ "$PARCHWELL_EVENT" = pull_request ]; then
+            args+=(--base "$PARCHWELL_BASE_SHA")
+          fi
+          python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py "${args[@]}"
       - name: Download verification reports
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:

@@ -3,9 +3,52 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import os
+import subprocess
 
 import c5_runtime as profile_module
 ROOT = Path(__file__).resolve().parents[3]
+
+
+class RequiredCheckIntegrationTests(unittest.TestCase):
+    def invoke_step(self, event, fail_check):
+        import yaml
+        workflow = yaml.safe_load((ROOT / '.github/workflows/dotnet-verification.yml').read_text())
+        job = workflow['jobs']['dotnet-verification']
+        self.assertEqual('.NET verification', job['name'])
+        checkout = next(step for step in job['steps'] if step['name'] == 'Check out repository')
+        self.assertEqual(0, checkout['with']['fetch-depth'])
+        step = next(step for step in job['steps'] if step['name'] == 'Qualify verifier mutation runtime')
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            log = directory / 'calls'
+            stub = directory / 'python3'
+            stub.write_text('#!/bin/bash\nprintf "%s\\n" "$*" >> "$CALL_LOG"\n'
+                            'if [[ "$1" == *c5_runtime.py && "$FAIL_CHECK" = yes ]]; then exit 1; fi\n')
+            stub.chmod(0o755)
+            env = {**os.environ, 'PATH': str(directory) + os.pathsep + os.environ['PATH'],
+                   'CALL_LOG': str(log), 'FAIL_CHECK': 'yes' if fail_check else 'no',
+                   'PARCHWELL_EVENT': event, 'PARCHWELL_BASE_SHA': 'base-sha',
+                   'PARCHWELL_HEAD_SHA': 'head-sha'}
+            result = subprocess.run(['bash', '-c', step['run']], cwd=ROOT, env=env, check=False)
+            return result.returncode, log.read_text().splitlines()
+
+    def test_required_check_propagates_rejection(self):
+        status, calls = self.invoke_step('pull_request', True)
+        self.assertNotEqual(0, status)
+        self.assertEqual(3, len(calls))
+        self.assertIn('test_c5_runtime.py', calls[0])
+        self.assertIn('test_c5_workflow.py', calls[1])
+        self.assertIn('--head head-sha', calls[2])
+        self.assertIn('--base base-sha', calls[2])
+
+    def test_main_validates_without_diff(self):
+        for event in ('push', 'workflow_dispatch'):
+            with self.subTest(event=event):
+                status, calls = self.invoke_step(event, True)
+                self.assertNotEqual(0, status)
+                self.assertIn('--head head-sha', calls[2])
+                self.assertNotIn('--base', calls[2])
 
 
 def xml(*results):
