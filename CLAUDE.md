@@ -6,16 +6,19 @@ Claude Code entry point. The first line imports AGENTS.md, which holds every too
 
 ## Model bindings
 
-Status: approved by Hari on 2026-10-12. The pull request for issue #286 amends this section (spawned sessions, and the Haiku row); Hari's merge of that pull request is the approval of the amendment. Each workflow pins its model with `claude_args: --model <id>`.
+Status: approved by Hari on 2026-10-12. The pull request for issue #286 amends this section (spawned sessions, and the Haiku row); Hari's merge of that pull request is the approval of the amendment. The pull request for issue #476 amends this section (the Control session row and the paragraph that explains it); Hari's merge of that pull request is the approval of that amendment. Each workflow pins its model with `claude_args: --model <id>`.
 
 | Role | Model |
 |---|---|
 | Plan drafting | `claude-opus-5-5` |
 | Implementation | `claude-sonnet-5-5` |
 | Self-review against docs/engineering/ before opening a pull request | `claude-opus-5-5` |
+| Control session | `claude-opus-5-5` |
 | Tool-verified mechanical work (task list below) | `claude-haiku-5-5` |
 
 The Haiku row covers only these tasks, and only when a deterministic tool or script verifies the output afterwards: running the repository's checks and reporting their output; byte-equality checks between workflow files and their committed copies; ASCII and punctuation scans; counts and totals computed by script; fetching run logs and artifacts; polling run status. Work that needs judgement, or whose output no tool verifies, stays on Sonnet or Opus under the other rows. The Haiku row is a governance policy choice by Hari, decided on 2026-11-01 without measurement; it is not a measured result (AGENTS.md hard safety rule 11).
+
+The Control session row is `claude-opus-5-5` because the role makes judgement calls (the `control-session` skill, "Act or ask" and "Deferred work in plans"). Polling run status, fetching run logs and comparing heads go to `claude-haiku-5-5` subagents only as the Haiku row allows. Whether a cheaper model would do the judgement well enough is not measured.
 
 A session started with the `create_session` tool sets `model` to the identifier in this table for the role it will perform. Without `model`, the tool gives the new session the calling session's model, so an Opus session would start an implementation session on Opus. Source: the `model` parameter description of the `create_session` tool as it appeared in one cloud session, read 2026-11-01: "Model ID for the new session. Defaults to the calling session's model." It is tool metadata, not official documentation. No official page on `create_session` was read.
 
