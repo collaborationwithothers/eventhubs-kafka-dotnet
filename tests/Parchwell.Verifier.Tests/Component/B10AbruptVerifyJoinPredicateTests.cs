@@ -6,6 +6,7 @@ using Parchwell.Verifier.VerifyRun.Abrupt;
 using Parchwell.Verifier.VerifyRun.Input;
 using Parchwell.Verifier.VerifyRun.Judgement;
 using Xunit;
+using Parchwell.Verifier.Tests.Support;
 
 namespace Parchwell.Verifier.Tests.Component;
 

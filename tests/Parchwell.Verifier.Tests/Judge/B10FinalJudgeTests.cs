@@ -5,12 +5,12 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 using Parchwell.Verifier.Common.Contracts;
-using Parchwell.Verifier.Tests.Component;
 using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Results;
 using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.Common.Storage;
 using Parchwell.Verifier.Judge;
+using Parchwell.Verifier.Tests.Support;
 using Xunit;
 
 namespace Parchwell.Verifier.Tests.Judge;

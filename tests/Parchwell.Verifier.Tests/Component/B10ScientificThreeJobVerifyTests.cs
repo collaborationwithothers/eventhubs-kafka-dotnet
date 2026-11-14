@@ -4,6 +4,7 @@ using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Results;
 using Parchwell.Verifier.Common.Serialization;
 using Xunit;
+using Parchwell.Verifier.Tests.Support;
 
 namespace Parchwell.Verifier.Tests.Component;
 

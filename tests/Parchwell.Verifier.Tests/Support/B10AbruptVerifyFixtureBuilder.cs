@@ -1,9 +1,8 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Parchwell.Verifier.Tests.Support;
 
-namespace Parchwell.Verifier.Tests.Component;
+namespace Parchwell.Verifier.Tests.Support;
 
 internal sealed partial class B10AbruptVerifyEvidence
 {

@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using Xunit;
+using Parchwell.Verifier.Tests.Support;
 
 namespace Parchwell.Verifier.Tests.Component;
 
