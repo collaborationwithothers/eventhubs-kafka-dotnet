@@ -475,9 +475,9 @@ PROVISIONAL_TARGETS = {
 }
 # Canonical maps of shard ID to generated selection hash for the approved pilot.
 PROVISIONAL_LAYOUT_HASHES = {
-    'Common/Phase/B10FinalProjectionCodec.cs': '4c661c3ab0e48fad257130d68436125689c088743159d34b997d413106650b29',
+    'Common/Phase/B10FinalProjectionCodec.cs': 'ad21dfabb9441f5b8f766e201676ac01d38563f61b21767c34d8f23589b69ff9',
     'Judge/B10FinalJudge.cs': '0edc49b41523422087ea8a0cc90bb2f781fc84074f43e92c42d762c1bd635aad',
-    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': '46030ff0b8176ee6464ecaa45bb1ebe43d2f3eff0cc2ffbc43a08e6e8e481745',
+    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': 'a36d5aa3b38d51fa945cd497ab4226a95a7c9496cf923d70f7c162084be19683',
 }
 PROVISIONAL_TIMING_INPUTS_HASH = '64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22'
 PROVISIONAL_STATUS = 'pending_native_report'
@@ -595,10 +595,21 @@ def approved_static_owner(path, record, shard, item, source):
 # Source-bound estimates for the three whole codec declarations in the
 # targeted correction; the first two use a cross-field conservative rate.
 CODEC_TARGET = 'Common/Phase/B10FinalProjectionCodec.cs'
-CODEC_PROVISIONAL_SHARDS = frozenset('b10-final-projection-codec-p' + str(i) for i in (1, 2, 3))
+CODEC_PROVISIONAL_SHARDS = frozenset(f'b10-final-projection-codec-p{i}-{suffix}' for i in (1, 2, 3) for suffix in ('a', 'b'))
 CODEC_TIMING_INPUTS_HASH = '64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22'
 CODEC_SOURCE_HASH = 'c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5'
-CODEC_ISOLATED = {(614, 1068): 2158.236, (1069, 1706): 2697.795, (1706, 2157): 2225.730}
+CODEC_ISOLATED = {
+    'b10-final-projection-codec-p1-a': 1248.756, 'b10-final-projection-codec-p1-b': 1236.599,
+    'b10-final-projection-codec-p2-a': 1445.164, 'b10-final-projection-codec-p2-b': 1634.255,
+    'b10-final-projection-codec-p3-a': 1002.330, 'b10-final-projection-codec-p3-b': 1223.401,
+}
+CODEC_COHORTS = {
+    f'b10-final-projection-codec-p{i}-{suffix}': (f'b10-final-projection-codec-p{i}', tuple(map(str, range(lo, hi))))
+    for i, suffix, lo, hi in ((1, 'a', 116, 122), (1, 'b', 122, 128),
+                               (2, 'a', 128, 135), (2, 'b', 135, 143),
+                               (3, 'a', 143, 149), (3, 'b', 149, 156))
+}
+CODEC_REGIONS = {(614, 1068), (1069, 1706), (1706, 2157)}
 CODEC_OWNERS = {
     (614, 1068): ((0, 1068), [(374, 614), (614, 1068)]),
     (1069, 1706): ((1068, 1706), [(1069, 1706)]),
@@ -607,6 +618,7 @@ CODEC_OWNERS = {
 CODEC_EVIDENCE = (
     ('14127755542', '017a78d3c863b6ca3c8cb5a2e2db5c7a0bf95988612a7e603e68e7259489477d'),
     ('14127627878', 'a9213fbb44c74a9ad62031227dbb04e89dd2f6b381dce6f77c737f38db63ee33'),
+    ('14128899902', 'cd5c86cf36ed2833a01e4b3cc74755ba533e22742d8a4018ac74ba6c098c385a'),
 )
 
 
@@ -614,7 +626,7 @@ def codec_static_regions(path, shard, source):
     if path != CODEC_TARGET or digest(source) != CODEC_SOURCE_HASH:
         return []
     try:
-        return [region for region in workflow.shard_static_regions(shard, source) if region in CODEC_ISOLATED]
+        return [region for region in workflow.shard_static_regions(shard, source) if region in CODEC_REGIONS]
     except (KeyError, ValueError, TypeError):
         return []
 
@@ -625,7 +637,8 @@ def approved_codec_static_owner(path, record, shard, item, source):
     if (len(regions) != 1 or record['source_sha256'] != CODEC_SOURCE_HASH
             or item['timing_inputs_sha256'] != CODEC_TIMING_INPUTS_HASH
             or item['main_mutants'] != 0 or item['main_work_seconds'] != 0
-            or item['setup_seconds'] != 192 or item['isolated_seconds'] != CODEC_ISOLATED[regions[0]]
+            or shard not in CODEC_COHORTS or workflow.COHORTS.get(shard) != CODEC_COHORTS[shard]
+            or item['setup_seconds'] != 60 or item['isolated_seconds'] != CODEC_ISOLATED[shard]
             or f'[{regions[0][0]},{regions[0][1]})' not in item['basis']):
         return False
     if not all(any(e['kind'] == 'hosted_complete' and e['source_commit'] == 'dbc25c2005c3409ffd5f079c40b061d82c4b02aa'
@@ -643,7 +656,7 @@ def approved_codec_static_owner(path, record, shard, item, source):
 
 # These complete native inventories are taken from receipt-verified hosted reports.
 NATIVE_GEOMETRY_BINDINGS = {
-    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': ('14127456699', '3268e1a3b6c52c469e74f6b5680aa40d2096a1901780c8c0d6416c394ed88d90', 'c9ac4182741b1f87d383ad950806a069d786e4cf8dfc55c5f0a17641f47922a3', '2bc0f8acfd79364d414b7cd46dde2804c930adc2a1fbbb9f6ad05d67a79d298a', 1306),
+    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': ('14127456699', '3268e1a3b6c52c469e74f6b5680aa40d2096a1901780c8c0d6416c394ed88d90', 'c9ac4182741b1f87d383ad950806a069d786e4cf8dfc55c5f0a17641f47922a3', '75ee2457a953f6dbf25237b624908bf86b286193d99bb84a0330d81858f90a20', 1306),
     'Common/Phase/B10FinalProjectionCodec.cs': ('14127755542', '017a78d3c863b6ca3c8cb5a2e2db5c7a0bf95988612a7e603e68e7259489477d', 'ab0e4d0677136a516821fff731e36d439ff57e40857c8e77bdda7e4c5183c37a', 'd5a7f544377a3d8b2c66e120e92efcee3f0a07ecabe5b45f36a40f2334251b8f', 730),
     'Judge/B10FinalJudge.cs': ('14127550132', '5daf8d8f214957e7e8f6a91db1d2093fa3c0cf0827267a07ee77da9ef14ab119', 'e9ec6237585270a6ab9e2dea44998171e276656fab9da65b2aea3a96bd19cf93', 'b57b1426e4cd0f4a5a21e06aa665f7bedf5568fcb62bc5beffe1e2885a5c9d40', 710),
 }
@@ -666,6 +679,17 @@ def native_geometry_valid(path, record, source):
         key = next(key for key, (target, _) in workflow.TARGETS.items() if target == path)
         spans = workflow.primary_spans(key, source)
         text = workflow.target_text(source)
+        if path == 'VerifyRun/B10Final/B10FinalRepeatEvidence.cs':
+            # Reconstruct the original receipt-bound ownership before validating the rebalance.
+            old_cuts = sorted((*workflow.PRIMARY_CUTS[key], 8376))
+            old_spans = list(zip((0, *old_cuts), (*old_cuts, workflow.utf16_length(text))))
+            original = []
+            for item in items:
+                a, b = item['span']
+                owner = next((i + 1 for i, (lo, hi) in enumerate(old_spans) if lo <= a and b <= hi), None)
+                original.append({**item, 'owner': key + ('-p' + str(owner) if owner else '-crossing')})
+            if digest(canonical(original)) != '2bc0f8acfd79364d414b7cd46dde2804c930adc2a1fbbb9f6ad05d67a79d298a':
+                return False
         regions = workflow.static_regions(text)
         seen = set()
         for item in items:
@@ -679,7 +703,7 @@ def native_geometry_valid(path, record, source):
             if len(owners) > 1 or any(x <= a and b <= y and len(owners) != 1 for x, y in regions):
                 return False
             owner = key + ('-p' + str(owners[0]) if owners else '-crossing')
-            if item['owner'] != owner or workflow.SHARDS.get(owner) != path:
+            if item['owner'] != owner or (workflow.SHARDS.get(owner) != path and not any(logical == owner and workflow.SHARDS.get(physical) == path for physical, (logical, _) in workflow.COHORTS.items())):
                 return False
         return all(sum(lo <= a and b <= hi for lo, hi in spans) == 1 for a, b in regions)
     except (KeyError, TypeError, ValueError, StopIteration):
@@ -717,6 +741,8 @@ def validate(config, shared, targets, source, matrix):
                 reasons.add('stale_inputs')
             generated = {name: digest(canonical(workflow.shard_config(name, source[path])))
                          for name, target in workflow.SHARDS.items() if target == path}
+            if path == CODEC_TARGET and workflow.COHORTS != CODEC_COHORTS:
+                reasons.add('layout_mismatch')
             if digest(canonical(generated)) != PROVISIONAL_LAYOUT_HASHES[path]:
                 reasons.add('layout_mismatch')
             if not any(e['kind'] == 'partial_timing' and e['sha256'] == evidence_hash
@@ -776,11 +802,10 @@ def validate(config, shared, targets, source, matrix):
             if regions and item['isolated_seconds'] < sum(STATIC_EVIDENCE[region][3] for region in regions):
                 reasons.add('invalid_estimate')
             codec_regions = codec_static_regions(path, shard, source[path])
-            if codec_regions and item['isolated_seconds'] < sum(CODEC_ISOLATED[region] for region in codec_regions):
+            if codec_regions and shard in CODEC_ISOLATED and item['isolated_seconds'] < CODEC_ISOLATED[shard]:
                 reasons.add('invalid_estimate')
             if (item['estimated_seconds'] > 1800
-                    and not approved_static_owner(path, record, shard, item, source[path])
-                    and not approved_codec_static_owner(path, record, shard, item, source[path])):
+                    and not approved_static_owner(path, record, shard, item, source[path])):
                 reasons.add('shard_over_budget')
     if all_shards != workflow.SHARDS:
         reasons.add('layout_mismatch')

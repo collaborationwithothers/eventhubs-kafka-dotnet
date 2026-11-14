@@ -41,7 +41,7 @@ TARGETS = {'phase': ('Judge/PhaseJudge.cs', 6),
  'b10-sweep-judge': ('Judge/B10SweepChecks.cs', 3),
  'b10-sweep-codec': ('Common/Phase/B10SweepEvidenceCodec.cs', 9),
  'b10-final-sweep-handler': ('VerifyRun/B10Final/B10FinalSweepHandler.cs', 4),
- 'b10-final-repeat-evidence': ('VerifyRun/B10Final/B10FinalRepeatEvidence.cs', 25),
+ 'b10-final-repeat-evidence': ('VerifyRun/B10Final/B10FinalRepeatEvidence.cs', 24),
  'b10-final-classification': ('VerifyRun/B10Final/B10FinalClassification.cs', 28),
  'b10-final-projection': ('Common/Phase/B10FinalProjection.cs', 1),
  'b10-final-projection-codec': ('Common/Phase/B10FinalProjectionCodec.cs', 14),
@@ -128,7 +128,6 @@ PRIMARY_CUTS = {'phase': (3600, 4517, 5582, 6493, 7894),
  'b10-final-sweep-handler': (4089, 8487, 10895),
  'b10-final-repeat-evidence': (2749,
                                5565,
-                               8376,
                                11107,
                                13837,
                                15226,
@@ -223,7 +222,21 @@ def build_parts(targets: dict[str, tuple[str, int]],
     }
 
 
-PARTS = build_parts(TARGETS, PRIMARY_CUTS)
+LOGICAL_PARTS = build_parts(TARGETS, PRIMARY_CUTS)
+COHORTS = {}
+for index, groups in enumerate(((range(116, 122), range(122, 128)),
+                                (range(128, 135), range(135, 143)),
+                                (range(143, 149), range(149, 156))), 1):
+    owner = f"b10-final-projection-codec-p{index}"
+    for suffix, identifiers in zip(("a", "b"), groups, strict=True):
+        COHORTS[f"{owner}-{suffix}"] = (owner, tuple(map(str, identifiers)))
+PARTS = {}
+for name, part in LOGICAL_PARTS.items():
+    cohorts = [physical for physical, (owner, _) in COHORTS.items() if owner == name]
+    if cohorts:
+        PARTS.update({physical: part for physical in cohorts})
+    else:
+        PARTS[name] = part
 SHARDS = {shard: TARGETS[key][0] for shard, (key, _, _) in PARTS.items()}
 SPAN_END = 2147483647
 UTF8_BOM = b"\xef\xbb\xbf"
@@ -795,8 +808,27 @@ def run_shard(shard: str, output_dir: Path, *, repository: Path | None = None,
     isolated = []
     isolation_error = None
     try:
-        child_exit, reason = launch(argv, cwd, log_path, timeout)
-        if regions and not (reason is None and child_exit in (0, 2) and report_path.is_file()):
+        if shard in COHORTS:
+            try:
+                isolated, isolation_error = run_cohort(shard, target, source, regions, output_dir,
+                                                        prefix, cwd, start + timeout)
+            except OSError as error:
+                isolation_error = f"isolation failed: {error}"
+            if isolated:
+                first = isolated[0]
+                argv = first["argv"]
+                child_exit, reason = first["child_exit_code"], first["termination_reason"]
+                first_dir = output_dir / "isolated" / first["mutant_id"]
+                if (first_dir / REPORT_PATH).is_file():
+                    report_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(first_dir / REPORT_PATH, report_path)
+                if (first_dir / "command.log").is_file():
+                    shutil.copyfile(first_dir / "command.log", log_path)
+        else:
+            child_exit, reason = launch(argv, cwd, log_path, timeout)
+        if shard in COHORTS:
+            pass
+        elif regions and not (reason is None and child_exit in (0, 2) and report_path.is_file()):
             isolation_error = "main invocation did not complete"
         elif regions:
             try:
@@ -914,6 +946,11 @@ def run_isolated(target: str, source: bytes, regions: list[tuple[int, int]], mai
         plan = isolation_plan(report_records(json.loads(main_report.read_bytes()), target, allow_empty=True), source, regions)
     except (OSError, ValueError, TypeError, KeyError) as error:
         return [], f"isolation selection failed: {error}"
+    return run_isolation_plan(target, plan, output_dir, prefix, cwd, deadline)
+
+
+def run_isolation_plan(target: str, plan: list[dict], output_dir: Path, prefix: list[str],
+                       cwd: Path, deadline: float) -> tuple[list[dict], str | None]:
     entries = []
     for item in plan:
         remaining = deadline - time.monotonic()
@@ -951,6 +988,42 @@ def run_isolated(target: str, source: bytes, regions: list[tuple[int, int]], mai
                 and entry["config_sha256_after"] == config_before):
             return entries, f"isolated invocation of mutant {item['mutant_id']} failed"
     return entries, None
+
+
+
+# Bootstrap geometry was observed in complete native reports. Every run verifies it
+# against its own full inventory before executing the remaining assigned IDs.
+COHORT_BOOTSTRAP_SPANS = {"116": (668, 698), "122": (866, 898),
+                          "128": (1128, 1163), "135": (1415, 1446),
+                          "143": (1755, 1789), "149": (1934, 1960)}
+
+
+def run_cohort(shard: str, target: str, source: bytes, regions: list[tuple[int, int]],
+               output_dir: Path, prefix: list[str], cwd: Path, deadline: float) -> tuple[list[dict], str | None]:
+    owner, ids = COHORTS[shard]
+    first = {"mutant_id": ids[0], "span": list(COHORT_BOOTSTRAP_SPANS[ids[0]]), "exclusions": []}
+    entries, error = run_isolation_plan(target, [first], output_dir, prefix, cwd, deadline)
+    if error:
+        return entries, error
+    try:
+        report = output_dir / "isolated" / ids[0] / REPORT_PATH
+        rows = report_records(json.loads(report.read_bytes()), target, allow_empty=True)
+        baseline = copy.deepcopy(rows)
+        selected = [row for row in baseline if row["id"] == ids[0]]
+        require(len(selected) == 1 and selected[0]["status"] in TESTED,
+                "bootstrap mutant was not tested")
+        selected[0]["status"], selected[0]["statusReason"] = FILTERED
+        plan = isolation_plan(baseline, source, regions)
+        expected = {identifier for logical, group in COHORTS.values() if logical == owner for identifier in group}
+        require({item["mutant_id"] for item in plan} == expected, "cohort inventory changed")
+        by_id = {item["mutant_id"]: item for item in plan}
+        require(by_id[ids[0]] == first, "bootstrap geometry changed")
+        merge_isolated(baseline, first, rows)
+        rest = [by_id[identifier] for identifier in ids[1:]]
+    except (OSError, ValueError, TypeError, KeyError) as error:
+        return entries, f"cohort selection failed: {error}"
+    remaining, error = run_isolation_plan(target, rest, output_dir, prefix, cwd, deadline)
+    return entries + remaining, error
 
 
 def require(condition: object, message: str) -> None:
@@ -1174,6 +1247,7 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
     targets = {}
     records = []
     part_records = {}
+    cohort_records = {}
     for shard, target in SHARDS.items():
         key, index, count = PARTS[shard]
         directory = input_dir / (prefix + shard)
@@ -1238,15 +1312,48 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
             regions = shard_static_regions(shard, source)
             require(receipt["static_regions"] == [list(region) for region in regions], "static region mismatch")
             require(receipt["isolation_error"] is None, "static isolation incomplete")
-            for row in rows:
-                require(not (row.get("static") is True and row["status"] in TESTED),
-                        f"static mutant {row['id']} tested outside isolation")
-            plan = isolation_plan(rows, source, regions)
-            require(isinstance(receipt["isolated"], list) and len(receipt["isolated"]) == len(plan),
-                    "isolated invocation list mismatch")
-            for item, entry in zip(plan, receipt["isolated"]):
-                rows = isolated_rows(directory, target, target_hash, item, entry, rows)
-            part_records[shard] = rows
+            if shard in COHORTS:
+                assigned = COHORTS[shard][1]
+                require(assigned and isinstance(receipt["isolated"], list)
+                        and len(receipt["isolated"]) == len(assigned), "isolated invocation list mismatch")
+                require([entry.get("mutant_id") if isinstance(entry, dict) else None
+                         for entry in receipt["isolated"]] == list(assigned), "cohort IDs mismatch")
+                first = assigned[0]
+                require(receipt["report_sha256"] == receipt["isolated"][0].get("report_sha256")
+                        and receipt["command_log_sha256"] == receipt["isolated"][0].get("command_log_sha256"),
+                        "bootstrap evidence mismatch")
+                require(all(receipt[field] == receipt["isolated"][0][field]
+                            for field in ("argv", "child_exit_code", "termination_reason", "command_completed")),
+                        "bootstrap invocation mismatch")
+                require(sum(row["id"] == first for row in rows) == 1, "bootstrap mutant missing")
+                require(all(row["status"] not in TESTED for row in rows if row["id"] != first),
+                        "unexpected main work")
+                bootstrap = next(row for row in rows if row["id"] == first)
+                require(bootstrap["status"] in TESTED, "bootstrap mutant was not tested")
+                baseline = [{**row, "status": FILTERED[0], "statusReason": FILTERED[1]}
+                            if row["id"] == first else row for row in rows]
+                full_plan = isolation_plan(baseline, source, regions)
+                by_id = {item["mutant_id"]: item for item in full_plan}
+                require(all(identifier in by_id for identifier in assigned), "cohort ID outside isolation plan")
+                plan = [by_id[identifier] for identifier in assigned]
+                require(plan[0] == {"mutant_id": first, "span": list(COHORT_BOOTSTRAP_SPANS[first]),
+                                    "exclusions": []}, "bootstrap geometry mismatch")
+                outcomes = baseline
+                for item, entry in zip(plan, receipt["isolated"], strict=True):
+                    outcomes = isolated_rows(directory, target, target_hash, item, entry, outcomes)
+                    outcome = next(row for row in outcomes if row["id"] == item["mutant_id"])
+                    require(outcome["status"] in TESTED, "cohort mutant was not tested")
+                cohort_records[shard] = (baseline, full_plan, outcomes)
+            else:
+                for row in rows:
+                    require(not (row.get("static") is True and row["status"] in TESTED),
+                            f"static mutant {row['id']} tested outside isolation")
+                plan = isolation_plan(rows, source, regions)
+                require(isinstance(receipt["isolated"], list) and len(receipt["isolated"]) == len(plan),
+                        "isolated invocation list mismatch")
+                for item, entry in zip(plan, receipt["isolated"]):
+                    rows = isolated_rows(directory, target, target_hash, item, entry, rows)
+                part_records[shard] = rows
             shards[shard] = {"target": target, "part": index, "parts": count,
                              "span": None if span is None else list(span),
                              "elapsed_seconds": elapsed,
@@ -1255,8 +1362,31 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
                              "isolated_mutants": [item["mutant_id"] for item in plan]}
         except (OSError, ValueError, TypeError, KeyError) as error:
             reasons.append(f"{shard}: {error}")
+    # Each cohort's baseline is reconstructed only in memory. Raw evidence remains intact.
+    for logical in dict.fromkeys(owner for owner, _ in COHORTS.values()):
+        physical = [name for name, (owner, _) in COHORTS.items() if owner == logical]
+        try:
+            require(len(physical) == 2 and all(name in cohort_records for name in physical),
+                    "physical cohorts incomplete")
+            first_baseline, first_plan, _ = cohort_records[physical[0]]
+            native = {row["id"]: row for row in first_baseline}
+            require(all({row["id"]: row for row in cohort_records[name][0]} == native
+                        and cohort_records[name][1] == first_plan for name in physical[1:]),
+                    "cohort native geometry mismatch")
+            identifiers = [identifier for name in physical for identifier in COHORTS[name][1]]
+            require(len(identifiers) == len(set(identifiers))
+                    and set(identifiers) == {item["mutant_id"] for item in first_plan},
+                    "cohort ID coverage mismatch")
+            outcomes = {row["id"]: row for name in physical for row in cohort_records[name][2]
+                        if row["id"] in COHORTS[name][1]}
+            part_records[logical] = [outcomes.get(row["id"], row) for row in first_baseline]
+            shards[logical] = dict(shards[physical[0]])
+            shards[logical]["isolated_mutants"] = identifiers
+        except (ValueError, KeyError, TypeError) as error:
+            reasons.append(f"{logical}: {error}")
     for key, (target, count) in TARGETS.items():
-        members = [shard for shard, (owner, _, _) in PARTS.items() if owner == key]
+        members = list(dict.fromkeys(COHORTS[shard][0] if shard in COHORTS else shard
+                                     for shard, (owner, _, _) in PARTS.items() if owner == key))
         if any(shard not in part_records for shard in members):
             if count > 1:
                 reasons.append(f"{key}: target incomplete because a span shard is incomplete")

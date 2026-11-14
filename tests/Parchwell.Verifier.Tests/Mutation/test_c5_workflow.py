@@ -125,7 +125,6 @@ EXPECTED_PRIMARY_CUTS = {'phase': (3600, 4517, 5582, 6493, 7894),
  'b10-final-sweep-handler': (4089, 8487, 10895),
  'b10-final-repeat-evidence': (2749,
                                5565,
-                               8376,
                                11107,
                                13837,
                                15226,
@@ -379,7 +378,6 @@ EXPECTED_JOB_NAMES = ('phase-p1',
  'b10-final-repeat-evidence-p22',
  'b10-final-repeat-evidence-p23',
  'b10-final-repeat-evidence-p24',
- 'b10-final-repeat-evidence-p25',
  'b10-final-repeat-evidence-crossing',
  'b10-final-classification-p1',
  'b10-final-classification-p2',
@@ -411,9 +409,12 @@ EXPECTED_JOB_NAMES = ('phase-p1',
  'b10-final-classification-p28',
  'b10-final-classification-crossing',
  'b10-final-projection',
- 'b10-final-projection-codec-p1',
- 'b10-final-projection-codec-p2',
- 'b10-final-projection-codec-p3',
+ 'b10-final-projection-codec-p1-a',
+ 'b10-final-projection-codec-p1-b',
+ 'b10-final-projection-codec-p2-a',
+ 'b10-final-projection-codec-p2-b',
+ 'b10-final-projection-codec-p3-a',
+ 'b10-final-projection-codec-p3-b',
  'b10-final-projection-codec-p4',
  'b10-final-projection-codec-p5',
  'b10-final-projection-codec-p6',
@@ -467,7 +468,7 @@ def legacy_layout(test_case):
     parts = {(key if count == 1 else f"{key}-p{index}"): (key, index, count)
              for key, (_, count) in targets.items() for index in range(1, count + 1)}
     shards = {shard: targets[key][0] for shard, (key, _, _) in parts.items()}
-    for name, value in (("TARGETS", targets), ("PARTS", parts), ("SHARDS", shards), ("PRIMARY_CUTS", {})):
+    for name, value in (("TARGETS", targets), ("PARTS", parts), ("SHARDS", shards), ("PRIMARY_CUTS", {}), ("COHORTS", {})):
         test_case.enterContext(patch.object(workflow, name, value))
 
 
@@ -640,7 +641,7 @@ class CommittedContractTests(unittest.TestCase):
          'b10-sweep-judge': ('Judge/B10SweepChecks.cs', 3),
          'b10-sweep-codec': ('Common/Phase/B10SweepEvidenceCodec.cs', 9),
          'b10-final-sweep-handler': ('VerifyRun/B10Final/B10FinalSweepHandler.cs', 4),
-         'b10-final-repeat-evidence': ('VerifyRun/B10Final/B10FinalRepeatEvidence.cs', 25),
+         'b10-final-repeat-evidence': ('VerifyRun/B10Final/B10FinalRepeatEvidence.cs', 24),
          'b10-final-classification': ('VerifyRun/B10Final/B10FinalClassification.cs', 28),
          'b10-final-projection': ('Common/Phase/B10FinalProjection.cs', 1),
          'b10-final-projection-codec': ('Common/Phase/B10FinalProjectionCodec.cs', 14),
@@ -820,7 +821,6 @@ class CommittedContractTests(unittest.TestCase):
          'b10-final-repeat-evidence-p22': 'VerifyRun/B10Final/B10FinalRepeatEvidence.cs',
          'b10-final-repeat-evidence-p23': 'VerifyRun/B10Final/B10FinalRepeatEvidence.cs',
          'b10-final-repeat-evidence-p24': 'VerifyRun/B10Final/B10FinalRepeatEvidence.cs',
-         'b10-final-repeat-evidence-p25': 'VerifyRun/B10Final/B10FinalRepeatEvidence.cs',
          'b10-final-repeat-evidence-crossing': 'VerifyRun/B10Final/B10FinalRepeatEvidence.cs',
          'b10-final-classification-p1': 'VerifyRun/B10Final/B10FinalClassification.cs',
          'b10-final-classification-p2': 'VerifyRun/B10Final/B10FinalClassification.cs',
@@ -852,9 +852,12 @@ class CommittedContractTests(unittest.TestCase):
          'b10-final-classification-p28': 'VerifyRun/B10Final/B10FinalClassification.cs',
          'b10-final-classification-crossing': 'VerifyRun/B10Final/B10FinalClassification.cs',
          'b10-final-projection': 'Common/Phase/B10FinalProjection.cs',
-         'b10-final-projection-codec-p1': 'Common/Phase/B10FinalProjectionCodec.cs',
-         'b10-final-projection-codec-p2': 'Common/Phase/B10FinalProjectionCodec.cs',
-         'b10-final-projection-codec-p3': 'Common/Phase/B10FinalProjectionCodec.cs',
+         'b10-final-projection-codec-p1-a': 'Common/Phase/B10FinalProjectionCodec.cs',
+         'b10-final-projection-codec-p1-b': 'Common/Phase/B10FinalProjectionCodec.cs',
+         'b10-final-projection-codec-p2-a': 'Common/Phase/B10FinalProjectionCodec.cs',
+         'b10-final-projection-codec-p2-b': 'Common/Phase/B10FinalProjectionCodec.cs',
+         'b10-final-projection-codec-p3-a': 'Common/Phase/B10FinalProjectionCodec.cs',
+         'b10-final-projection-codec-p3-b': 'Common/Phase/B10FinalProjectionCodec.cs',
          'b10-final-projection-codec-p4': 'Common/Phase/B10FinalProjectionCodec.cs',
          'b10-final-projection-codec-p5': 'Common/Phase/B10FinalProjectionCodec.cs',
          'b10-final-projection-codec-p6': 'Common/Phase/B10FinalProjectionCodec.cs',
@@ -910,7 +913,7 @@ class CommittedContractTests(unittest.TestCase):
         import yaml
         matrix = yaml.safe_load((root / ".github/workflows/verifier-c5-mutation.yml").read_text())["jobs"]["mutation"]["strategy"]["matrix"]["include"]
         self.assertEqual(list(shards.items()), [(row["shard"], row["target"]) for row in matrix])
-        self.assertEqual(254, len(matrix))
+        self.assertEqual(256, len(matrix))
         self.assertEqual(('b10-restart-manifest', 1, 5), workflow.PARTS['b10-restart-manifest-p1'])
         self.assertEqual(('b10-intake', 1, 4), workflow.PARTS['b10-intake-p1'])
         self.assertEqual(('b10-judge', 1, 4), workflow.PARTS['b10-judge-p1'])
@@ -973,7 +976,7 @@ class CommittedContractTests(unittest.TestCase):
                 source = (root / "src/Parchwell.Verifier" / target).read_bytes()
                 owned = [region for shard, (owner, _, _) in workflow.PARTS.items() if owner == key
                          for region in workflow.shard_static_regions(shard, source)]
-                self.assertEqual(workflow.static_regions(workflow.target_text(source)), owned)
+                self.assertEqual(workflow.static_regions(workflow.target_text(source)), sorted(set(owned)))
 
 
 class SpanTests(unittest.TestCase):
@@ -2816,7 +2819,7 @@ class ProductionLayoutTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[3]
         self.assertEqual(EXPECTED_PRIMARY_CUTS, workflow.PRIMARY_CUTS)
         self.assertEqual(EXPECTED_JOB_NAMES, tuple(workflow.SHARDS))
-        self.assertEqual(254, len(set(EXPECTED_JOB_NAMES)))
+        self.assertEqual(256, len(set(EXPECTED_JOB_NAMES)))
         original_paths = workflow.BASE_CONFIG["stryker-config"]["mutate"]
         self.assertEqual(24, len(set(original_paths)))
         self.assertEqual(original_paths, [target for target, _ in workflow.TARGETS.values()])
@@ -2836,7 +2839,8 @@ class ProductionLayoutTests(unittest.TestCase):
                 members = [name for name, (owner, _, _) in workflow.PARTS.items() if owner == key]
                 for region in regions:
                     self.assertEqual(1, sum(low <= region[0] and region[1] <= high for low, high in expected))
-                    self.assertEqual(1, sum(region in workflow.shard_static_regions(name, source) for name in members))
+                    self.assertEqual(1, len({workflow.COHORTS.get(name, (name,))[0] for name in members
+                                             if region in workflow.shard_static_regions(name, source)}))
                 for name in members:
                     config = workflow.shard_config(name, source)
                     actual = config["stryker-config"]["mutate"]
@@ -3028,6 +3032,9 @@ class ReporterSelectionTests(unittest.TestCase):
 
 class ProductionAggregationTests(unittest.TestCase):
     def setUp(self):
+        self.enterContext(patch.object(workflow, "COHORTS", {}))
+        self.enterContext(patch.object(workflow, "PARTS", workflow.LOGICAL_PARTS))
+        self.enterContext(patch.object(workflow, "SHARDS", {name: workflow.TARGETS[key][0] for name, (key, _, _) in workflow.LOGICAL_PARTS.items()}))
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.directory = Path(temporary.name)
@@ -3178,7 +3185,8 @@ def measured_inventory_suite(root, summary_path):
                 regions = workflow.static_regions(workflow.target_text(source))
                 for region in regions:
                     self.assertEqual(1, sum(low <= region[0] and region[1] <= high for low, high in spans))
-                    self.assertEqual(1, sum(region in workflow.shard_static_regions(name, source) for name in members))
+                    self.assertEqual(1, len({workflow.COHORTS.get(name, (name,))[0] for name in members
+                                             if region in workflow.shard_static_regions(name, source)}))
                 geometries = {}
                 selections = {}
                 old_selections = {}
