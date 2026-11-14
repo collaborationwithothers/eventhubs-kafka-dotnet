@@ -1,8 +1,8 @@
 # Verifier contract
 
-The production C5 worker supports `start-line`, `verify`, `b10-sweep`, `judge`, and the separate `single-action-judge` mode. A successful object write alone never authorizes a result or a successful process exit. Receipt publication follows the mode-specific completion rules below.
+The production C5 worker supports `start-line`, `verify`, `b10-sweep`, `b10-final-sweep`, `judge`, and the separate `single-action-judge` mode. A successful object write alone never authorizes a result or a successful process exit. Receipt publication follows the mode-specific completion rules below.
 
-B10 mode `b10-abrupt-verify` reconciles timeout, first-restart and successor evidence into a schema-3 nonfinal result. It admits diagnostic trial evidence for trial run IDs and scientific per-repeat evidence for scientific run IDs, with purpose-bound readers. The [B10 abrupt contract](b10-abrupt-contract.md#scientific-execution) owns its checks, paths, scientific receipt and chart admission. [Scientific C0 verify](#scientific-c0-verify) below owns the one-producer C0 contract. Scientific phase sweep, final judgement and candidate publication remain later work.
+B10 mode `b10-abrupt-verify` reconciles timeout, first-restart and successor evidence into a schema-3 nonfinal result. It admits diagnostic trial evidence for trial run IDs and scientific per-repeat evidence for scientific run IDs, with purpose-bound readers. The [B10 abrupt contract](b10-abrupt-contract.md#scientific-execution) owns its checks, paths, scientific receipt and chart admission. [Scientific C0 verify](#scientific-c0-verify) below owns the one-producer C0 contract. The [final sweep projection](b10-abrupt-contract.md#final-sweep-projection) and [scientific B10 final judgement](#scientific-b10-final-judgement) below complete the scientific path.
 
 ## Single-action judgement
 
@@ -226,7 +226,7 @@ ADR-021 in the blueprint owns B10's timeout, retry, restart and finality rules. 
 
 ### B10 phase sweep finalization
 
-This section describes the retained legacy two-producer sweep. It does not finalize the scientific C0 or C1 outputs above; the [workflow contract](b10-workflow.md#scientific-execution) records their final-judgement gaps.
+This section describes the retained legacy two-producer sweep. It does not finalize the scientific C0 or C1 outputs above; the scientific path uses the [final sweep projection](b10-abrupt-contract.md#final-sweep-projection) and [final judgement](#scientific-b10-final-judgement) instead.
 
 [ADR-021](../blueprint.md#adr-021-b10-accepts-timed-out-sends-application-retries-and-one-producer-restart-in-a-second-job-and-classifies-late-appends-up-to-a-sweep-line) owns the scientific rule. The [late-write finalization plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/365#issuecomment-6652574041) defines its reader contracts. Synthetic acceptance establishes the reader behavior. The [B10 workflow](b10-workflow.md) supplies the metadata capture worker, deployed settle budget, scheduling, capture receipt and diagnostic-only late-record logs.
 
@@ -282,7 +282,36 @@ Native cleanup completes synchronously under `CleanupTimeout` before create-only
 
 Judge authenticates the finalization and sweep receipt, rereads and hashes the note, and applies the same timing predicate using its externally supplied settle input. Each finalization result/verify-receipt reference must match the exact original bytes the judge accepted. Sweep acceptance cannot replace J1-J6 or original invalidity. Missing, failed or untrusted sweep makes every handler repeat invalid with `b10_sweep_failed` and absent counts; `trusted_result_invalid` is retained only for an originally trusted invalid result. Exit 1 on an otherwise complete scan with one invalid repeat does not itself mean global scan failure.
 
-New B10 candidates require root `b10_sweep` with `scan_complete`, nullable `finalization`, `receipt` and `sweep_line` artifact references, and the exact `residual_risk`; each repeat requires `classification_final`. True requires complete-valid status, counts and structurally accepted sweep evidence. False or absent finality cannot accompany counts. Complete-valid B10 root requires a complete scan and exactly five unique complete-valid/final repeats, with existing checked Int64 aggregation. Other root statuses omit totals. Legacy nonfinal count-free B10 candidates may omit the extension; non-B10 rejects it. Codec shape acceptance alone does not authenticate artifacts. Pure intake-only `PhaseJudge` calls retain their historical incomplete behavior; the real handler always supplies accepted or explicitly failed sweep evidence.
+Legacy-path B10 candidates require root `b10_sweep` with `scan_complete`, nullable `finalization`, `receipt` and `sweep_line` artifact references, and the exact `residual_risk`; each repeat requires `classification_final`. True requires complete-valid status, counts and structurally accepted sweep evidence. False or absent finality cannot accompany counts. Complete-valid B10 root requires a complete scan and exactly five unique complete-valid/final repeats, with existing checked Int64 aggregation. Other root statuses omit totals. Legacy nonfinal count-free B10 candidates may omit the extension; non-B10 rejects it. Codec shape acceptance alone does not authenticate artifacts. Pure intake-only `PhaseJudge` calls retain their historical incomplete behavior; the real handler always supplies accepted or explicitly failed sweep evidence.
+
+### Scientific B10 final judgement
+
+The [approved final judgement plan, Revision 6](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/07e2f2a3d80d9d0342590919d7a349f38a0d546a/items/404/plan-b10-final-judgement.md), sections 3.4 and 3.5, owns this path for B10 run IDs matching `^b10-[0-9]+-[0-9]+$`. The [abrupt contract](b10-abrupt-contract.md#final-sweep-projection) owns the closed final projection. Other run IDs retain the existing legacy judge and candidate format; diagnostic trial evidence remains inadmissible for scientific candidates.
+
+Mode `b10-final-sweep` uses the existing sweep options and phase budgets with `B10SettleIntervalMilliseconds=60000`. It requires scenario B10, phase C0 or C1 and a scientific run ID before any read. It writes create-only `U/P/b10-final-sweep.json`, reads the bytes back unchanged, and then publishes `U/P/b10-final-sweep-completion.json`. Its handler exits 0 when publication and readback succeed even if classifications are invalid or incomplete. The schema-one completion receipt uses mode `b10-final-sweep`, Job `U-<lowercase-P>-b10-final-sweep`, null repeat and identity, exit 0, completed cleanup and exactly one artifact binding the projection's length and SHA-256. Publication failure exits nonzero.
+
+For scientific B10, `judge` reads that projection instead of `b10-finalization.json`. It checks the receipt's mode, derived Job, exit and exact byte reference; the projection's closed schema and identity; the actual sweep-note reference; every actual per-repeat input reference; and the producer registrations. Failure of any of these checks gives root status `invalid`, reason `b10_final_projection_untrusted` and `b10_final=null`. Successful format parsing alone is not authentication.
+
+The schema-one candidate keeps its existing identity, images, timings and diagnostics. Root `gate` is null. Each repeat copies the projection's timeout status, reasons, counts and finality; probe and workload observations are null. Its existing J-check booleans describe started slots, accepted repeat inputs/receipts, registrations and start-line evidence. Its identity is the registered timeout/C0 `loadgen` identity when registration binding passes. Scientific candidates omit the legacy `b10_sweep` extension and repeat `b10_intake`, `b10_producer_observations`, `broker_count`, `b04_recorded_evidence` and `batching_recorded_evidence`.
+
+Root `b10_final` has exactly `projection`, `receipt`, `scan_complete`, `residual_risk`, `repeats`, `timeout_rule` and `restart_rule`. The references bind the accepted projection and receipt; scan status and residual risk are copied, and `repeats` is JSON-equal to the projection's five final repeats. No schema-3 envelope member is copied: the candidate carries no `dialect`, `purpose`, `scientific_admissible` or `kind` from the projection. The phase continues to reject diagnostic markers recursively, including a nested `dialect=b10_abrupt`.
+
+For C0, `timeout_rule` has `complete_valid_final_repeats`, nullable `duplicate_total` and `rule_selection`; `restart_rule` is null. The checked sum of duplicate counts is available only when all five repeats are complete-valid and final. Selection is `confirmed` for a sum of at least one, `untestable` for zero, and `held` otherwise, including overflow. C1 timeout counts remain a comparison, not the C0 decision rule.
+
+For C1, `timeout_rule` is null. `restart_rule` has exactly `declared_repeats`, `eligible_repeats`, `eligible_repeat_numbers`, `qualifying_pair_repeats`, `lost_resend_finding_repeats`, `eligible_loss_repeats`, `rule_selection`, `selection_reason` and `subject`. The declared count is five. A qualifying repeat is eligible with cross-restart `pair_count>=1` and `unreported_seen>=1`. A known arm `lost_resends>=1` enters the finding list even for an ineligible intended self-kill, including `kill_too_late`; a `no_kill` repeat is excluded. Unknown loss is never counted as zero or as a finding.
+
+Selection follows [ADR-021's restart decision rules](../blueprint.md#adr-021-b10-accepts-timed-out-sends-application-retries-and-one-producer-restart-in-a-second-job-and-classifies-late-appends-up-to-a-sweep-line), in this order:
+
+| Condition | `rule_selection` | `selection_reason` |
+| --- | --- | --- |
+| Fewer than three eligible repeats | `held` | `fewer_than_three_eligible` |
+| At least three eligible and a qualifying pair | `confirmed` | null |
+| At least three eligible, no pair and an eligible loss | `held` | `eligible_loss_without_pair` |
+| At least three eligible, no pair and no eligible loss | `untestable` | `no_cross_restart_duplicate_observed` |
+
+`subject` is ADR-021's exact full restart subject only when confirmed; otherwise null. Finding lists remain present for every selection. No favourable subset or replacement repeat is selected.
+
+Root status is `invalid` for untrusted projection, incomplete scan or any invalid repeat; otherwise `complete_valid` for five complete-valid repeats, and `incomplete` otherwise. Only `complete_valid` makes the judge exit 0. The six root timeout totals are the checked sum when all five repeats pass; unavailable totals add `j7_counts_unavailable`, and overflow makes status `incomplete`. Root reasons are the sorted distinct repeat reasons plus trust, count, timing and version availability reasons. Producer-version agreement is checked over authenticated ordinary manifests in the projection; disagreements, missing values or no versions add `version_unavailable` and null the affected version, without changing validity. Equal checked images imply, but do not observe, the first pod's and successor's versions.
 
 ## Authority and boundaries
 
@@ -303,7 +332,7 @@ Nested records are passive data. Readers do not import LoadGen or Kafka parsers,
 
 ## Modes and startup options
 
-The production executable binds the `Verifier` section and accepts exactly `start-line`, `verify`, `b10-sweep-line`, `b10-sweep`, and `judge`. Mode matching is case-sensitive; unknown or missing modes fail startup before I/O. The selected mode determines its service graph. `probe-gate` remains an offline test/development compatibility mode and is not used by the production chart or phase candidate.
+The production executable binds the `Verifier` section and accepts exactly `start-line`, `verify`, `b10-sweep-line`, `b10-sweep`, `b10-final-sweep`, `b10-abrupt-verify`, and `judge`. Mode matching is case-sensitive; unknown or missing modes fail startup before I/O. The selected mode determines its service graph. `probe-gate` remains an offline test/development compatibility mode and is not used by the production chart or phase candidate.
 
 | Mode | Production inputs and outputs | Execution boundary |
 | --- | --- | --- |
@@ -311,6 +340,7 @@ The production executable binds the `Verifier` section and accepts exactly `star
 | `verify` | Validated executable scenario/phase/repeat identity, derived verify Job and repeat prefix, discovered producer registration, packaged scenario/profile, Blob destinations and workload identity; publishes one result and final Blob receipt | Token, metadata, watermark, local I/O, Blob I/O, cleanup, safety stop and process lifetime use required positive configured bounds. Producer client ID comes only from registration. |
 | `b10-sweep-line` | B10 phase identity, derived capture Job, explicit lifecycle timestamps and fixed sweep-note path; publishes the note and final Blob receipt | Metadata-only Kafka capture, cleanup, create-only Blob publication and explicit process/I/O bounds; see the [B10 workflow](b10-workflow.md). |
 | `b10-sweep` | B10 phase identity, derived sweep Job and fixed note/finalization paths, authenticated repeat evidence and ledgers, Blob destinations and workload identity; publishes finalization and final Blob receipt | Kafka, Blob/local I/O, cleanup, safety and process bounds apply across the phase; no scenario loader is constructed. |
+| `b10-final-sweep` | Scientific B10 phase identity, sweep line, authenticated C0 or C1 repeat evidence; publishes the [final projection](b10-abrupt-contract.md#final-sweep-projection) and receipt | Existing phase-wide sweep budgets and completed cleanup; scientific run IDs only. |
 | `judge` | Validated executable scenario/phase identity, derived judge Job and candidate path, immutable LoadGen/verifier image references, Blob destinations and workload identity; publishes one phase candidate and final Blob receipt | Judge reads fixed five-repeat slots with fixed parser/input bounds and per-operation `IoTimeout`; it constructs no Kafka client. |
 
 Shared output and diagnostic limits, Blob connection identity, source commit, process lifetime and cleanup bounds are validated before I/O. Unused mode options are rejected where they could override derived identity or paths. The chart supplies `RepeatPrefix` for start-line/verify workers; phase and candidate prefixes are derived from run ID and original-case phase. The chart also supplies `ScenarioLoadOptions` for verifier Jobs. Judge parsing uses its fixed `JudgeLimits` profile. Local `probe-gate` option behavior is described below only for test/development compatibility.

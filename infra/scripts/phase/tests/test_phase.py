@@ -1,6 +1,7 @@
-"""Synthetic command-contract tests; real judge bytes are checked at gate 2."""
+"""Synthetic command-contract tests; TP3 also runs check_candidate on the real judge candidate bytes."""
 import contextlib
 import copy
+import hashlib
 import importlib.util
 import io
 import json
@@ -23,7 +24,7 @@ PERSISTENT = {'acr': {'value': {'name': 'parchwellacr', 'login_server': 'parchwe
 ACCOUNTS = {'loadgen': {'name': 'loadgen', 'client_id': 'synthetic-loadgen', 'subject': 'system:serviceaccount:parchwell:loadgen'}, 'verifier': {'name': 'verifier', 'client_id': 'synthetic-verifier', 'subject': 'system:serviceaccount:parchwell:verifier'}, 'enrichment-consumer': {'name': 'unused'}}
 EPHEMERAL = {'eventhubs': {'value': {'namespace_name': 'eh-synthetic', 'bootstrap_servers': 'eh-synthetic.servicebus.windows.net:9093', 'topics': {'events': 'document-events', 'state': 'document-state', 'dlq': 'document-events-dlq'}}}, 'blob': {'value': {'account_url': 'https://synthetic.blob.core.windows.net', 'containers': {'ledger': 'ledger', 'verifier': 'verifier', 'claim_check': 'claim-check'}}}, 'private_endpoint_ips': {'value': {'eventhubs': '10.0.0.4', 'blob': '10.0.0.5'}}}
 DEADLINES = {'start-line': 150, 'loadgen': 1140, 'verify': 750, 'judge': 90,
-             'loadgen2': 1140, 'loadgen-restart': 1140, 'loadgen-successor': 1140, 'b10-abrupt-verify': 750, 'b10-sweep-line': 150, 'b10-sweep': 750}
+             'loadgen2': 1140, 'loadgen-restart': 1140, 'loadgen-successor': 1140, 'b10-abrupt-verify': 750, 'b10-sweep-line': 150, 'b10-sweep': 750, 'b10-final-sweep': 750}
 BATCH_DEADLINES = {'single-action': 1980, 'single-action-judge': 120, 'single-action-seed': 420}
 BATCH_MATRIX = (
     ('B01', 'C0', 'loadgen'), ('B01', 'C1', 'loadgen'),
@@ -81,6 +82,37 @@ STORAGE_READINESS_ENVIRONMENTS = (
                                            'PARCHWELL_TEST_HANDLER_REFRESH_PATH': 'true',
                                            'PARCHWELL_TEST_NATIVE_AUTHENTICATION': 'true'}),
 )
+
+
+def check_b10_final_candidate_transport(content):
+    """TP3: check_candidate accepts the real judge candidate and rejects a nested diagnostic dialect."""
+    candidate = json.loads(content)
+    snapshot = {key: candidate[key] for key in ('run_id', 'phase', 'source_commit')}
+    snapshot.update(scenario=candidate['scenario_id'], configuration=candidate['configuration_id'],
+                    images={worker: {'digest': candidate['image_digests'][worker]}
+                            for worker in ('loadgen', 'verifier')})
+    with tempfile.TemporaryDirectory() as directory, \
+            patch.dict(os.environ, {'PARCHWELL_PRIVATE_DIRECTORY': directory}, clear=True):
+        Path(directory, 'phase.json').write_text(json.dumps(snapshot))
+        instance = phase.Phase()
+        assert instance.check_candidate(content) == candidate
+        candidate['b10_final']['dialect'] = 'b10_abrupt'
+        try:
+            instance.check_candidate(json.dumps(candidate).encode())
+        except phase.Failure as error:
+            assert str(error) == 'b10_abrupt_diagnostic_not_scientific'
+        else:
+            raise AssertionError('nested diagnostic dialect accepted')
+
+
+# The bytes the real B10 final judge writes in B10FinalJudgeTests (T17, run b10-1-1, phase C1). They do not depend on the
+# clock only because that fixture records no phase start, so the timings are null (timing_unavailable); a fixture that adds
+# one would make them vary and break the shared hash.
+# The .NET test asserts that its actual output has this SHA-256, and TP3 below asserts that this text has it too,
+# so the two cannot drift apart. When the candidate changes, run that test with B10_FINAL_T17_EXPORT=<path> (the export
+# happens before its hash assertion), then update this text and both hash constants.
+T17_CANDIDATE_SHA256 = 'ffd1a9359a43d60c7830cd3d40f63008582a7e11ebfa5dfe9626735b087a1712'
+T17_CANDIDATE = r'''{"schema_version":1,"synthetic":true,"scenario_id":"B10","configuration_id":"C1","run_id":"b10-1-1","phase":"C1","source_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","status":"complete_valid","gate":null,"versions":{"confluent_kafka":"2.16.0","dotnet":"10.0.0","librdkafka":"2.16.0","verifier":"1.0.0.0","workload_generator":"synthetic-generator"},"image_digests":{"loadgen":"sha256:1111111111111111111111111111111111111111111111111111111111111111","verifier":"sha256:2222222222222222222222222222222222222222222222222222222222222222"},"timings":{"duration_seconds":null,"judge_completed_utc":null,"worker_started_utc":null},"diagnostics":{"disconnect_increment":null,"error_codes":[],"max_throttle_ms":null,"request_timeout_increment":null,"rtt_p99_ms":null},"repeats":[{"repeat":1,"status":"complete_valid","reasons":[],"checks":{"j1_repeat_slots":true,"j2_publication_unaccepted":true,"j3_verifier_receipt":true,"j4_producer_job_binding":true,"j5_registered_producer_count":true,"j6_broker_inventory_coverage":true,"j8_probe_inconclusive":false},"identity":"timeout-1","probe_observation":null,"workload_observation":null,"counts":{"ok":1,"loss":0,"phantom":0,"reported_failure":0,"duplicate":0,"reorder":0},"classification_final":true},{"repeat":2,"status":"complete_valid","reasons":[],"checks":{"j1_repeat_slots":true,"j2_publication_unaccepted":true,"j3_verifier_receipt":true,"j4_producer_job_binding":true,"j5_registered_producer_count":true,"j6_broker_inventory_coverage":true,"j8_probe_inconclusive":false},"identity":"timeout-2","probe_observation":null,"workload_observation":null,"counts":{"ok":1,"loss":0,"phantom":0,"reported_failure":0,"duplicate":0,"reorder":0},"classification_final":true},{"repeat":3,"status":"complete_valid","reasons":[],"checks":{"j1_repeat_slots":true,"j2_publication_unaccepted":true,"j3_verifier_receipt":true,"j4_producer_job_binding":true,"j5_registered_producer_count":true,"j6_broker_inventory_coverage":true,"j8_probe_inconclusive":false},"identity":"timeout-3","probe_observation":null,"workload_observation":null,"counts":{"ok":1,"loss":0,"phantom":0,"reported_failure":0,"duplicate":0,"reorder":0},"classification_final":true},{"repeat":4,"status":"complete_valid","reasons":[],"checks":{"j1_repeat_slots":true,"j2_publication_unaccepted":true,"j3_verifier_receipt":true,"j4_producer_job_binding":true,"j5_registered_producer_count":true,"j6_broker_inventory_coverage":true,"j8_probe_inconclusive":false},"identity":"timeout-4","probe_observation":null,"workload_observation":null,"counts":{"ok":1,"loss":0,"phantom":0,"reported_failure":0,"duplicate":0,"reorder":0},"classification_final":true},{"repeat":5,"status":"complete_valid","reasons":[],"checks":{"j1_repeat_slots":true,"j2_publication_unaccepted":true,"j3_verifier_receipt":true,"j4_producer_job_binding":true,"j5_registered_producer_count":true,"j6_broker_inventory_coverage":true,"j8_probe_inconclusive":false},"identity":"timeout-5","probe_observation":null,"workload_observation":null,"counts":{"ok":1,"loss":0,"phantom":0,"reported_failure":0,"duplicate":0,"reorder":0},"classification_final":true}],"counts":{"ok":5,"loss":0,"phantom":0,"reported_failure":0,"duplicate":0,"reorder":0},"b10_final":{"projection":{"container":"verifier","name":"b10-1-1/C1/b10-final-sweep.json","length":7797,"sha256":"9a6800b888fb1abda2c90cb68d434839c73b6c73fc1afb0fb880e40cc14031bf"},"receipt":{"container":"verifier","name":"b10-1-1/C1/b10-final-sweep-completion.json","length":653,"sha256":"b723373f4dbebd4f9434db7927f6ed26f7f83321158a6ad21d63587e72ee6b13"},"scan_complete":true,"residual_risk":"A late append after the phase sweep line is not detected.","repeats":[{"repeat":1,"source":{"container":"verifier","name":"b10-1-1/C1/r1/b10-abrupt/nonfinal-result.json","length":1167,"sha256":"c083c7fac4215d420691878c13ea81bbfefd0b84c9d51401b69a617b20adb141"},"producer_versions":[{"instance_id":"timeout-1","workload_generator":"synthetic-generator","confluent_kafka":"2.16.0","librdkafka":"2.16.0","dotnet":"10.0.0"}],"classification_final":true,"status":"complete_valid","timeout":{"ok":1,"loss":0,"phantom":0,"reported_failure":0,"duplicate":0,"reorder":0},"reasons":[],"restart":{"eligibility":"eligible","eligibility_reasons":[],"termination":{"class":"intended_self_kill","outcome":null},"first_instance_id":"first-1","successor_instance_id":"successor-1","timeout_instance_id":"timeout-1","comparison":"neither","native_errors":{"count":0,"fatal_count":0,"tail":"unknown_due_to_intended_kill"},"arms":[{"arm":"same_instance","cut_attempt_id":"original","unconfirmed_attempt_ids":["original"],"unconfirmed_count":1,"resend_invoked":1,"originals_seen":0,"resends_seen":0,"pair_count":0,"unreported_attempts":0,"unreported_seen":0,"unreported_unseen":0,"lost_resends":0,"witness":null},{"arm":"cross_restart","cut_attempt_id":"original","unconfirmed_attempt_ids":["original"],"unconfirmed_count":1,"resend_invoked":1,"originals_seen":0,"resends_seen":0,"pair_count":0,"unreported_attempts":1,"unreported_seen":0,"unreported_unseen":1,"lost_resends":0,"witness":null}]}},{"repeat":2,"source":{"container":"verifier","name":"b10-1-1/C1/r2/b10-abrupt/nonfinal-result.json","length":1167,"sha256":"501587a272a171fa0bc6ab181c561fb2d5f79d6e571141d67bed6234f2cd34cd"},"producer_versions":[{"instance_id":"timeout-2","workload_generator":"synthetic-generator","confluent_kafka":"2.16.0","librdkafka":"2.16.0","dotnet":"10.0.0"}],"classification_final":true,"status":"complete_valid","timeout":{"ok":1,"loss":0,"phantom":0,"reported_failure":0,"duplicate":0,"reorder":0},"reasons":[],"restart":{"eligibility":"eligible","eligibility_reasons":[],"termination":{"class":"intended_self_kill","outcome":null},"first_instance_id":"first-2","successor_instance_id":"successor-2","timeout_instance_id":"timeout-2","comparison":"neither","native_errors":{"count":0,"fatal_count":0,"tail":"unknown_due_to_intended_kill"},"arms":[{"arm":"same_instance","cut_attempt_id":"original","unconfirmed_attempt_ids":["original"],"unconfirmed_count":1,"resend_invoked":1,"originals_seen":0,"resends_seen":0,"pair_count":0,"unreported_attempts":0,"unreported_seen":0,"unreported_unseen":0,"lost_resends":0,"witness":null},{"arm":"cross_restart","cut_attempt_id":"original","unconfirmed_attempt_ids":["original"],"unconfirmed_count":1,"resend_invoked":1,"originals_seen":0,"resends_seen":0,"pair_count":0,"unreported_attempts":1,"unreported_seen":0,"unreported_unseen":1,"lost_resends":0,"witness":null}]}},{"repeat":3,"source":{"container":"verifier","name":"b10-1-1/C1/r3/b10-abrupt/nonfinal-result.json","length":1167,"sha256":"9a57e7335283473a47e217f74a5ec5e14b50d5068603fcd0e6536b15f44a49d5"},"producer_versions":[{"instance_id":"timeout-3","workload_generator":"synthetic-generator","confluent_kafka":"2.16.0","librdkafka":"2.16.0","dotnet":"10.0.0"}],"classification_final":true,"status":"complete_valid","timeout":{"ok":1,"loss":0,"phantom":0,"reported_failure":0,"duplicate":0,"reorder":0},"reasons":[],"restart":{"eligibility":"eligible","eligibility_reasons":[],"termination":{"class":"intended_self_kill","outcome":null},"first_instance_id":"first-3","successor_instance_id":"successor-3","timeout_instance_id":"timeout-3","comparison":"neither","native_errors":{"count":0,"fatal_count":0,"tail":"unknown_due_to_intended_kill"},"arms":[{"arm":"same_instance","cut_attempt_id":"original","unconfirmed_attempt_ids":["original"],"unconfirmed_count":1,"resend_invoked":1,"originals_seen":0,"resends_seen":0,"pair_count":0,"unreported_attempts":0,"unreported_seen":0,"unreported_unseen":0,"lost_resends":0,"witness":null},{"arm":"cross_restart","cut_attempt_id":"original","unconfirmed_attempt_ids":["original"],"unconfirmed_count":1,"resend_invoked":1,"originals_seen":0,"resends_seen":0,"pair_count":0,"unreported_attempts":1,"unreported_seen":0,"unreported_unseen":1,"lost_resends":0,"witness":null}]}},{"repeat":4,"source":{"container":"verifier","name":"b10-1-1/C1/r4/b10-abrupt/nonfinal-result.json","length":1167,"sha256":"36d76d787fdcb9cce6f470252cd942d4c443a94cb15cc900036be6c2c35f3fd4"},"producer_versions":[{"instance_id":"timeout-4","workload_generator":"synthetic-generator","confluent_kafka":"2.16.0","librdkafka":"2.16.0","dotnet":"10.0.0"}],"classification_final":true,"status":"complete_valid","timeout":{"ok":1,"loss":0,"phantom":0,"reported_failure":0,"duplicate":0,"reorder":0},"reasons":[],"restart":{"eligibility":"eligible","eligibility_reasons":[],"termination":{"class":"intended_self_kill","outcome":null},"first_instance_id":"first-4","successor_instance_id":"successor-4","timeout_instance_id":"timeout-4","comparison":"neither","native_errors":{"count":0,"fatal_count":0,"tail":"unknown_due_to_intended_kill"},"arms":[{"arm":"same_instance","cut_attempt_id":"original","unconfirmed_attempt_ids":["original"],"unconfirmed_count":1,"resend_invoked":1,"originals_seen":0,"resends_seen":0,"pair_count":0,"unreported_attempts":0,"unreported_seen":0,"unreported_unseen":0,"lost_resends":0,"witness":null},{"arm":"cross_restart","cut_attempt_id":"original","unconfirmed_attempt_ids":["original"],"unconfirmed_count":1,"resend_invoked":1,"originals_seen":0,"resends_seen":0,"pair_count":0,"unreported_attempts":1,"unreported_seen":0,"unreported_unseen":1,"lost_resends":0,"witness":null}]}},{"repeat":5,"source":{"container":"verifier","name":"b10-1-1/C1/r5/b10-abrupt/nonfinal-result.json","length":1167,"sha256":"71f33aa2a03df5a529b35ae6a916dfc64b3ff3fc927fb1160e1152d186450972"},"producer_versions":[{"instance_id":"timeout-5","workload_generator":"synthetic-generator","confluent_kafka":"2.16.0","librdkafka":"2.16.0","dotnet":"10.0.0"}],"classification_final":true,"status":"complete_valid","timeout":{"ok":1,"loss":0,"phantom":0,"reported_failure":0,"duplicate":0,"reorder":0},"reasons":[],"restart":{"eligibility":"eligible","eligibility_reasons":[],"termination":{"class":"intended_self_kill","outcome":null},"first_instance_id":"first-5","successor_instance_id":"successor-5","timeout_instance_id":"timeout-5","comparison":"neither","native_errors":{"count":0,"fatal_count":0,"tail":"unknown_due_to_intended_kill"},"arms":[{"arm":"same_instance","cut_attempt_id":"original","unconfirmed_attempt_ids":["original"],"unconfirmed_count":1,"resend_invoked":1,"originals_seen":0,"resends_seen":0,"pair_count":0,"unreported_attempts":0,"unreported_seen":0,"unreported_unseen":0,"lost_resends":0,"witness":null},{"arm":"cross_restart","cut_attempt_id":"original","unconfirmed_attempt_ids":["original"],"unconfirmed_count":1,"resend_invoked":1,"originals_seen":0,"resends_seen":0,"pair_count":0,"unreported_attempts":1,"unreported_seen":0,"unreported_unseen":1,"lost_resends":0,"witness":null}]}}],"timeout_rule":null,"restart_rule":{"declared_repeats":5,"eligible_repeats":5,"eligible_repeat_numbers":[1,2,3,4,5],"qualifying_pair_repeats":[],"lost_resend_finding_repeats":[],"eligible_loss_repeats":[],"rule_selection":"untestable","selection_reason":"no_cross_restart_duplicate_observed","subject":null}},"reasons":["timing_unavailable"]}'''
 
 
 class FlushedOutput(io.StringIO):
@@ -262,6 +294,90 @@ class PhaseTests(unittest.TestCase):
                                     'expected_instance_id': self.name('loadgen', repeat) + '-pod', 'client_id': 'synthetic'}}
             self.fake.blobs[f'{self.run_id}/{selected}/r{repeat}/verify-completion.json'] = json.dumps(receipt).encode()
 
+    def final_lifecycle(self, configuration='C1', missing_successor=False, no_verifiers=False):
+        self.prepare_b10(configuration)
+        document = phase.Phase().read('phase.json')
+        document['run_id'] = self.run_id = 'b10-40121134428-1'
+        phase.write_json(self.private / 'phase.json', document)
+        instance = phase.Phase()
+        state = instance.state()
+        state['modes'] = []
+        state['b10_lifecycle'] = {'producers': [], 'verifiers': [], 'gaps': []}
+        producers = (('loadgen',) if configuration == 'C0' else
+                     ('loadgen', 'loadgen-restart') if no_verifiers else
+                     ('loadgen', 'loadgen-restart', 'loadgen-successor'))
+        verifiers = () if no_verifiers else ('verify' if configuration == 'C0' else 'b10-abrupt-verify',)
+        for repeat in phase.SLOTS:
+            for mode in (*producers, *verifiers):
+                skipped = missing_successor and repeat == 3 and mode == 'loadgen-successor'
+                job = self.name(mode, repeat)
+                state['modes'].append(dict(job=job, repeat=repeat, mode=mode,
+                                           apply=None if skipped else 0, outcome='render_failed' if skipped else 'complete'))
+                if not skipped:
+                    role = 'verifiers' if mode in verifiers else 'producers'
+                    state['b10_lifecycle'][role].append(dict(job=job, repeat=repeat, mode=mode,
+                        pod_name=job + '-pod', pod_uid=job + '-uid', exit_code=1,
+                        finished_utc='2025-12-31T23:59:' + str(10 + repeat) + '.1234567Z'))
+        instance.save_state(state)
+        return instance
+
+    def test_b10_scientific_final_sequence_follows_repeats(self):
+        for configuration in ('C0', 'C1'):
+            with self.subTest(configuration=configuration):
+                instance = self.final_lifecycle(configuration)
+                before = len(self.records())
+                instance.b10_deadline(start=True)
+                with self.mocked():
+                    self.assertEqual(0, self.main('judge'))
+                records = self.records()[before:]
+                self.assertEqual(['b10-sweep-line', 'b10-final-sweep', 'judge'], [record['mode'] for record in records])
+                self.assertEqual([None] * 3, [record['repeat'] for record in records])
+                self.assertEqual(['complete'] * 3, [record['outcome'] for record in records])
+                self.assertNotIn('b10-sweep', [record['mode'] for record in self.records()])
+                runtime = json.loads((self.private / ('values-' + self.name('b10-final-sweep', None) + '.json')).read_text())['runtime']
+                self.assertNotIn('repeat', runtime)
+                self.assertNotIn('loadgen_job_name', runtime)
+
+    def test_b10_final_lifecycle_uses_applied_jobs_and_rejects_gaps(self):
+        for configuration in ('C0', 'C1'):
+            for failure in (None, 'producer', 'verifier', 'gap', 'duplicate', 'unapplied', 'empty'):
+                with self.subTest(configuration=configuration, failure=failure):
+                    instance = self.final_lifecycle(configuration, missing_successor=configuration == 'C1')
+                    state = instance.state()
+                    expected = (5, 5) if configuration == 'C0' else (14, 5)
+                    self.assertEqual(expected, tuple(len(state['b10_lifecycle'][key]) for key in ('producers', 'verifiers')))
+                    lifecycle = state['b10_lifecycle']
+                    if failure in ('producer', 'verifier'):
+                        lifecycle[failure + 's'].pop()
+                    elif failure == 'gap':
+                        lifecycle['gaps'].append(dict(object='missing/pods.json', reason='producer_termination_unavailable'))
+                    elif failure == 'duplicate':
+                        lifecycle['producers'].append(copy.deepcopy(lifecycle['producers'][0]))
+                    elif failure == 'unapplied':
+                        state['modes'][0]['apply'] = None
+                    elif failure == 'empty':
+                        state['modes'] = []
+                        lifecycle['producers'] = []
+                        lifecycle['verifiers'] = []
+                    instance.save_state(state)
+                    with self.mocked():
+                        self.assertEqual(None if failure is None else 'lifecycle_evidence_gap',
+                                         instance.b10_prepare_final_sweep(1000))
+                    if failure:
+                        self.assertNotIn('b10_lifecycle_inputs', instance.read('phase.json'))
+
+    def test_b10_final_no_verifier_uses_latest_producer_time(self):
+        instance = self.final_lifecycle(no_verifiers=True)
+        lifecycle = instance.state()['b10_lifecycle']
+        self.assertEqual((len(phase.SLOTS) * 2, 0),
+                         tuple(len(lifecycle[key]) for key in ('producers', 'verifiers')))
+        self.assertEqual({'loadgen', 'loadgen-restart'}, {entry['mode'] for entry in lifecycle['producers']})
+        with self.mocked():
+            self.assertEqual(None, instance.b10_prepare_final_sweep(1000))
+        inputs = instance.read('phase.json')['b10_lifecycle_inputs']
+        self.assertEqual('2025-12-31T23:59:15.1234567+00:00', inputs['b10_last_loadgen_terminated_utc'])
+        self.assertEqual(inputs['b10_last_loadgen_terminated_utc'], inputs['b10_last_verifier_completed_utc'])
+
     def test_b10_runs_twenty_ordered_modes_then_repeat_free_capture_and_sweep(self):
         try:
             from .test_b10_scientific import prepare_scientific
@@ -271,14 +387,16 @@ class PhaseTests(unittest.TestCase):
             with self.subTest(selected=selected):
                 self.fake = ScriptedCommands()
                 prepare_scientific(self, selected)
-                with patch.object(phase.Phase, 'run', autospec=True, side_effect=self.scientific_command):
+                with patch.object(phase.time, 'time', return_value=1_893_456_120), \
+                        patch.object(phase.Phase, 'run', autospec=True, side_effect=self.scientific_command):
                     self.assertEqual(0, self.main('run-repeats'))
-                    self.assertEqual(1, self.main('judge'))
+                    self.assertEqual(0, self.main('judge'))
                 modes = phase.MODES if selected == 'C0' else (
                     'start-line', 'loadgen', 'loadgen-restart', 'loadgen-successor', 'b10-abrupt-verify')
-                self.assertEqual([(repeat, mode) for repeat in phase.SLOTS for mode in modes],
+                self.assertEqual([(repeat, mode) for repeat in phase.SLOTS for mode in modes]
+                                 + [(None, mode) for mode in ('b10-sweep-line', 'b10-final-sweep', 'judge')],
                                  [(r['repeat'], r['mode']) for r in self.records()])
-                self.assertEqual(15 if selected == 'C0' else 25, len(self.records()))
+                self.assertEqual(len(phase.SLOTS) * len(modes) + 3, len(self.records()))
                 state = phase.Phase().state()['b10_lifecycle']
                 self.assertEqual((5 if selected == 'C0' else 15, 5, []),
                                  (len(state['producers']), len(state['verifiers']), state['gaps']))
@@ -1958,6 +2076,12 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
                     if selected == 'C0' and mode == 'loadgen':
                         self.assertRegex(text, r'- name: "LoadGen__RepeatNumber"\s+value: "1"')
                         self.assertRegex(text, r'- name: "LoadGen__PodUid"\s+valueFrom: \{fieldRef: \{fieldPath: metadata\.uid\}\}')
+
+    def test_real_judge_candidate_is_accepted_and_a_nested_diagnostic_dialect_is_rejected_tp3(self):
+        """TP3: check_candidate accepts T17's candidate bytes and rejects the same bytes with a nested dialect."""
+        content = T17_CANDIDATE.encode('ascii')
+        self.assertEqual(hashlib.sha256(content).hexdigest(), T17_CANDIDATE_SHA256)
+        check_b10_final_candidate_transport(content)
 
 
 if __name__ == '__main__':

@@ -31,7 +31,14 @@
       "VerifyRun/Judgement/B10LateWriteChecks.cs",
       "VerifyRun/B10SweepHandler.cs",
       "Judge/B10SweepChecks.cs",
-      "Common/Phase/B10SweepEvidenceCodec.cs"
+      "Common/Phase/B10SweepEvidenceCodec.cs",
+      "VerifyRun/B10Final/B10FinalSweepHandler.cs",
+      "VerifyRun/B10Final/B10FinalRepeatEvidence.cs",
+      "VerifyRun/B10Final/B10FinalClassification.cs",
+      "Common/Phase/B10FinalProjection.cs",
+      "Common/Phase/B10FinalProjectionCodec.cs",
+      "Common/Phase/B10FinalRegistrationReader.cs",
+      "Judge/B10FinalJudge.cs"
     ],
     "coverage-analysis": "off"
   }

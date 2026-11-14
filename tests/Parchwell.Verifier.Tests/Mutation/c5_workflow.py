@@ -41,6 +41,13 @@ TARGETS = {
     "b10-sweep": ("VerifyRun/B10SweepHandler.cs", 1),
     "b10-sweep-judge": ("Judge/B10SweepChecks.cs", 1),
     "b10-sweep-codec": ("Common/Phase/B10SweepEvidenceCodec.cs", 3),
+    "b10-final-sweep-handler": ("VerifyRun/B10Final/B10FinalSweepHandler.cs", 1),
+    "b10-final-repeat-evidence": ("VerifyRun/B10Final/B10FinalRepeatEvidence.cs", 1),
+    "b10-final-classification": ("VerifyRun/B10Final/B10FinalClassification.cs", 1),
+    "b10-final-projection": ("Common/Phase/B10FinalProjection.cs", 1),
+    "b10-final-projection-codec": ("Common/Phase/B10FinalProjectionCodec.cs", 1),
+    "b10-final-registrations": ("Common/Phase/B10FinalRegistrationReader.cs", 1),
+    "b10-final-judge": ("Judge/B10FinalJudge.cs", 1),
 }
 PRIMARY_CUTS = {
     "phase": (4376, 6570),

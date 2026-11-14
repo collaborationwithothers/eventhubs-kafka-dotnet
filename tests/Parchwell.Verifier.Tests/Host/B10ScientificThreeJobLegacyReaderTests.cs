@@ -22,7 +22,7 @@ public sealed class B10ScientificThreeJobLegacyReaderTests
 {
     [Theory]
     [InlineData("C1")]
-    public async Task Given_ProducedScientificStartLine_When_LegacySweepAndJudgeRead_Then_RejectStartLine(string phase)
+    public async Task Given_ProducedScientificStartLine_When_LegacySweepRunsAndFinalJudgeReads_Then_SweepRejectsStartLineAndJudgeFindsNoFinalSweep(string phase)
     {
         using var authentication = new KafkaSessionTestSupport();
         var store = new Store();
@@ -102,13 +102,13 @@ public sealed class B10ScientificThreeJobLegacyReaderTests
         options.CandidateOutputName = PhasePaths.Candidate("b10-1-1", phase);
         Assert.Equal(1, await new JudgeHandler(Options.Create(options), store, store, authentication.Clock)
             .ExecuteAsync(TestContext.Current.CancellationToken));
+        // A scientific run ID now reaches the final judge, which finds no authenticated final sweep for this legacy-only evidence.
         using JsonDocument candidate = JsonDocument.Parse(store.Objects[options.CandidateOutputName]);
-        Assert.Contains(candidate.RootElement.GetProperty("repeats")[0].GetProperty("reasons").EnumerateArray(),
-            reason => reason.GetString() == "j2_publication_unaccepted");
+        AssertNoFinalSweep(candidate.RootElement);
     }
 
     [Fact]
-    public async Task Given_ActualOneProducerC0Output_When_LegacyJudgeReads_Then_RejectsIntakeCount()
+    public async Task Given_ActualOneProducerC0Output_When_LegacySweepRunsAndFinalJudgeReads_Then_SweepRejectsIntakeCountAndJudgeFindsNoFinalSweep()
     {
         using HostEvidenceBuilder fixture = B10OneJobC0VerifyTests.Fixture();
         var completion = new VerifierCompletionState();
@@ -146,9 +146,16 @@ public sealed class B10ScientificThreeJobLegacyReaderTests
         fixture.Options.JobName = PhaseIdentity.JudgeJobName("b10-1-1", "C0");
         Assert.Equal(1, await new JudgeHandler(Options.Create(fixture.Options), store, store, fixture.Kafka.Clock)
             .ExecuteAsync(TestContext.Current.CancellationToken));
+        // A scientific run ID now reaches the final judge, which finds no authenticated final sweep for this legacy-only evidence.
         using JsonDocument candidate = JsonDocument.Parse(store.Objects[fixture.Options.CandidateOutputName]);
-        Assert.Contains(candidate.RootElement.GetProperty("repeats")[0].GetProperty("reasons").EnumerateArray(),
-            reason => reason.GetString() == "j5_registered_producer_count");
+        AssertNoFinalSweep(candidate.RootElement);
+    }
+
+    private static void AssertNoFinalSweep(JsonElement candidate)
+    {
+        Assert.Equal("invalid", candidate.GetProperty("status").GetString());
+        Assert.Equal(["b10_final_projection_untrusted", "j7_counts_unavailable", "timing_unavailable", "version_unavailable"],
+            candidate.GetProperty("reasons").EnumerateArray().Select(reason => reason.GetString()).ToArray());
     }
 
     private static ArtifactReference Reference(string name, byte[] bytes) => new("verifier", name, bytes.LongLength, Convert.ToHexStringLower(SHA256.HashData(bytes)));

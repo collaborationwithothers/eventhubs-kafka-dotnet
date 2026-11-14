@@ -371,22 +371,36 @@ class ScientificCases(unittest.TestCase):
                 self.assertEqual(list(abrupt.Scientific.modes), self.applied_modes(3))
 
     def test_judge_and_candidate_named_gap_remove_stale_candidates(self):
+        # The approved final path replaces the temporary named judgement gap.
         for configuration in ('C0', 'C1'):
             self.fake = support.ScriptedCommands()
             self.start(configuration)
             self.assertEqual(0, self.run_scientific())
-            for command in ('judge', 'candidate'):
+            before = len(self.records())
+            with patch.object(phase.time, 'time', return_value=1_893_456_120), \
+                    patch.object(phase.Phase, 'run', autospec=True, side_effect=self.scientific_command):
+                self.assertEqual(0, self.main('judge'))
+                self.assertEqual(['b10-sweep-line', 'b10-final-sweep', 'judge'],
+                                 [record['mode'] for record in self.records()[before:]])
+                self.assertNotIn('b10_candidate_gap', self.p.state())
+                candidate = support.PhaseTests.candidate(self, None)
+                candidate.update(scenario_id='B10', configuration_id=configuration)
+                self.fake.download = abrupt.encode(candidate)
                 for name in ('candidate.json', 'candidate.json.partial'):
                     (self.candidate_dir / name).write_text('stale')
-                before = len(self.fake.calls)
-                self.assertEqual(1, self.main(command))
-                self.assertEqual(before, len(self.fake.calls))
-                state = self.p.state()
-                self.assertEqual('b10_' + configuration.lower() + '_final_judgement_unavailable', state['b10_candidate_gap'])
-                self.assertIsNone(state['candidate'])
-                self.assertIs(False, state['full_allowed'])
+                self.assertEqual(0, self.main('candidate'))
+                self.assertEqual(self.fake.download, (self.candidate_dir / 'candidate.json').read_bytes())
+                self.assertFalse((self.candidate_dir / 'candidate.json.partial').exists())
+                self.assertEqual('complete_valid', self.p.state()['candidate']['status'])
+                # A failed retrieval still removes both stale publication files.
+                self.fake.download = b'{}'
+                for name in ('candidate.json', 'candidate.json.partial'):
+                    (self.candidate_dir / name).write_text('stale')
+                with patch.object(phase.Phase, 'sleep'):
+                    self.assertEqual(1, self.main('candidate'))
                 self.assertFalse((self.candidate_dir / 'candidate.json').exists())
                 self.assertFalse((self.candidate_dir / 'candidate.json.partial').exists())
+                self.assertNotIn('b10_candidate_gap', self.p.state())
             self.assertTrue(self.output_file.read_text().endswith('full_allowed=false\n'))
 
     def test_scientific_prepare_ids_fit_pattern_and_reject_overlength(self):
