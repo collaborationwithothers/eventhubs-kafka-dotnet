@@ -588,6 +588,54 @@ def approved_static_owner(path, record, shard, item, source):
     except (KeyError, ValueError, TypeError):
         return False
 
+# Source-bound estimates for the three whole codec declarations in the
+# targeted correction; the first two use a cross-field conservative rate.
+CODEC_TARGET = 'Common/Phase/B10FinalProjectionCodec.cs'
+CODEC_TIMING_INPUTS_HASH = '64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22'
+CODEC_SOURCE_HASH = 'c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5'
+CODEC_ISOLATED = {(614, 1068): 2158.236, (1069, 1706): 2697.795, (1706, 2157): 2225.730}
+CODEC_OWNERS = {
+    (614, 1068): ((0, 1068), [(374, 614), (614, 1068)]),
+    (1069, 1706): ((1068, 1706), [(1069, 1706)]),
+    (1706, 2157): ((1706, 2158), [(1706, 2157)]),
+}
+CODEC_EVIDENCE = (
+    ('14127755542', '017a78d3c863b6ca3c8cb5a2e2db5c7a0bf95988612a7e603e68e7259489477d'),
+    ('14127627878', 'a9213fbb44c74a9ad62031227dbb04e89dd2f6b381dce6f77c737f38db63ee33'),
+)
+
+
+def codec_static_regions(path, shard, source):
+    if path != CODEC_TARGET or digest(source) != CODEC_SOURCE_HASH:
+        return []
+    try:
+        return [region for region in workflow.shard_static_regions(shard, source) if region in CODEC_ISOLATED]
+    except (KeyError, ValueError, TypeError):
+        return []
+
+
+def approved_codec_static_owner(path, record, shard, item, source):
+    """Accept only the source-bound, static-only owners in the correction."""
+    regions = codec_static_regions(path, shard, source)
+    if (len(regions) != 1 or record['source_sha256'] != CODEC_SOURCE_HASH
+            or item['timing_inputs_sha256'] != CODEC_TIMING_INPUTS_HASH
+            or item['main_mutants'] != 0 or item['main_work_seconds'] != 0
+            or item['setup_seconds'] != 192 or item['isolated_seconds'] != CODEC_ISOLATED[regions[0]]
+            or f'[{regions[0][0]},{regions[0][1]})' not in item['basis']):
+        return False
+    if not all(any(e['kind'] == 'hosted_complete' and e['source_commit'] == 'dbc25c2005c3409ffd5f079c40b061d82c4b02aa'
+                   and e['sha256'] == sha and e['locator'] == (
+                       'https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43625662806 artifact ' + artifact)
+                   for e in record['evidence'])
+               for artifact, sha in CODEC_EVIDENCE):
+        return False
+    try:
+        span, expected_regions = CODEC_OWNERS[regions[0]]
+        return (workflow.shard_span(shard, source) == span
+                and workflow.shard_static_regions(shard, source) == expected_regions)
+    except (KeyError, ValueError, TypeError):
+        return False
+
 def validate(config, shared, targets, source, matrix):
     reasons = set()
     if set(config['targets']) != set(targets):
@@ -672,7 +720,12 @@ def validate(config, shared, targets, source, matrix):
             regions = accepted_static_regions(path, shard, source[path])
             if regions and item['isolated_seconds'] < sum(STATIC_EVIDENCE[region][3] for region in regions):
                 reasons.add('invalid_estimate')
-            if item['estimated_seconds'] > 1800 and not approved_static_owner(path, record, shard, item, source[path]):
+            codec_regions = codec_static_regions(path, shard, source[path])
+            if codec_regions and item['isolated_seconds'] < sum(CODEC_ISOLATED[region] for region in codec_regions):
+                reasons.add('invalid_estimate')
+            if (item['estimated_seconds'] > 1800
+                    and not approved_static_owner(path, record, shard, item, source[path])
+                    and not approved_codec_static_owner(path, record, shard, item, source[path])):
                 reasons.add('shard_over_budget')
     if all_shards != workflow.SHARDS:
         reasons.add('layout_mismatch')

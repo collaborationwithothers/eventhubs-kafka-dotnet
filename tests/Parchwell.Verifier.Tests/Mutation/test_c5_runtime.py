@@ -288,6 +288,60 @@ class QualificationTests(unittest.TestCase):
             item.update(isolated_seconds=1743.157, setup_seconds=209, estimated_seconds=1953)
             self.assertIn('shard_over_budget', self.errors())
 
+    def test_only_source_bound_codec_static_owners_have_budget_exception(self):
+        path = runtime.CODEC_TARGET
+        data = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+        shard = 'codec-static'
+        self.shards.clear()
+        self.shards[shard] = path
+        self.source = {path: data}
+        self.targets = {path: runtime.digest(data)}
+        timing = runtime.digest(runtime.canonical({'shared_inputs': self.shared, 'target_sources': self.targets}))
+        evidence = [{'source_commit': 'dbc25c2005c3409ffd5f079c40b061d82c4b02aa',
+                     'locator': 'https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43625662806 artifact ' + artifact, 'sha256': sha,
+                     'kind': 'hosted_complete', 'note': 'source-bound hosted evidence'}
+                    for artifact, sha in runtime.CODEC_EVIDENCE]
+        item = {'selection_sha256': runtime.digest(runtime.canonical(runtime.workflow.shard_config(shard, data))),
+                'timing_inputs_sha256': timing, 'main_mutants': 0, 'main_work_seconds': 0,
+                'parallelism': 2, 'setup_seconds': 192, 'isolated_seconds': 2158.236,
+                'estimated_seconds': 2351, 'basis': 'codec [614,1068) observed_workers=2'}
+        record = {'source_sha256': self.targets[path], 'evidence': evidence, 'shards': {shard: item}}
+        self.config['targets'] = {path: record}
+        cases = [((614, 1068), (0, 1068), [(374, 614), (614, 1068)], 2158.236, 2351),
+                 ((1069, 1706), (1068, 1706), [(1069, 1706)], 2697.795, 2890),
+                 ((1706, 2157), (1706, 2158), [(1706, 2157)], 2225.730, 2418)]
+        with mock.patch.object(runtime.workflow, 'shard_span') as span, \
+             mock.patch.object(runtime.workflow, 'shard_static_regions') as regions, \
+             mock.patch.object(runtime, 'CODEC_TIMING_INPUTS_HASH', timing):
+            for region, owner_span, owner_regions, isolated, estimate in cases:
+                with self.subTest(region=region):
+                    span.return_value = owner_span
+                    regions.return_value = owner_regions
+                    item.update(isolated_seconds=isolated, estimated_seconds=estimate,
+                                basis=f'codec [{region[0]},{region[1]}) observed_workers=2')
+                    self.assertEqual(set(), self.errors())
+                    for field, value in [('main_mutants', 1), ('main_work_seconds', 1),
+                                         ('setup_seconds', 193), ('isolated_seconds', isolated + 0.001),
+                                         ('basis', 'observed_workers=2')]:
+                        old = item[field]
+                        item[field] = value
+                        self.assertIn('shard_over_budget', self.errors())
+                        item[field] = old
+                    old = item['isolated_seconds']
+                    item['isolated_seconds'] = isolated - 1
+                    self.assertIn('invalid_estimate', self.errors())
+                    item['isolated_seconds'] = old
+                    span.return_value = (owner_span[0] + 1, owner_span[1])
+                    self.assertIn('shard_over_budget', self.errors())
+                    span.return_value = owner_span
+                    evidence[0]['sha256'] = 'f' * 64
+                    self.assertIn('shard_over_budget', self.errors())
+                    evidence[0]['sha256'] = runtime.CODEC_EVIDENCE[0][1]
+                    with mock.patch.object(runtime, 'CODEC_TIMING_INPUTS_HASH', 'f' * 64):
+                        self.assertIn('shard_over_budget', self.errors())
+        self.source[path] += b'changed'
+        self.assertIn('shard_over_budget', self.errors())
+
     def test_estimate_arithmetic_and_numeric_types(self):
         item = self.config['targets']['a.cs']['shards']['a-p1']
         for field, bad in [('parallelism', True), ('parallelism', 0), ('main_mutants', -1),
@@ -634,7 +688,8 @@ class DependencyEndToEndTests(unittest.TestCase):
             if path not in cache:
                 cache[path] = runtime.subprocess.check_output(['git', 'show', f'HEAD:{path}'], cwd=ROOT)
                 # This dependency fixture uses synthetic estimates, not the measured static-owner workload.
-                if path == 'src/Parchwell.Verifier/' + runtime.STATIC_TARGET:
+                if path in {'src/Parchwell.Verifier/' + runtime.STATIC_TARGET,
+                            'src/Parchwell.Verifier/' + runtime.CODEC_TARGET}:
                     cache[path] += b'\n'
             return cache[path]
         def files(ref):
