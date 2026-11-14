@@ -92,10 +92,11 @@ Skills live in `.agents/skills/` (Codex) and `.claude/skills/` (Claude Code, sym
 - Never apply the `ready-for-agent` label. Only Hari applies it; it is his plan approval.
 - Skills that interview a human (`grilling`, `domain-modeling`) are for interactive sessions with Hari only. In an unattended run, write the open question as the handoff comment instead.
 
-Four skills are owned by this repository. They are not in `skills-lock.json` and change only through a pull request to Hari.
+Five skills are owned by this repository. They are not in `skills-lock.json` and change only through a pull request to Hari.
 
 - `repo-review` is the rubric for the cold review that "Before opening a pull request" rule 8 defines.
 - `plan-pr`, `plan-check` and `implement-plan` run the planning, plan-check and implementing sessions of docs/agents/factory.md "Item lifecycle", or one session under its step 3 "Standing approval". The prompt that starts a session names the skill and the issue number.
+- `control-session` runs the control session of docs/agents/factory.md "Control session". The prompt that starts it names the skill and the issue number only.
 
 A repository-owned skill, and any prompt that starts a session, cites a rule by file and section and never paraphrases a rule that stops, caps or gates work.
 
