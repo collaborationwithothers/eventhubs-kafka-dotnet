@@ -473,6 +473,12 @@ PROVISIONAL_TARGETS = {
     'Common/Phase/B10FinalProjectionCodec.cs': ('c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5', '14111558997', 'cfe9779a0ddaf62f8e9d43aa7ab8724904efd07f3a77a51e4c59f9d18633145e'),
     'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': ('4e533dd7aa4205e0a5a121b94b9441af7438e5d878600a3b65dc6ad5f4edab68', '14111653842', '7d65fe2b27ee06585f1c6914e6ca363b376507b0dd1ee8f28f0700f2dcd663d6'),
 }
+# Canonical maps of shard ID to generated selection hash for the approved pilot.
+PROVISIONAL_LAYOUT_HASHES = {
+    'Common/Phase/B10FinalProjectionCodec.cs': '10b8f858fb81cb9129f00acba7c3986eb85d6d4d5076104105c71f96d7eabb58',
+    'Judge/B10FinalJudge.cs': '6111fd4ec0d857dc607d3f0f0e44c14de19e551157508df041aee1f986f6af37',
+    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': '1a4a156c924e0e54b07a495a083f2f09efc6f6b12d86d9eed55874894b8133b2',
+}
 PROVISIONAL_STATUS = 'pending_native_report'
 NUMERIC_FIELDS = ('main_mutants', 'main_work_seconds', 'parallelism', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')
 
@@ -606,6 +612,10 @@ def validate(config, shared, targets, source, matrix):
             source_hash, artifact, evidence_hash = PROVISIONAL_TARGETS[path]
             if record['source_sha256'] != source_hash:
                 reasons.add('stale_inputs')
+            generated = {name: digest(canonical(workflow.shard_config(name, source[path])))
+                         for name, target in workflow.SHARDS.items() if target == path}
+            if digest(canonical(generated)) != PROVISIONAL_LAYOUT_HASHES[path]:
+                reasons.add('layout_mismatch')
             if not any(e['kind'] == 'partial_timing' and e['sha256'] == evidence_hash
                        and e['source_commit'] == 'e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5'
                        and artifact in e['locator'] for e in record['evidence']):

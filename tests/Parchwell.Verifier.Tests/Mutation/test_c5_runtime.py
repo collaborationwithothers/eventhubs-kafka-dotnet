@@ -727,6 +727,11 @@ class ProvisionalQualificationTests(unittest.TestCase):
             {'a.cs': (source_hash, '42', 'f' * 64)})
         self.provisional_patch.start()
         self.addCleanup(self.provisional_patch.stop)
+        selection = self.config['targets']['a.cs']['shards']['a-p1']['selection_sha256']
+        layout_hash = runtime.digest(runtime.canonical({'a-p1': selection}))
+        layout_patch = mock.patch.object(runtime, 'PROVISIONAL_LAYOUT_HASHES', {'a.cs': layout_hash})
+        layout_patch.start()
+        self.addCleanup(layout_patch.stop)
         record = self.config['targets']['a.cs']
         record['geometry_status'] = runtime.PROVISIONAL_STATUS
         record['evidence'] = [{'source_commit': 'e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5',
@@ -775,6 +780,22 @@ class ProvisionalQualificationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             runtime.shape(self.config)
         self.assertEqual({'status': 'rejected', 'reasons': ['invalid_input']}, self.simulated_check('README.md'))
+
+    def test_rebound_cut_cannot_authorize_another_provisional_layout(self):
+        _, item = self.provisional()
+        self.assertEqual(set(), self.errors())
+        with mock.patch.object(runtime.workflow, 'shard_config', side_effect=lambda shard, source:
+                               {'shard': shard, 'source': source.decode(), 'cut': 20}):
+            item['selection_sha256'] = runtime.digest(runtime.canonical(runtime.workflow.shard_config('a-p1', self.source['a.cs'])))
+            self.assertIn('layout_mismatch', self.errors())
+
+    def test_qualified_target_can_use_a_reassessed_cut(self):
+        with mock.patch.object(runtime.workflow, 'shard_config', side_effect=lambda shard, source:
+                               {'shard': shard, 'source': source.decode(), 'cut': 20}):
+            for shard, path in self.shards.items():
+                self.config['targets'][path]['shards'][shard]['selection_sha256'] = runtime.digest(
+                    runtime.canonical(runtime.workflow.shard_config(shard, self.source[path])))
+            self.assertEqual(set(), self.errors())
 
     def test_pilot_preserves_matrix_and_capacity_checks(self):
         self.provisional()
