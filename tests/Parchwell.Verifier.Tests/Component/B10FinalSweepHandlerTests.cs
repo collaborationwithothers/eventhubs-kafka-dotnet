@@ -457,6 +457,31 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Given_C0ResultReadFails_When_FinalSweepRuns_Then_ReceiptIsStillReadAndF2DecidesTheSweepLine_Decision6871584065(bool receiptAlsoFails)
+    {
+        using var run = await B10FinalSweepHarness.CreateC0Async(kafka);
+        string result = PhasePaths.Result(B10FinalSweepHarness.Run, "C0", 3);
+        string receipt = PhasePaths.VerifyCompletion(B10FinalSweepHarness.Run, "C0", 3);
+        var reads = new List<string>();
+        run.BeforeRead = name => { reads.Add(name); if (name == result || receiptAlsoFails && name == receipt) throw new IOException("synthetic storage failure"); };
+        Assert.Equal(0, await run.RunAsync());
+        Assert.Contains(result, reads);
+        Assert.Contains(receipt, reads);
+        if (receiptAlsoFails)
+        {
+            Assert.False(run.Data["scan_complete"]!.GetValue<bool>(), run.Data.ToJsonString());
+            for (int repeat = 1; repeat <= 5; repeat++) Assert.Equal(["b10_final_sweep_line_invalid"], Strings(run.Repeat(repeat)["reasons"]));
+            return;
+        }
+        Assert.True(run.Data["scan_complete"]!.GetValue<bool>(), run.Data.ToJsonString());
+        Assert.Equal("invalid", Text(run.Repeat(3)["status"])); Assert.Null(run.Repeat(3)["timeout"]);
+        Assert.Equal(["b10_final_repeat_input_invalid"], Strings(run.Repeat(3)["reasons"]));
+        foreach (int repeat in new[] { 1, 2, 4, 5 }) Assert.Equal("complete_valid", Text(run.Repeat(repeat)["status"]));
+    }
+
+    [Theory]
     [InlineData("below")]
     [InlineData("above")]
     public async Task Given_NonfinalStartDisagreesWithAuthenticatedStartNote_When_FinalSweepRuns_Then_RejectedObjectContributesNothing_P1_4567914700(string side)

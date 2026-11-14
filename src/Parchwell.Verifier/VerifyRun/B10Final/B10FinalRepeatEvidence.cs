@@ -79,7 +79,11 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
         try
         {
             string resultName = PhasePaths.Result(options.RunId!, "C0", input.Number);
-            byte[]? resultBytes = await readVerifier(resultName, ct).ConfigureAwait(false);
+            // The result and the receipt are read independently: a failed result read is not evidence that the receipt is absent.
+            byte[]? resultBytes = null;
+            bool resultReadFailed = false;
+            try { resultBytes = await readVerifier(resultName, ct).ConfigureAwait(false); }
+            catch (Exception exception) when (B10FinalSweepHandler.EvidenceFailure(exception, ct)) { resultReadFailed = true; }
             if (resultBytes is not null) input.Source = B10FinalSweepHandler.Reference("verifier", resultName, resultBytes);
             // Plan F2 and Hari's decision 6871584065: a receipt that exists but cannot be read or parsed fails F2 for the phase.
             byte[]? receiptBytes;
@@ -93,6 +97,7 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
                 input.Completions.Add(AbruptReconciliation.Utc(receipt.CompletedUtc));
             }
             catch (Exception exception) when (B10FinalSweepHandler.EvidenceFailure(exception, ct)) { input.ReceiptUnreadable = true; throw; }
+            if (resultReadFailed) throw new IOException("result_unreadable");
             Require(resultBytes is not null, "result_missing");
             BlobListing listing = await listProducer(PhasePaths.ProducersPrefix(options.RunId!, "C0", input.Number), ct).ConfigureAwait(false);
             var discovered = new List<(ProducerRegistration Registration, string PathInstance)>();
