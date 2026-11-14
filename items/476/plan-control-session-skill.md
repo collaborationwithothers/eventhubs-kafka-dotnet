@@ -1,8 +1,17 @@
 # control-session-skill contract-grade plan
 
-Revision: R2. Issue: [#476](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476). Base commit: `c6d5676a7ce19b1fc16bcf7a577e998f674b024f` (`main`, read 2026-11-14), the merge commit of pull request [#477](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/477).
+Revision: R3. Issue: [#476](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476). Base commit: `c6d5676a7ce19b1fc16bcf7a577e998f674b024f` (`main`, read 2026-11-14), the merge commit of pull request [#477](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/477).
 
 This plan adds a repository-owned `control-session` skill that gives the control session of a scenario issue its objective, its own limits on acting alone and a check for deferred work in plans, and points to it from docs/agents/factory.md, AGENTS.md and CLAUDE.md. The skill points to the shared "Act or ask" and "Deferred work in plans" rules and to the "Outcome responsibility pilot" that #477 merged into docs/agents/factory.md, and keeps no count of its own, as Hari's decisions of 2026-11-14 on this issue require. Every new sentence is pinned below, and no question is open.
+
+## Changes since R2
+
+R3 applies the two findings that the [plan check of R2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476#issuecomment-6877877684) marked `apply in revision`, and nothing else:
+
+- B1 "Working method": the takeover line cites the `implement-plan` skill step 2 and docs/agents/pull-requests.md rule 8 instead of paraphrasing a rule that caps work (finding 1; section 11 (b) records it).
+- E5-add: the approval-record parenthesis names "the paragraph that explains it" instead of "the paragraph after the Haiku row" (finding 2).
+
+Neither change is design-changing under docs/agents/factory.md "Item lifecycle" step 1: each changes no gate, contract, requirement, scope, policy value or verdict rule and adds, removes or answers no open question.
 
 ## Changes since R1
 
@@ -141,7 +150,7 @@ From [#347 handover 6874759569](https://github.com/collaborationwithothers/event
 - Check the head, every check and Codex state for the exact head before saying "ready".
 - Recheck plans against merged code.
 - Ask child sessions to use the documentation tools and cite.
-- Do not carry cap counts over on a takeover.
+- On a takeover, count caps as the `implement-plan` skill step 2 and docs/agents/pull-requests.md rule 8 set.
 - The sandbox cannot run `Tier=CGroupV2`, so hosted CI is the full gate (docs/agents/pull-requests.md "Verification gates", steps 3 and 4).
 - When challenged, check the source and give one final proposal.
 
@@ -199,7 +208,7 @@ Hari's merge of that pull request is the approval of the amendment.
 Replace with the same text followed by one space and:
 
 ````text E5-add
-The pull request for issue #476 amends this section (the Control session row and the paragraph after the Haiku row); Hari's merge of that pull request is the approval of that amendment.
+The pull request for issue #476 amends this section (the Control session row and the paragraph that explains it); Hari's merge of that pull request is the approval of that amendment.
 ````
 
 ### E6: `CLAUDE.md`, "Model bindings" table (after line 15)
@@ -377,6 +386,7 @@ The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when i
 - B1 adds "Whether a workflow reaches Azure is a fact about its file on `main`: read the file in the same session before you dispatch it", because AGENTS.md GOVERNANCE "Truth and verification" requires a repository fact to be read in the same session, and the spec's own evidence for the mutation workflow (section 1) is a reading at one commit.
 - B1's worked case for mutation runs pins the workflow fact to commit `c6d5676a7ce19b1fc16bcf7a577e998f674b024f` instead of "section 1", which exists only in the spec.
 - B1 adds "When you stop, end under AGENTS.md GOVERNANCE "Handoffs"", a citation of a rule that already binds every session, and cites docs/agents/pull-requests.md "Verification gates" steps 3 and 4 for the `Tier=CGroupV2` line.
+- B1 "Working method" replaces handover 6874759569 lesson 9 ("Do not carry cap counts over on a takeover") with a citation of the `implement-plan` skill step 2 and docs/agents/pull-requests.md rule 8, because under those rules a takeover starts its own fix-cap counts while the cold-review budget carries over, and AGENTS.md "Skills" bars a skill from paraphrasing a rule that caps work.
 - E1 and E5 add approval records to the status paragraphs of factory.md and CLAUDE.md "Model bindings", following each file's existing form for amendments.
 - B7 states the spec's model reason without the spec's "which that table keeps on Opus", because CLAUDE.md line 18 keeps judgement on "Sonnet or Opus", not on Opus alone. It keeps the spec's sentence on Haiku work verbatim. Comparing heads is not in the Haiku row's task list (CLAUDE.md line 18), so under that sentence it gets no Haiku route; this plan does not change the row (out of scope).
 - The spec's sections 1, 8 and 9 are not copied into the skill, because spec section 2 item 1 lists only sections 3 to 7 for it.
