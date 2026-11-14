@@ -1,12 +1,22 @@
 # B10 timeout-and-resend expectations contract-grade plan
 
-Revision: 3. Base commit: `main` at `dbc25c2005c3409ffd5f079c40b061d82c4b02aa`.
+Revision: 4. Base commit: `main` at `dbc25c2005c3409ffd5f079c40b061d82c4b02aa`.
 
-This plan adds `scenarios/B10/expected.yaml`, which adopts the two B10 decision rules that docs/blueprint.md ADR-021 already fixes, and the item state file. It needs Hari's own `## Approval`, and Hari merges the pull request. Two questions remain for Hari: whether ADR-021's two-verdict design supersedes the single-verdict and `not_tested` parts of decision 6703447017, and one publication sentence.
+This plan adds `scenarios/B10/expected.yaml`, which adopts the two B10 decision rules that docs/blueprint.md ADR-021 already fixes, and the item state file. It needs Hari's own `## Approval`, and Hari merges the pull request. Three questions remain for Hari: whether ADR-021's two-verdict design supersedes the single-verdict and `not_tested` parts of decision 6703447017, one publication sentence, and the verdict when the scientific projection is untrusted.
 
 Item: B10, timed-out sends with application resend, and a producer restart with resend [issue #356; split entry 5 of #348]. No B10 run result, artifact or log was read for this plan, including smoke run 42189889469, any diagnostic trial and the governed diagnostic run 43635822755. Every number below is a cited configuration literal, a policy value from ADR-021 or a decision predicate. None is a measurement.
 
-## 1. What changed from Revision 2
+## 1. What changed
+
+Revision 4 applies the [plan check of Revision 3](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6883666912):
+
+- Finding 3: option A of open question 1 now names "restart attribution was not tested" as the one publication statement it drops. `H_restart_duplicate` carries `written_after_smoke`, as decision 6703447017 point 1, last bullet, requires, with the dates of the ADR-021 commits that added its rules. `expectations_basis` now states only what this session verified.
+- Finding 4: both verdicts' `held_when`, and the two `otherwise`/`held_when` hypothesis lines, cover a candidate with `b10_final` null (verifier-contract.md line 293). Open question 3 asks Hari to confirm this rule wording.
+- Finding 5: `known_risk` scopes the connection-close sentence to the idempotent producer, where INTRODUCTION.md places it, and states that no cited source covers C0. A new `source_scope` line records that "Message persistence status" also sits under "Idempotent Producer" and that ADR-021 labels its use for C0 an inference.
+- P2s: rule 8's "fourth paragraph" (N1); the acceptance script checks the state-file field order (N2); deferred item 4 names the mutation-acceptance gate (N3).
+- Both digests change.
+
+Revision 3 changed, from Revision 2:
 
 Revision 2 ([comment 6693074361](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6693074361), 2026-11-07) predates the B10 restart redesign. Since then, merged changes on `main` replaced ADR-021's restart protocol and added its "Restart decision rules" (docs/blueprint.md lines 691 to 699), required two labelled B10 verdicts (docs/agents/factory.md line 192 and "Item lifecycle" step 5), and added the scientific final projection and judgement (docs/operations/b10-abrupt-contract.md "Final sweep projection"; docs/operations/verifier-contract.md "Scientific B10 final judgement", lines 287 to 314).
 
@@ -42,7 +52,7 @@ Files allowed to change, and only these:
 
 Paths that must not change: everything else, including `scenarios/B10/scenario.yaml`, `results/**`, `docs/**`, `src/**`, `tests/**`, `.github/**`, `charts/**` and every other `scenarios/*/expected.yaml`. No verdict, workflow, verifier, load generator, test, project or package change. The implementing session reads no B10 run result, artifact or log.
 
-`scenarios/B10/expected.yaml` matches the protected `expected.yaml` pattern in `.github/CODEOWNERS`. The pull request description lists the Code Review Rules P0 on expected outcomes as kept because this approved plan requires it (docs/agents/pull-requests.md rule 8, third paragraph). Hari merges (decision 6703447017). The Claude review of decision 6633528258 point 2 and Codex review under GOVERNANCE "Merge rule" both apply.
+`scenarios/B10/expected.yaml` matches the protected `expected.yaml` pattern in `.github/CODEOWNERS`. The pull request description lists the Code Review Rules P0 on expected outcomes as kept because this approved plan requires it (docs/agents/pull-requests.md rule 8, fourth paragraph). Hari merges (decision 6703447017). The Claude review of decision 6633528258 point 2 and Codex review under GOVERNANCE "Merge rule" both apply.
 
 Size estimate, 2026-11-14, by line count of the texts below: 2 files, about 100 lines in `expected.yaml` and about 20 in `state.md`. This is an estimate, reported, not enforced.
 
@@ -71,7 +81,7 @@ assessment_rules:
   admissible_runs: "scientific runs only, with run IDs matching ^b10-[0-9]+-[0-9]+$, dispatched on main after this file merges; the smoke run, every diagnostic trial and the governed diagnostic run are never published as a result"
   timeout_cohort_projection: "the timeout verdict reads only the independently checked timeout cohort: each repeat's timeout counts ok, loss, phantom, reported_failure, duplicate and reorder in b10_final.repeats; probe and warm-up records never enter these counts (ADR-021, Restart decision rules, rule 1)"
   residual_risk: "A late append after the phase sweep line is not detected."
-  expectations_basis: "written from the cited sources and ADR-021 before any scientific B10 result exists; no hypothesis is derived from the smoke run or a diagnostic run"
+  expectations_basis: "written before any scientific B10 result exists. The timeout rule is the one recommended before smoke run 42189889469 was read (decision 6703447017 points 1 and 3). The restart rule is copied from ADR-021, whose restart decision rules entered main on 2026-11-07 and 2026-11-10, after that smoke run of 2026-11-06; how ADR-021's authors derived them was not traced. The author of this file read no B10 run result."
 
 hypotheses:
   H_timeout_duplicate:
@@ -81,27 +91,29 @@ hypotheses:
     evidence: "b10_final.timeout_rule of the C0 phase candidate; C1 timeout counts are a comparison only"
     holds_when: "all five C0 repeats are complete_valid with classification_final true, and the checked sum of their duplicate counts is at least 1"
     not_observed_when: "all five C0 repeats are complete_valid with classification_final true, and the checked sum of their duplicate counts is 0"
-    otherwise: "held: fewer than five complete_valid final C0 repeats, or an unavailable or overflowed sum; no replacement repeats"
+    otherwise: "held: fewer than five complete_valid final C0 repeats, an unavailable or overflowed sum, or a C0 candidate with b10_final null; no replacement repeats"
     absence_refutes: false
     attribution: "not attributed; duplicates are counted by logical key and sequence within the timeout cohort, so a duplicate from the application resend and one from librdkafka's own retry cannot be told apart"
+    source_scope: "librdkafka v2.16.0 INTRODUCTION.md places Message persistence status under Idempotent Producer; C0 runs without idempotence, and ADR-021 Context labels the same late append without idempotence an inference"
     c1_comparison_limit: "C1 adds enable.idempotence true to C0. The four properties that idempotence adjusts already hold the adjusted values in C0: max.in.flight 5 from scenario.yaml, message.send.max.retries 2147483647 and acks -1 from the baseline catalog, and queuing.strategy fifo as the librdkafka v2.16.0 default (CONFIGURATION.md, enable.idempotence and queuing.strategy). The effective values in a run were not observed when this file was written."
     c1_inference: "librdkafka's idempotence guarantee covers its own retries; that it does not de-duplicate a new application Produce call with the same key and sequence number is an inference from the sources' silence, not a stated fact"
   H_restart_duplicate:
     question: "With idempotence enabled, can application recovery that replaces a killed producer and resends a durably identified but unconfirmed logical message leave both the original and the resend in the log?"
     configurations: [C1]
     environments: [live]
+    written_after_smoke: "yes; this hypothesis and its rules were written after smoke run 42189889469 (ADR-021 restart decision rules, main commits a6169c24 of 2026-11-07 and d1966c9d of 2026-11-10)"
     evidence: "b10_final.restart_rule of the C1 phase candidate and each repeat's restart object in b10_final.repeats"
     eligibility: "at least 3 of the 5 declared C1 repeats eligible under ADR-021, Restart decision rules, rule 2; all five outcomes, the eligible count and every ineligibility reason are published"
     qualifying_pair: "an eligible repeat whose cross_restart arm has pair_count at least 1 and unreported_seen at least 1 (ADR-021, Restart decision rules, rule 3)"
     holds_when: "at least three eligible repeats and at least one qualifying pair"
     not_observed_when: "at least three eligible repeats, no qualifying pair and no lost resend in an eligible repeat; reason no_cross_restart_duplicate_observed"
-    held_when: "fewer than three eligible repeats, reason fewer_than_three_eligible; or at least three eligible repeats, no qualifying pair and a lost resend in an eligible repeat, reason eligible_loss_without_pair"
+    held_when: "fewer than three eligible repeats, reason fewer_than_three_eligible; or at least three eligible repeats, no qualifying pair and a lost resend in an eligible repeat, reason eligible_loss_without_pair; or a C1 candidate with b10_final null, with the candidate's root reasons, because missing evidence fails eligibility (ADR-021, Restart decision rules, rule 2)"
     absence_refutes: false
     comparison: "per repeat, both, cross_restart_only, same_instance_only, neither or unavailable with reasons; both prevents crediting restart for same-instance duplication, and cross_restart_only does not prove causation (ADR-021, Restart decision rules, rule 5)"
     lost_resend_findings: "a lost resend in any C1 repeat, eligible or ineligible, is a separate published finding, except after a no-kill end, which produces no finding; only loss in eligible repeats affects this verdict (ADR-021, Restart decision rules, rules 3 and 4)"
 
 known_risk:
-  in_flight_timeout_validity: "librdkafka v2.16.0 INTRODUCTION.md, Message timeout considerations: on an in-flight timeout the broker connection will be closed by the client. ADR-021 still invalidates a repeat with non-zero txerrs or rxerrs or an error-level native error callback. Whether that close raises any of them is not verified. If it does, a repeat with a possibly persisted timeout cannot be complete_valid, and the timeout verdict is held."
+  in_flight_timeout_validity: "librdkafka v2.16.0 INTRODUCTION.md, Idempotent Producer, Message timeout considerations: for the idempotent producer, on an in-flight timeout the broker connection will be closed by the client. No cited source states what the non-idempotent C0 producer does. ADR-021 still invalidates a repeat with non-zero txerrs or rxerrs or an error-level native error callback. Whether that close raises any of them is not verified. If it does, a repeat with a possibly persisted timeout cannot be complete_valid, and the timeout verdict is held."
 
 not_claimed:
   internal_retry_state: "survival or loss of the producer's internal retry or idempotence state across the restart (ADR-021, Context and rule 7)"
@@ -118,7 +130,7 @@ verdict:
     deciding_configuration: C0
     confirmed_when: "C0 H_timeout_duplicate holds; b10_final.timeout_rule.rule_selection confirmed"
     untestable_when: "C0 H_timeout_duplicate not observed; b10_final.timeout_rule.rule_selection untestable"
-    held_when: "b10_final.timeout_rule.rule_selection held; no verdict word is proposed"
+    held_when: "b10_final.timeout_rule.rule_selection held, or the C0 candidate has b10_final null; no verdict word is proposed"
     contradicted_when: "never; absence of duplicates never selects contradicted"
     may_publish_while_restart_held: true
   restart_recovery:
@@ -127,7 +139,7 @@ verdict:
     deciding_configuration: C1
     confirmed_when: "H_restart_duplicate holds; b10_final.restart_rule.rule_selection confirmed; published only with the full subject, never a bare word or K-53 confirmed"
     untestable_when: "H_restart_duplicate not observed; rule_selection untestable, selection_reason no_cross_restart_duplicate_observed"
-    held_when: "rule_selection held, with selection_reason, eligible count and reasons; shown as held, never blank, a dash or not_tested, and never copied from the timeout verdict"
+    held_when: "rule_selection held, with selection_reason, eligible count and reasons, or the C1 candidate has b10_final null, with its root reasons; shown as held, never blank, a dash or not_tested, and never copied from the timeout verdict"
     contradicted_when: "never"
     loss_side_by_side: "a qualifying pair plus loss publishes the confirmed full subject and every lost-resend finding side by side, without waiving any gate"
   precedence: "smoke, diagnostic or non-scientific run -> no verdict; then each verdict's own rule above, independently"
@@ -155,7 +167,7 @@ sources:
   read_date: "2026-11-14"
 ```
 
-SHA-256 of the file, computed by script: option B `13bf758a291d4e63442c764f1ec39f82c32c9d0c71d5872a22e4fab971f3dc3e`; option A `663b309864251681e40cdebd5528faf65dcc3320eb5203dc08c1505ea39cf98b`.
+SHA-256 of the file, computed by script: option B `eec4275a0039c176f3de6fdcd9e157bb7e6688f8912e246956d000e8066bd8e0`; option A `f5fb6457ffed269881fc9ac6522d567be7666704d30fa9fda57f26e682d1f84e`.
 
 ### 4.2 `items/356/state.md`
 
@@ -205,11 +217,11 @@ No code reads `expected.yaml` and the pull request adds no code, so the acceptan
 | Requirement | Check in section 9 | Input | Literal expected value |
 |---|---|---|---|
 | R1 | `changed == {...}` | `git diff --name-only origin/main...HEAD` | `{'scenarios/B10/expected.yaml', 'items/356/state.md'}` |
-| R2 | digest assertion | file bytes | option B `13bf758a291d4e63442c764f1ec39f82c32c9d0c71d5872a22e4fab971f3dc3e` or option A `663b309864251681e40cdebd5528faf65dcc3320eb5203dc08c1505ea39cf98b` |
+| R2 | digest assertion | file bytes | option B `eec4275a0039c176f3de6fdcd9e157bb7e6688f8912e246956d000e8066bd8e0` or option A `f5fb6457ffed269881fc9ac6522d567be7666704d30fa9fda57f26e682d1f84e` |
 | R3 | YAML assertions | parsed file and `scenario.yaml` | `B10`; `{C0, C1}`; `[C1]`; `C0`; `C1` |
 | R4 | subject and residual-risk assertions | file and docs/blueprint.md | the ADR-021 quoted subject; `A late append after the phase sweep line is not detected.` |
 | R5 | reason-literal assertion | file and verifier-contract.md | each of the three literals present in both |
-| R6 | state-file assertions | `items/356/state.md` | the header line; no `<` |
+| R6 | state-file assertions | `items/356/state.md` | the header line; no `<`; the nine field prefixes in factory.md order |
 | R7 | ASCII assertion and `git diff --check` | both files | no non-ASCII byte; empty output |
 
 Boundaries: R2 is exact equality, so a one-byte change fails. R1 fails on a third file and on a missing file.
@@ -227,7 +239,7 @@ git fetch origin main
 git diff --check origin/main...HEAD
 python3 - <<'PY_CHECK'
 import hashlib, pathlib, re, subprocess, yaml
-approved = '13bf758a291d4e63442c764f1ec39f82c32c9d0c71d5872a22e4fab971f3dc3e'  # option A: 663b309864251681e40cdebd5528faf65dcc3320eb5203dc08c1505ea39cf98b
+approved = 'eec4275a0039c176f3de6fdcd9e157bb7e6688f8912e246956d000e8066bd8e0'  # option A: f5fb6457ffed269881fc9ac6522d567be7666704d30fa9fda57f26e682d1f84e
 changed = set(subprocess.check_output(
     ['git', 'diff', '--name-only', 'origin/main...HEAD'], text=True).split())
 assert changed == {'scenarios/B10/expected.yaml', 'items/356/state.md'}, changed
@@ -250,6 +262,10 @@ for r in ('fewer_than_three_eligible', 'eligible_loss_without_pair', 'no_cross_r
 s = pathlib.Path('items/356/state.md').read_text()
 assert s.startswith('# State: #356 B10 expected outcomes (#348 entry 5)\n')
 assert '<' not in s, 'unfilled placeholder'
+fields = ['# State:', 'Covers:', 'Parent items:', 'Item plan:', 'Implementing tool:', 'Approved plan:', 'Decisions in force:', 'Open questions:', 'Next action:']
+lines = s.splitlines()
+idx = [next(i for i, l in enumerate(lines) if l.startswith(f)) for f in fields]
+assert idx == sorted(idx), 'state-file fields out of order'
 assert all(ord(c) < 128 for c in data.decode() + s)
 print('B10 expected-outcome scope, digest and state-file checks passed')
 PY_CHECK
@@ -280,7 +296,7 @@ Each item is after merge, on the verdict path, and outside this pull request's f
 1. **Live assumptions for the scientific run.** Evidence: #404 decision 6883475587 point 2 accepts the listed live assumptions "for this one run only", the governed diagnostic run. ADR-021 amendment of 2026-11-11 records Hari's earlier acceptance for "the next diagnostic trial only". How their evidence was or will be taken (on an already-open or a fresh connection, idle or under load) is not stated in the texts this session read, and this session read no run; the request to Hari states it for each assumption. Required action: Hari accepts by name the live assumptions that still apply before a scientific dispatch. Responsible: the #347 control session, bringing it to Hari. Gate it blocks: the scientific dispatch and therefore both B10 verdicts.
 2. **Governed diagnostic run.** Evidence: run 43635822755, authorized by #404 decision 6883475587 point 1, was in progress when this plan was written; this session did not read it. Responsible: the #404 sessions. Gate: the scientific dispatch, per [#404 decision 6846521676](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6846521676) point 5 as cited by decision 6883475587.
 3. **Client versions.** Decision 6703447017 point 4 requires a fix before the fresh run. Evidence: [#403](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/403), "Restore B10 candidate producer versions and broker counts", merged 2026-11-07, and verifier-contract.md line 314, which records producer versions from authenticated ordinary manifests and adds `version_unavailable` when they are missing. Whether a scientific candidate carries non-null versions is not observed. Gate: the evidence pack's version line, checked in the verdict pull request.
-4. **Scientific run and verdict pull request.** After this merges and items 1 to 3 clear, a fresh scientific run on `main`, then one verdict pull request with both labelled verdicts, which Hari approves or rejects separately (factory.md "Item lifecycle" step 5). Workload bound: one dispatch, five repeats per configuration, no replacement repeats (ADR-021 rule 2; scenario.yaml `repeats: 5`). Exhaustion: a held verdict is published as held with reasons, not rerun automatically (ADR-021 rule 4).
+4. **Scientific run and verdict pull request.** After this merges and items 1 to 3 clear, a fresh scientific run on `main`, then one verdict pull request with both labelled verdicts, which Hari approves or rejects separately (factory.md "Item lifecycle" step 5). Workload bound: one dispatch, five repeats per configuration, no replacement repeats (ADR-021 rule 2; scenario.yaml `repeats: 5`). Exhaustion: a held verdict is published as held with reasons, not rerun automatically (ADR-021 rule 4). The verdict pull request also needs the mutation-acceptance gate of factory.md "Evidence pack" (line 198): a passing `verifier-c5-mutation.yml` run on `main` that includes every merged change to a configured mutation target; #404 decision 6883475587 records that gate as met for #455 and #467, which says nothing about later target changes.
 
 ## 13. Plan-check answers
 
@@ -291,7 +307,7 @@ Each item is after merge, on the verdict path, and outside this pull request's f
 ## 14. Open questions for Hari
 
 1. **Two verdicts, or decision 6703447017's single verdict.** Decision 6703447017 (2026-11-07) says the item verdict comes from C0 alone, with C1 published alongside (point 1), the rules read only the six counts, status, finality, intake and broker count (point 1), and restart attribution is `not_tested` (point 2). Later merged text on `main` differs: ADR-021 "Restart decision rules" give a separate restart verdict from C1 with three-of-five eligibility, and factory.md line 192 requires two labelled verdicts and says a held restart is "never blank or `not_tested`". The #404 decisions behind that text were never adopted on this issue.
-   - Option A (this plan's text): adopt ADR-021's two rules; record decision 6703447017 points 1 and 2 as superseded for B10's expected outcomes where they conflict; keep points 3 and 4, the C0 timeout rule, Hari's merge and its publication statements. The timeout "no verdict" case is labelled `held`, the value the judge emits (verifier-contract.md line 299).
+   - Option A (this plan's text): adopt ADR-021's two rules; record decision 6703447017 points 1 and 2 as superseded for B10's expected outcomes where they conflict; keep points 3 and 4, the C0 timeout rule, Hari's merge and its publication statements except "restart attribution was not tested", which option A drops because the restart verdict tests it. The timeout "no verdict" case is labelled `held`, the value the judge emits (verifier-contract.md line 299).
    - Option B: keep decision 6703447017 as written. This needs a governance change to factory.md "Evidence pack" and an ADR-021 amendment first, because `main` forbids `not_tested` for the restart verdict.
    - **Recommendation:** A. It matches the design and process text Hari merged after the decision, and ADR-021 rule 15 freezes those rules.
    - **Strongest counterargument:** decision 6703447017 is the newest decision on this issue, and factory.md step 3 lets a decision from elsewhere bind a child only when the child adopts it. Option A needs Hari's approval to say so explicitly.
@@ -302,3 +318,6 @@ Each item is after merge, on the verdict path, and outside this pull request's f
      `- "when the C0 duplicate sum is at least 1, duplicates appeared under timeout plus application resend; in every publication, the verifier does not attribute a duplicate to the application resend rather than librdkafka's own retry"`
    - **Recommendation:** B. It never publishes a false statement (AGENTS.md "Truth and verification").
    - **Strongest counterargument:** A is the decision's literal text. If Hari meant it only for the duplicate case, B adds nothing; if he meant something else, B changes his wording.
+3. **Verdict when the scientific projection is untrusted.** An untrusted projection gives the candidate root status `invalid` and `b10_final` null (verifier-contract.md line 293), so neither `rule_selection` exists. Revision 4 maps that case to `held` for both verdicts, with the candidate's root reasons. The basis is ADR-021 rule 1 (fewer than five complete, valid C0 repeats holds timeout) and rule 2 (missing evidence fails eligibility, so fewer than three eligible holds restart). This is decision-rule wording, so it is Hari's.
+   - **Recommendation:** accept the `held` mapping as written.
+   - **Strongest counterargument:** ADR-021 does not name the null-projection case, so any mapping is an inference from rules 1 and 2. An alternative is "no verdict, run invalid", which reads the same to a reader but would not show `held` with reasons as factory.md line 192 requires for the restart verdict.
