@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using Parchwell.Verifier.Common.Phase;
 using Xunit;
+using Parchwell.Verifier.Tests.Support;
 
 namespace Parchwell.Verifier.Tests.Component;
 

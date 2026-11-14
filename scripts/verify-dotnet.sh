@@ -463,6 +463,19 @@ run_tests() {
     run_logged "$name test list" "$results/test-list.log" list_methods "$project" "$results/methods.json" || return $?
 }
 
+# Builds the Verifier test project in the mutation-only configuration that the C5 mutation run uses
+# (tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj, condition ParchwellVerifierMutationOnly).
+# The test stages build only the normal configuration, so a file that the mutation-only build removes,
+# but another file still depends on, would otherwise break the mutation run unseen (issue 404). The build goes to its own artifacts directory so it cannot replace the assemblies
+# that the test stages run with --no-build.
+mutation_only_build() {
+    local artifacts="$verification_results/mutation-only-build"
+    run_logged "Mutation-only Verifier test build" "$verification_results/mutation-only-build.log" dotnet build \
+        tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release \
+        --artifacts-path "$artifacts" -p:RestoreLockedMode=true -p:ParchwellVerifierMutationOnly=true \
+        ${build_cpu_args[@]+"${build_cpu_args[@]}"} || return $?
+}
+
 # True when no --project option was given or the named project was given.
 is_selected() {
     local name=$1 candidate
@@ -561,6 +574,11 @@ for requested in ${selected_projects[@]+"${selected_projects[@]}"}; do
         echo "$requested is an empty scaffold; there is nothing to run."
     fi
 done
+
+# One leg runs the mutation-only build: the one that has no shard or the "rest" shard of the Verifier tests.
+if is_selected Parchwell.Verifier.Tests && [[ -z "$shard" || "$shard" == rest ]]; then
+    mutation_only_build || record_failure "Mutation-only Verifier test build" $?
+fi
 
 warning_control || record_failure "Warning control" $?
 

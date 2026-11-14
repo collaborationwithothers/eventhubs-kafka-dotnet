@@ -8,6 +8,7 @@ using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.VerifyRun.Input;
 using Parchwell.Verifier.VerifyRun.Window;
 using Xunit;
+using Parchwell.Verifier.Tests.Support;
 
 namespace Parchwell.Verifier.Tests.Component;
 

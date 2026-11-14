@@ -9,6 +9,7 @@ using Parchwell.Verifier.VerifyRun.B10Final;
 using Parchwell.Verifier.VerifyRun.Input;
 using Parchwell.Verifier.VerifyRun.Window;
 using Xunit;
+using Parchwell.Verifier.Tests.Support;
 
 namespace Parchwell.Verifier.Tests.Component;
 

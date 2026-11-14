@@ -5,7 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Xunit;
 
-namespace Parchwell.Verifier.Tests.Component;
+namespace Parchwell.Verifier.Tests.Support;
 
 /// <summary>Independent synthetic writer for the diagnostic contract, pinned to the real publisher by T0.</summary>
 internal sealed partial class B10AbruptVerifyEvidence

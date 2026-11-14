@@ -5,7 +5,6 @@ using Microsoft.Extensions.Hosting;
 using Parchwell.Kafka.Authentication;
 using Parchwell.Verifier.Common.Kafka;
 using Parchwell.Verifier.Common.Phase;
-using Parchwell.Verifier.Tests.Component;
 using Parchwell.Verifier.Tests.Support;
 using Xunit;
 
