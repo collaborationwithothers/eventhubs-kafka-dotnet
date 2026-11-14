@@ -2,13 +2,15 @@
 
 Bring the complete verifier mutation workflow to a 30-minute dispatch-to-result goal without changing what a passing mutation result proves. Qualify future changes to its workload before merge, using bounded profiling and explicit estimates. This specification is for GPT-6.1 Terra at high effort; it does not authorize this planning session to implement or run a mutation campaign.
 
-Revision: 3. Base main: `5ac85af17f4b7dbc1a1396932fb3554d363752fb`.
+Revision: 4. Base main: `5ac85af17f4b7dbc1a1396932fb3554d363752fb`.
 Issue: [474](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474).
 Plan branch: `codex/474-plan`.
 
 Changes from revision 1: bind each shard estimate to its exact generated Stryker configuration; include runtime-read limits and profile-directory membership in freshness checks. These address the [first independent check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6877125630) and require a fresh check of this revision.
 
 Changes from revision 2: apply [Hari's adopted timing-invalidation correction](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6877623126) from the [second check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6877239310). Every shard estimate now binds to all configured target source hashes as well as shared inputs; unchanged geometry remains reusable. This is a later revision applying Hari's answer under plan-pr step 5, not an automatic third correction cycle or a reset of the previous check counts.
+
+Changes from revision 3: insert exactly the Deferred work section supplied by the [latest independent check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6877750425), collecting the existing post-merge validation obligations required by current factory policy. This is not design-changing and retains that check; no fourth check is required.
 
 ## 1. Goal and authority
 
@@ -265,6 +267,12 @@ Authority and source files:
 - `src/Parchwell.Verifier/Parchwell.Verifier.csproj` and the verifier test project: dependency and mutation-only population boundaries.
 - `items/397/investigation.md` and `items/397/rebalance.md`: historical test cost and ownership/report-inclusion proof. Do not reuse their historical counts as current measurements.
 - Official pinned Stryker and GitHub sources linked in section 3. They were read through HTTPS/source inspection, not recalled from memory. No Azure or Kafka capability claim is added by this work.
+
+## Deferred work
+
+The main-only validation in section 6, step 6 remains with the control session or Hari after PR 2 merges. It is on the verdict path: the factory's Evidence pack rule requires fresh mutation acceptance on main, so that acceptance cannot precede merge. Prerequisites are the merged qualified layout and separate workflow-dispatch authorization; this plan grants none. The workload is the one complete workflow attempt described in section 1, within the unchanged execution safeguards in section 4, with no automatic campaign retry.
+
+Completion evidence is the source commit, run and attempt, the native summary with measurement_complete:true and break_passed:true, and the separate performance result and links required by section 8. Missing, failed or incomplete mutation evidence blocks evidence-pack publication. A slow complete mutation pass preserves mutation acceptance but leaves this issue's performance condition unresolved. On an unsuccessful or incomplete validation, preserve evidence and hand off under section 10 without a retry or gate bypass.
 
 ## 10. Open questions and stop rule
 
