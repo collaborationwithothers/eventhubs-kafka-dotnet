@@ -465,9 +465,8 @@ run_tests() {
 
 # Builds the Verifier test project in the mutation-only configuration that the C5 mutation run uses
 # (tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj, condition ParchwellVerifierMutationOnly).
-# Pull request verification builds only the normal configuration, so a file that the mutation-only
-# build removes, but another file still depends on, would otherwise break the mutation run unseen
-# (issue 404). The build goes to its own artifacts directory so it cannot replace the assemblies
+# The test stages build only the normal configuration, so a file that the mutation-only build removes,
+# but another file still depends on, would otherwise break the mutation run unseen (issue 404). The build goes to its own artifacts directory so it cannot replace the assemblies
 # that the test stages run with --no-build.
 mutation_only_build() {
     local artifacts="$verification_results/mutation-only-build"

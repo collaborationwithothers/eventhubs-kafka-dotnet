@@ -6,7 +6,9 @@ This change makes the C5 mutation-only build of the Verifier test project compil
 
 - Deliverable: both parts of [Hari's decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6873340821) (no item plan; directly authorized small fix). Part 1 fixes the mutation-only build. Part 2 adds the guard.
 - Authorization: that decision. Implementing tool: Claude Code. Branch `claude/404-mutation-build-guard`, from `main` at `5ab9e4a2`.
-- Mandatory gates, in the order of docs/agents/pull-requests.md "Verification gates": focused tests, one comprehensive cold review and at most one focused round, then `./scripts/verify-dotnet.sh --tier sandbox` once on the cleared source, then the hosted `.NET verification` on the final head and hosted Codex code and security reviews.
+- Mandatory gates, in the order of docs/agents/pull-requests.md "Verification gates": focused tests, one comprehensive cold review and at most one focused round, then `./scripts/test-verify-dotnet.sh` (the regression check for `verify-dotnet.sh`) and `./scripts/verify-dotnet.sh --tier sandbox` once on the cleared source, then the hosted `.NET verification` on the final head and hosted Codex code and security reviews.
+- Earliest authorized publication checkpoint: after the cold review has no open P0 or P1 and the pre-PR local gate has passed, publish the tested pull request ready for review, then request hosted Codex code and security review. No merge and no dispatch by this session.
+- Review budget: one comprehensive pass and at most one focused round. When another required review would exceed it, or focus is unsafe, save the work under rule 12 and hand off to Hari (docs/agents/pull-requests.md rule 8).
 - Fix caps: 20 verification-failure and 20 review-finding root causes, exhaustion action `push -wip and hand off to the next session`.
 - Predicate map: not applicable. No verifier predicate or test body changed. The change moves two helper classes between folders and adds one build stage.
 
@@ -29,13 +31,13 @@ I removed the dependency instead of adding the two files to the `Compile Remove`
 
 The two evidence classes moved from `Component/` to `Support/`, which the mutation-only build keeps, with the namespace changed to `Parchwell.Verifier.Tests.Support`. The ten `Component` files that use the class gained `using Parchwell.Verifier.Tests.Support;`. The two files from the decision lost their `Component` import. The Component folder is still excluded from the mutation-only build; the class it no longer holds is not needed there.
 
-Results, source of this commit's parent plus the working tree: the mutation-only and normal builds both succeed with 0 warnings and 0 errors. The Verifier tests report 8018 passed both on unchanged main (in the guard run below) and with the fix, so no test was lost.
+Results on the working tree: the mutation-only and normal builds both succeed with 0 warnings and 0 errors. In the partial run `--tier fast --project Parchwell.Verifier.Tests --shard rest`, the Verifier tests report 8018 passed both with unchanged main's tests (the guard run below) and with the fix. That run leaves out the two `b10-verify` shards and the Docker, Slow and CGroupV2 tests, so it shows no loss only in that slice. The change edits no test body: the C# differences are `using` and `namespace` lines and two file moves.
 
 ## Part 2: guard
 
 `scripts/verify-dotnet.sh`, function `mutation_only_build` and its call before the warning control, adds the stage `Mutation-only Verifier test build`. It builds the Verifier test project with `-p:ParchwellVerifierMutationOnly=true` and `-p:RestoreLockedMode=true` into its own `--artifacts-path` directory under the results directory. The separate directory matters: sharing `bin` and `obj` would let this build replace the assemblies that the test stages run with `--no-build`.
 
-It runs when the Verifier test project is selected and the run has no shard or the shard `rest`. The hosted workflow runs `--project Parchwell.Verifier.Tests --shard rest` once, so each pull request builds it once; the other two Verifier shards skip it. A failure is recorded like a test project failure, the run continues, and the exit status is non-zero. `docs/engineering/dotnet-verification.md` states the stage. No workflow file changed, so no trigger changed and hard safety rule 8's committed-copy rule has nothing to update.
+It runs when the Verifier test project is selected and the run has no shard or the shard `rest`. The hosted workflow runs `--project Parchwell.Verifier.Tests --shard rest` once, so each pull request builds it once; the other two Verifier shards skip it. `scripts/test-verify-dotnet.sh` has new cases M1 to M4 for the stage: one build in a full run and in the Verifier `rest` leg, none in the named Verifier shards or in another project's run, and a failed build fails the run after all tests with the stage label in `failed_stages`. A failure is recorded like a test project failure, the run continues, and the exit status is non-zero. `docs/engineering/dotnet-verification.md` states the stage. No workflow file changed, so no trigger changed and hard safety rule 8's committed-copy rule has nothing to update.
 
 Evidence, with `./scripts/verify-dotnet.sh --tier fast --project Parchwell.Verifier.Tests --shard rest` (partial runs, not the full gate):
 
@@ -44,6 +46,7 @@ Evidence, with `./scripts/verify-dotnet.sh --tier fast --project Parchwell.Verif
 
 ## Other checks
 
+- `./scripts/test-verify-dotnet.sh`: passed, with the new cases.
 - `python3 -m unittest discover -s scripts/tests -p test_check_dotnet_matrix.py`: 47 tests, OK.
 - `bash -n scripts/verify-dotnet.sh`: no syntax error.
 - `npm run check:docs`: 9 warnings, all in files this change does not touch (docs/agents/factory.md, docs/operations/evidence/issue-124, issue-140 and issue-211, and items/404/pr2-receipt.md). The change's own files have none.

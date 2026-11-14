@@ -57,6 +57,10 @@ case "$1" in
         ;;
     build)
         if [[ "$*" == *Parchwell.slnx* ]]; then exit "${STUB_BUILD_STATUS:-0}"; fi
+        if [[ "$*" == *ParchwellVerifierMutationOnly=true* ]]; then
+            printf 'MUTATION %s\n' "$*" >> "$STUB_LOG"
+            exit "${STUB_MUTATION_STATUS:-0}"
+        fi
         if [[ "$*" == *Forbidden.cs* && "${STUB_ACCEPT_WARNING:-}" != 1 ]]; then
             echo "error CS1030: #warning: 'PARCHWELL_WARNING_CONTROL'"
             exit 1
@@ -316,6 +320,22 @@ run_case warning_accepted STUB_ACCEPT_WARNING=1 --
 [[ $status -ne 0 && $tested -eq 6 ]] || fail "an accepted intentional warning must fail the run after all tests (status $status, ran $tested)"
 [[ "$output" == *"Warning control (exit"* ]] || fail "the failed warning control must be listed"
 check_summary "warning control" '.failed_stages[-1] == {"label":"Warning control","exit_code":1} and .outcome == "failed"'
+
+# Mutation-only Verifier test build (issue 404): one build per full run, in the Verifier "rest" leg and
+# with no shard, never in the named Verifier shards or in another project's run, and a failure fails the run.
+run_case mutation_all --
+[[ $status -eq 0 && "$(grep -c '^MUTATION ' "$STUB_LOG")" -eq 1 ]] || fail "M1: a full run must build the mutation-only configuration once (status $status)"
+[[ "$(grep '^MUTATION ' "$STUB_LOG")" == *"tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj"*"--artifacts-path"*"-p:RestoreLockedMode=true"* ]] || fail "M1: the mutation-only build must target the Verifier test project in its own artifacts path with a locked restore"
+check_summary "M1 stage" '[.stages[].label] | index("Mutation-only Verifier test build") != null'
+run_case mutation_rest -- --project Parchwell.Verifier.Tests --shard rest
+[[ "$(grep -c '^MUTATION ' "$STUB_LOG")" -eq 1 ]] || fail "M2: the Verifier rest leg must build the mutation-only configuration once"
+for skipped in "--project Parchwell.Verifier.Tests --shard b10-verify-a" "--project Parchwell.Verifier.Tests --shard b10-verify-b" "--project Parchwell.LoadGen.Tests --shard rest" "--project Parchwell.Kafka.Tests"; do
+    run_case mutation_skipped -- $skipped
+    [[ "$(grep -c '^MUTATION ' "$STUB_LOG")" -eq 0 ]] || fail "M3: '$skipped' must not build the mutation-only configuration"
+done
+run_case mutation_fail STUB_MUTATION_STATUS=1 --
+[[ $status -eq 1 && $tested -eq 6 ]] || fail "M4: a failed mutation-only build must fail the run after all tests (status $status, ran $tested)"
+check_summary "M4 failure" '.failed_stages == [{"label":"Mutation-only Verifier test build","exit_code":1}] and .outcome == "failed"'
 
 run_case build_fail STUB_BUILD_STATUS=4 --
 [[ $status -eq 4 && $tested -eq 0 ]] || fail "a failed build must stop the run with its status (status $status, ran $tested)"
