@@ -524,6 +524,42 @@ def numeric_schema_errors(config):
                 return {'invalid_estimate'}
     return set()
 
+STATIC_TARGET = 'VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs'
+STATIC_SOURCE_HASH = 'e266b1d73da52fe84fbb583bac42e8bd5e2118af445d8a2f3c4bf7c4ff67f661'
+STATIC_EVIDENCE = {
+    (11134, 11241): ('14108519875', '7eb4a26b2498293a80a6d7b91155ea2eca785da32b59ed05bdce730bffe3ce38', 208, 1892.542),
+    (370, 595): ('14108227262', '68f25d8a4090d13ed253cb33bb69be5ecc852367210b1fe36016d5272c2ec911', 208, 1743.157),
+}
+
+
+def accepted_static_regions(path, shard, source):
+    if path != STATIC_TARGET or digest(source) != STATIC_SOURCE_HASH:
+        return []
+    try:
+        return [region for region in workflow.shard_static_regions(shard, source) if region in STATIC_EVIDENCE]
+    except (KeyError, ValueError, TypeError):
+        return []
+
+
+def approved_static_owner(path, record, shard, item, source):
+    """Recognize only the two measured declarations accepted in the issue decisions."""
+    regions = accepted_static_regions(path, shard, source)
+    if (len(regions) != 1 or record['source_sha256'] != STATIC_SOURCE_HASH
+            or item['main_mutants'] != 0 or item['main_work_seconds'] != 0):
+        return False
+    region = regions[0]
+    artifact, artifact_hash, setup, isolated = STATIC_EVIDENCE[region]
+    if (item['setup_seconds'] != setup or item['isolated_seconds'] != isolated
+            or artifact not in item['basis'] or f'[{region[0]},{region[1]})' not in item['basis']
+            or not any(e['kind'] == 'hosted_complete' and e['sha256'] == artifact_hash
+                       and artifact in e['locator'] for e in record['evidence'])):
+        return False
+    try:
+        return (workflow.shard_span(shard, source) == region
+                and workflow.shard_static_regions(shard, source) == [region])
+    except (KeyError, ValueError, TypeError):
+        return False
+
 def validate(config, shared, targets, source, matrix):
     reasons = set()
     if set(config['targets']) != set(targets):
@@ -586,7 +622,10 @@ def validate(config, shared, targets, source, matrix):
                 reasons.add('invalid_estimate')
             if item['main_mutants'] and (item['setup_seconds'] == 0 or item['main_work_seconds'] == 0):
                 reasons.add('missing_measurement')
-            if item['estimated_seconds'] > 1800:
+            regions = accepted_static_regions(path, shard, source[path])
+            if regions and item['isolated_seconds'] < sum(STATIC_EVIDENCE[region][3] for region in regions):
+                reasons.add('invalid_estimate')
+            if item['estimated_seconds'] > 1800 and not approved_static_owner(path, record, shard, item, source[path]):
                 reasons.add('shard_over_budget')
     if all_shards != workflow.SHARDS:
         reasons.add('layout_mismatch')

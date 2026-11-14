@@ -231,6 +231,63 @@ class QualificationTests(unittest.TestCase):
                 item.update(main_work_seconds=2 * (seconds - 100), isolated_seconds=0, estimated_seconds=seconds)
                 self.assertEqual(seconds > 1800, 'shard_over_budget' in self.errors())
 
+    def test_only_measured_static_owner_has_budget_exception(self):
+        path = 'VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs'
+        data = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+        shard = 'configuration-static'
+        self.shards.clear()
+        self.shards[shard] = path
+        self.source = {path: data}
+        self.targets = {path: runtime.digest(data)}
+        timing = runtime.digest(runtime.canonical({'shared_inputs': self.shared, 'target_sources': self.targets}))
+        evidence = {'source_commit': 'a' * 40, 'locator': 'artifact 14108519875',
+                    'sha256': '7eb4a26b2498293a80a6d7b91155ea2eca785da32b59ed05bdce730bffe3ce38',
+                    'kind': 'hosted_complete', 'note': 'observed hosted evidence'}
+        item = {'selection_sha256': runtime.digest(runtime.canonical(runtime.workflow.shard_config(shard, data))),
+                'timing_inputs_sha256': timing, 'main_mutants': 0, 'main_work_seconds': 0,
+                'parallelism': 1, 'setup_seconds': 208, 'isolated_seconds': 1892.542,
+                'estimated_seconds': 2101, 'basis': 'artifact 14108519875 [11134,11241) observed_workers=1'}
+        record = {'source_sha256': self.targets[path], 'evidence': [evidence], 'shards': {shard: item}}
+        self.config['targets'] = {path: record}
+        with mock.patch.object(runtime.workflow, 'shard_span', return_value=(11134, 11241)) as span, \
+             mock.patch.object(runtime.workflow, 'shard_static_regions', return_value=[(11134, 11241)]) as regions:
+            self.assertEqual(set(), self.errors())
+            for field, value in [('main_mutants', 1), ('main_work_seconds', 1),
+                                 ('setup_seconds', 209), ('isolated_seconds', 1892.543),
+                                 ('basis', 'observed_workers=1')]:
+                with self.subTest(field=field):
+                    old = item[field]
+                    item[field] = value
+                    self.assertIn('shard_over_budget', self.errors())
+                    item[field] = old
+            span.return_value = (11133, 11241)
+            self.assertIn('shard_over_budget', self.errors())
+            span.return_value = (11134, 11241)
+            regions.return_value = [(11134, 11241), (11241, 11371)]
+            self.assertIn('shard_over_budget', self.errors())
+            regions.return_value = [(11134, 11241)]
+            evidence['sha256'] = 'f' * 64
+            self.assertIn('shard_over_budget', self.errors())
+            evidence['sha256'] = '7eb4a26b2498293a80a6d7b91155ea2eca785da32b59ed05bdce730bffe3ce38'
+            item.update(isolated_seconds=1000, estimated_seconds=1196)
+            self.assertIn('invalid_estimate', self.errors())
+            item.update(isolated_seconds=1892.542, estimated_seconds=2101)
+            self.source[path] += b'changed'
+            self.assertIn('shard_over_budget', self.errors())
+            self.source[path] = data
+            span.return_value = (370, 595)
+            regions.return_value = [(370, 595)]
+            evidence.update(locator='artifact 14108227262',
+                            sha256='68f25d8a4090d13ed253cb33bb69be5ecc852367210b1fe36016d5272c2ec911')
+            item.update(setup_seconds=208, isolated_seconds=1743.157, estimated_seconds=1952,
+                        basis='artifact 14108227262 [370,595) observed_workers=1')
+            self.assertEqual(set(), self.errors())
+            item.update(isolated_seconds=1743.156, estimated_seconds=1952)
+            self.assertIn('invalid_estimate', self.errors())
+            self.assertIn('shard_over_budget', self.errors())
+            item.update(isolated_seconds=1743.157, setup_seconds=209, estimated_seconds=1953)
+            self.assertIn('shard_over_budget', self.errors())
+
     def test_estimate_arithmetic_and_numeric_types(self):
         item = self.config['targets']['a.cs']['shards']['a-p1']
         for field, bad in [('parallelism', True), ('parallelism', 0), ('main_mutants', -1),
@@ -576,6 +633,9 @@ class DependencyEndToEndTests(unittest.TestCase):
                 return b'<Project />' if path.endswith('.props') else b'synthetic'
             if path not in cache:
                 cache[path] = runtime.subprocess.check_output(['git', 'show', f'HEAD:{path}'], cwd=ROOT)
+                # This dependency fixture uses synthetic estimates, not the measured static-owner workload.
+                if path == 'src/Parchwell.Verifier/' + runtime.STATIC_TARGET:
+                    cache[path] += b'\n'
             return cache[path]
         def files(ref):
             return names | ({current} if ref == 'added' else set())
