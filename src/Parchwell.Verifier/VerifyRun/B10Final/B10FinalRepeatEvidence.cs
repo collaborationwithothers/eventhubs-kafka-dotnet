@@ -151,7 +151,8 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
         string name = root + "nonfinal-result.json";
         byte[]? dataBytes = null, receiptBytes = null;
         bool readFailed = false;
-        // An unreadable restart input is a restart-only failure; the ordinary timeout publication is read below.
+        // An unreadable nonfinal object is a restart-only failure and the ordinary timeout publication is read below; an unreadable
+        // receipt is not restart-only, see ReceiptUnreadable.
         // Each object has its own guard: a failed read of one is not evidence that the other is absent.
         try { dataBytes = await readVerifier(name, ct).ConfigureAwait(false); }
         catch (Exception exception) when (B10FinalSweepHandler.EvidenceFailure(exception, ct)) { readFailed = true; input.RestartInputInvalid = true; }
