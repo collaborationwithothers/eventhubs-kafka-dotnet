@@ -1,0 +1,613 @@
+import importlib.util
+import json
+from pathlib import Path
+import tempfile
+import unittest
+
+import c5_runtime as profile_module
+ROOT = Path(__file__).resolve().parents[3]
+
+
+def xml(*results):
+    tests = ''.join(f'<test name="case{i}" result="{result}" time="8" />' for i, result in enumerate(results))
+    return f'<assemblies><assembly><collection>{tests}</collection></assembly></assemblies>'
+
+
+class ProfileTests(unittest.TestCase):
+    def invoke(self, content, code=0, reason=None):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'evidence'
+            calls = []
+            def launch(command, root, logfile, timeout):
+                calls.append((command, timeout))
+                logfile.write_text('synthetic')
+                if content is not None:
+                    (logfile.parent / 'results.xml').write_text(content)
+                return code, reason
+            ticks = iter([0, 10])
+            status = profile_module.profile(output, 600, ROOT, launch, lambda: next(ticks))
+            return status, json.loads((output / 'profile.json').read_text()), calls
+
+    def test_profile_population_and_wall_time(self):
+        status, result, calls = self.invoke(xml('Pass', 'Pass'))
+        self.assertEqual(0, status)
+        self.assertEqual('complete', result['status'])
+        self.assertEqual(2, len(result['cases']))
+        self.assertEqual(16, result['test_duration_seconds'])
+        self.assertEqual(10, result['wall_seconds'])
+        self.assertEqual(1, len(calls))
+        self.assertIn('-p:ParchwellVerifierMutationOnly=true', calls[0][0])
+        self.assertIn('--report-xunit-xml', calls[0][0])
+
+    def test_profile_failure_is_not_measurement(self):
+        for content, code, reason in [(xml('Fail'), 1, None), (None, 0, None), (None, None, 'timeout')]:
+            with self.subTest(reason=reason, code=code):
+                status, result, calls = self.invoke(content, code, reason)
+                self.assertEqual(1, status)
+                self.assertEqual('incomplete', result['status'])
+                if content is None:
+                    self.assertNotIn('cases', result)
+                else:
+                    self.assertEqual(1, result['failures'])
+                self.assertEqual(1, len(calls))
+
+    def test_nonempty_output_never_launches(self):
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, 'existing').write_text('keep')
+            with self.assertRaises(ValueError):
+                profile_module.profile(directory, 600, ROOT, lambda *args: self.fail('launched'))
+            self.assertEqual('keep', Path(directory, 'existing').read_text())
+
+
+
+import copy
+import importlib.util
+import unittest
+from datetime import datetime, timedelta, timezone
+
+import c5_runtime as p
+
+
+def stamp(s):
+    return (datetime(2026, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=s)).isoformat()
+
+
+def fixture(wall=20):
+    run = {'id': 12, 'run_attempt': 1, 'head_sha': 'abc', 'created_at': stamp(0),
+           'updated_at': stamp(wall), 'status': 'completed', 'conclusion': 'success'}
+    def job(i, name, created, start, end):
+        return {'id': i, 'run_id': 12, 'run_attempt': 1, 'head_sha': 'abc', 'name': name,
+                'created_at': stamp(created), 'started_at': stamp(start), 'completed_at': stamp(end),
+                'status': 'completed', 'conclusion': 'success'}
+    jobs = [job(1, 'mutation (a, a.cs)', 0, 0, 10), job(2, 'mutation (b, b.cs)', 0, 5, 15),
+            job(3, 'aggregate', 15, 15, 20)]
+    return run, {'jobs': jobs}, {'a': 'a.cs', 'b': 'b.cs'}
+
+
+class PerformanceTests(unittest.TestCase):
+    def test_boundary(self):
+        for wall, status in [(1799, 'met'), (1800, 'met'), (1801, 'missed')]:
+            with self.subTest(wall=wall):
+                self.assertEqual(p.performance_report(*fixture(wall))['status'], status)
+
+    def test_compute_peak_queue_and_aggregation(self):
+        run, jobs, expected = fixture(1810)
+        jobs['jobs'][1]['completed_at'] = stamp(1790)
+        result = p.performance_report(run, jobs, expected)
+        self.assertEqual(result['status'], 'missed')
+        self.assertEqual(result['workflow_elapsed_seconds'], 1810)
+        self.assertEqual(result['mutation_job_seconds'], 1795)
+        self.assertEqual(result['peak_mutation_jobs'], 2)
+        self.assertEqual(result['queue_seconds']['mutation (b, b.cs)'], 5)
+        run, jobs, expected = fixture()
+        self.assertEqual(p.performance_report(run, jobs, expected)['mutation_job_seconds'], 20)
+        self.assertEqual(p.performance_report(run, jobs, expected)['peak_mutation_jobs'], 2)
+
+    def test_incomplete(self):
+        for change in ('cancelled', 'missing_completion', 'mixed_attempt', 'early_run_end', 'missing_job', 'partial_page'):
+            with self.subTest(change=change):
+                run, jobs, expected = fixture()
+                if change == 'cancelled': jobs['jobs'][0]['conclusion'] = 'cancelled'
+                if change == 'missing_completion': jobs['jobs'][0]['completed_at'] = None
+                if change == 'mixed_attempt': jobs['jobs'][0]['run_attempt'] = 2
+                if change == 'early_run_end': run['updated_at'] = stamp(19)
+                if change == 'missing_job': jobs['jobs'].pop(0)
+                if change == 'partial_page': jobs['total_count'] = 4
+                self.assertEqual(p.performance_report(run, jobs, expected)['status'], 'incomplete')
+
+
+
+
+class GeometryTests(unittest.TestCase):
+    def test_probe_geometry_is_not_outcomes(self):
+        import hashlib
+        source = b'class A {}\n'
+        def row(index, status, reason=None):
+            return {'id': str(index), 'mutatorName': 'test', 'replacement': 'x', 'status': status,
+                    'statusReason': reason, 'location': {'start': {'line': 1, 'column': 1},
+                                                        'end': {'line': 1, 'column': 2}}}
+        report = {'schemaVersion': '2', 'projectRoot': '/p', 'files': {'/p/A.cs': {
+            'language': 'cs', 'source': source.decode(), 'mutants': [
+                row(1, 'Killed'), row(2, 'Ignored', 'Removed by mutate filter'), row(3, 'CompileError')]}}}
+        result = p.geometry(report, 'A.cs', source, hashlib.sha256(source).hexdigest(), b'config', hashlib.sha256(b'config').hexdigest())
+        self.assertEqual(3, len(result))
+        self.assertEqual(1, sum(r['measured_execution'] for r in result))
+        self.assertTrue(result[1]['filter_ignored'])
+        with self.assertRaises(ValueError):
+            p.geometry(report, 'A.cs', source, '0' * 64, b'config', hashlib.sha256(b'config').hexdigest())
+        report['files']['/p/A.cs']['mutants'] = []
+        with self.assertRaises(ValueError):
+            p.geometry(report, 'A.cs', source, hashlib.sha256(source).hexdigest(), b'config', hashlib.sha256(b'config').hexdigest())
+
+    def test_unobserved_mutant_weight_and_isolated_work(self):
+        self.assertEqual({'main_work_seconds': 100, 'estimated_seconds': 450},
+                         p.estimate_work([20, 40], 1, 100, 2, 300))
+        self.assertEqual(1400, p.estimate_work([2000], 0, 100, 2, 300)['estimated_seconds'])
+        with self.assertRaises(ValueError):
+            p.estimate_work([], 1, 100, 2, 300)
+
+from unittest import mock
+import c5_runtime as runtime
+
+class QualificationTests(unittest.TestCase):
+    def setUp(self):
+        self.shards = {'a-p1': 'a.cs', 'b': 'b.cs'}
+        self.source = {'a.cs': b'a', 'b.cs': b'b'}
+        self.shared = {'global.json': runtime.digest(b'sdk')}
+        self.targets = {p: runtime.digest(data) for p, data in self.source.items()}
+        self.workflow_patcher = mock.patch.object(runtime.workflow, 'SHARDS', self.shards)
+        self.config_patcher = mock.patch.object(runtime.workflow, 'shard_config', side_effect=lambda shard, source: {'shard': shard, 'source': source.decode(), 'cut': 10})
+        self.workflow_patcher.start()
+        self.config_patcher.start()
+        self.addCleanup(self.workflow_patcher.stop)
+        self.addCleanup(self.config_patcher.stop)
+        evidence = {'source_commit': 'a' * 40, 'locator': 'example', 'sha256': 'a' * 64,
+                    'kind': 'local_probe', 'note': 'hardware=synthetic calibration=uncertain'}
+        self.config = {'schema_version': 1, 'budget_seconds': 1800, 'shared_inputs': self.shared.copy(), 'targets': {}}
+        timing = runtime.digest(runtime.canonical({'shared_inputs': self.shared, 'target_sources': self.targets}))
+        for shard, path in self.shards.items():
+            self.config['targets'][path] = {'source_sha256': self.targets[path], 'evidence': [evidence.copy()], 'shards': {shard: {
+                'selection_sha256': runtime.digest(runtime.canonical(runtime.workflow.shard_config(shard, self.source[path]))),
+                'timing_inputs_sha256': timing, 'main_mutants': 1, 'main_work_seconds': 2000,
+                'parallelism': 2, 'setup_seconds': 100, 'isolated_seconds': 300, 'estimated_seconds': 1400,
+                'basis': 'example; observed_workers=2; conservative weighting; local calibration uncertain'}}}
+
+    def errors(self):
+        runtime.shape(self.config)
+        return runtime.validate(self.config, self.shared, self.targets, self.source, self.shards)
+
+    def test_estimate_main_and_isolated_work(self):
+        self.assertEqual(set(), self.errors())
+        self.config['targets']['a.cs']['shards']['a-p1']['estimated_seconds'] = 1250
+        self.assertIn('invalid_estimate', self.errors())
+
+    def test_shard_budget_boundary(self):
+        for seconds in (1799, 1800, 1801, 1500):
+            with self.subTest(seconds=seconds):
+                item = self.config['targets']['a.cs']['shards']['a-p1']
+                item.update(main_work_seconds=2 * (seconds - 100), isolated_seconds=0, estimated_seconds=seconds)
+                self.assertEqual(seconds > 1800, 'shard_over_budget' in self.errors())
+
+    def test_estimate_arithmetic_and_numeric_types(self):
+        item = self.config['targets']['a.cs']['shards']['a-p1']
+        for field, bad in [('parallelism', True), ('parallelism', 0), ('main_mutants', -1),
+                           ('main_work_seconds', float('nan')), ('setup_seconds', float('inf')),
+                           ('estimated_seconds', 1399)]:
+            with self.subTest(field=field, value=bad):
+                original = item[field]
+                item[field] = bad
+                self.assertIn('invalid_estimate', self.errors())
+                item[field] = original
+
+    def test_same_ids_changed_cut(self):
+        with mock.patch.object(runtime.workflow, 'shard_config', side_effect=lambda shard, source: {'shard': shard, 'source': source.decode(), 'cut': 20}):
+            self.assertIn('layout_mismatch', self.errors())
+            for shard, path in self.shards.items():
+                self.config['targets'][path]['shards'][shard]['selection_sha256'] = runtime.digest(runtime.canonical(runtime.workflow.shard_config(shard, self.source[path])))
+            self.assertEqual(set(), self.errors())
+
+    def test_target_change_invalidates_all_rates(self):
+        self.source['a.cs'] = b'changed'
+        self.targets['a.cs'] = runtime.digest(self.source['a.cs'])
+        a = self.config['targets']['a.cs']
+        a['source_sha256'] = self.targets['a.cs']
+        a['shards']['a-p1']['selection_sha256'] = runtime.digest(runtime.canonical(runtime.workflow.shard_config('a-p1', self.source['a.cs'])))
+        binding = runtime.digest(runtime.canonical({'shared_inputs': self.shared, 'target_sources': self.targets}))
+        a['shards']['a-p1']['timing_inputs_sha256'] = binding
+        self.assertIn('stale_inputs', self.errors())
+        self.config['targets']['b.cs']['shards']['b']['timing_inputs_sha256'] = binding
+        self.assertEqual(set(), self.errors())
+
+    def test_shared_input_invalidates_all_rates(self):
+        self.shared['global.json'] = runtime.digest(b'new sdk')
+        self.assertIn('stale_inputs', self.errors())
+
+    def test_layout_and_missing_evidence(self):
+        self.config['targets']['a.cs']['evidence'] = []
+        self.assertIn('missing_measurement', self.errors())
+        del self.config['targets']['b.cs']
+        self.assertIn('missing_qualification', self.errors())
+        self.assertIn('layout_mismatch', self.errors())
+
+    def test_matrix_capacity_boundary(self):
+        for count in (255, 256, 257):
+            with self.subTest(count=count):
+                matrix = {f's{i}': 'a.cs' for i in range(count)}
+                self.assertEqual(count > 256, 'matrix_over_capacity' in runtime.validate(self.config, self.shared, self.targets, self.source, matrix))
+
+    def test_execution_hash_separates_cuts(self):
+        data = Path(runtime.workflow.__file__).read_bytes()
+        self.assertEqual(runtime.execution_runner(data), runtime.execution_runner(data.replace(b'(4376, 6570)', b'(4377, 6570)')))
+        self.assertNotEqual(runtime.execution_runner(data), runtime.execution_runner(data.replace(b'REBALANCE_SECONDS = 7200', b'REBALANCE_SECONDS = 7201')))
+
+    def test_runtime_profile_directory_membership(self):
+        # Capture the tracked tree once; in-memory variants test additions, edits and deletions.
+        names = runtime.files('HEAD')
+        original_blob = runtime.blob
+        cache = {p: original_blob('HEAD', p) for p in names if p.startswith(('src/', 'tests/', 'scenarios/', '.config/', 'docs/operations/', '.github/workflows/')) or '/' not in p}
+        fixture = 'scenarios/profiles/synthetic-runtime-fixture.yaml'
+        def get_blob(ref, path):
+            return cache[path]
+        with mock.patch.object(runtime, 'blob', side_effect=get_blob), mock.patch.object(runtime, 'files', return_value=names):
+            baseline, _ = runtime.input_maps('HEAD')
+            cache[fixture] = b'one'
+            with mock.patch.object(runtime, 'files', return_value=names | {fixture}):
+                added, _ = runtime.input_maps('HEAD')
+                self.assertNotEqual(baseline, added)
+                cache[fixture] = b'two'
+                changed, _ = runtime.input_maps('HEAD')
+                self.assertNotEqual(added, changed)
+            self.assertNotIn(fixture, baseline)
+
+    def test_malformed_precedes_irrelevant_bypass(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'bad.json'
+            path.write_text('{')
+            self.assertEqual({'status': 'rejected', 'reasons': ['invalid_input']}, runtime.check('HEAD', 'HEAD', path))
+            self.assertEqual({'status': 'rejected', 'reasons': ['invalid_input']}, runtime.check('not-a-ref', 'HEAD', path))
+
+class ReviewRegressionTests(unittest.TestCase):
+    setUp = QualificationTests.setUp
+    errors = QualificationTests.errors
+    def test_observed_workers_bound(self):
+        item = self.config['targets']['a.cs']['shards']['a-p1']
+        item['parallelism'] = 3
+        item['estimated_seconds'] = 1067
+        self.assertIn('missing_measurement', self.errors())
+        item['basis'] = 'no observation'
+        self.assertIn('missing_measurement', self.errors())
+
+    def test_oversized_numbers_do_not_escape(self):
+        item = self.config['targets']['a.cs']['shards']['a-p1']
+        item['main_work_seconds'] = 10 ** 400
+        self.assertIn('invalid_estimate', self.errors())
+        item.update(main_work_seconds=1e308, setup_seconds=1e308, isolated_seconds=1e308)
+        self.assertIn('invalid_estimate', self.errors())
+
+    def test_qualification_only_change_requires_check(self):
+        import json
+        data = json.dumps(self.config)
+        with tempfile.TemporaryDirectory() as directory:
+            file = Path(directory) / 'qualification.json'
+            file.write_text(data)
+            def fake_git(*args):
+                if args[0] == 'rev-parse': return b'abc\n'
+                if args[0] == 'diff': return b'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json\0'
+                raise AssertionError(args)
+            with mock.patch.object(runtime, 'git', side_effect=fake_git), \
+                 mock.patch.object(runtime, 'blob', side_effect=lambda ref, path: Path(runtime.workflow.__file__).read_bytes() if path == runtime.RUNNER else b'x'), \
+                 mock.patch.object(runtime, 'input_maps', return_value=(self.shared, self.targets)), \
+                 mock.patch.object(runtime, 'workflow_matrix', return_value=self.shards), \
+                 mock.patch.object(runtime, 'validate', return_value={'shard_over_budget'}):
+                self.assertEqual({'status': 'rejected', 'reasons': ['shard_over_budget']}, runtime.check('base', 'head', file))
+
+
+class AdditionalQualificationTests(unittest.TestCase):
+    setUp = QualificationTests.setUp
+    errors = QualificationTests.errors
+
+    def simulated_check(self, change, old_shared=None, old_targets=None):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'qualification.json'
+            path.write_text(json.dumps(self.config))
+            runner = Path(runtime.workflow.__file__).read_bytes()
+            original_git = runtime.git
+            def git(*args):
+                if args[0] == 'rev-parse':
+                    return (b'base\n' if args[-1].startswith('base') else b'head\n')
+                if args[0] == 'diff':
+                    return (change + '\0').encode()
+                return original_git(*args)
+            def blob(ref, name):
+                if name == runtime.RUNNER:
+                    return runner
+                if name == runtime.WORKFLOW:
+                    return b'matrix'
+                return self.source[name.removeprefix('src/Parchwell.Verifier/')]
+            def input_maps(ref):
+                return ((old_shared if old_shared is not None else self.shared),
+                        (old_targets if old_targets is not None else self.targets)) if ref == 'base' else (self.shared, self.targets)
+            with mock.patch.object(runtime, 'git', side_effect=git), mock.patch.object(runtime, 'blob', side_effect=blob), \
+                 mock.patch.object(runtime, 'input_maps', side_effect=input_maps), \
+                 mock.patch.object(runtime, 'workflow_matrix', return_value=self.shards):
+                return runtime.check('base', 'head', path)
+
+    def test_irrelevant_and_excluded_change_is_not_applicable(self):
+        for path in ('README.md', 'items/474/state.md', 'src/Parchwell.LoadGenerator/Program.cs',
+                     'tests/Parchwell.Verifier.Tests/Component/Example.cs'):
+            with self.subTest(path=path):
+                self.assertEqual({'status': 'not_applicable', 'reasons': []}, self.simulated_check(path))
+
+    def test_runtime_limits_json_is_execution_data(self):
+        path = 'docs/operations/a01-runtime-limits.json'
+        self.shared[path] = runtime.digest(b'new')
+        old = dict(self.shared)
+        old[path] = runtime.digest(b'old')
+        result = self.simulated_check(path, old_shared=old)
+        self.assertEqual('rejected', result['status'])
+        self.assertIn('stale_inputs', result['reasons'])
+
+    def test_new_target_has_no_default_pass(self):
+        self.targets['new.cs'] = runtime.digest(b'new')
+        self.source['new.cs'] = b'new'
+        old = {p: h for p, h in self.targets.items() if p != 'new.cs'}
+        result = self.simulated_check('src/Parchwell.Verifier/new.cs', old_targets=old)
+        self.assertEqual('rejected', result['status'])
+        self.assertIn('missing_qualification', result['reasons'])
+
+    def test_matching_matrix_capacity_boundary(self):
+        for count in (255, 256, 257):
+            with self.subTest(count=count):
+                shard_map = {f's{i}': 'a.cs' for i in range(count)}
+                original = self.config['targets']['a.cs']['shards']['a-p1']
+                shards = {}
+                for shard in shard_map:
+                    item = original.copy()
+                    item['selection_sha256'] = runtime.digest(runtime.canonical(runtime.workflow.shard_config(shard, self.source['a.cs'])))
+                    shards[shard] = item
+                config = copy.deepcopy(self.config)
+                config['targets']['a.cs']['shards'] = shards
+                config['targets']['b.cs']['shards'] = {}
+                with mock.patch.object(runtime.workflow, 'SHARDS', shard_map):
+                    reasons = runtime.validate(config, self.shared, self.targets, self.source, shard_map)
+                self.assertEqual({'matrix_over_capacity'} if count == 257 else set(), reasons)
+
+    def test_local_rate_basis_records_uncertainty(self):
+        item = self.config['targets']['a.cs']['shards']['a-p1']
+        self.assertIn('local calibration uncertain', item['basis'])
+        self.assertNotIn('missing_measurement', self.errors())
+
+
+class AdditionalProjectAndLauncherTests(unittest.TestCase):
+    def test_unknown_inclusion_rejected(self):
+        names = runtime.files('HEAD')
+        original_blob = runtime.blob
+        def changed_blob(ref, path):
+            data = original_blob(ref, path)
+            if path == runtime.TEST_PROJECT:
+                return data.replace(b'</Project>', b'<ItemGroup><Compile Include="new/**/*.cs" /></ItemGroup></Project>')
+            return data
+        with mock.patch.object(runtime, 'blob', side_effect=changed_blob):
+            with self.assertRaises(ValueError):
+                runtime.project_closure('HEAD', names)
+
+    def test_timeout_launcher_kills_group_without_retry(self):
+        process = mock.Mock(pid=123, returncode=-9)
+        process.wait.side_effect = [runtime.subprocess.TimeoutExpired('fake-child', 600), -9]
+        with tempfile.TemporaryDirectory() as directory, \
+             mock.patch.object(runtime.subprocess, 'Popen', return_value=process) as popen, \
+             mock.patch.object(runtime.os, 'killpg') as killpg, \
+             mock.patch.object(runtime.signal, 'signal'), mock.patch.object(runtime.signal, 'getsignal'):
+            result = runtime.profile_launch(['fake-child'], directory, Path(directory) / 'log', 600)
+        self.assertEqual((-9, 'timeout'), result)
+        popen.assert_called_once()
+        killpg.assert_called_once_with(123, runtime.signal.SIGKILL)
+        self.assertEqual(2, process.wait.call_count)
+
+    def test_excluded_component_source_does_not_change_inputs(self):
+        names = runtime.files('HEAD')
+        excluded = next(p for p in names if p.startswith('tests/Parchwell.Verifier.Tests/Component/') and p.endswith('.cs'))
+        included = next(p for p in names if p.startswith('tests/Parchwell.Verifier.Tests/Host/') and p.endswith('.cs') and p not in {
+            'tests/Parchwell.Verifier.Tests/' + value for value in runtime.EXCLUDED})
+        actual_blob = runtime.blob
+        cache = {}
+        changed = set()
+        def get_blob(ref, path):
+            if path in changed:
+                return b'changed synthetic contents'
+            if path not in cache:
+                cache[path] = actual_blob(ref, path)
+            return cache[path]
+        with mock.patch.object(runtime, 'blob', side_effect=get_blob), mock.patch.object(runtime, 'files', return_value=names):
+            before = runtime.input_maps('HEAD')
+            changed.add(excluded)
+            self.assertEqual(before, runtime.input_maps('HEAD'))
+            changed.add(included)
+            self.assertNotEqual(before, runtime.input_maps('HEAD'))
+    def test_excluded_component_source_does_not_change_inputs(self):
+        names = runtime.files('HEAD')
+        excluded = next(p for p in names if p.startswith('tests/Parchwell.Verifier.Tests/Component/') and p.endswith('.cs'))
+        included = next(p for p in names if p.startswith('tests/Parchwell.Verifier.Tests/Host/') and p.endswith('.cs') and p not in {
+            'tests/Parchwell.Verifier.Tests/' + value for value in runtime.EXCLUDED})
+        actual_blob = runtime.blob
+        cache = {}
+        changed = set()
+        def get_blob(ref, path):
+            if path in changed:
+                return b'changed synthetic contents'
+            if path not in cache:
+                cache[path] = actual_blob(ref, path)
+            return cache[path]
+        with mock.patch.object(runtime, 'blob', side_effect=get_blob), mock.patch.object(runtime, 'files', return_value=names):
+            before = runtime.input_maps('HEAD')
+            changed.add(excluded)
+            self.assertEqual(before, runtime.input_maps('HEAD'))
+            changed.add(included)
+            self.assertNotEqual(before, runtime.input_maps('HEAD'))
+
+    def test_probe_budget_and_failed_invocation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            tally = Path(directory) / 'tally.json'
+            output = Path(directory) / 'probe'
+            calls = []
+            def failed(*args, **kwargs):
+                calls.append(args)
+                return 1
+            self.assertEqual(1, runtime.bounded_probe('a.cs', '0..1', output, tally, launcher=failed))
+            self.assertEqual(1, len(json.loads(tally.read_text())))
+            self.assertEqual(1, len(calls))
+            tally.write_text(json.dumps([{}] * 24))
+            with self.assertRaises(ValueError):
+                runtime.bounded_probe('a.cs', '0..1', output, tally, launcher=failed)
+            self.assertEqual(1, len(calls))
+            output.mkdir()
+            tally.write_text('[]')
+            with self.assertRaises(ValueError):
+                runtime.bounded_probe('a.cs', '0..1', output, tally, launcher=failed)
+            self.assertEqual([], json.loads(tally.read_text()))
+
+    def test_local_probe_without_calibration_is_missing_measurement(self):
+        case = AdditionalQualificationTests()
+        case.setUp()
+        try:
+            case.config['targets']['a.cs']['evidence'][0]['note'] = 'no calibration'
+            self.assertIn('missing_measurement', case.errors())
+        finally:
+            case.doCleanups()
+
+    def test_ancestor_build_input_is_tracked(self):
+        names = runtime.files('HEAD')
+        actual_blob = runtime.blob
+        ancestor = 'src/Directory.Build.props'
+        def get_blob(ref, path):
+            return b'<Project />' if path == ancestor else actual_blob(ref, path)
+        with mock.patch.object(runtime, 'blob', side_effect=get_blob):
+            with mock.patch.object(runtime, 'files', return_value=names):
+                before, _ = runtime.input_maps('HEAD')
+            with mock.patch.object(runtime, 'files', return_value=names | {ancestor}):
+                after, _ = runtime.input_maps('HEAD')
+        self.assertNotIn(ancestor, before)
+        self.assertIn(ancestor, after)
+
+class FinalReviewRegressionTests(AdditionalQualificationTests):
+    def test_malformed_shard_precedes_scope_bypass(self):
+        self.config['targets']['a.cs']['shards']['a-p1'] = 'bad'
+        self.assertEqual({'status': 'rejected', 'reasons': ['invalid_input']}, self.simulated_check('README.md'))
+        self.config['targets']['a.cs']['shards']['a-p1'] = {}
+        self.assertEqual({'status': 'rejected', 'reasons': ['invalid_input']}, self.simulated_check('README.md'))
+
+    def test_shared_additions_deletions_reject_stale(self):
+        for path in ('tests/fixtures/verifier-v1/synthetic.json', 'src/Directory.Build.props',
+                     'scenarios/profiles/synthetic.yaml'):
+            with self.subTest(path=path):
+                old = self.shared.copy()
+                self.shared[path] = runtime.digest(b'synthetic')
+                self.assertIn('stale_inputs', self.simulated_check(path, old_shared=old)['reasons'])
+                self.config['shared_inputs'] = self.shared.copy()
+                previous = self.shared.copy()
+                del self.shared[path]
+                self.assertIn('stale_inputs', self.simulated_check(path, old_shared=previous)['reasons'])
+                self.config['shared_inputs'] = self.shared.copy()
+
+    def test_build_inclusion_fails_closed(self):
+        names = runtime.files('HEAD')
+        actual_blob = runtime.blob
+        def malicious(ref, path):
+            if path == 'src/Directory.Build.targets':
+                return b'<Project><Import Project="../outside.targets" /></Project>'
+            return actual_blob(ref, path)
+        with mock.patch.object(runtime, 'files', return_value=names | {'src/Directory.Build.targets'}), \
+             mock.patch.object(runtime, 'blob', side_effect=malicious):
+            with self.assertRaises(ValueError):
+                runtime.input_maps('HEAD')
+
+class DependencyEndToEndTests(unittest.TestCase):
+    def test_actual_discovery_addition_and_deletion(self):
+        names = runtime.files('HEAD')
+        actual_blob = runtime.blob
+        cache = {}
+        additions = ('tests/fixtures/verifier-v1/runtime-test.json', 'src/Directory.Build.props',
+                     'scenarios/profiles/runtime-test.yaml')
+        def blob(ref, path):
+            if path in additions:
+                return b'<Project />' if path.endswith('.props') else b'synthetic'
+            if path not in cache:
+                cache[path] = runtime.subprocess.check_output(['git', 'show', f'HEAD:{path}'], cwd=ROOT)
+            return cache[path]
+        def files(ref):
+            return names | ({current} if ref == 'added' else set())
+        def git(*args):
+            if args[0] == 'rev-parse': return args[-1].replace('^{commit}', '').encode()
+            if args[0] == 'diff': return (current + '\0').encode()
+            raise AssertionError(args)
+        with mock.patch.object(runtime, 'files', side_effect=files), mock.patch.object(runtime, 'blob', side_effect=blob), \
+             mock.patch.object(runtime, 'git', side_effect=git):
+            base_shared, targets = runtime.input_maps('base')
+            sources = {p: blob('base', 'src/Parchwell.Verifier/' + p) for p in targets}
+            def config(shared):
+                binding = runtime.digest(runtime.canonical({'shared_inputs': shared, 'target_sources': targets}))
+                evidence = {'source_commit': 'a' * 40, 'locator': 'synthetic', 'sha256': 'a' * 64,
+                            'kind': 'hosted_complete', 'note': 'synthetic'}
+                result = {'schema_version': 1, 'budget_seconds': 1800, 'shared_inputs': shared,
+                          'targets': {p: {'source_sha256': h, 'evidence': [evidence], 'shards': {}} for p, h in targets.items()}}
+                for shard, target in runtime.workflow.SHARDS.items():
+                    result['targets'][target]['shards'][shard] = {
+                        'selection_sha256': runtime.digest(runtime.canonical(runtime.workflow.shard_config(shard, sources[target]))),
+                        'timing_inputs_sha256': binding, 'main_mutants': 1, 'main_work_seconds': 20,
+                        'parallelism': 1, 'setup_seconds': 10, 'isolated_seconds': 0,
+                        'estimated_seconds': 30, 'basis': 'synthetic observed_workers=1'}
+                return result
+            with tempfile.TemporaryDirectory() as directory:
+                qualification = Path(directory) / 'q.json'
+                for current in additions:
+                    with self.subTest(current=current):
+                        added_shared, _ = runtime.input_maps('added')
+                        qualification.write_text(json.dumps(config(base_shared)))
+                        self.assertEqual({'status': 'rejected', 'reasons': ['stale_inputs']}, runtime.check('base', 'added', qualification))
+                        qualification.write_text(json.dumps(config(added_shared)))
+                        self.assertEqual({'status': 'rejected', 'reasons': ['stale_inputs']}, runtime.check('added', 'base', qualification))
+
+    def test_namespaced_build_import_rejected(self):
+        names = runtime.files('HEAD')
+        original = runtime.blob
+        new = 'src/Directory.Build.targets'
+        def blob(ref, path):
+            return (b'<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003"><Import Project="../outside.targets" /></Project>'
+                    if path == new else original(ref, path))
+        with mock.patch.object(runtime, 'files', return_value=names | {new}), mock.patch.object(runtime, 'blob', side_effect=blob):
+            with self.assertRaises(ValueError):
+                runtime.input_maps('HEAD')
+
+    def test_numeric_schema_rejects_object_before_bypass(self):
+        case = AdditionalQualificationTests()
+        case.setUp()
+        try:
+            case.config['targets']['a.cs']['shards']['a-p1']['main_mutants'] = {}
+            self.assertEqual({'status': 'rejected', 'reasons': ['invalid_input']}, case.simulated_check('README.md'))
+        finally:
+            case.doCleanups()
+
+    def test_numeric_values_never_bypass_schema(self):
+        for field, value in [('main_mutants', True), ('parallelism', 0), ('main_work_seconds', -1),
+                             ('estimated_seconds', 1399), ('setup_seconds', 10 ** 400)]:
+            with self.subTest(field=field):
+                case = AdditionalQualificationTests()
+                case.setUp()
+                try:
+                    case.config['targets']['a.cs']['shards']['a-p1'][field] = value
+                    self.assertEqual({'status': 'rejected', 'reasons': ['invalid_estimate']}, case.simulated_check('README.md'))
+                finally:
+                    case.doCleanups()
+
+    def test_all_automatically_selected_build_xml_reject_namespaces(self):
+        names = runtime.files('HEAD')
+        original = runtime.blob
+        for name in ('Directory.Build.props', 'Directory.Packages.props', 'src/Directory.Build.targets', runtime.TEST_PROJECT):
+            with self.subTest(name=name):
+                def blob(ref, path):
+                    if path == name:
+                        return b'<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003"><Import Project="other.targets" /></Project>'
+                    return original(ref, path)
+                with mock.patch.object(runtime, 'files', return_value=names | {name}), mock.patch.object(runtime, 'blob', side_effect=blob):
+                    with self.assertRaises(ValueError):
+                        runtime.input_maps('HEAD')
