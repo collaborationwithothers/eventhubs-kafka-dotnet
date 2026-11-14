@@ -1,5 +1,20 @@
 # Verifier mutation record
 
+
+## Runtime qualification diagnostics
+
+The runtime helper prepares and checks evidence for shard sizing. It does not replace the fresh mutation acceptance run or change its score.
+
+Run the commands from the repository root. Keep profiling output outside the repository; the profile runs the full mutation-only test population once and refuses a nonempty output directory.
+
+```bash
+python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py profile --output-dir DIR --timeout 600
+python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py check --base BASE_SHA --head HEAD_SHA --qualification FILE
+python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py performance --run-json RUN_JSON --jobs-json JOBS_JSON --output-dir DIR
+```
+
+Omit `--base` to validate the entire head. A local probe evidence note records `hardware=VALUE` and `calibration=VALUE` with its uncertainty or hosted comparison. Each shard basis records its measured worker bound as `observed_workers=N` and cites the evidence for that observation. The offline check reports qualified, not applicable, or rejected with reason codes. The performance command reads saved run and explicitly paged jobs JSON for one attempt; it reports workflow elapsed time separately from overlapping job time. An incomplete run cannot establish performance acceptance. The bounded measurement allowance and required later main validation are in the [approved plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/1cdbcdf0407c1b897c7bcec29ef97d261109b473/items/474/plan-mutation-runtime.md).
+
 ## C5 selected sample and execution receipt
 
 The local C5 sample controller was deleted under #202. Its two bounded campaigns remain incomplete historical records, not mutation acceptance evidence. Those campaigns selected four targets with 80/60/60 thresholds. The committed [C5 configuration](../../tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json) now also includes the two [single-action targets](#issue-213-single-action-targets); historical measurements below retain their original scope. The measurements, limits and source hashes below describe those historical attempts. Current acceptance for changes to these targets uses the post-merge hosted workflow described in [Issue 187 hosted C5 measurement](#issue-187-hosted-c5-measurement), under the policy in [factory.md](../agents/factory.md#evidence-pack).
