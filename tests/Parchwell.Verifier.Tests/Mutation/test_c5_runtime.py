@@ -69,6 +69,8 @@ class ProfileTests(unittest.TestCase):
                 return code, reason
             ticks = iter([0, 10])
             status = profile_module.profile(output, 600, ROOT, launch, lambda: next(ticks))
+            self.assertEqual(profile_module.workflow.OVERRIDES,
+                             json.loads((output / 'command.json').read_text())['environment_overrides'])
             return status, json.loads((output / 'profile.json').read_text()), calls
 
     def test_profile_population_and_wall_time(self):
@@ -93,6 +95,17 @@ class ProfileTests(unittest.TestCase):
                 else:
                     self.assertEqual(1, result['failures'])
                 self.assertEqual(1, len(calls))
+
+    def test_profile_launch_uses_workflow_overrides(self):
+        process = mock.Mock()
+        process.wait.return_value = 0
+        with tempfile.TemporaryDirectory() as directory, \
+             mock.patch.dict(os.environ, {'APPLICATIONINSIGHTS_STATSBEAT_DISABLED': 'false'}), \
+             mock.patch.object(profile_module.subprocess, 'Popen', return_value=process) as popen:
+            self.assertEqual((0, None), profile_module.profile_launch(
+                ['fake-child'], directory, Path(directory) / 'log', 600))
+        for key, value in profile_module.workflow.OVERRIDES.items():
+            self.assertEqual(value, popen.call_args.kwargs['env'][key])
 
     def test_nonempty_output_never_launches(self):
         with tempfile.TemporaryDirectory() as directory:

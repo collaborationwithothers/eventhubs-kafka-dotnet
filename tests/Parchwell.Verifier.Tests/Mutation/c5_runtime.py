@@ -90,6 +90,7 @@ def profile_launch(command, root, logfile, timeout):
     try:
         with logfile.open('xb') as log:
             process = subprocess.Popen(command, cwd=root, stdout=log, stderr=subprocess.STDOUT,
+                                       env={**os.environ, **workflow.OVERRIDES},
                                        start_new_session=True)
             try:
                 return process.wait(timeout=timeout), None
@@ -129,7 +130,8 @@ def profile(output_dir, timeout, root, launcher=profile_launch, clock=time.monot
                '--report-xunit-xml-filename', 'results.xml']
     def git(*args):
         return subprocess.check_output(['git', *args], cwd=root, text=True).strip()
-    facts = {'command': command, 'source_commit': git('rev-parse', 'HEAD'),
+    facts = {'command': command, 'environment_overrides': dict(workflow.OVERRIDES),
+             'source_commit': git('rev-parse', 'HEAD'),
              'source_status': git('status', '--porcelain'),
              'sdk_config': json.loads((root / 'global.json').read_text(encoding='utf-8')),
              'machine': {'platform': platform.platform(), 'machine': platform.machine(),
@@ -479,7 +481,7 @@ PROVISIONAL_LAYOUT_HASHES = {
     'Judge/B10FinalJudge.cs': '0edc49b41523422087ea8a0cc90bb2f781fc84074f43e92c42d762c1bd635aad',
     'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': 'a36d5aa3b38d51fa945cd497ab4226a95a7c9496cf923d70f7c162084be19683',
 }
-PROVISIONAL_TIMING_INPUTS_HASH = 'bf4e7b0bf0f9a5e05070f95e9240d342c3d0bb735929ae44b1152cb0650aaae8'
+PROVISIONAL_TIMING_INPUTS_HASH = 'e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463'
 PROVISIONAL_STATUS = 'pending_native_report'
 NUMERIC_FIELDS = ('main_mutants', 'main_work_seconds', 'parallelism', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')
 
@@ -596,7 +598,7 @@ def approved_static_owner(path, record, shard, item, source):
 # targeted correction; the first two use a cross-field conservative rate.
 CODEC_TARGET = 'Common/Phase/B10FinalProjectionCodec.cs'
 CODEC_PROVISIONAL_SHARDS = frozenset(f'b10-final-projection-codec-p{i}-{suffix}' for i in (1, 2, 3) for suffix in ('a', 'b'))
-CODEC_TIMING_INPUTS_HASH = 'bf4e7b0bf0f9a5e05070f95e9240d342c3d0bb735929ae44b1152cb0650aaae8'
+CODEC_TIMING_INPUTS_HASH = 'e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463'
 CODEC_SOURCE_HASH = 'c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5'
 CODEC_ISOLATED = {
     'b10-final-projection-codec-p1-a': 1248.756, 'b10-final-projection-codec-p1-b': 1236.599,

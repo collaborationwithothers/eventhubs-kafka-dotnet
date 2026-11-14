@@ -261,7 +261,11 @@ SOURCE_PATHS = ("src", "tests/Parchwell.Verifier.Tests", ".config/dotnet-tools.j
                 "Directory.Packages.props", "NuGet.config", "Parchwell.slnx")
 CONFIG_PATH = Path("tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json")
 REPORT_PATH = Path("stryker/reports/mutation-report.json")
-OVERRIDES = {"ParchwellVerifierMutationOnly": "true"}
+# Disable only vendor-internal Statsbeat in the isolated mutation test processes.
+OVERRIDES = {
+    "ParchwellVerifierMutationOnly": "true",
+    "APPLICATIONINSIGHTS_STATSBEAT_DISABLED": "true",
+}
 RECEIPT_FIELDS = set("""shard target commit tree run_id run_attempt argv cwd
     environment_overrides started_at_utc finished_at_utc elapsed_seconds
     child_exit_code termination_reason command_completed source_sha256_before

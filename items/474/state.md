@@ -1,6 +1,6 @@
 # State: #474 verifier mutation runtime
 
-Covers: comment 6883497065, read 2026-11-14
+Covers: comment 6884210117, read 2026-11-14
 Parent items: [#347](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/347)
 Item plan: [mutation runtime plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6876990691)
 Implementing tool: Codex. Source: [approval and direction](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6877906971)
@@ -20,6 +20,7 @@ Decisions in force:
 - Allow the original live run to finish while monitoring at five-minute intervals. Source: [decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6882208583)
 - Rebalance the five slow targets and run one corrected-main measurement in parallel with the original run. Source: [decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6883040373)
 - Schedule the three codec static declarations as fresh isolated ID cohorts and retain exact logical ownership. Source: [decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6883497065)
+- Disable only Azure Monitor internal Statsbeat in C5 test processes, then run one new-profile main validation. Source: [decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6884210117)
 Open questions:
 - None about the chosen policy. Source: [plan section 10](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/1cdbcdf0407c1b897c7bcec29ef97d261109b473/items/474/plan-mutation-runtime.md#10-open-questions-and-stop-rule)
-Next action: Complete the targeted correction and final-head gates, then measure the corrected main commit.
+Next action: Complete the offline C5 profile fix and final-head gates, then validate the new profile on main.
