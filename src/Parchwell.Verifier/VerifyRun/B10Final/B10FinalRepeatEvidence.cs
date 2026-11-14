@@ -20,6 +20,8 @@ internal sealed class B10FinalInput(int number)
     internal bool Started { get; set; }
     internal ArtifactReference? Source { get; set; }
     internal List<DateTimeOffset> Completions { get; } = [];
+    /// <summary>A per-repeat verifier receipt that exists could not be read, so plan F2 cannot be established for it.</summary>
+    internal bool ReceiptUnreadable { get; set; }
     internal HashSet<string> Instances { get; } = new(StringComparer.Ordinal);
     internal StartLineEvidence? Start { get; set; }
     internal Dictionary<int, long>? Starts { get; set; }
@@ -154,7 +156,11 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
         try { dataBytes = await readVerifier(name, ct).ConfigureAwait(false); }
         catch (Exception exception) when (B10FinalSweepHandler.EvidenceFailure(exception, ct)) { readFailed = true; input.RestartInputInvalid = true; }
         try { receiptBytes = await readVerifier(root + "verify-completion.json", ct).ConfigureAwait(false); }
-        catch (Exception exception) when (B10FinalSweepHandler.EvidenceFailure(exception, ct)) { readFailed = true; input.RestartInputInvalid = true; }
+        catch (Exception exception) when (B10FinalSweepHandler.EvidenceFailure(exception, ct))
+        {
+            // The receipt is also F2's timing witness, so an unreadable one is not a restart-only failure: the sweep line cannot be trusted.
+            readFailed = true; input.RestartInputInvalid = true; input.ReceiptUnreadable = true;
+        }
         if (dataBytes is not null) input.Source = B10FinalSweepHandler.Reference("verifier", name, dataBytes);
         try
         {

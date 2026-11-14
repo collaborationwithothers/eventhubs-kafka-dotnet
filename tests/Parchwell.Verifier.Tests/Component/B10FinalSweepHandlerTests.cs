@@ -393,6 +393,12 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
         // A failed read of one object is not evidence that the other is absent, so each is still attempted.
         Assert.Contains(B10FinalSweepHarness.A3(3), reads);
         Assert.Contains(B10FinalSweepHarness.Prefix(3) + "verify-completion.json", reads);
+        if (which == "receipt")
+        {
+            // An existing receipt that cannot be read leaves plan F2 unestablished, which is F2's global failure.
+            AssertGlobal(run, "b10_final_sweep_line_invalid");
+            return;
+        }
         Assert.True(run.Data["scan_complete"]!.GetValue<bool>(), run.Data.ToJsonString());
         for (int repeat = 1; repeat <= 5; repeat++) AssertComplete(run.Repeat(repeat));
         JsonObject item = run.Repeat(3);

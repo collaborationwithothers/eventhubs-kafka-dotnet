@@ -55,7 +55,8 @@ internal sealed class B10FinalSweepHandler(IOptions<VerifierHostOptions> configu
             string name = PhasePaths.SweepLine(options.RunId!, options.Phase!);
             byte[] bytes = await ReadVerifier(name, cancellationToken).ConfigureAwait(false) ?? throw new FormatException("sweep_missing");
             sweep = B10SweepEvidenceCodec.ReadSweepLine(bytes, limits, options.MaxPartitions!.Value);
-            if (!B10SweepEvidenceCodec.MatchesSweepLine(sweep, options, started, repeats.SelectMany(repeat => repeat.Completions)))
+            if (repeats.Any(repeat => repeat.ReceiptUnreadable) ||
+                !B10SweepEvidenceCodec.MatchesSweepLine(sweep, options, started, repeats.SelectMany(repeat => repeat.Completions)))
                 throw new FormatException("sweep_binding");
             sweepReference = Reference("verifier", name, bytes);
         }
