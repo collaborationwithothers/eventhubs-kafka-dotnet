@@ -488,3 +488,35 @@ class AdditionalProjectAndLauncherTests(unittest.TestCase):
                 after, _ = runtime.input_maps('HEAD')
         self.assertNotIn(ancestor, before)
         self.assertIn(ancestor, after)
+
+class FinalReviewRegressionTests(AdditionalQualificationTests):
+    def test_malformed_shard_precedes_scope_bypass(self):
+        self.config['targets']['a.cs']['shards']['a-p1'] = 'bad'
+        self.assertEqual({'status': 'rejected', 'reasons': ['invalid_input']}, self.simulated_check('README.md'))
+        self.config['targets']['a.cs']['shards']['a-p1'] = {}
+        self.assertEqual({'status': 'rejected', 'reasons': ['invalid_input']}, self.simulated_check('README.md'))
+
+    def test_shared_additions_deletions_reject_stale(self):
+        for path in ('tests/fixtures/verifier-v1/synthetic.json', 'src/Directory.Build.props',
+                     'scenarios/profiles/synthetic.yaml'):
+            with self.subTest(path=path):
+                old = self.shared.copy()
+                self.shared[path] = runtime.digest(b'synthetic')
+                self.assertIn('stale_inputs', self.simulated_check(path, old_shared=old)['reasons'])
+                self.config['shared_inputs'] = self.shared.copy()
+                previous = self.shared.copy()
+                del self.shared[path]
+                self.assertIn('stale_inputs', self.simulated_check(path, old_shared=previous)['reasons'])
+                self.config['shared_inputs'] = self.shared.copy()
+
+    def test_build_inclusion_fails_closed(self):
+        names = runtime.files('HEAD')
+        actual_blob = runtime.blob
+        def malicious(ref, path):
+            if path == 'src/Directory.Build.targets':
+                return b'<Project><Import Project="../outside.targets" /></Project>'
+            return actual_blob(ref, path)
+        with mock.patch.object(runtime, 'files', return_value=names | {'src/Directory.Build.targets'}), \
+             mock.patch.object(runtime, 'blob', side_effect=malicious):
+            with self.assertRaises(ValueError):
+                runtime.input_maps('HEAD')

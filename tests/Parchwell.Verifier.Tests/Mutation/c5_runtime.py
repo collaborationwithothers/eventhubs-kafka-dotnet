@@ -449,6 +449,10 @@ def input_maps(ref):
     result = {}
     for p in sorted(selected):
         data = blob(ref, p)
+        if PurePosixPath(p).name in ('Directory.Build.props', 'Directory.Build.targets', 'Directory.Packages.props'):
+            build_xml = ET.fromstring(data)
+            if any(node.tag in {'Import', 'ImportGroup', 'Choose', 'Compile', 'Content', 'None', 'ProjectReference', 'Target'} for node in build_xml.iter()):
+                raise ValueError('unsupported build inclusion')
         if p == RUNNER:
             data = execution_runner(data)
         elif p == WORKFLOW:
@@ -475,6 +479,13 @@ def shape(config):
             raise ValueError('invalid source hash')
         if not isinstance(record['evidence'], list) or not isinstance(record['shards'], dict):
             raise ValueError('invalid evidence or shards')
+        shard_fields = {'selection_sha256', 'timing_inputs_sha256', 'main_mutants', 'main_work_seconds',
+                        'parallelism', 'setup_seconds', 'isolated_seconds', 'estimated_seconds', 'basis'}
+        for shard, item in record['shards'].items():
+            if not isinstance(shard, str) or not isinstance(item, dict) or set(item) != shard_fields:
+                raise ValueError('invalid shard shape')
+            if any(not isinstance(item[k], str) for k in ('selection_sha256', 'timing_inputs_sha256', 'basis')):
+                raise ValueError('invalid shard field')
         for evidence in record['evidence']:
             if not isinstance(evidence, dict) or set(evidence) != {'source_commit','locator','sha256','kind','note'}:
                 raise ValueError('invalid evidence shape')
