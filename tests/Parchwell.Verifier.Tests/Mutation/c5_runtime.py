@@ -497,7 +497,7 @@ def shape(config):
         if not isinstance(path, str) or not isinstance(record, dict):
             raise ValueError('invalid target')
         provisional = 'geometry_status' in record
-        expected_fields = {'source_sha256', 'evidence', 'shards'} | ({'geometry_status'} if provisional else set())
+        expected_fields = {'source_sha256', 'evidence', 'shards'} | ({'geometry_status', 'native_geometry'} if provisional else set())
         if set(record) != expected_fields or (provisional and (path not in PROVISIONAL_TARGETS or record['geometry_status'] != PROVISIONAL_STATUS)):
             raise ValueError('invalid target')
         if not isinstance(record['source_sha256'], str) or not HEX.fullmatch(record['source_sha256']):
@@ -514,6 +514,8 @@ def shape(config):
             if any(not HEX.fullmatch(item[k]) for k in ('selection_sha256', 'timing_inputs_sha256')):
                 raise ValueError('invalid shard hash')
             if provisional:
+                if path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS and any(item[k] is None for k in NUMERIC_FIELDS):
+                    raise ValueError('pinned codec owner requires its estimate')
                 if any(item[k] is not None for k in NUMERIC_FIELDS) and not (
                     path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS
                     and all(type(item[k]) in (int, float) for k in NUMERIC_FIELDS)):
@@ -639,6 +641,51 @@ def approved_codec_static_owner(path, record, shard, item, source):
     except (KeyError, ValueError, TypeError):
         return False
 
+# These complete native inventories are taken from receipt-verified hosted reports.
+NATIVE_GEOMETRY_BINDINGS = {
+    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': ('14127456699', '3268e1a3b6c52c469e74f6b5680aa40d2096a1901780c8c0d6416c394ed88d90', 'c9ac4182741b1f87d383ad950806a069d786e4cf8dfc55c5f0a17641f47922a3', '2bc0f8acfd79364d414b7cd46dde2804c930adc2a1fbbb9f6ad05d67a79d298a', 1306),
+    'Common/Phase/B10FinalProjectionCodec.cs': ('14127755542', '017a78d3c863b6ca3c8cb5a2e2db5c7a0bf95988612a7e603e68e7259489477d', 'ab0e4d0677136a516821fff731e36d439ff57e40857c8e77bdda7e4c5183c37a', 'd5a7f544377a3d8b2c66e120e92efcee3f0a07ecabe5b45f36a40f2334251b8f', 730),
+    'Judge/B10FinalJudge.cs': ('14127550132', '5daf8d8f214957e7e8f6a91db1d2093fa3c0cf0827267a07ee77da9ef14ab119', 'e9ec6237585270a6ab9e2dea44998171e276656fab9da65b2aea3a96bd19cf93', 'b57b1426e4cd0f4a5a21e06aa665f7bedf5568fcb62bc5beffe1e2885a5c9d40', 710),
+}
+
+
+def native_geometry_valid(path, record, source):
+    try:
+        artifact, archive, report, inventory, count = NATIVE_GEOMETRY_BINDINGS[path]
+        geometry = record['native_geometry']
+        items = geometry['items']
+        if (set(geometry) != {'artifact_id', 'archive_sha256', 'report_sha256', 'inventory_sha256', 'source_sha256', 'items'}
+                or (geometry['artifact_id'], geometry['archive_sha256'], geometry['report_sha256'], geometry['inventory_sha256']) != (artifact, archive, report, inventory)
+                or geometry['source_sha256'] != digest(source) or len(items) != count
+                or digest(canonical(items)) != inventory):
+            return False
+        if not any(e['kind'] == 'hosted_complete' and e['source_commit'] == 'dbc25c2005c3409ffd5f079c40b061d82c4b02aa'
+                   and e['sha256'] == archive and e['locator'] == ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43625662806 artifact ' + artifact)
+                   for e in record['evidence']):
+            return False
+        key = next(key for key, (target, _) in workflow.TARGETS.items() if target == path)
+        spans = workflow.primary_spans(key, source)
+        text = workflow.target_text(source)
+        regions = workflow.static_regions(text)
+        seen = set()
+        for item in items:
+            if set(item) != {'id', 'identity', 'span', 'owner'} or item['id'] in seen:
+                return False
+            seen.add(item['id'])
+            a, b = item['span']
+            if type(a) is not int or type(b) is not int or not 0 <= a < b <= workflow.utf16_length(text):
+                return False
+            owners = [i + 1 for i, (lo, hi) in enumerate(spans) if lo <= a and b <= hi]
+            if len(owners) > 1 or any(x <= a and b <= y and len(owners) != 1 for x, y in regions):
+                return False
+            owner = key + ('-p' + str(owners[0]) if owners else '-crossing')
+            if item['owner'] != owner or workflow.SHARDS.get(owner) != path:
+                return False
+        return all(sum(lo <= a and b <= hi for lo, hi in spans) == 1 for a, b in regions)
+    except (KeyError, TypeError, ValueError, StopIteration):
+        return False
+
+
 def validate(config, shared, targets, source, matrix):
     reasons = set()
     if set(config['targets']) != set(targets):
@@ -661,6 +708,8 @@ def validate(config, shared, targets, source, matrix):
             reasons.add('stale_inputs')
         provisional = record.get('geometry_status') == PROVISIONAL_STATUS
         if provisional:
+            if not native_geometry_valid(path, record, source[path]):
+                reasons.add('missing_measurement')
             if timing_hash != PROVISIONAL_TIMING_INPUTS_HASH:
                 reasons.add('stale_inputs')
             source_hash, artifact, evidence_hash = PROVISIONAL_TARGETS[path]

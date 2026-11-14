@@ -363,8 +363,9 @@ class QualificationTests(unittest.TestCase):
                 'isolated_seconds': 2158.236, 'estimated_seconds': 2351,
                 'basis': '[614,1068) observed_workers=2'}
         self.config['targets'] = {path: {'source_sha256': self.targets[path], 'geometry_status': runtime.PROVISIONAL_STATUS,
-                                          'evidence': evidence, 'shards': {shard: item}}}
-        with mock.patch.object(runtime, 'PROVISIONAL_TARGETS', {path: (self.targets[path], '42', 'f' * 64)}), \
+                                          'evidence': evidence, 'native_geometry': {}, 'shards': {shard: item}}}
+        with mock.patch.object(runtime, 'native_geometry_valid', return_value=True), \
+             mock.patch.object(runtime, 'PROVISIONAL_TARGETS', {path: (self.targets[path], '42', 'f' * 64)}), \
              mock.patch.object(runtime, 'PROVISIONAL_TIMING_INPUTS_HASH', timing), \
              mock.patch.object(runtime, 'CODEC_TIMING_INPUTS_HASH', timing), \
              mock.patch.object(runtime, 'PROVISIONAL_LAYOUT_HASHES', {path: runtime.digest(runtime.canonical({shard: selection}))}), \
@@ -376,6 +377,36 @@ class QualificationTests(unittest.TestCase):
             item['main_work_seconds'] = 0
             evidence[0]['locator'] += 'x'
             self.assertIn('invalid_estimate', self.errors())
+
+    def test_pinned_native_geometry_rejects_tampering(self):
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        for path in runtime.NATIVE_GEOMETRY_BINDINGS:
+            with self.subTest(path=path):
+                record = copy.deepcopy(config['targets'][path])
+                source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+                owners = {item['owner']: path for item in record['native_geometry']['items']}
+                with mock.patch.object(runtime.workflow, 'SHARDS', owners):
+                    self.assertTrue(runtime.native_geometry_valid(path, record, source))
+                record['native_geometry']['items'][0]['owner'] += '-wrong'
+                self.assertFalse(runtime.native_geometry_valid(path, record, source))
+                record = copy.deepcopy(config['targets'][path])
+                record['native_geometry']['items'].pop()
+                self.assertFalse(runtime.native_geometry_valid(path, record, source))
+                record = copy.deepcopy(config['targets'][path])
+                record['evidence'] = [e for e in record['evidence'] if e['sha256'] != record['native_geometry']['archive_sha256']]
+                self.assertFalse(runtime.native_geometry_valid(path, record, source))
+
+    def test_pinned_codec_owners_cannot_be_unknown(self):
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        for shard in runtime.CODEC_PROVISIONAL_SHARDS:
+            candidate = copy.deepcopy(config)
+            item = candidate['targets'][runtime.CODEC_TARGET]['shards'][shard]
+            for field in runtime.NUMERIC_FIELDS:
+                item[field] = None
+            with self.subTest(shard=shard), self.assertRaises(ValueError):
+                runtime.shape(candidate)
 
     def test_estimate_arithmetic_and_numeric_types(self):
         item = self.config['targets']['a.cs']['shards']['a-p1']
@@ -828,6 +859,10 @@ class ProvisionalQualificationTests(unittest.TestCase):
         self.addCleanup(timing_patch.stop)
         record = self.config['targets']['a.cs']
         record['geometry_status'] = runtime.PROVISIONAL_STATUS
+        record['native_geometry'] = {}
+        geometry_patch = mock.patch.object(runtime, 'native_geometry_valid', return_value=True)
+        geometry_patch.start()
+        self.addCleanup(geometry_patch.stop)
         record['evidence'] = [{'source_commit': 'e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5',
             'locator': 'artifact 42', 'sha256': 'f' * 64, 'kind': 'partial_timing',
             'note': 'cancelled; timing only'}]
