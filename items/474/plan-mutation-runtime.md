@@ -2,11 +2,13 @@
 
 Bring the complete verifier mutation workflow to a 30-minute dispatch-to-result goal without changing what a passing mutation result proves. Qualify future changes to its workload before merge, using bounded profiling and explicit estimates. This specification is for GPT-6.1 Terra at high effort; it does not authorize this planning session to implement or run a mutation campaign.
 
-Revision: 2. Base main: `5ac85af17f4b7dbc1a1396932fb3554d363752fb`.
+Revision: 3. Base main: `5ac85af17f4b7dbc1a1396932fb3554d363752fb`.
 Issue: [474](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474).
 Plan branch: `codex/474-plan`.
 
 Changes from revision 1: bind each shard estimate to its exact generated Stryker configuration; include runtime-read limits and profile-directory membership in freshness checks. These address the [first independent check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6877125630) and require a fresh check of this revision.
+
+Changes from revision 2: apply [Hari's adopted timing-invalidation correction](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6877623126) from the [second check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6877239310). Every shard estimate now binds to all configured target source hashes as well as shared inputs; unchanged geometry remains reusable. This is a later revision applying Hari's answer under plan-pr step 5, not an automatic third correction cycle or a reset of the previous check counts.
 
 ## 1. Goal and authority
 
@@ -15,6 +17,7 @@ Authority, in order:
 1. The issue body: reduce current runtime and prevent regression; retain complete fresh coverage at the merged commit.
 2. [Cancellation decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6876575032): the cancelled run supplies no mutation acceptance.
 3. [Interactive design decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6876901367): Hari's answers from the grilling session, including the 30-minute shard ceiling, bounded profiling, blocking qualification, and unchanged mutation method.
+4. [All-target timing decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6877623126): adopt the second check's concrete correction, invalidating every timing estimate when any configured target changes while retaining unchanged geometry for reuse.
 
 The last decision records shared understanding, not approval of this plan at its commit SHA. Obtain the approval required by `docs/agents/factory.md`, "Item lifecycle", before implementation. The existing tool assignment is [Tool: Codex](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6876574470). The label alone does not approve an unwritten plan.
 
@@ -123,9 +126,11 @@ python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py performance --run-
 
 Each `evidence` entry has `source_commit`, `locator`, `sha256`, `kind` (`hosted_complete`, `local_probe`, `partial_timing`, or `suite_profile`), and `note`. Locators identify retained evidence or the PR's authored measurement notes, including raw-file hashes and reproducible commands. A locator alone is not proof of a complete report. Reusing complete old geometry requires the target bytes to match. Reusing timings also requires comparable shared inputs and an explicit hardware/calibration note. Partial timing may contribute a rate but cannot stand for full geometry, static outcomes or acceptance. The reviewer checks the raw source for the measurements it relies on; CI checks freshness, arithmetic and declared budgets rather than authenticating a local measurement.
 
-Each `shards` entry is keyed by the production shard ID and has `selection_sha256`, `main_mutants`, `main_work_seconds`, `parallelism`, `setup_seconds`, `isolated_seconds`, `estimated_seconds`, and `basis`. Counts are nonnegative integers; parallelism is a positive measured integer, bounded by the production command's observed workers; all seconds are finite nonnegative numbers. `estimated_seconds` must equal `ceil(setup_seconds + main_work_seconds / parallelism + isolated_seconds)`. `basis` states measurement locators, how untested mutants were weighted, and any local-to-hosted calibration. Positive-work shards cannot use zero setup/work without measured support. Reject booleans as numbers, NaN, Infinity, negative values and arbitrary downward rounding.
+Each `shards` entry is keyed by the production shard ID and has `selection_sha256`, `timing_inputs_sha256`, `main_mutants`, `main_work_seconds`, `parallelism`, `setup_seconds`, `isolated_seconds`, `estimated_seconds`, and `basis`. Counts are nonnegative integers; parallelism is a positive measured integer, bounded by the production command's observed workers; all seconds are finite nonnegative numbers. `estimated_seconds` must equal `ceil(setup_seconds + main_work_seconds / parallelism + isolated_seconds)`. `basis` states measurement locators, how untested mutants were weighted, and any local-to-hosted calibration. Positive-work shards cannot use zero setup/work without measured support. Reject booleans as numbers, NaN, Infinity, negative values and arbitrary downward rounding.
 
 `selection_sha256` is the lowercase SHA-256 of the exact production `shard_config(shard_id, original_target_bytes)` result, serialized by `json.dumps(config, sort_keys=True, separators=(',', ':'), ensure_ascii=True).encode('ascii')`. Regenerate that configuration from the current head before comparison. This binds estimates to positive spans, primary cuts, crossing exclusions, the source-end clamp, static-field exclusions and other Stryker configuration. Source bytes are independently bound by the target hash. A cut change with identical shard IDs/counts and old estimates must fail `layout_mismatch` until the new selection hash and its reassessed estimates are supplied. Static isolated ownership remains part of the existing geometry proof; this hash does not replace it.
+
+`timing_inputs_sha256` is the lowercase SHA-256 of `{"shared_inputs": shared_inputs, "target_sources": {path: targets[path]["source_sha256"] for path in targets}}`, using the same canonical JSON serialization defined for `selection_sha256`. Validate both maps against the current repository inputs before calculating this digest. Every shard estimate must match the current digest; a mismatch rejects with `stale_inputs` until that timing estimate has been reassessed and rebound. This binds timing qualification to every configured target as well as the shared inputs; unchanged target geometry may still be reused.
 
 The configuration is authored from reviewed evidence and contains curated estimates, not a copied/generated full inventory. Raw reports, command logs, generated plans and benchmark output stay in temporary/artifact storage. Record otherwise unavailable measurement facts in PR implementation notes under `docs/agents/pull-requests.md`, rule 8.
 
@@ -140,7 +145,7 @@ Build the relevant shared-input set from these explicit roots and dependencies:
 
 Configured target C# files get their own per-target source hashes rather than being duplicated in `shared_inputs`. Qualification data itself and declarative matrix/cut data are checked against the per-shard `selection_sha256` bindings, current layout and arithmetic, not included in a self-referential content hash. For a file mixing layout constants and execution logic, compare the execution portion independently or conservatively refresh qualification; do not exempt its executable changes. Preserve an explicit test for that separation.
 
-Exclude documentation, item notes, unrelated services/tests, and separate production-only container/deployment files that cannot feed the mutation build or execution. A target byte change requires that target's geometry/rate reassessment; a relevant shared-input change invalidates timing qualification for all targets until reassessed. This is scope based, not an assertion that every verifier edit makes tests slower.
+Exclude documentation, item notes, unrelated services/tests, and separate production-only container/deployment files that cannot feed the mutation build or execution. A configured target byte change invalidates timing qualification for every target until reassessed, while requiring fresh geometry only for the changed target; a relevant shared-input change also invalidates timing qualification for every target until reassessed. This is scope based, not an assertion that every verifier edit makes tests slower.
 
 ## 5. Numbered requirements and enforced checks
 
@@ -198,7 +203,7 @@ Use behavioral tests in `test_c5_runtime.py` and retain existing `test_c5_workfl
 | R4,R5 | `layout_ownership`: node wholly in left/right primary, touching cut, crossing one/multiple cuts, source-end node, equal-span distinct identities, static region | exactly one eligible owner per identity; static region never split; crossing report includes real source |
 | R4,R5 | Existing UTF-16/BOM/astral and clamped crossing-exclusion regression fixtures | identical native population/score reconciliation, including zero-tested complements |
 | R6 | `irrelevant_change_does_not_profile`: README/item-note edit and unrelated loadgen-only C# edit | not_applicable; no measurement/process starts |
-| R6 | `changed_target_invalidates_only_target`: two valid target records, one target byte changed | stale_inputs until affected target refreshed; unchanged geometry may be reused with valid shared inputs |
+| R6 | `target_change_invalidates_all_rates`: two qualified target records; change target A, then refresh only A's geometry and timing while B retains its old timing binding | stale_inputs remains until every target's timing record is reassessed and rebound; unchanged target geometry remains reusable |
 | R6 | `shared_input_invalidates_all_rates`: included test/helper, linked fixture, relevant shared project/build/package input; additions/deletions separately | stale_inputs for all affected timing records |
 | R6 | `runtime_limits_json_is_execution_data`: change only docs/operations/a01-runtime-limits.json with otherwise valid inputs | stale_inputs, never not_applicable despite its docs path |
 | R6 | `runtime_profile_directory_membership`: add, change or delete a top-level scenarios/profiles/*.yaml file with no project-file edit; separate cases | stale_inputs for all affected timing records; ordinary unrelated prose remains not_applicable |
