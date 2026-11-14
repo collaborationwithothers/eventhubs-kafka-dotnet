@@ -466,6 +466,16 @@ def input_maps(ref):
     return result, targets
 
 
+# The initial live-qualification pilot's only approved incomplete native inventories.
+# Decision: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6880732047
+PROVISIONAL_TARGETS = {
+    'Judge/B10FinalJudge.cs': ('cd88f482f9c93947e613ec4b13a34ff554331dfe8ebd9a3e400ed3bbb360d34a', '14111392757', '7c300f5fd0185d8952b4bfa5229432b829b4713f793a5b62ea7afd63cca4a709'),
+    'Common/Phase/B10FinalProjectionCodec.cs': ('c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5', '14111558997', 'cfe9779a0ddaf62f8e9d43aa7ab8724904efd07f3a77a51e4c59f9d18633145e'),
+    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': ('4e533dd7aa4205e0a5a121b94b9441af7438e5d878600a3b65dc6ad5f4edab68', '14111653842', '7d65fe2b27ee06585f1c6914e6ca363b376507b0dd1ee8f28f0700f2dcd663d6'),
+}
+PROVISIONAL_STATUS = 'pending_native_report'
+NUMERIC_FIELDS = ('main_mutants', 'main_work_seconds', 'parallelism', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')
+
 def shape(config):
     if not isinstance(config, dict) or set(config) != {'schema_version', 'budget_seconds', 'shared_inputs', 'targets'}:
         raise ValueError('invalid schema')
@@ -477,7 +487,11 @@ def shape(config):
         if not isinstance(path, str) or not isinstance(sha, str) or not HEX.fullmatch(sha):
             raise ValueError('invalid input hash')
     for path, record in config['targets'].items():
-        if not isinstance(path, str) or not isinstance(record, dict) or set(record) != {'source_sha256', 'evidence', 'shards'}:
+        if not isinstance(path, str) or not isinstance(record, dict):
+            raise ValueError('invalid target')
+        provisional = 'geometry_status' in record
+        expected_fields = {'source_sha256', 'evidence', 'shards'} | ({'geometry_status'} if provisional else set())
+        if set(record) != expected_fields or (provisional and (path not in PROVISIONAL_TARGETS or record['geometry_status'] != PROVISIONAL_STATUS)):
             raise ValueError('invalid target')
         if not isinstance(record['source_sha256'], str) or not HEX.fullmatch(record['source_sha256']):
             raise ValueError('invalid source hash')
@@ -492,7 +506,10 @@ def shape(config):
                 raise ValueError('invalid shard field')
             if any(not HEX.fullmatch(item[k]) for k in ('selection_sha256', 'timing_inputs_sha256')):
                 raise ValueError('invalid shard hash')
-            if any(type(item[k]) not in (int, float, bool) for k in ('main_mutants', 'main_work_seconds', 'parallelism', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')):
+            if provisional:
+                if any(item[k] is not None for k in NUMERIC_FIELDS):
+                    raise ValueError('provisional estimates must be unknown')
+            elif any(type(item[k]) not in (int, float, bool) for k in NUMERIC_FIELDS):
                 raise ValueError('invalid numeric field')
         for evidence in record['evidence']:
             if not isinstance(evidence, dict) or set(evidence) != {'source_commit','locator','sha256','kind','note'}:
@@ -507,6 +524,8 @@ def shape(config):
 def numeric_schema_errors(config):
     """Reject invalid numeric estimates before any scope shortcut."""
     for record in config['targets'].values():
+        if record.get('geometry_status') == PROVISIONAL_STATUS:
+            continue
         for item in record['shards'].values():
             if type(item['main_mutants']) is not int or item['main_mutants'] < 0:
                 return {'invalid_estimate'}
@@ -555,7 +574,9 @@ def approved_static_owner(path, record, shard, item, source):
                        and artifact in e['locator'] for e in record['evidence'])):
         return False
     try:
-        return (workflow.shard_span(shard, source) == region
+        owner = (region[0], region[1] + 1) if region == (370, 595) else (region[0] - 1, region[1])
+        padding = source[region[1]:region[1] + 1] if region == (370, 595) else source[region[0] - 1:region[0]]
+        return (workflow.shard_span(shard, source) == owner and padding == b'\n'
                 and workflow.shard_static_regions(shard, source) == [region])
     except (KeyError, ValueError, TypeError):
         return False
@@ -580,6 +601,15 @@ def validate(config, shared, targets, source, matrix):
             continue
         if record['source_sha256'] != targets[path]:
             reasons.add('stale_inputs')
+        provisional = record.get('geometry_status') == PROVISIONAL_STATUS
+        if provisional:
+            source_hash, artifact, evidence_hash = PROVISIONAL_TARGETS[path]
+            if record['source_sha256'] != source_hash:
+                reasons.add('stale_inputs')
+            if not any(e['kind'] == 'partial_timing' and e['sha256'] == evidence_hash
+                       and e['source_commit'] == 'e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5'
+                       and artifact in e['locator'] for e in record['evidence']):
+                reasons.add('missing_measurement')
         if not record['evidence']:
             reasons.add('missing_measurement')
         for evidence in record['evidence']:
@@ -602,6 +632,10 @@ def validate(config, shared, targets, source, matrix):
                     reasons.add('layout_mismatch')
             else:
                 reasons.add('layout_mismatch')
+            if provisional:
+                if not item['basis'].strip() or any(item[k] is not None for k in NUMERIC_FIELDS):
+                    reasons.add('invalid_estimate')
+                continue
             numeric = ('main_work_seconds', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')
             valid = (type(item['main_mutants']) is int and item['main_mutants'] >= 0
                      and type(item['parallelism']) is int and item['parallelism'] > 0
@@ -666,7 +700,13 @@ def check(base, head, qualification):
             return {'status': 'rejected', 'reasons': ['missing_qualification']}
         source = {p: blob(head, 'src/Parchwell.Verifier/' + p) for p in targets}
         reasons = sorted(validate(config, shared, targets, source, matrix))
-        return {'status': 'rejected' if reasons else 'qualified', 'reasons': reasons}
+        if reasons:
+            return {'status': 'rejected', 'reasons': reasons}
+        pending = sorted(path for path, record in config['targets'].items()
+                         if record.get('geometry_status') == PROVISIONAL_STATUS)
+        if pending:
+            return {'status': 'provisional', 'reasons': [], 'pending_targets': pending}
+        return {'status': 'qualified', 'reasons': []}
     except (ValueError, TypeError, KeyError, OSError, subprocess.CalledProcessError, ET.ParseError, SyntaxError, UnicodeError, OverflowError):
         return {'status': 'rejected', 'reasons': ['invalid_input']}
 

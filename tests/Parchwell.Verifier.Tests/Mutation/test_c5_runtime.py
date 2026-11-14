@@ -249,7 +249,7 @@ class QualificationTests(unittest.TestCase):
                 'estimated_seconds': 2101, 'basis': 'artifact 14108519875 [11134,11241) observed_workers=1'}
         record = {'source_sha256': self.targets[path], 'evidence': [evidence], 'shards': {shard: item}}
         self.config['targets'] = {path: record}
-        with mock.patch.object(runtime.workflow, 'shard_span', return_value=(11134, 11241)) as span, \
+        with mock.patch.object(runtime.workflow, 'shard_span', return_value=(11133, 11241)) as span, \
              mock.patch.object(runtime.workflow, 'shard_static_regions', return_value=[(11134, 11241)]) as regions:
             self.assertEqual(set(), self.errors())
             for field, value in [('main_mutants', 1), ('main_work_seconds', 1),
@@ -260,9 +260,9 @@ class QualificationTests(unittest.TestCase):
                     item[field] = value
                     self.assertIn('shard_over_budget', self.errors())
                     item[field] = old
-            span.return_value = (11133, 11241)
-            self.assertIn('shard_over_budget', self.errors())
             span.return_value = (11134, 11241)
+            self.assertIn('shard_over_budget', self.errors())
+            span.return_value = (11133, 11241)
             regions.return_value = [(11134, 11241), (11241, 11371)]
             self.assertIn('shard_over_budget', self.errors())
             regions.return_value = [(11134, 11241)]
@@ -275,7 +275,7 @@ class QualificationTests(unittest.TestCase):
             self.source[path] += b'changed'
             self.assertIn('shard_over_budget', self.errors())
             self.source[path] = data
-            span.return_value = (370, 595)
+            span.return_value = (370, 596)
             regions.return_value = [(370, 595)]
             evidence.update(locator='artifact 14108227262',
                             sha256='68f25d8a4090d13ed253cb33bb69be5ecc852367210b1fe36016d5272c2ec911')
@@ -337,8 +337,8 @@ class QualificationTests(unittest.TestCase):
 
     def test_execution_hash_separates_cuts(self):
         data = Path(runtime.workflow.__file__).read_bytes()
-        self.assertEqual(runtime.execution_runner(data), runtime.execution_runner(data.replace(b'(4376, 6570)', b'(4377, 6570)')))
-        self.assertNotEqual(runtime.execution_runner(data), runtime.execution_runner(data.replace(b'REBALANCE_SECONDS = 7200', b'REBALANCE_SECONDS = 7201')))
+        self.assertEqual(runtime.execution_runner(data), runtime.execution_runner(data.replace(b'(3600, 4517,', b'(3601, 4517,')))
+        self.assertNotEqual(runtime.execution_runner(data), runtime.execution_runner(data.replace(b'REBALANCE_SECONDS = 1800', b'REBALANCE_SECONDS = 1801')))
 
     def test_runtime_profile_directory_membership(self):
         # Capture the tracked tree once; in-memory variants test additions, edits and deletions.
@@ -714,3 +714,72 @@ class DependencyEndToEndTests(unittest.TestCase):
                 with mock.patch.object(runtime, 'files', return_value=names | {name}), mock.patch.object(runtime, 'blob', side_effect=blob):
                     with self.assertRaises(ValueError):
                         runtime.input_maps('HEAD')
+
+
+class ProvisionalQualificationTests(unittest.TestCase):
+    setUp = QualificationTests.setUp
+    errors = QualificationTests.errors
+    simulated_check = AdditionalQualificationTests.simulated_check
+
+    def provisional(self):
+        source_hash = self.targets['a.cs']
+        self.provisional_patch = mock.patch.object(runtime, 'PROVISIONAL_TARGETS',
+            {'a.cs': (source_hash, '42', 'f' * 64)})
+        self.provisional_patch.start()
+        self.addCleanup(self.provisional_patch.stop)
+        record = self.config['targets']['a.cs']
+        record['geometry_status'] = runtime.PROVISIONAL_STATUS
+        record['evidence'] = [{'source_commit': 'e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5',
+            'locator': 'artifact 42', 'sha256': 'f' * 64, 'kind': 'partial_timing',
+            'note': 'cancelled; timing only'}]
+        item = record['shards']['a-p1']
+        for field in runtime.NUMERIC_FIELDS:
+            item[field] = None
+        item['basis'] = 'source-based cut; native geometry and timing not established'
+        return record, item
+
+    def test_pilot_is_explicit_and_other_checks_remain(self):
+        record, item = self.provisional()
+        self.assertEqual(set(), self.errors())
+        self.assertEqual({'status': 'provisional', 'reasons': [], 'pending_targets': ['a.cs']},
+                         self.simulated_check(runtime.RUNNER))
+        item['selection_sha256'] = '0' * 64
+        self.assertIn('layout_mismatch', self.errors())
+        item['selection_sha256'] = runtime.digest(runtime.canonical(runtime.workflow.shard_config('a-p1', self.source['a.cs'])))
+        item['timing_inputs_sha256'] = '0' * 64
+        self.assertIn('stale_inputs', self.errors())
+        self.config['targets']['b.cs']['shards']['b']['estimated_seconds'] = 1801
+        self.assertIn('invalid_estimate', self.errors())
+
+    def test_pilot_requires_pinned_source_and_partial_evidence(self):
+        record, _ = self.provisional()
+        record['source_sha256'] = '0' * 64
+        self.assertIn('stale_inputs', self.errors())
+        record['source_sha256'] = self.targets['a.cs']
+        record['evidence'][0]['sha256'] = '0' * 64
+        self.assertIn('missing_measurement', self.errors())
+        record['evidence'][0]['sha256'] = 'f' * 64
+        record['evidence'][0]['kind'] = 'hosted_complete'
+        self.assertIn('missing_measurement', self.errors())
+        record['evidence'].clear()
+        self.assertIn('missing_measurement', self.errors())
+
+    def test_pilot_rejects_unknown_targets_or_fabricated_values_before_bypass(self):
+        record, item = self.provisional()
+        item['main_mutants'] = 0
+        with self.assertRaises(ValueError):
+            runtime.shape(self.config)
+        self.assertEqual({'status': 'rejected', 'reasons': ['invalid_input']}, self.simulated_check('README.md'))
+        item['main_mutants'] = None
+        self.config['targets']['b.cs']['geometry_status'] = runtime.PROVISIONAL_STATUS
+        with self.assertRaises(ValueError):
+            runtime.shape(self.config)
+        self.assertEqual({'status': 'rejected', 'reasons': ['invalid_input']}, self.simulated_check('README.md'))
+
+    def test_pilot_preserves_matrix_and_capacity_checks(self):
+        self.provisional()
+        matrix = dict(self.shards)
+        matrix['extra'] = 'a.cs'
+        self.assertIn('layout_mismatch', runtime.validate(self.config, self.shared, self.targets, self.source, matrix))
+        matrix = {f'job{i}': 'a.cs' for i in range(257)}
+        self.assertIn('matrix_over_capacity', runtime.validate(self.config, self.shared, self.targets, self.source, matrix))
