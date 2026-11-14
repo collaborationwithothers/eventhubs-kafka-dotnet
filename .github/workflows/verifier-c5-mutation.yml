@@ -93,6 +93,10 @@ jobs:
             target: VerifyRun/SingleAction/SingleActionRepeatJudgement.cs
           - shard: single-action-repeat-p17
             target: VerifyRun/SingleAction/SingleActionRepeatJudgement.cs
+          - shard: single-action-repeat-p18
+            target: VerifyRun/SingleAction/SingleActionRepeatJudgement.cs
+          - shard: single-action-repeat-p19
+            target: VerifyRun/SingleAction/SingleActionRepeatJudgement.cs
           - shard: single-action-repeat-crossing
             target: VerifyRun/SingleAction/SingleActionRepeatJudgement.cs
           - shard: single-action-configuration-p1
@@ -277,6 +281,8 @@ jobs:
             target: Judge/B10SweepChecks.cs
           - shard: b10-sweep-judge-p2
             target: Judge/B10SweepChecks.cs
+          - shard: b10-sweep-judge-p3
+            target: Judge/B10SweepChecks.cs
           - shard: b10-sweep-judge-crossing
             target: Judge/B10SweepChecks.cs
           - shard: b10-sweep-codec-p1
@@ -345,6 +351,18 @@ jobs:
             target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
           - shard: b10-final-repeat-evidence-p18
             target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
+          - shard: b10-final-repeat-evidence-p19
+            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
+          - shard: b10-final-repeat-evidence-p20
+            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
+          - shard: b10-final-repeat-evidence-p21
+            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
+          - shard: b10-final-repeat-evidence-p22
+            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
+          - shard: b10-final-repeat-evidence-p23
+            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
+          - shard: b10-final-repeat-evidence-p24
+            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
           - shard: b10-final-repeat-evidence-crossing
             target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
           - shard: b10-final-classification-p1
@@ -407,11 +425,17 @@ jobs:
             target: VerifyRun/B10Final/B10FinalClassification.cs
           - shard: b10-final-projection
             target: Common/Phase/B10FinalProjection.cs
-          - shard: b10-final-projection-codec-p1
+          - shard: b10-final-projection-codec-p1-a
             target: Common/Phase/B10FinalProjectionCodec.cs
-          - shard: b10-final-projection-codec-p2
+          - shard: b10-final-projection-codec-p1-b
             target: Common/Phase/B10FinalProjectionCodec.cs
-          - shard: b10-final-projection-codec-p3
+          - shard: b10-final-projection-codec-p2-a
+            target: Common/Phase/B10FinalProjectionCodec.cs
+          - shard: b10-final-projection-codec-p2-b
+            target: Common/Phase/B10FinalProjectionCodec.cs
+          - shard: b10-final-projection-codec-p3-a
+            target: Common/Phase/B10FinalProjectionCodec.cs
+          - shard: b10-final-projection-codec-p3-b
             target: Common/Phase/B10FinalProjectionCodec.cs
           - shard: b10-final-projection-codec-p4
             target: Common/Phase/B10FinalProjectionCodec.cs
@@ -430,6 +454,10 @@ jobs:
           - shard: b10-final-projection-codec-p11
             target: Common/Phase/B10FinalProjectionCodec.cs
           - shard: b10-final-projection-codec-p12
+            target: Common/Phase/B10FinalProjectionCodec.cs
+          - shard: b10-final-projection-codec-p13
+            target: Common/Phase/B10FinalProjectionCodec.cs
+          - shard: b10-final-projection-codec-p14
             target: Common/Phase/B10FinalProjectionCodec.cs
           - shard: b10-final-projection-codec-crossing
             target: Common/Phase/B10FinalProjectionCodec.cs
@@ -492,6 +520,10 @@ jobs:
           - shard: b10-final-judge-p10
             target: Judge/B10FinalJudge.cs
           - shard: b10-final-judge-p11
+            target: Judge/B10FinalJudge.cs
+          - shard: b10-final-judge-p12
+            target: Judge/B10FinalJudge.cs
+          - shard: b10-final-judge-p13
             target: Judge/B10FinalJudge.cs
           - shard: b10-final-judge-crossing
             target: Judge/B10FinalJudge.cs

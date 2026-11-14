@@ -671,7 +671,7 @@ class B10AbruptWorkflowTests(unittest.TestCase):
         '.github/workflows/dotnet-verification.yml': '8b61d6c8a51c097efec6d344fb86d9e6d942d5bd2eed72ca5b2d52043c167d65',
         '.github/workflows/scenario.yml': 'c3323aca63fa977f75129ed9050c2d30f98a49ae18104d3f88240d40ecce7099',
         '.github/workflows/sweeper.yml': 'fdff4a41ab1df0ade1c8e6d216adaeba6aba13dc6415b0b184de1101d7dc2234',
-        '.github/workflows/verifier-c5-mutation.yml': '673fbef1ba62d403d01311c6e6d7739268725f561533f773e126984671a67099',
+        '.github/workflows/verifier-c5-mutation.yml': '44414a40973b8c20387d3bced035a178321447839a30193dbfdbe70ca6a3782a',
     }
 
     @classmethod

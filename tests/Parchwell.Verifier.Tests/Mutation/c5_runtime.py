@@ -475,11 +475,11 @@ PROVISIONAL_TARGETS = {
 }
 # Canonical maps of shard ID to generated selection hash for the approved pilot.
 PROVISIONAL_LAYOUT_HASHES = {
-    'Common/Phase/B10FinalProjectionCodec.cs': '10b8f858fb81cb9129f00acba7c3986eb85d6d4d5076104105c71f96d7eabb58',
-    'Judge/B10FinalJudge.cs': '6111fd4ec0d857dc607d3f0f0e44c14de19e551157508df041aee1f986f6af37',
-    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': '1a4a156c924e0e54b07a495a083f2f09efc6f6b12d86d9eed55874894b8133b2',
+    'Common/Phase/B10FinalProjectionCodec.cs': 'ad21dfabb9441f5b8f766e201676ac01d38563f61b21767c34d8f23589b69ff9',
+    'Judge/B10FinalJudge.cs': '0edc49b41523422087ea8a0cc90bb2f781fc84074f43e92c42d762c1bd635aad',
+    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': 'a36d5aa3b38d51fa945cd497ab4226a95a7c9496cf923d70f7c162084be19683',
 }
-PROVISIONAL_TIMING_INPUTS_HASH = '64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22'
+PROVISIONAL_TIMING_INPUTS_HASH = 'bf4e7b0bf0f9a5e05070f95e9240d342c3d0bb735929ae44b1152cb0650aaae8'
 PROVISIONAL_STATUS = 'pending_native_report'
 NUMERIC_FIELDS = ('main_mutants', 'main_work_seconds', 'parallelism', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')
 
@@ -497,7 +497,7 @@ def shape(config):
         if not isinstance(path, str) or not isinstance(record, dict):
             raise ValueError('invalid target')
         provisional = 'geometry_status' in record
-        expected_fields = {'source_sha256', 'evidence', 'shards'} | ({'geometry_status'} if provisional else set())
+        expected_fields = {'source_sha256', 'evidence', 'shards'} | ({'geometry_status', 'native_geometry'} if provisional else set())
         if set(record) != expected_fields or (provisional and (path not in PROVISIONAL_TARGETS or record['geometry_status'] != PROVISIONAL_STATUS)):
             raise ValueError('invalid target')
         if not isinstance(record['source_sha256'], str) or not HEX.fullmatch(record['source_sha256']):
@@ -514,8 +514,12 @@ def shape(config):
             if any(not HEX.fullmatch(item[k]) for k in ('selection_sha256', 'timing_inputs_sha256')):
                 raise ValueError('invalid shard hash')
             if provisional:
-                if any(item[k] is not None for k in NUMERIC_FIELDS):
-                    raise ValueError('provisional estimates must be unknown')
+                if ((path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS) or (path == REPEAT_TARGET and shard == REPEAT_MERGED_SHARD)) and any(item[k] is None for k in NUMERIC_FIELDS):
+                    raise ValueError('pinned codec owner requires its estimate')
+                if any(item[k] is not None for k in NUMERIC_FIELDS) and not (
+                    ((path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS) or (path == REPEAT_TARGET and shard == REPEAT_MERGED_SHARD))
+                    and all(type(item[k]) in (int, float) for k in NUMERIC_FIELDS)):
+                    raise ValueError('provisional estimates must be unknown except the pinned codec owners')
             elif any(type(item[k]) not in (int, float, bool) for k in NUMERIC_FIELDS):
                 raise ValueError('invalid numeric field')
         for evidence in record['evidence']:
@@ -588,6 +592,141 @@ def approved_static_owner(path, record, shard, item, source):
     except (KeyError, ValueError, TypeError):
         return False
 
+# Source-bound estimates for the three whole codec declarations in the
+# targeted correction; the first two use a cross-field conservative rate.
+CODEC_TARGET = 'Common/Phase/B10FinalProjectionCodec.cs'
+CODEC_PROVISIONAL_SHARDS = frozenset(f'b10-final-projection-codec-p{i}-{suffix}' for i in (1, 2, 3) for suffix in ('a', 'b'))
+CODEC_TIMING_INPUTS_HASH = 'bf4e7b0bf0f9a5e05070f95e9240d342c3d0bb735929ae44b1152cb0650aaae8'
+CODEC_SOURCE_HASH = 'c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5'
+CODEC_ISOLATED = {
+    'b10-final-projection-codec-p1-a': 1248.756, 'b10-final-projection-codec-p1-b': 1236.599,
+    'b10-final-projection-codec-p2-a': 1445.164, 'b10-final-projection-codec-p2-b': 1634.255,
+    'b10-final-projection-codec-p3-a': 1002.330, 'b10-final-projection-codec-p3-b': 1223.401,
+}
+CODEC_COHORTS = {
+    f'b10-final-projection-codec-p{i}-{suffix}': (f'b10-final-projection-codec-p{i}', tuple(map(str, range(lo, hi))))
+    for i, suffix, lo, hi in ((1, 'a', 116, 122), (1, 'b', 122, 128),
+                               (2, 'a', 128, 135), (2, 'b', 135, 143),
+                               (3, 'a', 143, 149), (3, 'b', 149, 156))
+}
+CODEC_REGIONS = {(614, 1068), (1069, 1706), (1706, 2157)}
+CODEC_OWNERS = {
+    (614, 1068): ((0, 1068), [(374, 614), (614, 1068)]),
+    (1069, 1706): ((1068, 1706), [(1069, 1706)]),
+    (1706, 2157): ((1706, 2158), [(1706, 2157)]),
+}
+CODEC_EVIDENCE = (
+    ('14127755542', '017a78d3c863b6ca3c8cb5a2e2db5c7a0bf95988612a7e603e68e7259489477d'),
+    ('14127627878', 'a9213fbb44c74a9ad62031227dbb04e89dd2f6b381dce6f77c737f38db63ee33'),
+    ('14128899902', 'cd5c86cf36ed2833a01e4b3cc74755ba533e22742d8a4018ac74ba6c098c385a'),
+)
+
+
+def codec_static_regions(path, shard, source):
+    if path != CODEC_TARGET or digest(source) != CODEC_SOURCE_HASH:
+        return []
+    try:
+        return [region for region in workflow.shard_static_regions(shard, source) if region in CODEC_REGIONS]
+    except (KeyError, ValueError, TypeError):
+        return []
+
+
+def approved_codec_static_owner(path, record, shard, item, source):
+    """Accept only the source-bound, static-only owners in the correction."""
+    regions = codec_static_regions(path, shard, source)
+    if (len(regions) != 1 or record['source_sha256'] != CODEC_SOURCE_HASH
+            or item['timing_inputs_sha256'] != CODEC_TIMING_INPUTS_HASH
+            or item['main_mutants'] != 0 or item['main_work_seconds'] != 0
+            or shard not in CODEC_COHORTS or workflow.COHORTS.get(shard) != CODEC_COHORTS[shard]
+            or item['setup_seconds'] != 60 or item['isolated_seconds'] != CODEC_ISOLATED[shard]
+            or f'[{regions[0][0]},{regions[0][1]})' not in item['basis']):
+        return False
+    if not all(any(e['kind'] == 'hosted_complete' and e['source_commit'] == 'dbc25c2005c3409ffd5f079c40b061d82c4b02aa'
+                   and e['sha256'] == sha and e['locator'] == (
+                       'https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43625662806 artifact ' + artifact)
+                   for e in record['evidence'])
+               for artifact, sha in CODEC_EVIDENCE):
+        return False
+    try:
+        span, expected_regions = CODEC_OWNERS[regions[0]]
+        return (workflow.shard_span(shard, source) == span
+                and workflow.shard_static_regions(shard, source) == expected_regions)
+    except (KeyError, ValueError, TypeError):
+        return False
+
+REPEAT_TARGET = 'VerifyRun/B10Final/B10FinalRepeatEvidence.cs'
+REPEAT_MERGED_SHARD = 'b10-final-repeat-evidence-p3'
+REPEAT_JOBS = {
+    '132540792966': 'cc3a8b11d1624b469b887d9222c9fe22952bc2eb63a2de050cf1a89a4f87cf02',
+    '132540792918': '1e01be3cbb949ace4c3c12d2a83e388969745b1f3596562cd5d190b274ea02e5',
+}
+
+
+def approved_repeat_merged_owner(path, record, shard, item, source):
+    if (path != REPEAT_TARGET or shard != REPEAT_MERGED_SHARD
+            or digest(source) != PROVISIONAL_TARGETS[REPEAT_TARGET][0]
+            or item['timing_inputs_sha256'] != PROVISIONAL_TIMING_INPUTS_HASH
+            or any(item[k] != v for k, v in {'main_mutants': 124, 'main_work_seconds': 763,
+                'parallelism': 1, 'setup_seconds': 392, 'isolated_seconds': 0,
+                'estimated_seconds': 1155}.items())
+            or workflow.shard_span(shard, source) != (5565, 11107)):
+        return False
+    return all(any(e['kind'] == 'hosted_complete' and e['source_commit'] == 'dbc25c2005c3409ffd5f079c40b061d82c4b02aa'
+                   and e['locator'] == 'https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43625662806/job/' + job
+                   and e['sha256'] == sha for e in record['evidence']) for job, sha in REPEAT_JOBS.items())
+
+
+# These complete native inventories are taken from receipt-verified hosted reports.
+NATIVE_GEOMETRY_BINDINGS = {
+    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': ('14127456699', '3268e1a3b6c52c469e74f6b5680aa40d2096a1901780c8c0d6416c394ed88d90', 'c9ac4182741b1f87d383ad950806a069d786e4cf8dfc55c5f0a17641f47922a3', '2bc0f8acfd79364d414b7cd46dde2804c930adc2a1fbbb9f6ad05d67a79d298a', 1306),
+    'Common/Phase/B10FinalProjectionCodec.cs': ('14127755542', '017a78d3c863b6ca3c8cb5a2e2db5c7a0bf95988612a7e603e68e7259489477d', 'ab0e4d0677136a516821fff731e36d439ff57e40857c8e77bdda7e4c5183c37a', 'd5a7f544377a3d8b2c66e120e92efcee3f0a07ecabe5b45f36a40f2334251b8f', 730),
+    'Judge/B10FinalJudge.cs': ('14127550132', '5daf8d8f214957e7e8f6a91db1d2093fa3c0cf0827267a07ee77da9ef14ab119', 'e9ec6237585270a6ab9e2dea44998171e276656fab9da65b2aea3a96bd19cf93', 'b57b1426e4cd0f4a5a21e06aa665f7bedf5568fcb62bc5beffe1e2885a5c9d40', 710),
+}
+
+
+# Digests of the reviewed compact proofs; the full inventories remain in hosted artifacts.
+NATIVE_PROOF_HASHES = {
+    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': '80349431732a04f9167a566472b91679e8493ff1557f77a88b3c4e2d0e07e8c7',
+    'Common/Phase/B10FinalProjectionCodec.cs': 'c669681346b9a4ce4092d44a0471a9023f8d4f1e15843351e416a0f937092f5c',
+    'Judge/B10FinalJudge.cs': '554f7cc41d40bae23185db9b7e9f7ed4e0dd89154977ea33a0b5d108d9836b48',
+}
+
+
+def native_geometry_valid(path, record, source):
+    try:
+        artifact, archive, report, inventory, count = NATIVE_GEOMETRY_BINDINGS[path]
+        geometry = record['native_geometry']
+        if (digest(canonical(geometry)) != NATIVE_PROOF_HASHES[path]
+                or geometry['source_commit'] != 'dbc25c2005c3409ffd5f079c40b061d82c4b02aa'
+                or geometry['source_sha256'] != digest(source)
+                or (geometry['artifact_id'], geometry['archive_sha256'], geometry['report_sha256'],
+                    geometry['inventory_sha256'], geometry['native_count']) != (artifact, archive, report, inventory, count)
+                or geometry['layout_sha256'] != PROVISIONAL_LAYOUT_HASHES[path]
+                or sum(geometry['owner_counts'].values()) != count):
+            return False
+        if not any(e['kind'] == 'hosted_complete' and e['source_commit'] == geometry['source_commit']
+                   and e['sha256'] == archive and e['locator'] == ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43625662806 artifact ' + artifact)
+                   for e in record['evidence']):
+            return False
+        generated = {name: digest(canonical(workflow.shard_config(name, source)))
+                     for name, target in workflow.SHARDS.items() if target == path}
+        if digest(canonical(generated)) != geometry['layout_sha256']:
+            return False
+        if path == CODEC_TARGET and (workflow.COHORTS != CODEC_COHORTS
+                                     or geometry['cohorts_sha256'] != digest(canonical(workflow.COHORTS))):
+            return False
+        key = next(key for key, (target, _) in workflow.TARGETS.items() if target == path)
+        spans = workflow.primary_spans(key, source)
+        length = workflow.utf16_length(workflow.target_text(source))
+        if not spans or spans[0][0] != 0 or spans[-1][1] != workflow.SPAN_END or spans[-1][0] >= length or any(
+                lo >= hi or (i and spans[i - 1][1] != lo) for i, (lo, hi) in enumerate(spans)):
+            return False
+        regions = workflow.static_regions(workflow.target_text(source))
+        return all(sum(lo <= a and b <= hi for lo, hi in spans) == 1 for a, b in regions)
+    except (KeyError, TypeError, ValueError, StopIteration):
+        return False
+
+
 def validate(config, shared, targets, source, matrix):
     reasons = set()
     if set(config['targets']) != set(targets):
@@ -610,6 +749,8 @@ def validate(config, shared, targets, source, matrix):
             reasons.add('stale_inputs')
         provisional = record.get('geometry_status') == PROVISIONAL_STATUS
         if provisional:
+            if not native_geometry_valid(path, record, source[path]):
+                reasons.add('missing_measurement')
             if timing_hash != PROVISIONAL_TIMING_INPUTS_HASH:
                 reasons.add('stale_inputs')
             source_hash, artifact, evidence_hash = PROVISIONAL_TARGETS[path]
@@ -617,6 +758,8 @@ def validate(config, shared, targets, source, matrix):
                 reasons.add('stale_inputs')
             generated = {name: digest(canonical(workflow.shard_config(name, source[path])))
                          for name, target in workflow.SHARDS.items() if target == path}
+            if path == CODEC_TARGET and workflow.COHORTS != CODEC_COHORTS:
+                reasons.add('layout_mismatch')
             if digest(canonical(generated)) != PROVISIONAL_LAYOUT_HASHES[path]:
                 reasons.add('layout_mismatch')
             if not any(e['kind'] == 'partial_timing' and e['sha256'] == evidence_hash
@@ -645,10 +788,13 @@ def validate(config, shared, targets, source, matrix):
                     reasons.add('layout_mismatch')
             else:
                 reasons.add('layout_mismatch')
-            if provisional:
-                if not item['basis'].strip() or any(item[k] is not None for k in NUMERIC_FIELDS):
+            if provisional and all(item[k] is None for k in NUMERIC_FIELDS):
+                if not item['basis'].strip():
                     reasons.add('invalid_estimate')
                 continue
+            if provisional and not (approved_codec_static_owner(path, record, shard, item, source[path])
+                                    or approved_repeat_merged_owner(path, record, shard, item, source[path])):
+                reasons.add('invalid_estimate')
             numeric = ('main_work_seconds', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')
             valid = (type(item['main_mutants']) is int and item['main_mutants'] >= 0
                      and type(item['parallelism']) is int and item['parallelism'] > 0
@@ -672,7 +818,11 @@ def validate(config, shared, targets, source, matrix):
             regions = accepted_static_regions(path, shard, source[path])
             if regions and item['isolated_seconds'] < sum(STATIC_EVIDENCE[region][3] for region in regions):
                 reasons.add('invalid_estimate')
-            if item['estimated_seconds'] > 1800 and not approved_static_owner(path, record, shard, item, source[path]):
+            codec_regions = codec_static_regions(path, shard, source[path])
+            if codec_regions and shard in CODEC_ISOLATED and item['isolated_seconds'] < CODEC_ISOLATED[shard]:
+                reasons.add('invalid_estimate')
+            if (item['estimated_seconds'] > 1800
+                    and not approved_static_owner(path, record, shard, item, source[path])):
                 reasons.add('shard_over_budget')
     if all_shards != workflow.SHARDS:
         reasons.add('layout_mismatch')

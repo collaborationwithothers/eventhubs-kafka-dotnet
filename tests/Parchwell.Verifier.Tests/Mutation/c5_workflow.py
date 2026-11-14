@@ -27,7 +27,7 @@ TARGETS = {'phase': ('Judge/PhaseJudge.cs', 6),
  'publication': ('VerifyRun/Publication/PublicationAcceptance.cs', 7),
  'a01': ('VerifyRun/A01/A01EvidenceRecorder.cs', 2),
  'workload': ('VerifyRun/A01/WorkloadRecorder.cs', 3),
- 'single-action-repeat': ('VerifyRun/SingleAction/SingleActionRepeatJudgement.cs', 17),
+ 'single-action-repeat': ('VerifyRun/SingleAction/SingleActionRepeatJudgement.cs', 19),
  'single-action-configuration': ('VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs', 48),
  'idle-observation': ('VerifyRun/IdleObservation/IdleObservationJudgement.cs', 12),
  'batching': ('VerifyRun/LedgerBatch/BatchingEvidenceRecorder.cs', 2),
@@ -38,15 +38,15 @@ TARGETS = {'phase': ('Judge/PhaseJudge.cs', 6),
  'b10-phase-registrations': ('VerifyRun/Input/B10PhaseRegistrationReader.cs', 1),
  'b10-late-write': ('VerifyRun/Judgement/B10LateWriteChecks.cs', 2),
  'b10-sweep': ('VerifyRun/B10SweepHandler.cs', 1),
- 'b10-sweep-judge': ('Judge/B10SweepChecks.cs', 2),
+ 'b10-sweep-judge': ('Judge/B10SweepChecks.cs', 3),
  'b10-sweep-codec': ('Common/Phase/B10SweepEvidenceCodec.cs', 9),
  'b10-final-sweep-handler': ('VerifyRun/B10Final/B10FinalSweepHandler.cs', 4),
- 'b10-final-repeat-evidence': ('VerifyRun/B10Final/B10FinalRepeatEvidence.cs', 18),
+ 'b10-final-repeat-evidence': ('VerifyRun/B10Final/B10FinalRepeatEvidence.cs', 24),
  'b10-final-classification': ('VerifyRun/B10Final/B10FinalClassification.cs', 28),
  'b10-final-projection': ('Common/Phase/B10FinalProjection.cs', 1),
- 'b10-final-projection-codec': ('Common/Phase/B10FinalProjectionCodec.cs', 12),
+ 'b10-final-projection-codec': ('Common/Phase/B10FinalProjectionCodec.cs', 14),
  'b10-final-registrations': ('Common/Phase/B10FinalRegistrationReader.cs', 18),
- 'b10-final-judge': ('Judge/B10FinalJudge.cs', 11)}
+ 'b10-final-judge': ('Judge/B10FinalJudge.cs', 13)}
 PRIMARY_CUTS = {'phase': (3600, 4517, 5582, 6493, 7894),
  'publication': (887, 2532, 3857, 5506, 7129, 8239),
  'a01': (3859,),
@@ -63,7 +63,9 @@ PRIMARY_CUTS = {'phase': (3600, 4517, 5582, 6493, 7894),
                           13947,
                           15112,
                           16034,
+                          16686,
                           17407,
+                          18204,
                           19597,
                           21409,
                           23556),
@@ -121,23 +123,29 @@ PRIMARY_CUTS = {'phase': (3600, 4517, 5582, 6493, 7894),
  'b10-judge': (2599, 4113),
  'b10-repeat': (2712, 6191, 8313, 10971),
  'b10-late-write': (3765,),
- 'b10-sweep-judge': (3044,),
+ 'b10-sweep-judge': (1549, 3044),
  'b10-sweep-codec': (1715, 4176, 5682, 7602, 9482, 10639, 12098, 15210),
  'b10-final-sweep-handler': (4089, 8487, 10895),
  'b10-final-repeat-evidence': (2749,
                                5565,
-                               8376,
                                11107,
                                13837,
+                               15226,
+                               15987,
                                16734,
                                19438,
                                22199,
                                24938,
                                27770,
+                               29405,
                                30526,
+                               32095,
                                33263,
+                               34548,
                                36006,
                                38775,
+                               39686,
+                               40468,
                                41582,
                                44372,
                                47016),
@@ -168,7 +176,19 @@ PRIMARY_CUTS = {'phase': (3600, 4517, 5582, 6493, 7894),
                               20931,
                               21475,
                               22029),
- 'b10-final-projection-codec': (1706, 3002, 4553, 5970, 7493, 8988, 10482, 11973, 13486, 15085, 16526),
+ 'b10-final-projection-codec': (1068,
+                                1706,
+                                2158,
+                                3002,
+                                4553,
+                                5970,
+                                7493,
+                                8988,
+                                10482,
+                                11973,
+                                13486,
+                                15085,
+                                16526),
  'b10-final-registrations': (1607,
                              2583,
                              3605,
@@ -186,7 +206,7 @@ PRIMARY_CUTS = {'phase': (3600, 4517, 5582, 6493, 7894),
                              12180,
                              12745,
                              13162),
- 'b10-final-judge': (2699, 5334, 7878, 10499, 13082, 15717, 18431, 20990, 23628, 26262)}
+ 'b10-final-judge': (2699, 5334, 7878, 10499, 13082, 15717, 16784, 18431, 20990, 23628, 24790, 26262)}
 def build_parts(targets: dict[str, tuple[str, int]],
                 primary_cuts: dict[str, tuple[int, ...]]) -> dict[str, tuple[str, int, int]]:
     """Reject singleton splits before their crossing entry can overwrite the primary."""
@@ -202,7 +222,21 @@ def build_parts(targets: dict[str, tuple[str, int]],
     }
 
 
-PARTS = build_parts(TARGETS, PRIMARY_CUTS)
+LOGICAL_PARTS = build_parts(TARGETS, PRIMARY_CUTS)
+COHORTS = {}
+for index, groups in enumerate(((range(116, 122), range(122, 128)),
+                                (range(128, 135), range(135, 143)),
+                                (range(143, 149), range(149, 156))), 1):
+    owner = f"b10-final-projection-codec-p{index}"
+    for suffix, identifiers in zip(("a", "b"), groups, strict=True):
+        COHORTS[f"{owner}-{suffix}"] = (owner, tuple(map(str, identifiers)))
+PARTS = {}
+for name, part in LOGICAL_PARTS.items():
+    cohorts = [physical for physical, (owner, _) in COHORTS.items() if owner == name]
+    if cohorts:
+        PARTS.update({physical: part for physical in cohorts})
+    else:
+        PARTS[name] = part
 SHARDS = {shard: TARGETS[key][0] for shard, (key, _, _) in PARTS.items()}
 SPAN_END = 2147483647
 UTF8_BOM = b"\xef\xbb\xbf"
@@ -774,8 +808,27 @@ def run_shard(shard: str, output_dir: Path, *, repository: Path | None = None,
     isolated = []
     isolation_error = None
     try:
-        child_exit, reason = launch(argv, cwd, log_path, timeout)
-        if regions and not (reason is None and child_exit in (0, 2) and report_path.is_file()):
+        if shard in COHORTS:
+            try:
+                isolated, isolation_error = run_cohort(shard, target, source, regions, output_dir,
+                                                        prefix, cwd, start + timeout)
+            except OSError as error:
+                isolation_error = f"isolation failed: {error}"
+            if isolated:
+                first = isolated[0]
+                argv = first["argv"]
+                child_exit, reason = first["child_exit_code"], first["termination_reason"]
+                first_dir = output_dir / "isolated" / first["mutant_id"]
+                if (first_dir / REPORT_PATH).is_file():
+                    report_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(first_dir / REPORT_PATH, report_path)
+                if (first_dir / "command.log").is_file():
+                    shutil.copyfile(first_dir / "command.log", log_path)
+        else:
+            child_exit, reason = launch(argv, cwd, log_path, timeout)
+        if shard in COHORTS:
+            pass
+        elif regions and not (reason is None and child_exit in (0, 2) and report_path.is_file()):
             isolation_error = "main invocation did not complete"
         elif regions:
             try:
@@ -893,6 +946,11 @@ def run_isolated(target: str, source: bytes, regions: list[tuple[int, int]], mai
         plan = isolation_plan(report_records(json.loads(main_report.read_bytes()), target, allow_empty=True), source, regions)
     except (OSError, ValueError, TypeError, KeyError) as error:
         return [], f"isolation selection failed: {error}"
+    return run_isolation_plan(target, plan, output_dir, prefix, cwd, deadline)
+
+
+def run_isolation_plan(target: str, plan: list[dict], output_dir: Path, prefix: list[str],
+                       cwd: Path, deadline: float) -> tuple[list[dict], str | None]:
     entries = []
     for item in plan:
         remaining = deadline - time.monotonic()
@@ -930,6 +988,42 @@ def run_isolated(target: str, source: bytes, regions: list[tuple[int, int]], mai
                 and entry["config_sha256_after"] == config_before):
             return entries, f"isolated invocation of mutant {item['mutant_id']} failed"
     return entries, None
+
+
+
+# Bootstrap geometry was observed in complete native reports. Every run verifies it
+# against its own full inventory before executing the remaining assigned IDs.
+COHORT_BOOTSTRAP_SPANS = {"116": (668, 698), "122": (866, 898),
+                          "128": (1128, 1163), "135": (1415, 1446),
+                          "143": (1755, 1789), "149": (1934, 1960)}
+
+
+def run_cohort(shard: str, target: str, source: bytes, regions: list[tuple[int, int]],
+               output_dir: Path, prefix: list[str], cwd: Path, deadline: float) -> tuple[list[dict], str | None]:
+    owner, ids = COHORTS[shard]
+    first = {"mutant_id": ids[0], "span": list(COHORT_BOOTSTRAP_SPANS[ids[0]]), "exclusions": []}
+    entries, error = run_isolation_plan(target, [first], output_dir, prefix, cwd, deadline)
+    if error:
+        return entries, error
+    try:
+        report = output_dir / "isolated" / ids[0] / REPORT_PATH
+        rows = report_records(json.loads(report.read_bytes()), target, allow_empty=True)
+        baseline = copy.deepcopy(rows)
+        selected = [row for row in baseline if row["id"] == ids[0]]
+        require(len(selected) == 1 and selected[0]["status"] in TESTED,
+                "bootstrap mutant was not tested")
+        selected[0]["status"], selected[0]["statusReason"] = FILTERED
+        plan = isolation_plan(baseline, source, regions)
+        expected = {identifier for logical, group in COHORTS.values() if logical == owner for identifier in group}
+        require({item["mutant_id"] for item in plan} == expected, "cohort inventory changed")
+        by_id = {item["mutant_id"]: item for item in plan}
+        require(by_id[ids[0]] == first, "bootstrap geometry changed")
+        merge_isolated(baseline, first, rows)
+        rest = [by_id[identifier] for identifier in ids[1:]]
+    except (OSError, ValueError, TypeError, KeyError) as error:
+        return entries, f"cohort selection failed: {error}"
+    remaining, error = run_isolation_plan(target, rest, output_dir, prefix, cwd, deadline)
+    return entries + remaining, error
 
 
 def require(condition: object, message: str) -> None:
@@ -1052,7 +1146,7 @@ def merge_isolated(rows: list[dict], item: dict, isolated_rows: list[dict]) -> l
 
 
 def isolated_rows(directory: Path, target: str, target_hash: str, item: dict, entry: object,
-                  rows: list[dict]) -> list[dict]:
+                  rows: list[dict], *, cohort: bool = False) -> list[dict]:
     """Check one isolated invocation's retained evidence and merge its one tested mutant into the shard's rows."""
     require(isinstance(entry, dict) and set(entry) == ISOLATED_FIELDS, "malformed isolated receipt")
     require(all(entry[key] == item[key] for key in ("mutant_id", "span", "exclusions")),
@@ -1061,6 +1155,23 @@ def isolated_rows(directory: Path, target: str, target_hash: str, item: dict, en
             and type(entry["child_exit_code"]) is int and entry["child_exit_code"] in (0, 2),
             "isolated child execution error")
     folder = directory / "isolated" / item["mutant_id"]
+    if cohort:
+        argv = entry["argv"]
+        require(isinstance(argv, list) and len(argv) == 9 and argv[:2] == ["dotnet", "stryker"]
+                and all(isinstance(arg, str) for arg in argv),
+                "malformed cohort argv")
+        require(argv[-7] == "--config-file" and argv[-5] == "--output"
+                and argv[-3:] == ["--log-to-file", "--verbosity", "debug"]
+                and argv.count("--config-file") == 1 and argv.count("--output") == 1,
+                "cohort argv configuration mismatch")
+        config_arg, output_arg = Path(argv[-6]), Path(argv[-4])
+        require(config_arg.is_absolute() and output_arg.is_absolute()
+                and ".." not in config_arg.parts and ".." not in output_arg.parts
+                and config_arg.name == "config.json" and output_arg.name == "stryker"
+                and config_arg.parent == output_arg.parent
+                and config_arg.parent.parts[-5:] == (".artifacts", "c5-mutation",
+                                                     directory.name.split("-", 4)[-1], "isolated", item["mutant_id"]),
+                "cohort argv paths mismatch")
     config_path = folder / "config.json"
     require(json.loads(config_path.read_text()) == isolated_config(target, item),
             "unexpected isolated configuration")
@@ -1153,6 +1264,7 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
     targets = {}
     records = []
     part_records = {}
+    cohort_records = {}
     for shard, target in SHARDS.items():
         key, index, count = PARTS[shard]
         directory = input_dir / (prefix + shard)
@@ -1217,15 +1329,48 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
             regions = shard_static_regions(shard, source)
             require(receipt["static_regions"] == [list(region) for region in regions], "static region mismatch")
             require(receipt["isolation_error"] is None, "static isolation incomplete")
-            for row in rows:
-                require(not (row.get("static") is True and row["status"] in TESTED),
-                        f"static mutant {row['id']} tested outside isolation")
-            plan = isolation_plan(rows, source, regions)
-            require(isinstance(receipt["isolated"], list) and len(receipt["isolated"]) == len(plan),
-                    "isolated invocation list mismatch")
-            for item, entry in zip(plan, receipt["isolated"]):
-                rows = isolated_rows(directory, target, target_hash, item, entry, rows)
-            part_records[shard] = rows
+            if shard in COHORTS:
+                assigned = COHORTS[shard][1]
+                require(assigned and isinstance(receipt["isolated"], list)
+                        and len(receipt["isolated"]) == len(assigned), "isolated invocation list mismatch")
+                require([entry.get("mutant_id") if isinstance(entry, dict) else None
+                         for entry in receipt["isolated"]] == list(assigned), "cohort IDs mismatch")
+                first = assigned[0]
+                require(receipt["report_sha256"] == receipt["isolated"][0].get("report_sha256")
+                        and receipt["command_log_sha256"] == receipt["isolated"][0].get("command_log_sha256"),
+                        "bootstrap evidence mismatch")
+                require(all(receipt[field] == receipt["isolated"][0][field]
+                            for field in ("argv", "child_exit_code", "termination_reason", "command_completed")),
+                        "bootstrap invocation mismatch")
+                require(sum(row["id"] == first for row in rows) == 1, "bootstrap mutant missing")
+                require(all(row["status"] not in TESTED for row in rows if row["id"] != first),
+                        "unexpected main work")
+                bootstrap = next(row for row in rows if row["id"] == first)
+                require(bootstrap["status"] in TESTED, "bootstrap mutant was not tested")
+                baseline = [{**row, "status": FILTERED[0], "statusReason": FILTERED[1]}
+                            if row["id"] == first else row for row in rows]
+                full_plan = isolation_plan(baseline, source, regions)
+                by_id = {item["mutant_id"]: item for item in full_plan}
+                require(all(identifier in by_id for identifier in assigned), "cohort ID outside isolation plan")
+                plan = [by_id[identifier] for identifier in assigned]
+                require(plan[0] == {"mutant_id": first, "span": list(COHORT_BOOTSTRAP_SPANS[first]),
+                                    "exclusions": []}, "bootstrap geometry mismatch")
+                outcomes = baseline
+                for item, entry in zip(plan, receipt["isolated"], strict=True):
+                    outcomes = isolated_rows(directory, target, target_hash, item, entry, outcomes, cohort=True)
+                    outcome = next(row for row in outcomes if row["id"] == item["mutant_id"])
+                    require(outcome["status"] in TESTED, "cohort mutant was not tested")
+                cohort_records[shard] = (baseline, full_plan, outcomes)
+            else:
+                for row in rows:
+                    require(not (row.get("static") is True and row["status"] in TESTED),
+                            f"static mutant {row['id']} tested outside isolation")
+                plan = isolation_plan(rows, source, regions)
+                require(isinstance(receipt["isolated"], list) and len(receipt["isolated"]) == len(plan),
+                        "isolated invocation list mismatch")
+                for item, entry in zip(plan, receipt["isolated"]):
+                    rows = isolated_rows(directory, target, target_hash, item, entry, rows)
+                part_records[shard] = rows
             shards[shard] = {"target": target, "part": index, "parts": count,
                              "span": None if span is None else list(span),
                              "elapsed_seconds": elapsed,
@@ -1234,8 +1379,34 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
                              "isolated_mutants": [item["mutant_id"] for item in plan]}
         except (OSError, ValueError, TypeError, KeyError) as error:
             reasons.append(f"{shard}: {error}")
+    # Each cohort's baseline is reconstructed only in memory. Raw evidence remains intact.
+    for logical in dict.fromkeys(owner for owner, _ in COHORTS.values()):
+        physical = [name for name, (owner, _) in COHORTS.items() if owner == logical]
+        try:
+            require(len(physical) == 2 and all(name in cohort_records for name in physical),
+                    "physical cohorts incomplete")
+            first_baseline, first_plan, _ = cohort_records[physical[0]]
+            def native_identity(rows):
+                return {row["id"]: tuple(row.get(field) for field in
+                        (*IDENTITY, "static", "status", "statusReason", "file")) for row in rows}
+            native = native_identity(first_baseline)
+            require(all(native_identity(cohort_records[name][0]) == native
+                        and cohort_records[name][1] == first_plan for name in physical[1:]),
+                    "cohort native geometry mismatch")
+            identifiers = [identifier for name in physical for identifier in COHORTS[name][1]]
+            require(len(identifiers) == len(set(identifiers))
+                    and set(identifiers) == {item["mutant_id"] for item in first_plan},
+                    "cohort ID coverage mismatch")
+            outcomes = {row["id"]: row for name in physical for row in cohort_records[name][2]
+                        if row["id"] in COHORTS[name][1]}
+            part_records[logical] = [outcomes.get(row["id"], row) for row in first_baseline]
+            shards[logical] = dict(shards[physical[0]])
+            shards[logical]["isolated_mutants"] = identifiers
+        except (ValueError, KeyError, TypeError) as error:
+            reasons.append(f"{logical}: {error}")
     for key, (target, count) in TARGETS.items():
-        members = [shard for shard, (owner, _, _) in PARTS.items() if owner == key]
+        members = list(dict.fromkeys(COHORTS[shard][0] if shard in COHORTS else shard
+                                     for shard, (owner, _, _) in PARTS.items() if owner == key))
         if any(shard not in part_records for shard in members):
             if count > 1:
                 reasons.append(f"{key}: target incomplete because a span shard is incomplete")

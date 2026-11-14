@@ -288,6 +288,99 @@ class QualificationTests(unittest.TestCase):
             item.update(isolated_seconds=1743.157, setup_seconds=209, estimated_seconds=1953)
             self.assertIn('shard_over_budget', self.errors())
 
+    def test_codec_cohorts_require_measured_costs_and_stay_under_budget(self):
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        path = runtime.CODEC_TARGET
+        record = config['targets'][path]
+        source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+        for shard in runtime.CODEC_PROVISIONAL_SHARDS:
+            with self.subTest(shard=shard):
+                item = record['shards'][shard]
+                self.assertTrue(runtime.approved_codec_static_owner(path, record, shard, item, source))
+                self.assertLessEqual(item['estimated_seconds'], 1800)
+                changed = copy.deepcopy(item)
+                changed['isolated_seconds'] -= 1
+                self.assertFalse(runtime.approved_codec_static_owner(path, record, shard, changed, source))
+                changed = copy.deepcopy(record)
+                changed['evidence'] = [e for e in changed['evidence'] if e['sha256'] != runtime.CODEC_EVIDENCE[-1][1]]
+                self.assertFalse(runtime.approved_codec_static_owner(path, changed, shard, item, source))
+                with mock.patch.dict(runtime.workflow.COHORTS, {shard: ('wrong', ())}):
+                    self.assertFalse(runtime.approved_codec_static_owner(path, record, shard, item, source))
+
+    def test_codec_over_budget_has_no_exception(self):
+        path = runtime.CODEC_TARGET
+        data = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+        shard = 'b10-final-projection-codec-p1-a'
+        self.shards.clear()
+        self.shards[shard] = path
+        self.source = {path: data}
+        self.targets = {path: runtime.digest(data)}
+        timing = runtime.digest(runtime.canonical({'shared_inputs': self.shared, 'target_sources': self.targets}))
+        item = {'selection_sha256': runtime.digest(runtime.canonical(runtime.workflow.shard_config(shard, data))),
+                'timing_inputs_sha256': timing, 'main_mutants': 0, 'main_work_seconds': 0,
+                'parallelism': 2, 'setup_seconds': 60, 'isolated_seconds': 1800,
+                'estimated_seconds': 1860, 'basis': 'observed_workers=2'}
+        self.config['targets'] = {path: {'source_sha256': self.targets[path], 'evidence': [], 'shards': {shard: item}}}
+        self.assertIn('shard_over_budget', self.errors())
+
+    def test_repeat_merged_estimate_is_pinned_and_required(self):
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        record = config['targets'][runtime.REPEAT_TARGET]
+        item = record['shards'][runtime.REPEAT_MERGED_SHARD]
+        source = (runtime.ROOT / 'src/Parchwell.Verifier' / runtime.REPEAT_TARGET).read_bytes()
+        self.assertTrue(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, record, runtime.REPEAT_MERGED_SHARD, item, source))
+        self.assertLessEqual(item['estimated_seconds'], 1800)
+        for field in runtime.NUMERIC_FIELDS:
+            candidate = copy.deepcopy(config)
+            candidate['targets'][runtime.REPEAT_TARGET]['shards'][runtime.REPEAT_MERGED_SHARD][field] = None
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                runtime.shape(candidate)
+        changed = copy.deepcopy(item)
+        changed['main_work_seconds'] -= 1
+        self.assertFalse(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, record, runtime.REPEAT_MERGED_SHARD, changed, source))
+        changed = copy.deepcopy(record)
+        changed['evidence'] = [e for e in changed['evidence'] if '132540792966' not in e['locator']]
+        self.assertFalse(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, changed, runtime.REPEAT_MERGED_SHARD, item, source))
+        self.assertFalse(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, record, runtime.REPEAT_MERGED_SHARD, item, source + b'changed'))
+
+    def test_pinned_native_geometry_rejects_tampering(self):
+        self.workflow_patcher.stop()
+        self.config_patcher.stop()
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        for path in runtime.NATIVE_GEOMETRY_BINDINGS:
+            with self.subTest(path=path):
+                record = copy.deepcopy(config['targets'][path])
+                source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+                self.assertTrue(runtime.native_geometry_valid(path, record, source))
+                self.assertFalse(runtime.native_geometry_valid(path, record, source + b'changed'))
+                for field in ('inventory_sha256', 'ownership_proof_sha256', 'layout_sha256', 'source_commit'):
+                    changed = copy.deepcopy(record)
+                    changed['native_geometry'][field] = '0' * len(changed['native_geometry'][field])
+                    self.assertFalse(runtime.native_geometry_valid(path, changed, source))
+                changed = copy.deepcopy(record)
+                owner = next(iter(changed['native_geometry']['owner_counts']))
+                changed['native_geometry']['owner_counts'][owner] += 1
+                self.assertFalse(runtime.native_geometry_valid(path, changed, source))
+                changed = copy.deepcopy(record)
+                changed['evidence'] = [e for e in changed['evidence'] if e['sha256'] != changed['native_geometry']['archive_sha256']]
+                self.assertFalse(runtime.native_geometry_valid(path, changed, source))
+                with mock.patch.object(runtime.workflow, 'shard_config', return_value={'changed': True}):
+                    self.assertFalse(runtime.native_geometry_valid(path, record, source))
+
+    def test_pinned_codec_owners_cannot_be_unknown(self):
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        for shard in runtime.CODEC_PROVISIONAL_SHARDS:
+            candidate = copy.deepcopy(config)
+            item = candidate['targets'][runtime.CODEC_TARGET]['shards'][shard]
+            for field in runtime.NUMERIC_FIELDS:
+                item[field] = None
+            with self.subTest(shard=shard), self.assertRaises(ValueError):
+                runtime.shape(candidate)
+
     def test_estimate_arithmetic_and_numeric_types(self):
         item = self.config['targets']['a.cs']['shards']['a-p1']
         for field, bad in [('parallelism', True), ('parallelism', 0), ('main_mutants', -1),
@@ -629,12 +722,15 @@ class DependencyEndToEndTests(unittest.TestCase):
         additions = ('tests/fixtures/verifier-v1/runtime-test.json', 'src/Directory.Build.props',
                      'scenarios/profiles/runtime-test.yaml')
         def blob(ref, path):
+            if path == runtime.RUNNER:
+                return Path(runtime.workflow.__file__).read_bytes()
             if path in additions:
                 return b'<Project />' if path.endswith('.props') else b'synthetic'
             if path not in cache:
                 cache[path] = runtime.subprocess.check_output(['git', 'show', f'HEAD:{path}'], cwd=ROOT)
                 # This dependency fixture uses synthetic estimates, not the measured static-owner workload.
-                if path == 'src/Parchwell.Verifier/' + runtime.STATIC_TARGET:
+                if path in {'src/Parchwell.Verifier/' + runtime.STATIC_TARGET,
+                            'src/Parchwell.Verifier/' + runtime.CODEC_TARGET}:
                     cache[path] += b'\n'
             return cache[path]
         def files(ref):
@@ -644,7 +740,8 @@ class DependencyEndToEndTests(unittest.TestCase):
             if args[0] == 'diff': return (current + '\0').encode()
             raise AssertionError(args)
         with mock.patch.object(runtime, 'files', side_effect=files), mock.patch.object(runtime, 'blob', side_effect=blob), \
-             mock.patch.object(runtime, 'git', side_effect=git):
+             mock.patch.object(runtime, 'git', side_effect=git), \
+             mock.patch.object(runtime, 'workflow_matrix', return_value=runtime.workflow.SHARDS):
             base_shared, targets = runtime.input_maps('base')
             sources = {p: blob('base', 'src/Parchwell.Verifier/' + p) for p in targets}
             def config(shared):
@@ -738,6 +835,10 @@ class ProvisionalQualificationTests(unittest.TestCase):
         self.addCleanup(timing_patch.stop)
         record = self.config['targets']['a.cs']
         record['geometry_status'] = runtime.PROVISIONAL_STATUS
+        record['native_geometry'] = {}
+        geometry_patch = mock.patch.object(runtime, 'native_geometry_valid', return_value=True)
+        geometry_patch.start()
+        self.addCleanup(geometry_patch.stop)
         record['evidence'] = [{'source_commit': 'e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5',
             'locator': 'artifact 42', 'sha256': 'f' * 64, 'kind': 'partial_timing',
             'note': 'cancelled; timing only'}]
