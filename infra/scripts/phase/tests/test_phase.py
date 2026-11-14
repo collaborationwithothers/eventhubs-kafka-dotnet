@@ -378,6 +378,35 @@ class PhaseTests(unittest.TestCase):
         self.assertEqual('2025-12-31T23:59:15.1234567+00:00', inputs['b10_last_loadgen_terminated_utc'])
         self.assertEqual(inputs['b10_last_loadgen_terminated_utc'], inputs['b10_last_verifier_completed_utc'])
 
+    def test_b10_final_whole_second_pod_times_cover_receipts_in_the_same_second(self):
+        # Run 43635822755 (#483): Kubernetes reported finishedAt in whole seconds,
+        # while each verify receipt carried seven decimals inside the same second.
+        receipt = '2026-11-14T20:50:21.4000000+00:00'
+        for configuration in ('C0', 'C1'):
+            with self.subTest(configuration=configuration):
+                instance = self.final_lifecycle(configuration)
+                state = instance.state()
+                for role in ('producers', 'verifiers'):
+                    for entry in state['b10_lifecycle'][role]:
+                        entry['finished_utc'] = '2026-11-14T20:50:21Z' if role == 'verifiers' else '2026-11-14T20:49:53Z'
+                instance.save_state(state)
+                with self.mocked():
+                    self.assertEqual(None, instance.b10_prepare_final_sweep(1000))
+                inputs = instance.read('phase.json')['b10_lifecycle_inputs']
+                self.assertEqual('2026-11-14T20:50:21.9999999+00:00', inputs['b10_last_verifier_completed_utc'])
+                self.assertEqual('2026-11-14T20:49:53.9999999+00:00', inputs['b10_last_loadgen_terminated_utc'])
+                self.assertLessEqual(phase.Phase.b10_utc(receipt)[1],
+                                     phase.Phase.b10_utc(inputs['b10_last_verifier_completed_utc'])[1])
+
+    def test_b10_second_upper_bound_keeps_fractional_times(self):
+        self.assertEqual(('2026-11-14T20:50:21.0000001+00:00', phase.Phase.b10_utc('2026-11-14T20:50:21.0000001Z')[1]),
+                         phase.Phase.b10_second_upper_bound('2026-11-14T20:50:21.0000001Z'))
+        whole = phase.Phase.b10_utc('2026-11-14T20:50:21Z')[1]
+        self.assertEqual(('2026-11-14T20:50:21.9999999+00:00', whole + 9_999_999),
+                         phase.Phase.b10_second_upper_bound('2026-11-14T20:50:21+00:00'))
+        with self.assertRaises(ValueError):
+            phase.Phase.b10_second_upper_bound('2026-11-14T20:50:21.5+01:00')
+
     def test_b10_runs_twenty_ordered_modes_then_repeat_free_capture_and_sweep(self):
         try:
             from .test_b10_scientific import prepare_scientific

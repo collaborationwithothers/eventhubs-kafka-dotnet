@@ -955,6 +955,25 @@ class Phase:
         write_json(self.private / "phase.json", phase)
         return None
 
+    @classmethod
+    def b10_second_upper_bound(cls, value):
+        """Return the latest instant a whole-second pod termination time can stand for.
+
+        Kubernetes serializes a pod's terminated `finishedAt` as RFC 3339 without
+        fractional seconds (apimachinery `metav1.Time.MarshalJSON` uses
+        `time.RFC3339`), so the real termination lies somewhere inside the reported
+        second. The verifier writes its completion receipt before its container
+        exits, with seven decimals, so the receipt can fall later in that same
+        second. The sweep line must not claim a time earlier than any receipt, so a
+        whole-second value is raised to the last tick of its second. A value that
+        already carries a fraction is kept as it is.
+        """
+        text, ticks = cls.b10_utc(value)
+        if ticks % 10_000_000:
+            return text, ticks
+        ticks += 9_999_999
+        return text[:20] + "9999999+00:00", ticks
+
     def b10_prepare_final_sweep(self, deadline):
         """Bind scientific lifecycle entries to the Jobs the phase actually applied."""
         state = self.state()
@@ -972,7 +991,7 @@ class Phase:
                 bindings = [(entry["job"], entry["repeat"], entry["mode"]) for entry in entries]
                 if len(set(applied)) != len(applied) or sorted(bindings) != sorted(applied):
                     raise ValueError("lifecycle binding")
-                times[role] = [self.b10_utc(entry["finished_utc"]) for entry in entries]
+                times[role] = [self.b10_second_upper_bound(entry["finished_utc"]) for entry in entries]
             if not times["producers"]:
                 raise ValueError("no producer applied")
         except (ValueError, KeyError, TypeError, AttributeError):
