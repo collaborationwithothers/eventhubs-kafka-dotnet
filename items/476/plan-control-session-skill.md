@@ -1,21 +1,33 @@
 # control-session-skill contract-grade plan
 
-Revision: R1. Issue: [#476](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476). Base commit: `5ac85af17f4b7dbc1a1396932fb3554d363752fb` (`main`, read 2026-11-14). Predecessor: pull request [#477](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/477), read at head `0563c2069fa8beacb69834f79f5dab2603258356`.
+Revision: R2. Issue: [#476](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476). Base commit: `c6d5676a7ce19b1fc16bcf7a577e998f674b024f` (`main`, read 2026-11-14), the merge commit of pull request [#477](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/477).
 
-This plan adds a repository-owned `control-session` skill that gives the control session of a scenario issue its objective, its own limits on acting alone and a check for deferred work in plans, and points to it from docs/agents/factory.md, AGENTS.md and CLAUDE.md. The skill points to the shared act-or-ask rule and the deferred-work rule that pull request #477 adds to docs/agents/factory.md, as Hari's decision of 2026-11-14 on this issue requires, so this pull request is built after #477 merges. Every new sentence is pinned below, and three points the authorities leave open are under "Open questions for Hari".
+This plan adds a repository-owned `control-session` skill that gives the control session of a scenario issue its objective, its own limits on acting alone and a check for deferred work in plans, and points to it from docs/agents/factory.md, AGENTS.md and CLAUDE.md. The skill points to the shared "Act or ask" and "Deferred work in plans" rules and to the "Outcome responsibility pilot" that #477 merged into docs/agents/factory.md, and keeps no count of its own, as Hari's decisions of 2026-11-14 on this issue require. Every new sentence is pinned below, and no question is open.
+
+## Changes since R1
+
+R2 applies [decision 6877655997](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476#issuecomment-6877655997), which answers R1's three open questions:
+
+- Base commit moved from `5ac85af17f4b7dbc1a1396932fb3554d363752fb` to `c6d5676a7ce19b1fc16bcf7a577e998f674b024f`, because #477 merged at 2026-11-14T13:00:39Z (decision point 4; R1 open question 3). R0 and A0 now check the cited headings on `main` instead of waiting for #477. Line numbers and the worked-case commit in B1 are re-read at the new base.
+- B1 "Measures" no longer holds the spec's own three-item count. It points to docs/agents/factory.md "Measuring the gate", "Outcome responsibility pilot", states that the pilot assessment also counts reversed `## Control action` comments, and lists what the session records on the issue (decision points 1 to 3; R1 open questions 1 and 2).
+- B1 "Act or ask": a question to Hari is brought in a `**Decision needed:**` comment (decision point 2).
+- Section 9 "Open questions for Hari" states `None`; R1's R11 is removed, because it only governed open questions.
+- Section 13 "Deferred work" now lists the pilot assessment, which issue #475's factory text owns, instead of a count this plan defined.
+- Size estimate, check:docs evidence and sources re-measured or re-read at the new base.
 
 ## 1. Goal and authority
 
-Goal: implement the approved spec of issue #476 (cause 1 of issue #475), as amended by Hari's coordination decision, as one documentation pull request. Verdict gates do not change.
+Goal: implement the approved spec of issue #476 (cause 1 of issue #475), as amended by Hari's decisions, as one documentation pull request. Verdict gates do not change.
 
 Authority, in creation order (docs/agents/factory.md "Item lifecycle" step 3):
 
-1. The issue body, `updated_at` 2026-11-14T12:26:34Z.
+1. The issue body (issue `updated_at` 2026-11-14T13:03:36Z at the catch-up).
 2. The spec, [comment 6876933581](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476#issuecomment-6876933581), created and updated 2026-11-14T11:59:27Z. It is the item plan.
-3. [`## Approval` 6877196319](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476#issuecomment-6877196319), 2026-11-14T12:22:06Z: Hari approved the spec at `updated_at` 2026-11-14T11:59:27Z, "Tool: Claude Code". `ready-for-agent` was applied at 2026-11-14T12:21:57Z (issue events).
-4. [`## Decision` 6877246303](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476#issuecomment-6877246303), 2026-11-14T12:26:34Z, which links and adopts [#475 decision 6877239716](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/475#issuecomment-6877239716) (2026-11-14T12:25:58Z). For this issue it says: "Use the single shared act-or-ask rule in `docs/agents/factory.md` when it is available. Keep section 4's control-role permitted actions and restrictions as role-specific limits; do not duplicate the general decision test. Whichever coordinated change lands second replaces its copy with that pointer." It also says that issue #475 owns the plan `Deferred work` section and deferral policy, that the control session classifies each listed item against that policy, and that section 5 "must distinguish preventably deferred premerge preparation from execution that is authorized only after merge", without requiring "a final mutation-acceptance run before merge when existing rules require it on `main` after merge".
+3. [`## Approval` 6877196319](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476#issuecomment-6877196319), 2026-11-14T12:22:06Z: Hari approved the spec at `updated_at` 2026-11-14T11:59:27Z, "Tool: Claude Code". `ready-for-agent` was applied at 2026-11-14T12:21:57Z (issue events, page 1).
+4. [`## Decision` 6877246303](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476#issuecomment-6877246303), 2026-11-14T12:26:34Z, which links and adopts [#475 decision 6877239716](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/475#issuecomment-6877239716) (`updated_at` 2026-11-14T12:25:58Z). For this issue it says: "Use the single shared act-or-ask rule in `docs/agents/factory.md` when it is available. Keep section 4's control-role permitted actions and restrictions as role-specific limits; do not duplicate the general decision test. Whichever coordinated change lands second replaces its copy with that pointer." It also says that issue #475 owns the plan `Deferred work` section and deferral policy, that the control session classifies each listed item against that policy, and that section 5 "must distinguish preventably deferred premerge preparation from execution that is authorized only after merge", without requiring "a final mutation-acceptance run before merge when existing rules require it on `main` after merge".
+5. [`## Decision` 6877655997](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476#issuecomment-6877655997), 2026-11-14T13:03:36Z. It drops spec section 6's own count in favour of docs/agents/factory.md "Measuring the gate", "Outcome responsibility pilot" as merged in #477 (point 1); lists what the control session records, "with no new comment kind": "each act taken alone: a `## Control action` comment", "each question brought to Hari: its `**Decision needed:**` comment", "each deferral it lets through: its classification against the plan's `Deferred work` section", and "each chat intervention by Hari: a `## Control action` comment that quotes it" (point 2); adds that "`## Control action` comments that Hari reversed are counted by the pilot assessment alongside its own measures. The skill states this; it does not change the pilot's text." (point 3); and closes the wait for #477 (point 4).
 
-No other comment exists on the issue (catch-up and refresh on 2026-11-14, page 1 of `issues/476/comments?per_page=100`, three comments). There is no item state file (`items/476/` does not exist on `main`). There is no split approved on the issue and no earlier plan comment, so candidate selection gives the whole issue as one pull request, named `control-session-skill`. The work is one coherent piece under "Item lifecycle" step 3 "Split by scope": one new skill and the three short entries that name it, which cannot merge separately without dangling references.
+Other comments on the issue, read as evidence, not authority: [plan comment 6877447930](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476#issuecomment-6877447930) (R1, `updated_at` 2026-11-14T12:44:48Z), which this revision edits, and the [handoff 6877458356](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476#issuecomment-6877458356). The catch-up listed six comments on page 1 of `issues/476/comments?per_page=100`. There is no item state file (`items/476/` does not exist on `main`), and no `## Plan check` comment. No split is approved on the issue, so candidate selection gives the whole issue as one pull request, still named `control-session-skill`. The work is one coherent piece under "Item lifecycle" step 3 "Split by scope": one new skill and the three short entries that name it, which cannot merge separately without dangling references.
 
 Reader subagents: none were spawned. This planning session ran as a subagent without a tool to spawn further subagents, so it read every input itself.
 
@@ -31,25 +43,26 @@ Files allowed to change (all protected paths, so Hari merges; AGENTS.md GOVERNAN
 | `AGENTS.md` | Edits E3 and E4 |
 | `CLAUDE.md` | Edits E5, E6 and E7 |
 
-Paths that must not change: every other path, including `skills-lock.json` (repository-owned skills are not in it, AGENTS.md line 95), `docs/agents/pull-requests.md`, the "Outcome responsibility" section of docs/agents/factory.md that #477 adds, every other file under `.agents/skills/` and `.claude/`, `.github/`, `results/` and every `expected.yaml`. The one exception is `items/476/state.md`, which the implementing session writes under docs/agents/factory.md "Item state file"; its content is that section's, not this plan's.
+Paths that must not change: every other path, including `skills-lock.json` (repository-owned skills are not in it, AGENTS.md line 95), `docs/agents/pull-requests.md`, the "Outcome responsibility" and "Measuring the gate" sections of docs/agents/factory.md (the pilot's text included, decision 6877655997 point 3), every other file under `.agents/skills/` and `.claude/`, `.github/`, `results/` and every `expected.yaml`. The one exception is `items/476/state.md`, which the implementing session writes under docs/agents/factory.md "Item state file"; its content is that section's, not this plan's.
 
-Out of scope (spec section 9 and decision 6877239716 point 4): any verdict gate, cap, review budget or merge rule; the shared act-or-ask rule and the deferred-work rule themselves (issue #475); Hari's personal instructions; the CLAUDE.md Haiku row's task list; lighter routes (issue #419); any script for the measures in B1 "Measures".
+Out of scope (spec section 9, decision 6877239716 point 4, decision 6877655997 points 1 and 3): any verdict gate, cap, review budget or merge rule; the shared act-or-ask rule, the deferred-work rule and the pilot assessment themselves (issue #475); Hari's personal instructions; the CLAUDE.md Haiku row's task list; lighter routes (issue #419); any count, runner or item selection of this issue's own.
 
 ## 3. External contracts
 
-These are the strings other sessions and later scripts read. They are pinned exactly.
+These are the strings other sessions and the pilot assessment read. They are pinned exactly.
 
 1. Skill directory name and frontmatter `name`: `control-session`.
 2. Skill frontmatter `description`: the line in block B1. Claude Code uses the description "to decide when to apply the skill"; Codex requires `name` and `description` (sources S3, S4).
-3. Comment heading: `## Control action`. It carries no authority under docs/agents/factory.md "Item lifecycle" step 3.
-4. factory.md section heading: `## Control session`. AGENTS.md and the skill cite it as docs/agents/factory.md "Control session".
-5. CLAUDE.md "Model bindings" row: ``| Control session | `claude-opus-5-5` |``.
-6. The ask-list quotation in block B1, which must equal byte for byte the substring of [#404 decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614) point 1 that starts `These always wait for Hari` and ends `anything that spends money.` (that comment's `updated_at` 2026-11-09T21:52:11Z).
-7. The headings B1 cites in docs/agents/factory.md after #477: `## Outcome responsibility`, and under it `### Act or ask` and `### Deferred work in plans` (#477 head `0563c2069fa8beacb69834f79f5dab2603258356`, factory.md lines 41, 58 and 64).
+3. Comment heading: `## Control action`. It carries no authority under docs/agents/factory.md "Item lifecycle" step 3. The pilot assessment counts those Hari reversed (decision 6877655997 point 3).
+4. Question marker: `**Decision needed:**` as the first text of the comment, the existing marker of CLAUDE.md "Handoffs"; no new comment kind (decision 6877655997 point 2).
+5. factory.md section heading: `## Control session`. AGENTS.md and the skill cite it as docs/agents/factory.md "Control session".
+6. CLAUDE.md "Model bindings" row: ``| Control session | `claude-opus-5-5` |``.
+7. The ask-list quotation in block B1, which must equal byte for byte the substring of [#404 decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614) point 1 that starts `These always wait for Hari` and ends `anything that spends money.` (that comment's `updated_at` 2026-11-09T21:52:11Z, re-read 2026-11-14).
+8. The headings B1 cites in docs/agents/factory.md at the base commit: `## Outcome responsibility` (line 41), and under it `### Act or ask` (line 58) and `### Deferred work in plans` (line 64); `## Measuring the gate` (line 234), and under it `### Outcome responsibility pilot` (line 240).
 
 ## 4. Pinned text
 
-Each block is copied exactly, without its fence lines. Each edit is an exact replacement on the file at the merge base with `origin/main`; each `Find` string and anchor line occurs exactly once there. The anchors were checked on both the base commit and #477's head.
+Each block is copied exactly, without its fence lines. Each edit is an exact replacement on the file at the merge base with `origin/main`; each `Find` string and anchor line occurs exactly once there. The anchors were checked on the base commit.
 
 ### B1: `.agents/skills/control-session/SKILL.md`
 
@@ -85,7 +98,7 @@ This skill grants no authority to post `## Approval` or to merge; that still com
 
 After acting, post one comment on the issue headed `## Control action`, stating what you did, why, the evidence, and that Hari has not seen it. That heading carries no authority under docs/agents/factory.md "Item lifecycle" step 3.
 
-When you ask, give the point at which waiting starts to cost time with your recommendation.
+When you ask, post a comment on the issue that starts with `**Decision needed:**`, and give the point at which waiting starts to cost time with your recommendation.
 
 Worked cases from issue #404:
 
@@ -95,7 +108,7 @@ Worked cases from issue #404:
 | Small sign-in fix through full process | Act on the route: use docs/agents/factory.md "Item lifecycle" step 3 "Standing approval" where its conditions hold. Ask on the timeout and retry values (ask list). Lighter routes are #419's. |
 | Merge with an unresolved P1 (#455) | Act: post a not-ready note with head, checks and Codex state on each new head. It cannot stop Hari's merge. |
 | Cold review looping on receipt wording | Ask: the cold-review budget is a gate. Ask after the first paperwork-only round, not when the budget is spent. |
-| Mutation run failures (#469, #470) | Act: diagnose at the first failure, start the fix session, and dispatch the rerun on `main`. On `main` at 5ac85af17f4b7dbc1a1396932fb3554d363752fb, `.github/workflows/verifier-c5-mutation.yml` had no `azure/login` step and no `id-token` permission; read it again before each dispatch. |
+| Mutation run failures (#469, #470) | Act: diagnose at the first failure, start the fix session, and dispatch the rerun on `main`. On `main` at c6d5676a7ce19b1fc16bcf7a577e998f674b024f, `.github/workflows/verifier-c5-mutation.yml` had no `azure/login` step and no `id-token` permission; read it again before each dispatch. |
 
 ## Deferred work in plans
 
@@ -109,14 +122,14 @@ This catches no item you cannot see.
 
 ## Measures
 
-No targets are set and no speed-up will be claimed (AGENTS.md hard safety rule 11). After the next three items run with a control session (three is a choice, not a measurement), a script counts from GitHub:
+No targets are set and no speed-up will be claimed (AGENTS.md hard safety rule 11). This skill keeps no count of its own: the assessment is the one in docs/agents/factory.md "Measuring the gate", "Outcome responsibility pilot". That assessment also counts, alongside its own measures, the `## Control action` comments that Hari reversed.
 
-1. `## Control action` comments Hari reversed.
-2. Questions brought to Hari that were not on the ask list.
-3. Deferred items marked "not on the path" that later blocked the path.
-4. Hari's interventions per item: `## Decision` and `## Approval` comments recorded for him, plus chat interventions the session recorded.
+So that the assessment can count this role's part, record on the issue, with no other kind of comment:
 
-Each reversal or blocked deferral gets a one-line cause. Three items is too few to show a speed-up, and items differ in difficulty; the review mainly shows whether the change does harm. Hari does not log his own time for this.
+- each act you take alone: its `## Control action` comment;
+- each question you bring to Hari: its `**Decision needed:**` comment;
+- each deferral you let through: its classification under "Deferred work in plans" above, one line per item, in the comment that brings the plan to Hari, or in a `## Control action` comment when no comment does;
+- each intervention Hari makes in chat: a `## Control action` comment that quotes his words and states that it records his intervention, in place of stating that he has not seen it.
 
 ## Working method
 
@@ -155,7 +168,7 @@ Amended in the pull request for issue #476 (spec approved 2026-11-14): the new "
 
 ### E2: `docs/agents/factory.md`, new section
 
-Insert block B2, then one empty line, immediately before the line `## Execution and review record`. The empty line already before that heading stays, so B2 has one empty line on each side.
+Insert block B2, then one empty line, immediately before the line `## Execution and review record` (line 154). The empty line already before that heading stays, so B2 has one empty line on each side.
 
 ````text B2
 ## Control session
@@ -207,7 +220,7 @@ The Control session row is `claude-opus-5-5` because the role makes judgement ca
 
 ## 5. Requirements
 
-R0. WHEN the implementing session starts, THEN it checks that pull request #477 has merged and that `docs/agents/factory.md` on current `main` has the line `## Outcome responsibility` and, after it and before the next `## ` heading, the lines `### Act or ask` and `### Deferred work in plans`. IF #477 has not merged, THEN it hands off under AGENTS.md GOVERNANCE "Handoffs", naming #477 as the unmerged predecessor. IF #477 has merged but any of the three headings is missing or renamed, THEN it stops under section 10.
+R0. WHEN the implementing session starts, THEN it checks that `docs/agents/factory.md` on current `main` has the line `## Outcome responsibility` with, after it and before the next `## ` heading, the lines `### Act or ask` and `### Deferred work in plans`, and the line `## Measuring the gate` with, after it and before the next `## ` heading, the line `### Outcome responsibility pilot`. IF any of these five headings is missing or renamed, THEN it stops under section 10.
 
 R1. WHEN the pull request is opened, THEN `.agents/skills/control-session/SKILL.md` exists, is a regular file (Git mode `100644`), and is byte-equal to B1 plus one trailing newline.
 
@@ -229,15 +242,15 @@ R9. WHEN the added lines are scanned, THEN every character is ASCII (AGENTS.md "
 
 R10. WHEN the ask-list quotation in B1 is compared with the body of comment 6752430614 fetched by `gh api`, THEN it is a byte-equal substring of that body.
 
-R11. WHEN Hari answers an open question in section 9, THEN a plan revision applies the answer as pinned text before implementation; the implementer adds no text for an open question on its own.
-
 ## 6. Invariants and safety rules
 
 - No verdict gate, cap, review budget, merge rule or hard safety rule changes. The skill cites AGENTS.md "Before opening a pull request" rules 8 and 11 and GOVERNANCE "Merge rule" and does not paraphrase them (AGENTS.md "Skills", line 100).
-- The skill holds no second copy of the general act-or-ask test or of the deferral policy; it cites docs/agents/factory.md "Outcome responsibility" for both and adds only the control role's limits (decision 6877246303).
+- The skill holds no second copy of the general act-or-ask test, of the deferral policy or of the pilot's method; it cites docs/agents/factory.md "Outcome responsibility" and "Measuring the gate" and adds only the control role's limits and records (decisions 6877246303 and 6877655997).
+- The pilot's text in docs/agents/factory.md does not change (decision 6877655997 point 3).
+- No new comment kind: the skill uses `## Control action` and `**Decision needed:**` only (decision 6877655997 point 2).
 - The skill grants no authority to post `## Approval` or to merge, and the `## Control action` heading carries no authority.
 - No secret, key, tenant ID or subscription ID is added (hard safety rule 7). No workflow file changes (hard safety rule 8).
-- No number is stated that was not measured, except the spec's choice of three items, which B1 labels a choice (hard safety rule 11).
+- No number is stated that was not measured (hard safety rule 11). B1 states no count, sample size or target.
 - `skills-lock.json` is unchanged; the new skill is repository-owned.
 - Plan rule 2 (standing fixture rule) does not apply: this plan adds and tightens no check and changes no test.
 
@@ -247,7 +260,7 @@ The pull request changes no code and no test; its checks are the acceptance comm
 
 | Req | Check | Input | Expected |
 |---|---|---|---|
-| R0 | A0 `predecessor` | `gh api .../pulls/477 --jq .merged`; `git show origin/main:docs/agents/factory.md` | `true`; `OK headings` |
+| R0 | A0 `headings` | `git show origin/main:docs/agents/factory.md` | `OK headings` |
 | R1 | A1 `skill-file` | branch file vs B1; `git ls-files -s` | `OK .agents/skills/control-session/SKILL.md`; `OK skill-file mode` (`100644`) |
 | R2 | A1 `symlink` | `git ls-files -s .claude/skills/control-session` and `git cat-file -p` of its object | `OK symlink`: mode `120000`, target `../../.agents/skills/control-session` (36 bytes, no newline) |
 | R3 | A1 `factory.md` | merge-base text with E1, E2 vs branch | `OK docs/agents/factory.md` |
@@ -255,28 +268,32 @@ The pull request changes no code and no test; its checks are the acceptance comm
 | R5 | A1 `CLAUDE.md` | merge-base text with E5, E6, E7 vs branch | `OK CLAUDE.md` |
 | R6 | A3 `paths` | `git diff --name-only --merge-base origin/main HEAD` | exactly the five paths, plus `items/476/state.md` if written |
 | R7 | A1 anchor counts | each `Find` string and anchor line in the merge-base file | count 1 each; any other count makes A1 print `ANCHOR` and exit 1 |
-| R8 | A4 `check:docs` | `npm run check:docs` on the merge base and on the head | skill file: `no issues found`; the three edited files: the same messages on both |
+| R8 | A4 `check:docs` | `npm run check:docs` on the merge base and on the head | skill file: no warning; the three edited files: the same messages on both |
 | R9 | A5 `ascii` | added lines of the diff | `0` |
 | R10 | A1 `quote` | B1 quote vs comment 6752430614 body | `OK quote` |
 
-Boundaries: A1 fails on a missing or extra trailing newline in the skill file (exact bytes), on an anchor that occurs zero or two times, and on any extra changed line in the three edited files.
+Boundaries: A0 fails when a heading is missing, or present only outside its parent section. A1 fails on a missing or extra trailing newline in the skill file (exact bytes), on an anchor that occurs zero or two times, and on any extra changed line in the three edited files.
 
 ## 8. Acceptance commands
 
 Run from the repository root on the pull request branch, with this plan saved outside the repository at `$PLAN`. Nothing these commands write is committed (docs/agents/pull-requests.md rule 8).
 
-A0: `gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/pulls/477 --jq .merged` prints `true`, and then:
+A0:
 
 ```python
 import subprocess, sys
 f = subprocess.run(["git", "show", "origin/main:docs/agents/factory.md"], capture_output=True, text=True, check=True).stdout.split("\n")
-i = f.index("## Outcome responsibility")
-j = next((k for k in range(i + 1, len(f)) if f[k].startswith("## ")), len(f))
-ok = "### Act or ask" in f[i:j] and "### Deferred work in plans" in f[i:j]
+def section(h):
+    if h not in f: return []
+    i = f.index(h)
+    j = next((k for k in range(i + 1, len(f)) if f[k].startswith("## ")), len(f))
+    return f[i:j]
+o, m = section("## Outcome responsibility"), section("## Measuring the gate")
+ok = "### Act or ask" in o and "### Deferred work in plans" in o and "### Outcome responsibility pilot" in m
 print("OK headings" if ok else "MISSING headings"); sys.exit(0 if ok else 1)
 ```
 
-Evidence: `true`, then `OK headings`, exit 0. `ValueError` from `index` means `## Outcome responsibility` is missing (R0).
+Evidence: `OK headings`, exit 0 (R0). The planning session ran it on 2026-11-14 at `origin/main` = `c6d5676a7ce19b1fc16bcf7a577e998f674b024f` and it printed `OK headings`.
 
 A1 (one script; `$C404` is a file holding the `.body` of comment 6752430614 from `gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/issues/comments/6752430614 --jq .body`):
 
@@ -327,11 +344,11 @@ print("OK skill-file mode" if ok else "DIFF skill-file mode"); fail |= not ok
 sys.exit(1 if fail else 0)
 ```
 
-Run it as `python3 -I <script> "$PLAN" "$C404"` after `git add` of the five paths. Evidence: seven `OK` lines (`docs/agents/factory.md`, `AGENTS.md`, `CLAUDE.md`, `.agents/skills/control-session/SKILL.md`, `quote`, `symlink`, `skill-file mode`), exit 0. The planning session ran this script on 2026-11-14 in a scratch worktree with the pinned edits applied to #477's head `0563c2069fa8beacb69834f79f5dab2603258356`, standing in for `origin/main`, and it printed the seven `OK` lines with exit 0. That run is planning evidence, not the pull request's.
+Run it as `python3 -I <script> "$PLAN" "$C404"` after `git add` of the five paths. Evidence: seven `OK` lines (`docs/agents/factory.md`, `AGENTS.md`, `CLAUDE.md`, `.agents/skills/control-session/SKILL.md`, `quote`, `symlink`, `skill-file mode`), exit 0. The planning session ran this script on 2026-11-14 in a scratch worktree at `c6d5676a7ce19b1fc16bcf7a577e998f674b024f` with the pinned edits applied, and it printed the seven `OK` lines with exit 0. That run is planning evidence, not the pull request's.
 
 A3: `git diff --name-only --merge-base origin/main HEAD`. Evidence: the five paths of section 2, plus `items/476/state.md` when written.
 
-A4: `npm ci --ignore-scripts && npm run check:docs`, on the merge base and on the head. Evidence: the R8 result, recorded in the pull request with the blanket line for warnings in unchanged files (docs/agents/pull-requests.md rule 8). At the base commit the scan reported 10 warnings in all: 2 in `docs/agents/factory.md` (`Undefined identifier: S0`, lines 7 and 153) and none in `AGENTS.md` or `CLAUDE.md`. On #477's head `0563c2069fa8beacb69834f79f5dab2603258356` the same two messages appear in `docs/agents/factory.md` (lines 7 and 184), and with the pinned edits applied they appear at lines 7 and 188, with no other warning in a changed file and `no issues found` for the skill file (all runs by this planning session on 2026-11-14).
+A4: `npm ci --ignore-scripts && npm run check:docs`, on the merge base and on the head. Evidence: the R8 result, recorded in the pull request with the blanket line for warnings in unchanged files (docs/agents/pull-requests.md rule 8). Planning dry run on 2026-11-14: see section 11 (a) for the counts at the base commit and with the pinned edits applied.
 
 A5: `git diff --merge-base origin/main HEAD | grep '^+' | grep -cP '[^\x00-\x7F]'`. Evidence: `0`.
 
@@ -339,33 +356,33 @@ docs/agents/pull-requests.md "Verification gates" steps 1 and 3 do not apply: no
 
 ## 9. Open questions for Hari
 
-1. **Where the measures are recorded.** B1 "Measures" (spec section 6) has a script count from GitHub questions brought to Hari that were not on the ask list, deferred items marked "not on the path", and chat interventions the session recorded. The spec gives these no place on GitHub: questions are asked in chat, the "not on the path" line goes into an approval request, and under "Standing approval" there is no approval request. Without a recorded form, counts 2 to 4 cannot be taken from GitHub. Recommendation: add to B1 "Measures", after its list, "Record each question you bring to Hari, each deferred item you mark not on the path, and each intervention Hari makes in chat, as one comment on the issue headed `## Control record`, whose first line is `Kind: question`, `Kind: deferral` or `Kind: intervention`; a question also names the ask-list entry it falls under, or states `not on the ask list`. That heading carries no authority under docs/agents/factory.md "Item lifecycle" step 3." Waiting costs nothing until the first control session runs under the merged skill; after that, events not recorded cannot be counted.
-2. **Who runs the count, and which items count.** The spec says "after the next three items run with a control session" and names no session, no start and no end. Recommendation: count the first three scenario issues whose control session starts after this pull request merges, in order of their first `## Control action` comment, and have a session Hari starts on issue #476 run the count once the third item's verdict pull request has merged or closed. If Hari prefers to decide this later, the skill keeps the spec's wording and the pull request does not wait for it.
-3. **Merge order.** Decision 6877246303 says to use the shared rule "when it is available" and that "whichever coordinated change lands second replaces its copy with that pointer". This plan has this pull request land second (R0), because #475 decision 6877239716 point 4 says the #477 change "does not add or edit that skill", so if this pull request landed first, no planned change would remove its copy of the test. Recommendation: confirm that this pull request waits for #477. The alternative is a revision that pins a full copy of spec sections 4 and 5 for the case that this pull request lands first, plus a decision naming the change that later replaces that copy with the pointer.
+None. R1's three questions are answered by [decision 6877655997](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476#issuecomment-6877655997): points 1 to 3 answer questions 1 and 2, and point 4 closes question 3.
 
 ## 10. Stop rule
 
-The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it needs to change a contract in section 3, a requirement in section 5, a pinned block or edit in section 4, or the scope in section 2; when R0, R7 or R8 directs it to stop; or when an open question in section 9 has no answer and affects the pull request. Open questions 1 and 3 affect it; open question 2 affects it only if Hari's answer adds text.
+The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it needs to change a contract in section 3, a requirement in section 5, a pinned block or edit in section 4, or the scope in section 2; or when R0, R7 or R8 directs it to stop.
 
 ## 11. Plan-check questions (docs/agents/factory.md "Item lifecycle" step 1)
 
-(a) Steps whose effort scales with a number unknown at planning: one. The count of `npm run check:docs` warnings in changed files: R8 caps new warnings in changed files at 0, with the exhaustion action `push -wip and hand off to the next session` (AGENTS.md "Before opening a pull request" rule 11), because a new warning means pinned text is at fault. The planning dry run on #477's head found none. Cold review follows the budget of docs/agents/pull-requests.md rule 8 unchanged. No other step depends on a runtime count.
+(a) Steps whose effort scales with a number unknown at planning: one. The count of `npm run check:docs` warnings in changed files: R8 caps new warnings in changed files at 0, with the exhaustion action `push -wip and hand off to the next session` (AGENTS.md "Before opening a pull request" rule 11), because a new warning means pinned text is at fault. Planning dry run on 2026-11-14 (`npm ci --ignore-scripts && npm run check:docs`): at the base commit the scan reported 10 warnings in all, 2 of them in `docs/agents/factory.md` (`Undefined identifier: S0`, lines 7 and 184) and none in `AGENTS.md` or `CLAUDE.md`; with the pinned edits applied it reported the same 10 messages, the two in `docs/agents/factory.md` at lines 7 and 188, no other warning in a changed file, and `no issues found` for the skill file. Cold review follows the budget of docs/agents/pull-requests.md rule 8 unchanged. No other step depends on a runtime count.
 
 (b) Where this plan is stricter than, or adds to, the approved spec as amended, and why:
-- R0 makes #477 a predecessor; open question 3 asks Hari to confirm it.
-- B1 "Act or ask" keeps spec section 4 conditions 1 and 4 (the permitted actions and the ask list) and condition 3 (undone before merge) as the control role's limits, and drops condition 2 ("The answer follows from an existing rule, decision or the objective, with no choice between two values a fair reviewer could dispute") as the general decision test that the shared rule now holds ("Choose and act on an ordinary reversible choice when current evidence supports it, ... and has no material tradeoff requiring Hari"). Condition 3 is kept because it is narrower than the shared rule's "reversible": it fixes the point by which the step must be undoable. This is the split decision 6877246303 asks for; which condition counts as a limit and which as the test is this plan's reading.
-- B1 replaces the spec's "When it must ask, it brings one recommendation and the point at which waiting starts to cost time" with "When you ask, give the point at which waiting starts to cost time with your recommendation", because the shared rule already requires "the smallest concrete recommendation"; the time point is the role's addition.
-- B1 "Deferred work in plans" replaces spec section 5's two-way split with three cases, as decision 6877239716 point 3 requires, and says "before the pull request that depends on it merges" instead of the spec's "in the same pull request", because that decision bars bundling "unrelated work merely to put everything in one PR". It drops the spec's sentences that the plan-template section belongs to the #475 spec and "Until it lands, find deferrals by reading the plan", because R0 makes it land first; it keeps reading the rest of the plan, for plans written before #477.
+- B1 "Act or ask" keeps spec section 4 conditions 1 and 4 (the permitted actions and the ask list) and condition 3 (undone before merge) as the control role's limits, and drops condition 2 ("The answer follows from an existing rule, decision or the objective, with no choice between two values a fair reviewer could dispute") as the general decision test that the shared rule now holds (docs/agents/factory.md line 60: "Choose and act on an ordinary reversible choice when current evidence supports it, ... and has no material tradeoff requiring Hari"). Condition 3 is kept because it is narrower than the shared rule's "reversible": it fixes the point by which the step must be undoable. This is the split decision 6877246303 asks for; which condition counts as a limit and which as the test is this plan's reading.
+- B1 replaces the spec's "When it must ask, it brings one recommendation and the point at which waiting starts to cost time" with "When you ask, post a comment on the issue that starts with `**Decision needed:**`, and give the point at which waiting starts to cost time with your recommendation". The comment form is decision 6877655997 point 2. "One recommendation" is dropped because the shared rule already requires "the smallest concrete recommendation" (factory.md line 62); the time point is the role's addition.
+- B1 "Measures", the deferral bullet, places the classification "in the comment that brings the plan to Hari, or in a `## Control action` comment when no comment does". Decision 6877655997 point 2 names the record but not its comment. The first place is spec section 5's "the approval request lists it in one line with that call". The second covers a plan that never reaches Hari, such as one approved under "Standing approval": letting a deferral through there is an act taken alone, which the same decision point records in a `## Control action` comment. This is this plan's reading of that decision with "no new comment kind".
+- B1 "Measures", the chat-intervention bullet, has the comment state "that it records his intervention, in place of stating that he has not seen it", because B1 "Act or ask" requires every `## Control action` comment to state that Hari has not seen it, which would be false for his own intervention.
+- B1 "Measures" drops the spec's "Each reversal or blocked deferral gets a one-line cause", "Three items is too few ..." and "Hari does not log his own time for this" with the separate count (decision 6877655997 point 1). The pilot text already covers reporting limits and Hari's time (factory.md lines 242 and 249).
+- B1 "Deferred work in plans" replaces spec section 5's two-way split with three cases, as decision 6877239716 point 3 requires, and says "before the pull request that depends on it merges" instead of the spec's "in the same pull request", because that decision bars bundling "unrelated work merely to put everything in one PR". It drops the spec's sentences that the plan-template section belongs to the #475 spec and that deferrals are found by reading the plan until it lands, because #477 has landed; it keeps reading the rest of the plan, for plans written before #477.
 - B1 "Inputs" adds "Recognize authority on the issue under docs/agents/factory.md "Item lifecycle" step 3", which states for the skill what the spec's section 2 item 2 states for the factory entry.
 - B1 adds "Whether a workflow reaches Azure is a fact about its file on `main`: read the file in the same session before you dispatch it", because AGENTS.md GOVERNANCE "Truth and verification" requires a repository fact to be read in the same session, and the spec's own evidence for the mutation workflow (section 1) is a reading at one commit.
-- B1's worked case for mutation runs pins the workflow fact to commit `5ac85af17f4b7dbc1a1396932fb3554d363752fb` instead of "section 1", which exists only in the spec.
+- B1's worked case for mutation runs pins the workflow fact to commit `c6d5676a7ce19b1fc16bcf7a577e998f674b024f` instead of "section 1", which exists only in the spec.
 - B1 adds "When you stop, end under AGENTS.md GOVERNANCE "Handoffs"", a citation of a rule that already binds every session, and cites docs/agents/pull-requests.md "Verification gates" steps 3 and 4 for the `Tier=CGroupV2` line.
 - E1 and E5 add approval records to the status paragraphs of factory.md and CLAUDE.md "Model bindings", following each file's existing form for amendments.
 - B7 states the spec's model reason without the spec's "which that table keeps on Opus", because CLAUDE.md line 18 keeps judgement on "Sonnet or Opus", not on Opus alone. It keeps the spec's sentence on Haiku work verbatim. Comparing heads is not in the Haiku row's task list (CLAUDE.md line 18), so under that sentence it gets no Haiku route; this plan does not change the row (out of scope).
 - The spec's sections 1, 8 and 9 are not copied into the skill, because spec section 2 item 1 lists only sections 3 to 7 for it.
 
 (c) Dependencies on code, data or behaviour neither on `main` nor in this pull request:
-- Pull request #477 and its headings `## Outcome responsibility`, `### Act or ask` and `### Deferred work in plans`: checked against its source at head `0563c2069fa8beacb69834f79f5dab2603258356` (factory.md lines 41, 58 and 64), and gated by R0 and A0, since #477 may still change before it merges.
+- None in the repository: the headings B1 cites are on `main` at the base commit (section 3 item 8) and R0 re-checks them.
 - Claude Code loading the skill through the `.claude/skills/control-session` symlink: stated by the Claude Code skills page (S3), "a `<skill-name>` entry in the enterprise, personal, or project location can be a symlink to a directory elsewhere on disk".
 - Codex loading the skill from `.agents/skills/`: stated by the Codex skills page (S4), "Codex scans `.agents/skills` in every directory from your current working directory up to the repository root", and "The `SKILL.md` file must include `name` and `description`."
 - No deployed container, image, chart or runtime is involved.
@@ -376,24 +393,24 @@ None. The pull request changes only documentation and one symlink; nothing is de
 
 ## 13. Deferred work
 
-Listed under #477's docs/agents/factory.md "Deferred work in plans" (head `0563c2069fa8beacb69834f79f5dab2603258356`, line 66):
+Listed under docs/agents/factory.md "Outcome responsibility", "Deferred work in plans" (line 66 at the base commit):
 
-- The measures count of B1 "Measures". Evidence: spec section 6. Not on the path to any scenario verdict; deferral is permitted because the count needs three items run under the merged skill. Responsible session: open question 2. Stage: after three items. Workload bound: three items, a choice in the spec, not a measurement. Completion evidence: the four counts with a one-line cause for each reversal or blocked deferral. Gate blocked: none.
+- The assessment that counts this role's records, including reversed `## Control action` comments. Evidence: decision 6877655997 points 1 and 3; docs/agents/factory.md "Measuring the gate", "Outcome responsibility pilot" (lines 240 to 249). Not on the path to any scenario verdict; deferral is permitted because the assessment needs pilot pull requests that do not exist yet, and its text belongs to issue #475. Responsible session: "The next session assigned to evaluate issue #475" (factory.md line 242). Stage: "when the third pilot PR has an outcome or is explicitly handed off as stalled" (same line). Workload bound: the pilot's three selected pull requests and up to three comparison pull requests (lines 244 and 245), approved policy choices, not measurements. Completion evidence: the pilot report, with the reversed `## Control action` count. Gate blocked: none.
 - No other work is deferred: no post-merge run, follow-up issue or `record the gap and continue` cap.
 
 ## 14. External behaviour and documentation tools
 
-Plan rule 1: this plan relies on no Kafka, librdkafka, Confluent.Kafka or Azure Event Hubs behaviour. The only external behaviour is how the two agent tools discover skills, read with WebFetch on 2026-11-14 (S3, S4). The Microsoft Learn and Context7 tools were available and not needed.
+Plan rule 1: this plan relies on no Kafka, librdkafka, Confluent.Kafka or Azure Event Hubs behaviour. The only external behaviour is how the two agent tools discover skills, re-read with WebFetch by this planning session on 2026-11-14 (S3, S4). The Microsoft Learn and Context7 tools were available and not needed.
 
 ## 15. Size estimate
 
-Estimate, made 2026-11-14 from `git diff --stat` of the planning session's dry run of section 4 in a scratch worktree (AGENTS.md hard safety rule 11): about 89 added lines and 3 removed lines across 5 paths (the new skill file of about 75 lines, one symlink, and 3 edited files). An item state file, if written, adds to this. Size is reported, not enforced.
+Estimate, made 2026-11-14 from `git diff --stat` of this planning session's dry run of section 4 in a scratch worktree at the base commit (AGENTS.md hard safety rule 11): 89 added lines and 3 removed lines across 5 paths (the new skill file of 77 lines, one symlink, and 3 edited files). An item state file, if written, adds to this. Size is reported, not enforced.
 
 ## 16. Sources
 
-- S1: approved spec, [issue #476 comment 6876933581](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476#issuecomment-6876933581); its [approval 6877196319](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476#issuecomment-6877196319); [decision 6877246303](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476#issuecomment-6877246303) and the [#475 decision 6877239716](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/475#issuecomment-6877239716) it adopts.
+- S1: approved spec, [issue #476 comment 6876933581](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476#issuecomment-6876933581); its [approval 6877196319](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476#issuecomment-6877196319); [decision 6877246303](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476#issuecomment-6877246303) and the [#475 decision 6877239716](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/475#issuecomment-6877239716) it adopts; [decision 6877655997](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/476#issuecomment-6877655997).
 - S2: [#404 decision 6752430614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6752430614), point 1; [#347 handover 6874759569](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/347#issuecomment-6874759569), sections 3 and 4; [#347 handover 6824358666](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/347#issuecomment-6824358666), section 5.
 - S3: Claude Code, "Extend Claude with skills", https://code.claude.com/docs/en/skills, read 2026-11-14: project skills at `.claude/skills/<skill-name>/SKILL.md`; "a `<skill-name>` entry in the enterprise, personal, or project location can be a symlink to a directory elsewhere on disk"; `description` is "What the skill does and when to use it. Claude uses this to decide when to apply the skill."
-- S4: Codex, "Build skills", https://learn.chatgpt.com/docs/build-skills (redirected from https://developers.openai.com/codex/skills), read 2026-11-14: "Codex scans `.agents/skills` in every directory from your current working directory up to the repository root"; "The `SKILL.md` file must include `name` and `description`"; Codex "follows the symlink target when scanning these locations".
-- S5: files on `main` at the base commit: `AGENTS.md` lines 86 to 102 ("Skills"); `CLAUDE.md` lines 7 to 22 ("Model bindings"); `docs/agents/factory.md` line 5 and lines 99 to 125 ("Item lifecycle"); `.github/workflows/verifier-c5-mutation.yml` lines 1 to 7 (trigger `workflow_dispatch` only, `permissions: contents: read`; no `id-token` and no `azure/login` in the file); `items/404/execution-trial-receipt.md` line 89; `.claude/skills/` symlink targets.
-- S6: [pull request #477](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/477) at head `0563c2069fa8beacb69834f79f5dab2603258356`, read 2026-11-14: `docs/agents/factory.md` lines 41 to 66 ("Outcome responsibility", "Act or ask", "Deferred work in plans") and its changed-file list.
+- S4: Codex, "Build skills", https://learn.chatgpt.com/docs/build-skills, read 2026-11-14: "Codex scans `.agents/skills` in every directory from your current working directory up to the repository root"; "The `SKILL.md` file must include `name` and `description`"; "Codex supports symlinked skill folders and follows the symlink target when scanning these locations."
+- S5: files on `main` at the base commit `c6d5676a7ce19b1fc16bcf7a577e998f674b024f`: `AGENTS.md` lines 86 to 102 ("Skills"); `CLAUDE.md` lines 7 to 22 ("Model bindings"); `docs/agents/factory.md` line 5, lines 41 to 66 ("Outcome responsibility", "Act or ask", "Deferred work in plans"), lines 126 to 154 ("Item lifecycle") and lines 234 to 250 ("Measuring the gate", "Outcome responsibility pilot"); `.github/workflows/verifier-c5-mutation.yml` lines 1 to 12 (trigger `workflow_dispatch` only, `permissions: contents: read`; no `id-token` and no `azure/login` in the file); `items/404/execution-trial-receipt.md` line 89; `.claude/skills/` symlink targets.
+- S6: [pull request #477](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/477), merged 2026-11-14T13:00:39Z as `c6d5676a7ce19b1fc16bcf7a577e998f674b024f` (`gh api .../pulls/477`).
