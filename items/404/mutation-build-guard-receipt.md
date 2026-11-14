@@ -31,7 +31,7 @@ I removed the dependency instead of adding the two files to the `Compile Remove`
 
 The two evidence classes moved from `Component/` to `Support/`, which the mutation-only build keeps, with the namespace changed to `Parchwell.Verifier.Tests.Support`. The ten `Component` files that use the class gained `using Parchwell.Verifier.Tests.Support;`. The two files from the decision lost their `Component` import. The Component folder is still excluded from the mutation-only build; the class it no longer holds is not needed there.
 
-Results on the working tree: the mutation-only and normal builds both succeed with 0 warnings and 0 errors. In the partial run `--tier fast --project Parchwell.Verifier.Tests --shard rest`, the Verifier tests report 8018 passed both with unchanged main's tests (the guard run below) and with the fix. That run leaves out the two `b10-verify` shards and the Docker, Slow and CGroupV2 tests, so it shows no loss only in that slice. The change edits no test body: the C# differences are `using` and `namespace` lines and two file moves.
+Results on the tree of `c44467c`, whose C# and build content `a28ddef` leaves unchanged: the mutation-only and normal builds both succeed with 0 warnings and 0 errors. In the partial run `--tier fast --project Parchwell.Verifier.Tests --shard rest`, the Verifier tests report 8018 passed both with unchanged main's tests (the guard run below) and with the fix. That run leaves out the two `b10-verify` shards and the Docker, Slow and CGroupV2 tests, so it shows no loss only in that slice. The change edits no test body: the C# differences are `using` and `namespace` lines and two file moves.
 
 ## Part 2: guard
 
@@ -46,7 +46,16 @@ Evidence, with `./scripts/verify-dotnet.sh --tier fast --project Parchwell.Verif
 
 ## Other checks
 
-- `./scripts/test-verify-dotnet.sh`: passed, with the new cases.
+- `./scripts/test-verify-dotnet.sh`: passed, with the new cases, on the tree of `a28ddef` (the script content is as committed there).
 - `python3 -m unittest discover -s scripts/tests -p test_check_dotnet_matrix.py`: 47 tests, OK.
 - `bash -n scripts/verify-dotnet.sh`: no syntax error.
 - `npm run check:docs`: 9 warnings, all in files this change does not touch (docs/agents/factory.md, docs/operations/evidence/issue-124, issue-140 and issue-211, and items/404/pr2-receipt.md). The change's own files have none.
+
+## Review record
+
+The commit named as the head of each round is the one whose tree the reviewer read. Reports are in the pull request's self-review record.
+
+- Comprehensive pass 1: mode comprehensive, input revision `c44467c` (the staged tree on `main` at `5ab9e4a2`, byte-identical to that commit's diff), no comparison revision, specification source [the decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6873340821). Result: 2 P1 and 4 P2, all fixed in `a28ddef`.
+- Focused round 1: mode focused, input revision `a28ddef`, comparison revision `c44467c`, the same specification source. Result: 1 P1 and 3 P2.
+- Cumulative: 1 comprehensive pass and 1 focused round, the budget of the decision. The open P1 was this record. [Hari's decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6873578055) ended the cold review under rule 8 and had the session fix the receipt without another round, then go to Codex review of the final head.
+- Dispositions of the other three focused-round P2s: the results-source P2 is fixed in this receipt. The two script P2s (the comment at `scripts/verify-dotnet.sh` line 468 says the test stages "build", and test case M3 does not check `$status`) are left unfixed because that decision limits the remaining work to the receipt; Codex review of the final head covers them.
