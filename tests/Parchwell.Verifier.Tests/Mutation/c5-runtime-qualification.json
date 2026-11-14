@@ -1905,6 +1905,55 @@
           "note": "API ZIP digest, source hashes and complete native report receipt verified; inventory and ownership stored in native_geometry.",
           "sha256": "3268e1a3b6c52c469e74f6b5680aa40d2096a1901780c8c0d6416c394ed88d90",
           "source_commit": "dbc25c2005c3409ffd5f079c40b061d82c4b02aa"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43639113318 artifact 14132774324",
+          "note": "Verified archive, native report and clean source snapshots; matched mutant timing for old layout. Statsbeat was enabled; the new layout and current profile have not been measured.",
+          "sha256": "68c86893d721ecc2c06ee043e68a5b7259420c1fed755186926d42d883b6b060",
+          "source_commit": "4aa6218f9c0750f80b072e0bab1e26e754de8f94"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43639113318/job/132582438060",
+          "note": "Canonical job metadata; whole job started 2026-11-14T20:44:55Z and completed 2026-11-14T20:47:55Z; Statsbeat enabled. Old-layout timing, not current-profile measurement.",
+          "sha256": "5f0524883832ef096c14da1c8bd6a86ba0a86e7c8bcb14a28b7c0e4972ab70ca",
+          "source_commit": "4aa6218f9c0750f80b072e0bab1e26e754de8f94"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43639113318/job/132582438086",
+          "note": "Canonical job metadata; whole job started 2026-11-14T20:44:55Z and completed 2026-11-14T21:02:50Z; Statsbeat enabled. Old-layout timing, not current-profile measurement.",
+          "sha256": "54d604bdc8ab6abd1fb463aae881875ad02196a8221a70341bcbb62282a4638a",
+          "source_commit": "4aa6218f9c0750f80b072e0bab1e26e754de8f94"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43639113318/job/132582438127",
+          "note": "Canonical job metadata; whole job started 2026-11-14T20:44:55Z and completed 2026-11-14T20:48:31Z; Statsbeat enabled. Old-layout timing, not current-profile measurement.",
+          "sha256": "1b5893a9410de6d5203058a98173d9031db407c2b9c6b5e191786f2ec8542dae",
+          "source_commit": "4aa6218f9c0750f80b072e0bab1e26e754de8f94"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43639113318/job/132582438524",
+          "note": "Canonical job metadata; whole job started 2026-11-14T20:44:56Z and completed 2026-11-14T20:57:21Z; Statsbeat enabled. Old-layout timing, not current-profile measurement.",
+          "sha256": "ebc28d4ca57b5cf4ab5d855ce9c662962eb78d3de1f7c0584cd97ff5d5c2c89b",
+          "source_commit": "4aa6218f9c0750f80b072e0bab1e26e754de8f94"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43639113318/job/132582438152",
+          "note": "Canonical job metadata; whole job started 2026-11-14T20:44:56Z and completed 2026-11-14T21:36:20Z; Statsbeat enabled. Old-layout timing, not current-profile measurement.",
+          "sha256": "3fdf2cae2513f6a62151d65de56bbb3639bbe5437db4168305b8ac4268fc7726",
+          "source_commit": "4aa6218f9c0750f80b072e0bab1e26e754de8f94"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43639113318/job/132582438212",
+          "note": "Canonical job metadata; whole job started 2026-11-14T20:44:56Z and completed 2026-11-14T21:02:51Z; Statsbeat enabled. Old-layout timing, not current-profile measurement.",
+          "sha256": "462816c11d5b3c3d26fd384242f83c7cbc96ebeee97fb8a10744f5e9a0b7e01f",
+          "source_commit": "4aa6218f9c0750f80b072e0bab1e26e754de8f94"
         }
       ],
       "geometry_status": "pending_native_report",
@@ -1912,85 +1961,63 @@
         "archive_sha256": "3268e1a3b6c52c469e74f6b5680aa40d2096a1901780c8c0d6416c394ed88d90",
         "artifact_id": "14127456699",
         "inventory_sha256": "2bc0f8acfd79364d414b7cd46dde2804c930adc2a1fbbb9f6ad05d67a79d298a",
-        "layout_sha256": "a36d5aa3b38d51fa945cd497ab4226a95a7c9496cf923d70f7c162084be19683",
+        "layout_sha256": "b1dcdfc584604447104cf8e8ea0ca1126b74da498f0fedbc24c3e6908ae6242a",
         "native_count": 1306,
         "owner_counts": {
-          "b10-final-repeat-evidence-crossing": 37,
-          "b10-final-repeat-evidence-p10": 47,
-          "b10-final-repeat-evidence-p11": 87,
-          "b10-final-repeat-evidence-p12": 53,
-          "b10-final-repeat-evidence-p13": 50,
-          "b10-final-repeat-evidence-p14": 33,
-          "b10-final-repeat-evidence-p15": 40,
-          "b10-final-repeat-evidence-p16": 51,
-          "b10-final-repeat-evidence-p17": 45,
-          "b10-final-repeat-evidence-p18": 66,
+          "b10-final-repeat-evidence-crossing": 36,
+          "b10-final-repeat-evidence-p1": 44,
+          "b10-final-repeat-evidence-p10": 53,
+          "b10-final-repeat-evidence-p11": 50,
+          "b10-final-repeat-evidence-p12": 33,
+          "b10-final-repeat-evidence-p13": 40,
+          "b10-final-repeat-evidence-p14": 51,
+          "b10-final-repeat-evidence-p15": 45,
+          "b10-final-repeat-evidence-p16": 66,
+          "b10-final-repeat-evidence-p17": 33,
+          "b10-final-repeat-evidence-p18": 33,
           "b10-final-repeat-evidence-p19": 33,
-          "b10-final-repeat-evidence-p2": 43,
-          "b10-final-repeat-evidence-p20": 33,
-          "b10-final-repeat-evidence-p21": 33,
-          "b10-final-repeat-evidence-p22": 90,
-          "b10-final-repeat-evidence-p23": 77,
-          "b10-final-repeat-evidence-p24": 63,
-          "b10-final-repeat-evidence-p3": 124,
-          "b10-final-repeat-evidence-p4": 42,
-          "b10-final-repeat-evidence-p5": 44,
-          "b10-final-repeat-evidence-p6": 40,
-          "b10-final-repeat-evidence-p7": 31,
-          "b10-final-repeat-evidence-p8": 59,
-          "b10-final-repeat-evidence-p9": 85
+          "b10-final-repeat-evidence-p2": 167,
+          "b10-final-repeat-evidence-p20": 42,
+          "b10-final-repeat-evidence-p21": 47,
+          "b10-final-repeat-evidence-p22": 77,
+          "b10-final-repeat-evidence-p23": 63,
+          "b10-final-repeat-evidence-p3": 44,
+          "b10-final-repeat-evidence-p4": 40,
+          "b10-final-repeat-evidence-p5": 31,
+          "b10-final-repeat-evidence-p6": 59,
+          "b10-final-repeat-evidence-p7": 85,
+          "b10-final-repeat-evidence-p8": 47,
+          "b10-final-repeat-evidence-p9": 87
         },
-        "ownership_proof_sha256": "75ee2457a953f6dbf25237b624908bf86b286193d99bb84a0330d81858f90a20",
+        "ownership_proof_sha256": "c938740ad16ff088aae7e4ae49508f99defea313249e02810734a3c197fecc2b",
         "report_sha256": "c9ac4182741b1f87d383ad950806a069d786e4cf8dfc55c5f0a17641f47922a3",
         "source_commit": "dbc25c2005c3409ffd5f079c40b061d82c4b02aa",
         "source_sha256": "4e533dd7aa4205e0a5a121b94b9441af7438e5d878600a3b65dc6ad5f4edab68"
       },
       "shards": {
         "b10-final-repeat-evidence-crossing": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "9545791d81d686a2c9bd2c4740c70f39c33fa3892f7d00db5760e904da03f0ff",
-          "setup_seconds": null,
+          "basis": "Provisional authored bound 1182s (1075s full job wall plus 107s for new crossing ID 16255); older hosted timing had Statsbeat enabled. This layout has not been measured. Counts for merged and crossing shards bound all native identities. observed_workers=2.",
+          "estimated_seconds": 1182,
+          "isolated_seconds": 0,
+          "main_mutants": 36,
+          "main_work_seconds": 1075,
+          "parallelism": 1,
+          "selection_sha256": "ab56ae67fbba30f17d1fb31875da4eb4739bbb4ddbc0e2da8efcbeed56c1bcf0",
+          "setup_seconds": 107,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-repeat-evidence-p1": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "37042b76eec73fff7d44c6689724ef387da2359ed9840b24c49970a54e778a8d",
-          "setup_seconds": null,
+          "basis": "Provisional authored bound 1362s (1255s full job walls plus 107s for promoted ID 15167); older hosted timing had Statsbeat enabled. This layout has not been measured. Counts for merged and crossing shards bound all native identities. observed_workers=2.",
+          "estimated_seconds": 1362,
+          "isolated_seconds": 0,
+          "main_mutants": 44,
+          "main_work_seconds": 1255,
+          "parallelism": 1,
+          "selection_sha256": "5745a29e5ab376138dcc45472110546b8f4511c3e500e750d274bc09e3d23263",
+          "setup_seconds": 107,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-repeat-evidence-p10": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "b327dc3809edc02607a4842bc1c3c09291fe421edce11d850e7ad87193856191",
-          "setup_seconds": null,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
-        "b10-final-repeat-evidence-p11": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "8314a3b9d92ff1eda335e40894290528bc656a035850af2368f54cbb145fb8a1",
-          "setup_seconds": null,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
-        "b10-final-repeat-evidence-p12": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2001,7 +2028,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p13": {
+        "b10-final-repeat-evidence-p11": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2012,7 +2039,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p14": {
+        "b10-final-repeat-evidence-p12": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2023,7 +2050,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p15": {
+        "b10-final-repeat-evidence-p13": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2034,7 +2061,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p16": {
+        "b10-final-repeat-evidence-p14": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2045,7 +2072,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p17": {
+        "b10-final-repeat-evidence-p15": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2056,7 +2083,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p18": {
+        "b10-final-repeat-evidence-p16": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2067,7 +2094,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p19": {
+        "b10-final-repeat-evidence-p17": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2078,18 +2105,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p2": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "5945fe392838c34ebdc1dc13071627f7feaf8a4c14be34beb0e78e77f98acf8a",
-          "setup_seconds": null,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
-        "b10-final-repeat-evidence-p20": {
+        "b10-final-repeat-evidence-p18": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2100,7 +2116,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p21": {
+        "b10-final-repeat-evidence-p19": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2111,18 +2127,40 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p22": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "3278215286defffe10be32b9e95864b819990631fc8b324bb9fe395983b54af3",
-          "setup_seconds": null,
+        "b10-final-repeat-evidence-p2": {
+          "basis": "Provisional authored bound 1068s (961s full job walls plus 107s for promoted ID 15330); older hosted timing had Statsbeat enabled. This layout has not been measured. Counts for merged and crossing shards bound all native identities. observed_workers=2.",
+          "estimated_seconds": 1068,
+          "isolated_seconds": 0,
+          "main_mutants": 167,
+          "main_work_seconds": 961,
+          "parallelism": 1,
+          "selection_sha256": "37444dbb7d2cb7cc09359f4a0459a9e9d9ae97bee22a830290deeec03cf14100",
+          "setup_seconds": 107,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p23": {
+        "b10-final-repeat-evidence-p20": {
+          "basis": "Provisional authored bound 1708s (2957s matched work and 229s effective overhead, two workers); older hosted timing had Statsbeat enabled. This layout has not been measured. Counts for merged and crossing shards bound all native identities. observed_workers=2.",
+          "estimated_seconds": 1708,
+          "isolated_seconds": 0,
+          "main_mutants": 41,
+          "main_work_seconds": 2957,
+          "parallelism": 2,
+          "selection_sha256": "76172b49d3866c870fd06ed5b2a6d218d4e172eea48f99c843bfbe4aa6864989",
+          "setup_seconds": 229,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "b10-final-repeat-evidence-p21": {
+          "basis": "Provisional authored bound 1606s (2753s matched work and 229s effective overhead, two workers); older hosted timing had Statsbeat enabled. This layout has not been measured. Counts for merged and crossing shards bound all native identities. observed_workers=2.",
+          "estimated_seconds": 1606,
+          "isolated_seconds": 0,
+          "main_mutants": 39,
+          "main_work_seconds": 2753,
+          "parallelism": 2,
+          "selection_sha256": "305071fcc712f02479e0f426de85a4f8cbc5d52441f98545c11adc49f4e8a2f9",
+          "setup_seconds": 229,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "b10-final-repeat-evidence-p22": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2133,7 +2171,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p24": {
+        "b10-final-repeat-evidence-p23": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2145,28 +2183,6 @@
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-repeat-evidence-p3": {
-          "basis": "Conservative bound, not observed merged elapsed: prior p3 and p4 whole jobs 218s and 174s plus 7 newly owned crossing mutants at 109s maximum comparable hosted per-mutant rate (artifact 14127456699); 124 native owners total. observed_workers=1; provisional pending native report.",
-          "estimated_seconds": 1155,
-          "isolated_seconds": 0,
-          "main_mutants": 124,
-          "main_work_seconds": 763,
-          "parallelism": 1,
-          "selection_sha256": "e1ecfa113c9285e88750ae050733935411c7d397ba25cbaa6f3ec088b3d1d10e",
-          "setup_seconds": 392,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
-        "b10-final-repeat-evidence-p4": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "8daa4c25775d32e9c62b429ddd15e9df36e04613d434754db22260d94e0bf5ad",
-          "setup_seconds": null,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
-        "b10-final-repeat-evidence-p5": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2177,7 +2193,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p6": {
+        "b10-final-repeat-evidence-p4": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2188,7 +2204,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p7": {
+        "b10-final-repeat-evidence-p5": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2199,7 +2215,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p8": {
+        "b10-final-repeat-evidence-p6": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2210,7 +2226,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p9": {
+        "b10-final-repeat-evidence-p7": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2218,6 +2234,28 @@
           "main_work_seconds": null,
           "parallelism": null,
           "selection_sha256": "a270773b7bafb33b060fb9cbed5f9383f0fa44b998223c33b2ed83536612c187",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "b10-final-repeat-evidence-p8": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "b327dc3809edc02607a4842bc1c3c09291fe421edce11d850e7ad87193856191",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "b10-final-repeat-evidence-p9": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "8314a3b9d92ff1eda335e40894290528bc656a035850af2368f54cbb145fb8a1",
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         }
@@ -3121,6 +3159,20 @@
           "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout.",
           "sha256": "7eb4a26b2498293a80a6d7b91155ea2eca785da32b59ed05bdce730bffe3ce38",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43639113318 artifact 14132882384",
+          "note": "Verified archive, native report and clean source snapshots; matched mutant timing for old layout. Statsbeat was enabled; the new layout and current profile have not been measured.",
+          "sha256": "34f5adb9ac29457ae20da88213bd7006546ae5ecbe10fde61ea05ab76079fe1d",
+          "source_commit": "4aa6218f9c0750f80b072e0bab1e26e754de8f94"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43639113318/job/132582431623",
+          "note": "Canonical job metadata; whole job started 2026-11-14T20:44:54Z and completed 2026-11-14T21:31:08Z; Statsbeat enabled. Old-layout timing, not current-profile measurement.",
+          "sha256": "a13856eb56d620697116e378f32f41a9fdc3868ceb5e9d8ed978b3bd00f7e997",
+          "source_commit": "4aa6218f9c0750f80b072e0bab1e26e754de8f94"
         }
       ],
       "shards": {
@@ -3131,7 +3183,7 @@
           "main_mutants": 22,
           "main_work_seconds": 1012,
           "parallelism": 2,
-          "selection_sha256": "e80c6c4a3b13cae288c384d0a8aa828cbbf141d2a85aac158b3e7b1c15561eeb",
+          "selection_sha256": "400a7debd1dd4688627bd0b3c9187088f8d0ba48217b5a474b1f384438f05f52",
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
@@ -3169,17 +3221,28 @@
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "single-action-configuration-p12": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1790,
-          "isolated_seconds": 0.0,
-          "main_mutants": 67,
-          "main_work_seconds": 3164,
+          "basis": "Hosted artifact 14132882384: matched tested mutant log seconds split at UTF-16 9881, with 273.5s effective overhead from the old whole job; observed_workers=2. Statsbeat was enabled. Estimate, not a measurement of this layout.",
+          "estimated_seconds": 1515,
+          "isolated_seconds": 0,
+          "main_mutants": 33,
+          "main_work_seconds": 2482,
           "parallelism": 2,
-          "selection_sha256": "f7a59319966488dc868a3ec7742ae11d766932b2d9ec5a34db80e631a3f187ec",
-          "setup_seconds": 208,
+          "selection_sha256": "53773b5c9c16ad81657bf1c1d4132c74a90f83ad8cd0c1c9deea85fab13ebdad",
+          "setup_seconds": 273.5,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "single-action-configuration-p13": {
+          "basis": "Hosted artifact 14132882384: matched tested mutant log seconds split at UTF-16 9881, with 273.5s effective overhead from the old whole job; observed_workers=2. Statsbeat was enabled. Estimate, not a measurement of this layout.",
+          "estimated_seconds": 1533,
+          "isolated_seconds": 0,
+          "main_mutants": 34,
+          "main_work_seconds": 2519,
+          "parallelism": 2,
+          "selection_sha256": "6b7891075859d5172a4fad1eea3784013c61ce874437cd47ff97fdf4d9e9f7c4",
+          "setup_seconds": 273.5,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "single-action-configuration-p14": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1738,
           "isolated_seconds": 0.0,
@@ -3190,7 +3253,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p14": {
+        "single-action-configuration-p15": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. Source-bound region [11134, 11241] is a zero-main-work exception, measured isolated invocations from artifact 14108519875; setup 208 s is the ceiling of maximum configuration-target first-test setup plus maximum observed teardown. observed_workers=2. region [11134,11241).",
           "estimated_seconds": 2101,
           "isolated_seconds": 1892.542,
@@ -3201,7 +3264,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p15": {
+        "single-action-configuration-p16": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1792,
           "isolated_seconds": 918.974,
@@ -3212,7 +3275,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p16": {
+        "single-action-configuration-p17": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1690,
           "isolated_seconds": 0.0,
@@ -3223,7 +3286,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p17": {
+        "single-action-configuration-p18": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1433,
           "isolated_seconds": 0.0,
@@ -3234,7 +3297,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p18": {
+        "single-action-configuration-p19": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1137,
           "isolated_seconds": 0.0,
@@ -3242,17 +3305,6 @@
           "main_work_seconds": 1858,
           "parallelism": 2,
           "selection_sha256": "90f17342f683d8d14343b2706e7eb7221dbd2f9e613785559b98409d0c44a293",
-          "setup_seconds": 208,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
-        "single-action-configuration-p19": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1783,
-          "isolated_seconds": 0.0,
-          "main_mutants": 47,
-          "main_work_seconds": 3149,
-          "parallelism": 2,
-          "selection_sha256": "52c01ad201aa66f5d096f2f78b994e6bd3e85355c9ca72ff0c4016c530c82775",
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
@@ -3269,6 +3321,17 @@
         },
         "single-action-configuration-p20": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
+          "estimated_seconds": 1783,
+          "isolated_seconds": 0.0,
+          "main_mutants": 47,
+          "main_work_seconds": 3149,
+          "parallelism": 2,
+          "selection_sha256": "52c01ad201aa66f5d096f2f78b994e6bd3e85355c9ca72ff0c4016c530c82775",
+          "setup_seconds": 208,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "single-action-configuration-p21": {
+          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1222,
           "isolated_seconds": 0.0,
           "main_mutants": 35,
@@ -3278,7 +3341,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p21": {
+        "single-action-configuration-p22": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1437,
           "isolated_seconds": 0.0,
@@ -3289,7 +3352,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p22": {
+        "single-action-configuration-p23": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1769,
           "isolated_seconds": 0.0,
@@ -3300,7 +3363,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p23": {
+        "single-action-configuration-p24": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1637,
           "isolated_seconds": 0.0,
@@ -3311,7 +3374,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p24": {
+        "single-action-configuration-p25": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1774,
           "isolated_seconds": 0.0,
@@ -3322,7 +3385,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p25": {
+        "single-action-configuration-p26": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1734,
           "isolated_seconds": 0.0,
@@ -3333,7 +3396,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p26": {
+        "single-action-configuration-p27": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1775,
           "isolated_seconds": 0.0,
@@ -3344,7 +3407,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p27": {
+        "single-action-configuration-p28": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1793,
           "isolated_seconds": 0.0,
@@ -3355,7 +3418,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p28": {
+        "single-action-configuration-p29": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1617,
           "isolated_seconds": 0.0,
@@ -3363,17 +3426,6 @@
           "main_work_seconds": 2817,
           "parallelism": 2,
           "selection_sha256": "8330f43d999e3778aa61dfd6d8a61ed653fb94835d999b627b392361845651fa",
-          "setup_seconds": 208,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
-        "single-action-configuration-p29": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1427,
-          "isolated_seconds": 0.0,
-          "main_mutants": 39,
-          "main_work_seconds": 2437,
-          "parallelism": 2,
-          "selection_sha256": "695d7f434912ece36e3cbbd3111b9406b8a50c01f5d30ba5ebb3e28cbe6307c6",
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
@@ -3390,6 +3442,17 @@
         },
         "single-action-configuration-p30": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
+          "estimated_seconds": 1427,
+          "isolated_seconds": 0.0,
+          "main_mutants": 39,
+          "main_work_seconds": 2437,
+          "parallelism": 2,
+          "selection_sha256": "695d7f434912ece36e3cbbd3111b9406b8a50c01f5d30ba5ebb3e28cbe6307c6",
+          "setup_seconds": 208,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "single-action-configuration-p31": {
+          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1630,
           "isolated_seconds": 0.0,
           "main_mutants": 39,
@@ -3399,7 +3462,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p31": {
+        "single-action-configuration-p32": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1797,
           "isolated_seconds": 0.0,
@@ -3410,7 +3473,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p32": {
+        "single-action-configuration-p33": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1316,
           "isolated_seconds": 0.0,
@@ -3421,7 +3484,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p33": {
+        "single-action-configuration-p34": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1574,
           "isolated_seconds": 0.0,
@@ -3432,7 +3495,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p34": {
+        "single-action-configuration-p35": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1566,
           "isolated_seconds": 0.0,
@@ -3443,7 +3506,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p35": {
+        "single-action-configuration-p36": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1691,
           "isolated_seconds": 0.0,
@@ -3454,7 +3517,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p36": {
+        "single-action-configuration-p37": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1695,
           "isolated_seconds": 0.0,
@@ -3465,7 +3528,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p37": {
+        "single-action-configuration-p38": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1721,
           "isolated_seconds": 0.0,
@@ -3476,7 +3539,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p38": {
+        "single-action-configuration-p39": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1544,
           "isolated_seconds": 0.0,
@@ -3484,17 +3547,6 @@
           "main_work_seconds": 2671,
           "parallelism": 2,
           "selection_sha256": "937da73416414bf6027ada13f8f12999831fdef3b2e91222a99ca576accc92c1",
-          "setup_seconds": 208,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
-        "single-action-configuration-p39": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1604,
-          "isolated_seconds": 0.0,
-          "main_mutants": 52,
-          "main_work_seconds": 2791,
-          "parallelism": 2,
-          "selection_sha256": "09b779c7d88927dc4fc5987bf3b0020f36f23ae3628a814c05250c1195396614",
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
@@ -3511,6 +3563,17 @@
         },
         "single-action-configuration-p40": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
+          "estimated_seconds": 1604,
+          "isolated_seconds": 0.0,
+          "main_mutants": 52,
+          "main_work_seconds": 2791,
+          "parallelism": 2,
+          "selection_sha256": "09b779c7d88927dc4fc5987bf3b0020f36f23ae3628a814c05250c1195396614",
+          "setup_seconds": 208,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "single-action-configuration-p41": {
+          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1797,
           "isolated_seconds": 0.0,
           "main_mutants": 57,
@@ -3520,7 +3583,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p41": {
+        "single-action-configuration-p42": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1511,
           "isolated_seconds": 0.0,
@@ -3531,7 +3594,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p42": {
+        "single-action-configuration-p43": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1593,
           "isolated_seconds": 0.0,
@@ -3542,7 +3605,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p43": {
+        "single-action-configuration-p44": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1787,
           "isolated_seconds": 0.0,
@@ -3553,7 +3616,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p44": {
+        "single-action-configuration-p45": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1502,
           "isolated_seconds": 0.0,
@@ -3564,7 +3627,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p45": {
+        "single-action-configuration-p46": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1799,
           "isolated_seconds": 0.0,
@@ -3575,7 +3638,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p46": {
+        "single-action-configuration-p47": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1800,
           "isolated_seconds": 0.0,
@@ -3586,7 +3649,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p47": {
+        "single-action-configuration-p48": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 1793,
           "isolated_seconds": 0.0,
@@ -3597,7 +3660,7 @@
           "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "single-action-configuration-p48": {
+        "single-action-configuration-p49": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
           "estimated_seconds": 761,
           "isolated_seconds": 0.0,

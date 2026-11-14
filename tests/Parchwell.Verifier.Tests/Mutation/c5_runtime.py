@@ -479,7 +479,7 @@ PROVISIONAL_TARGETS = {
 PROVISIONAL_LAYOUT_HASHES = {
     'Common/Phase/B10FinalProjectionCodec.cs': 'ad21dfabb9441f5b8f766e201676ac01d38563f61b21767c34d8f23589b69ff9',
     'Judge/B10FinalJudge.cs': '0edc49b41523422087ea8a0cc90bb2f781fc84074f43e92c42d762c1bd635aad',
-    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': 'a36d5aa3b38d51fa945cd497ab4226a95a7c9496cf923d70f7c162084be19683',
+    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': 'b1dcdfc584604447104cf8e8ea0ca1126b74da498f0fedbc24c3e6908ae6242a',
 }
 PROVISIONAL_TIMING_INPUTS_HASH = 'e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463'
 PROVISIONAL_STATUS = 'pending_native_report'
@@ -516,10 +516,10 @@ def shape(config):
             if any(not HEX.fullmatch(item[k]) for k in ('selection_sha256', 'timing_inputs_sha256')):
                 raise ValueError('invalid shard hash')
             if provisional:
-                if ((path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS) or (path == REPEAT_TARGET and shard == REPEAT_MERGED_SHARD)) and any(item[k] is None for k in NUMERIC_FIELDS):
+                if ((path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS) or (path == REPEAT_TARGET and shard in REPEAT_BOUNDS)) and any(item[k] is None for k in NUMERIC_FIELDS):
                     raise ValueError('pinned codec owner requires its estimate')
                 if any(item[k] is not None for k in NUMERIC_FIELDS) and not (
-                    ((path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS) or (path == REPEAT_TARGET and shard == REPEAT_MERGED_SHARD))
+                    ((path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS) or (path == REPEAT_TARGET and shard in REPEAT_BOUNDS))
                     and all(type(item[k]) in (int, float) for k in NUMERIC_FIELDS)):
                     raise ValueError('provisional estimates must be unknown except the pinned codec owners')
             elif any(type(item[k]) not in (int, float, bool) for k in NUMERIC_FIELDS):
@@ -657,25 +657,42 @@ def approved_codec_static_owner(path, record, shard, item, source):
         return False
 
 REPEAT_TARGET = 'VerifyRun/B10Final/B10FinalRepeatEvidence.cs'
-REPEAT_MERGED_SHARD = 'b10-final-repeat-evidence-p3'
-REPEAT_JOBS = {
-    '132540792966': 'cc3a8b11d1624b469b887d9222c9fe22952bc2eb63a2de050cf1a89a4f87cf02',
-    '132540792918': '1e01be3cbb949ace4c3c12d2a83e388969745b1f3596562cd5d190b274ea02e5',
+# Whole-job bounds conservatively charge promoted/crossing identities at 107s.
+# Counts for merged and crossing shards bound all native identities, not tested counts.
+REPEAT_BOUNDS = {
+    'b10-final-repeat-evidence-p1': ((0, 5565), (44, 1255, 1, 107, 0, 1362)),
+    'b10-final-repeat-evidence-p2': ((5565, 13837), (167, 961, 1, 107, 0, 1068)),
+    'b10-final-repeat-evidence-p20': ((41582, 42920), (41, 2957, 2, 229, 0, 1708)),
+    'b10-final-repeat-evidence-p21': ((42920, 44372), (39, 2753, 2, 229, 0, 1606)),
+    'b10-final-repeat-evidence-crossing': (None, (36, 1075, 1, 107, 0, 1182)),
+}
+
+REPEAT_BOUND_JOBS = {
+    'b10-final-repeat-evidence-p1': (('132582438060', '5f0524883832ef096c14da1c8bd6a86ba0a86e7c8bcb14a28b7c0e4972ab70ca'), ('132582438086', '54d604bdc8ab6abd1fb463aae881875ad02196a8221a70341bcbb62282a4638a')),
+    'b10-final-repeat-evidence-p2': (('132582438127', '1b5893a9410de6d5203058a98173d9031db407c2b9c6b5e191786f2ec8542dae'), ('132582438524', 'ebc28d4ca57b5cf4ab5d855ce9c662962eb78d3de1f7c0584cd97ff5d5c2c89b')),
+    'b10-final-repeat-evidence-p20': (('132582438152', '3fdf2cae2513f6a62151d65de56bbb3639bbe5437db4168305b8ac4268fc7726'),),
+    'b10-final-repeat-evidence-p21': (('132582438152', '3fdf2cae2513f6a62151d65de56bbb3639bbe5437db4168305b8ac4268fc7726'),),
+    'b10-final-repeat-evidence-crossing': (('132582438212', '462816c11d5b3c3d26fd384242f83c7cbc96ebeee97fb8a10744f5e9a0b7e01f'),),
 }
 
 
 def approved_repeat_merged_owner(path, record, shard, item, source):
-    if (path != REPEAT_TARGET or shard != REPEAT_MERGED_SHARD
+    if (path != REPEAT_TARGET or shard not in REPEAT_BOUNDS
             or digest(source) != PROVISIONAL_TARGETS[REPEAT_TARGET][0]
             or item['timing_inputs_sha256'] != PROVISIONAL_TIMING_INPUTS_HASH
-            or any(item[k] != v for k, v in {'main_mutants': 124, 'main_work_seconds': 763,
-                'parallelism': 1, 'setup_seconds': 392, 'isolated_seconds': 0,
-                'estimated_seconds': 1155}.items())
-            or workflow.shard_span(shard, source) != (5565, 11107)):
+            or tuple(item[k] for k in NUMERIC_FIELDS) != REPEAT_BOUNDS[shard][1]):
         return False
-    return all(any(e['kind'] == 'hosted_complete' and e['source_commit'] == 'dbc25c2005c3409ffd5f079c40b061d82c4b02aa'
-                   and e['locator'] == 'https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43625662806/job/' + job
-                   and e['sha256'] == sha for e in record['evidence']) for job, sha in REPEAT_JOBS.items())
+    span = REPEAT_BOUNDS[shard][0]
+    if span is not None and workflow.shard_span(shard, source) != span:
+        return False
+    jobs_ok = all(any(e['kind'] == 'hosted_complete' and e['source_commit'] == '4aa6218f9c0750f80b072e0bab1e26e754de8f94'
+                      and e['locator'] == 'https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43639113318/job/' + job
+                      and e['sha256'] == sha for e in record['evidence']) for job, sha in REPEAT_BOUND_JOBS[shard])
+    return jobs_ok and any(e['kind'] == 'hosted_complete'
+               and e['source_commit'] == '4aa6218f9c0750f80b072e0bab1e26e754de8f94'
+               and e['locator'] == 'https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43639113318 artifact 14132774324'
+               and e['sha256'] == '68c86893d721ecc2c06ee043e68a5b7259420c1fed755186926d42d883b6b060'
+               for e in record['evidence'])
 
 
 # These complete native inventories are taken from receipt-verified hosted reports.
@@ -688,7 +705,7 @@ NATIVE_GEOMETRY_BINDINGS = {
 
 # Digests of the reviewed compact proofs; the full inventories remain in hosted artifacts.
 NATIVE_PROOF_HASHES = {
-    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': '80349431732a04f9167a566472b91679e8493ff1557f77a88b3c4e2d0e07e8c7',
+    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': '2e00dec92b249bbc08ae6fedc825305dc78c12a5da2158eddcb65f5fdc522e14',
     'Common/Phase/B10FinalProjectionCodec.cs': 'c669681346b9a4ce4092d44a0471a9023f8d4f1e15843351e416a0f937092f5c',
     'Judge/B10FinalJudge.cs': '554f7cc41d40bae23185db9b7e9f7ed4e0dd89154977ea33a0b5d108d9836b48',
 }

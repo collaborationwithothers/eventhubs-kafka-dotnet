@@ -195,6 +195,8 @@ jobs:
             target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
           - shard: single-action-configuration-p48
             target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+          - shard: single-action-configuration-p49
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
           - shard: single-action-configuration-crossing
             target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
           - shard: idle-observation-p1
@@ -360,8 +362,6 @@ jobs:
           - shard: b10-final-repeat-evidence-p22
             target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
           - shard: b10-final-repeat-evidence-p23
-            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
-          - shard: b10-final-repeat-evidence-p24
             target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
           - shard: b10-final-repeat-evidence-crossing
             target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
