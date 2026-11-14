@@ -329,6 +329,10 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
     [InlineData("reasons_unknown")]
     [InlineData("reasons_empty_text")]
     [InlineData("reasons_not_array")]
+    [InlineData("reasons_unknown_with_wrong_timeout")]
+    [InlineData("reasons_projection_only_sweep_unavailable")]
+    [InlineData("reasons_projection_only_late_record")]
+    [InlineData("reasons_projection_only_input_unavailable")]
     [InlineData("problems_number")]
     [InlineData("problems_item_number")]
     [InlineData("problems_object")]
@@ -353,6 +357,10 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
                 case "timeout_null_member": data["timeout"]!["phantom"] = null; break;
                 case "reasons_unknown": data["eligibility"] = "ineligible"; data["eligibility_reasons"] = new JsonArray("bogus"); break;
                 case "reasons_empty_text": data["eligibility"] = "ineligible"; data["eligibility_reasons"] = new JsonArray(""); break;
+                case "reasons_unknown_with_wrong_timeout": data["timeout"]!["duplicate"] = 1; data["eligibility"] = "ineligible"; data["eligibility_reasons"] = new JsonArray("bogus"); break;
+                case "reasons_projection_only_sweep_unavailable": data["eligibility"] = "ineligible"; data["eligibility_reasons"] = new JsonArray("b10_restart_sweep_unavailable"); break;
+                case "reasons_projection_only_late_record": data["eligibility"] = "ineligible"; data["eligibility_reasons"] = new JsonArray("b10_restart_late_record_unjoined"); break;
+                case "reasons_projection_only_input_unavailable": data["eligibility"] = "ineligible"; data["eligibility_reasons"] = new JsonArray("b10_restart_input_unavailable"); break;
                 case "reasons_not_array": data["eligibility_reasons"] = "b10_restart_window_incomplete"; break;
                 case "problems_number": data["problems"] = 5; break;
                 case "problems_item_number": data["problems"] = new JsonArray(5); break;
@@ -370,14 +378,21 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
     }
 
     [Theory]
-    [InlineData("object")]
-    [InlineData("receipt")]
-    public async Task Given_NonfinalReadFails_When_FinalSweepRuns_Then_TimeoutCohortsSurviveAndOnlyRestartIsRejected_P1_Codex_ReadFailure(string which)
+    [InlineData("object", "ordinary")]
+    [InlineData("receipt", "ordinary")]
+    [InlineData("object", "no_kill")]
+    [InlineData("receipt", "no_kill")]
+    public async Task Given_NonfinalReadFails_When_FinalSweepRuns_Then_TimeoutCohortsSurviveAndOnlyRestartIsRejected_P1_Codex_ReadFailure(string which, string termination)
     {
         using var run = await B10FinalSweepHarness.CreateAsync(kafka);
+        if (termination == "no_kill") NoKill(run, 3);
         string target = which == "object" ? B10FinalSweepHarness.A3(3) : B10FinalSweepHarness.Prefix(3) + "verify-completion.json";
-        run.BeforeRead = name => { if (name == target) throw new IOException("synthetic storage failure"); };
+        var reads = new List<string>();
+        run.BeforeRead = name => { reads.Add(name); if (name == target) throw new IOException("synthetic storage failure"); };
         Assert.Equal(0, await run.RunAsync());
+        // A failed read of one object is not evidence that the other is absent, so each is still attempted.
+        Assert.Contains(B10FinalSweepHarness.A3(3), reads);
+        Assert.Contains(B10FinalSweepHarness.Prefix(3) + "verify-completion.json", reads);
         Assert.True(run.Data["scan_complete"]!.GetValue<bool>(), run.Data.ToJsonString());
         for (int repeat = 1; repeat <= 5; repeat++) AssertComplete(run.Repeat(repeat));
         JsonObject item = run.Repeat(3);

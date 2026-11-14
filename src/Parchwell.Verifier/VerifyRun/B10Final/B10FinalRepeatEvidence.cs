@@ -149,16 +149,12 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
         string name = root + "nonfinal-result.json";
         byte[]? dataBytes = null, receiptBytes = null;
         bool readFailed = false;
-        try
-        {
-            dataBytes = await readVerifier(name, ct).ConfigureAwait(false);
-            receiptBytes = await readVerifier(root + "verify-completion.json", ct).ConfigureAwait(false);
-        }
-        catch (Exception exception) when (B10FinalSweepHandler.EvidenceFailure(exception, ct))
-        {
-            // An unreadable restart input is a restart-only failure; the ordinary timeout publication is read below.
-            readFailed = true; dataBytes = null; receiptBytes = null; input.RestartInputInvalid = true;
-        }
+        // An unreadable restart input is a restart-only failure; the ordinary timeout publication is read below.
+        // Each object has its own guard: a failed read of one is not evidence that the other is absent.
+        try { dataBytes = await readVerifier(name, ct).ConfigureAwait(false); }
+        catch (Exception exception) when (B10FinalSweepHandler.EvidenceFailure(exception, ct)) { readFailed = true; input.RestartInputInvalid = true; }
+        try { receiptBytes = await readVerifier(root + "verify-completion.json", ct).ConfigureAwait(false); }
+        catch (Exception exception) when (B10FinalSweepHandler.EvidenceFailure(exception, ct)) { readFailed = true; input.RestartInputInvalid = true; }
         if (dataBytes is not null) input.Source = B10FinalSweepHandler.Reference("verifier", name, dataBytes);
         try
         {
@@ -190,12 +186,13 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
             ValidateTimeout(data.GetProperty("timeout"));
             _ = AbruptEvidenceCodec.Strings(data.GetProperty("problems"));
             Dictionary<int, long>? starts = JsonVector(data.GetProperty("start_line")), ends = JsonVector(data.GetProperty("end_line"));
-            // Validate before keeping anything: a rejected object must not install vectors, timeout counts or eligibility reasons.
+            // Validate everything before keeping anything: a rejected object must not install vectors, timeout counts or eligibility reasons.
             if (starts is not null && ends is not null && input.Start is not null)
                 Require(SameVector(starts, input.Start.Start.Value!.PartitionHighs.ToDictionary(high => high.Partition, high => high.High)), "nonfinal_start_mismatch");
-            input.Nonfinal = data;
+            // The per-repeat writer emits only the abrupt diagnostic reasons (E1 to E13); the final sweep adds its own later.
             string[] reasons = Strings(data.GetProperty("eligibility_reasons")).ToArray();
-            Require(reasons.All(B10FinalProjectionCodec.IsRestartReason), "nonfinal_eligibility_reason");
+            Require(reasons.All(reason => Array.IndexOf(AbruptDiagnostics.ReasonNames, reason) >= 0), "nonfinal_eligibility_reason");
+            input.Nonfinal = data;
             input.RestartReasons.UnionWith(reasons);
             if (starts is not null && ends is not null) { input.Starts = starts; input.Ends = ends; }
             input.InputValid = true;
