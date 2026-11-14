@@ -43,9 +43,7 @@ Worked cases from issue #404:
 
 Before a plan reaches Hari, read its `Deferred work` section and anything else the plan defers: to a post-merge run, a follow-up issue, a cap exhaustion action `record the gap and continue`, or anything known only after merge. Classify each item under docs/agents/factory.md "Outcome responsibility", including its "Deferred work in plans":
 
-- Preparation on the path to the verdict that could be done before merge: send the plan back to resolve it before the pull request that depends on it merges, with a measured cost or a cap. Hari is not asked.
-- Execution that existing rules allow only after merge, such as the mutation acceptance run on `main`: it stays at that stage, with its completion and publication gates. Do not ask for it before merge.
-- Not on the path to the verdict: the item may stay deferred, and the approval request lists it in one line with that call.
+Classify each item as that section defines it, then act: send the plan back to resolve preparation on the path to the verdict, with a measured cost or a cap, without asking Hari; leave execution that existing rules allow only after merge at that stage; list an item not on the path in one line in the approval request.
 
 This catches no item you cannot see.
 
@@ -58,7 +56,7 @@ So that the assessment can count this role's part, record on the issue, with no 
 - each act you take alone: its `## Control action` comment;
 - each question you bring to Hari: its `**Decision needed:**` comment;
 - each deferral you let through: its classification under "Deferred work in plans" above, one line per item, in the comment that brings the plan to Hari, or in a `## Control action` comment when no comment does;
-- each intervention Hari makes in chat: a `## Control action` comment that quotes his words and states that it records his intervention, in place of stating that he has not seen it.
+- each intervention Hari makes in chat: a `## Control action` comment that quotes his words and states that it records his intervention, in place of stating that he has not seen it. A decision or approval Hari gives in chat is recorded under the `implement-plan` skill's "Decisions given in chat"; use `## Control action` for interventions that are not decisions.
 
 ## Working method
 
