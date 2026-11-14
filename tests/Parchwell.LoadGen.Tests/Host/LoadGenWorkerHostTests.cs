@@ -519,9 +519,12 @@ public sealed class LoadGenWorkerHostTests
     {
         var publisher = new RecordingPublisher(throwOnPublish: outcome == "publication");
         var lifecycle = new RecordingLifecycle(throwOnCompletion: outcome == "receipt",
-            waitForCompletionCancellation: outcome == "receipt-timeout");
+            waitForCompletionCancellation: outcome == "receipt-timeout")
+        {
+            WaitForRegistrationCancellation = outcome == "cancel",
+        };
         var clock = new TrackingTimeProvider(throwOnWatchdogDispose: outcome == "watchdog-dispose");
-        var host = new LifecycleHost(CreateHost(publisher, durationSeconds: 1, lifecycle: lifecycle, timeProvider: clock), outcome);
+        var host = new LifecycleHost(CreateHost(publisher, durationSeconds: 1, lifecycle: lifecycle, timeProvider: clock), outcome, lifecycle);
         if (outcome == "stop-stall")
             host.Services.GetRequiredService<IOptions<LoadGenHostOptions>>().Value.CleanupTimeout = TimeSpan.FromMilliseconds(100);
         using var output = new StringWriter();
@@ -547,7 +550,7 @@ public sealed class LoadGenWorkerHostTests
         DeleteOutput(publisher);
     }
 
-    private sealed class LifecycleHost(IHost inner, string outcome) : IHost
+    private sealed class LifecycleHost(IHost inner, string outcome, RecordingLifecycle lifecycle) : IHost
     {
         internal bool Disposed { get; private set; }
         internal int StopAttempts { get; private set; }
@@ -557,7 +560,11 @@ public sealed class LoadGenWorkerHostTests
         {
             if (outcome == "start") throw new InvalidOperationException("synthetic_start_failure");
             await inner.StartAsync(cancellationToken);
-            if (outcome == "cancel") await inner.StopAsync(cancellationToken);
+            if (outcome == "cancel")
+            {
+                await lifecycle.RegistrationEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
+                await inner.StopAsync(cancellationToken);
+            }
         }
         public async Task StopAsync(CancellationToken cancellationToken = default)
         {
@@ -812,6 +819,8 @@ public sealed class LoadGenWorkerHostTests
     private sealed class RecordingLifecycle(bool throwOnCompletion = false, bool waitForCompletionCancellation = false) : IProducerRunLifecycle
     {
         public bool Registered { get; private set; }
+        public bool WaitForRegistrationCancellation { get; set; }
+        public TaskCompletionSource RegistrationEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public int RegisterCalls { get; private set; }
         public int DiagnosticsCalls { get; private set; }
         public int CompletionCalls { get; private set; }
@@ -827,7 +836,10 @@ public sealed class LoadGenWorkerHostTests
             cancellationToken.ThrowIfCancellationRequested();
             RegisterCalls++;
             Registered = true;
-            return Task.CompletedTask;
+            RegistrationEntered.TrySetResult();
+            return WaitForRegistrationCancellation
+                ? Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken)
+                : Task.CompletedTask;
         }
 
         public Task PublishDiagnosticsAsync(ProducerRunContext context, RunExecutionResult? result,
