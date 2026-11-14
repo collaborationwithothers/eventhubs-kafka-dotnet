@@ -466,6 +466,23 @@ def input_maps(ref):
     return result, targets
 
 
+# The initial live-qualification pilot's only approved incomplete native inventories.
+# Decision: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6880732047
+PROVISIONAL_TARGETS = {
+    'Judge/B10FinalJudge.cs': ('cd88f482f9c93947e613ec4b13a34ff554331dfe8ebd9a3e400ed3bbb360d34a', '14111392757', '7c300f5fd0185d8952b4bfa5229432b829b4713f793a5b62ea7afd63cca4a709'),
+    'Common/Phase/B10FinalProjectionCodec.cs': ('c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5', '14111558997', 'cfe9779a0ddaf62f8e9d43aa7ab8724904efd07f3a77a51e4c59f9d18633145e'),
+    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': ('4e533dd7aa4205e0a5a121b94b9441af7438e5d878600a3b65dc6ad5f4edab68', '14111653842', '7d65fe2b27ee06585f1c6914e6ca363b376507b0dd1ee8f28f0700f2dcd663d6'),
+}
+# Canonical maps of shard ID to generated selection hash for the approved pilot.
+PROVISIONAL_LAYOUT_HASHES = {
+    'Common/Phase/B10FinalProjectionCodec.cs': '10b8f858fb81cb9129f00acba7c3986eb85d6d4d5076104105c71f96d7eabb58',
+    'Judge/B10FinalJudge.cs': '6111fd4ec0d857dc607d3f0f0e44c14de19e551157508df041aee1f986f6af37',
+    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': '1a4a156c924e0e54b07a495a083f2f09efc6f6b12d86d9eed55874894b8133b2',
+}
+PROVISIONAL_TIMING_INPUTS_HASH = '64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22'
+PROVISIONAL_STATUS = 'pending_native_report'
+NUMERIC_FIELDS = ('main_mutants', 'main_work_seconds', 'parallelism', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')
+
 def shape(config):
     if not isinstance(config, dict) or set(config) != {'schema_version', 'budget_seconds', 'shared_inputs', 'targets'}:
         raise ValueError('invalid schema')
@@ -477,7 +494,11 @@ def shape(config):
         if not isinstance(path, str) or not isinstance(sha, str) or not HEX.fullmatch(sha):
             raise ValueError('invalid input hash')
     for path, record in config['targets'].items():
-        if not isinstance(path, str) or not isinstance(record, dict) or set(record) != {'source_sha256', 'evidence', 'shards'}:
+        if not isinstance(path, str) or not isinstance(record, dict):
+            raise ValueError('invalid target')
+        provisional = 'geometry_status' in record
+        expected_fields = {'source_sha256', 'evidence', 'shards'} | ({'geometry_status'} if provisional else set())
+        if set(record) != expected_fields or (provisional and (path not in PROVISIONAL_TARGETS or record['geometry_status'] != PROVISIONAL_STATUS)):
             raise ValueError('invalid target')
         if not isinstance(record['source_sha256'], str) or not HEX.fullmatch(record['source_sha256']):
             raise ValueError('invalid source hash')
@@ -492,7 +513,10 @@ def shape(config):
                 raise ValueError('invalid shard field')
             if any(not HEX.fullmatch(item[k]) for k in ('selection_sha256', 'timing_inputs_sha256')):
                 raise ValueError('invalid shard hash')
-            if any(type(item[k]) not in (int, float, bool) for k in ('main_mutants', 'main_work_seconds', 'parallelism', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')):
+            if provisional:
+                if any(item[k] is not None for k in NUMERIC_FIELDS):
+                    raise ValueError('provisional estimates must be unknown')
+            elif any(type(item[k]) not in (int, float, bool) for k in NUMERIC_FIELDS):
                 raise ValueError('invalid numeric field')
         for evidence in record['evidence']:
             if not isinstance(evidence, dict) or set(evidence) != {'source_commit','locator','sha256','kind','note'}:
@@ -507,6 +531,8 @@ def shape(config):
 def numeric_schema_errors(config):
     """Reject invalid numeric estimates before any scope shortcut."""
     for record in config['targets'].values():
+        if record.get('geometry_status') == PROVISIONAL_STATUS:
+            continue
         for item in record['shards'].values():
             if type(item['main_mutants']) is not int or item['main_mutants'] < 0:
                 return {'invalid_estimate'}
@@ -523,6 +549,44 @@ def numeric_schema_errors(config):
             if item['estimated_seconds'] != expected:
                 return {'invalid_estimate'}
     return set()
+
+STATIC_TARGET = 'VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs'
+STATIC_SOURCE_HASH = 'e266b1d73da52fe84fbb583bac42e8bd5e2118af445d8a2f3c4bf7c4ff67f661'
+STATIC_EVIDENCE = {
+    (11134, 11241): ('14108519875', '7eb4a26b2498293a80a6d7b91155ea2eca785da32b59ed05bdce730bffe3ce38', 208, 1892.542),
+    (370, 595): ('14108227262', '68f25d8a4090d13ed253cb33bb69be5ecc852367210b1fe36016d5272c2ec911', 208, 1743.157),
+}
+
+
+def accepted_static_regions(path, shard, source):
+    if path != STATIC_TARGET or digest(source) != STATIC_SOURCE_HASH:
+        return []
+    try:
+        return [region for region in workflow.shard_static_regions(shard, source) if region in STATIC_EVIDENCE]
+    except (KeyError, ValueError, TypeError):
+        return []
+
+
+def approved_static_owner(path, record, shard, item, source):
+    """Recognize only the two measured declarations accepted in the issue decisions."""
+    regions = accepted_static_regions(path, shard, source)
+    if (len(regions) != 1 or record['source_sha256'] != STATIC_SOURCE_HASH
+            or item['main_mutants'] != 0 or item['main_work_seconds'] != 0):
+        return False
+    region = regions[0]
+    artifact, artifact_hash, setup, isolated = STATIC_EVIDENCE[region]
+    if (item['setup_seconds'] != setup or item['isolated_seconds'] != isolated
+            or artifact not in item['basis'] or f'[{region[0]},{region[1]})' not in item['basis']
+            or not any(e['kind'] == 'hosted_complete' and e['sha256'] == artifact_hash
+                       and artifact in e['locator'] for e in record['evidence'])):
+        return False
+    try:
+        owner = (region[0], region[1] + 1) if region == (370, 595) else (region[0] - 1, region[1])
+        padding = source[region[1]:region[1] + 1] if region == (370, 595) else source[region[0] - 1:region[0]]
+        return (workflow.shard_span(shard, source) == owner and padding == b'\n'
+                and workflow.shard_static_regions(shard, source) == [region])
+    except (KeyError, ValueError, TypeError):
+        return False
 
 def validate(config, shared, targets, source, matrix):
     reasons = set()
@@ -544,6 +608,21 @@ def validate(config, shared, targets, source, matrix):
             continue
         if record['source_sha256'] != targets[path]:
             reasons.add('stale_inputs')
+        provisional = record.get('geometry_status') == PROVISIONAL_STATUS
+        if provisional:
+            if timing_hash != PROVISIONAL_TIMING_INPUTS_HASH:
+                reasons.add('stale_inputs')
+            source_hash, artifact, evidence_hash = PROVISIONAL_TARGETS[path]
+            if record['source_sha256'] != source_hash:
+                reasons.add('stale_inputs')
+            generated = {name: digest(canonical(workflow.shard_config(name, source[path])))
+                         for name, target in workflow.SHARDS.items() if target == path}
+            if digest(canonical(generated)) != PROVISIONAL_LAYOUT_HASHES[path]:
+                reasons.add('layout_mismatch')
+            if not any(e['kind'] == 'partial_timing' and e['sha256'] == evidence_hash
+                       and e['source_commit'] == 'e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5'
+                       and artifact in e['locator'] for e in record['evidence']):
+                reasons.add('missing_measurement')
         if not record['evidence']:
             reasons.add('missing_measurement')
         for evidence in record['evidence']:
@@ -566,6 +645,10 @@ def validate(config, shared, targets, source, matrix):
                     reasons.add('layout_mismatch')
             else:
                 reasons.add('layout_mismatch')
+            if provisional:
+                if not item['basis'].strip() or any(item[k] is not None for k in NUMERIC_FIELDS):
+                    reasons.add('invalid_estimate')
+                continue
             numeric = ('main_work_seconds', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')
             valid = (type(item['main_mutants']) is int and item['main_mutants'] >= 0
                      and type(item['parallelism']) is int and item['parallelism'] > 0
@@ -586,7 +669,10 @@ def validate(config, shared, targets, source, matrix):
                 reasons.add('invalid_estimate')
             if item['main_mutants'] and (item['setup_seconds'] == 0 or item['main_work_seconds'] == 0):
                 reasons.add('missing_measurement')
-            if item['estimated_seconds'] > 1800:
+            regions = accepted_static_regions(path, shard, source[path])
+            if regions and item['isolated_seconds'] < sum(STATIC_EVIDENCE[region][3] for region in regions):
+                reasons.add('invalid_estimate')
+            if item['estimated_seconds'] > 1800 and not approved_static_owner(path, record, shard, item, source[path]):
                 reasons.add('shard_over_budget')
     if all_shards != workflow.SHARDS:
         reasons.add('layout_mismatch')
@@ -627,7 +713,13 @@ def check(base, head, qualification):
             return {'status': 'rejected', 'reasons': ['missing_qualification']}
         source = {p: blob(head, 'src/Parchwell.Verifier/' + p) for p in targets}
         reasons = sorted(validate(config, shared, targets, source, matrix))
-        return {'status': 'rejected' if reasons else 'qualified', 'reasons': reasons}
+        if reasons:
+            return {'status': 'rejected', 'reasons': reasons}
+        pending = sorted(path for path, record in config['targets'].items()
+                         if record.get('geometry_status') == PROVISIONAL_STATUS)
+        if pending:
+            return {'status': 'provisional', 'reasons': [], 'pending_targets': pending}
+        return {'status': 'qualified', 'reasons': []}
     except (ValueError, TypeError, KeyError, OSError, subprocess.CalledProcessError, ET.ParseError, SyntaxError, UnicodeError, OverflowError):
         return {'status': 'rejected', 'reasons': ['invalid_input']}
 

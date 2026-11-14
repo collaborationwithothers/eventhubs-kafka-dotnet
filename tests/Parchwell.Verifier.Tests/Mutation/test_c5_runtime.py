@@ -3,9 +3,52 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import os
+import subprocess
 
 import c5_runtime as profile_module
 ROOT = Path(__file__).resolve().parents[3]
+
+
+class RequiredCheckIntegrationTests(unittest.TestCase):
+    def invoke_step(self, event, fail_check):
+        import yaml
+        workflow = yaml.safe_load((ROOT / '.github/workflows/dotnet-verification.yml').read_text())
+        job = workflow['jobs']['dotnet-verification']
+        self.assertEqual('.NET verification', job['name'])
+        checkout = next(step for step in job['steps'] if step['name'] == 'Check out repository')
+        self.assertEqual(0, checkout['with']['fetch-depth'])
+        step = next(step for step in job['steps'] if step['name'] == 'Qualify verifier mutation runtime')
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            log = directory / 'calls'
+            stub = directory / 'python3'
+            stub.write_text('#!/bin/bash\nprintf "%s\\n" "$*" >> "$CALL_LOG"\n'
+                            'if [[ "$1" == *c5_runtime.py && "$FAIL_CHECK" = yes ]]; then exit 1; fi\n')
+            stub.chmod(0o755)
+            env = {**os.environ, 'PATH': str(directory) + os.pathsep + os.environ['PATH'],
+                   'CALL_LOG': str(log), 'FAIL_CHECK': 'yes' if fail_check else 'no',
+                   'PARCHWELL_EVENT': event, 'PARCHWELL_BASE_SHA': 'base-sha',
+                   'PARCHWELL_HEAD_SHA': 'head-sha'}
+            result = subprocess.run(['bash', '-c', step['run']], cwd=ROOT, env=env, check=False)
+            return result.returncode, log.read_text().splitlines()
+
+    def test_required_check_propagates_rejection(self):
+        status, calls = self.invoke_step('pull_request', True)
+        self.assertNotEqual(0, status)
+        self.assertEqual(3, len(calls))
+        self.assertIn('test_c5_runtime.py', calls[0])
+        self.assertIn('test_c5_workflow.py', calls[1])
+        self.assertIn('--head head-sha', calls[2])
+        self.assertIn('--base base-sha', calls[2])
+
+    def test_main_validates_without_diff(self):
+        for event in ('push', 'workflow_dispatch'):
+            with self.subTest(event=event):
+                status, calls = self.invoke_step(event, True)
+                self.assertNotEqual(0, status)
+                self.assertIn('--head head-sha', calls[2])
+                self.assertNotIn('--base', calls[2])
 
 
 def xml(*results):
@@ -188,6 +231,63 @@ class QualificationTests(unittest.TestCase):
                 item.update(main_work_seconds=2 * (seconds - 100), isolated_seconds=0, estimated_seconds=seconds)
                 self.assertEqual(seconds > 1800, 'shard_over_budget' in self.errors())
 
+    def test_only_measured_static_owner_has_budget_exception(self):
+        path = 'VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs'
+        data = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+        shard = 'configuration-static'
+        self.shards.clear()
+        self.shards[shard] = path
+        self.source = {path: data}
+        self.targets = {path: runtime.digest(data)}
+        timing = runtime.digest(runtime.canonical({'shared_inputs': self.shared, 'target_sources': self.targets}))
+        evidence = {'source_commit': 'a' * 40, 'locator': 'artifact 14108519875',
+                    'sha256': '7eb4a26b2498293a80a6d7b91155ea2eca785da32b59ed05bdce730bffe3ce38',
+                    'kind': 'hosted_complete', 'note': 'observed hosted evidence'}
+        item = {'selection_sha256': runtime.digest(runtime.canonical(runtime.workflow.shard_config(shard, data))),
+                'timing_inputs_sha256': timing, 'main_mutants': 0, 'main_work_seconds': 0,
+                'parallelism': 1, 'setup_seconds': 208, 'isolated_seconds': 1892.542,
+                'estimated_seconds': 2101, 'basis': 'artifact 14108519875 [11134,11241) observed_workers=1'}
+        record = {'source_sha256': self.targets[path], 'evidence': [evidence], 'shards': {shard: item}}
+        self.config['targets'] = {path: record}
+        with mock.patch.object(runtime.workflow, 'shard_span', return_value=(11133, 11241)) as span, \
+             mock.patch.object(runtime.workflow, 'shard_static_regions', return_value=[(11134, 11241)]) as regions:
+            self.assertEqual(set(), self.errors())
+            for field, value in [('main_mutants', 1), ('main_work_seconds', 1),
+                                 ('setup_seconds', 209), ('isolated_seconds', 1892.543),
+                                 ('basis', 'observed_workers=1')]:
+                with self.subTest(field=field):
+                    old = item[field]
+                    item[field] = value
+                    self.assertIn('shard_over_budget', self.errors())
+                    item[field] = old
+            span.return_value = (11134, 11241)
+            self.assertIn('shard_over_budget', self.errors())
+            span.return_value = (11133, 11241)
+            regions.return_value = [(11134, 11241), (11241, 11371)]
+            self.assertIn('shard_over_budget', self.errors())
+            regions.return_value = [(11134, 11241)]
+            evidence['sha256'] = 'f' * 64
+            self.assertIn('shard_over_budget', self.errors())
+            evidence['sha256'] = '7eb4a26b2498293a80a6d7b91155ea2eca785da32b59ed05bdce730bffe3ce38'
+            item.update(isolated_seconds=1000, estimated_seconds=1196)
+            self.assertIn('invalid_estimate', self.errors())
+            item.update(isolated_seconds=1892.542, estimated_seconds=2101)
+            self.source[path] += b'changed'
+            self.assertIn('shard_over_budget', self.errors())
+            self.source[path] = data
+            span.return_value = (370, 596)
+            regions.return_value = [(370, 595)]
+            evidence.update(locator='artifact 14108227262',
+                            sha256='68f25d8a4090d13ed253cb33bb69be5ecc852367210b1fe36016d5272c2ec911')
+            item.update(setup_seconds=208, isolated_seconds=1743.157, estimated_seconds=1952,
+                        basis='artifact 14108227262 [370,595) observed_workers=1')
+            self.assertEqual(set(), self.errors())
+            item.update(isolated_seconds=1743.156, estimated_seconds=1952)
+            self.assertIn('invalid_estimate', self.errors())
+            self.assertIn('shard_over_budget', self.errors())
+            item.update(isolated_seconds=1743.157, setup_seconds=209, estimated_seconds=1953)
+            self.assertIn('shard_over_budget', self.errors())
+
     def test_estimate_arithmetic_and_numeric_types(self):
         item = self.config['targets']['a.cs']['shards']['a-p1']
         for field, bad in [('parallelism', True), ('parallelism', 0), ('main_mutants', -1),
@@ -237,8 +337,8 @@ class QualificationTests(unittest.TestCase):
 
     def test_execution_hash_separates_cuts(self):
         data = Path(runtime.workflow.__file__).read_bytes()
-        self.assertEqual(runtime.execution_runner(data), runtime.execution_runner(data.replace(b'(4376, 6570)', b'(4377, 6570)')))
-        self.assertNotEqual(runtime.execution_runner(data), runtime.execution_runner(data.replace(b'REBALANCE_SECONDS = 7200', b'REBALANCE_SECONDS = 7201')))
+        self.assertEqual(runtime.execution_runner(data), runtime.execution_runner(data.replace(b'(3600, 4517,', b'(3601, 4517,')))
+        self.assertNotEqual(runtime.execution_runner(data), runtime.execution_runner(data.replace(b'REBALANCE_SECONDS = 1800', b'REBALANCE_SECONDS = 1801')))
 
     def test_runtime_profile_directory_membership(self):
         # Capture the tracked tree once; in-memory variants test additions, edits and deletions.
@@ -533,6 +633,9 @@ class DependencyEndToEndTests(unittest.TestCase):
                 return b'<Project />' if path.endswith('.props') else b'synthetic'
             if path not in cache:
                 cache[path] = runtime.subprocess.check_output(['git', 'show', f'HEAD:{path}'], cwd=ROOT)
+                # This dependency fixture uses synthetic estimates, not the measured static-owner workload.
+                if path == 'src/Parchwell.Verifier/' + runtime.STATIC_TARGET:
+                    cache[path] += b'\n'
             return cache[path]
         def files(ref):
             return names | ({current} if ref == 'added' else set())
@@ -611,3 +714,132 @@ class DependencyEndToEndTests(unittest.TestCase):
                 with mock.patch.object(runtime, 'files', return_value=names | {name}), mock.patch.object(runtime, 'blob', side_effect=blob):
                     with self.assertRaises(ValueError):
                         runtime.input_maps('HEAD')
+
+
+class ProvisionalQualificationTests(unittest.TestCase):
+    setUp = QualificationTests.setUp
+    errors = QualificationTests.errors
+    simulated_check = AdditionalQualificationTests.simulated_check
+
+    def provisional(self):
+        source_hash = self.targets['a.cs']
+        self.provisional_patch = mock.patch.object(runtime, 'PROVISIONAL_TARGETS',
+            {'a.cs': (source_hash, '42', 'f' * 64)})
+        self.provisional_patch.start()
+        self.addCleanup(self.provisional_patch.stop)
+        selection = self.config['targets']['a.cs']['shards']['a-p1']['selection_sha256']
+        layout_hash = runtime.digest(runtime.canonical({'a-p1': selection}))
+        layout_patch = mock.patch.object(runtime, 'PROVISIONAL_LAYOUT_HASHES', {'a.cs': layout_hash})
+        layout_patch.start()
+        self.addCleanup(layout_patch.stop)
+        timing = self.config['targets']['a.cs']['shards']['a-p1']['timing_inputs_sha256']
+        timing_patch = mock.patch.object(runtime, 'PROVISIONAL_TIMING_INPUTS_HASH', timing)
+        timing_patch.start()
+        self.addCleanup(timing_patch.stop)
+        record = self.config['targets']['a.cs']
+        record['geometry_status'] = runtime.PROVISIONAL_STATUS
+        record['evidence'] = [{'source_commit': 'e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5',
+            'locator': 'artifact 42', 'sha256': 'f' * 64, 'kind': 'partial_timing',
+            'note': 'cancelled; timing only'}]
+        item = record['shards']['a-p1']
+        for field in runtime.NUMERIC_FIELDS:
+            item[field] = None
+        item['basis'] = 'source-based cut; native geometry and timing not established'
+        return record, item
+
+    def test_pilot_is_explicit_and_other_checks_remain(self):
+        record, item = self.provisional()
+        self.assertEqual(set(), self.errors())
+        self.assertEqual({'status': 'provisional', 'reasons': [], 'pending_targets': ['a.cs']},
+                         self.simulated_check(runtime.RUNNER))
+        item['selection_sha256'] = '0' * 64
+        self.assertIn('layout_mismatch', self.errors())
+        item['selection_sha256'] = runtime.digest(runtime.canonical(runtime.workflow.shard_config('a-p1', self.source['a.cs'])))
+        item['timing_inputs_sha256'] = '0' * 64
+        self.assertIn('stale_inputs', self.errors())
+        self.config['targets']['b.cs']['shards']['b']['estimated_seconds'] = 1801
+        self.assertIn('invalid_estimate', self.errors())
+
+    def test_pilot_requires_pinned_source_and_partial_evidence(self):
+        record, _ = self.provisional()
+        record['source_sha256'] = '0' * 64
+        self.assertIn('stale_inputs', self.errors())
+        record['source_sha256'] = self.targets['a.cs']
+        record['evidence'][0]['sha256'] = '0' * 64
+        self.assertIn('missing_measurement', self.errors())
+        record['evidence'][0]['sha256'] = 'f' * 64
+        record['evidence'][0]['kind'] = 'hosted_complete'
+        self.assertIn('missing_measurement', self.errors())
+        record['evidence'].clear()
+        self.assertIn('missing_measurement', self.errors())
+
+    def test_pilot_rejects_unknown_targets_or_fabricated_values_before_bypass(self):
+        record, item = self.provisional()
+        item['main_mutants'] = 0
+        with self.assertRaises(ValueError):
+            runtime.shape(self.config)
+        self.assertEqual({'status': 'rejected', 'reasons': ['invalid_input']}, self.simulated_check('README.md'))
+        item['main_mutants'] = None
+        self.config['targets']['b.cs']['geometry_status'] = runtime.PROVISIONAL_STATUS
+        with self.assertRaises(ValueError):
+            runtime.shape(self.config)
+        self.assertEqual({'status': 'rejected', 'reasons': ['invalid_input']}, self.simulated_check('README.md'))
+
+    def test_rebound_cut_cannot_authorize_another_provisional_layout(self):
+        _, item = self.provisional()
+        self.assertEqual(set(), self.errors())
+        with mock.patch.object(runtime.workflow, 'shard_config', side_effect=lambda shard, source:
+                               {'shard': shard, 'source': source.decode(), 'cut': 20}):
+            item['selection_sha256'] = runtime.digest(runtime.canonical(runtime.workflow.shard_config('a-p1', self.source['a.cs'])))
+            self.assertIn('layout_mismatch', self.errors())
+
+    def rebind_timing(self):
+        binding = runtime.digest(runtime.canonical({'shared_inputs': self.config['shared_inputs'],
+            'target_sources': {path: record['source_sha256'] for path, record in self.config['targets'].items()}}))
+        for record in self.config['targets'].values():
+            for item in record['shards'].values():
+                item['timing_inputs_sha256'] = binding
+
+    def test_rebound_shared_input_cannot_authorize_another_pilot(self):
+        self.provisional()
+        self.shared['global.json'] = runtime.digest(b'changed sdk')
+        self.config['shared_inputs'] = self.shared.copy()
+        self.rebind_timing()
+        self.assertIn('stale_inputs', self.errors())
+
+    def test_rebound_other_target_cannot_authorize_another_pilot(self):
+        self.provisional()
+        self.source['b.cs'] = b'changed target'
+        self.targets['b.cs'] = runtime.digest(self.source['b.cs'])
+        self.config['targets']['b.cs']['source_sha256'] = self.targets['b.cs']
+        self.config['targets']['b.cs']['shards']['b']['selection_sha256'] = runtime.digest(
+            runtime.canonical(runtime.workflow.shard_config('b', self.source['b.cs'])))
+        self.rebind_timing()
+        self.assertIn('stale_inputs', self.errors())
+
+    def test_qualified_targets_can_rebind_changed_inputs(self):
+        self.shared['global.json'] = runtime.digest(b'changed sdk')
+        self.config['shared_inputs'] = self.shared.copy()
+        self.source['b.cs'] = b'changed target'
+        self.targets['b.cs'] = runtime.digest(self.source['b.cs'])
+        self.config['targets']['b.cs']['source_sha256'] = self.targets['b.cs']
+        self.config['targets']['b.cs']['shards']['b']['selection_sha256'] = runtime.digest(
+            runtime.canonical(runtime.workflow.shard_config('b', self.source['b.cs'])))
+        self.rebind_timing()
+        self.assertEqual(set(), self.errors())
+
+    def test_qualified_target_can_use_a_reassessed_cut(self):
+        with mock.patch.object(runtime.workflow, 'shard_config', side_effect=lambda shard, source:
+                               {'shard': shard, 'source': source.decode(), 'cut': 20}):
+            for shard, path in self.shards.items():
+                self.config['targets'][path]['shards'][shard]['selection_sha256'] = runtime.digest(
+                    runtime.canonical(runtime.workflow.shard_config(shard, self.source[path])))
+            self.assertEqual(set(), self.errors())
+
+    def test_pilot_preserves_matrix_and_capacity_checks(self):
+        self.provisional()
+        matrix = dict(self.shards)
+        matrix['extra'] = 'a.cs'
+        self.assertIn('layout_mismatch', runtime.validate(self.config, self.shared, self.targets, self.source, matrix))
+        matrix = {f'job{i}': 'a.cs' for i in range(257)}
+        self.assertIn('matrix_over_capacity', runtime.validate(self.config, self.shared, self.targets, self.source, matrix))

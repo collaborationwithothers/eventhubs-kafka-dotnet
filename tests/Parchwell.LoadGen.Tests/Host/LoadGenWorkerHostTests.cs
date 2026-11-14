@@ -519,9 +519,15 @@ public sealed class LoadGenWorkerHostTests
     {
         var publisher = new RecordingPublisher(throwOnPublish: outcome == "publication");
         var lifecycle = new RecordingLifecycle(throwOnCompletion: outcome == "receipt",
-            waitForCompletionCancellation: outcome == "receipt-timeout");
-        var clock = new TrackingTimeProvider(throwOnWatchdogDispose: outcome == "watchdog-dispose");
-        var host = new LifecycleHost(CreateHost(publisher, durationSeconds: 1, lifecycle: lifecycle, timeProvider: clock), outcome);
+            waitForCompletionCancellation: outcome == "receipt-timeout")
+        {
+            WaitForRegistrationCancellation = outcome == "cancel",
+        };
+        var clock = new TrackingTimeProvider(throwOnWatchdogDispose: outcome == "watchdog-dispose",
+            holdFirstRegistrationDeadline: outcome == "cancel");
+        var host = new LifecycleHost(CreateHost(publisher, durationSeconds: 1, lifecycle: lifecycle, timeProvider: clock), outcome, lifecycle);
+        CancellationToken applicationStopping = host.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
+        lifecycle.HostIsStopping = () => applicationStopping.IsCancellationRequested;
         if (outcome == "stop-stall")
             host.Services.GetRequiredService<IOptions<LoadGenHostOptions>>().Value.CleanupTimeout = TimeSpan.FromMilliseconds(100);
         using var output = new StringWriter();
@@ -536,6 +542,12 @@ public sealed class LoadGenWorkerHostTests
         int exitCode = await Program.RunAsync([], completionOutput: output, hostFactory: () => host);
         stopwatch.Stop();
         if (outcome == "stop-stall") await host.DisposeFinished.Task.WaitAsync(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken);
+        if (outcome == "cancel")
+        {
+            Assert.True(lifecycle.RegistrationEntered.Task.IsCompletedSuccessfully);
+            Assert.Equal(1, clock.HeldRegistrationDeadlineCount);
+            Assert.True(await lifecycle.RegistrationCanceledByHost.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        }
         Assert.Equal(outcome is not ("start" or "cancel"), publisher.Called);
         Assert.True(host.Disposed);
         Assert.Equal(1, host.StopAttempts);
@@ -547,7 +559,7 @@ public sealed class LoadGenWorkerHostTests
         DeleteOutput(publisher);
     }
 
-    private sealed class LifecycleHost(IHost inner, string outcome) : IHost
+    private sealed class LifecycleHost(IHost inner, string outcome, RecordingLifecycle lifecycle) : IHost
     {
         internal bool Disposed { get; private set; }
         internal int StopAttempts { get; private set; }
@@ -557,7 +569,11 @@ public sealed class LoadGenWorkerHostTests
         {
             if (outcome == "start") throw new InvalidOperationException("synthetic_start_failure");
             await inner.StartAsync(cancellationToken);
-            if (outcome == "cancel") await inner.StopAsync(cancellationToken);
+            if (outcome == "cancel")
+            {
+                await lifecycle.RegistrationEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
+                await inner.StopAsync(cancellationToken);
+            }
         }
         public async Task StopAsync(CancellationToken cancellationToken = default)
         {
@@ -812,6 +828,10 @@ public sealed class LoadGenWorkerHostTests
     private sealed class RecordingLifecycle(bool throwOnCompletion = false, bool waitForCompletionCancellation = false) : IProducerRunLifecycle
     {
         public bool Registered { get; private set; }
+        public bool WaitForRegistrationCancellation { get; set; }
+        public TaskCompletionSource RegistrationEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource<bool> RegistrationCanceledByHost { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Func<bool>? HostIsStopping { get; set; }
         public int RegisterCalls { get; private set; }
         public int DiagnosticsCalls { get; private set; }
         public int CompletionCalls { get; private set; }
@@ -827,7 +847,17 @@ public sealed class LoadGenWorkerHostTests
             cancellationToken.ThrowIfCancellationRequested();
             RegisterCalls++;
             Registered = true;
-            return Task.CompletedTask;
+            return WaitForRegistrationCancellation
+                ? WaitForRegistrationStopAsync(cancellationToken)
+                : Task.CompletedTask;
+        }
+
+        private async Task WaitForRegistrationStopAsync(CancellationToken cancellationToken)
+        {
+            using CancellationTokenRegistration registration = cancellationToken.Register(
+                () => RegistrationCanceledByHost.TrySetResult(HostIsStopping?.Invoke() == true));
+            RegistrationEntered.TrySetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
         }
 
         public Task PublishDiagnosticsAsync(ProducerRunContext context, RunExecutionResult? result,
@@ -860,9 +890,11 @@ public sealed class LoadGenWorkerHostTests
         }
     }
 
-    private sealed class TrackingTimeProvider(bool throwOnWatchdogDispose = false) : TimeProvider
+    private sealed class TrackingTimeProvider(bool throwOnWatchdogDispose = false, bool holdFirstRegistrationDeadline = false) : TimeProvider
     {
         private readonly List<TrackingTimer> _timers = [];
+        private int _heldRegistrationDeadline;
+        public int HeldRegistrationDeadlineCount => Volatile.Read(ref _heldRegistrationDeadline);
         public bool WatchdogDisposed => _timers.Any(timer => timer.IsWatchdog && timer.Disposed);
         public override DateTimeOffset GetUtcNow() => TimeProvider.System.GetUtcNow();
         public override long GetTimestamp() => TimeProvider.System.GetTimestamp();
@@ -870,19 +902,22 @@ public sealed class LoadGenWorkerHostTests
         public override TimeZoneInfo LocalTimeZone => TimeProvider.System.LocalTimeZone;
         public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
         {
-            var timer = new TrackingTimer(TimeProvider.System.CreateTimer(callback, state, dueTime, period),
-                throwOnWatchdogDispose && dueTime == TimeSpan.FromSeconds(15), dueTime == TimeSpan.FromSeconds(15));
+            bool hold = holdFirstRegistrationDeadline && dueTime == TimeSpan.FromSeconds(1)
+                && _timers.Any(timer => timer.IsWatchdog)
+                && Interlocked.CompareExchange(ref _heldRegistrationDeadline, 1, 0) == 0;
+            var timer = new TrackingTimer(TimeProvider.System.CreateTimer(callback, state, hold ? Timeout.InfiniteTimeSpan : dueTime, period),
+                throwOnWatchdogDispose && dueTime == TimeSpan.FromSeconds(15), dueTime == TimeSpan.FromSeconds(15), hold);
             _timers.Add(timer);
             return timer;
         }
     }
 
-    private sealed class TrackingTimer(ITimer inner, bool throwOnDispose, bool isWatchdog) : ITimer
+    private sealed class TrackingTimer(ITimer inner, bool throwOnDispose, bool isWatchdog, bool hold = false) : ITimer
     {
         private int _disposed;
         public bool Disposed => Volatile.Read(ref _disposed) != 0;
         public bool IsWatchdog => isWatchdog;
-        public bool Change(TimeSpan dueTime, TimeSpan period) => inner.Change(dueTime, period);
+        public bool Change(TimeSpan dueTime, TimeSpan period) => inner.Change(hold ? Timeout.InfiniteTimeSpan : dueTime, period);
         public void Dispose()
         {
             Interlocked.Exchange(ref _disposed, 1);
