@@ -430,7 +430,8 @@ def input_maps(ref):
         '.config/dotnet-tools.json', 'docs/operations/a01-runtime-limits.json', RUNNER, WORKFLOW,
         'tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py',
         'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json'}
-    selected.update(p for p in names if re.fullmatch(r'(?:Directory\.Build\.(?:props|targets)|Directory\.Packages\.props|NuGet\.[Cc]onfig|global\.json|.*?/packages\.lock\.json)', p))
+    ancestors = {str(parent) for project in projects for parent in PurePosixPath(project).parents}
+    selected.update(p for p in names if (PurePosixPath(p).name in ('Directory.Build.props', 'Directory.Build.targets', 'Directory.Packages.props') and str(PurePosixPath(p).parent) in ancestors) or re.fullmatch(r'(?:NuGet\.[Cc]onfig|global\.json|.*?/packages\.lock\.json)', p))
     selected.update(p for p in names if re.fullmatch(r'scenarios/profiles/[^/]+\.yaml', p))
     for project in projects:
         root = str(PurePosixPath(project).parent) + '/'
@@ -505,6 +506,11 @@ def validate(config, shared, targets, source, matrix):
             reasons.add('stale_inputs')
         if not record['evidence']:
             reasons.add('missing_measurement')
+        for evidence in record['evidence']:
+            if evidence['kind'] == 'local_probe' and not all(
+                    re.search(r'\b' + field + r'=\S+', evidence['note'])
+                    for field in ('hardware', 'calibration')):
+                reasons.add('missing_measurement')
         for shard, item in record['shards'].items():
             if shard in all_shards:
                 reasons.add('layout_mismatch')
@@ -523,12 +529,19 @@ def validate(config, shared, targets, source, matrix):
             numeric = ('main_work_seconds', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')
             valid = (type(item['main_mutants']) is int and item['main_mutants'] >= 0
                      and type(item['parallelism']) is int and item['parallelism'] > 0
-                     and all(type(item[k]) in (int, float) and math.isfinite(item[k]) and item[k] >= 0 for k in numeric)
+                     and all(type(item[k]) in (int, float) and 0 <= item[k] <= sys.float_info.max and math.isfinite(item[k]) for k in numeric)
                      and isinstance(item['basis'], str) and bool(item['basis'].strip()))
             if not valid:
                 reasons.add('invalid_estimate')
                 continue
-            estimate = math.ceil(item['setup_seconds'] + item['main_work_seconds'] / item['parallelism'] + item['isolated_seconds'])
+            workers = re.search(r'\bobserved_workers=([1-9][0-9]*)\b', item['basis'])
+            if not workers or item['parallelism'] > int(workers.group(1)):
+                reasons.add('missing_measurement')
+            try:
+                estimate = math.ceil(item['setup_seconds'] + item['main_work_seconds'] / item['parallelism'] + item['isolated_seconds'])
+            except (OverflowError, ValueError):
+                reasons.add('invalid_estimate')
+                continue
             if item['estimated_seconds'] != estimate:
                 reasons.add('invalid_estimate')
             if item['main_mutants'] and (item['setup_seconds'] == 0 or item['main_work_seconds'] == 0):
@@ -561,7 +574,7 @@ def check(base, head, qualification):
             changed = set(git('diff', '--name-only', '-z', base, head).decode().rstrip('\0').split('\0'))
             try:
                 old_shared, old_targets = input_maps(base)
-                relevant = (shared != old_shared or targets != old_targets or RUNNER in changed or WORKFLOW in changed)
+                relevant = (shared != old_shared or targets != old_targets or RUNNER in changed or WORKFLOW in changed or 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json' in changed)
             except (ValueError, subprocess.CalledProcessError):
                 # A newly introduced target or supported dependency cannot exist in the base.
                 relevant = True
@@ -572,9 +585,33 @@ def check(base, head, qualification):
         source = {p: blob(head, 'src/Parchwell.Verifier/' + p) for p in targets}
         reasons = sorted(validate(config, shared, targets, source, matrix))
         return {'status': 'rejected' if reasons else 'qualified', 'reasons': reasons}
-    except (ValueError, TypeError, KeyError, OSError, subprocess.CalledProcessError, ET.ParseError, SyntaxError, UnicodeError):
+    except (ValueError, TypeError, KeyError, OSError, subprocess.CalledProcessError, ET.ParseError, SyntaxError, UnicodeError, OverflowError):
         return {'status': 'rejected', 'reasons': ['invalid_input']}
 
+
+
+def bounded_probe(target, span, output_dir, tally_path, timeout=600, launcher=workflow.local_check):
+    """Reserve an issue-wide probe slot before launching, including on interruption."""
+    tally = Path(tally_path).resolve()
+    output = Path(output_dir).resolve()
+    if ROOT in tally.parents or tally == ROOT or ROOT in output.parents or output == ROOT:
+        raise ValueError('probe evidence must be outside the repository')
+    if type(timeout) not in (int, float) or not 0 < timeout <= 600:
+        raise ValueError('invalid timeout')
+    if output.exists():
+        raise ValueError('probe output already exists')
+    try:
+        entries = json.loads(tally.read_text())
+    except FileNotFoundError:
+        entries = []
+    if not isinstance(entries, list) or len(entries) >= 24:
+        raise ValueError('probe budget exhausted or invalid')
+    entries.append({'target': target, 'span': span, 'output': str(output), 'timeout': timeout})
+    tally.parent.mkdir(parents=True, exist_ok=True)
+    temporary = tally.with_name(tally.name + '.new')
+    temporary.write_text(json.dumps(entries, indent=2) + '\n')
+    os.replace(temporary, tally)
+    return launcher(target, span, output, timeout=timeout, repository=ROOT)
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)

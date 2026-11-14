@@ -13,7 +13,7 @@ python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py check --base BASE_
 python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py performance --run-json RUN_JSON --jobs-json JOBS_JSON --output-dir DIR
 ```
 
-Omit `--base` to validate the entire head. The offline check reports qualified, not applicable, or rejected with reason codes. The performance command reads saved run and explicitly paged jobs JSON for one attempt; it reports workflow elapsed time separately from overlapping job time. An incomplete run cannot establish performance acceptance. The bounded measurement allowance and required later main validation are in the [approved plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/1cdbcdf0407c1b897c7bcec29ef97d261109b473/items/474/plan-mutation-runtime.md).
+Omit `--base` to validate the entire head. A local probe evidence note records `hardware=VALUE` and `calibration=VALUE` with its uncertainty or hosted comparison. Each shard basis records its measured worker bound as `observed_workers=N` and cites the evidence for that observation. The offline check reports qualified, not applicable, or rejected with reason codes. The performance command reads saved run and explicitly paged jobs JSON for one attempt; it reports workflow elapsed time separately from overlapping job time. An incomplete run cannot establish performance acceptance. The bounded measurement allowance and required later main validation are in the [approved plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/1cdbcdf0407c1b897c7bcec29ef97d261109b473/items/474/plan-mutation-runtime.md).
 
 ## C5 selected sample and execution receipt
 

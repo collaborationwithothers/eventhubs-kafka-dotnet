@@ -162,7 +162,7 @@ class QualificationTests(unittest.TestCase):
         self.addCleanup(self.workflow_patcher.stop)
         self.addCleanup(self.config_patcher.stop)
         evidence = {'source_commit': 'a' * 40, 'locator': 'example', 'sha256': 'a' * 64,
-                    'kind': 'local_probe', 'note': 'calibration uncertainty'}
+                    'kind': 'local_probe', 'note': 'hardware=synthetic calibration=uncertain'}
         self.config = {'schema_version': 1, 'budget_seconds': 1800, 'shared_inputs': self.shared.copy(), 'targets': {}}
         timing = runtime.digest(runtime.canonical({'shared_inputs': self.shared, 'target_sources': self.targets}))
         for shard, path in self.shards.items():
@@ -170,7 +170,7 @@ class QualificationTests(unittest.TestCase):
                 'selection_sha256': runtime.digest(runtime.canonical(runtime.workflow.shard_config(shard, self.source[path]))),
                 'timing_inputs_sha256': timing, 'main_mutants': 1, 'main_work_seconds': 2000,
                 'parallelism': 2, 'setup_seconds': 100, 'isolated_seconds': 300, 'estimated_seconds': 1400,
-                'basis': 'example; conservative weighting; local calibration uncertain'}}}
+                'basis': 'example; observed_workers=2; conservative weighting; local calibration uncertain'}}}
 
     def errors(self):
         runtime.shape(self.config)
@@ -265,3 +265,226 @@ class QualificationTests(unittest.TestCase):
             path.write_text('{')
             self.assertEqual({'status': 'rejected', 'reasons': ['invalid_input']}, runtime.check('HEAD', 'HEAD', path))
             self.assertEqual({'status': 'rejected', 'reasons': ['invalid_input']}, runtime.check('not-a-ref', 'HEAD', path))
+
+class ReviewRegressionTests(unittest.TestCase):
+    setUp = QualificationTests.setUp
+    errors = QualificationTests.errors
+    def test_observed_workers_bound(self):
+        item = self.config['targets']['a.cs']['shards']['a-p1']
+        item['parallelism'] = 3
+        item['estimated_seconds'] = 1067
+        self.assertIn('missing_measurement', self.errors())
+        item['basis'] = 'no observation'
+        self.assertIn('missing_measurement', self.errors())
+
+    def test_oversized_numbers_do_not_escape(self):
+        item = self.config['targets']['a.cs']['shards']['a-p1']
+        item['main_work_seconds'] = 10 ** 400
+        self.assertIn('invalid_estimate', self.errors())
+        item.update(main_work_seconds=1e308, setup_seconds=1e308, isolated_seconds=1e308)
+        self.assertIn('invalid_estimate', self.errors())
+
+    def test_qualification_only_change_requires_check(self):
+        import json
+        data = json.dumps(self.config)
+        with tempfile.TemporaryDirectory() as directory:
+            file = Path(directory) / 'qualification.json'
+            file.write_text(data)
+            def fake_git(*args):
+                if args[0] == 'rev-parse': return b'abc\n'
+                if args[0] == 'diff': return b'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json\0'
+                raise AssertionError(args)
+            with mock.patch.object(runtime, 'git', side_effect=fake_git), \
+                 mock.patch.object(runtime, 'blob', side_effect=lambda ref, path: Path(runtime.workflow.__file__).read_bytes() if path == runtime.RUNNER else b'x'), \
+                 mock.patch.object(runtime, 'input_maps', return_value=(self.shared, self.targets)), \
+                 mock.patch.object(runtime, 'workflow_matrix', return_value=self.shards), \
+                 mock.patch.object(runtime, 'validate', return_value={'shard_over_budget'}):
+                self.assertEqual({'status': 'rejected', 'reasons': ['shard_over_budget']}, runtime.check('base', 'head', file))
+
+
+class AdditionalQualificationTests(unittest.TestCase):
+    setUp = QualificationTests.setUp
+    errors = QualificationTests.errors
+
+    def simulated_check(self, change, old_shared=None, old_targets=None):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'qualification.json'
+            path.write_text(json.dumps(self.config))
+            runner = Path(runtime.workflow.__file__).read_bytes()
+            original_git = runtime.git
+            def git(*args):
+                if args[0] == 'rev-parse':
+                    return (b'base\n' if args[-1].startswith('base') else b'head\n')
+                if args[0] == 'diff':
+                    return (change + '\0').encode()
+                return original_git(*args)
+            def blob(ref, name):
+                if name == runtime.RUNNER:
+                    return runner
+                if name == runtime.WORKFLOW:
+                    return b'matrix'
+                return self.source[name.removeprefix('src/Parchwell.Verifier/')]
+            def input_maps(ref):
+                return ((old_shared if old_shared is not None else self.shared),
+                        (old_targets if old_targets is not None else self.targets)) if ref == 'base' else (self.shared, self.targets)
+            with mock.patch.object(runtime, 'git', side_effect=git), mock.patch.object(runtime, 'blob', side_effect=blob), \
+                 mock.patch.object(runtime, 'input_maps', side_effect=input_maps), \
+                 mock.patch.object(runtime, 'workflow_matrix', return_value=self.shards):
+                return runtime.check('base', 'head', path)
+
+    def test_irrelevant_and_excluded_change_is_not_applicable(self):
+        for path in ('README.md', 'items/474/state.md', 'src/Parchwell.LoadGenerator/Program.cs',
+                     'tests/Parchwell.Verifier.Tests/Component/Example.cs'):
+            with self.subTest(path=path):
+                self.assertEqual({'status': 'not_applicable', 'reasons': []}, self.simulated_check(path))
+
+    def test_runtime_limits_json_is_execution_data(self):
+        path = 'docs/operations/a01-runtime-limits.json'
+        self.shared[path] = runtime.digest(b'new')
+        old = dict(self.shared)
+        old[path] = runtime.digest(b'old')
+        result = self.simulated_check(path, old_shared=old)
+        self.assertEqual('rejected', result['status'])
+        self.assertIn('stale_inputs', result['reasons'])
+
+    def test_new_target_has_no_default_pass(self):
+        self.targets['new.cs'] = runtime.digest(b'new')
+        self.source['new.cs'] = b'new'
+        old = {p: h for p, h in self.targets.items() if p != 'new.cs'}
+        result = self.simulated_check('src/Parchwell.Verifier/new.cs', old_targets=old)
+        self.assertEqual('rejected', result['status'])
+        self.assertIn('missing_qualification', result['reasons'])
+
+    def test_matching_matrix_capacity_boundary(self):
+        for count in (255, 256, 257):
+            with self.subTest(count=count):
+                shard_map = {f's{i}': 'a.cs' for i in range(count)}
+                original = self.config['targets']['a.cs']['shards']['a-p1']
+                shards = {}
+                for shard in shard_map:
+                    item = original.copy()
+                    item['selection_sha256'] = runtime.digest(runtime.canonical(runtime.workflow.shard_config(shard, self.source['a.cs'])))
+                    shards[shard] = item
+                config = copy.deepcopy(self.config)
+                config['targets']['a.cs']['shards'] = shards
+                config['targets']['b.cs']['shards'] = {}
+                with mock.patch.object(runtime.workflow, 'SHARDS', shard_map):
+                    reasons = runtime.validate(config, self.shared, self.targets, self.source, shard_map)
+                self.assertEqual({'matrix_over_capacity'} if count == 257 else set(), reasons)
+
+    def test_local_rate_basis_records_uncertainty(self):
+        item = self.config['targets']['a.cs']['shards']['a-p1']
+        self.assertIn('local calibration uncertain', item['basis'])
+        self.assertNotIn('missing_measurement', self.errors())
+
+
+class AdditionalProjectAndLauncherTests(unittest.TestCase):
+    def test_unknown_inclusion_rejected(self):
+        names = runtime.files('HEAD')
+        original_blob = runtime.blob
+        def changed_blob(ref, path):
+            data = original_blob(ref, path)
+            if path == runtime.TEST_PROJECT:
+                return data.replace(b'</Project>', b'<ItemGroup><Compile Include="new/**/*.cs" /></ItemGroup></Project>')
+            return data
+        with mock.patch.object(runtime, 'blob', side_effect=changed_blob):
+            with self.assertRaises(ValueError):
+                runtime.project_closure('HEAD', names)
+
+    def test_timeout_launcher_kills_group_without_retry(self):
+        process = mock.Mock(pid=123, returncode=-9)
+        process.wait.side_effect = [runtime.subprocess.TimeoutExpired('fake-child', 600), -9]
+        with tempfile.TemporaryDirectory() as directory, \
+             mock.patch.object(runtime.subprocess, 'Popen', return_value=process) as popen, \
+             mock.patch.object(runtime.os, 'killpg') as killpg, \
+             mock.patch.object(runtime.signal, 'signal'), mock.patch.object(runtime.signal, 'getsignal'):
+            result = runtime.profile_launch(['fake-child'], directory, Path(directory) / 'log', 600)
+        self.assertEqual((-9, 'timeout'), result)
+        popen.assert_called_once()
+        killpg.assert_called_once_with(123, runtime.signal.SIGKILL)
+        self.assertEqual(2, process.wait.call_count)
+
+    def test_excluded_component_source_does_not_change_inputs(self):
+        names = runtime.files('HEAD')
+        excluded = next(p for p in names if p.startswith('tests/Parchwell.Verifier.Tests/Component/') and p.endswith('.cs'))
+        included = next(p for p in names if p.startswith('tests/Parchwell.Verifier.Tests/Host/') and p.endswith('.cs') and p not in {
+            'tests/Parchwell.Verifier.Tests/' + value for value in runtime.EXCLUDED})
+        actual_blob = runtime.blob
+        cache = {}
+        changed = set()
+        def get_blob(ref, path):
+            if path in changed:
+                return b'changed synthetic contents'
+            if path not in cache:
+                cache[path] = actual_blob(ref, path)
+            return cache[path]
+        with mock.patch.object(runtime, 'blob', side_effect=get_blob), mock.patch.object(runtime, 'files', return_value=names):
+            before = runtime.input_maps('HEAD')
+            changed.add(excluded)
+            self.assertEqual(before, runtime.input_maps('HEAD'))
+            changed.add(included)
+            self.assertNotEqual(before, runtime.input_maps('HEAD'))
+    def test_excluded_component_source_does_not_change_inputs(self):
+        names = runtime.files('HEAD')
+        excluded = next(p for p in names if p.startswith('tests/Parchwell.Verifier.Tests/Component/') and p.endswith('.cs'))
+        included = next(p for p in names if p.startswith('tests/Parchwell.Verifier.Tests/Host/') and p.endswith('.cs') and p not in {
+            'tests/Parchwell.Verifier.Tests/' + value for value in runtime.EXCLUDED})
+        actual_blob = runtime.blob
+        cache = {}
+        changed = set()
+        def get_blob(ref, path):
+            if path in changed:
+                return b'changed synthetic contents'
+            if path not in cache:
+                cache[path] = actual_blob(ref, path)
+            return cache[path]
+        with mock.patch.object(runtime, 'blob', side_effect=get_blob), mock.patch.object(runtime, 'files', return_value=names):
+            before = runtime.input_maps('HEAD')
+            changed.add(excluded)
+            self.assertEqual(before, runtime.input_maps('HEAD'))
+            changed.add(included)
+            self.assertNotEqual(before, runtime.input_maps('HEAD'))
+
+    def test_probe_budget_and_failed_invocation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            tally = Path(directory) / 'tally.json'
+            output = Path(directory) / 'probe'
+            calls = []
+            def failed(*args, **kwargs):
+                calls.append(args)
+                return 1
+            self.assertEqual(1, runtime.bounded_probe('a.cs', '0..1', output, tally, launcher=failed))
+            self.assertEqual(1, len(json.loads(tally.read_text())))
+            self.assertEqual(1, len(calls))
+            tally.write_text(json.dumps([{}] * 24))
+            with self.assertRaises(ValueError):
+                runtime.bounded_probe('a.cs', '0..1', output, tally, launcher=failed)
+            self.assertEqual(1, len(calls))
+            output.mkdir()
+            tally.write_text('[]')
+            with self.assertRaises(ValueError):
+                runtime.bounded_probe('a.cs', '0..1', output, tally, launcher=failed)
+            self.assertEqual([], json.loads(tally.read_text()))
+
+    def test_local_probe_without_calibration_is_missing_measurement(self):
+        case = AdditionalQualificationTests()
+        case.setUp()
+        try:
+            case.config['targets']['a.cs']['evidence'][0]['note'] = 'no calibration'
+            self.assertIn('missing_measurement', case.errors())
+        finally:
+            case.doCleanups()
+
+    def test_ancestor_build_input_is_tracked(self):
+        names = runtime.files('HEAD')
+        actual_blob = runtime.blob
+        ancestor = 'src/Directory.Build.props'
+        def get_blob(ref, path):
+            return b'<Project />' if path == ancestor else actual_blob(ref, path)
+        with mock.patch.object(runtime, 'blob', side_effect=get_blob):
+            with mock.patch.object(runtime, 'files', return_value=names):
+                before, _ = runtime.input_maps('HEAD')
+            with mock.patch.object(runtime, 'files', return_value=names | {ancestor}):
+                after, _ = runtime.input_maps('HEAD')
+        self.assertNotIn(ancestor, before)
+        self.assertIn(ancestor, after)
