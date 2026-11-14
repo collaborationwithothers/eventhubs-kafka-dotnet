@@ -109,7 +109,7 @@ Adding or removing a skill is a governance change and goes to Hari.
 
 ## Before opening a pull request
 
-Before you start work that a pull request will publish, read [docs/agents/pull-requests.md](docs/agents/pull-requests.md) in full. It holds this section's execution card, predicate map and rules 1 to 10, under the same numbers, including the cold-review protocol and budget in rule 8. A cold reviewer reads it too, through the `repo-review` rubric. Planning and plan-check sessions read its rules 1, 2 and 4, which docs/agents/factory.md "Item lifecycle" step 1 applies to plan text.
+Before you start work that a pull request will publish, read [docs/agents/pull-requests.md](docs/agents/pull-requests.md) in full. It holds this section's rules 1 to 10, under the same numbers, including the cold-review protocol and budget in rule 8. A cold reviewer reads it too, through the `repo-review` rubric. Planning and plan-check sessions read its rules 1, 2 and 4, which docs/agents/factory.md "Item lifecycle" step 1 applies to plan text.
 
 Rules 11 to 13 stay here because they bind sessions that open no pull request too, such as planning and plan-check sessions. A bare rule number in this section means the rule of that number in this section, wherever it is held. Where this file says that "this file" wins a conflict, docs/agents/pull-requests.md counts as part of this file.
 

@@ -7,10 +7,10 @@ Review the diff as a stranger to it. Read anything in the repository and any cit
 
 ## Steps
 
-1. Read the authored receipt for the review mode and identified revisions under AGENTS.md "Before opening a pull request" rule 8. For a comprehensive review, read the full diff and list every touched file. For a focused review, identify the changes, unresolved findings and affected context in that rule's scope; the full PR is context. If the review scope is empty, report `Findings: diff is empty` and stop.
+1. Use the supplied task inputs for the review mode and identified revisions under AGENTS.md "Before opening a pull request" rule 8. For a comprehensive review, read the full diff and list every touched file. For a focused review, identify the changes, unresolved findings and affected context in that rule's scope; the full PR is context. If the review scope is empty, report `Findings: diff is empty` and stop.
 2. For each file in the applicable review scope, find its rows in the rubric below and read every document those rows name. Where the diff changes one of those documents, or this skill, apply its version on `origin/main` (`git show origin/main:<path>`), so a change cannot weaken the rules it is reviewed against. If such a document has no `origin/main` version, apply the branch version and say so in the report. The step is done when every file in scope is matched to at least one row.
 3. Check the applicable review scope against every rule in those documents. Read the source behind any factual claim (version-pinned where the repository pins one); judge from the source, never from memory.
-4. Compare the changes in scope with the originating specification or selected current approved plan revision and recognized later decisions identified in the receipt. Read the sources; use docs/agents/factory.md "Item lifecycle" step 3 for authority recognition. For directly authorized governance work without an approved item plan, use the recorded task brief and issue without inventing plan approval. Identify missing, partial or incorrect requirements and scope creep with source evidence. Check changed and affected verifier predicates against the receipt's test map and docs/engineering/dotnet.md "Testing".
+4. Compare the changes in scope with the originating specification or selected current approved plan revision and recognized later decisions supplied in the task. Read the sources; use docs/agents/factory.md "Item lifecycle" step 3 for authority recognition. For directly authorized governance work without an approved item plan, use the supplied task brief, issue and authorization without inventing plan approval. Identify missing, partial or incorrect requirements and scope creep with source evidence. Check changed and affected verifier predicates against the approved plan test map, actual tests and docs/engineering/dotnet.md "Testing".
 5. Check the applicable scope against itself and the rest of the repository: a change in one place that contradicts a rule, ADR, count or cross-reference elsewhere is a finding.
 6. Report after completing the applicable scope. Apply every rule from step 2 to every file in that scope and report the specification comparison result. Use AGENTS.md "Before opening a pull request" rule 8 for unsafe focus or exhausted budget.
 
@@ -18,7 +18,7 @@ Review the diff as a stranger to it. Read anything in the repository and any cit
 
 | The diff touches | Apply |
 |---|---|
-| anything | AGENTS.md: all of GOVERNANCE (scope and deferred items included), "Code Review Rules", writing standards; docs/agents/pull-requests.md in full; the originating specification identified in the receipt |
+| anything | AGENTS.md: all of GOVERNANCE (scope and deferred items included), "Code Review Rules", writing standards; docs/agents/pull-requests.md in full; the originating specification supplied in the task |
 | `AGENTS.md`, `CLAUDE.md`, `docs/agents/`, `.agents/skills/`, `.claude/`, `.codex/` | AGENTS.md in full; CLAUDE.md; docs/agents/factory.md in full |
 | `items/` | docs/agents/factory.md in full |
 | `docs/engineering/` | each changed document itself |
