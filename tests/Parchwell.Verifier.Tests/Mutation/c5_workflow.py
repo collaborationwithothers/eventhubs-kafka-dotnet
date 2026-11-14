@@ -764,7 +764,7 @@ def run_isolated(target: str, source: bytes, regions: list[tuple[int, int]], mai
                  output_dir: Path, prefix: list[str], cwd: Path, deadline: float) -> tuple[list[dict], str | None]:
     """Run each mutant of the shard's static field regions in its own Stryker invocation, with fresh test processes."""
     try:
-        plan = isolation_plan(report_records(json.loads(main_report.read_bytes()), target), source, regions)
+        plan = isolation_plan(report_records(json.loads(main_report.read_bytes()), target, allow_empty=True), source, regions)
     except (OSError, ValueError, TypeError, KeyError) as error:
         return [], f"isolation selection failed: {error}"
     entries = []
@@ -811,7 +811,8 @@ def require(condition: object, message: str) -> None:
         raise ValueError(message)
 
 
-def report_records(report: dict, target: str, *, source_sha256: str | None = None) -> list[dict]:
+def report_records(report: dict, target: str, *, source_sha256: str | None = None,
+                   allow_empty: bool = False) -> list[dict]:
     require(isinstance(report, dict) and report.get("schemaVersion") == "2",
             "unsupported report schema")
     root = report.get("projectRoot")
@@ -829,7 +830,7 @@ def report_records(report: dict, target: str, *, source_sha256: str | None = Non
     assigned = files.get(target)
     require(isinstance(assigned, dict) and assigned.get("language") == "cs"
             and isinstance(assigned.get("source"), str)
-            and isinstance(assigned.get("mutants"), list) and assigned["mutants"],
+            and isinstance(assigned.get("mutants"), list) and (allow_empty or assigned["mutants"]),
             "assigned target missing or malformed")
     for path, source in files.items():
         if path == target:
@@ -1086,7 +1087,7 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
             require(json.loads(config_path.read_text()) == shard_config(shard, source),
                     "unexpected shard configuration")
             span = shard_span(shard, source)
-            rows = report_records(report, target, source_sha256=target_hash)
+            rows = report_records(report, target, source_sha256=target_hash, allow_empty=True)
             regions = shard_static_regions(shard, source)
             require(receipt["static_regions"] == [list(region) for region in regions], "static region mismatch")
             require(receipt["isolation_error"] is None, "static isolation incomplete")
@@ -1116,7 +1117,7 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
         try:
             owned, reconciled = reconcile([part_records[shard] for shard in members])
             target_counts, target_numerator, target_denominator = populations(reconciled)
-            require(target_denominator > 0, "assigned target has no score population")
+            require(not reconciled or target_denominator > 0, "assigned target has no score population")
         except ValueError as error:
             reasons.append(f"{key}: {error}")
             continue
@@ -1125,7 +1126,8 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
             shards[shard].update({"status_counts": part_counts, "numerator": part_numerator,
                                   "denominator": part_denominator})
         targets[key] = {"target": target, "parts": len(members), "status_counts": target_counts,
-                        "numerator": target_numerator, "denominator": target_denominator}
+                        "numerator": target_numerator, "denominator": target_denominator,
+                        "no_mutants": not reconciled}
         records.extend(reconciled)
     rebalance = []
     for shard, (_, part, parts) in PARTS.items():

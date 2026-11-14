@@ -930,9 +930,65 @@ class AggregationTests(unittest.TestCase):
                 elif name == "source":
                     entry["source"] = None
                 elif name == "empty-mutants":
-                    rows.clear()
-                fixture.save("phase")
+                    # One empty span cannot establish an empty whole target.
+                    fixture.target_rows("single-action-repeat-p1").clear()
+                fixture.save("single-action-repeat-p1" if name == "empty-mutants" else "phase")
                 self.assert_incomplete(fixture)
+
+    def test_verified_empty_target_and_nonempty_zero_score_boundaries(self):
+        for status in (None, "CompileError", "Ignored", "RuntimeError"):
+            with self.subTest(status=status), tempfile.TemporaryDirectory(dir=self.directory) as directory:
+                populations = [["Killed"] for _ in workflow.TARGETS]
+                populations[0] = [] if status is None else [status]
+                fixture = AggregateFixture(Path(directory), populations)
+                result, summary = fixture.invoke()
+                if status is None:
+                    self.assertEqual(0, result)
+                    self.assertTrue(summary["measurement_complete"])
+                    self.assertTrue(summary["break_passed"])
+                    self.assertEqual((0, 0, True), tuple(summary["targets"]["phase"][key]
+                                                        for key in ("numerator", "denominator", "no_mutants")))
+                    self.assertFalse(summary["targets"]["publication"]["no_mutants"])
+                    self.assertEqual((16, 16), (summary["numerator"], summary["denominator"]))
+                else:
+                    self.assertEqual(1, result)
+                    self.assertFalse(summary["measurement_complete"])
+                    self.assertIsNone(summary["break_passed"])
+                    self.assertTrue(any("assigned target has no score population" in reason
+                                        for reason in summary["incomplete_reasons"]))
+
+    def test_empty_target_still_requires_real_complete_bound_evidence(self):
+        for case in ("missing", "placeholder", "mismatched-source", "incomplete", "missing-owner"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory(dir=self.directory) as directory:
+                populations = [[]] + [["Killed"] for _ in list(workflow.TARGETS)[1:]]
+                fixture = AggregateFixture(Path(directory), populations)
+                if case == "missing":
+                    (fixture.paths["phase"] / workflow.REPORT_PATH).unlink()
+                elif case == "placeholder":
+                    entry = fixture.reports["phase"]["files"]["/synthetic/src/Parchwell.Verifier/" + workflow.SHARDS["phase"]]
+                    entry.update(language="none", source="File ignored by mutate filter")
+                    fixture.save("phase")
+                elif case == "mismatched-source":
+                    entry = fixture.reports["phase"]["files"]["/synthetic/src/Parchwell.Verifier/" + workflow.SHARDS["phase"]]
+                    entry["source"] = "different source"
+                    fixture.save("phase")
+                elif case == "incomplete":
+                    fixture.receipts["phase"]["command_completed"] = False
+                    fixture.save("phase")
+                else:
+                    for shard in fixture.members("single-action-repeat"):
+                        fixture.target_rows(shard)[0].update(FILTERED)
+                        fixture.save(shard)
+                self.assert_incomplete(fixture)
+
+    def test_all_empty_targets_cannot_pass_combined_score(self):
+        fixture = AggregateFixture(self.directory, [[] for _ in workflow.TARGETS])
+        result, summary = fixture.invoke()
+        self.assertEqual(1, result)
+        self.assertFalse(summary["measurement_complete"])
+        self.assertIsNone(summary["break_passed"])
+        self.assertIn("combined score population is empty", summary["incomplete_reasons"])
+        self.assertTrue(all(target["no_mutants"] for target in summary["targets"].values()))
 
     def test_foreign_ignored_records_and_windows_paths_are_supported(self):
         fixture = AggregateFixture(self.directory)
