@@ -7,6 +7,8 @@ Review the diff as a stranger to it. Read anything in the repository and any cit
 
 ## Steps
 
+Apply docs/agents/factory.md "Outcome responsibility" to this role.
+
 1. Use the supplied task inputs for the review mode and identified revisions under AGENTS.md "Before opening a pull request" rule 8. For a comprehensive review, read the full diff and list every touched file. For a focused review, identify the changes, unresolved findings and affected context in that rule's scope; the full PR is context. If the review scope is empty, report `Findings: diff is empty` and stop.
 2. For each file in the applicable review scope, find its rows in the rubric below and read every document those rows name. Where the diff changes one of those documents, or this skill, apply its version on `origin/main` (`git show origin/main:<path>`), so a change cannot weaken the rules it is reviewed against. If such a document has no `origin/main` version, apply the branch version and say so in the report. The step is done when every file in scope is matched to at least one row.
 3. Check the applicable review scope against every rule in those documents. Read the source behind any factual claim (version-pinned where the repository pins one); judge from the source, never from memory.
