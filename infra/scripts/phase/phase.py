@@ -957,16 +957,17 @@ class Phase:
 
     @classmethod
     def b10_second_upper_bound(cls, value):
-        """Return the latest instant a whole-second pod termination time can stand for.
+        """Return the latest instant a whole-second verifier termination time can stand for.
 
-        Kubernetes serializes a pod's terminated `finishedAt` as RFC 3339 without
-        fractional seconds (apimachinery `metav1.Time.MarshalJSON` uses
-        `time.RFC3339`), so the real termination lies somewhere inside the reported
-        second. The verifier writes its completion receipt before its container
-        exits, with seven decimals, so the receipt can fall later in that same
-        second. The sweep line must not claim a time earlier than any receipt, so a
-        whole-second value is raised to the last tick of its second. A value that
-        already carries a fraction is kept as it is.
+        Kubernetes serializes a pod's terminated `finishedAt` with Go's
+        `time.RFC3339` layout, which has no fractional seconds (apimachinery
+        `metav1.Time.MarshalJSON`), so the real termination lies somewhere inside
+        the reported second. The verifier writes its completion receipt before its
+        container exits, with seven decimals, so the receipt can fall later in that
+        same second, and the final sweep requires every receipt to be no later than
+        the sweep line's last verifier completion. The test is on ticks, not text:
+        a stored value such as `...21.0000000+00:00` has a zero fraction and is
+        raised to `...21.9999999+00:00`; a value with a non-zero fraction is kept.
         """
         text, ticks = cls.b10_utc(value)
         if ticks % 10_000_000:
@@ -991,7 +992,8 @@ class Phase:
                 bindings = [(entry["job"], entry["repeat"], entry["mode"]) for entry in entries]
                 if len(set(applied)) != len(applied) or sorted(bindings) != sorted(applied):
                     raise ValueError("lifecycle binding")
-                times[role] = [self.b10_second_upper_bound(entry["finished_utc"]) for entry in entries]
+                parse = self.b10_second_upper_bound if role == "verifiers" else self.b10_utc
+                times[role] = [parse(entry["finished_utc"]) for entry in entries]
             if not times["producers"]:
                 raise ValueError("no producer applied")
         except (ValueError, KeyError, TypeError, AttributeError):
