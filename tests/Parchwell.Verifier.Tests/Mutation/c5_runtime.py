@@ -479,6 +479,7 @@ PROVISIONAL_LAYOUT_HASHES = {
     'Judge/B10FinalJudge.cs': '6111fd4ec0d857dc607d3f0f0e44c14de19e551157508df041aee1f986f6af37',
     'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': '1a4a156c924e0e54b07a495a083f2f09efc6f6b12d86d9eed55874894b8133b2',
 }
+PROVISIONAL_TIMING_INPUTS_HASH = '64f19fe8b8c3dbefec23e63e6ea1b9b68e4a2d9e2daaff324b843e860fd94f22'
 PROVISIONAL_STATUS = 'pending_native_report'
 NUMERIC_FIELDS = ('main_mutants', 'main_work_seconds', 'parallelism', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')
 
@@ -609,6 +610,8 @@ def validate(config, shared, targets, source, matrix):
             reasons.add('stale_inputs')
         provisional = record.get('geometry_status') == PROVISIONAL_STATUS
         if provisional:
+            if timing_hash != PROVISIONAL_TIMING_INPUTS_HASH:
+                reasons.add('stale_inputs')
             source_hash, artifact, evidence_hash = PROVISIONAL_TARGETS[path]
             if record['source_sha256'] != source_hash:
                 reasons.add('stale_inputs')

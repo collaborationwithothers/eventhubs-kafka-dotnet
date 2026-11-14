@@ -732,6 +732,10 @@ class ProvisionalQualificationTests(unittest.TestCase):
         layout_patch = mock.patch.object(runtime, 'PROVISIONAL_LAYOUT_HASHES', {'a.cs': layout_hash})
         layout_patch.start()
         self.addCleanup(layout_patch.stop)
+        timing = self.config['targets']['a.cs']['shards']['a-p1']['timing_inputs_sha256']
+        timing_patch = mock.patch.object(runtime, 'PROVISIONAL_TIMING_INPUTS_HASH', timing)
+        timing_patch.start()
+        self.addCleanup(timing_patch.stop)
         record = self.config['targets']['a.cs']
         record['geometry_status'] = runtime.PROVISIONAL_STATUS
         record['evidence'] = [{'source_commit': 'e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5',
@@ -788,6 +792,41 @@ class ProvisionalQualificationTests(unittest.TestCase):
                                {'shard': shard, 'source': source.decode(), 'cut': 20}):
             item['selection_sha256'] = runtime.digest(runtime.canonical(runtime.workflow.shard_config('a-p1', self.source['a.cs'])))
             self.assertIn('layout_mismatch', self.errors())
+
+    def rebind_timing(self):
+        binding = runtime.digest(runtime.canonical({'shared_inputs': self.config['shared_inputs'],
+            'target_sources': {path: record['source_sha256'] for path, record in self.config['targets'].items()}}))
+        for record in self.config['targets'].values():
+            for item in record['shards'].values():
+                item['timing_inputs_sha256'] = binding
+
+    def test_rebound_shared_input_cannot_authorize_another_pilot(self):
+        self.provisional()
+        self.shared['global.json'] = runtime.digest(b'changed sdk')
+        self.config['shared_inputs'] = self.shared.copy()
+        self.rebind_timing()
+        self.assertIn('stale_inputs', self.errors())
+
+    def test_rebound_other_target_cannot_authorize_another_pilot(self):
+        self.provisional()
+        self.source['b.cs'] = b'changed target'
+        self.targets['b.cs'] = runtime.digest(self.source['b.cs'])
+        self.config['targets']['b.cs']['source_sha256'] = self.targets['b.cs']
+        self.config['targets']['b.cs']['shards']['b']['selection_sha256'] = runtime.digest(
+            runtime.canonical(runtime.workflow.shard_config('b', self.source['b.cs'])))
+        self.rebind_timing()
+        self.assertIn('stale_inputs', self.errors())
+
+    def test_qualified_targets_can_rebind_changed_inputs(self):
+        self.shared['global.json'] = runtime.digest(b'changed sdk')
+        self.config['shared_inputs'] = self.shared.copy()
+        self.source['b.cs'] = b'changed target'
+        self.targets['b.cs'] = runtime.digest(self.source['b.cs'])
+        self.config['targets']['b.cs']['source_sha256'] = self.targets['b.cs']
+        self.config['targets']['b.cs']['shards']['b']['selection_sha256'] = runtime.digest(
+            runtime.canonical(runtime.workflow.shard_config('b', self.source['b.cs'])))
+        self.rebind_timing()
+        self.assertEqual(set(), self.errors())
 
     def test_qualified_target_can_use_a_reassessed_cut(self):
         with mock.patch.object(runtime.workflow, 'shard_config', side_effect=lambda shard, source:
