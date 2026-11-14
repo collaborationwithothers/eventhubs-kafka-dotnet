@@ -10,7 +10,7 @@ Rule numbers are those of AGENTS.md "Before opening a pull request". A bare rule
 
 Applies to every pull request, documentation included. Authority refreshes follow docs/agents/factory.md "Authority reads".
 
-Apply the current authority, gates, commands, checkpoints and review budget throughout implementation. For verifier work, cover each changed or affected predicate at below, at and above each boundary, empty input and precedence interactions. Explain unreachable cases. Keep unrelated evidence valid so another invalid field cannot mask the predicate under test. The approved plan's test map and the actual tests are the sources for this coverage.
+Apply the current authority, gates, commands, checkpoints and review budget throughout implementation. Apply [Outcome responsibility](factory.md#outcome-responsibility) to premerge readiness and finding disposition. For verifier work, cover each changed or affected predicate at below, at and above each boundary, empty input and precedence interactions. Explain unreachable cases. Keep unrelated evidence valid so another invalid field cannot mask the predicate under test. The approved plan's test map and the actual tests are the sources for this coverage.
 
 1. Verify every factual claim against its source at the pinned version before committing it. Never write a library or Azure behaviour from memory.
 2. Mark a claim confirmed only if every part of it is stated by a cited source. Name any inferred part as inferred. Cite every source a claim depends on, in full.
