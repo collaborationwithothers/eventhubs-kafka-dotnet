@@ -29,6 +29,7 @@ class CohortAggregateTests(unittest.TestCase):
             path = folder / workflow.REPORT_PATH
             report = json.loads(path.read_text())
             rows = report['files']['/synthetic/src/Parchwell.Verifier/' + WORKLOAD]['mutants']
+            next(value for value in rows if value['id'] == identifier)['killedBy'] = ['test-id']
             row = next(value for value in rows if value['id'] == '9')
             row['location']['start']['column'] = 32
             row['location']['end']['column'] = 33
@@ -47,6 +48,8 @@ class CohortAggregateTests(unittest.TestCase):
             entry = next(item for item in fixture.receipts['workload']['isolated'] if item['mutant_id'] == ids[0])
             shutil.copyfile(folder / 'isolated' / ids[0] / workflow.REPORT_PATH, folder / workflow.REPORT_PATH)
             shutil.copyfile(folder / 'isolated' / ids[0] / 'command.log', folder / 'command.log')
+            entry['argv'] = ['dotnet', 'stryker', '--config-file', f'/runner/.artifacts/c5-mutation/{name}/isolated/{ids[0]}/config.json',
+                             '--output', f'/runner/.artifacts/c5-mutation/{name}/isolated/{ids[0]}/stryker', '--log-to-file', '--verbosity', 'debug']
             receipt = json.loads((folder / 'receipt.json').read_text())
             receipt.update({field: entry[field] for field in ("argv", "child_exit_code", "termination_reason", "command_completed")})
             receipt.update(shard=name, isolated=[entry], report_sha256=digest(folder / workflow.REPORT_PATH),
@@ -119,3 +122,43 @@ class CohortAggregateTests(unittest.TestCase):
         result, summary = self.fixture.invoke()
         self.assertEqual(1, result)
         self.assertTrue(any('unexpected main work' in reason for reason in summary['incomplete_reasons']))
+
+    def test_cohort_argv_cannot_reference_another_invocation(self):
+        folder = self.fixture.input / 'c5-mutation-12345-2-workload-b'
+        path = folder / 'receipt.json'
+        receipt = json.loads(path.read_text())
+        receipt['argv'][3] = '/runner/.artifacts/c5-mutation/workload-b/isolated/9/config.json'
+        receipt['isolated'][0]['argv'][3] = '/runner/.artifacts/c5-mutation/workload-b/isolated/9/config.json'
+        write_json(path, receipt)
+        result, summary = self.fixture.invoke()
+        self.assertEqual(1, result)
+        self.assertTrue(any('cohort argv paths mismatch' in reason for reason in summary['incomplete_reasons']))
+
+    def test_extra_physical_artifact_is_incomplete(self):
+        folder = self.fixture.input / 'c5-mutation-12345-2-workload-foreign'
+        folder.mkdir()
+        result, summary = self.fixture.invoke()
+        self.assertEqual(1, result)
+        self.assertTrue(any('unexpected shard directories' in reason for reason in summary['incomplete_reasons']))
+
+    def test_duplicate_isolation_entry_is_incomplete(self):
+        folder = self.fixture.input / 'c5-mutation-12345-2-workload-b'
+        path = folder / 'receipt.json'
+        receipt = json.loads(path.read_text())
+        receipt['isolated'].append(receipt['isolated'][0])
+        write_json(path, receipt)
+        result, summary = self.fixture.invoke()
+        self.assertEqual(1, result)
+        self.assertTrue(any('isolated invocation list mismatch' in reason for reason in summary['incomplete_reasons']))
+
+    def test_mixed_source_receipt_is_incomplete(self):
+        folder = self.fixture.input / 'c5-mutation-12345-2-workload-b'
+        path = folder / 'receipt.json'
+        receipt = json.loads(path.read_text())
+        source = next(iter(receipt['source_sha256_before']))
+        receipt['source_sha256_before'][source] = 'f' * 64
+        receipt['source_sha256_after'][source] = 'f' * 64
+        write_json(path, receipt)
+        result, summary = self.fixture.invoke()
+        self.assertEqual(1, result)
+        self.assertTrue(any('cross-shard source mismatch' in reason for reason in summary['incomplete_reasons']))

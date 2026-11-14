@@ -974,9 +974,19 @@ class CommittedContractTests(unittest.TestCase):
         for key, (target, _) in workflow.TARGETS.items():
             with self.subTest(target=key):
                 source = (root / "src/Parchwell.Verifier" / target).read_bytes()
-                owned = [region for shard, (owner, _, _) in workflow.PARTS.items() if owner == key
-                         for region in workflow.shard_static_regions(shard, source)]
-                self.assertEqual(workflow.static_regions(workflow.target_text(source)), sorted(set(owned)))
+                expected = workflow.static_regions(workflow.target_text(source))
+                owners = {}
+                for shard, (owner, _, _) in workflow.PARTS.items():
+                    if owner == key:
+                        logical = workflow.COHORTS.get(shard, (shard,))[0]
+                        for region in workflow.shard_static_regions(shard, source):
+                            owners.setdefault(region, {}).setdefault(logical, []).append(shard)
+                self.assertEqual(set(expected), set(owners))
+                for region in expected:
+                    self.assertEqual(1, len(owners[region]), (region, owners[region]))
+                    logical, physical = next(iter(owners[region].items()))
+                    intended = [name for name, (parent, _) in workflow.COHORTS.items() if parent == logical]
+                    self.assertCountEqual(intended or [logical], physical)
 
 
 class SpanTests(unittest.TestCase):

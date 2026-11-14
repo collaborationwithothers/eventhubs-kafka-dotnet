@@ -1146,7 +1146,7 @@ def merge_isolated(rows: list[dict], item: dict, isolated_rows: list[dict]) -> l
 
 
 def isolated_rows(directory: Path, target: str, target_hash: str, item: dict, entry: object,
-                  rows: list[dict]) -> list[dict]:
+                  rows: list[dict], *, cohort: bool = False) -> list[dict]:
     """Check one isolated invocation's retained evidence and merge its one tested mutant into the shard's rows."""
     require(isinstance(entry, dict) and set(entry) == ISOLATED_FIELDS, "malformed isolated receipt")
     require(all(entry[key] == item[key] for key in ("mutant_id", "span", "exclusions")),
@@ -1155,6 +1155,22 @@ def isolated_rows(directory: Path, target: str, target_hash: str, item: dict, en
             and type(entry["child_exit_code"]) is int and entry["child_exit_code"] in (0, 2),
             "isolated child execution error")
     folder = directory / "isolated" / item["mutant_id"]
+    if cohort:
+        argv = entry["argv"]
+        require(isinstance(argv, list) and len(argv) >= 9 and all(isinstance(arg, str) for arg in argv),
+                "malformed cohort argv")
+        require(argv[-7] == "--config-file" and argv[-5] == "--output"
+                and argv[-3:] == ["--log-to-file", "--verbosity", "debug"]
+                and argv.count("--config-file") == 1 and argv.count("--output") == 1,
+                "cohort argv configuration mismatch")
+        config_arg, output_arg = Path(argv[-6]), Path(argv[-4])
+        require(config_arg.is_absolute() and output_arg.is_absolute()
+                and ".." not in config_arg.parts and ".." not in output_arg.parts
+                and config_arg.name == "config.json" and output_arg.name == "stryker"
+                and config_arg.parent == output_arg.parent
+                and config_arg.parent.parts[-5:] == (".artifacts", "c5-mutation",
+                                                     directory.name.split("-", 4)[-1], "isolated", item["mutant_id"]),
+                "cohort argv paths mismatch")
     config_path = folder / "config.json"
     require(json.loads(config_path.read_text()) == isolated_config(target, item),
             "unexpected isolated configuration")
@@ -1340,7 +1356,7 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
                                     "exclusions": []}, "bootstrap geometry mismatch")
                 outcomes = baseline
                 for item, entry in zip(plan, receipt["isolated"], strict=True):
-                    outcomes = isolated_rows(directory, target, target_hash, item, entry, outcomes)
+                    outcomes = isolated_rows(directory, target, target_hash, item, entry, outcomes, cohort=True)
                     outcome = next(row for row in outcomes if row["id"] == item["mutant_id"])
                     require(outcome["status"] in TESTED, "cohort mutant was not tested")
                 cohort_records[shard] = (baseline, full_plan, outcomes)
@@ -1369,8 +1385,11 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
             require(len(physical) == 2 and all(name in cohort_records for name in physical),
                     "physical cohorts incomplete")
             first_baseline, first_plan, _ = cohort_records[physical[0]]
-            native = {row["id"]: row for row in first_baseline}
-            require(all({row["id"]: row for row in cohort_records[name][0]} == native
+            def native_identity(rows):
+                return {row["id"]: tuple(row.get(field) for field in
+                        (*IDENTITY, "static", "status", "statusReason", "file")) for row in rows}
+            native = native_identity(first_baseline)
+            require(all(native_identity(cohort_records[name][0]) == native
                         and cohort_records[name][1] == first_plan for name in physical[1:]),
                     "cohort native geometry mismatch")
             identifiers = [identifier for name in physical for identifier in COHORTS[name][1]]

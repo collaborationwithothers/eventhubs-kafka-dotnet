@@ -324,24 +324,51 @@ class QualificationTests(unittest.TestCase):
         self.config['targets'] = {path: {'source_sha256': self.targets[path], 'evidence': [], 'shards': {shard: item}}}
         self.assertIn('shard_over_budget', self.errors())
 
+    def test_repeat_merged_estimate_is_pinned_and_required(self):
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        record = config['targets'][runtime.REPEAT_TARGET]
+        item = record['shards'][runtime.REPEAT_MERGED_SHARD]
+        source = (runtime.ROOT / 'src/Parchwell.Verifier' / runtime.REPEAT_TARGET).read_bytes()
+        self.assertTrue(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, record, runtime.REPEAT_MERGED_SHARD, item, source))
+        self.assertLessEqual(item['estimated_seconds'], 1800)
+        for field in runtime.NUMERIC_FIELDS:
+            candidate = copy.deepcopy(config)
+            candidate['targets'][runtime.REPEAT_TARGET]['shards'][runtime.REPEAT_MERGED_SHARD][field] = None
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                runtime.shape(candidate)
+        changed = copy.deepcopy(item)
+        changed['main_work_seconds'] -= 1
+        self.assertFalse(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, record, runtime.REPEAT_MERGED_SHARD, changed, source))
+        changed = copy.deepcopy(record)
+        changed['evidence'] = [e for e in changed['evidence'] if '132540792966' not in e['locator']]
+        self.assertFalse(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, changed, runtime.REPEAT_MERGED_SHARD, item, source))
+        self.assertFalse(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, record, runtime.REPEAT_MERGED_SHARD, item, source + b'changed'))
+
     def test_pinned_native_geometry_rejects_tampering(self):
+        self.workflow_patcher.stop()
+        self.config_patcher.stop()
         import copy
         config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
         for path in runtime.NATIVE_GEOMETRY_BINDINGS:
             with self.subTest(path=path):
                 record = copy.deepcopy(config['targets'][path])
                 source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
-                owners = {item['owner']: path for item in record['native_geometry']['items']}
-                with mock.patch.object(runtime.workflow, 'SHARDS', owners):
-                    self.assertTrue(runtime.native_geometry_valid(path, record, source))
-                record['native_geometry']['items'][0]['owner'] += '-wrong'
-                self.assertFalse(runtime.native_geometry_valid(path, record, source))
-                record = copy.deepcopy(config['targets'][path])
-                record['native_geometry']['items'].pop()
-                self.assertFalse(runtime.native_geometry_valid(path, record, source))
-                record = copy.deepcopy(config['targets'][path])
-                record['evidence'] = [e for e in record['evidence'] if e['sha256'] != record['native_geometry']['archive_sha256']]
-                self.assertFalse(runtime.native_geometry_valid(path, record, source))
+                self.assertTrue(runtime.native_geometry_valid(path, record, source))
+                self.assertFalse(runtime.native_geometry_valid(path, record, source + b'changed'))
+                for field in ('inventory_sha256', 'ownership_proof_sha256', 'layout_sha256', 'source_commit'):
+                    changed = copy.deepcopy(record)
+                    changed['native_geometry'][field] = '0' * len(changed['native_geometry'][field])
+                    self.assertFalse(runtime.native_geometry_valid(path, changed, source))
+                changed = copy.deepcopy(record)
+                owner = next(iter(changed['native_geometry']['owner_counts']))
+                changed['native_geometry']['owner_counts'][owner] += 1
+                self.assertFalse(runtime.native_geometry_valid(path, changed, source))
+                changed = copy.deepcopy(record)
+                changed['evidence'] = [e for e in changed['evidence'] if e['sha256'] != changed['native_geometry']['archive_sha256']]
+                self.assertFalse(runtime.native_geometry_valid(path, changed, source))
+                with mock.patch.object(runtime.workflow, 'shard_config', return_value={'changed': True}):
+                    self.assertFalse(runtime.native_geometry_valid(path, record, source))
 
     def test_pinned_codec_owners_cannot_be_unknown(self):
         import copy
