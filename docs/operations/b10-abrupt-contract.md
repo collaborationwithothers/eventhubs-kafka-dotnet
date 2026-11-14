@@ -453,3 +453,90 @@ Part 2 section 3.5 and classification plan requirements P4 and P5 own collection
 After an accepted first publication, the phase runs `b10-abrupt-verify` after the successor step, including successor failure, unknown outcome or exception. Rejected publication, no-kill, an empty kill set or unknown first termination starts no verify Job. A verify outcome of `failed`, `unknown`, `apply_failed` or `render_failed` records `b10_abrupt_verify_failed` at `verify_job`, preserves the prior `safety_stop` value and returns 1. A complete verify Job preserves the return value the trial would otherwise have had. No producer starts after verify.
 
 The ordinary timeout host publishes under `producer/`. Part 2 section 3.7's production-byte export/checker verifies that scientific paths reject its evidence in frozen diagnostic trial state and that the exported documents contain no diagnostic marker keys. The phase test `test_trial_and_science_run_ids_never_collide` (part 2 section 8.1, T-P1) verifies distinct trial and scientific run-ID prefixes and noncollision. This trial produces no scientific candidate. The [verifier contract](verifier-contract.md) cites this diagnostic mode; the scientific extension above remains nonfinal, with the late-write sweep and final judgement left to later work.
+
+## Final sweep projection
+
+The scientific phase sweep turns the five nonfinal repeats into final timeout classifications and independent restart eligibility. It scans each repeat's original window and owned late records up to the phase sweep line. Its output retains aggregate arm evidence and decision inputs, with no diagnostic per-message table.
+
+The [approved final judgement plan, Revision 6](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/07e2f2a3d80d9d0342590919d7a349f38a0d546a/items/404/plan-b10-final-judgement.md), sections 3.3 to 3.5, owns this format and its enforced checks. [ADR-021](../blueprint.md#adr-021-b10-accepts-timed-out-sends-application-retries-and-one-producer-restart-in-a-second-job-and-classifies-late-appends-up-to-a-sweep-line) owns the classification and decision rules. The [workflow contract](b10-workflow.md#scientific-execution) supplies lifecycle evidence and scheduling, and the [verifier contract](verifier-contract.md#scientific-b10-final-judgement) owns the receipt and candidate authentication.
+
+### Scope, inputs and windows
+
+Mode `b10-final-sweep` admits scenario B10, phase C0 or C1 and run IDs matching `^b10-[0-9]+-[0-9]+$` only. It reads `U/P/sweep-line.json`, the five repeats' start-line evidence and registrations, ordinary producer publications, and, for C1, first-pod and available successor evidence. Its input is Blob evidence; it does not read the phase's local `phase-status.json`. The original per-repeat objects and receipts remain immutable.
+
+For C0, each repeat requires the one-producer `result.json` and `verify-completion.json`: status `incomplete`, window checks complete, exit 1, cleanup complete and an exact result-byte binding. The input, registration and start-line list bind `U-c0-rN-loadgen`. A wrong count, including zero registrations, fails that repeat's input check.
+
+For C1, a repeat is one of four cases, in this precedence:
+
+1. No start-line completion receipt: the repeat did not start.
+2. A valid scientific `b10-abrupt/nonfinal-result.json` and its receipt exist and bind the same repeat.
+3. The repeat started, neither object nor receipt exists, and its authenticated first termination is absent or does not permit a successor. This includes no-kill ends and rejected first publications.
+4. Every other started repeat: missing, malformed or unbound input, including no per-repeat object after authenticated `successor_permitted=true`. Restart receives `b10_restart_input_unavailable`. A per-repeat verifier receipt that exists but cannot be read or parsed is not such input: it fails the sweep line check below ([decision 6871584065](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6871584065)).
+
+The timeout cohort is independently authenticated and classified in every started C1 case with a timeout registration. It reapplies per-repeat checks 16 to 19; failure gives `b10_final_timeout_evidence_invalid` and adds `b10_restart_timeout_bookkeeping_unavailable` to restart eligibility. Restart-only input failure never invalidates otherwise valid timeout evidence. This does not apply to a per-repeat verifier receipt (C0 `verify-completion.json`, C1 A3 receipt) that exists but cannot be read or parsed. Its `completed_utc` cannot be checked against the sweep line's `last_verifier_completed_utc`, so the sweep line is unbound and the failure is the global `b10_final_sweep_line_invalid`. No read retry is added beyond the storage client's own. The projection is create-only, so recovery is a new scientific run. The decision is [6871584065](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6871584065).
+
+The sweep reauthenticates first-pod and successor evidence with the per-repeat readers and checks 3 to 13 and 21 to 28, as applicable to the termination class. Identities, cut and kill sets, invocations and member attempts must agree with a valid per-repeat object. Disagreement gives restart reason `b10_restart_input_unavailable`. An instance registered in two repeats is a global `b10_final_ownership_invalid` failure; other registration failures remain scoped to the relevant cohort.
+
+Each started repeat's window uses the first available source:
+
+| Source | Original window | Late range |
+| --- | --- | --- |
+| Valid per-repeat input with nonnull start and end lines | `[start_line,end_line)` | `[end_line,sweep_line)` |
+| Otherwise, its own authenticated start-line note | `[start_line,next)` | `[next,sweep_line)` |
+
+`next` is the next started repeat's authenticated start, or the sweep line for the last window. A repeat that did not start owns no range and is skipped. A started repeat without either authenticated source makes the whole scan invalid with `b10_final_start_line_invalid`; an unknown boundary cannot authorize another repeat's finality. Start must be at most end or next, and that value at most the sweep line; each repeat's end must be at most the next repeat's start. Invalid ordering gives global `b10_final_vector_invalid`.
+
+An earlier repeat's record inside a later original window counts only for its own repeat. An unknown or later owner in an original window invalidates that repeat with `b10_final_owner_invalid` and gives C1 restart `b10_restart_late_record_unjoined`. Late ranges retain only their repeat's own instances. Original and late records form one union, with each topic/partition/offset counted once.
+
+Every owned record must join an authorized timeout ledger attempt, prepared probe or warm-up, or successor invocation, with the checked identity, key and sequence. Unjoined timeout/C0 records give `b10_final_late_record_unjoined`; unjoined probe records affect restart only, with `b10_restart_late_record_unjoined`. Reclassification of the original C1 window must agree with every nonnull per-repeat value: timeout disagreement gives `b10_final_window_mismatch`; arm disagreement affects restart only. Warm-up joins but enters no outcome count.
+
+One Kafka session and the existing safety, input, record and byte budgets cover the phase. Any incomplete drain is global `b10_final_drain_incomplete`. Retained consumed data contains only coordinate, instance/attempt identity, key, sequence and value SHA-256, never value bytes. Arm pair counts use original copies times resend copies. A known delivered resend with no union copy is lost; a missing terminal or unavailable scan leaves loss unknown. The per-repeat end-line-advanced problem alone no longer blocks eligibility, because the late range is scanned.
+
+### Closed output
+
+The create-only object is `U/P/b10-final-sweep.json`. The envelope has exactly `schema_version=3`, `dialect=b10_abrupt`, `purpose=scientific`, `synthetic=true`, `scientific_admissible`, `kind=final_sweep_projection`, `identity` and `data`. `scientific_admissible` equals `data.scan_complete`; it does not itself approve publication. Identity has exactly `run_id`, `scenario_id=B10`, `configuration_id`, `phase`, `source_commit`, verifier `image_reference`, `job_name`, `pod_name` and `pod_uid`.
+
+`data` has exactly `sweep_line`, `scan_complete`, `residual_risk` and `repeats`. `sweep_line` is the note's `{container,name,length,sha256}` reference, or null if its check fails. `repeats` has exactly five entries ordered 1 to 5. Every projection and candidate states the exact residual risk: `A late append after the phase sweep line is not detected.`
+
+Each repeat has exactly these fields:
+
+| Field | Shape |
+| --- | --- |
+| `repeat` | Integer 1 to 5 |
+| `source` | Reference to C0 `result.json` or C1 per-repeat nonfinal result; null when absent |
+| `producer_versions` | Instance-ID-ordered ordinary manifest versions, each `{instance_id,workload_generator,confluent_kafka,librdkafka,dotnet}`; unavailable versions are null |
+| `classification_final` | True exactly for a complete-valid final timeout cohort |
+| `status` | `complete_valid`, `invalid` or `incomplete` |
+| `timeout` | `{ok,loss,phantom,reported_failure,duplicate,reorder}` only for `complete_valid`; otherwise null |
+| `reasons` | Sorted distinct permitted reason literals, at most 100, each at most 256 ASCII bytes |
+| `restart` | Null for C0; the closed C1 object below |
+
+C1 `restart` has exactly `eligibility`, `eligibility_reasons`, `termination`, `first_instance_id`, `successor_instance_id`, `timeout_instance_id`, `comparison`, `native_errors` and `arms`. Eligibility is `eligible` or `ineligible`. Termination is `{class,outcome}` from the authenticated receipt, or both null; classes are `intended_self_kill`, `no_kill`, `unexpected_exit` and `unknown`. Instance IDs may be null. Comparison is `both`, `cross_restart_only`, `same_instance_only`, `neither` or `unavailable`. Native errors are null or `{count,fatal_count,tail}`.
+
+`arms` is null or exactly `same_instance` followed by `cross_restart`. Each arm has exactly `arm`, `cut_attempt_id`, `unconfirmed_attempt_ids`, `unconfirmed_count`, `resend_invoked`, `originals_seen`, `resends_seen`, `pair_count`, `unreported_attempts`, `unreported_seen`, `unreported_unseen`, `lost_resends` and `witness`. The cut and unconfirmed sets come from the authenticated journal/termination, not the per-repeat classification. Counts are nonnegative Int64 values or null for unknown. Witness is null or `{original_attempt_id,resend_attempt_id,original,resend}`, with each coordinate `{partition,offset}`.
+
+The projection drops `members`, every member's copy table and counts (`copies`, `copies_truncated`, `copy_count`, `original_copies`, `resend_copies`, `other_copies`, `resend_terminal`), `problems`, `problem_details`, `window_limit`, `start_line`, `end_line`, `window_complete`, `earlier_repeat_records` and `finality`. These diagnostic fields remain in the per-repeat nonfinal contract only.
+
+### Status and eligibility precedence
+
+The earliest matching timeout row applies. Restart has independent reasons and never supplies timeout counts.
+
+| Condition | Timeout status | Added reason |
+| --- | --- | --- |
+| Global sweep-line, ownership-collision, window-order, started-window or drain failure | All repeats `invalid` | Global reason |
+| No start-line receipt | `incomplete` | `b10_final_repeat_not_started` |
+| Started C1 repeat with no timeout registration, including timeout render failure | `incomplete` | `b10_final_timeout_absent` |
+| C0 input failure | `invalid` | `b10_final_repeat_input_invalid` |
+| C1 timeout evidence failure | `invalid` | `b10_final_timeout_evidence_invalid` |
+| Foreign original owner | `invalid` | `b10_final_owner_invalid` |
+| Unjoined timeout/C0 record | `invalid` | `b10_final_late_record_unjoined` |
+| C1 original timeout mismatch | `invalid` | `b10_final_window_mismatch` |
+| Otherwise | `complete_valid`, final, six counts | None |
+
+Non-complete-valid rows have false finality and null timeout counts. The permitted global reason literals are `b10_final_sweep_line_invalid`, `b10_final_ownership_invalid`, `b10_final_vector_invalid`, `b10_final_start_line_invalid` and `b10_final_drain_incomplete`. Global failure makes every C1 restart ineligible with `b10_restart_sweep_unavailable`, unavailable comparison and null sweep-derived arm values. Journal-derived fields may remain known.
+
+A C1 repeat is eligible only with a valid per-repeat object that was `pending_sweep`, no original eligibility reason, no problem except optional `b10_abrupt_verify_end_line_advanced`, a complete scan, no restart reauthentication/join/agreement failure and an available final comparison. Its original ordered eligibility reasons remain, followed by applicable new reasons: `b10_restart_sweep_unavailable`, `b10_restart_late_record_unjoined`, authenticated termination outcome and `b10_restart_input_unavailable`. A missing window in the per-repeat object still retains its original `b10_restart_window_incomplete` even when its start note supplies the scan window. An unauthenticated start note additionally makes the scan unavailable; original eligibility reasons are retained.
+
+Without a per-repeat object, authenticated no-kill termination gives its recorded outcome as the reason, null arms and unavailable comparison. It produces no lost-resend finding. Missing first evidence gives `b10_restart_first_evidence_unavailable`; unexpected or unknown termination gives `b10_restart_termination_unverified`; other rejected intended kills give `b10_restart_input_unavailable` and any applicable termination reason.
+
+For intended self-kill with empty kill set, `kill_too_late` remains ineligible but the authenticated same-instance arm is classified. This path requires observed exit 137, no capture/manifest gaps, empty recomputed kill set, `successor_permitted=false` and last producing-thread record `kill_intent`, with applicable checks 3 to 6, 8 to 10 and 21 to 25. Its cross-restart set is empty and every count is zero. Failed termination verification gives `b10_restart_termination_unverified`; other failed checks retain their per-repeat reasons and null arms, except native nonfatal/fatal errors alone retain computed arms. Unjoined control records null sweep-derived control values. A known control lost resend is retained as a finding even though restart is ineligible. Unknown values never create a finding.

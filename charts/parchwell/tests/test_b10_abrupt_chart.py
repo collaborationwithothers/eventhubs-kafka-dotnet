@@ -122,7 +122,7 @@ def invalid_cases():
                        ('loadgen_job_name', 'unbound-loadgen')):
         case = deepcopy(first); case['runtime'][key] = value
         yield key + '-' + str(value).replace('/', '-'), case
-    for mode in ('loadgen', 'loadgen2', 'start-line', 'verify', 'b10-sweep-line', 'b10-sweep', 'judge', 'single-action', 'idle-observation'):
+    for mode in ('loadgen', 'loadgen2', 'start-line', 'verify', 'b10-sweep-line', 'b10-sweep', 'b10-final-sweep', 'judge', 'single-action', 'idle-observation'):
         case = deepcopy(first); case['runtime']['mode'] = mode
         yield 'mode-' + mode, case
     for key in ('run_kind', 'repeat', 'loadgen_job_name', 'b10_abrupt_binding_configmap'):

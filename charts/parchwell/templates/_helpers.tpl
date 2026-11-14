@@ -20,7 +20,7 @@ app.kubernetes.io/instance: {{ .Values.runtime.run_id | quote }}
 {{- else if eq $r.mode "idle-observation-judge" -}}{{ printf "%s-idle-judge" $r.run_id }}
 {{- else if eq $r.mode "idle-observation" -}}{{ printf "%s-%s-%s-idle" $r.run_id (lower .Values.scenario_id) (lower .Values.configuration_id) }}
 {{- else if eq $r.mode "single-action-judge" -}}{{ printf "%s-%s-%s-single-judge" $r.run_id (lower .Values.scenario_id) (lower .Values.configuration_id) }}
-{{- else if has $r.mode (list "b10-sweep-line" "b10-sweep") -}}{{ printf "%s-%s-%s" $r.run_id $phase $r.mode }}
+{{- else if has $r.mode (list "b10-sweep-line" "b10-sweep" "b10-final-sweep") -}}{{ printf "%s-%s-%s" $r.run_id $phase $r.mode }}
 {{- else if eq $r.mode "judge" -}}{{ printf "%s-%s-judge" $r.run_id $phase }}{{- else -}}{{ printf "%s-%s-r%d-%s" $r.run_id $phase (int $r.repeat) $r.mode }}{{- end -}}
 {{- end -}}
 {{- define "parchwell.repeatPrefix" -}}{{ printf "%s/%s/r%d/" .Values.runtime.run_id .Values.runtime.phase (int .Values.runtime.repeat) }}{{- end -}}

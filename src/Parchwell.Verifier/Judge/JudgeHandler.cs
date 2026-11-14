@@ -23,6 +23,8 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
     public async Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
         VerifierHostOptions options=configured.Value;
+        if (options.ScenarioId == "B10" && VerifierHostOptions.IsB10ScientificRunId(options.RunId))
+            return await B10FinalJudge.ExecuteAsync(options, verifier, producer, clock, completion, cancellationToken).ConfigureAwait(false);
         bool b10=options.ScenarioId=="B10";
         DateTimeOffset judgeStarted=clock.GetUtcNow();
         DateTimeOffset? phaseStarted=null;

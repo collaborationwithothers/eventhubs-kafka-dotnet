@@ -116,13 +116,20 @@ EXPECTED_JOB_NAMES = (
     'b10-sweep-codec-p2',
     'b10-sweep-codec-p3',
     'b10-sweep-codec-crossing',
+    'b10-final-sweep-handler',
+    'b10-final-repeat-evidence',
+    'b10-final-classification',
+    'b10-final-projection',
+    'b10-final-projection-codec',
+    'b10-final-registrations',
+    'b10-final-judge',
 )
 
 
 def legacy_layout(test_case):
     counts = (1, 1, 1, 1, 3, 8, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
     targets = {key: (target, count) for (key, (target, _)), count
-               in zip(workflow.TARGETS.items(), counts, strict=True)}
+               in zip(list(workflow.TARGETS.items())[:17], counts, strict=True)}
     parts = {(key if count == 1 else f"{key}-p{index}"): (key, index, count)
              for key, (_, count) in targets.items() for index in range(1, count + 1)}
     shards = {shard: targets[key][0] for shard, (key, _, _) in parts.items()}
@@ -299,6 +306,13 @@ class CommittedContractTests(unittest.TestCase):
             "b10-sweep": ("VerifyRun/B10SweepHandler.cs", 1),
             "b10-sweep-judge": ("Judge/B10SweepChecks.cs", 1),
             "b10-sweep-codec": ("Common/Phase/B10SweepEvidenceCodec.cs", 3),
+            "b10-final-sweep-handler": ("VerifyRun/B10Final/B10FinalSweepHandler.cs", 1),
+            "b10-final-repeat-evidence": ("VerifyRun/B10Final/B10FinalRepeatEvidence.cs", 1),
+            "b10-final-classification": ("VerifyRun/B10Final/B10FinalClassification.cs", 1),
+            "b10-final-projection": ("Common/Phase/B10FinalProjection.cs", 1),
+            "b10-final-projection-codec": ("Common/Phase/B10FinalProjectionCodec.cs", 1),
+            "b10-final-registrations": ("Common/Phase/B10FinalRegistrationReader.cs", 1),
+            "b10-final-judge": ("Judge/B10FinalJudge.cs", 1),
         }
         shards = {
             'phase-p1': "Judge/PhaseJudge.cs",
@@ -362,6 +376,13 @@ class CommittedContractTests(unittest.TestCase):
             'b10-sweep-codec-p2': "Common/Phase/B10SweepEvidenceCodec.cs",
             'b10-sweep-codec-p3': "Common/Phase/B10SweepEvidenceCodec.cs",
             'b10-sweep-codec-crossing': "Common/Phase/B10SweepEvidenceCodec.cs",
+            'b10-final-sweep-handler': "VerifyRun/B10Final/B10FinalSweepHandler.cs",
+            'b10-final-repeat-evidence': "VerifyRun/B10Final/B10FinalRepeatEvidence.cs",
+            'b10-final-classification': "VerifyRun/B10Final/B10FinalClassification.cs",
+            'b10-final-projection': "Common/Phase/B10FinalProjection.cs",
+            'b10-final-projection-codec': "Common/Phase/B10FinalProjectionCodec.cs",
+            'b10-final-registrations': "Common/Phase/B10FinalRegistrationReader.cs",
+            'b10-final-judge': "Judge/B10FinalJudge.cs",
         }
         root = Path(__file__).resolve().parents[3]
         self.assertEqual(targets, workflow.TARGETS)
@@ -373,7 +394,7 @@ class CommittedContractTests(unittest.TestCase):
         import yaml
         matrix = yaml.safe_load((root / ".github/workflows/verifier-c5-mutation.yml").read_text())["jobs"]["mutation"]["strategy"]["matrix"]["include"]
         self.assertEqual(list(shards.items()), [(row["shard"], row["target"]) for row in matrix])
-        self.assertEqual(61, len(matrix))
+        self.assertEqual(68, len(matrix))
         self.assertEqual(("b10-restart-manifest", 1, 3), workflow.PARTS["b10-restart-manifest-p1"])
         self.assertEqual(("b10-intake", 1, 1), workflow.PARTS["b10-intake"])
         self.assertEqual(("b10-judge", 1, 1), workflow.PARTS["b10-judge"])
@@ -2190,9 +2211,9 @@ class ProductionLayoutTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[3]
         self.assertEqual(EXPECTED_PRIMARY_CUTS, workflow.PRIMARY_CUTS)
         self.assertEqual(EXPECTED_JOB_NAMES, tuple(workflow.SHARDS))
-        self.assertEqual(61, len(set(EXPECTED_JOB_NAMES)))
+        self.assertEqual(68, len(set(EXPECTED_JOB_NAMES)))
         original_paths = workflow.BASE_CONFIG["stryker-config"]["mutate"]
-        self.assertEqual(17, len(set(original_paths)))
+        self.assertEqual(24, len(set(original_paths)))
         self.assertEqual(original_paths, [target for target, _ in workflow.TARGETS.values()])
         matrix = yaml.safe_load((root / ".github/workflows/verifier-c5-mutation.yml").read_text())["jobs"]["mutation"]["strategy"]["matrix"]["include"]
         self.assertEqual(EXPECTED_JOB_NAMES, tuple(row["shard"] for row in matrix))
@@ -2415,7 +2436,8 @@ class ProductionAggregationTests(unittest.TestCase):
         self.assertEqual(0, result)
         self.assertIs(summary["measurement_complete"], True)
         self.assertIs(summary["break_passed"], True)
-        self.assertEqual((17, 17), (summary["numerator"], summary["denominator"]))
+        expected = len(workflow.TARGETS)
+        self.assertEqual((expected, expected), (summary["numerator"], summary["denominator"]))
         for key, (_, count) in workflow.TARGETS.items():
             self.assertEqual(1, summary["targets"][key]["denominator"])
             self.assertEqual(count + (key in EXPECTED_PRIMARY_CUTS), summary["targets"][key]["parts"])

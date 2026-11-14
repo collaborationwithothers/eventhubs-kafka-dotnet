@@ -137,6 +137,20 @@ jobs:
             target: Common/Phase/B10SweepEvidenceCodec.cs
           - shard: b10-sweep-codec-crossing
             target: Common/Phase/B10SweepEvidenceCodec.cs
+          - shard: b10-final-sweep-handler
+            target: VerifyRun/B10Final/B10FinalSweepHandler.cs
+          - shard: b10-final-repeat-evidence
+            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
+          - shard: b10-final-classification
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+          - shard: b10-final-projection
+            target: Common/Phase/B10FinalProjection.cs
+          - shard: b10-final-projection-codec
+            target: Common/Phase/B10FinalProjectionCodec.cs
+          - shard: b10-final-registrations
+            target: Common/Phase/B10FinalRegistrationReader.cs
+          - shard: b10-final-judge
+            target: Judge/B10FinalJudge.cs
     env:
       C5_OUTPUT: ${{ github.workspace }}/.artifacts/c5-mutation/${{ matrix.shard }}
     steps:
