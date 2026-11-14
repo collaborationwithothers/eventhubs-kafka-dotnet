@@ -409,6 +409,54 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
     }
 
     [Theory]
+    [InlineData("garbage")]
+    [InlineData("truncated")]
+    [InlineData("bad_completed_utc")]
+    public async Task Given_C1ReceiptExistsButCannotBeParsed_When_FinalSweepRuns_Then_F2FailsTheSweepLine_Decision6871584065(string defect)
+    {
+        using var run = await B10FinalSweepHarness.CreateAsync(kafka);
+        string name = B10FinalSweepHarness.Prefix(3) + "verify-completion.json";
+        switch (defect)
+        {
+            case "garbage": run.Verifier[name] = Encoding.UTF8.GetBytes("not json"); break;
+            case "truncated": run.Verifier[name] = run.Verifier[name][..(run.Verifier[name].Length / 2)]; break;
+            default:
+                JsonObject receipt = JsonNode.Parse(run.Verifier[name])!.AsObject(); receipt["completed_utc"] = "not-a-time";
+                run.Verifier[name] = Encoding.UTF8.GetBytes(receipt.ToJsonString()); break;
+        }
+        Assert.Equal(0, await run.RunAsync());
+        AssertGlobal(run, "b10_final_sweep_line_invalid");
+    }
+
+    [Theory]
+    [InlineData("read_throws")]
+    [InlineData("garbage")]
+    [InlineData("truncated")]
+    [InlineData("bad_completed_utc")]
+    public async Task Given_C0ReceiptExistsButCannotBeReadOrParsed_When_FinalSweepRuns_Then_F2FailsTheSweepLine_Decision6871584065(string defect)
+    {
+        using var run = await B10FinalSweepHarness.CreateC0Async(kafka);
+        string name = PhasePaths.VerifyCompletion(B10FinalSweepHarness.Run, "C0", 3);
+        switch (defect)
+        {
+            case "read_throws": run.BeforeRead = read => { if (read == name) throw new IOException("synthetic storage failure"); }; break;
+            case "garbage": run.Verifier[name] = Encoding.UTF8.GetBytes("not json"); break;
+            case "truncated": run.Verifier[name] = run.Verifier[name][..(run.Verifier[name].Length / 2)]; break;
+            default:
+                JsonObject receipt = JsonNode.Parse(run.Verifier[name])!.AsObject(); receipt["completed_utc"] = "not-a-time";
+                run.Verifier[name] = Encoding.UTF8.GetBytes(receipt.ToJsonString()); break;
+        }
+        Assert.Equal(0, await run.RunAsync());
+        Assert.False(run.Data["scan_complete"]!.GetValue<bool>(), run.Data.ToJsonString());
+        for (int repeat = 1; repeat <= 5; repeat++)
+        {
+            JsonObject item = run.Repeat(repeat);
+            Assert.Equal("invalid", Text(item["status"])); Assert.Null(item["timeout"]);
+            Assert.Equal(["b10_final_sweep_line_invalid"], Strings(item["reasons"]));
+        }
+    }
+
+    [Theory]
     [InlineData("below")]
     [InlineData("above")]
     public async Task Given_NonfinalStartDisagreesWithAuthenticatedStartNote_When_FinalSweepRuns_Then_RejectedObjectContributesNothing_P1_4567914700(string side)

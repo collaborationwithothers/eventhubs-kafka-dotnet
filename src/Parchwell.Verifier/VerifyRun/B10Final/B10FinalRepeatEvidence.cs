@@ -81,9 +81,18 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
             string resultName = PhasePaths.Result(options.RunId!, "C0", input.Number);
             byte[]? resultBytes = await readVerifier(resultName, ct).ConfigureAwait(false);
             if (resultBytes is not null) input.Source = B10FinalSweepHandler.Reference("verifier", resultName, resultBytes);
-            byte[] receiptBytes = await readVerifier(PhasePaths.VerifyCompletion(options.RunId!, "C0", input.Number), ct).ConfigureAwait(false) ?? throw new FormatException("receipt_missing");
-            WorkerReceipt receipt = PhaseWireCodec.ReadReceipt(receiptBytes);
-            input.Completions.Add(AbruptReconciliation.Utc(receipt.CompletedUtc));
+            // Plan F2 and Hari's decision 6871584065: a receipt that exists but cannot be read or parsed fails F2 for the phase.
+            byte[]? receiptBytes;
+            try { receiptBytes = await readVerifier(PhasePaths.VerifyCompletion(options.RunId!, "C0", input.Number), ct).ConfigureAwait(false); }
+            catch (Exception exception) when (B10FinalSweepHandler.EvidenceFailure(exception, ct)) { input.ReceiptUnreadable = true; throw; }
+            if (receiptBytes is null) throw new FormatException("receipt_missing");
+            WorkerReceipt receipt;
+            try
+            {
+                receipt = PhaseWireCodec.ReadReceipt(receiptBytes);
+                input.Completions.Add(AbruptReconciliation.Utc(receipt.CompletedUtc));
+            }
+            catch (Exception exception) when (B10FinalSweepHandler.EvidenceFailure(exception, ct)) { input.ReceiptUnreadable = true; throw; }
             Require(resultBytes is not null, "result_missing");
             BlobListing listing = await listProducer(PhasePaths.ProducersPrefix(options.RunId!, "C0", input.Number), ct).ConfigureAwait(false);
             var discovered = new List<(ProducerRegistration Registration, string PathInstance)>();
@@ -163,16 +172,24 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
             readFailed = true; input.RestartInputInvalid = true; input.ReceiptUnreadable = true;
         }
         if (dataBytes is not null) input.Source = B10FinalSweepHandler.Reference("verifier", name, dataBytes);
+        WorkerReceipt? receipt = null;
+        if (receiptBytes is not null)
+        {
+            // A receipt that exists but cannot be parsed fails plan F2 for the phase, like one that cannot be read.
+            try
+            {
+                receipt = PhaseWireCodec.ReadReceipt(receiptBytes);
+                input.Completions.Add(AbruptReconciliation.Utc(receipt.CompletedUtc));
+            }
+            catch (Exception exception) when (B10FinalSweepHandler.EvidenceFailure(exception, ct))
+            { receipt = null; readFailed = true; input.RestartInputInvalid = true; input.ReceiptUnreadable = true; }
+        }
         try
         {
-            if (receiptBytes is not null)
-            {
-                WorkerReceipt receipt = PhaseWireCodec.ReadReceipt(receiptBytes);
-                input.Completions.Add(AbruptReconciliation.Utc(receipt.CompletedUtc));
+            if (receipt is not null)
                 Require(BindsReceipt(receipt, "b10-abrupt-verify", input.Number, $"{options.RunId}-c1-r{input.Number}-b10-abrupt-verify", 0) &&
                     receipt.Identity is null && receipt.Artifacts.Count == 1 && receipt.Artifacts[0] == input.Source, "nonfinal_receipt");
-            }
-            Require(dataBytes is not null && receiptBytes is not null, "nonfinal_absent");
+            Require(dataBytes is not null && receipt is not null, "nonfinal_absent");
             JsonElement envelope = Parse(dataBytes!);
             Exact(envelope, "schema_version", "dialect", "purpose", "synthetic", "scientific_admissible", "kind", "identity", "data");
             Require(envelope.GetProperty("schema_version").GetInt32() == 3 && Text(envelope, "dialect") == "b10_abrupt" &&
