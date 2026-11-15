@@ -22,6 +22,8 @@ class ArchiveSmokeWorkflowTests(unittest.TestCase):
         self.assertEqual(WORKFLOW.read_bytes(), (ROOT / 'docs/operations/workflows/archive-smoke.yml.txt').read_bytes())
         self.assertEqual({'group': 'parchwell-ephemeral', 'queue': 'max', 'cancel-in-progress': 'false'}, self.document['concurrency'])
         self.assertEqual('true', self.smoke['env']['TF_VAR_archive_smoke_enabled'])
+        self.assertEqual('true', self.smoke['env']['PARCHWELL_AZ_SESSION_DIAGNOSTICS'])
+        self.assertNotIn('PARCHWELL_AZ_SESSION_DIAGNOSTICS', self.stop['env'])
         self.assertEqual(('A01', 'probe'), (self.smoke['env']['PARCHWELL_SCENARIO'], self.smoke['env']['PARCHWELL_PHASE']))
 
     def test_guard_prepare_preflight_apply_and_probe_order(self):
