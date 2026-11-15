@@ -514,6 +514,7 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
                 with self.subTest(entry=entry, failing=failing), tempfile.TemporaryDirectory() as temp:
                     directory = Path(temp)
                     (directory / 'nslookup').write_text('''#!/bin/sh
+printf "dns %s\n" "$*" >> "$CALLS"
 service=eventhubs; ip=10.0.0.1
 [ "$1" = blob.example ] && service=blob && ip=10.0.0.2
 printf "Name: %s\nAddress: %s\n" "$1" "$ip"
@@ -522,7 +523,7 @@ printf "Name: %s\nAddress: %s\n" "$1" "$ip"
 exit 0
 ''')
                     (directory / 'nc').write_text('''#!/bin/sh
-printf "%s\n" "$*" >> "$CALLS"
+printf "tcp %s\n" "$*" >> "$CALLS"
 service=eventhubs
 [ "$4" = 10.0.0.2 ] && service=blob
 [ "$FAIL" != "$service tcp" ]
@@ -537,7 +538,7 @@ service=eventhubs
                     self.assertEqual([row + ' passed' for row in order[:index]] + [operation + ' failed'],
                                      result.stdout.decode().splitlines())
                     self.assertNotIn(b'10.0.0.', result.stdout)
-                    expected_calls = ['-z -w 15 10.0.0.1 9093', '-z -w 15 10.0.0.2 443'][:max(0, index - 1)]
+                    expected_calls = ['dns eh.example', 'dns blob.example', 'tcp -z -w 15 10.0.0.1 9093', 'tcp -z -w 15 10.0.0.2 443'][:index + 1]
                     actual_calls = (directory / 'calls').read_text().splitlines() if (directory / 'calls').exists() else []
                     self.assertEqual(expected_calls, actual_calls)
 
