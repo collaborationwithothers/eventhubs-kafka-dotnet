@@ -1,0 +1,209 @@
+"""Offline contracts for the configuration isolation diagnostic workflow."""
+from pathlib import Path
+import ast
+import contextlib
+import io
+import json
+import os
+import re
+import time
+import tempfile
+from types import SimpleNamespace
+import unittest
+from unittest import mock
+
+import yaml
+
+REPO = Path(__file__).resolve().parents[4]
+WORKFLOW = REPO / '.github/workflows/configuration-isolation-smoke.yml'
+MIRROR = REPO / 'docs/operations/workflows/configuration-isolation-smoke.yml.txt'
+
+
+class ConfigurationIsolationWorkflowTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.text = WORKFLOW.read_text()
+        cls.workflow = yaml.safe_load(cls.text)
+        cls.job = cls.workflow['jobs']['smoke']
+        cls.steps = cls.job['steps']
+        cls.by_id = {step['id']: step for step in cls.steps if 'id' in step}
+
+    def test_mirror_trigger_concurrency_and_protected_job(self):
+        self.assertEqual(WORKFLOW.read_bytes(), MIRROR.read_bytes())
+        self.assertEqual({'workflow_dispatch': None}, self.workflow[True])
+        self.assertEqual({'group': 'parchwell-ephemeral', 'queue': 'max', 'cancel-in-progress': False}, self.workflow['concurrency'])
+        self.assertEqual(['smoke'], list(self.workflow['jobs']))
+        self.assertEqual('parchwell-scenarios', self.job['environment'])
+        self.assertLess(next(i for i, s in enumerate(self.steps) if s.get('id') == 'guard'),
+                        next(i for i, s in enumerate(self.steps) if s.get('id') == 'login'))
+        self.assertIn('refs/heads/main', self.by_id['guard']['run'])
+        self.assertEqual('B04', self.job['env']['PARCHWELL_SCENARIO'])
+
+    def test_sequence_retains_sentinel_and_has_no_judge_or_candidate(self):
+        ids = [s.get('id') for s in self.steps]
+        required = ['ephemeral_apply', 'dns', 'c0', 'c0_settings', 'c0_cleanup', 'off_transition', 'on_transition', 'c1_settings', 'c1', 'delete_workload', 'destroy', 'stop']
+        self.assertEqual(sorted(ids.index(x) for x in required), [ids.index(x) for x in required])
+        self.assertIn('deactivate-namespace', self.by_id['off_transition']['run'])
+        self.assertIn('activate-namespace', self.by_id['on_transition']['run'])
+        self.assertIn("'/C0/r1/start-line.json'", self.by_id['c0']['run'])
+        self.assertIn("'/C0/r1/start-line.json'", self.by_id['c1_settings']['run'])
+        self.assertIn("sentinel == (p / 'sentinel-before').read_bytes()", self.by_id['c1_settings']['run'])
+        self.assertNotIn('phase.sh judge', self.text)
+        self.assertNotIn('phase.sh candidate', self.text)
+        for entry in ('c0', 'c1'):
+            self.assertIn("one('start-line')", self.by_id[entry]['run'])
+            self.assertIn("one('loadgen')", self.by_id[entry]['run'])
+            self.assertIn("one('verify')", self.by_id[entry]['run'])
+            self.assertIn('pod_connections()', self.by_id[entry]['run'])
+            self.assertIn('confirm_loadgen_delivery()', self.by_id[entry]['run'])
+            self.assertIn("if row['delivered'] is True:", self.by_id[entry]['run'])
+
+    def test_worker_delivery_fixture_requires_positive_matched_ledger(self):
+        for entry, phase_name in (('c0', 'C0'), ('c1', 'C1')):
+            code = self.by_id[entry]['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
+            node = next(x for x in ast.parse(code).body if isinstance(x, ast.FunctionDef) and x.name == 'confirm_loadgen_delivery')
+            compiled = compile(ast.Module(body=[node], type_ignores=[]), 'delivery fixture', 'exec')
+            selected = {'scenario': 'B04', 'configuration': phase_name, 'phase': phase_name, 'run_id': 'b04-1-1'}
+            identity = {'scenario_id': 'B04', 'configuration_id': phase_name, 'run_id': 'b04-1-1', 'instance_id': 'worker-pod'}
+            def exercise(row):
+                phase = mock.Mock(private=Path('/private'))
+                phase.read.return_value = selected
+                phase.mode_job.return_value = 'job'
+                phase.download_blob.return_value = (json.dumps(row) + '\n').encode()
+                invoke = mock.Mock(return_value=SimpleNamespace(stdout=json.dumps({'items': [{'metadata': {'name': 'worker-pod'}}]}).encode()))
+                namespace = {'phase': phase, 'json': json, 're': re, 'io': io, 'time': time, 'subprocess': SimpleNamespace(run=invoke)}
+                exec(compiled, namespace)
+                namespace['confirm_loadgen_delivery']()
+                self.assertEqual('b04-1-1/' + phase_name + '/r1/producer/worker-pod/publication/ledger.jsonl', phase.download_blob.call_args.args[0])
+                self.assertEqual('ledger', phase.download_blob.call_args.kwargs['container'])
+            with self.subTest(phase=phase_name):
+                exercise({'identity': identity, 'delivered': True})
+                with self.assertRaises(AssertionError): exercise({'identity': identity, 'delivered': False})
+                with self.assertRaises(AssertionError): exercise({'identity': {**identity, 'run_id': 'wrong'}, 'delivered': True})
+
+    def test_arm_settings_fixture_checks_exact_targets_workspace_and_categories(self):
+        run = self.by_id['c0_settings']['run']
+        code = run.split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
+        lifecycle = {'storage_account_resource_id': '/synthetic/storage',
+                     'blob_diagnostic_target_resource_id': '/synthetic/storage/blobServices/default',
+                     'namespace_resource_id': '/synthetic/namespace',
+                     'workspace_resource_id': '/synthetic/workspace'}
+        def setting(logs, metrics, workspace='/synthetic/workspace'):
+            return {'workspaceId': workspace, 'logAnalyticsDestinationType': 'Dedicated',
+                    'logs': [{'category': x, 'enabled': True} for x in logs],
+                    'metrics': [{'category': x, 'enabled': True} for x in metrics]}
+        blob = setting(['StorageRead', 'StorageWrite', 'StorageDelete'], ['Transaction'])
+        eh = setting(['allLogs'], ['AllMetrics'])
+        def exercise(blob_setting):
+            calls = []
+            def invoke(args, **kwargs):
+                calls.append(args)
+                if 'account' in args:
+                    result = {'creationTime': '2026-01-01T00:00:00Z'}
+                elif '/synthetic/storage/blobServices/default' in args:
+                    result = {'value': [blob_setting]}
+                else:
+                    self.assertIn('/synthetic/namespace', args)
+                    result = {'value': [eh]}
+                return SimpleNamespace(stdout=json.dumps(result).encode())
+            with tempfile.TemporaryDirectory() as temp:
+                Path(temp, 'ephemeral-output.json').write_text(json.dumps({'configuration_lifecycle': {'value': lifecycle}}))
+                with mock.patch.dict(os.environ, {'PARCHWELL_PRIVATE_DIRECTORY': temp}), mock.patch('subprocess.run', side_effect=invoke):
+                    exec(compile(code, 'fixture', 'exec'), {})
+                self.assertEqual(3, len(calls))
+        exercise(blob)
+        for bad in (setting(['StorageRead', 'StorageWrite'], ['Transaction']),
+                    setting(['StorageRead', 'StorageWrite', 'StorageDelete'], ['Transaction'], '/wrong')):
+            with self.subTest(bad=bad), self.assertRaises(AssertionError):
+                exercise(bad)
+
+    def test_c1_fixture_rejects_shared_identity_or_sentinel_change(self):
+        run = self.by_id['c1_settings']['run']
+        code = run.split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
+        shared = {'storage_account_resource_id': '/synthetic/storage',
+                  'blob_private_endpoint_resource_id': '/synthetic/blob-pe',
+                  'container_resource_ids': {'ledger': '/l', 'verifier': '/v', 'claim_check': '/c', 'single_action': '/s'},
+                  'workspace_resource_id': '/synthetic/workspace',
+                  'blob_diagnostic_target_resource_id': '/synthetic/storage/blobServices/default'}
+        before = {**shared, 'eventhubs_enabled': True, 'namespace_resource_id': '/synthetic/old',
+                  'eventhubs_private_endpoint_resource_id': '/synthetic/old-pe', 'storage_creation_time': 'creation'}
+        after = {**shared, 'eventhubs_enabled': True, 'namespace_resource_id': '/synthetic/new',
+                 'eventhubs_private_endpoint_resource_id': '/synthetic/new-pe'}
+        def setting(logs, metrics):
+            return {'workspaceId': '/synthetic/workspace', 'logAnalyticsDestinationType': 'Dedicated',
+                    'logs': [{'category': x, 'enabled': True} for x in logs],
+                    'metrics': [{'category': x, 'enabled': True} for x in metrics]}
+        blob = setting(['StorageRead', 'StorageWrite', 'StorageDelete'], ['Transaction'])
+        eh = setting(['allLogs'], ['AllMetrics'])
+        def exercise(next_state, sentinel):
+            import hashlib
+            with tempfile.TemporaryDirectory() as temp:
+                private = Path(temp)
+                (private / 'smoke-shared-before.json').write_text(json.dumps(before))
+                (private / 'sentinel-before').write_bytes(b'sentinel')
+                (private / 'sentinel-sha256').write_text(hashlib.sha256(b'sentinel').hexdigest())
+                output = {'configuration_lifecycle': {'value': next_state},
+                          'eventhubs': {'value': {'bootstrap_servers': 'eh.example:9093'}},
+                          'private_endpoint_ips': {'value': {'eventhubs': '10.0.0.1', 'blob': '10.0.0.2'}}}
+                phase = mock.Mock(private=private)
+                phase.read.side_effect = lambda name: output if name == 'ephemeral-output.json' else {'phase': 'C0', 'configuration': 'C0'}
+                phase.download_blob.return_value = sentinel
+                phase.blob_host.return_value = 'blob.example'
+                module = SimpleNamespace(Phase=lambda: phase, unwrap=lambda x: x['value'], write_json=mock.Mock())
+                spec = SimpleNamespace(loader=SimpleNamespace(exec_module=lambda _: None))
+                def invoke(args, **kwargs):
+                    result = {'creationTime': 'creation'} if 'account' in args else {'value': [blob if '/synthetic/storage/blobServices/default' in args else eh]}
+                    return SimpleNamespace(stdout=json.dumps(result).encode())
+                def connect(address, timeout):
+                    connection = mock.MagicMock()
+                    connection.__enter__.return_value.getpeername.return_value = ('10.0.0.1' if address[1] == 9093 else '10.0.0.2', address[1])
+                    return connection
+                with (mock.patch.dict(os.environ, {'PARCHWELL_PRIVATE_DIRECTORY': temp, 'PARCHWELL_RUN_ID': 'b04-1-1'}),
+                      mock.patch('importlib.util.spec_from_file_location', return_value=spec),
+                      mock.patch('importlib.util.module_from_spec', return_value=module),
+                      mock.patch('subprocess.run', side_effect=invoke), mock.patch('socket.create_connection', side_effect=connect)):
+                    exec(compile(code, 'C1 fixture', 'exec'), {})
+                module.write_json.assert_called_once()
+        exercise(after, b'sentinel')
+        for state, sentinel in (({**after, 'storage_account_resource_id': '/different'}, b'sentinel'), (after, b'changed')):
+            with self.subTest(state=state, sentinel=sentinel), self.assertRaises(AssertionError):
+                exercise(state, sentinel)
+
+    def test_cleanup_failure_matrix_and_report_never_pass_incomplete_run(self):
+        destroy_guard = self.by_id['destroy']['if']
+        stop_guard = self.by_id['stop']['if']
+        self.assertEqual("always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'", destroy_guard)
+        self.assertEqual("always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success' && (steps.start.outputs.attempted == 'true' || steps.cluster_apply.outputs.attempted == 'true')", stop_guard)
+        report = next(step for step in self.steps if step['name'] == 'Report diagnostic and cleanup outcomes')
+        code = report['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
+        required = 'guard checkout select tools prepare azure_session images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace c0 c0_settings c0_cleanup off_transition on_transition c1_settings c1 delete_workload destroy stop receipt upload'.split()
+        for failed in ('cluster_init', 'start', 'cluster_plan', 'cluster_apply', 'ephemeral_init', 'ephemeral_plan', 'ephemeral_apply', 'c0', 'c0_settings', 'c0_cleanup', 'off_transition', 'on_transition', 'c1_settings', 'c1', 'delete_workload', 'destroy', 'stop', 'receipt', 'upload', 'cancelled'):
+            with self.subTest(failed=failed), tempfile.TemporaryDirectory() as temp:
+                steps = {name: {'outcome': 'success'} for name in required}
+                if failed != 'cancelled': steps[failed]['outcome'] = 'failure'
+                environment = {'STEP_RESULTS': json.dumps(steps), 'JOB_STATUS': 'cancelled' if failed == 'cancelled' else 'success',
+                               'GITHUB_STEP_SUMMARY': str(Path(temp) / 'summary')}
+                with mock.patch.dict(os.environ, environment), contextlib.redirect_stdout(io.StringIO()), self.assertRaises(SystemExit) as result:
+                    exec(compile(code, 'report fixture', 'exec'), {})
+                self.assertEqual(1, result.exception.code)
+                self.assertIn('failed', Path(temp, 'summary').read_text())
+        # Both cleanup conditions require successful private setup and authenticated session.
+        for guard in (destroy_guard, stop_guard):
+            self.assertIn("steps.prepare.outcome == 'success'", guard)
+            self.assertIn("steps.azure_session.outcome == 'success'", guard)
+        # Stop does not depend on destroy success, preserving independent cleanup.
+        self.assertNotIn('steps.destroy', stop_guard)
+
+    def test_cleanup_is_independent_and_inline_python_compiles(self):
+        for entry in ('delete_workload', 'destroy', 'stop'):
+            self.assertIn('always()', self.by_id[entry]['if'])
+        for step in self.steps:
+            run = step.get('run', '')
+            marker = "python3 - <<'PYTHON'\n"
+            if marker in run:
+                code = run.split(marker, 1)[1].split('\nPYTHON', 1)[0]
+                compile(code, step['name'], 'exec')
+
+
+if __name__ == '__main__':
+    unittest.main()

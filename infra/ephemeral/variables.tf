@@ -74,3 +74,19 @@ variable "probe_namespace_data_roles" {
   default     = false
   description = "Enable the explicitly approved test-only probe V2 namespace Sender and Receiver exception."
 }
+
+variable "eventhubs_enabled" {
+  type        = bool
+  default     = true
+  description = "Enable the Event Hubs namespace for the namespace lifecycle."
+}
+
+variable "eventhub_private_endpoint_name" {
+  type        = string
+  default     = null
+  description = "Optional phase-specific Event Hubs private endpoint name."
+  validation {
+    condition     = var.eventhub_private_endpoint_name == null ? true : var.eventhub_private_endpoint_name == "pe-${var.eventhub_namespace_name}"
+    error_message = "eventhub_private_endpoint_name: invalid value."
+  }
+}

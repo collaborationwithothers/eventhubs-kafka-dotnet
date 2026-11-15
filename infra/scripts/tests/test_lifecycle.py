@@ -110,6 +110,43 @@ class LifecycleTests(unittest.TestCase):
             return original(instance, args, *rest, **kwargs)
         self.module.Lifecycle.run = recording
 
+    def test_transition_private_capture_hides_command_and_child_output(self):
+        secret = "/subscriptions/synthetic-secret/resourceGroups/private"
+        source = (SOURCE / "lifecycle.sh").read_text().split("<<'PYTHON'\n", 1)[1].rsplit("\nPYTHON", 1)[0]
+        code = "namespace = {}\nexec(compile(" + repr(source) + ", 'lifecycle', 'exec'), namespace)\n" + (
+            "instance = namespace['Lifecycle']()\n"
+            "status, error = instance.run(['az', 'resource', 'show', '--ids', " + repr(secret) + "], 5, errors=True, private_capture=True)\n"
+            "assert status == 1 and b'ResourceNotFound' in error\n"
+        )
+        self.script(response("az", "--ids", stdout=secret, stderr="ERROR: (ResourceNotFound) " + secret, code=1))
+        result = subprocess.run([sys.executable, "-c", code], env=self.environment, capture_output=True, text=True)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertNotIn(secret, result.stdout)
+        self.assertNotIn(secret, result.stderr)
+        self.assertIn(secret, (self.private / "namespace-transition-command-output.txt").read_text())
+        self.assertIn(secret, (self.private / "namespace-transition-command-errors.txt").read_text())
+        self.assertEqual(0o600, (self.private / "namespace-transition-command-errors.txt").stat().st_mode & 0o777)
+
+    def test_transition_private_capture_discards_clipped_error_classification(self):
+        source = (SOURCE / "lifecycle.sh").read_text().split("<<'PYTHON'\n", 1)[1].rsplit("\nPYTHON", 1)[0]
+        code = "namespace = {}\nexec(compile(" + repr(source) + ", 'lifecycle', 'exec'), namespace)\n" + (
+            "instance = namespace['Lifecycle']()\n"
+            "status, error = instance.run(['terraform', 'plan'], 5, errors=True, private_capture=True)\n"
+            "assert status == 1 and error == b''\n"
+        )
+        self.script(response("terraform", "plan", stdout="private-plan", stderr="x" * 70000, code=1))
+        result = subprocess.run([sys.executable, "-c", code], env=self.environment, capture_output=True, text=True)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stdout)
+        self.assertEqual("", result.stderr)
+        self.assertEqual(65536, (self.private / "namespace-transition-command-errors.txt").stat().st_size)
+
+    def test_namespace_transition_argument_counts_rejected(self):
+        for arguments in (("deactivate-namespace", "extra"), ("activate-namespace",), ("activate-namespace", "one", "two")):
+            with self.subTest(arguments=arguments):
+                self.assertEqual(2, self.run_lifecycle(*arguments))
+                self.assertEqual([], self.calls())
+
     def script(self, *commands):
         self.queue.write_text(json.dumps(commands))
 

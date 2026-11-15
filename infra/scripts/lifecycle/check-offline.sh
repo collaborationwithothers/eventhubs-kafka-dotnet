@@ -51,7 +51,7 @@ def load_yaml(text):
 
 def check_queue(document, filename):
     expected = {'group': 'parchwell-ephemeral', 'queue': 'max', 'cancel-in-progress': 'false'}
-    required = filename in ('cluster-smoke.yml', 'sweeper.yml', 'b10-abrupt-trial.yml')
+    required = filename in ('cluster-smoke.yml', 'sweeper.yml', 'b10-abrupt-trial.yml', 'configuration-isolation-smoke.yml')
     allowed = required or filename == 'scenario.yml' and isinstance(document.get('concurrency'), dict) and 'queue' in document['concurrency']
     if allowed and document.get('concurrency') != expected:
         raise ValueError(f'{filename}: concurrency must be exactly {expected}')
@@ -76,6 +76,7 @@ def check_workflows(repository):
                                          'type': 'boolean', 'required': 'true', 'default': 'false'}}}},
         'b10-offline-image.yml': {'workflow_dispatch': ''},
         'cluster-smoke.yml': {'workflow_dispatch': ''},
+        'configuration-isolation-smoke.yml': {'workflow_dispatch': ''},
         'scenario.yml': {'workflow_dispatch': {'inputs': {
             'scenario': {'description': 'Scenario definition to run', 'type': 'choice', 'required': 'true', 'default': 'A01', 'options': ['A01', 'B04', 'B10', 'probe-batch', 'probe-batch-2', 'idle-observation', 'ledger-batch']},
             'run_kind': {'description': 'Probe batch run kind', 'type': 'choice', 'required': 'true', 'default': 'smoke', 'options': ['smoke', 'batch']},
