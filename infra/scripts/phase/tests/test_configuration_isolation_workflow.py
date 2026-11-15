@@ -8,6 +8,8 @@ import os
 import re
 import time
 import tempfile
+import subprocess
+import threading
 from types import SimpleNamespace
 import unittest
 from unittest import mock
@@ -41,8 +43,9 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
 
     def test_sequence_retains_sentinel_and_has_no_judge_or_candidate(self):
         ids = [s.get('id') for s in self.steps]
-        required = ['ephemeral_apply', 'dns', 'c0', 'c0_settings', 'c0_cleanup', 'off_transition', 'on_transition', 'c1_settings', 'c1', 'delete_workload', 'destroy', 'stop']
+        required = ['ephemeral_init', 'initial_cleanup', 'ephemeral_plan', 'ephemeral_apply', 'dns', 'c0', 'c0_settings', 'c0_cleanup', 'off_transition', 'on_transition', 'c1_settings', 'c1', 'delete_workload', 'destroy', 'stop']
         self.assertEqual(sorted(ids.index(x) for x in required), [ids.index(x) for x in required])
+        self.assertEqual('bash infra/scripts/lifecycle/lifecycle.sh destroy-ephemeral', self.by_id['initial_cleanup']['run'])
         self.assertIn('deactivate-namespace', self.by_id['off_transition']['run'])
         self.assertIn('activate-namespace', self.by_id['on_transition']['run'])
         self.assertIn("'/C0/r1/start-line.json'", self.by_id['c0']['run'])
@@ -52,11 +55,63 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
         self.assertNotIn('phase.sh candidate', self.text)
         for entry in ('c0', 'c1'):
             self.assertIn("one('start-line')", self.by_id[entry]['run'])
-            self.assertIn("one('loadgen')", self.by_id[entry]['run'])
+            self.assertIn("pool.submit(one, 'loadgen')", self.by_id[entry]['run'])
             self.assertIn("one('verify')", self.by_id[entry]['run'])
             self.assertIn('pod_connections()', self.by_id[entry]['run'])
             self.assertIn('confirm_loadgen_delivery()', self.by_id[entry]['run'])
             self.assertIn("if row['delivered'] is True:", self.by_id[entry]['run'])
+
+    def test_pod_dns_requires_exact_answers_and_connects_to_private_ips(self):
+        for entry in ('c0', 'c1'):
+            code = self.by_id[entry]['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
+            fn = next(x for x in ast.parse(code).body if isinstance(x, ast.FunctionDef) and x.name == 'pod_connections')
+            nodes = [x for x in fn.body if isinstance(x, ast.Assign) and any(isinstance(t, ast.Name) and t.id in ('resolve', 'command') for t in x.targets)]
+            namespace = {'eh': 'eh.example', 'blob': 'blob.example', 'ips': {'eventhubs': '10.0.0.1', 'blob': '10.0.0.2'}}
+            exec(compile(ast.Module(body=nodes, type_ignores=[]), 'probe fixture', 'exec'), namespace)
+            with tempfile.TemporaryDirectory() as temp:
+                tempdir = Path(temp)
+                calls = tempdir / 'calls'
+                (tempdir / 'nslookup').write_text('#!/bin/sh\nprintf "Server: resolver\\nAddress: 10.0.0.53\\nName: %s\\nAddress: %s\\n" "$1" "$([ "$1" = eh.example ] && printf "${EH_ANSWER}" || printf "10.0.0.2")"\n')
+                (tempdir / 'nc').write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$CALLS"\n')
+                for name in ('nslookup', 'nc'): (tempdir / name).chmod(0o755)
+                env = {**os.environ, 'PATH': temp + ':' + os.environ['PATH'], 'CALLS': str(calls), 'EH_ANSWER': '10.0.0.1'}
+                result = subprocess.run(['sh', '-c', namespace['command']], env=env, capture_output=True)
+                self.assertEqual(0, result.returncode)
+                self.assertEqual(b'parchwell-cluster-smoke-ok\n', result.stdout)
+                self.assertEqual(['-z -w 15 10.0.0.1 9093', '-z -w 15 10.0.0.2 443'], calls.read_text().splitlines())
+                calls.unlink()
+                env['EH_ANSWER'] = '10.0.0.10'
+                self.assertNotEqual(0, subprocess.run(['sh', '-c', namespace['command']], env=env, capture_output=True).returncode)
+                self.assertFalse(calls.exists())
+
+    def test_workload_active_probe_checks_job_before_and_after(self):
+        for entry, phase_name in (('c0', 'C0'), ('c1', 'C1')):
+            code = self.by_id[entry]['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
+            node = next(x for x in ast.parse(code).body if isinstance(x, ast.FunctionDef) and x.name == 'probe_while_loadgen_active')
+            compiled = compile(ast.Module(body=[node], type_ignores=[]), 'active probe fixture', 'exec')
+            with tempfile.TemporaryDirectory() as temp:
+                release = threading.Event()
+                phase = mock.Mock()
+                phase.read.return_value = {'phase': phase_name}
+                phase.mode_job.return_value = 'job'
+                def one(mode):
+                    self.assertEqual('loadgen', mode)
+                    self.assertTrue(release.wait(3))
+                def probe(): release.set()
+                invoke = mock.Mock(return_value=SimpleNamespace(returncode=0, stdout=b'{"status":{"active":1}}'))
+                namespace = {'phase': phase, 'subprocess': SimpleNamespace(run=invoke), 'json': json, 'time': time,
+                             'pathlib': __import__('pathlib'), 'os': os, 'one': one, 'pod_connections': probe}
+                with mock.patch.dict(os.environ, {'RUNNER_TEMP': temp}):
+                    exec(compiled, namespace)
+                    namespace['probe_while_loadgen_active']()
+                self.assertGreaterEqual(invoke.call_count, 3)
+                self.assertEqual(2, len(Path(temp, 'configuration-' + phase_name.lower() + '-active-window').read_text().split()))
+                release.clear()
+                invoke.side_effect = [SimpleNamespace(returncode=0, stdout=b'{"status":{"active":1}}'),
+                                      SimpleNamespace(returncode=0, stdout=b'{"status":{"active":1}}'),
+                                      SimpleNamespace(returncode=0, stdout=b'{"status":{"active":0}}')]
+                with mock.patch.dict(os.environ, {'RUNNER_TEMP': temp}), self.assertRaisesRegex(RuntimeError, 'ended during'):
+                    namespace['probe_while_loadgen_active']()
 
     def test_worker_delivery_fixture_requires_positive_matched_ledger(self):
         for entry, phase_name in (('c0', 'C0'), ('c1', 'C1')):
@@ -176,8 +231,8 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
         self.assertEqual("always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success' && (steps.start.outputs.attempted == 'true' || steps.cluster_apply.outputs.attempted == 'true')", stop_guard)
         report = next(step for step in self.steps if step['name'] == 'Report diagnostic and cleanup outcomes')
         code = report['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
-        required = 'guard checkout select tools prepare azure_session images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace c0 c0_settings c0_cleanup off_transition on_transition c1_settings c1 delete_workload destroy stop receipt upload'.split()
-        for failed in ('cluster_init', 'start', 'cluster_plan', 'cluster_apply', 'ephemeral_init', 'ephemeral_plan', 'ephemeral_apply', 'c0', 'c0_settings', 'c0_cleanup', 'off_transition', 'on_transition', 'c1_settings', 'c1', 'delete_workload', 'destroy', 'stop', 'receipt', 'upload', 'cancelled'):
+        required = 'guard checkout select tools prepare azure_session images cluster_init start cluster_plan cluster_apply ephemeral_init initial_cleanup ephemeral_plan ephemeral_apply dns credentials namespace c0 c0_settings c0_cleanup off_transition on_transition c1_settings c1 delete_workload destroy stop receipt upload'.split()
+        for failed in ('cluster_init', 'start', 'cluster_plan', 'cluster_apply', 'ephemeral_init', 'initial_cleanup', 'ephemeral_plan', 'ephemeral_apply', 'c0', 'c0_settings', 'c0_cleanup', 'off_transition', 'on_transition', 'c1_settings', 'c1', 'delete_workload', 'destroy', 'stop', 'receipt', 'upload', 'cancelled'):
             with self.subTest(failed=failed), tempfile.TemporaryDirectory() as temp:
                 steps = {name: {'outcome': 'success'} for name in required}
                 if failed != 'cancelled': steps[failed]['outcome'] = 'failure'

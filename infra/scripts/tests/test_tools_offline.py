@@ -144,6 +144,7 @@ class ToolsOfflineTests(unittest.TestCase):
         expected = {'group': 'parchwell-ephemeral', 'queue': 'max', 'cancel-in-progress': 'false'}
         self.assertTrue(CHECKER['check_queue']({'concurrency': expected}, filename))
         for concurrency in ({}, {key: value for key, value in expected.items() if key != 'queue'},
+                            {key: value for key, value in expected.items() if key != 'cancel-in-progress'},
                             {**expected, 'queue': 'wrong'}, {**expected, 'cancel-in-progress': 'true'}):
             with self.subTest(concurrency=concurrency), self.assertRaisesRegex(ValueError, 'concurrency must be exactly'):
                 CHECKER['check_queue']({'concurrency': concurrency}, filename)

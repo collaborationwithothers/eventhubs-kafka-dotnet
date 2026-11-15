@@ -74,6 +74,50 @@ class ConfigurationIsolationTests(unittest.TestCase):
                 module.validate_plan(invalid)
         module.validate_plan(valid_plan([change('module.eventhubs[0].azurerm_eventhub_namespace.this[0]', ["delete"]), change('data.azurerm_private_endpoint_connection.blob', ["read"], "data")]))
 
+    def test_transition_rejects_every_shared_mutation_before_apply(self):
+        addresses = (
+            'module.storage.azapi_resource.this',
+            'module.storage.module.containers["ledger"].azapi_resource.this',
+            'module.storage.module.private_endpoints["blob"].azapi_resource.this',
+            'module.storage.module.private_endpoints["blob"].azapi_resource.private_dns_zone_group[0]',
+            'azurerm_role_assignment.workload["loadgen_ledger_contributor"]',
+            'azurerm_unexpected.resource',
+        )
+        actions_set = (["create"], ["update"], ["delete"], ["delete", "create"], ["create", "delete"])
+        for name in (None, "eh-new"):
+            for address in addresses:
+                for actions in actions_set:
+                    with self.subTest(name=name, address=address, actions=actions), tempfile.TemporaryDirectory() as directory:
+                        path = Path(directory)
+                        old, off = output(True), output(False)
+                        (path / "ephemeral-output.json").write_text(json.dumps(off if name else old))
+                        old_ids = [old["configuration_lifecycle"]["value"][key] for key in ("namespace_resource_id", "eventhubs_private_endpoint_resource_id")]
+                        if name:
+                            (path / "namespace-transition.json").write_text(json.dumps({"initial": old, "old_ids": old_ids}))
+                        plan = valid_plan([])
+                        if address == 'azurerm_unexpected.resource':
+                            plan["resource_changes"].append(change(address, actions))
+                        else:
+                            next(item for item in plan["resource_changes"] if item["address"] == address)["change"]["actions"] = actions
+                        absence = {"status": 1, "stderr": b"ERROR: (ResourceNotFound) absent"}
+                        prefix = [{"stdout": "azurerm_resource_group.ephemeral\nmodule.storage.azapi_resource.this\n"}, absence, absence] if name else []
+                        lifecycle = SyntheticLifecycle(path, prefix + [{}, {"stdout": json.dumps(plan)}])
+                        with patch.dict('os.environ', {"PARCHWELL_RUN_ID": "run-id"}), self.assertRaises(module.TransitionError) as caught:
+                            module.transition(lifecycle, name)
+                        self.assertEqual((2, "namespace_transition_plan_rejected"), (caught.exception.code, str(caught.exception)))
+                        self.assertFalse(any("apply" in call for call in lifecycle.calls), lifecycle.calls)
+
+    def test_transition_missing_plan_fields_never_apply(self):
+        for plan in ({}, {"resource_changes": []}, {"resource_changes": [{"address": "x"}]}, {"resource_changes": [{"address": "x", "mode": "managed", "change": {}}]}):
+            with self.subTest(plan=plan), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory)
+                (path / "ephemeral-output.json").write_text(json.dumps(output(True)))
+                lifecycle = SyntheticLifecycle(path, [{}, {"stdout": json.dumps(plan)}])
+                with patch.dict('os.environ', {"PARCHWELL_RUN_ID": "run-id"}), self.assertRaises(module.TransitionError) as caught:
+                    module.transition(lifecycle)
+                self.assertEqual((2, "namespace_transition_plan_rejected"), (caught.exception.code, str(caught.exception)))
+                self.assertFalse(any("apply" in call for call in lifecycle.calls))
+
     def test_transition_rejects_probe_namespace_roles(self):
         for name in (None, "eh-new"):
             with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
@@ -95,6 +139,18 @@ class ConfigurationIsolationTests(unittest.TestCase):
                     module.transition(lifecycle)
                 self.assertEqual((1, "namespace_removal_unconfirmed"), (caught.exception.code, str(caught.exception)))
                 self.assertFalse((path / "namespace-transition.json").exists())
+
+    def test_malformed_arm_readback_does_not_prove_absence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            (path / "ephemeral-output.json").write_text(json.dumps(output(True)))
+            plan = json.dumps(valid_plan([change('module.eventhubs[0].azurerm_eventhub_namespace.this[0]', ["delete"])]))
+            lifecycle = SyntheticLifecycle(path, [{}, {"stdout": plan}, {}, {"stdout": json.dumps(output(False))}, {"stdout": "azurerm_resource_group.ephemeral\nmodule.storage.azapi_resource.this\n"}, {"stdout": "{invalid json", "status": 0}])
+            with patch.dict('os.environ', {"PARCHWELL_RUN_ID": "run-id"}), self.assertRaises(module.TransitionError) as caught:
+                module.transition(lifecycle)
+            self.assertEqual((1, "namespace_removal_unconfirmed"), (caught.exception.code, str(caught.exception)))
+            self.assertFalse((path / "namespace-transition.json").exists())
+            self.assertFalse(any("eventhubs_enabled=true" in str(call) for call in lifecycle.calls))
 
     def test_off_404_confirms_and_rejected_plan_never_applies(self):
         for broken in (False, True):
@@ -128,6 +184,28 @@ class ConfigurationIsolationTests(unittest.TestCase):
                 with patch.dict('os.environ', {"PARCHWELL_RUN_ID": "run-id"}), self.assertRaises(module.TransitionError):
                     module.transition(lifecycle)
                 self.assertEqual([], lifecycle.calls)
+
+    def test_activation_mismatched_endpoint_is_rejected(self):
+        for mismatch in ("name", "bootstrap", "private_endpoint", "dns"):
+            with self.subTest(mismatch=mismatch), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory)
+                old, off, new = output(True), output(False), output(True, "eh-new")
+                if mismatch == "name":
+                    new = output(True, "eh-wrong")
+                elif mismatch == "bootstrap":
+                    new["eventhubs"]["value"]["bootstrap_servers"] = "eh-wrong.servicebus.windows.net:9093"
+                elif mismatch == "private_endpoint":
+                    new["configuration_lifecycle"]["value"]["eventhubs_private_endpoint_resource_id"] = new["configuration_lifecycle"]["value"]["eventhubs_private_endpoint_resource_id"].replace("pe-eh-new", "pe-eh-wrong")
+                (path / "ephemeral-output.json").write_text(json.dumps(off))
+                old_ids = [old["configuration_lifecycle"]["value"][key] for key in ("namespace_resource_id", "eventhubs_private_endpoint_resource_id")]
+                (path / "namespace-transition.json").write_text(json.dumps({"initial": old, "old_ids": old_ids}))
+                absent = {"status": 1, "stderr": b"ERROR: (ResourceNotFound) absent"}
+                plan = json.dumps(valid_plan([change('module.eventhubs[0].azurerm_eventhub_namespace.this[0]', ["create"])]))
+                lifecycle = SyntheticLifecycle(path, [{"stdout": "azurerm_resource_group.ephemeral\nmodule.storage.azapi_resource.this\n"}, absent, absent, {}, {"stdout": plan}, {}, {"stdout": json.dumps(new)}, {"stdout": "10.0.0.99 STREAM\n"}])
+                with patch.dict('os.environ', {"PARCHWELL_RUN_ID": "run-id"}), self.assertRaises(module.TransitionError) as caught:
+                    module.transition(lifecycle, "eh-new")
+                self.assertEqual((1, "namespace_activation_unconfirmed"), (caught.exception.code, str(caught.exception)))
+                self.assertTrue((path / "namespace-transition.json").exists())
 
     def test_activation_refreshes_only_eventhubs(self):
         with tempfile.TemporaryDirectory() as directory:
