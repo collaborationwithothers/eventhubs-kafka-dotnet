@@ -1,14 +1,24 @@
 # B10 timeout-and-resend expectations contract-grade plan
 
-Revision: 4. Base commit: `main` at `dbc25c2005c3409ffd5f079c40b061d82c4b02aa`.
+Revision: 5. Base commit: `main` at `1e01aea24a457fffe0dc970703af2de608d524e3`.
 
-This plan adds `scenarios/B10/expected.yaml`, which adopts the two B10 decision rules that docs/blueprint.md ADR-021 already fixes, and the item state file. It needs Hari's own `## Approval`, and Hari merges the pull request. Three questions remain for Hari: whether ADR-021's two-verdict design supersedes the single-verdict and `not_tested` parts of decision 6703447017, one publication sentence, and the verdict when the scientific projection is untrusted.
+This plan adds `scenarios/B10/expected.yaml`, which adopts the two B10 decision rules that docs/blueprint.md ADR-021 already fixes, and the item state file. It needs Hari's own `## Approval`, and Hari merges the pull request. Hari answered every open question of Revision 4 in [decision 6889976034](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6889976034); none remains.
 
 Item: B10, timed-out sends with application resend, and a producer restart with resend [issue #356; split entry 5 of #348]. No B10 run result, artifact or log was read for this plan, including smoke run 42189889469, any diagnostic trial and the governed diagnostic run 43635822755. Every number below is a cited configuration literal, a policy value from ADR-021 or a decision predicate. None is a measurement.
 
 ## 1. What changed
 
-Revision 4 applies the [plan check of Revision 3](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6883666912):
+Revision 5 applies [decision 6889976034](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6889976034) (Hari, 2026-11-15, "Yes" to the five recommendations of [handoff 6883802237](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6883802237)) and the non-blocking findings of the [plan check of Revision 4](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6883789075):
+
+- Points 1 to 3: open questions 1 to 3 are answered as Revision 4 recommended, so the two-verdict text, option B of the duplicate sentence and the `held` mapping for a null `b10_final` stay as written. Section 14 now states `None`. Option A's line and digest are removed.
+- Point 4 (finding B1): `known_risk.in_flight_timeout_validity` takes the replacement value quoted in handoff 6883802237 item 4, which adds the C1 consequence.
+- Point 5 (finding B2): `c1_inference` takes the replacement value quoted in item 5; section 10 cites "Guarantees".
+- `verdict.decision_rules_authority` names decision 6889976034, and `verdict.decision` links it.
+- Check N1: the state-file template in section 4.2 says Revision 5 and lists decision 6889976034. Check O1: deferred item 3 adds per-repeat broker connection counts.
+- Base moved from `dbc25c2005c3409ffd5f079c40b061d82c4b02aa` to `1e01aea24a457fffe0dc970703af2de608d524e3`. Between them only `docs/operations/b10-workflow.md` changed among the files the plan cites, in its sweep-line timing paragraph, which no rule in the file reads (checked by `git diff --stat`). The cited line numbers are unchanged.
+- The digest changes to `35c49404219eabe5be38479703817805c19401a091256a69bf64f5959beb0c1f`.
+
+Revision 4 applied the [plan check of Revision 3](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6883666912):
 
 - Finding 3: option A of open question 1 now names "restart attribution was not tested" as the one publication statement it drops. `H_restart_duplicate` carries `written_after_smoke`, as decision 6703447017 point 1, last bullet, requires, with the dates of the ADR-021 commits that added its rules. `expectations_basis` now states only what this session verified.
 - Finding 4: both verdicts' `held_when`, and the two `otherwise`/`held_when` hypothesis lines, cover a candidate with `b10_final` null (verifier-contract.md line 293). Open question 3 asks Hari to confirm this rule wording.
@@ -38,8 +48,9 @@ Authority, in creation order. No item state file exists for #356 on `main`.
 3. [Decision 6633535614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6633535614): adopts [decision 6633528258](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/347#issuecomment-6633528258) points 1 to 4. Codex implements; a Claude review gates the Codex pull request. [Comment 6633653241](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6633653241) names Codex.
 4. [Decision 6633795942](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6633795942): adopts [decision 6633791790](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/347#issuecomment-6633791790). Point 2: a plan that sets a decision rule or verdict word, "such as #356's", needs Hari's own `## Approval`.
 5. [Decision 6703447017](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6703447017): decision rules (point 1), restart attribution `not_tested` (point 2), smoke status (point 3), client versions (point 4); "Merge of the expected-outcome pull request stays with Hari."
+6. [Decision 6889976034](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6889976034): adopts ADR-021's two decision rules, superseding decision 6703447017 points 1 and 2 where they conflict and dropping only the publication statement "restart attribution was not tested"; option B of the duplicate sentence; `held` for a null `b10_final`; findings B1 and B2 with the quoted replacement values. "This is not plan approval."
 
-Design authority on `main`: docs/blueprint.md ADR-021, "Restart decision rules" 1 to 7 and protocol rule 15 ("Eligibility threshold, pre-acceptance statistics gate, control gate, verdict rules, restart subject and expectations may not change"). Process authority: docs/agents/factory.md "Evidence pack" and "Item lifecycle" step 5. Where decision 6703447017 and those texts disagree, this plan follows `main` and asks Hari (open question 1); it decides nothing.
+Design authority on `main`: docs/blueprint.md ADR-021, "Restart decision rules" 1 to 7 and protocol rule 15 ("Eligibility threshold, pre-acceptance statistics gate, control gate, verdict rules, restart subject and expectations may not change"). Process authority: docs/agents/factory.md "Evidence pack" and "Item lifecycle" step 5. Decision 6889976034 settles where decision 6703447017 and those texts disagree: ADR-021's rules apply.
 
 Candidate selection: the parent split names one pull request for entry 5. The current plan comment is 6693074361, headed `implementation-grade plan`, posted before the #412 amendment; it counts as a contract-grade plan comment for selection and is not approved, so it is eligible for revision. Predecessors: [#393](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/393) and [#396](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/396), from the #355 branch, are merged; their merge commits `68b82dfcd2a5fb5f4daede5778565b48e5ad464f` and `90e4cc454861a9137f2451c2488772e6fc88f0a7` are ancestors of the base commit (checked by `git merge-base --is-ancestor` on 2026-11-14). The smoke run is named by decision 6703447017 point 3; this session did not read it.
 
@@ -60,7 +71,7 @@ Size estimate, 2026-11-14, by line count of the texts below: 2 files, about 100 
 
 ### 4.1 `scenarios/B10/expected.yaml`
 
-Create it with exactly the text below, ending in one newline. It is option B of open question 2. If Hari chooses option A, replace only the one line given there. No code reads this file (`src/Parchwell.Scenarios/Loading/ScenarioLoader.cs` line 9; ADR-014). Its readers are the verdict pull request author, the control session under #347 point 2, and Hari.
+Create it with exactly the text below, ending in one newline. No code reads this file (`src/Parchwell.Scenarios/Loading/ScenarioLoader.cs` line 9; ADR-014). Its readers are the verdict pull request author, the control session under #347 point 2, and Hari.
 
 ```yaml
 schema_version: 1
@@ -96,7 +107,7 @@ hypotheses:
     attribution: "not attributed; duplicates are counted by logical key and sequence within the timeout cohort, so a duplicate from the application resend and one from librdkafka's own retry cannot be told apart"
     source_scope: "librdkafka v2.16.0 INTRODUCTION.md places Message persistence status under Idempotent Producer; C0 runs without idempotence, and ADR-021 Context labels the same late append without idempotence an inference"
     c1_comparison_limit: "C1 adds enable.idempotence true to C0. The four properties that idempotence adjusts already hold the adjusted values in C0: max.in.flight 5 from scenario.yaml, message.send.max.retries 2147483647 and acks -1 from the baseline catalog, and queuing.strategy fifo as the librdkafka v2.16.0 default (CONFIGURATION.md, enable.idempotence and queuing.strategy). The effective values in a run were not observed when this file was written."
-    c1_inference: "librdkafka's idempotence guarantee covers its own retries; that it does not de-duplicate a new application Produce call with the same key and sequence number is an inference from the sources' silence, not a stated fact"
+    c1_inference: "librdkafka v2.16.0 states that with idempotence a message is only written to the log once (INTRODUCTION.md, Idempotent Producer, Guarantees); that this covers only librdkafka's own retries, and does not de-duplicate a new application Produce call with the same key and sequence number, is an inference from the sources' silence, not a stated fact"
   H_restart_duplicate:
     question: "With idempotence enabled, can application recovery that replaces a killed producer and resends a durably identified but unconfirmed logical message leave both the original and the resend in the log?"
     configurations: [C1]
@@ -113,7 +124,7 @@ hypotheses:
     lost_resend_findings: "a lost resend in any C1 repeat, eligible or ineligible, is a separate published finding, except after a no-kill end, which produces no finding; only loss in eligible repeats affects this verdict (ADR-021, Restart decision rules, rules 3 and 4)"
 
 known_risk:
-  in_flight_timeout_validity: "librdkafka v2.16.0 INTRODUCTION.md, Idempotent Producer, Message timeout considerations: for the idempotent producer, on an in-flight timeout the broker connection will be closed by the client. No cited source states what the non-idempotent C0 producer does. ADR-021 still invalidates a repeat with non-zero txerrs or rxerrs or an error-level native error callback. Whether that close raises any of them is not verified. If it does, a repeat with a possibly persisted timeout cannot be complete_valid, and the timeout verdict is held."
+  in_flight_timeout_validity: "librdkafka v2.16.0 INTRODUCTION.md, Idempotent Producer, Message timeout considerations: for the idempotent producer, on an in-flight timeout the broker connection will be closed by the client. No cited source states what the non-idempotent C0 producer does. ADR-021 still invalidates a repeat with non-zero txerrs or rxerrs or an error-level native error callback. Whether that close raises any of them is not verified. If it does in C0, a repeat with a possibly persisted timeout cannot be complete_valid, and the timeout verdict is held. If it does in the idempotent C1 timeout instance, that instance is not complete_valid, its repeat is ineligible with b10_restart_timeout_bookkeeping_unavailable (docs/operations/b10-abrupt-contract.md, check 18 and eligibility reason 7), and fewer than three eligible repeats hold the restart verdict."
 
 not_claimed:
   internal_retry_state: "survival or loss of the producer's internal retry or idempotence state across the restart (ADR-021, Context and rule 7)"
@@ -153,7 +164,8 @@ verdict:
     - "workload data is synthetic"
     - "the restart is a process self-kill followed by pod replacement, with an unknown native tail, a fixed cut position at CutOrdinal 4, a fixed probe rate of 100 originals per second and a fixed arm order, same_instance then cross_restart; these are policy values, not measurements"
     - "the restart verdict claims neither pod or node loss nor survival of internal retry state"
-  decision_rules_authority: "ADR-021 Restart decision rules; Hari's approval of this file's plan"
+  decision_rules_authority: "ADR-021 Restart decision rules, adopted for B10's expected outcomes by Hari's decision 6889976034, which supersedes decision 6703447017 points 1 and 2 where they conflict; Hari's approval of this file's plan"
+  decision: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6889976034
 
 sources:
 - url: https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations
@@ -167,7 +179,7 @@ sources:
   read_date: "2026-11-14"
 ```
 
-SHA-256 of the file, computed by script: option B `eec4275a0039c176f3de6fdcd9e157bb7e6688f8912e246956d000e8066bd8e0`; option A `f5fb6457ffed269881fc9ac6522d567be7666704d30fa9fda57f26e682d1f84e`.
+SHA-256 of the file, computed by script: `35c49404219eabe5be38479703817805c19401a091256a69bf64f5959beb0c1f`.
 
 ### 4.2 `items/356/state.md`
 
@@ -179,14 +191,15 @@ Covers: comment <ID of the newest comment on #356 at your catch-up> created <its
 Parent items: [#348](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/348), [#347](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/347)
 Item plan: [B10 split, handoff 6617284257 on #348](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/348#issuecomment-6617284257), entry 5, adopted in [decision 6617607468](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/348#issuecomment-6617607468)
 Implementing tool: Codex. Source: [comment 6633653241](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6633653241)
-Approved plan: [B10 timeout-and-resend expectations contract-grade plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6693074361), Revision 3, commit <SHA that Hari's approval names>
+Approved plan: [B10 timeout-and-resend expectations contract-grade plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6693074361), Revision 5, commit <SHA that Hari's approval names>
 Decisions in force:
 - Issue body: this child adds scenarios/B10/expected.yaml; its decision rules and verdict word go to Hari. Source: [issue body](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356)
 - Adopts the #347 standing authority, points 1 to 6, the B10 split and restart decision 6617344472; decision rules and verdict words stay with Hari. Source: [decision 6617624003](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6617624003)
 - Codex implements; a Claude review gates the Codex pull request before the control session merges. Source: [decision 6633535614](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6633535614)
 - Codex sessions may run standing approval, except for a plan that needs Hari's own approval, such as this issue's. Source: [decision 6633795942](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6633795942)
 - B10 decision rules, restart attribution, smoke run 42189889469 smoke only, client versions fixed in a separate change, and Hari merges the expected-outcome pull request. Source: [decision 6703447017](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6703447017)
-- <one line stating what Hari's approval of Revision 3 says, including his answers to the open questions>. Source: <Markdown link to that approval comment, in the form of the lines above>
+- Two ADR-021 verdicts, superseding decision 6703447017 points 1 and 2 where they conflict; duplicate sentence option B; held for a null b10_final; check findings B1 and B2 adopted. Source: [decision 6889976034](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6889976034)
+- <one line stating what Hari's approval of Revision 5 says>. Source: <Markdown link to that approval comment, in the form of the lines above>
 Open questions:
 - None
 Next action: Hari reviews and merges the expected-outcome pull request; then a fresh scientific B10 run on main and the verdict pull request.
@@ -195,7 +208,7 @@ Next action: Hari reviews and merges the expected-outcome pull request; then a f
 ## 5. Requirements
 
 - R1. WHEN the pull request diff is computed against `origin/main` THEN it changes exactly `scenarios/B10/expected.yaml` and `items/356/state.md`, both added.
-- R2. WHEN `scenarios/B10/expected.yaml` is read THEN its SHA-256 equals the digest of the option Hari's approval selects (section 4.1). WHEN it differs THEN the acceptance check fails and the implementer corrects the file to the approved text; it never edits the digest.
+- R2. WHEN `scenarios/B10/expected.yaml` is read THEN its SHA-256 equals the digest in section 4.1. WHEN it differs THEN the acceptance check fails and the implementer corrects the file to the approved text; it never edits the digest.
 - R3. WHEN the file is parsed as YAML THEN `id` is `B10`, `hypotheses.H_timeout_duplicate.configurations` equals the configuration set of `scenarios/B10/scenario.yaml` (`C0`, `C1`), `hypotheses.H_restart_duplicate.configurations` is `[C1]`, `verdict.timeout_application_retry.deciding_configuration` is `C0` and `verdict.restart_recovery.deciding_configuration` is `C1`.
 - R4. WHEN the file is read THEN `verdict.restart_recovery.subject` equals byte for byte the quoted full restart subject in docs/blueprint.md ADR-021 line 691, and `assessment_rules.residual_risk` equals `A late append after the phase sweep line is not detected.`
 - R5. WHEN the file is read THEN every `selection_reason` literal it names (`fewer_than_three_eligible`, `eligible_loss_without_pair`, `no_cross_restart_duplicate_observed`) appears in docs/operations/verifier-contract.md "Scientific B10 final judgement".
@@ -217,7 +230,7 @@ No code reads `expected.yaml` and the pull request adds no code, so the acceptan
 | Requirement | Check in section 9 | Input | Literal expected value |
 |---|---|---|---|
 | R1 | `changed == {...}` | `git diff --name-only origin/main...HEAD` | `{'scenarios/B10/expected.yaml', 'items/356/state.md'}` |
-| R2 | digest assertion | file bytes | option B `eec4275a0039c176f3de6fdcd9e157bb7e6688f8912e246956d000e8066bd8e0` or option A `f5fb6457ffed269881fc9ac6522d567be7666704d30fa9fda57f26e682d1f84e` |
+| R2 | digest assertion | file bytes | `35c49404219eabe5be38479703817805c19401a091256a69bf64f5959beb0c1f` |
 | R3 | YAML assertions | parsed file and `scenario.yaml` | `B10`; `{C0, C1}`; `[C1]`; `C0`; `C1` |
 | R4 | subject and residual-risk assertions | file and docs/blueprint.md | the ADR-021 quoted subject; `A late append after the phase sweep line is not detected.` |
 | R5 | reason-literal assertion | file and verifier-contract.md | each of the three literals present in both |
@@ -232,14 +245,14 @@ None for this pull request: it changes no runtime file. The live assumptions of 
 
 ## 9. Acceptance
 
-Run from the repository root on the pull request branch. Each command must exit 0, and the Python check must print its final line. Record the commands, commit and output in the PR implementation notes. Set `approved` to the digest of the option Hari's approval selects.
+Run from the repository root on the pull request branch. Each command must exit 0, and the Python check must print its final line. Record the commands, commit and output in the PR implementation notes.
 
 ```sh
 git fetch origin main
 git diff --check origin/main...HEAD
 python3 - <<'PY_CHECK'
 import hashlib, pathlib, re, subprocess, yaml
-approved = 'eec4275a0039c176f3de6fdcd9e157bb7e6688f8912e246956d000e8066bd8e0'  # option A: f5fb6457ffed269881fc9ac6522d567be7666704d30fa9fda57f26e682d1f84e
+approved = '35c49404219eabe5be38479703817805c19401a091256a69bf64f5959beb0c1f'
 changed = set(subprocess.check_output(
     ['git', 'diff', '--name-only', 'origin/main...HEAD'], text=True).split())
 assert changed == {'scenarios/B10/expected.yaml', 'items/356/state.md'}, changed
@@ -276,9 +289,9 @@ PyYAML is used only by this check; add no dependency. Fix each `npm run check:do
 
 ## 10. Sources
 
-Read with this session's tools on 2026-11-14.
+Read with this session's tools on 2026-11-14; the "Guarantees" passage re-read on 2026-11-14 for Revision 5 from the same fetched text.
 
-- librdkafka v2.16.0 [INTRODUCTION.md](https://github.com/confluentinc/librdkafka/blob/v2.16.0/INTRODUCTION.md), fetched as raw text at tag `v2.16.0` with `curl`: "Message persistence status" (`RD_KAFKA_MSG_STATUS_POSSIBLY_PERSISTED`: "the message was transmitted to the broker, but no acknowledgement was received. Application retry will risk ordering and duplication."); "Message timeout considerations" ("the broker connection will be closed by the client").
+- librdkafka v2.16.0 [INTRODUCTION.md](https://github.com/confluentinc/librdkafka/blob/v2.16.0/INTRODUCTION.md), fetched as raw text at tag `v2.16.0` with `curl`: "Message persistence status" (`RD_KAFKA_MSG_STATUS_POSSIBLY_PERSISTED`: "the message was transmitted to the broker, but no acknowledgement was received. Application retry will risk ordering and duplication."); "Idempotent Producer", "Guarantees" ("Exactly-once - a message is only written to the log once."); "Idempotent Producer", "Message timeout considerations" ("the broker connection will be closed by the client"). "Message persistence status" also sits under "Idempotent Producer".
 - librdkafka v2.16.0 [CONFIGURATION.md](https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md), same tool: `transactional.id` ("used to identify the same transactional producer instance across process restarts"); `enable.idempotence` (default `false`; adjusts `max.in.flight.requests.per.connection=5`, `retries=INT32_MAX`, `acks=all`, `queuing.strategy=fifo`); `queuing.strategy` default `fifo`; `acks` default -1.
 - Microsoft [Apache Kafka client configurations for Azure Event Hubs](https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations), fetched with the Microsoft Learn `microsoft_docs_fetch` tool: the librdkafka section lists `socket.keepalive.enable`, `metadata.max.age.ms`, `request.timeout.ms`, `compression.codec`, three consumer rows, `retries` and `partitioner`, and no `message.timeout.ms` or `enable.idempotence` row. `enable.idempotence` and `delivery.timeout.ms` appear only in the Java table.
 - On `main` at the base commit: docs/blueprint.md ADR-021 (lines 659 to 733); docs/agents/factory.md "Evidence pack" (line 192 and the following paragraph) and "Item lifecycle" step 5; docs/operations/verifier-contract.md lines 287 to 314; docs/operations/b10-abrupt-contract.md "Final sweep projection"; docs/operations/b10-workflow.md "Scientific execution"; `scenarios/B10/scenario.yaml` lines 10 to 18; `src/Parchwell.Kafka/Configuration/BaselineSettingsCatalog.cs` lines 103, 107 and 109; `scenarios/B07/expected.yaml` for shape.
@@ -287,7 +300,7 @@ Behaviour the file relies on, each with its source: possibly persisted retry ris
 
 ## 11. Stop rule
 
-The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it needs to change a contract, a requirement or the scope, including any byte of `expected.yaml` other than the open question 2 line Hari's approval selects. It also stops when the acceptance check fails after one consolidated correction (`push -wip and hand off to the next session`), and when cold review exhausts rule 8's budget (handoff to Hari).
+The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it needs to change a contract, a requirement or the scope, including any byte of `expected.yaml`. It also stops when the acceptance check fails after one consolidated correction (`push -wip and hand off to the next session`), and when cold review exhausts rule 8's budget (handoff to Hari).
 
 ## 12. Deferred work
 
@@ -295,29 +308,15 @@ Each item is after merge, on the verdict path, and outside this pull request's f
 
 1. **Live assumptions for the scientific run.** Evidence: #404 decision 6883475587 point 2 accepts the listed live assumptions "for this one run only", the governed diagnostic run. ADR-021 amendment of 2026-11-11 records Hari's earlier acceptance for "the next diagnostic trial only". How their evidence was or will be taken (on an already-open or a fresh connection, idle or under load) is not stated in the texts this session read, and this session read no run; the request to Hari states it for each assumption. Required action: Hari accepts by name the live assumptions that still apply before a scientific dispatch. Responsible: the #347 control session, bringing it to Hari. Gate it blocks: the scientific dispatch and therefore both B10 verdicts.
 2. **Governed diagnostic run.** Evidence: run 43635822755, authorized by #404 decision 6883475587 point 1, was in progress when this plan was written; this session did not read it. Responsible: the #404 sessions. Gate: the scientific dispatch, per [#404 decision 6846521676](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6846521676) point 5 as cited by decision 6883475587.
-3. **Client versions.** Decision 6703447017 point 4 requires a fix before the fresh run. Evidence: [#403](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/403), "Restore B10 candidate producer versions and broker counts", merged 2026-11-07, and verifier-contract.md line 314, which records producer versions from authenticated ordinary manifests and adds `version_unavailable` when they are missing. Whether a scientific candidate carries non-null versions is not observed. Gate: the evidence pack's version line, checked in the verdict pull request.
-4. **Scientific run and verdict pull request.** After this merges and items 1 to 3 clear, a fresh scientific run on `main`, then one verdict pull request with both labelled verdicts, which Hari approves or rejects separately (factory.md "Item lifecycle" step 5). Workload bound: one dispatch, five repeats per configuration, no replacement repeats (ADR-021 rule 2; scenario.yaml `repeats: 5`). Exhaustion: a held verdict is published as held with reasons, not rerun automatically (ADR-021 rule 4). The verdict pull request also needs the mutation-acceptance gate of factory.md "Evidence pack" (line 198): a passing `verifier-c5-mutation.yml` run on `main` that includes every merged change to a configured mutation target; #404 decision 6883475587 records that gate as met for #455 and #467, which says nothing about later target changes.
+3. **Client versions.** Decision 6703447017 point 4 requires a fix before the fresh run. Evidence: [#403](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/403), "Restore B10 candidate producer versions and broker counts", merged 2026-11-07, and verifier-contract.md line 314, which records producer versions from authenticated ordinary manifests and adds `version_unavailable` when they are missing. Whether a scientific candidate carries non-null versions is not observed. The evidence pack also needs per-repeat broker connection counts (factory.md "Evidence pack", line 190), which scientific candidates omit (verifier-contract.md line 295); the verdict pull request records them as unavailable, never zero. Gate: the evidence pack's version and broker-count lines, checked in the verdict pull request.
+4. **Scientific run and verdict pull request.** After this merges and items 1 to 3 clear, a fresh scientific run on `main`, then one verdict pull request with both labelled verdicts, which Hari approves or rejects separately (factory.md "Item lifecycle" step 5). Workload bound: one dispatch, five repeats per configuration, no replacement repeats (ADR-021 rule 2; scenario.yaml `repeats: 5`). Exhaustion: a held verdict is published as held with reasons, not rerun automatically (ADR-021 rule 4). The verdict pull request also needs the mutation-acceptance gate of factory.md "Evidence pack" (line 198): a passing `verifier-c5-mutation.yml` run on `main` that includes every merged change to a configured mutation target; #404 decision 6883475587 records that gate as met for #455 and #467, which says nothing about later target changes. `main` has since merged C5 mutation rebalancing pull requests #481 to #488; whether they changed configured targets was not checked here.
 
 ## 13. Plan-check answers
 
 - **(a) Effort that scales with a runtime count.** Only the `npm run check:docs` warnings in `items/356/state.md`. Cap: 10 dispositions; exhaustion action `push -wip and hand off to the next session`. The Python check gets one run and one consolidated correction; on a second failure, `push -wip and hand off to the next session`. Cold review keeps rule 8's budget and its handoff to Hari.
-- **(b) Stricter than the parent.** Hari's own approval (decision 6633791790 point 2) where #347 point 5 allows standing approval; Hari's merge (decision 6703447017) where #347 point 1 lets the control session merge. Both rest on recorded decisions. The rules themselves are not stricter than ADR-021; they restate it.
+- **(b) Stricter than the parent.** The `held` mapping for a null `b10_final` goes beyond ADR-021's text; decision 6889976034 point 3 accepts it. Hari's own approval (decision 6633791790 point 2) where #347 point 5 allows standing approval; Hari's merge (decision 6703447017) where #347 point 1 lets the control session merge. Both rest on recorded decisions. The rules themselves are not stricter than ADR-021; they restate it.
 - **(c) Checks that depend on code, data or behaviour not on `main` or in the pull request.** None. The check reads `scenarios/B10/scenario.yaml`, docs/blueprint.md and docs/operations/verifier-contract.md on `main`, and the two new files. The field names the file cites are defined on `main` in verifier-contract.md lines 297 to 312 and b10-abrupt-contract.md "Closed output". The scientific run is outside this pull request.
 
 ## 14. Open questions for Hari
 
-1. **Two verdicts, or decision 6703447017's single verdict.** Decision 6703447017 (2026-11-07) says the item verdict comes from C0 alone, with C1 published alongside (point 1), the rules read only the six counts, status, finality, intake and broker count (point 1), and restart attribution is `not_tested` (point 2). Later merged text on `main` differs: ADR-021 "Restart decision rules" give a separate restart verdict from C1 with three-of-five eligibility, and factory.md line 192 requires two labelled verdicts and says a held restart is "never blank or `not_tested`". The #404 decisions behind that text were never adopted on this issue.
-   - Option A (this plan's text): adopt ADR-021's two rules; record decision 6703447017 points 1 and 2 as superseded for B10's expected outcomes where they conflict; keep points 3 and 4, the C0 timeout rule, Hari's merge and its publication statements except "restart attribution was not tested", which option A drops because the restart verdict tests it. The timeout "no verdict" case is labelled `held`, the value the judge emits (verifier-contract.md line 299).
-   - Option B: keep decision 6703447017 as written. This needs a governance change to factory.md "Evidence pack" and an ADR-021 amendment first, because `main` forbids `not_tested` for the restart verdict.
-   - **Recommendation:** A. It matches the design and process text Hari merged after the decision, and ADR-021 rule 15 freezes those rules.
-   - **Strongest counterargument:** decision 6703447017 is the newest decision on this issue, and factory.md step 3 lets a decision from elsewhere bind a child only when the child adopts it. Option A needs Hari's approval to say so explicitly.
-2. **When the duplicate sentence applies.** Carried from Revision 2, unanswered. Decision 6703447017 point 1 says every publication states "that duplicates appeared under timeout plus application resend, and the verifier does not attribute a duplicate to the application resend rather than librdkafka's own retry". Under `untestable` the C0 sum is zero, so the first half would be false.
-   - Option A, the decision's wording in every publication; replace the section 4.1 line with:
-     `- "duplicates appeared under timeout plus application resend, and the verifier does not attribute a duplicate to the application resend rather than librdkafka's own retry"`
-   - Option B (section 4.1's text), the first half only when the C0 sum is at least 1; the attribution half always:
-     `- "when the C0 duplicate sum is at least 1, duplicates appeared under timeout plus application resend; in every publication, the verifier does not attribute a duplicate to the application resend rather than librdkafka's own retry"`
-   - **Recommendation:** B. It never publishes a false statement (AGENTS.md "Truth and verification").
-   - **Strongest counterargument:** A is the decision's literal text. If Hari meant it only for the duplicate case, B adds nothing; if he meant something else, B changes his wording.
-3. **Verdict when the scientific projection is untrusted.** An untrusted projection gives the candidate root status `invalid` and `b10_final` null (verifier-contract.md line 293), so neither `rule_selection` exists. Revision 4 maps that case to `held` for both verdicts, with the candidate's root reasons. The basis is ADR-021 rule 1 (fewer than five complete, valid C0 repeats holds timeout) and rule 2 (missing evidence fails eligibility, so fewer than three eligible holds restart). This is decision-rule wording, so it is Hari's.
-   - **Recommendation:** accept the `held` mapping as written.
-   - **Strongest counterargument:** ADR-021 does not name the null-projection case, so any mapping is an inference from rules 1 and 2. An alternative is "no verdict, run invalid", which reads the same to a reader but would not show `held` with reasons as factory.md line 192 requires for the restart verdict.
+None. Decision 6889976034 answers the three questions of Revision 4.
