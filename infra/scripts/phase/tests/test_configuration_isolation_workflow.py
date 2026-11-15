@@ -2,6 +2,7 @@
 from pathlib import Path
 import ast
 import contextlib
+import hashlib
 import io
 import json
 import os
@@ -19,6 +20,26 @@ import yaml
 REPO = Path(__file__).resolve().parents[4]
 WORKFLOW = REPO / '.github/workflows/configuration-isolation-smoke.yml'
 MIRROR = REPO / 'docs/operations/workflows/configuration-isolation-smoke.yml.txt'
+SUBSCRIPTION = '00000000-0000-0000-0000-000000000000'
+SUFFIX = 'offline1'
+WORKSPACE = '/synthetic/workspace'
+ROOT = '/subscriptions/' + SUBSCRIPTION + '/resourceGroups/rg-parchwell-eph/providers/'
+BLOB = ROOT + 'Microsoft.Storage/storageAccounts/stparchwell' + SUFFIX + '/blobServices/default'
+def namespace_id(phase):
+    name = 'ehp-' + hashlib.sha256(('synthetic/repository\n1\n1\n' + phase).encode()).hexdigest()[:24]
+    return ROOT + 'Microsoft.EventHub/namespaces/' + name
+
+def settings_environment(temp):
+    Path(temp, 'ephemeral.tfvars.json').write_text(json.dumps({'naming_suffix': SUFFIX}))
+    return {'PARCHWELL_PRIVATE_DIRECTORY': temp, 'RUNNER_TEMP': temp,
+            'PARCHWELL_EPHEMERAL_TFVARS_PATH': str(Path(temp, 'ephemeral.tfvars.json')),
+            'ARM_SUBSCRIPTION_ID': SUBSCRIPTION, 'GITHUB_REPOSITORY': 'synthetic/repository',
+            'GITHUB_RUN_ID': '1', 'GITHUB_RUN_ATTEMPT': '1'}
+
+def write_state(args):
+    path = Path(args[args.index('--stdout-file') + 1])
+    path.write_text(json.dumps({'values': {'root_module': {'resources': [{'address': 'data.terraform_remote_state.persistent', 'mode': 'data', 'values': {'outputs': {'log_analytics_workspace_id': WORKSPACE}}}]}}}))
+
 
 
 class ConfigurationIsolationWorkflowTests(unittest.TestCase):
@@ -212,57 +233,131 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
     def test_arm_settings_fixture_checks_exact_targets_workspace_and_categories(self):
         run = self.by_id['c0_settings']['run']
         code = run.split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
-        lifecycle = {'storage_account_resource_id': '/synthetic/storage',
-                     'blob_diagnostic_target_resource_id': '/synthetic/storage/blobServices/default',
-                     'namespace_resource_id': '/synthetic/namespace',
-                     'workspace_resource_id': '/synthetic/workspace'}
-        def setting(logs, metrics, workspace='/synthetic/workspace'):
-            return {'workspaceId': workspace, 'logAnalyticsDestinationType': 'Dedicated',
+        lifecycle = {'storage_account_resource_id': BLOB.removesuffix('/blobServices/default'),
+                     'blob_diagnostic_target_resource_id': BLOB,
+                     'namespace_resource_id': namespace_id('C0'),
+                     'workspace_resource_id': WORKSPACE}
+        def setting(logs, metrics, workspace=WORKSPACE, target=BLOB, name='diag-blob-' + SUFFIX):
+            return {'id': target + '/providers/Microsoft.Insights/diagnosticSettings/' + name, 'workspaceId': workspace, 'logAnalyticsDestinationType': 'Dedicated',
                     'logs': [{'category': x, 'enabled': True} for x in logs],
                     'metrics': [{'category': x, 'enabled': True} for x in metrics]}
         blob = setting(['StorageRead', 'StorageWrite', 'StorageDelete'], ['Transaction'])
-        eh = setting(['allLogs'], ['AllMetrics'])
+        eh = setting(['allLogs'], ['AllMetrics'], target=namespace_id('C0'), name='diag-eventhubs-' + SUFFIX)
         def exercise(blob_setting):
             calls = []
             def invoke(args, **kwargs):
                 calls.append(args)
+                if '--stdout-file' in args:
+                    write_state(args)
+                    return SimpleNamespace(stdout=b'')
                 if 'account' in args:
                     result = {'creationTime': '2026-01-01T00:00:00Z'}
-                elif '/synthetic/storage/blobServices/default' in args:
+                elif BLOB in args:
                     result = {'value': [blob_setting]}
                 else:
-                    self.assertIn('/synthetic/namespace', args)
+                    self.assertIn(namespace_id('C0'), args)
                     result = {'value': [eh]}
                 return SimpleNamespace(stdout=json.dumps(result).encode())
             with tempfile.TemporaryDirectory() as temp:
                 Path(temp, 'ephemeral-output.json').write_text(json.dumps({'configuration_lifecycle': {'value': lifecycle}}))
-                with mock.patch.dict(os.environ, {'PARCHWELL_PRIVATE_DIRECTORY': temp}), mock.patch('subprocess.run', side_effect=invoke):
+                with mock.patch.dict(os.environ, settings_environment(temp)), mock.patch('subprocess.run', side_effect=invoke):
                     exec(compile(code, 'fixture', 'exec'), {})
-                self.assertEqual(3, len(calls))
+                self.assertEqual(4, len(calls))
         exercise(blob)
         for bad in (setting(['StorageRead', 'StorageWrite'], ['Transaction']),
                     setting(['StorageRead', 'StorageWrite', 'StorageDelete'], ['Transaction'], '/wrong')):
-            with self.subTest(bad=bad), self.assertRaises(AssertionError):
+            with self.subTest(bad=bad), self.assertRaises(RuntimeError):
                 exercise(bad)
+
+    def test_sanitized_observations_survive_partial_failure_without_private_ids(self):
+        run = self.by_id['c0_settings']['run']
+        code = run.split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
+        fn = next(x for x in ast.parse(code).body if isinstance(x, ast.FunctionDef) and x.name == 'observe_settings')
+        compiled = compile(ast.Module(body=[fn], type_ignores=[]), 'observation fixture', 'exec')
+        targets = {'blob': BLOB, 'eventhubs': namespace_id('C0')}
+        lifecycle = {'blob_diagnostic_target_resource_id': BLOB, 'namespace_resource_id': namespace_id('C0'), 'workspace_resource_id': WORKSPACE}
+        def setting(service):
+            name = ('diag-blob-' if service == 'blob' else 'diag-eventhubs-') + SUFFIX
+            logs = ['StorageRead', 'StorageWrite', 'StorageDelete'] if service == 'blob' else ['allLogs']
+            metrics = ['Transaction'] if service == 'blob' else ['AllMetrics']
+            return {'id': targets[service] + '/providers/Microsoft.Insights/diagnosticSettings/' + name,
+                    'workspaceId': WORKSPACE, 'logAnalyticsDestinationType': 'Dedicated',
+                    'logs': [{'category': x, 'enabled': True} for x in logs],
+                    'metrics': [{'category': x, 'enabled': True} for x in metrics]}
+        with tempfile.TemporaryDirectory() as temp:
+            env = settings_environment(temp)
+            def invoke(args, **kwargs):
+                write_state(args)
+                return SimpleNamespace(stdout=b'')
+            def command(args):
+                if targets['eventhubs'] in args: raise RuntimeError('private server error and resource ID')
+                return {'value': [setting('blob')]}
+            namespace = {'os': os, 'pathlib': __import__('pathlib'), 'json': json, 'subprocess': SimpleNamespace(run=invoke, DEVNULL=subprocess.DEVNULL), 'p': Path(temp), 'command': command}
+            with mock.patch.dict(os.environ, env):
+                exec(compiled, namespace)
+                with self.assertRaisesRegex(RuntimeError, 'diagnostic_settings_unconfirmed'):
+                    namespace['observe_settings']('C0', lifecycle)
+                directory = Path(temp, 'configuration-isolation-observations')
+                blob = json.loads((directory / 'C0-blob.json').read_text())
+                eh = json.loads((directory / 'C0-eventhubs.json').read_text())
+                self.assertEqual(('passed', 'passed', 'passed', 'passed', 'none'), tuple(blob[k] for k in ('status', 'target', 'workspace', 'destination', 'reason')))
+                self.assertEqual(('failed', 'readback_failed'), (eh['status'], eh['reason']))
+                for record in (blob, eh):
+                    for secret in (BLOB, WORKSPACE, SUBSCRIPTION, 'private server error'):
+                        self.assertNotIn(secret, json.dumps(record))
+                # Each mismatch leaves only a fixed reason and preserves the other service.
+                for field, expected_reason in (('id', 'target_mismatch'), ('workspaceId', 'workspace_mismatch'),
+                                               ('logAnalyticsDestinationType', 'destination_mismatch'), ('logs', 'category_mismatch')):
+                    altered = setting('blob')
+                    altered[field] = [] if field == 'logs' else 'private-mismatch'
+                    namespace['command'] = lambda args, altered=altered: {'value': [altered if targets['blob'] in args else setting('eventhubs')]}
+                    with self.subTest(field=field), self.assertRaisesRegex(RuntimeError, 'diagnostic_settings_unconfirmed'):
+                        namespace['observe_settings']('C0', lifecycle)
+                    record = json.loads((directory / 'C0-blob.json').read_text())
+                    self.assertEqual(expected_reason, record['reason'])
+                    self.assertNotIn('private-mismatch', json.dumps(record))
+                    self.assertEqual('passed', json.loads((directory / 'C0-eventhubs.json').read_text())['status'])
+                namespace['command'] = command
+                with self.assertRaisesRegex(RuntimeError, 'diagnostic_settings_unconfirmed'):
+                    namespace['observe_settings']('C0', lifecycle)
+                # A malformed or absent protected-state record fails both observations closed.
+                def invalid_state(args, **kwargs):
+                    Path(args[args.index('--stdout-file') + 1]).write_text('{"values":{"root_module":{"resources":[]}}}')
+                namespace['subprocess'] = SimpleNamespace(run=invalid_state, DEVNULL=subprocess.DEVNULL)
+                with self.assertRaisesRegex(RuntimeError, 'diagnostic_settings_unconfirmed'):
+                    namespace['observe_settings']('C1', lifecycle)
+                self.assertEqual('expected_identity_unavailable', json.loads((directory / 'C1-blob.json').read_text())['reason'])
+                self.assertEqual('passed', json.loads((directory / 'C0-blob.json').read_text())['status'])
+                # The public receipt reads only allowlisted fields and rejects a contaminated file.
+                (directory / 'C1-eventhubs.json').write_text(json.dumps({'phase': 'C1', 'secret': WORKSPACE}))
+                receipt = self.by_id['receipt']['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
+                with mock.patch.dict(os.environ, {**env, 'STEP_RESULTS': '{}'}):
+                    exec(compile(receipt, 'receipt fixture', 'exec'), {})
+                text = Path(temp, 'configuration-smoke-receipt', 'receipt.txt').read_text()
+                self.assertIn('C0 blob: passed', text)
+                self.assertIn('C0 eventhubs: failed', text)
+                self.assertIn('C1 eventhubs: failed reason=invalid_observation', text)
+                self.assertNotIn(WORKSPACE, text)
+                self.assertNotIn(SUBSCRIPTION, text)
 
     def test_c1_fixture_rejects_shared_identity_or_sentinel_change(self):
         run = self.by_id['c1_settings']['run']
         code = run.split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
-        shared = {'storage_account_resource_id': '/synthetic/storage',
+        shared = {'storage_account_resource_id': BLOB.removesuffix('/blobServices/default'),
                   'blob_private_endpoint_resource_id': '/synthetic/blob-pe',
                   'container_resource_ids': {'ledger': '/l', 'verifier': '/v', 'claim_check': '/c', 'single_action': '/s'},
                   'workspace_resource_id': '/synthetic/workspace',
-                  'blob_diagnostic_target_resource_id': '/synthetic/storage/blobServices/default'}
+                  'blob_diagnostic_target_resource_id': BLOB}
         before = {**shared, 'eventhubs_enabled': True, 'namespace_resource_id': '/synthetic/old',
                   'eventhubs_private_endpoint_resource_id': '/synthetic/old-pe', 'storage_creation_time': 'creation'}
-        after = {**shared, 'eventhubs_enabled': True, 'namespace_resource_id': '/synthetic/new',
+        after = {**shared, 'eventhubs_enabled': True, 'namespace_resource_id': namespace_id('C1'),
                  'eventhubs_private_endpoint_resource_id': '/synthetic/new-pe'}
-        def setting(logs, metrics):
-            return {'workspaceId': '/synthetic/workspace', 'logAnalyticsDestinationType': 'Dedicated',
+        def setting(logs, metrics, target, name):
+            return {'id': target + '/providers/Microsoft.Insights/diagnosticSettings/' + name, 'workspaceId': WORKSPACE, 'logAnalyticsDestinationType': 'Dedicated',
                     'logs': [{'category': x, 'enabled': True} for x in logs],
                     'metrics': [{'category': x, 'enabled': True} for x in metrics]}
-        blob = setting(['StorageRead', 'StorageWrite', 'StorageDelete'], ['Transaction'])
-        eh = setting(['allLogs'], ['AllMetrics'])
+        blob = setting(['StorageRead', 'StorageWrite', 'StorageDelete'], ['Transaction'], BLOB, 'diag-blob-' + SUFFIX)
+        eh = setting(['allLogs'], ['AllMetrics'], namespace_id('C1'), 'diag-eventhubs-' + SUFFIX)
         def exercise(next_state, sentinel, eh_answers=('10.0.0.1',)):
             import hashlib
             with tempfile.TemporaryDirectory() as temp:
@@ -280,7 +375,10 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
                 module = SimpleNamespace(Phase=lambda: phase, unwrap=lambda x: x['value'], write_json=mock.Mock())
                 spec = SimpleNamespace(loader=SimpleNamespace(exec_module=lambda _: None))
                 def invoke(args, **kwargs):
-                    result = {'creationTime': 'creation'} if 'account' in args else {'value': [blob if '/synthetic/storage/blobServices/default' in args else eh]}
+                    if '--stdout-file' in args:
+                        write_state(args)
+                        return SimpleNamespace(stdout=b'')
+                    result = {'creationTime': 'creation'} if 'account' in args else {'value': [blob if BLOB in args else eh]}
                     return SimpleNamespace(stdout=json.dumps(result).encode())
                 connections = []
                 def connect(address, timeout):
@@ -288,7 +386,7 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
                     connection = mock.MagicMock()
                     connection.__enter__.return_value.getpeername.return_value = ('10.0.0.1' if address[1] == 9093 else '10.0.0.2', address[1])
                     return connection
-                with (mock.patch.dict(os.environ, {'PARCHWELL_PRIVATE_DIRECTORY': temp, 'PARCHWELL_RUN_ID': 'b04-1-1'}),
+                with (mock.patch.dict(os.environ, {**settings_environment(temp), 'PARCHWELL_RUN_ID': 'b04-1-1'}),
                       mock.patch('importlib.util.spec_from_file_location', return_value=spec),
                       mock.patch('importlib.util.module_from_spec', return_value=module),
                       mock.patch('subprocess.run', side_effect=invoke), mock.patch('socket.create_connection', side_effect=connect),
@@ -303,6 +401,34 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
         for state, sentinel in (({**after, 'storage_account_resource_id': '/different'}, b'sentinel'), (after, b'changed')):
             with self.subTest(state=state, sentinel=sentinel), self.assertRaises(AssertionError):
                 exercise(state, sentinel)
+
+    def test_receipt_projects_worker_status_without_raw_metadata_or_logs(self):
+        code = self.by_id['receipt']['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
+        complete = {'job': 'b04-1-1-c0-r1-start-line', 'mode': 'start-line', 'repeat': 1, 'outcome': 'complete',
+                    'render': 0, 'apply': 0, 'wait': 0, 'collect': 0, 'private': '/private/resource-id'}
+        failed = {'job': 'b04-1-1-c0-r1-loadgen', 'mode': 'loadgen', 'repeat': 1, 'outcome': 'failed',
+                  'reason': 'sensitive worker output'}
+        with tempfile.TemporaryDirectory() as temp:
+            env = {**settings_environment(temp), 'STEP_RESULTS': '{}', 'PARCHWELL_ARTIFACT_DIRECTORY': temp}
+            path = Path(temp, 'phase-status.json')
+            path.write_text(json.dumps({'modes': [complete, failed]}))
+            with mock.patch.dict(os.environ, env):
+                exec(compile(code, 'worker receipt fixture', 'exec'), {})
+            text = Path(temp, 'configuration-smoke-receipt', 'receipt.txt').read_text()
+            self.assertIn('C0 start-line worker execution: passed', text)
+            self.assertIn('C0 loadgen worker execution: failed reason=worker_incomplete', text)
+            self.assertIn('C0 verify worker execution: not_attempted', text)
+            self.assertIn('C1 start-line worker execution: not_attempted', text)
+            self.assertNotIn('/private/resource-id', text)
+            self.assertNotIn('sensitive worker output', text)
+            path.write_text(json.dumps({'modes': [complete, complete]}))
+            with mock.patch.dict(os.environ, env):
+                exec(compile(code, 'duplicate receipt fixture', 'exec'), {})
+            self.assertIn('C0 start-line worker execution: failed reason=status_invalid', Path(temp, 'configuration-smoke-receipt', 'receipt.txt').read_text())
+            path.unlink()
+            with mock.patch.dict(os.environ, env):
+                exec(compile(code, 'missing receipt fixture', 'exec'), {})
+            self.assertIn('C0 start-line worker execution: unavailable', Path(temp, 'configuration-smoke-receipt', 'receipt.txt').read_text())
 
     def test_cleanup_failure_matrix_and_report_never_pass_incomplete_run(self):
         destroy_guard = self.by_id['destroy']['if']

@@ -31,6 +31,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 -c 'import datetime,os,pathlib; (pathlib.Path(os.environ["RUNNER_TEMP"])/"configuration-smoke-start").write_text(datetime.datetime.now(datetime.timezone.utc).isoformat())'
           test "$GITHUB_REF" = refs/heads/main
           for value in "$AZURE_CLIENT_ID" "$AZURE_TENANT_ID" "$AZURE_SUBSCRIPTION_ID"; do
             [[ "$value" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
@@ -333,20 +334,96 @@ jobs:
           account = command(['az', 'storage', 'account', 'show', '--ids', state['storage_account_resource_id'], '-o', 'json'])
           assert isinstance(account.get('creationTime'), str) and account['creationTime']
           state['storage_creation_time'] = account['creationTime']
-          for alias, target in (('blob', state['blob_diagnostic_target_resource_id']), ('eventhubs', state['namespace_resource_id'])):
-              response = command(['az', 'monitor', 'diagnostic-settings', 'list', '--resource', target, '-o', 'json'])
-              settings = response.get('value') if isinstance(response, dict) else response
-              assert isinstance(settings, list)
-              wanted_logs = {'StorageRead', 'StorageWrite', 'StorageDelete'} if alias == 'blob' else {'allLogs'}
-              wanted_metrics = {'Transaction'} if alias == 'blob' else {'AllMetrics'}
-              matches = []
-              for item in settings:
-                  if not isinstance(item, dict): continue
-                  logs = {x.get('category') or x.get('categoryGroup') for x in item.get('logs', []) if x.get('enabled') is True}
-                  metrics = {x.get('category') for x in item.get('metrics', []) if x.get('enabled') is True}
-                  if (item.get('workspaceId', '').casefold() == state['workspace_resource_id'].casefold() and item.get('logAnalyticsDestinationType') == 'Dedicated' and logs == wanted_logs and metrics == wanted_metrics): matches.append(item)
-              assert len(matches) == 1
-              (p / (alias + '-C0-settings.json')).write_text(json.dumps(matches[0]))
+          def observe_settings(phase_name, lifecycle):
+              import datetime, hashlib, re
+              public = pathlib.Path(os.environ['RUNNER_TEMP']) / 'configuration-isolation-observations'
+              public.mkdir(mode=0o700, exist_ok=True)
+              allowed = {'blob': {'logs': {'StorageRead', 'StorageWrite', 'StorageDelete'}, 'metrics': {'Transaction'}},
+                         'eventhubs': {'logs': {'allLogs'}, 'metrics': {'AllMetrics'}}}
+              def initial(alias):
+                  return {'phase': phase_name, 'service': alias, 'observed_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                          'status': 'failed', 'target': 'unknown', 'workspace': 'unknown', 'destination': 'unknown',
+                          'logs': [], 'metrics': [], 'reason': 'readback_unavailable'}
+              def save(record):
+                  target = public / (phase_name + '-' + record['service'] + '.json')
+                  partial = target.with_suffix('.partial')
+                  partial.write_text(json.dumps(record, sort_keys=True))
+                  partial.replace(target)
+              records = {alias: initial(alias) for alias in allowed}
+              for record in records.values(): save(record)
+              try:
+                  variables = json.loads(pathlib.Path(os.environ['PARCHWELL_EPHEMERAL_TFVARS_PATH']).read_text())
+                  suffix = variables['naming_suffix']
+                  subscription = os.environ['ARM_SUBSCRIPTION_ID']
+                  repository, run, attempt = (os.environ[x] for x in ('GITHUB_REPOSITORY', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT'))
+                  assert isinstance(suffix, str) and re.fullmatch(r'[a-z0-9]{8}', suffix)
+                  assert re.fullmatch(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', subscription)
+                  assert re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repository, flags=re.ASCII)
+                  assert all(re.fullmatch(r'[1-9][0-9]*', x, flags=re.ASCII) for x in (run, attempt))
+                  namespace = 'ehp-' + hashlib.sha256('\n'.join((repository, run, attempt, phase_name)).encode('ascii')).hexdigest()[:24]
+                  root = '/subscriptions/' + subscription + '/resourceGroups/rg-parchwell-eph/providers/'
+                  targets = {'blob': root + 'Microsoft.Storage/storageAccounts/stparchwell' + suffix + '/blobServices/default',
+                             'eventhubs': root + 'Microsoft.EventHub/namespaces/' + namespace}
+                  state_path = p / ('smoke-' + phase_name + '-terraform-state.json')
+                  environment = dict(os.environ, TF_DATA_DIR=str(p / 'tfdata-ephemeral'))
+                  subprocess.run(['python3', 'infra/scripts/lifecycle/command.py', '60', '--stdout-file', str(state_path), '--max-bytes', '4194304', '--', 'terraform', '-chdir=infra/ephemeral', 'show', '-json'], stderr=subprocess.DEVNULL, check=True, env=environment)
+                  resources = json.loads(state_path.read_text())['values']['root_module']['resources']
+                  sources = [item for item in resources if item.get('address') == 'data.terraform_remote_state.persistent' and item.get('mode') == 'data']
+                  assert len(sources) == 1
+                  workspace = sources[0]['values']['outputs']['log_analytics_workspace_id']
+                  assert isinstance(workspace, str) and workspace.startswith('/')
+                  assert lifecycle['workspace_resource_id'].casefold() == workspace.casefold()
+              except Exception:
+                  for record in records.values():
+                      record['reason'] = 'expected_identity_unavailable'
+                      save(record)
+                  raise RuntimeError('diagnostic_settings_unconfirmed') from None
+              failure = False
+              for alias in ('blob', 'eventhubs'):
+                  record = records[alias]
+                  try:
+                      target = lifecycle['blob_diagnostic_target_resource_id' if alias == 'blob' else 'namespace_resource_id']
+                      if not isinstance(target, str) or target.casefold() != targets[alias].casefold():
+                          record['target'] = 'failed'
+                          record['reason'] = 'target_mismatch'
+                          raise ValueError()
+                      response = command(['az', 'monitor', 'diagnostic-settings', 'list', '--resource', target, '-o', 'json'])
+                      settings = response.get('value') if isinstance(response, dict) else response
+                      if not isinstance(settings, list):
+                          record['reason'] = 'invalid_readback'
+                          raise ValueError()
+                      name = ('diag-blob-' if alias == 'blob' else 'diag-eventhubs-') + suffix
+                      expected_id = targets[alias] + '/providers/Microsoft.Insights/diagnosticSettings/' + name
+                      matches = [item for item in settings if isinstance(item, dict) and isinstance(item.get('id'), str) and item['id'].casefold() == expected_id.casefold()]
+                      if len(matches) != 1:
+                          record['target'] = 'failed'
+                          record['reason'] = 'target_mismatch'
+                          raise ValueError()
+                      item = matches[0]
+                      record['target'] = 'passed'
+                      record['workspace'] = 'passed' if isinstance(item.get('workspaceId'), str) and item['workspaceId'].casefold() == workspace.casefold() else 'failed'
+                      record['destination'] = 'passed' if item.get('logAnalyticsDestinationType') == 'Dedicated' else 'failed'
+                      if not isinstance(item.get('logs'), list) or not isinstance(item.get('metrics'), list):
+                          record['reason'] = 'invalid_readback'
+                          raise ValueError()
+                      logs = {entry.get('category') or entry.get('categoryGroup') for entry in item['logs'] if isinstance(entry, dict) and entry.get('enabled') is True}
+                      metrics = {entry.get('category') for entry in item['metrics'] if isinstance(entry, dict) and entry.get('enabled') is True}
+                      record['logs'] = sorted(x for x in logs if x in allowed[alias]['logs'])
+                      record['metrics'] = sorted(x for x in metrics if x in allowed[alias]['metrics'])
+                      if record['workspace'] != 'passed': record['reason'] = 'workspace_mismatch'
+                      elif record['destination'] != 'passed': record['reason'] = 'destination_mismatch'
+                      elif logs != allowed[alias]['logs'] or metrics != allowed[alias]['metrics']: record['reason'] = 'category_mismatch'
+                      else:
+                          record['status'] = 'passed'
+                          record['reason'] = 'none'
+                      (p / (alias + '-' + phase_name + '-settings.json')).write_text(json.dumps(item))
+                  except Exception:
+                      if record['reason'] == 'readback_unavailable': record['reason'] = 'readback_failed'
+                  record['observed_at'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                  save(record)
+                  failure = failure or record['status'] != 'passed'
+              if failure: raise RuntimeError('diagnostic_settings_unconfirmed')
+          observe_settings('C0', state)
           (p / 'smoke-shared-before.json').write_text(json.dumps(state))
           print('C0 diagnostic settings read back: Blob StorageRead StorageWrite StorageDelete Transaction; Event Hubs allLogs AllMetrics; Dedicated')
           PYTHON
@@ -395,15 +472,96 @@ jobs:
               return json.loads(result.stdout)
           account = command(['az', 'storage', 'account', 'show', '--ids', after['storage_account_resource_id'], '-o', 'json'])
           assert account['creationTime'] == before['storage_creation_time']
-          for alias, target in (('blob', after['blob_diagnostic_target_resource_id']), ('eventhubs', after['namespace_resource_id'])):
-              response = command(['az', 'monitor', 'diagnostic-settings', 'list', '--resource', target, '-o', 'json'])
-              settings = response.get('value') if isinstance(response, dict) else response
-              assert isinstance(settings, list)
-              logs_expected = {'StorageRead', 'StorageWrite', 'StorageDelete'} if alias == 'blob' else {'allLogs'}
-              metrics_expected = {'Transaction'} if alias == 'blob' else {'AllMetrics'}
-              matches = [x for x in settings if isinstance(x, dict) and x.get('workspaceId', '').casefold() == after['workspace_resource_id'].casefold() and x.get('logAnalyticsDestinationType') == 'Dedicated' and {a.get('category') or a.get('categoryGroup') for a in x.get('logs', []) if a.get('enabled') is True} == logs_expected and {a.get('category') for a in x.get('metrics', []) if a.get('enabled') is True} == metrics_expected]
-              assert len(matches) == 1
-              (p / (alias + '-C1-settings.json')).write_text(json.dumps(matches[0]))
+          def observe_settings(phase_name, lifecycle):
+              import datetime, hashlib, re
+              public = pathlib.Path(os.environ['RUNNER_TEMP']) / 'configuration-isolation-observations'
+              public.mkdir(mode=0o700, exist_ok=True)
+              allowed = {'blob': {'logs': {'StorageRead', 'StorageWrite', 'StorageDelete'}, 'metrics': {'Transaction'}},
+                         'eventhubs': {'logs': {'allLogs'}, 'metrics': {'AllMetrics'}}}
+              def initial(alias):
+                  return {'phase': phase_name, 'service': alias, 'observed_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                          'status': 'failed', 'target': 'unknown', 'workspace': 'unknown', 'destination': 'unknown',
+                          'logs': [], 'metrics': [], 'reason': 'readback_unavailable'}
+              def save(record):
+                  target = public / (phase_name + '-' + record['service'] + '.json')
+                  partial = target.with_suffix('.partial')
+                  partial.write_text(json.dumps(record, sort_keys=True))
+                  partial.replace(target)
+              records = {alias: initial(alias) for alias in allowed}
+              for record in records.values(): save(record)
+              try:
+                  variables = json.loads(pathlib.Path(os.environ['PARCHWELL_EPHEMERAL_TFVARS_PATH']).read_text())
+                  suffix = variables['naming_suffix']
+                  subscription = os.environ['ARM_SUBSCRIPTION_ID']
+                  repository, run, attempt = (os.environ[x] for x in ('GITHUB_REPOSITORY', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT'))
+                  assert isinstance(suffix, str) and re.fullmatch(r'[a-z0-9]{8}', suffix)
+                  assert re.fullmatch(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', subscription)
+                  assert re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repository, flags=re.ASCII)
+                  assert all(re.fullmatch(r'[1-9][0-9]*', x, flags=re.ASCII) for x in (run, attempt))
+                  namespace = 'ehp-' + hashlib.sha256('\n'.join((repository, run, attempt, phase_name)).encode('ascii')).hexdigest()[:24]
+                  root = '/subscriptions/' + subscription + '/resourceGroups/rg-parchwell-eph/providers/'
+                  targets = {'blob': root + 'Microsoft.Storage/storageAccounts/stparchwell' + suffix + '/blobServices/default',
+                             'eventhubs': root + 'Microsoft.EventHub/namespaces/' + namespace}
+                  state_path = p / ('smoke-' + phase_name + '-terraform-state.json')
+                  environment = dict(os.environ, TF_DATA_DIR=str(p / 'tfdata-ephemeral'))
+                  subprocess.run(['python3', 'infra/scripts/lifecycle/command.py', '60', '--stdout-file', str(state_path), '--max-bytes', '4194304', '--', 'terraform', '-chdir=infra/ephemeral', 'show', '-json'], stderr=subprocess.DEVNULL, check=True, env=environment)
+                  resources = json.loads(state_path.read_text())['values']['root_module']['resources']
+                  sources = [item for item in resources if item.get('address') == 'data.terraform_remote_state.persistent' and item.get('mode') == 'data']
+                  assert len(sources) == 1
+                  workspace = sources[0]['values']['outputs']['log_analytics_workspace_id']
+                  assert isinstance(workspace, str) and workspace.startswith('/')
+                  assert lifecycle['workspace_resource_id'].casefold() == workspace.casefold()
+              except Exception:
+                  for record in records.values():
+                      record['reason'] = 'expected_identity_unavailable'
+                      save(record)
+                  raise RuntimeError('diagnostic_settings_unconfirmed') from None
+              failure = False
+              for alias in ('blob', 'eventhubs'):
+                  record = records[alias]
+                  try:
+                      target = lifecycle['blob_diagnostic_target_resource_id' if alias == 'blob' else 'namespace_resource_id']
+                      if not isinstance(target, str) or target.casefold() != targets[alias].casefold():
+                          record['target'] = 'failed'
+                          record['reason'] = 'target_mismatch'
+                          raise ValueError()
+                      response = command(['az', 'monitor', 'diagnostic-settings', 'list', '--resource', target, '-o', 'json'])
+                      settings = response.get('value') if isinstance(response, dict) else response
+                      if not isinstance(settings, list):
+                          record['reason'] = 'invalid_readback'
+                          raise ValueError()
+                      name = ('diag-blob-' if alias == 'blob' else 'diag-eventhubs-') + suffix
+                      expected_id = targets[alias] + '/providers/Microsoft.Insights/diagnosticSettings/' + name
+                      matches = [item for item in settings if isinstance(item, dict) and isinstance(item.get('id'), str) and item['id'].casefold() == expected_id.casefold()]
+                      if len(matches) != 1:
+                          record['target'] = 'failed'
+                          record['reason'] = 'target_mismatch'
+                          raise ValueError()
+                      item = matches[0]
+                      record['target'] = 'passed'
+                      record['workspace'] = 'passed' if isinstance(item.get('workspaceId'), str) and item['workspaceId'].casefold() == workspace.casefold() else 'failed'
+                      record['destination'] = 'passed' if item.get('logAnalyticsDestinationType') == 'Dedicated' else 'failed'
+                      if not isinstance(item.get('logs'), list) or not isinstance(item.get('metrics'), list):
+                          record['reason'] = 'invalid_readback'
+                          raise ValueError()
+                      logs = {entry.get('category') or entry.get('categoryGroup') for entry in item['logs'] if isinstance(entry, dict) and entry.get('enabled') is True}
+                      metrics = {entry.get('category') for entry in item['metrics'] if isinstance(entry, dict) and entry.get('enabled') is True}
+                      record['logs'] = sorted(x for x in logs if x in allowed[alias]['logs'])
+                      record['metrics'] = sorted(x for x in metrics if x in allowed[alias]['metrics'])
+                      if record['workspace'] != 'passed': record['reason'] = 'workspace_mismatch'
+                      elif record['destination'] != 'passed': record['reason'] = 'destination_mismatch'
+                      elif logs != allowed[alias]['logs'] or metrics != allowed[alias]['metrics']: record['reason'] = 'category_mismatch'
+                      else:
+                          record['status'] = 'passed'
+                          record['reason'] = 'none'
+                      (p / (alias + '-' + phase_name + '-settings.json')).write_text(json.dumps(item))
+                  except Exception:
+                      if record['reason'] == 'readback_unavailable': record['reason'] = 'readback_failed'
+                  record['observed_at'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                  save(record)
+                  failure = failure or record['status'] != 'passed'
+              if failure: raise RuntimeError('diagnostic_settings_unconfirmed')
+          observe_settings('C1', after)
           sentinel = phase.download_blob(os.environ['PARCHWELL_RUN_ID'] + '/C0/r1/start-line.json', p / 'sentinel-after', 16777216, time.monotonic() + 180)
           assert sentinel is not None and sentinel == (p / 'sentinel-before').read_bytes() and hashlib.sha256(sentinel).hexdigest() == (p / 'sentinel-sha256').read_text()
           eh = module.unwrap(output['eventhubs'])['bootstrap_servers'].split(':')[0]
@@ -589,15 +747,82 @@ jobs:
           STEP_RESULTS: ${{ toJSON(steps) }}
         run: |
           python3 - <<'PYTHON'
-          import datetime, json, os, pathlib
+          import datetime, json, os, pathlib, re
           steps = json.loads(os.environ['STEP_RESULTS'])
           names = 'c0 c0_settings c0_cleanup off_transition on_transition c1_settings c1 delete_workload destroy stop'.split()
           lines = ['Configuration isolation diagnostic receipt',
                    'Recorded UTC: ' + datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                   'Blob categories: StorageRead StorageWrite StorageDelete Transaction',
-                   'Event Hubs categories: allLogs AllMetrics',
                    'Diagnostic settings readback does not establish ingestion.']
+          run, attempt = os.environ.get('GITHUB_RUN_ID', ''), os.environ.get('GITHUB_RUN_ATTEMPT', '')
+          if re.fullmatch(r'[1-9][0-9]*', run) and re.fullmatch(r'[1-9][0-9]*', attempt):
+              lines.append('Run: ' + run + ' attempt: ' + attempt)
+          else:
+              lines.append('Run identity: unavailable')
+          start_path = pathlib.Path(os.environ['RUNNER_TEMP']) / 'configuration-smoke-start'
+          if start_path.exists():
+              try:
+                  started = datetime.datetime.fromisoformat(start_path.read_text()).astimezone(datetime.timezone.utc).isoformat()
+                  lines.append('Job observation start UTC: ' + started)
+              except (OSError, ValueError):
+                  lines.append('Job observation start UTC: unavailable')
+          else:
+              lines.append('Job observation start UTC: unavailable')
           lines.extend(name + ': ' + steps.get(name, {}).get('outcome', 'missing') for name in names)
+          allowed = {'blob': ({'StorageRead', 'StorageWrite', 'StorageDelete'}, {'Transaction'}),
+                     'eventhubs': ({'allLogs'}, {'AllMetrics'})}
+          reasons = {'none', 'readback_unavailable', 'expected_identity_unavailable', 'target_mismatch', 'workspace_mismatch', 'destination_mismatch', 'category_mismatch', 'invalid_readback', 'readback_failed'}
+          directory = pathlib.Path(os.environ['RUNNER_TEMP']) / 'configuration-isolation-observations'
+          for phase in ('C0', 'C1'):
+              for service in ('blob', 'eventhubs'):
+                  path = directory / (phase + '-' + service + '.json')
+                  if not path.exists():
+                      lines.append(phase + ' ' + service + ': not_attempted')
+                      continue
+                  try:
+                      data = json.loads(path.read_text())
+                      assert set(data) == {'phase', 'service', 'observed_at', 'status', 'target', 'workspace', 'destination', 'logs', 'metrics', 'reason'}
+                      assert data['phase'] == phase and data['service'] == service
+                      assert data['status'] in ('passed', 'failed') and data['reason'] in reasons
+                      assert all(data[key] in ('passed', 'failed', 'unknown') for key in ('target', 'workspace', 'destination'))
+                      assert isinstance(data['logs'], list) and set(data['logs']) <= allowed[service][0]
+                      assert isinstance(data['metrics'], list) and set(data['metrics']) <= allowed[service][1]
+                      observed = datetime.datetime.fromisoformat(data['observed_at']).astimezone(datetime.timezone.utc).isoformat()
+                      lines.append(phase + ' ' + service + ': ' + data['status'] + ' at ' + observed + ' target=' + data['target'] + ' workspace=' + data['workspace'] + ' destination=' + data['destination'] + ' logs=' + ','.join(sorted(data['logs'])) + ' metrics=' + ','.join(sorted(data['metrics'])) + ' reason=' + data['reason'])
+                  except (ValueError, TypeError, KeyError, AssertionError, OSError):
+                      lines.append(phase + ' ' + service + ': failed reason=invalid_observation')
+          worker_records = None
+          try:
+              artifact_directory = os.environ.get('PARCHWELL_ARTIFACT_DIRECTORY', '')
+              worker_file = pathlib.Path(artifact_directory) / 'phase-status.json'
+              if artifact_directory and worker_file.is_file() and worker_file.stat().st_size <= 4194304:
+                  worker_state = json.loads(worker_file.read_text())
+                  if isinstance(worker_state, dict) and isinstance(worker_state.get('modes'), list):
+                      worker_records = worker_state['modes']
+          except (OSError, ValueError, TypeError):
+              worker_records = None
+          for phase in ('C0', 'C1'):
+              for mode in ('start-line', 'loadgen', 'verify'):
+                  prefix = phase + ' ' + mode + ' worker execution: '
+                  if worker_records is None or not (re.fullmatch(r'[1-9][0-9]*', run) and re.fullmatch(r'[1-9][0-9]*', attempt)):
+                      lines.append(prefix + 'unavailable')
+                      continue
+                  job = 'b04-' + run + '-' + attempt + '-' + phase.lower() + '-r1-' + mode
+                  matched = [item for item in worker_records if isinstance(item, dict) and item.get('job') == job and item.get('mode') == mode and item.get('repeat') == 1]
+                  if not matched:
+                      lines.append(prefix + 'not_attempted')
+                  elif len(matched) != 1:
+                      lines.append(prefix + 'failed reason=status_invalid')
+                  else:
+                      record = matched[0]
+                      outcome = record.get('outcome')
+                      if outcome == 'complete' and record.get('collect_gap') is not True and all(type(record.get(key)) is int and record[key] == 0 for key in ('render', 'apply', 'wait', 'collect')):
+                          lines.append(prefix + 'passed')
+                      elif outcome == 'not_attempted':
+                          lines.append(prefix + 'not_attempted')
+                      elif outcome in ('failed', 'unknown', 'collect_error', 'render_failed', 'apply_failed', 'complete'):
+                          lines.append(prefix + 'failed reason=worker_incomplete')
+                      else:
+                          lines.append(prefix + 'failed reason=status_invalid')
           lines.append('Workload-active means the loadgen Job was active; exact overlap with delivered traffic is not established.')
           for phase in ('c0', 'c1'):
               timestamp = pathlib.Path(os.environ['RUNNER_TEMP']) / ('configuration-' + phase + '-time')
