@@ -402,8 +402,16 @@ public sealed class B10LateObservationDiagnosticsTests
             ListedBytes+=names.Sum(name=>(long)Encoding.UTF8.GetByteCount(name));
             return Task.FromResult(new BlobListing(names,1,true));
         }
+        internal Dictionary<string, byte[]> MetadataObjects { get; } = new(StringComparer.Ordinal);
+        public async Task CreateStreamAsync(string name, Stream content, CancellationToken cancellationToken)
+        {
+            using var buffer = new MemoryStream();
+            await content.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+            await CreateAsync(name, buffer.ToArray(), cancellationToken).ConfigureAwait(false);
+        }
         public Task CreateAsync(string name,byte[] content,CancellationToken cancellationToken)
-        {Verifier.Add(name,content);Created.Add(name);Events.Add("create");return Task.CompletedTask;}
+        {
+            if (name.Contains("/consumed-metadata/", StringComparison.Ordinal)) { MetadataObjects.Add(name, content); return Task.CompletedTask; }Verifier.Add(name,content);Created.Add(name);Events.Add("create");return Task.CompletedTask;}
         public void Dispose()=>Kafka.Dispose();
     }
 }

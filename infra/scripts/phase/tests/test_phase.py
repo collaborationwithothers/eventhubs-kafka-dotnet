@@ -21,6 +21,10 @@ DIGESTS = {'loadgen': 'sha256:' + 'b' * 64, 'verifier': 'sha256:' + 'c' * 64}
 BATCH_DIGESTS = {**DIGESTS, 'enrichment': 'sha256:' + 'd' * 64}
 RESOURCE = '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-synthetic/providers/Microsoft.ContainerService/managedClusters/aks-synthetic'
 PERSISTENT = {'acr': {'value': {'name': 'parchwellacr', 'login_server': 'parchwellacr.azurecr.io'}}, 'application_insights_connection_string': {'value': 'InstrumentationKey=00000000-0000-0000-0000-000000000001'}}
+ARCHIVE_ID = '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-synthetic/providers/Microsoft.Storage/storageAccounts/syntheticarchive'
+PERSISTENT['evidence_archive'] = {'value': {'storage_account_id': ARCHIVE_ID, 'account_name': 'syntheticarchive',
+    'blob_service_uri': 'https://syntheticarchive.blob.core.windows.net/', 'container_name': 'run-evidence',
+    'container_id': ARCHIVE_ID + '/blobServices/default/containers/run-evidence', 'retention_days': 90}}
 ACCOUNTS = {'loadgen': {'name': 'loadgen', 'client_id': 'synthetic-loadgen', 'subject': 'system:serviceaccount:parchwell:loadgen'}, 'verifier': {'name': 'verifier', 'client_id': 'synthetic-verifier', 'subject': 'system:serviceaccount:parchwell:verifier'}, 'enrichment-consumer': {'name': 'unused'}}
 EPHEMERAL = {'eventhubs': {'value': {'namespace_name': 'eh-synthetic', 'bootstrap_servers': 'eh-synthetic.servicebus.windows.net:9093', 'topics': {'events': 'document-events', 'state': 'document-state', 'dlq': 'document-events-dlq'}}}, 'blob': {'value': {'account_url': 'https://synthetic.blob.core.windows.net', 'containers': {'ledger': 'ledger', 'verifier': 'verifier', 'claim_check': 'claim-check'}}}, 'private_endpoint_ips': {'value': {'eventhubs': '10.0.0.4', 'blob': '10.0.0.5'}}}
 DEADLINES = {'start-line': 150, 'loadgen': 1140, 'verify': 750, 'judge': 90,
@@ -755,7 +759,7 @@ class PhaseTests(unittest.TestCase):
     def test_prepare_ledger_batch(self):
         self.prepare_ledger()
         self.assertEqual({'scenario': 'ledger-batch', 'phase': 'ledger-batch', 'configuration': None, 'run_id': LEDGER_RUN,
-                          'source_commit': SHA, 'run_kind': 'smoke', 'items': ['B06', 'B07'], 'images': json.loads((self.private / 'phase.json').read_text())['images']},
+                          'source_commit': SHA, 'evidence_archive': PERSISTENT['evidence_archive']['value'], 'run_kind': 'smoke', 'items': ['B06', 'B07'], 'images': json.loads((self.private / 'phase.json').read_text())['images']},
                          json.loads((self.private / 'phase.json').read_text()))
 
     def test_prepare_ledger_batch_rejects_long_worker_run(self):
@@ -846,7 +850,7 @@ class PhaseTests(unittest.TestCase):
     def test_prepare_ledger_batch_records_batch_kind(self):
         self.prepare_ledger('batch')
         self.assertEqual({'scenario': 'ledger-batch', 'phase': 'ledger-batch', 'configuration': None, 'run_id': LEDGER_RUN,
-                          'source_commit': SHA, 'run_kind': 'batch', 'items': ['B06', 'B07'], 'images': json.loads((self.private / 'phase.json').read_text())['images']},
+                          'source_commit': SHA, 'evidence_archive': PERSISTENT['evidence_archive']['value'], 'run_kind': 'batch', 'items': ['B06', 'B07'], 'images': json.loads((self.private / 'phase.json').read_text())['images']},
                          json.loads((self.private / 'phase.json').read_text()))
 
     # Each configuration must publish a candidate after its own ordered repeats and judge.
@@ -973,7 +977,7 @@ class PhaseTests(unittest.TestCase):
                 self.assertEqual(expected, self.output_file.read_text())
 
     def test_scenario_commands_reject_extra_arguments_without_output(self):
-        for command in ('validate-scenario', 'allow-images'):
+        for command in ('validate-scenario', 'allow-images', 'archive'):
             with self.subTest(command=command), contextlib.redirect_stdout(io.StringIO()) as output:
                 self.output_file.write_text('')
                 self.assertEqual(2, phase.main([command, 'extra']))
@@ -985,7 +989,7 @@ class PhaseTests(unittest.TestCase):
         exported = dict(line.split('=', 1) for line in self.env_file.read_text().splitlines())
         self.assertEqual('a01-40121134428-1', exported['PARCHWELL_RUN_ID'])
         self.assertEqual('A01', json.loads((Path(exported['PARCHWELL_PRIVATE_DIRECTORY']) / 'phase.json').read_text())['scenario'])
-        self.assertEqual({'PARCHWELL_PRIVATE_DIRECTORY', 'PARCHWELL_CANDIDATE_DIRECTORY', 'PARCHWELL_ARTIFACT_DIRECTORY', 'PARCHWELL_CLUSTER_BACKEND_CONFIG', 'PARCHWELL_CLUSTER_TFVARS_PATH', 'PARCHWELL_EPHEMERAL_BACKEND_CONFIG', 'PARCHWELL_EPHEMERAL_TFVARS_PATH', 'PARCHWELL_RUN_ID', 'KUBECONFIG'}, set(exported))
+        self.assertEqual({'PARCHWELL_PRIVATE_DIRECTORY', 'PARCHWELL_CANDIDATE_DIRECTORY', 'PARCHWELL_ARTIFACT_DIRECTORY', 'PARCHWELL_CLUSTER_BACKEND_CONFIG', 'PARCHWELL_CLUSTER_TFVARS_PATH', 'PARCHWELL_EPHEMERAL_BACKEND_CONFIG', 'PARCHWELL_EPHEMERAL_TFVARS_PATH', 'PARCHWELL_RUN_ID', 'KUBECONFIG', 'PARCHWELL_ARCHIVE_DIRECTORY', 'PARCHWELL_ARCHIVE_MANIFEST_DIRECTORY', 'PARCHWELL_ARCHIVE_MANIFEST_PATH'}, set(exported))
         directories = [Path(exported[key]) for key in ('PARCHWELL_PRIVATE_DIRECTORY', 'PARCHWELL_CANDIDATE_DIRECTORY', 'PARCHWELL_ARTIFACT_DIRECTORY')]
         self.assertEqual(3, len(set(directories)))
         for directory in directories:
@@ -994,6 +998,18 @@ class PhaseTests(unittest.TestCase):
         for name in ('cluster_backend.hcl', 'cluster_tfvars.tfvars.json', 'ephemeral_backend.hcl', 'ephemeral_tfvars.tfvars.json', 'persistent-output.json'):
             self.assertEqual(0o600, (directories[0] / name).stat().st_mode & 0o777)
         self.assertEqual({'phase': 'probe', 'run_id': 'a01-40121134428-1', 'modes': [], 'candidate': None, 'safety_stop': False}, json.loads((directories[2] / 'phase-status.json').read_text()))
+
+    def test_archive_rejects_invalid_config_before_side_effects(self):
+        invalid = [None, {}, {**PERSISTENT['evidence_archive']['value'], 'retention_days': True},
+                   {**PERSISTENT['evidence_archive']['value'], 'blob_service_uri': 'https://archive123.blob.core.windows.net/?sig=secret'},
+                   {**PERSISTENT['evidence_archive']['value'], 'container_id': 'other'}]
+        for value in invalid:
+            with self.subTest(value=value):
+                os.environ['S_PERSISTENT_OUTPUTS'] = json.dumps({**PERSISTENT, 'evidence_archive': {'value': value}})
+                before = set(self.root.iterdir())
+                self.assertEqual(2, self.main('prepare', 'probe'))
+                self.assertEqual(before, set(self.root.iterdir()))
+                self.assertEqual('', self.env_file.read_text())
 
     def test_prepare_rejections(self):
         cases = [('c0', {}), ('probe', {'S_CLUSTER_BACKEND': ''}), ('probe', {'S_PERSISTENT_OUTPUTS': '{"acr": {}, "acr": {}}'}), ('probe', {'S_PERSISTENT_OUTPUTS': 'x' * 4194305}), ('probe', {'GITHUB_SHA': 'A' * 40}), ('probe', {'GITHUB_RUN_ID': '1' * 30}), ('probe', {'S_PERSISTENT_OUTPUTS': json.dumps({**PERSISTENT, 'acr': {'name': 'Parchwell', 'login_server': 'parchwellacr.azurecr.io'}})})]
@@ -1013,7 +1029,7 @@ class PhaseTests(unittest.TestCase):
                 private = Path(exported['PARCHWELL_PRIVATE_DIRECTORY'])
                 state = json.loads((private / 'phase.json').read_text())
                 self.assertEqual({'scenario': 'B04', 'phase': selected, 'configuration': selected,
-                                  'run_id': f'b04-40121134428-1', 'source_commit': SHA}, state)
+                                  'run_id': f'b04-40121134428-1', 'source_commit': SHA, 'evidence_archive': PERSISTENT['evidence_archive']['value']}, state)
                 self.assertEqual('B04', state['scenario'])
                 self.assertEqual(selected, state['configuration'])
                 self.assertEqual('b04-40121134428-1', state['run_id'])
@@ -1897,7 +1913,7 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
     def test_idle_observation_preparation_freezes_all_seven_configurations(self):
         self.prepare_idle()
         self.assertEqual({'scenario': 'idle-observation', 'phase': 'idle-observation', 'configuration': None,
-                          'run_id': 'idle-40121134428-1', 'source_commit': SHA, 'run_kind': 'smoke',
+                          'run_id': 'idle-40121134428-1', 'source_commit': SHA, 'evidence_archive': PERSISTENT['evidence_archive']['value'], 'run_kind': 'smoke',
                           'items': ['A02', 'A03', 'A04']}, json.loads((self.private / 'phase.json').read_text()))
         self.assertEqual({'phase': 'idle-observation', 'run_id': 'idle-40121134428-1', 'modes': [], 'candidate': None,
                           'safety_stop': False}, phase.Phase().state())
@@ -1940,7 +1956,7 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
         self.prepare_batch()
         metadata = json.loads((self.private / 'phase.json').read_text())
         self.assertEqual({'scenario': 'probe-batch', 'phase': 'single-action', 'configuration': None,
-                          'run_id': 'probe-40121134428-1', 'source_commit': SHA, 'run_kind': 'smoke',
+                          'run_id': 'probe-40121134428-1', 'source_commit': SHA, 'evidence_archive': PERSISTENT['evidence_archive']['value'], 'run_kind': 'smoke',
                           'items': ['B01', 'B03', 'B05', 'C08', 'C12', 'F04']},
                          {key: value for key, value in metadata.items() if key not in ('images', 'batch_started_monotonic', 'batch_clock_boot_id', 'batch_clock_run_id', 'batch_clock_source')})
         self.assertEqual({'phase': 'single-action', 'run_id': self.run_id, 'modes': [], 'candidate': None, 'safety_stop': False, 'not_selected': []}, phase.Phase().state())

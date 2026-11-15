@@ -1,4 +1,6 @@
 using System.Reflection;
+using System.Text.Json;
+using Parchwell.Verifier.Tests.Support;
 using Confluent.Kafka;
 using Parchwell.Verifier.Common.Contracts;
 using Parchwell.Verifier.Common.Serialization;
@@ -265,6 +267,46 @@ public sealed class WindowConsumerTests
         Assert.Throws<InputLimitExceededException>(() => Drain(consumer, fake, budget: budget));
         Assert.Equal(recordLimit ? 1 : 0, budget.Records);
         Assert.Equal(recordLimit ? 3 : 0, budget.Bytes);
+    }
+
+    [Fact]
+    public void ConsumedMetadata_PartialDrainRetainsSealedChunksOnBudgetAndOffsetFailure()
+    {
+        var (consumer, fake) = Create();
+        var store = new ConsumedMetadataCaptureTests.Store(); var options = VerifierHostTestOptions.ValidOptions("verify");
+        var record = MessageIdentityReaderTests.Record(offset: 5); record.Partition = new Partition(0);
+        fake.Polls.Enqueue(new(record, 5, 1));
+        var capture = ConsumedMetadataCapture.TryStart(options, store, Window(), 0, "ordinary", 1)!;
+        Assert.Throws<InputLimitExceededException>(() => WindowConsumer.Drain(consumer, Window(), fake.Clock, 0,
+            TimeSpan.FromMilliseconds(1000), TimeSpan.FromMilliseconds(1000), new(1, 1), null, capture, CancellationToken.None, default));
+        using (var manifest = JsonDocument.Parse(store.Objects.Single(p => p.Key.EndsWith("capture.json", StringComparison.Ordinal)).Value))
+        {
+            Assert.False(manifest.RootElement.GetProperty("complete").GetBoolean());
+            Assert.Equal(1, manifest.RootElement.GetProperty("observed_rows").GetInt64());
+            Assert.Equal(1, manifest.RootElement.GetProperty("captured_rows").GetInt64());
+            Assert.Single(manifest.RootElement.GetProperty("chunks").EnumerateArray());
+        }
+        var (offsetConsumer, offsetFake) = Create(); offsetFake.PollError = new KafkaException(new Error(ErrorCode.OffsetOutOfRange));
+        var offsetStore = new ConsumedMetadataCaptureTests.Store();
+        var offsetCapture = ConsumedMetadataCapture.TryStart(options, offsetStore, Window(), 1, "ordinary", 1)!;
+        var result = WindowConsumer.Drain(offsetConsumer, Window(), offsetFake.Clock, 0, TimeSpan.FromMilliseconds(1000),
+            TimeSpan.FromMilliseconds(1000), new(10, 1000), null, offsetCapture, CancellationToken.None, default);
+        RunWindowTests.AssertSemanticFailure(Assert.Single(result.Assessments), 9);
+        using var offsetManifest = JsonDocument.Parse(offsetStore.Objects.Single(p => p.Key.EndsWith("capture.json", StringComparison.Ordinal)).Value);
+        Assert.False(offsetManifest.RootElement.GetProperty("complete").GetBoolean());
+    }
+
+    [Fact]
+    public void ConsumedMetadata_CancellationFinalizesIncompleteCapture()
+    {
+        var (consumer, fake) = Create(); var options = VerifierHostTestOptions.ValidOptions("verify");
+        var store = new ConsumedMetadataCaptureTests.Store();
+        var capture = ConsumedMetadataCapture.TryStart(options, store, Window(), 0, "ordinary", 1)!;
+        Assert.Throws<OperationCanceledException>(() => WindowConsumer.Drain(consumer, Window(), fake.Clock, 0,
+            TimeSpan.FromMilliseconds(1000), TimeSpan.FromMilliseconds(1000), new(10, 1000), null, capture, new CancellationToken(true), default));
+        using var manifest = JsonDocument.Parse(store.Objects.Single(p => p.Key.EndsWith("capture.json", StringComparison.Ordinal)).Value);
+        Assert.False(manifest.RootElement.GetProperty("complete").GetBoolean());
+        Assert.Equal("interrupted", manifest.RootElement.GetProperty("gaps")[0].GetProperty("code").GetString());
     }
 
     [Fact]

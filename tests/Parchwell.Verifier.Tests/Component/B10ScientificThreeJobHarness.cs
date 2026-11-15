@@ -74,6 +74,7 @@ internal sealed class B10ScientificThreeJobHarness : IDisposable, IVerifierArtif
         }
         foreach ((string name, string value) in new Dictionary<string, string>
         {
+            ["ConsumedMetadata:Enabled"] = "true", ["ConsumedMetadata:MaxRowBytes"] = "1048576", ["ConsumedMetadata:MaxChunkBytes"] = "134217728", ["ConsumedMetadata:MaxBytes"] = "17179869184",
             ["Mode"] = "b10-abrupt-verify", ["ScenarioId"] = "B10", ["ConfigurationId"] = "C1", ["Phase"] = "C1", ["Repeat"] = "1",
             ["RunId"] = "synthetic", ["VerifierCommit"] = B10AbruptVerifyEvidence.Commit, ["SourceCommit"] = B10AbruptVerifyEvidence.Commit,
             ["RepeatPrefix"] = "synthetic/C1/r1/", ["ExpectedInstanceId"] = "synthetic-c1-r1-loadgen",
@@ -214,8 +215,16 @@ internal sealed class B10ScientificThreeJobHarness : IDisposable, IVerifierArtif
         return Task.FromResult(IncompleteListing && prefix.Contains("/b10-abrupt-diagnostic/", StringComparison.Ordinal)
             ? new BlobListing(names, 17, false, "listing_incomplete") : new BlobListing(names, 1, true));
     }
+    internal Dictionary<string, byte[]> MetadataObjects { get; } = new(StringComparer.Ordinal);
+    public async Task CreateStreamAsync(string name, Stream content, CancellationToken cancellationToken)
+    {
+        using var buffer = new MemoryStream();
+        await content.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+        await CreateAsync(name, buffer.ToArray(), cancellationToken).ConfigureAwait(false);
+    }
     public Task CreateAsync(string name, byte[] content, CancellationToken cancellationToken)
-    { cancellationToken.ThrowIfCancellationRequested(); Creates++;
+    {
+        if (name.Contains("/consumed-metadata/", StringComparison.Ordinal)) { MetadataObjects.Add(name, content); return Task.CompletedTask; } cancellationToken.ThrowIfCancellationRequested(); Creates++;
         if (FailCreateSuffix is not null && name.EndsWith(FailCreateSuffix, StringComparison.Ordinal)) throw new InvalidOperationException("synthetic_create_failed");
         Writes.Add(name); Verifier.Add(name, content); return Task.CompletedTask; }
     public void Dispose() { producer?.Dispose(); authentication.Dispose(); }

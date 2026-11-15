@@ -55,6 +55,7 @@ override_data {
   override_during = plan
   values = {
     "outputs" = {
+      "workflow_principal_id"      = "00000000-0000-0000-0000-000000000009"
       "spoke_vnet_id"              = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Network/virtualNetworks/vnet-parchwell-offline1"
       "aks_subnet_id"              = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Network/virtualNetworks/vnet-parchwell-offline1/subnets/snet-aks"
       "private_endpoint_subnet_id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Network/virtualNetworks/vnet-parchwell-offline1/subnets/snet-private-endpoints"
@@ -261,6 +262,13 @@ override_data {
 
 run "foundation" {
   command = plan
+  assert {
+    condition = toset(keys(azurerm_role_assignment.workflow_evidence_reader)) == toset(["ledger", "verifier", "single_action"]) && alltrue([
+      for name, grant in azurerm_role_assignment.workflow_evidence_reader :
+      grant.role_definition_name == "Storage Blob Data Reader" && grant.principal_id == "00000000-0000-0000-0000-000000000009" && grant.principal_type == "ServicePrincipal" && grant.skip_service_principal_aad_check && grant.scope == module.storage.containers[name].id
+    ]) && length(local.storage_config.role_assignments) == 0 && length(local.storage_config.containers.claim_check.role_assignments) == 0
+    error_message = "Workflow reads only the exact evidence containers; claim-check and account grants remain absent."
+  }
   assert {
     condition     = var.archive_smoke_enabled == false && !contains(keys(local.storage_config.containers), "archive_smoke_source") && !contains(keys(output.blob.containers), "archive_smoke_source")
     error_message = "Default plans must not require the workflow principal or add a smoke source or grant."

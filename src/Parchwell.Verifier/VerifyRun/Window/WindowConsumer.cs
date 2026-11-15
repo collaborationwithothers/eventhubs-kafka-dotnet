@@ -19,12 +19,21 @@ internal static class WindowConsumer
     internal static WindowDrainResult Drain(IConsumer<byte[], byte[]> consumer, RunWindow window,
         TimeProvider timeProvider, long safetyOriginTimestamp, TimeSpan safetyStop, TimeSpan pollSlice,
         ConsumedRecordBudget budget, IReadOnlySet<string>? valueHashKeys, CancellationToken cancellationToken,
-        CancellationToken safetyCancellationToken = default)
+        CancellationToken safetyCancellationToken = default) =>
+        Drain(consumer, window, timeProvider, safetyOriginTimestamp, safetyStop, pollSlice, budget,
+            valueHashKeys, null, cancellationToken, safetyCancellationToken);
+
+    internal static WindowDrainResult Drain(IConsumer<byte[], byte[]> consumer, RunWindow window,
+        TimeProvider timeProvider, long safetyOriginTimestamp, TimeSpan safetyStop, TimeSpan pollSlice,
+        ConsumedRecordBudget budget, IReadOnlySet<string>? valueHashKeys, ConsumedMetadataCapture? capture,
+        CancellationToken cancellationToken, CancellationToken safetyCancellationToken = default)
     {
-        if (!window.CanAssign) return new([], [], null, null);
+        if (!window.CanAssign) { FinishCapture(capture, false); return new([], [], null, null); }
         var records = new List<ConsumedRecord>();
         PartitionWindow[] pending = window.Partitions.Where(p => p.Start != p.End).ToArray();
         Dictionary<int, PartitionWindow> partitions = window.Partitions.ToDictionary(p => p.Partition);
+        bool sourceComplete = false;
+        bool interrupted = false;
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -39,7 +48,10 @@ internal static class WindowConsumer
                         complete = false;
                 TimeSpan elapsed = timeProvider.GetElapsedTime(safetyOriginTimestamp);
                 if (complete && elapsed <= safetyStop)
+                {
+                    sourceComplete = true;
                     return new(records, [RunWindow.Pass(9), RunWindow.Pass(10)], elapsed, null);
+                }
                 if (elapsed >= safetyStop)
                     return new(records, [RunWindow.Pass(9), RunWindow.Failure(10)], null, elapsed);
                 TimeSpan remaining = safetyStop - elapsed;
@@ -58,15 +70,28 @@ internal static class WindowConsumer
                     partitions.TryGetValue(record.Partition.Value, out PartitionWindow? boundary) &&
                     record.Offset.Value >= boundary.Start && record.Offset.Value < boundary.End)
                 {
+                    capture?.Observe(record);
                     budget.Account(record);
                     records.Add(MessageIdentityReader.Read(record, valueHashKeys));
                 }
             }
         }
+        catch (OperationCanceledException)
+        {
+            interrupted = true;
+            throw;
+        }
         catch (KafkaException exception) when (IsOffsetError(exception))
         {
             return new(records, [RunWindow.Failure(9)], null, null);
         }
+        finally { FinishCapture(capture, sourceComplete, interrupted); }
+    }
+
+    private static void FinishCapture(ConsumedMetadataCapture? capture, bool complete, bool interrupted = false)
+    {
+        try { capture?.Finish(complete, interrupted); }
+        catch (Exception) { /* A missing capture is reported by archive inventory. */ }
     }
 
     private static bool IsOffsetError(KafkaException exception) =>

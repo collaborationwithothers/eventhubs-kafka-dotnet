@@ -5,6 +5,7 @@ internal static class VerifierHostTestOptions
     internal static VerifierHostOptions ValidOptions(string mode) => new()
     {
         Mode = mode,
+        ConsumedMetadata = new() { Enabled = true, MaxRowBytes = 1048576, MaxChunkBytes = 134217728, MaxBytes = 17179869184 },
         ScenarioId = "A01",
         VerifierCommit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         SourceCommit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -85,6 +86,10 @@ internal static class VerifierHostTestOptions
         {
             $"--PARCHWELL_SOURCE_COMMIT={(mode == "probe-gate" ? "test-commit" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")}",
             $"--Verifier:Mode={mode}",
+            "--Verifier:ConsumedMetadata:Enabled=true",
+            "--Verifier:ConsumedMetadata:MaxRowBytes=1048576",
+            "--Verifier:ConsumedMetadata:MaxChunkBytes=134217728",
+            "--Verifier:ConsumedMetadata:MaxBytes=17179869184",
             "--Verifier:ScenarioId=A01",
             $"--Verifier:VerifierCommit={(mode == "probe-gate" ? "test-commit" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")}",
             "--Verifier:LedgerContainer=ledger",

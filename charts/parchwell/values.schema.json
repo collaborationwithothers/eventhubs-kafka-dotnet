@@ -329,6 +329,7 @@
           "additionalProperties": false,
           "required": [
             "scenario_parsing",
+            "consumed_metadata",
             "loadgen",
             "verifier_shared",
             "verifier_kafka",
@@ -343,6 +344,7 @@
           "properties": {
             "b10_abrupt": { "type": "object", "const": {"MaxRecordBytes": 65536, "QueueCapacity": 256, "MaxJournalBytes": 16777216, "MaxJournalEntries": 4096, "MaxAuxiliaryBytes": 65536, "MaxJsonDepth": 32, "ReleaseDelaySeconds": 120, "ProbeRate": 100, "CutOrdinal": 4} },
             "b10_capture": { "type": "object", "const": { "B10SettleIntervalMilliseconds": 60000 } },
+            "consumed_metadata": { "type": "object", "const": { "Enabled": true, "MaxRowBytes": 1048576, "MaxChunkBytes": 134217728, "MaxBytes": 17179869184 } },
             "b10_sweep": { "type": "object", "const": { "B10SettleIntervalMilliseconds": 60000, "MaxConsumedRecords": 9300000, "MaxConsumedBytes": 429496729600 } },
             "scenario_parsing": {
               "type": "object",

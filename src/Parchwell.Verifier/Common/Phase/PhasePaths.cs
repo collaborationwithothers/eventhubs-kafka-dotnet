@@ -25,6 +25,24 @@ internal static class PhasePaths
     internal static string B10FinalSweep(string run, string phase) => PhaseIdentity.PhasePrefix(run, phase) + "b10-final-sweep.json";
     internal static string B10FinalSweepCompletion(string run, string phase) => PhaseIdentity.PhasePrefix(run, phase) + "b10-final-sweep-completion.json";
 
+    internal static string ConsumedCaptureId(string mode, string job, string podUid, long windowIndex)
+    {
+        if (mode is not ("verify" or "b10-abrupt-verify" or "b10-sweep" or "b10-final-sweep") || windowIndex < 0)
+            throw new ArgumentException("Invalid consumed capture identity.");
+        string id = $"{mode}-{ValidateSegment(job)}-{ValidateSegment(podUid)}-w{windowIndex:D4}";
+        if (id.Length > 1024) throw new ArgumentException("Consumed capture identity exceeds its bound.");
+        return id;
+    }
+
+    internal static string ConsumedCapturePrefix(string run, string phase, int? repeat, string captureId)
+    {
+        if (string.IsNullOrEmpty(captureId) || captureId.Length > 1024 ||
+            captureId.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is '-' or '_')))
+            throw new ArgumentException("Invalid consumed capture identifier.", nameof(captureId));
+        return (repeat is null ? PhaseIdentity.PhasePrefix(run, phase) : PhaseIdentity.RepeatPrefix(run, phase, repeat.Value))
+            + "consumed-metadata/" + captureId + "/";
+    }
+
     private static string ValidateSegment(string value)
     {
         if (string.IsNullOrEmpty(value) || value.Length > 128 || value.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is '-' or '_')))

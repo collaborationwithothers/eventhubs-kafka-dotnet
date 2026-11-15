@@ -149,6 +149,12 @@ spec:
             - name: {{ printf "Verifier__%s" $key | quote }}
               value: {{ include "parchwell.envValue" $value | quote }}
             {{- end }}
+            {{- if has $mode (list "verify" "b10-abrupt-verify" "b10-sweep" "b10-final-sweep") }}
+            {{- range $key, $value := $r.bounds.consumed_metadata }}
+            - name: {{ printf "Verifier__ConsumedMetadata__%s" $key | quote }}
+              value: {{ include "parchwell.envValue" $value | quote }}
+            {{- end }}
+            {{- end }}
             {{- range $key, $value := $r.bounds.scenario_parsing }}
             - name: {{ printf "Verifier__ScenarioLoadOptions__%s" $key | quote }}
               value: {{ include "parchwell.envValue" $value | quote }}

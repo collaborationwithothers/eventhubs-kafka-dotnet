@@ -234,6 +234,7 @@ public sealed class ChartEnvironmentVerifierHostTests(ITestOutputHelper output)
         string run="synthetic-c5",phase="C0",loadgen=PhaseIdentity.JobName(run,phase,1),verify=PhaseIdentity.VerifyJobName(run,phase,1),commit=new string('a',40);
         var values=new Dictionary<string,string?>(StringComparer.Ordinal)
         {
+            ["Verifier__ConsumedMetadata__Enabled"]="true",["Verifier__ConsumedMetadata__MaxRowBytes"]="1048576",["Verifier__ConsumedMetadata__MaxChunkBytes"]="134217728",["Verifier__ConsumedMetadata__MaxBytes"]="17179869184",
             ["Verifier__Mode"]="verify",["Verifier__ScenarioId"]="A01",["Verifier__ConfigurationId"]="C0",["Verifier__RunId"]=run,["Verifier__Phase"]=phase,
             ["Verifier__VerifierCommit"]=commit,["Verifier__BlobServiceUri"]="https://storage.example/",["Verifier__VerifierContainer"]="verifier",["Verifier__LedgerContainer"]="ledger",
             ["Verifier__VerifierClientId"]="verifier-pod-c5",["Verifier__NamespaceName"]="synthetic-namespace",["Verifier__Repeat"]="1",["Verifier__ExpectedInstanceId"]=loadgen,

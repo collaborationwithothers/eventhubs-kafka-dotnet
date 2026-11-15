@@ -262,6 +262,18 @@ class Phase:
     def candidates(self):
         return Path(require("PARCHWELL_CANDIDATE_DIRECTORY"))
 
+    def archive_module(self):
+        source = Path(__file__).with_name("archive.py")
+        spec = importlib.util.spec_from_file_location("parchwell_phase_archive", source)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def archive(self):
+        started = time.monotonic()
+        module = self.archive_module()
+        return module.execute(self, os.environ, deadline=started + module.ArchiveDeadlineSeconds)
+
     def b10_abrupt(self, repeat=None, deadline=None, lifecycle_budget=None):
         source = Path(__file__).with_name("b10_abrupt.py")
         spec = importlib.util.spec_from_file_location("parchwell_b10_abrupt", source)
@@ -485,6 +497,11 @@ class Phase:
         acr = unwrap(persistent["acr"])
         if not re.fullmatch(r"[a-z0-9]+", acr["name"]) or not re.fullmatch(r"[a-z0-9.-]+", acr["login_server"]):
             raise Failure("invalid registry")
+        archive_module = self.archive_module()
+        try:
+            archive_config = archive_module.validate_archive_config(unwrap(persistent["evidence_archive"]))
+        except (KeyError, TypeError, archive_module.InvalidArchiveConfig):
+            raise Failure("invalid archive configuration") from None
         connection = unwrap(persistent["application_insights_connection_string"])
         if not isinstance(connection, str) or not connection or "\r" in connection or "\n" in connection:
             raise Failure("invalid telemetry connection string")
@@ -499,7 +516,7 @@ class Phase:
         for name, value in secrets.items():
             write_private(private / name, value + "\n")
         write_json(private / "phase.json", {"scenario": selected, "phase": phase, "configuration": configuration,
-                                           "run_id": run, "source_commit": sha, **metadata})
+                                           "run_id": run, "source_commit": sha, "evidence_archive": archive_config, **metadata})
         status = {"phase": phase, "run_id": run, "modes": [], "candidate": None, "safety_stop": False}
         if selected in ("probe-batch", "probe-batch-2"):
             status["not_selected"] = []
@@ -512,6 +529,9 @@ class Phase:
         write_json(artifacts / "phase-status.json", status)
         settings = {"PARCHWELL_PRIVATE_DIRECTORY": private, "PARCHWELL_CANDIDATE_DIRECTORY": candidate,
                     "PARCHWELL_ARTIFACT_DIRECTORY": artifacts,
+                    "PARCHWELL_ARCHIVE_DIRECTORY": private / "archive",
+                    "PARCHWELL_ARCHIVE_MANIFEST_DIRECTORY": artifacts / "archive",
+                    "PARCHWELL_ARCHIVE_MANIFEST_PATH": artifacts / "archive" / "archive-manifest.json",
                     "PARCHWELL_CLUSTER_BACKEND_CONFIG": private / "cluster_backend.hcl",
                     "PARCHWELL_CLUSTER_TFVARS_PATH": private / "cluster_tfvars.tfvars.json",
                     "PARCHWELL_EPHEMERAL_BACKEND_CONFIG": private / "ephemeral_backend.hcl",
@@ -1732,7 +1752,7 @@ class Phase:
 
 
 def main(argv):
-    commands = {"prepare-b10-abrupt-trial": (0, "prepare_b10_abrupt_trial"),
+    commands = {"archive": (0, "archive"), "prepare-b10-abrupt-trial": (0, "prepare_b10_abrupt_trial"),
                 "run-b10-abrupt-trial": (0, "run_b10_abrupt_trial"),
                 "collect-b10-abrupt-trial": (0, "collect_b10_abrupt_trial"), "prepare": (1, "prepare"), "prepare-stop": (0, "prepare_stop"), "allow-c3": (0, "allow_c3"),
                 "validate-batch": (0, "validate_batch"), "prepare-batch": (0, "prepare_batch"),

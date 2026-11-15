@@ -42,6 +42,18 @@ public sealed class B10SweepHandlerTests
         Assert.Equal("b10-sweep",receipt.Mode);Assert.True(receipt.CleanupCompleted);Assert.Equal(0,receipt.HandlerExitCode);
         Assert.Equal(Reference(fixture.Created[0],fixture.Verifier[fixture.Created[0]]),Assert.Single(receipt.Artifacts));
         Assert.Equal(15,fixture.RecordsRead);Assert.Equal(9,fixture.Assignments);
+        var captures=fixture.MetadataObjects.Where(p=>p.Key.EndsWith("capture.json",StringComparison.Ordinal)).OrderBy(p=>p.Key,StringComparer.Ordinal).ToArray();
+        Assert.Equal(10,captures.Length);
+        for(int index=0;index<captures.Length;index++)
+        {
+            using JsonDocument capture=JsonDocument.Parse(captures[index].Value);
+            JsonElement window=capture.RootElement.GetProperty("window");
+            Assert.Equal(index,window.GetProperty("index").GetInt32());
+            Assert.Equal(index/2+1,window.GetProperty("repeat").GetInt32());
+            Assert.Equal(index%2==0?"original":"late",window.GetProperty("kind").GetString());
+            Assert.True(capture.RootElement.GetProperty("complete").GetBoolean());
+            Assert.Contains($"-w{index:D4}/capture.json",captures[index].Key,StringComparison.Ordinal);
+        }
     }
 
     [Fact]
@@ -266,6 +278,12 @@ public sealed class B10SweepHandlerTests
 
         int exit=await fixture.Run(TestContext.Current.CancellationToken);
 
+        Assert.Contains(fixture.MetadataObjects.Where(p=>p.Key.EndsWith("capture.json",StringComparison.Ordinal)), p=>
+        {
+            using JsonDocument capture=JsonDocument.Parse(p.Value);
+            return !capture.RootElement.GetProperty("complete").GetBoolean() &&
+                capture.RootElement.GetProperty("gaps").EnumerateArray().Any(g=>g.GetProperty("code").GetString()=="row_limit");
+        });
         Assert.Equal(2325000,fixture.RecordsRead);
         Assert.Equal(expectedBytes,fixture.ConsumedBytes);
         Assert.Equal(5,fixture.Assignments);
@@ -419,6 +437,7 @@ public sealed class B10SweepHandlerTests
                 {
                     (long recordLimit,long byteLimit)=PhaseCapacityLimits();
                     result.Options.MaxConsumedRecords=recordLimit;result.Options.MaxConsumedBytes=byteLimit;
+                    result.Options.ConsumedMetadata!.MaxRowBytes=1;result.Options.ConsumedMetadata.MaxChunkBytes=1;result.Options.ConsumedMetadata.MaxBytes=1;
                 }
                 DateTimeOffset capture=result.Kafka.Clock.GetUtcNow();
                 var sweep=new B10SweepLine(1,"B10",result.Options.ConfigurationId!,result.Options.RunId!,phase,result.Options.SourceCommit!,
@@ -502,8 +521,16 @@ public sealed class B10SweepHandlerTests
             ListedBytes+=names.Sum(name=>(long)Encoding.UTF8.GetByteCount(name));
             return Task.FromResult(new BlobListing(names,1,true));
         }
+        internal Dictionary<string, byte[]> MetadataObjects { get; } = new(StringComparer.Ordinal);
+        public async Task CreateStreamAsync(string name, Stream content, CancellationToken cancellationToken)
+        {
+            using var buffer = new MemoryStream();
+            await content.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+            await CreateAsync(name, buffer.ToArray(), cancellationToken).ConfigureAwait(false);
+        }
         public Task CreateAsync(string name,byte[] content,CancellationToken cancellationToken)
-        {Verifier.Add(name,content);Created.Add(name);Events.Add("create");return Task.CompletedTask;}
+        {
+            if (name.Contains("/consumed-metadata/", StringComparison.Ordinal)) { MetadataObjects.Add(name, content); return Task.CompletedTask; }Verifier.Add(name,content);Created.Add(name);Events.Add("create");return Task.CompletedTask;}
         public void Dispose()=>Kafka.Dispose();
     }
 }

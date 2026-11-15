@@ -8,4 +8,6 @@ internal interface IVerifierArtifactStore
     Task<BlobListing> ListAsync(string prefix, CancellationToken cancellationToken);
     Task<byte[]?> ReadStartLineAsync(string name, CancellationToken cancellationToken) => ReadAsync(name, cancellationToken);
     Task CreateAsync(string name, byte[] content, CancellationToken cancellationToken);
+    Task CreateStreamAsync(string name, Stream content, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("Streaming is not available for this artifact store.");
 }

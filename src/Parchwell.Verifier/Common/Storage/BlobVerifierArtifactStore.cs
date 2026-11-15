@@ -35,6 +35,13 @@ internal sealed class BlobVerifierArtifactStore : IVerifierArtifactStore
     public Task<BlobListing> ListAsync(string prefix, CancellationToken cancellationToken) =>
         BoundedBlobListing.ListAsync(_container, prefix, cancellationToken);
 
+    public async Task CreateStreamAsync(string name, Stream content, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(content);
+        await _container.GetBlobClient(name).UploadAsync(content, overwrite: false, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task CreateAsync(string name, byte[] content, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);

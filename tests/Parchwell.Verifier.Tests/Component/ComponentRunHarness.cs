@@ -45,6 +45,7 @@ internal sealed class ComponentRunHarness : IDisposable, ILedgerArtifactSource, 
         ClientId = "golden-loadgen-client", VerifierClientId = "synthetic-verifier", VerifierCommit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         TokenTimeout = TimeSpan.FromSeconds(10), MetadataTimeout = TimeSpan.FromSeconds(10),
         WatermarkTimeout = TimeSpan.FromSeconds(10), PollSlice = TimeSpan.FromMilliseconds(100),
+        ConsumedMetadata = new() { Enabled = true, MaxRowBytes = 1048576, MaxChunkBytes = 134217728, MaxBytes = 17179869184 },
         SafetyStop = TimeSpan.FromSeconds(10), IoTimeout = TimeSpan.FromSeconds(10),
         BlobIoTimeout = TimeSpan.FromSeconds(10), CleanupTimeout = TimeSpan.FromSeconds(30),
         MaxPartitions = 8, MaxInputDepth = 64, MaxArtifactBytes = 1_000_000, MaxTotalInputBytes = 10_000_000,
@@ -273,8 +274,16 @@ internal sealed class ComponentRunHarness : IDisposable, ILedgerArtifactSource, 
         Task.FromResult(Outputs.GetValueOrDefault(name));
     public Task<BlobListing> ListAsync(string prefix, CancellationToken cancellationToken) =>
         Task.FromResult(new BlobListing(ProducerObjects.Keys.Where(name => name.StartsWith(prefix, StringComparison.Ordinal)).ToArray(), 1, true));
+    internal Dictionary<string, byte[]> MetadataObjects { get; } = new(StringComparer.Ordinal);
+    public async Task CreateStreamAsync(string name, Stream content, CancellationToken cancellationToken)
+    {
+        using var buffer = new MemoryStream();
+        await content.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+        await CreateAsync(name, buffer.ToArray(), cancellationToken).ConfigureAwait(false);
+    }
     public Task CreateAsync(string name, byte[] content, CancellationToken cancellationToken)
     {
+        if (name.Contains("/consumed-metadata/", StringComparison.Ordinal)) { MetadataObjects.Add(name, content); return Task.CompletedTask; }
         cancellationToken.ThrowIfCancellationRequested();
         Outputs.Add(name, content);
         return Task.CompletedTask;

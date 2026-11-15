@@ -149,6 +149,24 @@ public sealed class VerifierHostTests
         Assert.Equal(104, options.ScenarioLoadOptions.MaxParserEvents);
     }
 
+    [Fact]
+    public void ConsumedMetadata_StartupRequiresEnabledPolicyBoundedSettings()
+    {
+        var validator = new VerifierHostOptionsValidator();
+        var options = ValidOptions("verify");
+        Assert.True(validator.Validate(null, options).Succeeded);
+        options.ConsumedMetadata = null;
+        Assert.False(validator.Validate(null, options).Succeeded);
+        options = ValidOptions("verify"); options.ConsumedMetadata!.Enabled = false;
+        Assert.False(validator.Validate(null, options).Succeeded);
+        options = ValidOptions("verify"); options.ConsumedMetadata!.MaxRowBytes = 1048577;
+        Assert.False(validator.Validate(null, options).Succeeded);
+        options = ValidOptions("verify"); options.ConsumedMetadata!.MaxChunkBytes = 134217729;
+        Assert.False(validator.Validate(null, options).Succeeded);
+        options = ValidOptions("verify"); options.ConsumedMetadata!.MaxBytes = 17179869185;
+        Assert.False(validator.Validate(null, options).Succeeded);
+    }
+
     [Theory]
     [MemberData(nameof(RequiredOptions))]
     public void Given_MissingRequiredOption_When_Validated_Then_ReportsStartupFailure(string mode, string propertyName)

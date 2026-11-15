@@ -204,9 +204,9 @@ class WorkflowTests(unittest.TestCase):
 
     def test_reports_and_cleanup(self):
         expected_workload_steps = {
-            'probe': 'images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods delete_workload destroy',
-            'full-C0': 'images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods delete_workload destroy',
-            'full-C3': 'tools prepare images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods delete_workload destroy',
+            'probe': 'images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods archive upload_archive_manifest delete_workload destroy',
+            'full-C0': 'images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods archive upload_archive_manifest delete_workload destroy',
+            'full-C3': 'tools prepare images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods archive upload_archive_manifest delete_workload destroy',
         }
         for name, job in self.jobs.items():
             steps = self.steps(job)
@@ -217,7 +217,7 @@ class WorkflowTests(unittest.TestCase):
             required = steps['report']['env']['REQUIRED_STEPS'].split()
             self.assertIn('select', required)
         final = self.steps(self.jobs['full-C3'])
-        self.assertEqual('guard checkout select allowed stop_prepare login azure_session tools prepare images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods delete_workload destroy stop report'.split(),
+        self.assertEqual('guard checkout select allowed stop_prepare login azure_session tools prepare images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods archive upload_archive_manifest delete_workload destroy stop science_report report'.split(),
                          [step['id'] for step in self.jobs['full-C3']['steps'] if 'id' in step])
         stops = [(name, step) for name, job in self.jobs.items() for step in job['steps'] if 'lifecycle.sh stop-cluster' in step.get('run', '')]
         self.assertEqual(1, len(stops))
@@ -239,9 +239,9 @@ class WorkflowTests(unittest.TestCase):
 
     def test_final_workload_predicates_and_exact_job_order(self):
         expected_ids = {
-            'probe': 'guard checkout select tools prepare login azure_session images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods delete_workload destroy report'.split(),
-            'full-C0': 'guard checkout select tools prepare login azure_session images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods delete_workload destroy report'.split(),
-            'full-C3': 'guard checkout select allowed stop_prepare login azure_session tools prepare images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods delete_workload destroy stop report'.split(),
+            'probe': 'guard checkout select tools prepare login azure_session images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods archive upload_archive_manifest delete_workload destroy science_report report'.split(),
+            'full-C0': 'guard checkout select tools prepare login azure_session images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods archive upload_archive_manifest delete_workload destroy science_report report'.split(),
+            'full-C3': 'guard checkout select allowed stop_prepare login azure_session tools prepare images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace repeats judge candidate upload_candidate upload_pods archive upload_archive_manifest delete_workload destroy stop science_report report'.split(),
         }
         for name, job in self.jobs.items():
             self.assertEqual(expected_ids[name], [step['id'] for step in job['steps'] if 'id' in step])
@@ -259,7 +259,7 @@ class WorkflowTests(unittest.TestCase):
         }
         for name, job in self.jobs.items():
             uploads = [step for step in job['steps'] if step.get('uses', '').startswith('actions/upload-artifact@')]
-            self.assertEqual(2, len(uploads))
+            self.assertEqual(3, len(uploads))
             for step, kind, path in ((uploads[0], 'candidate', '${{ env.PARCHWELL_CANDIDATE_DIRECTORY }}/candidate.json'),
                                      (uploads[1], 'pods', '${{ env.PARCHWELL_ARTIFACT_DIRECTORY }}')):
                 prefix = expected_prefixes[name]
@@ -282,9 +282,70 @@ esac
         self.assertIn('use-images', self.steps(self.jobs['full-C3'])['images']['run'])
         self.assertNotIn('A01_OUTPUT', self.text)
 
+    def test_archive_runs_before_cleanup_and_uploads_only_receipt(self):
+        condition = "always() && steps.prepare.outcome == 'success' && steps.azure_session.outcome == 'success'"
+        for name in ('probe', 'full-C0', 'full-C3', 'batch'):
+            with self.subTest(job=name):
+                job = self.all_jobs[name]
+                steps = self.steps(job)
+                ids = [step['id'] for step in job['steps'] if 'id' in step]
+                self.assertLess(ids.index('upload_pods'), ids.index('archive'))
+                self.assertLess(ids.index('archive'), ids.index('upload_archive_manifest'))
+                self.assertLess(ids.index('upload_archive_manifest'), ids.index('delete_workload'))
+                self.assertLess(ids.index('delete_workload'), ids.index('destroy'))
+                self.assertEqual('true', steps['archive']['continue-on-error'])
+                self.assertEqual('true', steps['upload_archive_manifest']['continue-on-error'])
+                self.assertEqual('true', steps['report']['continue-on-error'])
+                self.assertNotIn('continue-on-error', steps['science_report'])
+                science_steps = steps['science_report']['env']['WORKLOAD_STEPS'].split()
+                self.assertNotIn('archive', science_steps)
+                self.assertNotIn('upload_archive_manifest', science_steps)
+                self.assertEqual(condition, steps['archive']['if'])
+                self.assertEqual(condition, steps['upload_archive_manifest']['if'])
+                self.assertEqual('bash infra/scripts/phase/phase.sh archive', steps['archive']['run'])
+                upload = steps['upload_archive_manifest']
+                self.assertEqual('${{ env.PARCHWELL_ARCHIVE_MANIFEST_PATH }}\n${{ env.PARCHWELL_ARCHIVE_MANIFEST_DIRECTORY }}/archive-receipt.json\n', upload['with']['path'])
+                self.assertEqual('90', upload['with']['retention-days'])
+                self.assertEqual('error', upload['with']['if-no-files-found'])
+                self.assertEqual('5', upload['timeout-minutes'])
+                self.assertIn('archive', steps['report']['env']['WORKLOAD_STEPS'].split())
+                self.assertIn('upload_archive_manifest', steps['report']['env']['WORKLOAD_STEPS'].split())
+                for outcome in ('failure', 'cancelled', 'timed_out'):
+                    outcomes = {'prepare': 'success', 'azure_session': 'success', 'credentials': 'success', 'archive': outcome, 'upload_archive_manifest': outcome}
+                    for step in ('upload_archive_manifest', 'delete_workload', 'destroy'):
+                        expression = steps[step]['if'].replace('always()', 'True').replace('&&', ' and ')
+                        for key, value in outcomes.items():
+                            expression = expression.replace('steps.' + key + '.outcome', repr(value))
+                        self.assertTrue(eval(expression, {'__builtins__': {}}, {}), (outcome, step))
+
+    def test_archive_report_keeps_science_and_cleanup_gates(self):
+        for name in ('probe', 'full-C0', 'full-C3', 'batch'):
+            steps = self.steps(self.all_jobs[name])
+            for failed, status in ((None, 'success'), ('archive', 'success'),
+                                   ('upload_archive_manifest', 'success'), ('repeats' if name != 'batch' else 'batch', 'failure'),
+                                   ('destroy', 'failure'), ('delete_workload', 'cancelled')):
+                with self.subTest(job=name, failed=failed):
+                    outcomes = {key: {'outcome': 'success'} for key in steps}
+                    if failed:
+                        outcomes[failed]['outcome'] = 'cancelled' if status == 'cancelled' else 'failure'
+                    with tempfile.TemporaryDirectory() as tmp:
+                        base = dict(os.environ, STEP_RESULTS=json.dumps(outcomes), JOB_STATUS=status,
+                                    WORKLOAD='true', PARCHWELL_SCENARIO='A01', PARCHWELL_PHASE='C0',
+                                    GITHUB_STEP_SUMMARY=str(Path(tmp) / 'summary'))
+                        base.pop('PARCHWELL_ARTIFACT_DIRECTORY', None)
+                        results = []
+                        for report in ('science_report', 'report'):
+                            env = dict(base, **{key: value for key, value in steps[report]['env'].items()
+                                                if key in ('REQUIRED_STEPS', 'WORKLOAD_STEPS')})
+                            proc = subprocess.run(['python3', 'infra/scripts/phase/phase.py', 'report'],
+                                                  cwd=REPO, env=env, capture_output=True, text=True)
+                            results.append(proc.returncode)
+                        self.assertEqual(0 if failed in (None, 'archive', 'upload_archive_manifest') else 1, results[0])
+                        self.assertEqual(0 if failed is None else 1, results[1])
+
     def test_no_obsolete_text(self):
         for forbidden in ('Parchwell.Runner', 'A01_OUTPUT', 'PARCHWELL_COST', 'READINESS',
-                          'PARCHWELL_DEBUG_FAILURES', '|| true', 'continue-on-error'):
+                          'PARCHWELL_DEBUG_FAILURES', '|| true'):
             self.assertNotIn(forbidden, self.text)
 
     def test_selector_shell_paths_with_stubbed_commands(self):
@@ -323,7 +384,7 @@ esac
         expected_stop = "always() && ((inputs.scenario == 'probe-batch' && !inputs.capture_authentication_metadata) || (inputs.scenario == 'probe-batch-2' && ((inputs.run_kind == 'smoke' && ((inputs.items == 'all' && !inputs.capture_authentication_metadata) || (inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))) || (inputs.run_kind == 'batch' && !inputs.capture_authentication_metadata && contains(fromJSON('[\"all\",\"B08\",\"E01\",\"F06\",\"B08,E01\",\"B08,F06\",\"E01,F06\",\"B08,E01,F06\"]'), inputs.items)))) || (inputs.scenario == 'idle-observation' && (inputs.run_kind == 'smoke' || inputs.run_kind == 'batch') && contains(fromJSON('[\"all\",\"A02\",\"A03\",\"A04\",\"A02,A03\",\"A02,A04\",\"A03,A04\",\"A02,A03,A04\"]'), inputs.items) && !inputs.capture_authentication_metadata) || (inputs.scenario == 'ledger-batch' && (inputs.run_kind == 'smoke' || inputs.run_kind == 'batch') && inputs.items == 'all' && !inputs.capture_authentication_metadata))"
         self.assertEqual(f"({expected_stop}) && {factor} && " + NATIVE_FACTOR, stop['if'])
         expected_ids = {
-            'batch': 'guard checkout select tools prepare login azure_session images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace seed batch upload_candidates upload_pods delete_workload destroy report'.split(),
+            'batch': 'guard checkout select tools prepare login azure_session images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace seed batch upload_candidates upload_pods archive upload_archive_manifest delete_workload destroy science_report report'.split(),
             'batch-stop': 'guard checkout stop_prepare login azure_session stop report'.split(),
         }
         # The stop-only job uses the no-reviewer main-only environment so the
@@ -368,7 +429,7 @@ esac
             self.assertEqual(self.steps(self.jobs['probe'])[ident], steps[ident])
         self.assertEqual('true', steps['report']['env']['WORKLOAD'])
         self.assertEqual('guard checkout select tools prepare azure_session', steps['report']['env']['REQUIRED_STEPS'])
-        self.assertEqual('images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace seed batch upload_candidates upload_pods delete_workload destroy', steps['report']['env']['WORKLOAD_STEPS'])
+        self.assertEqual('images cluster_init start cluster_plan cluster_apply ephemeral_init ephemeral_plan ephemeral_apply dns credentials namespace seed batch upload_candidates upload_pods archive upload_archive_manifest delete_workload destroy', steps['report']['env']['WORKLOAD_STEPS'])
         stop_steps = self.steps(stop)
         for ident in ('stop_prepare', 'stop'):
             self.assertEqual(self.steps(self.jobs['full-C3'])[ident], stop_steps[ident])
@@ -381,7 +442,7 @@ esac
     def test_batch_upload_includes_candidates_receipts_and_public_pods(self):
         uploads = [step for step in self.all_jobs['batch']['steps']
                    if step.get('uses', '').startswith('actions/upload-artifact@')]
-        self.assertEqual(2, len(uploads))
+        self.assertEqual(3, len(uploads))
         candidates = uploads[0]
         self.assertEqual('upload_candidates', candidates['id'])
         self.assertEqual("always() && steps.prepare.outcome == 'success'", candidates['if'])
@@ -669,7 +730,7 @@ class B10AbruptWorkflowTests(unittest.TestCase):
         '.github/workflows/cluster-smoke.yml': 'e9266d30ff356782918f5fc5b048963265c58a48a3ea6c4733496374f30e3196',
         '.github/workflows/docs-advisory.yml': '39bea63dea8fb37d330e2be1b74782bdc33b3d2655e804ee6b78a231263475ec',
         '.github/workflows/dotnet-verification.yml': '8b61d6c8a51c097efec6d344fb86d9e6d942d5bd2eed72ca5b2d52043c167d65',
-        '.github/workflows/scenario.yml': 'c3323aca63fa977f75129ed9050c2d30f98a49ae18104d3f88240d40ecce7099',
+        '.github/workflows/scenario.yml': '9074eaa66c904a21c49aa8a9b08752de37de126edcd055836aaed3804eb15ba8',
         '.github/workflows/sweeper.yml': 'fdff4a41ab1df0ade1c8e6d216adaeba6aba13dc6415b0b184de1101d7dc2234',
         '.github/workflows/verifier-c5-mutation.yml': '727bd42cb29f1a8cb67ac43ebbbc9db34c190887889b9971e12fee80442ca6fb',
     }

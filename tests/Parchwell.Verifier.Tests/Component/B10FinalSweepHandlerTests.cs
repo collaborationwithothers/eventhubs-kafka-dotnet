@@ -35,6 +35,14 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
         string output = PhasePaths.B10FinalSweep(B10FinalSweepHarness.Run, "C1");
         Assert.Contains(output, run.Verifier.Keys);
         Assert.Contains(PhasePaths.B10FinalSweepCompletion(B10FinalSweepHarness.Run, "C1"), run.Verifier.Keys);
+        var finalCapture=Assert.Single(run.MetadataObjects,p=>p.Key.Contains("b10-final-sweep-",StringComparison.Ordinal) && p.Key.EndsWith("capture.json",StringComparison.Ordinal));
+        using (System.Text.Json.JsonDocument capture=System.Text.Json.JsonDocument.Parse(finalCapture.Value))
+        {
+            Assert.True(capture.RootElement.GetProperty("complete").GetBoolean());
+            Assert.Equal(0,capture.RootElement.GetProperty("window").GetProperty("index").GetInt64());
+            Assert.Equal("final",capture.RootElement.GetProperty("window").GetProperty("kind").GetString());
+            Assert.Equal(System.Text.Json.JsonValueKind.Null,capture.RootElement.GetProperty("window").GetProperty("repeat").ValueKind);
+        }
         Assert.Equal(0, await run.JudgeAsync());
         JsonNode rule = run.Candidate["b10_final"]!["restart_rule"]!;
         Assert.Equal(5, rule["eligible_repeats"]!.GetValue<int>());
