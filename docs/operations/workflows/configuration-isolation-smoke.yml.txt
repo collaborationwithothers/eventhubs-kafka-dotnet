@@ -186,7 +186,9 @@ jobs:
               blob = phase.blob_host()
               ips = module.unwrap(out['private_endpoint_ips'])
               for host, port, ip in ((eh, 9093, ips['eventhubs']), (blob, 443, ips['blob'])):
-                  with socket.create_connection((host, port), timeout=15) as connection:
+                  answers = {item[4][0] for item in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)}
+                  assert answers == {ip}
+                  with socket.create_connection((ip, port), timeout=15) as connection:
                       assert connection.getpeername()[0] == ip
               return eh, blob, ips
           def pod_connections():
@@ -364,7 +366,9 @@ jobs:
           eh = module.unwrap(output['eventhubs'])['bootstrap_servers'].split(':')[0]
           ips = module.unwrap(output['private_endpoint_ips'])
           for host, port, ip in ((eh, 9093, ips['eventhubs']), (phase.blob_host(), 443, ips['blob'])):
-              with socket.create_connection((host, port), timeout=15) as connection:
+              answers = {item[4][0] for item in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)}
+              assert answers == {ip}
+              with socket.create_connection((ip, port), timeout=15) as connection:
                   assert connection.getpeername()[0] == ip
           data = phase.read('phase.json')
           data['phase'] = data['configuration'] = 'C1'
@@ -393,7 +397,9 @@ jobs:
               blob = phase.blob_host()
               ips = module.unwrap(out['private_endpoint_ips'])
               for host, port, ip in ((eh, 9093, ips['eventhubs']), (blob, 443, ips['blob'])):
-                  with socket.create_connection((host, port), timeout=15) as connection:
+                  answers = {item[4][0] for item in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)}
+                  assert answers == {ip}
+                  with socket.create_connection((ip, port), timeout=15) as connection:
                       assert connection.getpeername()[0] == ip
               return eh, blob, ips
           def pod_connections():

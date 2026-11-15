@@ -61,6 +61,37 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
             self.assertIn('confirm_loadgen_delivery()', self.by_id[entry]['run'])
             self.assertIn("if row['delivered'] is True:", self.by_id[entry]['run'])
 
+    def test_runner_probe_rejects_mixed_or_wrong_dns_and_connects_to_expected_ips(self):
+        import socket
+        for entry in ('c0', 'c1'):
+            code = self.by_id[entry]['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
+            fn = next(x for x in ast.parse(code).body if isinstance(x, ast.FunctionDef) and x.name == 'connections')
+            compiled = compile(ast.Module(body=[fn], type_ignores=[]), 'runner probe fixture', 'exec')
+            output = {'eventhubs': {'value': {'bootstrap_servers': 'eh.example:9093'}},
+                      'private_endpoint_ips': {'value': {'eventhubs': '10.0.0.1', 'blob': '10.0.0.2'}}}
+            phase = mock.Mock()
+            phase.read.return_value = output
+            phase.blob_host.return_value = 'blob.example'
+            def exercise(eh_answers):
+                calls = []
+                def addresses(host, port, **kwargs):
+                    values = eh_answers if host == 'eh.example' else ['10.0.0.2']
+                    return [(None, None, None, None, (value, port)) for value in values]
+                def connect(address, timeout):
+                    calls.append(address)
+                    connection = mock.MagicMock()
+                    connection.__enter__.return_value.getpeername.return_value = address
+                    return connection
+                fake_socket = SimpleNamespace(SOCK_STREAM=socket.SOCK_STREAM, getaddrinfo=addresses, create_connection=connect)
+                namespace = {'phase': phase, 'module': SimpleNamespace(unwrap=lambda x: x['value']), 'socket': fake_socket}
+                exec(compiled, namespace)
+                namespace['connections']()
+                return calls
+            with self.subTest(entry=entry):
+                self.assertEqual([('10.0.0.1', 9093), ('10.0.0.2', 443)], exercise(['10.0.0.1']))
+                for answers in ([], ['10.0.0.10'], ['10.0.0.1', '10.0.0.10']):
+                    with self.subTest(answers=answers), self.assertRaises(AssertionError): exercise(answers)
+
     def test_pod_dns_requires_exact_answers_and_connects_to_private_ips(self):
         for entry in ('c0', 'c1'):
             code = self.by_id[entry]['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
@@ -190,7 +221,7 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
                     'metrics': [{'category': x, 'enabled': True} for x in metrics]}
         blob = setting(['StorageRead', 'StorageWrite', 'StorageDelete'], ['Transaction'])
         eh = setting(['allLogs'], ['AllMetrics'])
-        def exercise(next_state, sentinel):
+        def exercise(next_state, sentinel, eh_answers=('10.0.0.1',)):
             import hashlib
             with tempfile.TemporaryDirectory() as temp:
                 private = Path(temp)
@@ -209,17 +240,24 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
                 def invoke(args, **kwargs):
                     result = {'creationTime': 'creation'} if 'account' in args else {'value': [blob if '/synthetic/storage/blobServices/default' in args else eh]}
                     return SimpleNamespace(stdout=json.dumps(result).encode())
+                connections = []
                 def connect(address, timeout):
+                    connections.append(address)
                     connection = mock.MagicMock()
                     connection.__enter__.return_value.getpeername.return_value = ('10.0.0.1' if address[1] == 9093 else '10.0.0.2', address[1])
                     return connection
                 with (mock.patch.dict(os.environ, {'PARCHWELL_PRIVATE_DIRECTORY': temp, 'PARCHWELL_RUN_ID': 'b04-1-1'}),
                       mock.patch('importlib.util.spec_from_file_location', return_value=spec),
                       mock.patch('importlib.util.module_from_spec', return_value=module),
-                      mock.patch('subprocess.run', side_effect=invoke), mock.patch('socket.create_connection', side_effect=connect)):
+                      mock.patch('subprocess.run', side_effect=invoke), mock.patch('socket.create_connection', side_effect=connect),
+                      mock.patch('socket.getaddrinfo', side_effect=lambda host, port, **kw: [(None, None, None, None, (value, port)) for value in (eh_answers if port == 9093 else ['10.0.0.2'])])):
                     exec(compile(code, 'C1 fixture', 'exec'), {})
                 module.write_json.assert_called_once()
+                self.assertEqual([('10.0.0.1', 9093), ('10.0.0.2', 443)], connections)
         exercise(after, b'sentinel')
+        for answers in ((), ('10.0.0.10',), ('10.0.0.1', '10.0.0.10')):
+            with self.subTest(answers=answers), self.assertRaises(AssertionError):
+                exercise(after, b'sentinel', answers)
         for state, sentinel in (({**after, 'storage_account_resource_id': '/different'}, b'sentinel'), (after, b'changed')):
             with self.subTest(state=state, sentinel=sentinel), self.assertRaises(AssertionError):
                 exercise(state, sentinel)
