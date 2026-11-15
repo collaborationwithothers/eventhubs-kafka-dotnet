@@ -1,13 +1,4 @@
 locals {
-  storage_blob_diagnostics = {
-    law = {
-      name                           = "diag-blob-${var.naming_suffix}"
-      workspace_resource_id          = local.persistent.log_analytics_workspace_id
-      log_analytics_destination_type = "Dedicated"
-      logs                           = [{ category = "StorageRead" }, { category = "StorageWrite" }, { category = "StorageDelete" }]
-      metrics                        = [{ category = "Transaction" }]
-    }
-  }
   storage_config = {
     name                            = local.names.storage
     location                        = var.location
@@ -74,7 +65,6 @@ module "storage" {
   allow_nested_items_to_be_public         = local.storage_config.allow_nested_items_to_be_public
   https_traffic_only_enabled              = local.storage_config.https_traffic_only_enabled
   min_tls_version                         = local.storage_config.min_tls_version
-  diagnostic_settings_blob                = local.storage_blob_diagnostics
   role_assignments                        = local.storage_config.role_assignments
   containers                              = local.storage_config.containers
   private_endpoints_manage_dns_zone_group = local.storage_config.private_endpoints_manage_dns_zone_group
