@@ -1,0 +1,1314 @@
+{
+  "publication": {
+    "item": "B10",
+    "workload": "synthetic",
+    "run": {
+      "workflow_run_id": 43689822806,
+      "attempt": 1,
+      "event": "workflow_dispatch",
+      "ref": "main",
+      "head_sha": "2bb71e04c17f73d08c2fcb73e85165b787cf2c99",
+      "created_at": "2026-11-15T07:24:39Z",
+      "conclusion": "success",
+      "run_id": "b10-43689822806-1"
+    },
+    "expected_outcome": {
+      "path": "scenarios/B10/expected.yaml",
+      "sha256": "35c49404219eabe5be38479703817805c19401a091256a69bf64f5959beb0c1f"
+    },
+    "verdicts": {
+      "timeout/application retry": {
+        "proposed_verdict": "confirmed",
+        "deciding_configuration": "C0",
+        "rule": "docs/blueprint.md ADR-021, Restart decision rules, rule 1; scenarios/B10/expected.yaml verdict.timeout_application_retry.confirmed_when",
+        "subject": "librdkafka's documented risk that an application retry after a timed-out, possibly persisted send risks duplication (librdkafka v2.16.0 INTRODUCTION.md, Message persistence status)",
+        "complete_valid_final_repeats": 5,
+        "duplicate_total": 56,
+        "duplicates_by_repeat": [
+          47,
+          9,
+          0,
+          0,
+          0
+        ],
+        "attribution": "not attributed; duplicates are counted by logical key and sequence within the timeout cohort, so a duplicate from the application resend and one from librdkafka's own retry cannot be told apart"
+      },
+      "restart recovery": {
+        "proposed_verdict": "confirmed",
+        "deciding_configuration": "C1",
+        "rule": "docs/blueprint.md ADR-021, Restart decision rules, rules 2 to 5; scenarios/B10/expected.yaml verdict.restart_recovery.confirmed_when",
+        "subject": "With idempotence enabled, application recovery that replaces a killed producer and resends a durably identified but unconfirmed logical message can leave both the original and the resend in the log.",
+        "declared_repeats": 5,
+        "eligible_repeats": 4,
+        "eligible_repeat_numbers": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "ineligible_repeats": [
+          {
+            "repeat": 1,
+            "reasons": [
+              "b10_restart_timeout_bookkeeping_unavailable"
+            ]
+          }
+        ],
+        "qualifying_pair_repeats": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "lost_resend_finding_repeats": [],
+        "eligible_loss_repeats": [],
+        "comparison_by_repeat": {
+          "1": "both",
+          "2": "both",
+          "3": "both",
+          "4": "both",
+          "5": "both"
+        },
+        "c1_candidate_status": "invalid",
+        "c1_candidate_reasons": [
+          "b10_final_timeout_evidence_invalid",
+          "j7_counts_unavailable"
+        ]
+      }
+    },
+    "c1_timeout_comparison": {
+      "role": "comparison only; no verdict",
+      "repeats_with_counts": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "repeat_1": "absent",
+      "sum_repeats_2_to_5": {
+        "ok": 123915,
+        "loss": 0,
+        "phantom": 40,
+        "reported_failure": 443,
+        "duplicate": 27,
+        "reorder": 34
+      }
+    },
+    "c1_repeat_1": {
+      "status": "invalid",
+      "reasons": [
+        "b10_final_timeout_evidence_invalid"
+      ],
+      "nonfinal_problem": "b10_abrupt_verify_timeout_evidence_invalid",
+      "nonfinal_detail": "timeout_judgement",
+      "abrupt_check": 18,
+      "failed_per_instance_check": "not_recorded"
+    },
+    "broker_connection_counts": "unavailable",
+    "broker_connection_counts_reason": "scientific candidates omit broker_count (docs/operations/verifier-contract.md, Scientific B10 final judgement)",
+    "environment": {
+      "namespace_sku": "Premium",
+      "processing_units": 1,
+      "region": "uksouth",
+      "node_size": "Standard_D4ds_v5",
+      "node_size_source": "inferred from infra/cluster/aks.tf at the base commit; not captured"
+    },
+    "versions": {
+      "confluent_kafka": "2.16.0+56ef87df3402861f0dc72ef921fcfac702ae1f16",
+      "dotnet": "10.0.13",
+      "librdkafka": "2.16.0",
+      "verifier": "1.0.0.0",
+      "workload_generator": "1"
+    },
+    "mutation_acceptance": {
+      "workflow_run_id": 43670258319,
+      "commit": "1e01aea24a457fffe0dc970703af2de608d524e3",
+      "measurement_complete": true,
+      "break_passed": true,
+      "summary_sha256": "d78dfef1ca86652632c7a6f2ec3c69e32749355df6455ee8ef78577fb1112e2f"
+    },
+    "unpublished_runs": [
+      {
+        "workflow_run_id": 43686555201,
+        "reason": "earlier attempt of the same authorization; its C1 phase failed at the start-line Job of each of its five repeats, before any producer ran; nothing from it is published"
+      },
+      {
+        "workflow_run_id": 43635822755,
+        "reason": "governed diagnostic run; never published as a result"
+      }
+    ],
+    "changes_after_diagnostic_run": [
+      {
+        "pull_request": 484,
+        "merge_commit": "26329ed64a6414a48526107566909675f6ee1c87",
+        "paths": [
+          "infra/scripts/phase/phase.py",
+          "infra/scripts/phase/tests/test_phase.py"
+        ],
+        "kind": "implementation bug; paths lists the files within src, charts, infra and the scenario workflow; outside them it changed docs/operations/b10-workflow.md",
+        "approval": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/483#issuecomment-6884548840"
+      },
+      {
+        "pull_requests": [
+          481,
+          485,
+          486,
+          487
+        ],
+        "merge_commits": [
+          "4aa6218f9c0750f80b072e0bab1e26e754de8f94",
+          "57406da8e3964399ef7bf81351e5f57542fb6836",
+          "3c4df3d040f55356597f83f1cf460956adb49197",
+          "336f4e53f3f8329fae297c7438eef3e86df40120"
+        ],
+        "paths": [
+          "infra/scripts/phase/tests/test_workflow.py"
+        ],
+        "kind": "within src, charts, infra and the scenario workflow, test only: pinned SHA-256 of .github/workflows/verifier-c5-mutation.yml; no B10 runtime effect"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "C0 candidate artifact ZIP",
+        "source": "artifact 14152258019, b10-C0-candidate-43689822806-1",
+        "sha256": "0017cda383d6b9c14b2519356d73329d7e6b38b70bf064159e4ccb27b2f2b7de"
+      },
+      {
+        "name": "C0 candidate.json",
+        "source": "member candidate.json of artifact 14152258019",
+        "sha256": "8bf46cd85488e567802f00e92202b8e4120b283b96842b95a4091d7bb1c9a40f"
+      },
+      {
+        "name": "C1 candidate artifact ZIP",
+        "source": "artifact 14155072618, b10-C1-candidate-43689822806-1",
+        "sha256": "f31b157c30bdf3536e8b44dd482c1d252cf191cbb02c8a51a5b4f19acccb9c3d"
+      },
+      {
+        "name": "C1 candidate.json",
+        "source": "member candidate.json of artifact 14155072618",
+        "sha256": "871a3b891544792e32cdba4fce0434216194a04086f3bfeb3ee0fad02f5be3f3"
+      },
+      {
+        "name": "C0 pods artifact ZIP",
+        "source": "artifact 14152018841, b10-C0-pods-43689822806-1",
+        "sha256": "7072f2cbe9436156a52e69b5257ca9ffb19ef820fea3b0e2cca892aa5590bbde"
+      },
+      {
+        "name": "C1 pods artifact ZIP",
+        "source": "artifact 14154817943, b10-C1-pods-43689822806-1",
+        "sha256": "e804d6a5f600bb15a535afaf2afba5fe061575a8e8aa8211bad4f48ea583b582"
+      },
+      {
+        "name": "C1 pods member b10-abrupt/r1/nonfinal-result.json",
+        "source": "artifact 14154817943",
+        "sha256": "fc488ee46631fbecb046e5307be4421c3a8f6dd52fc7c89a82a4394ba5681726"
+      },
+      {
+        "name": "C0 job log",
+        "source": "job 132737914930 (probe)",
+        "sha256": "ddf996cd9c86abd9fcb86159ec4c0092500a53b35b9f286b5b7d69acc8ce349f"
+      },
+      {
+        "name": "C1 job log",
+        "source": "job 132743948785 (full-C3)",
+        "sha256": "1e13e925f62bd6608cc94b50387d7501777b067937a7f68fd952990f3dab82bf"
+      },
+      {
+        "name": "C5 summary artifact ZIP",
+        "source": "artifact 14145501472, c5-summary-43670258319-1",
+        "sha256": "8c0ce121878d714203bac000450b0052648b571c0a02a94cb378720a5278be75"
+      },
+      {
+        "name": "C5 summary.json",
+        "source": "member summary.json of artifact 14145501472",
+        "sha256": "d78dfef1ca86652632c7a6f2ec3c69e32749355df6455ee8ef78577fb1112e2f"
+      },
+      {
+        "name": "scenarios/B10/expected.yaml",
+        "source": "git show 2bb71e04c17f73d08c2fcb73e85165b787cf2c99:",
+        "sha256": "35c49404219eabe5be38479703817805c19401a091256a69bf64f5959beb0c1f"
+      },
+      {
+        "name": "scenarios/B10/scenario.yaml",
+        "source": "git show 2bb71e04c17f73d08c2fcb73e85165b787cf2c99:",
+        "sha256": "762b1a540e8975129652358b0c91bb8a8c867b007dae162b00b78ad2dcc8569c"
+      }
+    ]
+  },
+  "candidates": {
+    "C0": {
+      "schema_version": 1,
+      "synthetic": true,
+      "scenario_id": "B10",
+      "configuration_id": "C0",
+      "run_id": "b10-43689822806-1",
+      "phase": "C0",
+      "source_commit": "2bb71e04c17f73d08c2fcb73e85165b787cf2c99",
+      "status": "complete_valid",
+      "gate": null,
+      "versions": {
+        "confluent_kafka": "2.16.0+56ef87df3402861f0dc72ef921fcfac702ae1f16",
+        "dotnet": "10.0.13",
+        "librdkafka": "2.16.0",
+        "verifier": "1.0.0.0",
+        "workload_generator": "1"
+      },
+      "image_digests": {
+        "loadgen": "sha256:e191e76b21af355b7351d1ced0f8546a82a8df168cc513d42a85ea7514845e0b",
+        "verifier": "sha256:cd520e2176d5d68e0a07d6b4ae5e268e2a38067c6d8be995989f9520eb633a97"
+      },
+      "timings": {
+        "duration_seconds": 595.6008969,
+        "judge_completed_utc": "2026-11-15T07:49:16.6185286+00:00",
+        "worker_started_utc": "2026-11-15T07:39:21.0176317+00:00"
+      },
+      "diagnostics": {
+        "disconnect_increment": null,
+        "error_codes": [],
+        "max_throttle_ms": null,
+        "request_timeout_increment": null,
+        "rtt_p99_ms": null
+      },
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "b10-43689822806-1-c0-r1-loadgen-5p458",
+          "probe_observation": null,
+          "workload_observation": null,
+          "counts": {
+            "ok": 30978,
+            "loss": 0,
+            "phantom": 65,
+            "reported_failure": 46,
+            "duplicate": 47,
+            "reorder": 60
+          },
+          "classification_final": true
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "b10-43689822806-1-c0-r2-loadgen-wg5ln",
+          "probe_observation": null,
+          "workload_observation": null,
+          "counts": {
+            "ok": 31000,
+            "loss": 0,
+            "phantom": 5,
+            "reported_failure": 12,
+            "duplicate": 9,
+            "reorder": 11
+          },
+          "classification_final": true
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "b10-43689822806-1-c0-r3-loadgen-m9d5d",
+          "probe_observation": null,
+          "workload_observation": null,
+          "counts": {
+            "ok": 31000,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 7,
+            "duplicate": 0,
+            "reorder": 2
+          },
+          "classification_final": true
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "b10-43689822806-1-c0-r4-loadgen-5zmw6",
+          "probe_observation": null,
+          "workload_observation": null,
+          "counts": {
+            "ok": 31000,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 22,
+            "duplicate": 0,
+            "reorder": 2
+          },
+          "classification_final": true
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "b10-43689822806-1-c0-r5-loadgen-d5lkx",
+          "probe_observation": null,
+          "workload_observation": null,
+          "counts": {
+            "ok": 31000,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 13,
+            "duplicate": 0,
+            "reorder": 3
+          },
+          "classification_final": true
+        }
+      ],
+      "counts": {
+        "ok": 154978,
+        "loss": 0,
+        "phantom": 70,
+        "reported_failure": 100,
+        "duplicate": 56,
+        "reorder": 78
+      },
+      "b10_final": {
+        "projection": {
+          "container": "verifier",
+          "name": "b10-43689822806-1/C0/b10-final-sweep.json",
+          "length": 3760,
+          "sha256": "8c343bf55f4126a50f5fb47dd2d4872bf2116958e2de26b0c7419e9eb8b4f0b7"
+        },
+        "receipt": {
+          "container": "verifier",
+          "name": "b10-43689822806-1/C0/b10-final-sweep-completion.json",
+          "length": 716,
+          "sha256": "267db94eafab19e66beb145123700f84e24e62c781aff50668fc98007a7ce37a"
+        },
+        "scan_complete": true,
+        "residual_risk": "A late append after the phase sweep line is not detected.",
+        "repeats": [
+          {
+            "repeat": 1,
+            "source": {
+              "container": "verifier",
+              "name": "b10-43689822806-1/C0/r1/result.json",
+              "length": 6609,
+              "sha256": "1e5bb5dd23ddaa6a6fdcb719ea7a30fd4cf8f33ef68459fa6c3e5ef4f0872d1c"
+            },
+            "producer_versions": [
+              {
+                "instance_id": "b10-43689822806-1-c0-r1-loadgen-5p458",
+                "workload_generator": "1",
+                "confluent_kafka": "2.16.0+56ef87df3402861f0dc72ef921fcfac702ae1f16",
+                "librdkafka": "2.16.0",
+                "dotnet": "10.0.13"
+              }
+            ],
+            "classification_final": true,
+            "status": "complete_valid",
+            "timeout": {
+              "ok": 30978,
+              "loss": 0,
+              "phantom": 65,
+              "reported_failure": 46,
+              "duplicate": 47,
+              "reorder": 60
+            },
+            "reasons": [],
+            "restart": null
+          },
+          {
+            "repeat": 2,
+            "source": {
+              "container": "verifier",
+              "name": "b10-43689822806-1/C0/r2/result.json",
+              "length": 6704,
+              "sha256": "c6ab231f1cbb28b9a9d1daa02cb52394ca96b27d41a7afcab598c01d02726be8"
+            },
+            "producer_versions": [
+              {
+                "instance_id": "b10-43689822806-1-c0-r2-loadgen-wg5ln",
+                "workload_generator": "1",
+                "confluent_kafka": "2.16.0+56ef87df3402861f0dc72ef921fcfac702ae1f16",
+                "librdkafka": "2.16.0",
+                "dotnet": "10.0.13"
+              }
+            ],
+            "classification_final": true,
+            "status": "complete_valid",
+            "timeout": {
+              "ok": 31000,
+              "loss": 0,
+              "phantom": 5,
+              "reported_failure": 12,
+              "duplicate": 9,
+              "reorder": 11
+            },
+            "reasons": [],
+            "restart": null
+          },
+          {
+            "repeat": 3,
+            "source": {
+              "container": "verifier",
+              "name": "b10-43689822806-1/C0/r3/result.json",
+              "length": 6731,
+              "sha256": "a97806781e2ebfb3c541970a1fe96c455f34df714a713e697d36d5b2b4752466"
+            },
+            "producer_versions": [
+              {
+                "instance_id": "b10-43689822806-1-c0-r3-loadgen-m9d5d",
+                "workload_generator": "1",
+                "confluent_kafka": "2.16.0+56ef87df3402861f0dc72ef921fcfac702ae1f16",
+                "librdkafka": "2.16.0",
+                "dotnet": "10.0.13"
+              }
+            ],
+            "classification_final": true,
+            "status": "complete_valid",
+            "timeout": {
+              "ok": 31000,
+              "loss": 0,
+              "phantom": 0,
+              "reported_failure": 7,
+              "duplicate": 0,
+              "reorder": 2
+            },
+            "reasons": [],
+            "restart": null
+          },
+          {
+            "repeat": 4,
+            "source": {
+              "container": "verifier",
+              "name": "b10-43689822806-1/C0/r4/result.json",
+              "length": 6731,
+              "sha256": "f46c16a056fd50bded10816641d05252e03c697f9f828db78275117ce6ed932f"
+            },
+            "producer_versions": [
+              {
+                "instance_id": "b10-43689822806-1-c0-r4-loadgen-5zmw6",
+                "workload_generator": "1",
+                "confluent_kafka": "2.16.0+56ef87df3402861f0dc72ef921fcfac702ae1f16",
+                "librdkafka": "2.16.0",
+                "dotnet": "10.0.13"
+              }
+            ],
+            "classification_final": true,
+            "status": "complete_valid",
+            "timeout": {
+              "ok": 31000,
+              "loss": 0,
+              "phantom": 0,
+              "reported_failure": 22,
+              "duplicate": 0,
+              "reorder": 2
+            },
+            "reasons": [],
+            "restart": null
+          },
+          {
+            "repeat": 5,
+            "source": {
+              "container": "verifier",
+              "name": "b10-43689822806-1/C0/r5/result.json",
+              "length": 6731,
+              "sha256": "293a166f86bb2269635d1af68b628048e63acd264b0318830b66adf8ba940618"
+            },
+            "producer_versions": [
+              {
+                "instance_id": "b10-43689822806-1-c0-r5-loadgen-d5lkx",
+                "workload_generator": "1",
+                "confluent_kafka": "2.16.0+56ef87df3402861f0dc72ef921fcfac702ae1f16",
+                "librdkafka": "2.16.0",
+                "dotnet": "10.0.13"
+              }
+            ],
+            "classification_final": true,
+            "status": "complete_valid",
+            "timeout": {
+              "ok": 31000,
+              "loss": 0,
+              "phantom": 0,
+              "reported_failure": 13,
+              "duplicate": 0,
+              "reorder": 3
+            },
+            "reasons": [],
+            "restart": null
+          }
+        ],
+        "timeout_rule": {
+          "complete_valid_final_repeats": 5,
+          "duplicate_total": 56,
+          "rule_selection": "confirmed"
+        },
+        "restart_rule": null
+      },
+      "reasons": []
+    },
+    "C1": {
+      "schema_version": 1,
+      "synthetic": true,
+      "scenario_id": "B10",
+      "configuration_id": "C1",
+      "run_id": "b10-43689822806-1",
+      "phase": "C1",
+      "source_commit": "2bb71e04c17f73d08c2fcb73e85165b787cf2c99",
+      "status": "invalid",
+      "gate": null,
+      "versions": {
+        "confluent_kafka": "2.16.0+56ef87df3402861f0dc72ef921fcfac702ae1f16",
+        "dotnet": "10.0.13",
+        "librdkafka": "2.16.0",
+        "verifier": "1.0.0.0",
+        "workload_generator": "1"
+      },
+      "image_digests": {
+        "loadgen": "sha256:e191e76b21af355b7351d1ced0f8546a82a8df168cc513d42a85ea7514845e0b",
+        "verifier": "sha256:cd520e2176d5d68e0a07d6b4ae5e268e2a38067c6d8be995989f9520eb633a97"
+      },
+      "timings": {
+        "duration_seconds": 2368.5817825,
+        "judge_completed_utc": "2026-11-15T09:04:06.8387643+00:00",
+        "worker_started_utc": "2026-11-15T08:24:38.2569818+00:00"
+      },
+      "diagnostics": {
+        "disconnect_increment": null,
+        "error_codes": [],
+        "max_throttle_ms": null,
+        "request_timeout_increment": null,
+        "rtt_p99_ms": null
+      },
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "invalid",
+          "reasons": [
+            "b10_final_timeout_evidence_invalid"
+          ],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "b10-43689822806-1-c1-r1-loadgen-4qv8m",
+          "probe_observation": null,
+          "workload_observation": null,
+          "classification_final": false
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "b10-43689822806-1-c1-r2-loadgen-4r7sn",
+          "probe_observation": null,
+          "workload_observation": null,
+          "counts": {
+            "ok": 30963,
+            "loss": 0,
+            "phantom": 30,
+            "reported_failure": 169,
+            "duplicate": 20,
+            "reorder": 18
+          },
+          "classification_final": true
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "b10-43689822806-1-c1-r3-loadgen-k44jt",
+          "probe_observation": null,
+          "workload_observation": null,
+          "counts": {
+            "ok": 30996,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 66,
+            "duplicate": 0,
+            "reorder": 7
+          },
+          "classification_final": true
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "b10-43689822806-1-c1-r4-loadgen-w57d9",
+          "probe_observation": null,
+          "workload_observation": null,
+          "counts": {
+            "ok": 30994,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 71,
+            "duplicate": 0,
+            "reorder": 0
+          },
+          "classification_final": true
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "b10-43689822806-1-c1-r5-loadgen-gnx4c",
+          "probe_observation": null,
+          "workload_observation": null,
+          "counts": {
+            "ok": 30962,
+            "loss": 0,
+            "phantom": 10,
+            "reported_failure": 137,
+            "duplicate": 7,
+            "reorder": 9
+          },
+          "classification_final": true
+        }
+      ],
+      "b10_final": {
+        "projection": {
+          "container": "verifier",
+          "name": "b10-43689822806-1/C1/b10-final-sweep.json",
+          "length": 12569,
+          "sha256": "60253a76f672af789b96d85635fcb2f05a5000d5747d54062ee00181c115784c"
+        },
+        "receipt": {
+          "container": "verifier",
+          "name": "b10-43689822806-1/C1/b10-final-sweep-completion.json",
+          "length": 717,
+          "sha256": "779d4f94d67f3379a225a9bbd651f644833249d0d83c089116511bf70dcb43b3"
+        },
+        "scan_complete": true,
+        "residual_risk": "A late append after the phase sweep line is not detected.",
+        "repeats": [
+          {
+            "repeat": 1,
+            "source": {
+              "container": "verifier",
+              "name": "b10-43689822806-1/C1/r1/b10-abrupt/nonfinal-result.json",
+              "length": 6042,
+              "sha256": "fc488ee46631fbecb046e5307be4421c3a8f6dd52fc7c89a82a4394ba5681726"
+            },
+            "producer_versions": [
+              {
+                "instance_id": "b10-43689822806-1-c1-r1-loadgen-4qv8m",
+                "workload_generator": "1",
+                "confluent_kafka": "2.16.0+56ef87df3402861f0dc72ef921fcfac702ae1f16",
+                "librdkafka": "2.16.0",
+                "dotnet": "10.0.13"
+              }
+            ],
+            "classification_final": false,
+            "status": "invalid",
+            "timeout": null,
+            "reasons": [
+              "b10_final_timeout_evidence_invalid"
+            ],
+            "restart": {
+              "eligibility": "ineligible",
+              "eligibility_reasons": [
+                "b10_restart_timeout_bookkeeping_unavailable"
+              ],
+              "termination": {
+                "class": "intended_self_kill",
+                "outcome": null
+              },
+              "first_instance_id": "b10-43689822806-1-c1-r1-loadgen-restart-fpgx7",
+              "successor_instance_id": "b10-43689822806-1-c1-r1-loadgen-successor-hqz7p",
+              "timeout_instance_id": "b10-43689822806-1-c1-r1-loadgen-4qv8m",
+              "comparison": "both",
+              "native_errors": {
+                "count": 0,
+                "fatal_count": 0,
+                "tail": "unknown_due_to_intended_kill"
+              },
+              "arms": [
+                {
+                  "arm": "same_instance",
+                  "cut_attempt_id": "b10-43689822806-1-c1-r1-loadgen-restart-fpgx7-same_instance-4",
+                  "unconfirmed_attempt_ids": [
+                    "b10-43689822806-1-c1-r1-loadgen-restart-fpgx7-same_instance-4"
+                  ],
+                  "unconfirmed_count": 1,
+                  "resend_invoked": 1,
+                  "originals_seen": 1,
+                  "resends_seen": 1,
+                  "pair_count": 1,
+                  "unreported_attempts": 0,
+                  "unreported_seen": 0,
+                  "unreported_unseen": 0,
+                  "lost_resends": 0,
+                  "witness": {
+                    "original_attempt_id": "b10-43689822806-1-c1-r1-loadgen-restart-fpgx7-same_instance-4",
+                    "resend_attempt_id": "b10-43689822806-1-c1-r1-loadgen-restart-fpgx7-same_instance-5",
+                    "original": {
+                      "partition": 15,
+                      "offset": 975
+                    },
+                    "resend": {
+                      "partition": 15,
+                      "offset": 976
+                    }
+                  }
+                },
+                {
+                  "arm": "cross_restart",
+                  "cut_attempt_id": "b10-43689822806-1-c1-r1-loadgen-restart-fpgx7-cross_restart-10",
+                  "unconfirmed_attempt_ids": [
+                    "b10-43689822806-1-c1-r1-loadgen-restart-fpgx7-cross_restart-10"
+                  ],
+                  "unconfirmed_count": 1,
+                  "resend_invoked": 1,
+                  "originals_seen": 1,
+                  "resends_seen": 1,
+                  "pair_count": 1,
+                  "unreported_attempts": 1,
+                  "unreported_seen": 1,
+                  "unreported_unseen": 0,
+                  "lost_resends": 0,
+                  "witness": {
+                    "original_attempt_id": "b10-43689822806-1-c1-r1-loadgen-restart-fpgx7-cross_restart-10",
+                    "resend_attempt_id": "b10-43689822806-1-c1-r1-loadgen-successor-hqz7p-replay-0",
+                    "original": {
+                      "partition": 4,
+                      "offset": 985
+                    },
+                    "resend": {
+                      "partition": 4,
+                      "offset": 986
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "repeat": 2,
+            "source": {
+              "container": "verifier",
+              "name": "b10-43689822806-1/C1/r2/b10-abrupt/nonfinal-result.json",
+              "length": 6060,
+              "sha256": "2d4ee38e4c3ce5b15ccbbc65ebe051e1d5830d43580693cd97d7b57398a64752"
+            },
+            "producer_versions": [
+              {
+                "instance_id": "b10-43689822806-1-c1-r2-loadgen-4r7sn",
+                "workload_generator": "1",
+                "confluent_kafka": "2.16.0+56ef87df3402861f0dc72ef921fcfac702ae1f16",
+                "librdkafka": "2.16.0",
+                "dotnet": "10.0.13"
+              }
+            ],
+            "classification_final": true,
+            "status": "complete_valid",
+            "timeout": {
+              "ok": 30963,
+              "loss": 0,
+              "phantom": 30,
+              "reported_failure": 169,
+              "duplicate": 20,
+              "reorder": 18
+            },
+            "reasons": [],
+            "restart": {
+              "eligibility": "eligible",
+              "eligibility_reasons": [],
+              "termination": {
+                "class": "intended_self_kill",
+                "outcome": null
+              },
+              "first_instance_id": "b10-43689822806-1-c1-r2-loadgen-restart-82bgd",
+              "successor_instance_id": "b10-43689822806-1-c1-r2-loadgen-successor-5jzxl",
+              "timeout_instance_id": "b10-43689822806-1-c1-r2-loadgen-4r7sn",
+              "comparison": "both",
+              "native_errors": {
+                "count": 0,
+                "fatal_count": 0,
+                "tail": "unknown_due_to_intended_kill"
+              },
+              "arms": [
+                {
+                  "arm": "same_instance",
+                  "cut_attempt_id": "b10-43689822806-1-c1-r2-loadgen-restart-82bgd-same_instance-4",
+                  "unconfirmed_attempt_ids": [
+                    "b10-43689822806-1-c1-r2-loadgen-restart-82bgd-same_instance-4"
+                  ],
+                  "unconfirmed_count": 1,
+                  "resend_invoked": 1,
+                  "originals_seen": 1,
+                  "resends_seen": 1,
+                  "pair_count": 1,
+                  "unreported_attempts": 0,
+                  "unreported_seen": 0,
+                  "unreported_unseen": 0,
+                  "lost_resends": 0,
+                  "witness": {
+                    "original_attempt_id": "b10-43689822806-1-c1-r2-loadgen-restart-82bgd-same_instance-4",
+                    "resend_attempt_id": "b10-43689822806-1-c1-r2-loadgen-restart-82bgd-same_instance-5",
+                    "original": {
+                      "partition": 22,
+                      "offset": 1980
+                    },
+                    "resend": {
+                      "partition": 22,
+                      "offset": 1981
+                    }
+                  }
+                },
+                {
+                  "arm": "cross_restart",
+                  "cut_attempt_id": "b10-43689822806-1-c1-r2-loadgen-restart-82bgd-cross_restart-10",
+                  "unconfirmed_attempt_ids": [
+                    "b10-43689822806-1-c1-r2-loadgen-restart-82bgd-cross_restart-10"
+                  ],
+                  "unconfirmed_count": 1,
+                  "resend_invoked": 1,
+                  "originals_seen": 1,
+                  "resends_seen": 1,
+                  "pair_count": 1,
+                  "unreported_attempts": 1,
+                  "unreported_seen": 1,
+                  "unreported_unseen": 0,
+                  "lost_resends": 0,
+                  "witness": {
+                    "original_attempt_id": "b10-43689822806-1-c1-r2-loadgen-restart-82bgd-cross_restart-10",
+                    "resend_attempt_id": "b10-43689822806-1-c1-r2-loadgen-successor-5jzxl-replay-0",
+                    "original": {
+                      "partition": 29,
+                      "offset": 1968
+                    },
+                    "resend": {
+                      "partition": 29,
+                      "offset": 1969
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "repeat": 3,
+            "source": {
+              "container": "verifier",
+              "name": "b10-43689822806-1/C1/r3/b10-abrupt/nonfinal-result.json",
+              "length": 6088,
+              "sha256": "c9ed8db1afe2fd1f9d93366f0828879b02098550650dd3f8d369e9ba23979d7a"
+            },
+            "producer_versions": [
+              {
+                "instance_id": "b10-43689822806-1-c1-r3-loadgen-k44jt",
+                "workload_generator": "1",
+                "confluent_kafka": "2.16.0+56ef87df3402861f0dc72ef921fcfac702ae1f16",
+                "librdkafka": "2.16.0",
+                "dotnet": "10.0.13"
+              }
+            ],
+            "classification_final": true,
+            "status": "complete_valid",
+            "timeout": {
+              "ok": 30996,
+              "loss": 0,
+              "phantom": 0,
+              "reported_failure": 66,
+              "duplicate": 0,
+              "reorder": 7
+            },
+            "reasons": [],
+            "restart": {
+              "eligibility": "eligible",
+              "eligibility_reasons": [],
+              "termination": {
+                "class": "intended_self_kill",
+                "outcome": null
+              },
+              "first_instance_id": "b10-43689822806-1-c1-r3-loadgen-restart-klphl",
+              "successor_instance_id": "b10-43689822806-1-c1-r3-loadgen-successor-4dwzt",
+              "timeout_instance_id": "b10-43689822806-1-c1-r3-loadgen-k44jt",
+              "comparison": "both",
+              "native_errors": {
+                "count": 0,
+                "fatal_count": 0,
+                "tail": "unknown_due_to_intended_kill"
+              },
+              "arms": [
+                {
+                  "arm": "same_instance",
+                  "cut_attempt_id": "b10-43689822806-1-c1-r3-loadgen-restart-klphl-same_instance-4",
+                  "unconfirmed_attempt_ids": [
+                    "b10-43689822806-1-c1-r3-loadgen-restart-klphl-same_instance-4"
+                  ],
+                  "unconfirmed_count": 1,
+                  "resend_invoked": 1,
+                  "originals_seen": 1,
+                  "resends_seen": 1,
+                  "pair_count": 1,
+                  "unreported_attempts": 0,
+                  "unreported_seen": 0,
+                  "unreported_unseen": 0,
+                  "lost_resends": 0,
+                  "witness": {
+                    "original_attempt_id": "b10-43689822806-1-c1-r3-loadgen-restart-klphl-same_instance-4",
+                    "resend_attempt_id": "b10-43689822806-1-c1-r3-loadgen-restart-klphl-same_instance-5",
+                    "original": {
+                      "partition": 30,
+                      "offset": 2894
+                    },
+                    "resend": {
+                      "partition": 30,
+                      "offset": 2895
+                    }
+                  }
+                },
+                {
+                  "arm": "cross_restart",
+                  "cut_attempt_id": "b10-43689822806-1-c1-r3-loadgen-restart-klphl-cross_restart-10",
+                  "unconfirmed_attempt_ids": [
+                    "b10-43689822806-1-c1-r3-loadgen-restart-klphl-cross_restart-10"
+                  ],
+                  "unconfirmed_count": 1,
+                  "resend_invoked": 1,
+                  "originals_seen": 1,
+                  "resends_seen": 1,
+                  "pair_count": 1,
+                  "unreported_attempts": 1,
+                  "unreported_seen": 1,
+                  "unreported_unseen": 0,
+                  "lost_resends": 0,
+                  "witness": {
+                    "original_attempt_id": "b10-43689822806-1-c1-r3-loadgen-restart-klphl-cross_restart-10",
+                    "resend_attempt_id": "b10-43689822806-1-c1-r3-loadgen-successor-4dwzt-replay-0",
+                    "original": {
+                      "partition": 21,
+                      "offset": 2850
+                    },
+                    "resend": {
+                      "partition": 21,
+                      "offset": 2851
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "repeat": 4,
+            "source": {
+              "container": "verifier",
+              "name": "b10-43689822806-1/C1/r4/b10-abrupt/nonfinal-result.json",
+              "length": 9488,
+              "sha256": "249096ac19fa2e07329c15ea0067e7eda321af0c76724505012d4dffc6ed04a6"
+            },
+            "producer_versions": [
+              {
+                "instance_id": "b10-43689822806-1-c1-r4-loadgen-w57d9",
+                "workload_generator": "1",
+                "confluent_kafka": "2.16.0+56ef87df3402861f0dc72ef921fcfac702ae1f16",
+                "librdkafka": "2.16.0",
+                "dotnet": "10.0.13"
+              }
+            ],
+            "classification_final": true,
+            "status": "complete_valid",
+            "timeout": {
+              "ok": 30994,
+              "loss": 0,
+              "phantom": 0,
+              "reported_failure": 71,
+              "duplicate": 0,
+              "reorder": 0
+            },
+            "reasons": [],
+            "restart": {
+              "eligibility": "eligible",
+              "eligibility_reasons": [],
+              "termination": {
+                "class": "intended_self_kill",
+                "outcome": null
+              },
+              "first_instance_id": "b10-43689822806-1-c1-r4-loadgen-restart-ll4mj",
+              "successor_instance_id": "b10-43689822806-1-c1-r4-loadgen-successor-pljt2",
+              "timeout_instance_id": "b10-43689822806-1-c1-r4-loadgen-w57d9",
+              "comparison": "both",
+              "native_errors": {
+                "count": 0,
+                "fatal_count": 0,
+                "tail": "unknown_due_to_intended_kill"
+              },
+              "arms": [
+                {
+                  "arm": "same_instance",
+                  "cut_attempt_id": "b10-43689822806-1-c1-r4-loadgen-restart-ll4mj-same_instance-4",
+                  "unconfirmed_attempt_ids": [
+                    "b10-43689822806-1-c1-r4-loadgen-restart-ll4mj-same_instance-4"
+                  ],
+                  "unconfirmed_count": 1,
+                  "resend_invoked": 1,
+                  "originals_seen": 1,
+                  "resends_seen": 1,
+                  "pair_count": 1,
+                  "unreported_attempts": 0,
+                  "unreported_seen": 0,
+                  "unreported_unseen": 0,
+                  "lost_resends": 0,
+                  "witness": {
+                    "original_attempt_id": "b10-43689822806-1-c1-r4-loadgen-restart-ll4mj-same_instance-4",
+                    "resend_attempt_id": "b10-43689822806-1-c1-r4-loadgen-restart-ll4mj-same_instance-5",
+                    "original": {
+                      "partition": 4,
+                      "offset": 3972
+                    },
+                    "resend": {
+                      "partition": 4,
+                      "offset": 3973
+                    }
+                  }
+                },
+                {
+                  "arm": "cross_restart",
+                  "cut_attempt_id": "b10-43689822806-1-c1-r4-loadgen-restart-ll4mj-cross_restart-10",
+                  "unconfirmed_attempt_ids": [
+                    "b10-43689822806-1-c1-r4-loadgen-restart-ll4mj-cross_restart-6",
+                    "b10-43689822806-1-c1-r4-loadgen-restart-ll4mj-cross_restart-7",
+                    "b10-43689822806-1-c1-r4-loadgen-restart-ll4mj-cross_restart-8",
+                    "b10-43689822806-1-c1-r4-loadgen-restart-ll4mj-cross_restart-9",
+                    "b10-43689822806-1-c1-r4-loadgen-restart-ll4mj-cross_restart-10"
+                  ],
+                  "unconfirmed_count": 5,
+                  "resend_invoked": 5,
+                  "originals_seen": 5,
+                  "resends_seen": 5,
+                  "pair_count": 5,
+                  "unreported_attempts": 5,
+                  "unreported_seen": 5,
+                  "unreported_unseen": 0,
+                  "lost_resends": 0,
+                  "witness": {
+                    "original_attempt_id": "b10-43689822806-1-c1-r4-loadgen-restart-ll4mj-cross_restart-10",
+                    "resend_attempt_id": "b10-43689822806-1-c1-r4-loadgen-successor-pljt2-replay-4",
+                    "original": {
+                      "partition": 15,
+                      "offset": 3907
+                    },
+                    "resend": {
+                      "partition": 15,
+                      "offset": 3912
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "repeat": 5,
+            "source": {
+              "container": "verifier",
+              "name": "b10-43689822806-1/C1/r5/b10-abrupt/nonfinal-result.json",
+              "length": 6086,
+              "sha256": "3b5b80a692b45a5652418625b9ec9b15ca9c7af55243086308cd676542108176"
+            },
+            "producer_versions": [
+              {
+                "instance_id": "b10-43689822806-1-c1-r5-loadgen-gnx4c",
+                "workload_generator": "1",
+                "confluent_kafka": "2.16.0+56ef87df3402861f0dc72ef921fcfac702ae1f16",
+                "librdkafka": "2.16.0",
+                "dotnet": "10.0.13"
+              }
+            ],
+            "classification_final": true,
+            "status": "complete_valid",
+            "timeout": {
+              "ok": 30962,
+              "loss": 0,
+              "phantom": 10,
+              "reported_failure": 137,
+              "duplicate": 7,
+              "reorder": 9
+            },
+            "reasons": [],
+            "restart": {
+              "eligibility": "eligible",
+              "eligibility_reasons": [],
+              "termination": {
+                "class": "intended_self_kill",
+                "outcome": null
+              },
+              "first_instance_id": "b10-43689822806-1-c1-r5-loadgen-restart-kw8r6",
+              "successor_instance_id": "b10-43689822806-1-c1-r5-loadgen-successor-57jgx",
+              "timeout_instance_id": "b10-43689822806-1-c1-r5-loadgen-gnx4c",
+              "comparison": "both",
+              "native_errors": {
+                "count": 0,
+                "fatal_count": 0,
+                "tail": "unknown_due_to_intended_kill"
+              },
+              "arms": [
+                {
+                  "arm": "same_instance",
+                  "cut_attempt_id": "b10-43689822806-1-c1-r5-loadgen-restart-kw8r6-same_instance-4",
+                  "unconfirmed_attempt_ids": [
+                    "b10-43689822806-1-c1-r5-loadgen-restart-kw8r6-same_instance-4"
+                  ],
+                  "unconfirmed_count": 1,
+                  "resend_invoked": 1,
+                  "originals_seen": 1,
+                  "resends_seen": 1,
+                  "pair_count": 1,
+                  "unreported_attempts": 0,
+                  "unreported_seen": 0,
+                  "unreported_unseen": 0,
+                  "lost_resends": 0,
+                  "witness": {
+                    "original_attempt_id": "b10-43689822806-1-c1-r5-loadgen-restart-kw8r6-same_instance-4",
+                    "resend_attempt_id": "b10-43689822806-1-c1-r5-loadgen-restart-kw8r6-same_instance-5",
+                    "original": {
+                      "partition": 12,
+                      "offset": 4751
+                    },
+                    "resend": {
+                      "partition": 12,
+                      "offset": 4752
+                    }
+                  }
+                },
+                {
+                  "arm": "cross_restart",
+                  "cut_attempt_id": "b10-43689822806-1-c1-r5-loadgen-restart-kw8r6-cross_restart-10",
+                  "unconfirmed_attempt_ids": [
+                    "b10-43689822806-1-c1-r5-loadgen-restart-kw8r6-cross_restart-10"
+                  ],
+                  "unconfirmed_count": 1,
+                  "resend_invoked": 1,
+                  "originals_seen": 1,
+                  "resends_seen": 1,
+                  "pair_count": 1,
+                  "unreported_attempts": 1,
+                  "unreported_seen": 1,
+                  "unreported_unseen": 0,
+                  "lost_resends": 0,
+                  "witness": {
+                    "original_attempt_id": "b10-43689822806-1-c1-r5-loadgen-restart-kw8r6-cross_restart-10",
+                    "resend_attempt_id": "b10-43689822806-1-c1-r5-loadgen-successor-57jgx-replay-0",
+                    "original": {
+                      "partition": 7,
+                      "offset": 4804
+                    },
+                    "resend": {
+                      "partition": 7,
+                      "offset": 4805
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "timeout_rule": null,
+        "restart_rule": {
+          "declared_repeats": 5,
+          "eligible_repeats": 4,
+          "eligible_repeat_numbers": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "qualifying_pair_repeats": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "lost_resend_finding_repeats": [],
+          "eligible_loss_repeats": [],
+          "rule_selection": "confirmed",
+          "selection_reason": null,
+          "subject": "With idempotence enabled, application recovery that replaces a killed producer and resends a durably identified but unconfirmed logical message can leave both the original and the resend in the log."
+        }
+      },
+      "reasons": [
+        "b10_final_timeout_evidence_invalid",
+        "j7_counts_unavailable"
+      ]
+    }
+  }
+}
