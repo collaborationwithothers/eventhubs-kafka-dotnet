@@ -177,8 +177,9 @@ def publish_v2_actor(h, job, pod, config, stage):
     folder = h.artifacts/job
     raw = h.private/'probe-v2'/'raw'/job
     raw.mkdir(parents=True)
-    (raw/f'{pod}.containers.{role}.log').write_bytes(b'PARCHWELL_PROBE_V2_REGISTRATION '+encoded(identity)+b'\n'+
-                                                     b'PARCHWELL_PROBE_V2_CAPTURE '+encoded(capture)+b'\n')
+    (raw/f'{pod}.containers.{role}.log').write_bytes(b'host started\nPARCHWELL_PROBE_V2_REGISTRATION '+encoded(identity)+b'\n'+
+                                                     b'probe_v2_client_log diagnostic\nPARCHWELL_PROBE_V2_CAPTURE '+encoded(capture)+b'\n'+
+                                                     b'PARCHWELL_PROBE_V2_AUTHENTICATION_METADATA {"observation":true}\n')
     (folder/'collection-status.json').write_bytes(encoded({'complete':True, 'gaps':[]}))
 
 
@@ -377,6 +378,10 @@ class InventoryIntegrationTests(unittest.TestCase):
                     projection=json.loads(projected)
                     self.assertEqual({'container':'runner','name':name,'etag':None,'bytes':len(raw),'sha256':sha(raw)},projection['source'])
                     self.assertEqual('probe_v2_stdout',projection['format'])
+                    self.assertEqual([{'text':'host started\n'}, {'record':'registration'},
+                                      {'text':'probe_v2_client_log diagnostic\n'}, {'record':'capture'},
+                                      {'text':'PARCHWELL_PROBE_V2_AUTHENTICATION_METADATA {"observation":true}\n'}],
+                                     projection['metadata']['lines'])
                     self.assertEqual({'is_null':False,'length':11,'sha256':sha(b'BODY_SECRET')},
                                      projection['metadata']['capture']['repeats'][0]['requested']['value_base64'])
                     marker = json.loads(cb); marker['identity']['run_id'] = 'wrong-42-1'
@@ -421,7 +426,7 @@ class InventoryIntegrationTests(unittest.TestCase):
         self.assertTrue(any(g['code']=='capture_incomplete' for g in manifest['gaps']))
 
     def test_v2_required_stdout_and_collection_fail_closed(self):
-        for fault in ('missing_log', 'truncated_log', 'missing_collection', 'failed_collection'):
+        for fault in ('missing_log', 'truncated_log', 'truncated_tail', 'body_line', 'credential_line', 'invalid_utf8', 'missing_collection', 'failed_collection'):
             with self.subTest(fault=fault):
                 h=self.harness('probe-batch-2','single-action','probe-42-1','smoke',items=['F06'],
                                probe_v2_selection='authentication-controls',capture_authentication_metadata=True)
@@ -443,12 +448,21 @@ class InventoryIntegrationTests(unittest.TestCase):
                 log=h.private/'probe-v2'/'raw'/'probe-42-1-f06-c6-seed'/'probe-42-1-f06-c6-seed-pod.containers.loadgen.log'
                 status=folder/'collection-status.json'
                 if fault=='missing_log': log.unlink()
-                elif fault=='truncated_log': log.write_bytes(log.read_bytes()[:-20])
+                elif fault=='truncated_log':
+                    raw=log.read_bytes(); capture_end=raw.index(b'\n', raw.index(b'PARCHWELL_PROBE_V2_CAPTURE '))
+                    log.write_bytes(raw[:capture_end-20])
+                elif fault=='truncated_tail': log.write_bytes(log.read_bytes()[:-1])
+                elif fault=='body_line': log.write_bytes(log.read_bytes()+b'unknown {"value_base64":"Qk9EWV9TRUNSRVQ="}\n')
+                elif fault=='credential_line': log.write_bytes(log.read_bytes()+b'password=PRIVATE_SECRET\n')
+                elif fault=='invalid_utf8': log.write_bytes(log.read_bytes()+b'\xff\n')
                 elif fault=='missing_collection': status.unlink()
                 else: status.write_bytes(encoded({'complete':False,'gaps':['truncated']}))
                 code, manifest, receipt=h.run()
                 self.assertEqual(1,code); self.assertFalse(receipt['archive_complete']); self.assertIsNone(receipt['completion'])
                 self.assertTrue(any(g['code']=='monitoring_incomplete' for g in manifest['gaps']))
+                archived = b''.join(v for (account, _, _), v in h.cli.blobs.items() if account == 'archive123')
+                self.assertNotIn(b'PRIVATE_SECRET', archived)
+                self.assertNotIn(b'Qk9EWV9TRUNSRVQ=', archived)
 
     def test_failed_ordinary_capture_zero_vs_missing_and_publication_references(self):
         h = self.harness('A01', 'C0', 'a01-42-1', 'scientific')

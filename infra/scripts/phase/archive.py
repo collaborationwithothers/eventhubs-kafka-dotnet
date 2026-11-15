@@ -1534,6 +1534,8 @@ def check_v2_actor_logs(collector, phase, status, units, artifacts, private):
                 log = stream.read(limits['execution']['max_container_log_bytes'] + 1)
             if not log or len(log) > limits['execution']['max_container_log_bytes']:
                 raise InvalidArchiveConfig()
+            # A successful collection still needs a complete final line.
+            if not log.endswith(b'\n'): raise InvalidArchiveConfig()
             lines = log.splitlines(keepends=True)
             indices = []; documents = []
             for marker, capture in ((module.REGISTRATION_MARKER, False), (module.CAPTURE_MARKER, True)):
@@ -1565,10 +1567,21 @@ def check_v2_actor_logs(collector, phase, status, units, artifacts, private):
                 record_value = slot['read_observation']['record']
                 if record_value is not None:
                     record_value['value_base64'] = metadata(record_value['value_base64'])
+            # Preserve diagnostic lines and their ordering around the two structured
+            # records. Unknown body-bearing or credential assignments fail closed.
+            diagnostic_lines = []
+            for index, line in enumerate(lines):
+                if index in indices:
+                    diagnostic_lines.append({'record': 'registration' if index == indices[0] else 'capture'})
+                    continue
+                text = line.decode('utf-8', errors='strict')
+                if re.search(r'(?i)(?:[\"\']?value_base64[\"\']?\s*[:=]|\b(?:password|client_secret|access_token|connection_string|sharedaccesskey)\s*[\"\']?\s*[:=]|\bbearer\s+[A-Za-z0-9._~+/=-]+)', text):
+                    raise InvalidArchiveConfig()
+                diagnostic_lines.append({'text': text})
             name = f'probe-v2/raw/{job}/{pod}.containers.{role}.log'
             source = {'container': 'runner', 'name': name, 'etag': None, 'bytes': len(log), 'sha256': hashlib.sha256(log).hexdigest()}
             projection = {'schema_version': 1, 'kind': 'source_metadata_projection', 'source': source,
-                          'format': 'probe_v2_stdout', 'metadata': {'registration': documents[0], 'capture': documents[1]}}
+                          'format': 'probe_v2_stdout', 'metadata': {'registration': documents[0], 'capture': documents[1], 'lines': diagnostic_lines}}
             collector.projected_runner(name, _common.encoded(projection))
         except (OSError, ValueError, KeyError, TypeError, AttributeError, _common.Invalid):
             if pod and 'role' in locals() and isinstance(role, str) and safe_name(role):
