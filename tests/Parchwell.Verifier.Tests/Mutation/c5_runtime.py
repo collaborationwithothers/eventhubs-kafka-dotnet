@@ -715,6 +715,64 @@ def approved_six_tail(path, record, shard, item, source):
     except (KeyError, TypeError, ValueError):
         return False
 
+HISTORICAL_QUALIFICATION_COMMIT = '6c6ed9208b005df0ac51033f4cf2be687b0983b9'
+HISTORICAL_QUALIFICATION_PATH = 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json'
+HISTORICAL_QUALIFICATION_SHA256 = 'd8ba890476525bc058d062cc866f91205a22d3040140f32671a9a2c7eb1957e6'
+
+
+def historical_qualification():
+    data = blob(HISTORICAL_QUALIFICATION_COMMIT, HISTORICAL_QUALIFICATION_PATH)
+    if digest(data) != HISTORICAL_QUALIFICATION_SHA256:
+        raise ValueError('historical qualification mismatch')
+    return json.loads(data)
+
+
+def timing_evidence_shape(items):
+    if not isinstance(items, dict):
+        raise ValueError('invalid timing evidence')
+    for shard, item in items.items():
+        if not isinstance(shard, str) or not shard or not isinstance(item, dict):
+            raise ValueError('invalid timing evidence')
+        if item == {'kind': 'historical'}:
+            continue
+        if set(item) != {'kind', 'source_commit', 'artifact_sha256', 'timing_inputs_sha256',
+                         'observed_workers', 'observed_seconds', 'method'} or item['kind'] != 'measured':
+            raise ValueError('invalid timing evidence')
+        if not isinstance(item['source_commit'], str) or not re.fullmatch(r'[0-9a-f]{40}', item['source_commit']):
+            raise ValueError('invalid timing commit')
+        if any(not isinstance(item[k], str) or not HEX.fullmatch(item[k]) for k in ('artifact_sha256', 'timing_inputs_sha256')):
+            raise ValueError('invalid timing hash')
+        if type(item['observed_workers']) is not int or item['observed_workers'] < 1:
+            raise ValueError('invalid timing workers')
+        if type(item['observed_seconds']) not in (int, float) or not 0 < item['observed_seconds'] <= sys.float_info.max or not math.isfinite(item['observed_seconds']):
+            raise ValueError('invalid timing observation')
+        if not isinstance(item['method'], str) or not item['method'].strip():
+            raise ValueError('invalid timing method')
+
+
+def has_shard_timing(shard, path, record, item, proof, baseline):
+    if proof is None:
+        return False
+    if proof['kind'] == 'historical':
+        old = baseline.get('targets', {}).get(path, {})
+        return (record['source_sha256'] == old.get('source_sha256')
+                and record['evidence'] == old.get('evidence')
+                and item == old.get('shards', {}).get(shard))
+    workers = re.search(r'\bobserved_workers=([1-9][0-9]*)\b', item['basis'])
+    if (proof['timing_inputs_sha256'] != item['timing_inputs_sha256']
+            or not workers or proof['observed_workers'] != int(workers.group(1))):
+        return False
+    evidence = next((e for e in record['evidence'] if e['sha256'] == proof['artifact_sha256']
+                     and e['source_commit'] == proof['source_commit']
+                     and e['kind'] in {'hosted_complete', 'local_probe', 'partial_timing'}), None)
+    if evidence is None:
+        return False
+    try:
+        return digest(blob(proof['source_commit'], 'src/Parchwell.Verifier/' + path)) == record['source_sha256']
+    except subprocess.CalledProcessError:
+        return False
+
+
 def provenance_shape(contexts):
     """Validate the complete measured maps and explicit current-input assessments."""
     if not isinstance(contexts, dict) or not contexts:
@@ -784,7 +842,7 @@ def provenance_errors(context, shared, targets, owner):
 def shape(config):
     if not isinstance(config, dict) or set(config) not in ({'schema_version', 'budget_seconds', 'shared_inputs', 'targets'},
                                                  {'schema_version', 'budget_seconds', 'shared_inputs', 'targets', 'renewals'},
-                                                 {'schema_version', 'budget_seconds', 'shared_inputs', 'targets', 'timing_inputs'}):
+                                                 {'schema_version', 'budget_seconds', 'shared_inputs', 'targets', 'timing_inputs', 'timing_evidence'}):
         raise ValueError('invalid schema')
     if type(config['schema_version']) is not int or config['schema_version'] not in (1, 2) or type(config['budget_seconds']) is not int or config['budget_seconds'] != 1800:
         raise ValueError('unsupported schema or budget')
@@ -794,10 +852,11 @@ def shape(config):
         if not isinstance(path, str) or not isinstance(sha, str) or not HEX.fullmatch(sha):
             raise ValueError('invalid input hash')
     version = config['schema_version']
-    if (version == 1 and 'timing_inputs' in config) or (version == 2 and ('timing_inputs' not in config or 'renewals' in config)):
+    if (version == 1 and ('timing_inputs' in config or 'timing_evidence' in config)) or (version == 2 and ('timing_inputs' not in config or 'timing_evidence' not in config or 'renewals' in config)):
         raise ValueError('invalid version fields')
     if version == 2:
         provenance_shape(config['timing_inputs'])
+        timing_evidence_shape(config['timing_evidence'])
     renewals = config.get('renewals', {})
     if not isinstance(renewals, dict):
         raise ValueError('invalid renewals')
@@ -1111,6 +1170,8 @@ def validate(config, shared, targets, source, matrix):
     timing_hash = digest(canonical({'shared_inputs': measured, 'target_sources': target_sources}))
     all_shards = {}
     used_contexts = set()
+    baseline = historical_qualification() if config['schema_version'] == 2 and any(
+        p['kind'] == 'historical' for p in config['timing_evidence'].values()) else {}
     shard_fields = {'selection_sha256', 'timing_inputs_sha256', 'main_mutants', 'main_work_seconds',
                     'parallelism', 'setup_seconds', 'isolated_seconds', 'estimated_seconds', 'basis'}
     for path, record in config['targets'].items():
@@ -1166,6 +1227,8 @@ def validate(config, shared, targets, source, matrix):
                     reasons.update(provenance_errors(context, shared, targets, path))
                 if provisional and binding != PROVISIONAL_TIMING_INPUTS_HASH:
                     reasons.add('stale_inputs')
+                if not has_shard_timing(shard, path, record, item, config['timing_evidence'].get(shard), baseline):
+                    reasons.add('missing_measurement')
             if shard in workflow.SHARDS and workflow.SHARDS[shard] == path:
                 selection = digest(canonical(workflow.shard_config(shard, source[path])))
                 if item['selection_sha256'] != selection:
@@ -1215,6 +1278,8 @@ def validate(config, shared, targets, source, matrix):
             if (item['estimated_seconds'] > 1800
                     and not approved_static_owner(path, record, shard, item, source[path])):
                 reasons.add('shard_over_budget')
+    if config['schema_version'] == 2 and set(config['timing_evidence']) != set(all_shards):
+        reasons.add('missing_measurement')
     if config['schema_version'] == 2 and used_contexts != set(config['timing_inputs']):
         reasons.add('unaccounted_inputs')
     if all_shards != workflow.SHARDS:

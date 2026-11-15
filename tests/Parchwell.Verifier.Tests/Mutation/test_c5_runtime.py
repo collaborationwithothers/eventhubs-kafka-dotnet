@@ -210,6 +210,10 @@ class QualificationTests(unittest.TestCase):
         self.original_shards = runtime.workflow.SHARDS
         self.original_shard_config = runtime.workflow.shard_config
         self.original_evidence_matches_target = runtime.evidence_matches_target
+        self.original_has_shard_timing = runtime.has_shard_timing
+        timing_patch = mock.patch.object(runtime, 'has_shard_timing', return_value=True)
+        timing_patch.start()
+        self.addCleanup(timing_patch.stop)
         evidence_patch = mock.patch.object(runtime, 'evidence_matches_target', return_value=True)
         evidence_patch.start()
         self.addCleanup(evidence_patch.stop)
@@ -243,6 +247,9 @@ class QualificationTests(unittest.TestCase):
         measured_shared = self.shared.copy()
         binding = runtime.digest(runtime.canonical({'shared_inputs': measured_shared, 'target_sources': measured_targets}))
         self.config['schema_version'] = 2
+        self.config['timing_evidence'] = {shard: {'kind': 'measured', 'source_commit': 'a' * 40,
+            'artifact_sha256': 'a' * 64, 'timing_inputs_sha256': binding, 'observed_workers': 2,
+            'observed_seconds': 10, 'method': 'synthetic execution timing'} for shard in self.shards}
         self.config['timing_inputs'] = {binding: {'shared_inputs': measured_shared,
             'target_sources': measured_targets, 'assessments': {'shared_inputs': {}, 'target_sources': {}}}}
         return binding
@@ -262,14 +269,25 @@ class QualificationTests(unittest.TestCase):
         assessments = {path: {'current_sha256': item['current_sha256'], 'basis': item['basis']}
                        for path, item in config.pop('renewals', {}).items()}
         config['schema_version'] = 2
+        config['timing_evidence'] = {shard: {'kind': 'historical'} for shard in self.original_shards}
         config['timing_inputs'] = {binding: {'shared_inputs': measured_shared, 'target_sources': targets,
             'assessments': {'shared_inputs': assessments, 'target_sources': {}}}}
         source = {path: (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes() for path in targets}
         runtime.shape(config)
         with mock.patch.object(runtime.workflow, 'SHARDS', self.original_shards), \
              mock.patch.object(runtime.workflow, 'shard_config', self.original_shard_config), \
-             mock.patch.object(runtime, 'evidence_matches_target', self.original_evidence_matches_target):
+             mock.patch.object(runtime, 'evidence_matches_target', self.original_evidence_matches_target), \
+             mock.patch.object(runtime, 'has_shard_timing', self.original_has_shard_timing):
             self.assertEqual(set(), runtime.validate(config, config['shared_inputs'], targets, source, self.original_shards))
+            first_shard = next(iter(self.original_shards))
+            owner = self.original_shards[first_shard]
+            item = config['targets'][owner]['shards'][first_shard]
+            basis = item['basis']
+            item['basis'] = basis + ' altered'
+            self.assertIn('missing_measurement', runtime.validate(config, config['shared_inputs'], targets, source, self.original_shards))
+            item['basis'] = basis
+            config['targets'][owner]['evidence'][0]['note'] += ' altered'
+            self.assertIn('missing_measurement', runtime.validate(config, config['shared_inputs'], targets, source, self.original_shards))
 
     def test_v2_accounts_for_other_target_without_rebinding_historical_measurement(self):
         old_binding = self.migrate_v2()
@@ -323,6 +341,71 @@ class QualificationTests(unittest.TestCase):
                 self.assertEqual(set(), self.errors())
             evidence['kind'] = 'suite_profile'
             self.assertIn('missing_measurement', self.errors())
+
+    def test_v2_requires_per_shard_timing_for_changed_source(self):
+        binding = self.migrate_v2()
+        record = self.config['targets']['a.cs']
+        proof = self.config['timing_evidence']['a-p1']
+        old_timing = record['evidence'][0]
+        geometry = dict(old_timing, source_commit='b' * 40, sha256='b' * 64, kind='hosted_complete', note='geometry only')
+        record['evidence'].append(geometry)
+        def source_at(commit, path):
+            if commit == 'a' * 40 and path.endswith('/a.cs'):
+                return b'old target source'
+            return self.source[path.removeprefix('src/Parchwell.Verifier/')]
+        with mock.patch.object(runtime, 'has_shard_timing', self.original_has_shard_timing), \
+             mock.patch.object(runtime, 'blob', side_effect=source_at):
+            # Geometry at the new source does not make old-source timing current.
+            self.assertIn('missing_measurement', self.errors())
+            new_timing = dict(geometry, sha256='c' * 64, note='measured shard timing')
+            record['evidence'].append(new_timing)
+            proof.update(artifact_sha256='c' * 64, source_commit='b' * 40)
+            self.assertEqual(set(), self.errors())
+            proof['timing_inputs_sha256'] = '0' * 64
+            self.assertIn('missing_measurement', self.errors())
+            proof['timing_inputs_sha256'] = binding
+            proof['observed_workers'] = 1
+            self.assertIn('missing_measurement', self.errors())
+            proof['observed_workers'] = 2
+            proof['source_commit'] = 'a' * 40
+            self.assertIn('missing_measurement', self.errors())
+            proof['source_commit'] = 'b' * 40
+            del self.config['timing_evidence']['a-p1']
+            self.assertIn('missing_measurement', self.errors())
+
+    def test_v2_timing_metadata_rejects_empty_and_invalid_values(self):
+        self.migrate_v2()
+        proof = self.config['timing_evidence']['a-p1']
+        for key, bad in [('observed_seconds', 0), ('observed_seconds', True),
+                         ('observed_seconds', float('inf')), ('observed_workers', 0),
+                         ('observed_workers', True), ('method', ''), ('method', '   '),
+                         ('artifact_sha256', 'bad'), ('source_commit', 'bad')]:
+            with self.subTest(key=key, value=bad):
+                old = proof[key]
+                proof[key] = bad
+                with self.assertRaises(ValueError):
+                    runtime.shape(self.config)
+                proof[key] = old
+
+    def test_v2_added_removed_and_unused_contexts(self):
+        binding = self.migrate_v2()
+        assessments = self.config['timing_inputs'][binding]['assessments']['shared_inputs']
+        self.shared['added.cs'] = runtime.digest(b'new input')
+        self.config['shared_inputs'] = self.shared.copy()
+        self.assertIn('unaccounted_inputs', self.errors())
+        assessments['added.cs'] = {'current_sha256': self.shared['added.cs'], 'basis': ['Synthetic risk acceptance.']}
+        self.assertEqual(set(), self.errors())
+        old = self.shared.pop('global.json')
+        self.config['shared_inputs'] = self.shared.copy()
+        self.assertIn('unaccounted_inputs', self.errors())
+        assessments['global.json'] = {'current_sha256': old, 'basis': ['Synthetic risk acceptance.']}
+        self.assertIn('unaccounted_inputs', self.errors())
+        assessments['global.json']['current_sha256'] = None
+        self.assertEqual(set(), self.errors())
+        extra = {'shared_inputs': {}, 'target_sources': {}, 'assessments': {'shared_inputs': {}, 'target_sources': {}}}
+        key = runtime.digest(runtime.canonical({'shared_inputs': {}, 'target_sources': {}}))
+        self.config['timing_inputs'][key] = extra
+        self.assertIn('unaccounted_inputs', self.errors())
 
     def test_v2_rejects_tampered_historical_inputs_missing_context_and_empty_basis(self):
         binding = self.migrate_v2()
