@@ -102,6 +102,10 @@ jobs:
         id: ephemeral_apply
         shell: bash
         run: bash infra/scripts/lifecycle/lifecycle.sh apply-ephemeral
+      - name: Require private endpoint DNS and storage readiness
+        id: check_dns
+        shell: bash
+        run: bash infra/scripts/phase/phase.sh check-dns
       - name: Run the archive smoke
         id: probe
         shell: bash
@@ -133,7 +137,7 @@ jobs:
           JOB_STATUS: ${{ job.status }}
           WORKLOAD: 'true'
           REQUIRED_STEPS: guard checkout terraform tools prepare login azure_session
-          WORKLOAD_STEPS: preflight ephemeral_init ephemeral_plan ephemeral_apply probe upload destroy
+          WORKLOAD_STEPS: preflight ephemeral_init ephemeral_plan ephemeral_apply check_dns probe upload destroy
         run: bash infra/scripts/phase/phase.sh report
   stop:
     needs: [smoke]

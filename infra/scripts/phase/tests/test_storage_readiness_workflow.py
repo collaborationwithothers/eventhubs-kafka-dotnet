@@ -31,6 +31,7 @@ class StorageReadinessWorkflowTests(unittest.TestCase):
                     self.assertEqual(steps[applies[0]].get('if'), steps[checks[0]].get('if'))
                     observed[key] = steps[checks[0]].get('if')
         self.assertEqual({
+            ('archive-smoke.yml', 'smoke'): None,
             ('b10-abrupt-trial.yml', 'trial'): None,
             ('cluster-smoke.yml', 'smoke'): 'no wait',
             ('scenario.yml', 'batch'): None,

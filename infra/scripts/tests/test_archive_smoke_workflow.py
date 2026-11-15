@@ -26,7 +26,7 @@ class ArchiveSmokeWorkflowTests(unittest.TestCase):
 
     def test_guard_prepare_preflight_apply_and_probe_order(self):
         ids = [step.get('id') for step in self.smoke['steps']]
-        ordered = ['guard', 'checkout', 'terraform', 'tools', 'prepare', 'login', 'azure_session', 'preflight', 'ephemeral_init', 'ephemeral_plan', 'ephemeral_apply', 'probe', 'upload', 'destroy', 'report']
+        ordered = ['guard', 'checkout', 'terraform', 'tools', 'prepare', 'login', 'azure_session', 'preflight', 'ephemeral_init', 'ephemeral_plan', 'ephemeral_apply', 'check_dns', 'probe', 'upload', 'destroy', 'report']
         self.assertEqual(ordered, ids)
         self.assertIn('refs/heads/main', self.steps['guard']['run'])
         self.assertIn('AZURE_SUBSCRIPTION_ID', self.steps['guard']['run'])
@@ -34,6 +34,8 @@ class ArchiveSmokeWorkflowTests(unittest.TestCase):
         self.assertIn('S_PERSISTENT_OUTPUTS', self.steps['prepare']['env'])
         self.assertEqual('bash infra/scripts/phase/phase.sh prepare "$PARCHWELL_PHASE"', self.steps['prepare']['run'])
         self.assertEqual('python3 infra/scripts/archive/smoke.py preflight', self.steps['preflight']['run'])
+        self.assertEqual('bash infra/scripts/phase/phase.sh check-dns', self.steps['check_dns']['run'])
+        self.assertEqual(self.steps['ephemeral_apply'].get('if'), self.steps['check_dns'].get('if'))
         self.assertEqual('python3 infra/scripts/archive/smoke.py run', self.steps['probe']['run'])
         for name, command in [('ephemeral_init', 'init-ephemeral'), ('ephemeral_plan', 'plan-ephemeral'), ('ephemeral_apply', 'apply-ephemeral'), ('destroy', 'destroy-ephemeral')]:
             self.assertEqual('bash infra/scripts/lifecycle/lifecycle.sh ' + command, self.steps[name]['run'])
@@ -51,6 +53,7 @@ class ArchiveSmokeWorkflowTests(unittest.TestCase):
         report = self.steps['report']['env']
         self.assertEqual('true', report['WORKLOAD'])
         self.assertIn('destroy', report['WORKLOAD_STEPS'].split())
+        self.assertIn('check_dns', report['WORKLOAD_STEPS'].split())
         self.assertIn('probe', report['WORKLOAD_STEPS'].split())
         self.assertIn('upload', report['WORKLOAD_STEPS'].split())
         self.assertEqual('always()', self.stop['if'])
