@@ -1,6 +1,6 @@
 # State: #474 verifier mutation runtime
 
-Covers: comment 6886943197, read 2026-11-15
+Covers: comment 6887981346, read 2026-11-15
 Parent items: [#347](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/347)
 Item plan: [mutation runtime plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6876990691)
 Implementing tool: Codex. Source: [approval and direction](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6877906971)
@@ -24,6 +24,7 @@ Decisions in force:
 - Split the two measured tails, reclaim two light repeat spans, and validate the changed layout on main. Source: [decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6884676429)
 - Split the remaining repeat and codec tails, reclaim two classification slots, and validate the changed layout on main. Source: [decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6885742783)
 - Rebalance the six remaining measured tails as one 256-job batch using the stated two-worker sizing model. Source: [decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6886943197)
+- Rebalance the three-job codec neighborhood and measure the new layout on main. Source: [decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6887981346)
 Open questions:
 - None about the chosen policy. Source: [plan section 10](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/1cdbcdf0407c1b897c7bcec29ef97d261109b473/items/474/plan-mutation-runtime.md#10-open-questions-and-stop-rule)
-Next action: Complete the six-tail batch and required gates, then validate the changed layout on main.
+Next action: Complete the codec-neighborhood correction and required gates, then validate the changed layout on main.

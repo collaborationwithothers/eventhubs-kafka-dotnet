@@ -477,7 +477,7 @@ PROVISIONAL_TARGETS = {
 }
 # Canonical maps of shard ID to generated selection hash for the approved pilot.
 PROVISIONAL_LAYOUT_HASHES = {
-    'Common/Phase/B10FinalProjectionCodec.cs': 'c079e7c0c823129e3abec4c18a8849acd446d5123fb89636e7d37e03c5ecd956',
+    'Common/Phase/B10FinalProjectionCodec.cs': '38b2a6d046381a2043a5b3502b242c832591ffaf415c10119ae2878234a8201e',
     'Judge/B10FinalJudge.cs': '0c197df0b6b6625ba5822425a08fac2b67436f8b83aa6744d5e9150d06c4a238',
     'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': '844276e4b9f4d432c3ae298bdb0f3cf2ce42f4f41231ef781142518a2da473ee',
 }
@@ -667,6 +667,38 @@ SIX_TAIL_ESTIMATES = {'phase-p5': ('Judge/PhaseJudge.cs',
  'b10-final-registrations-p1': ('Common/Phase/B10FinalRegistrationReader.cs',
                                 '7a28b10054c4620b8a84f0513244da2b96b89fbe748a157eb491bfcce6d755ba',
                                 '8df19b04965238a04803b689993149fa917c769794289b33693e6aa0bedbe129')}
+# These four owners use the later, same-run codec neighborhood evidence.
+CODEC_NEIGHBOR = {
+    'b10-final-projection-codec-p8': ((7493, 8585), (38, 2384, 2, 253.5, 210, 1656)),
+    'b10-final-projection-codec-p9': ((8585, 9410), (40, 2861, 2, 253, 0, 1684)),
+    'b10-final-projection-codec-p10': ((9410, 10482), (40, 2891, 2, 238.5, 0, 1684)),
+    'b10-final-projection-codec-crossing': (None, (20, 281, 1, 394, 0, 675)),
+}
+CODEC_NEIGHBOR_EVIDENCE = (
+    ('14142136390', '795083ceb93c9486e0f1044ffd278f656f2584d525689a3e59c82b93dfeeb22f'),
+    ('14141193428', 'e1fb439e4798090794410baf0300058c05e020e878548dc760f49279e8be8539'),
+    ('14142551423', 'a51445f3ceb325bcd9de1d80768076ff071bb3418ac86076c108ecc814f5cda1'),
+)
+for _shard in CODEC_NEIGHBOR:
+    SIX_TAIL_ESTIMATES.pop(_shard, None)
+
+
+def approved_codec_neighbor(path, record, shard, item, source):
+    try:
+        span, numbers = CODEC_NEIGHBOR[shard]
+        return (path == CODEC_TARGET and digest(source) == PROVISIONAL_TARGETS[path][0]
+                and item['timing_inputs_sha256'] == PROVISIONAL_TIMING_INPUTS_HASH
+                and tuple(item[k] for k in NUMERIC_FIELDS) == numbers
+                and (span is None or workflow.shard_span(shard, source) == span)
+                and all(any(e['kind'] == 'hosted_complete'
+                            and e['source_commit'] == '336f4e53f3f8329fae297c7438eef3e86df40120'
+                            and e['locator'] == 'https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43663685095 artifact ' + artifact
+                            and e['sha256'] == sha for e in record['evidence'])
+                        for artifact, sha in CODEC_NEIGHBOR_EVIDENCE))
+    except (KeyError, TypeError, ValueError):
+        return False
+
+
 SIX_TAIL_BINDINGS = {shard: (path, source, estimate, SIX_TAIL_EVIDENCE[path])
                      for shard, (path, source, estimate) in SIX_TAIL_ESTIMATES.items()}
 
@@ -711,10 +743,10 @@ def shape(config):
             if any(not HEX.fullmatch(item[k]) for k in ('selection_sha256', 'timing_inputs_sha256')):
                 raise ValueError('invalid shard hash')
             if provisional:
-                if ((path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS) or (path == REPEAT_TARGET and shard in REPEAT_BOUNDS) or shard in TAIL_SPLITS or shard in SIX_TAIL_BINDINGS) and any(item[k] is None for k in NUMERIC_FIELDS):
+                if ((path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS) or (path == REPEAT_TARGET and shard in REPEAT_BOUNDS) or shard in TAIL_SPLITS or shard in SIX_TAIL_BINDINGS or shard in CODEC_NEIGHBOR) and any(item[k] is None for k in NUMERIC_FIELDS):
                     raise ValueError('pinned owner requires its estimate')
                 if any(item[k] is not None for k in NUMERIC_FIELDS) and not (
-                    ((path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS) or (path == REPEAT_TARGET and shard in REPEAT_BOUNDS) or shard in TAIL_SPLITS or shard in SIX_TAIL_BINDINGS)
+                    ((path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS) or (path == REPEAT_TARGET and shard in REPEAT_BOUNDS) or shard in TAIL_SPLITS or shard in SIX_TAIL_BINDINGS or shard in CODEC_NEIGHBOR)
                     and all(type(item[k]) in (int, float) for k in NUMERIC_FIELDS)):
                     raise ValueError('provisional estimates must be unknown except for pinned owners')
             elif any(type(item[k]) not in (int, float, bool) for k in NUMERIC_FIELDS):
@@ -920,7 +952,7 @@ NATIVE_GEOMETRY_BINDINGS = {
 # Digests of the reviewed compact proofs; the full inventories remain in hosted artifacts.
 NATIVE_PROOF_HASHES = {
     'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': '568aa15ae5e1d03f26d08ec3bf1d433cd4a494e99dfb9cd972f570a56a0362d3',
-    'Common/Phase/B10FinalProjectionCodec.cs': 'afe40312f556801bb99d953df40f98cb287c0f6322fac1c9102133ed950e6a96',
+    'Common/Phase/B10FinalProjectionCodec.cs': 'dac202d79ce5272b8c91b8207d0172135de14f83dc24e25db7fc2b3b0c765f80',
     'Judge/B10FinalJudge.cs': 'e829a0e8e7f17fc51b6ac648955287f6ef6c52014982a9849ceac75d6e80c1ae',
 }
 
@@ -1035,7 +1067,10 @@ def validate(config, shared, targets, source, matrix):
             if provisional and not (approved_codec_static_owner(path, record, shard, item, source[path])
                                     or approved_repeat_merged_owner(path, record, shard, item, source[path])
                                     or approved_tail_split(path, record, shard, item, source[path])
+                                    or approved_codec_neighbor(path, record, shard, item, source[path])
                                     or approved_six_tail(path, record, shard, item, source[path])):
+                reasons.add('invalid_estimate')
+            if shard in CODEC_NEIGHBOR and not approved_codec_neighbor(path, record, shard, item, source[path]):
                 reasons.add('invalid_estimate')
             if shard in SIX_TAIL_BINDINGS and not approved_six_tail(path, record, shard, item, source[path]):
                 reasons.add('invalid_estimate')

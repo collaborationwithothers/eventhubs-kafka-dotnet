@@ -512,6 +512,38 @@ class QualificationTests(unittest.TestCase):
                 self.assertFalse(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, changed, shard, item, source))
                 self.assertFalse(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, record, shard, item, source + b'changed'))
 
+    def test_codec_neighborhood_requires_exact_evidence_and_estimates(self):
+        self.workflow_patcher.stop()
+        self.config_patcher.stop()
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        path = runtime.CODEC_TARGET
+        record = config['targets'][path]
+        source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+        for shard in runtime.CODEC_NEIGHBOR:
+            with self.subTest(shard=shard):
+                item = record['shards'][shard]
+                self.assertTrue(runtime.approved_codec_neighbor(path, record, shard, item, source))
+                self.assertFalse(runtime.approved_codec_neighbor(path, record, shard, item, source + b'changed'))
+                for field in runtime.NUMERIC_FIELDS:
+                    changed = copy.deepcopy(item)
+                    changed[field] += 1
+                    self.assertFalse(runtime.approved_codec_neighbor(path, record, shard, changed, source))
+                changed = copy.deepcopy(item)
+                changed['timing_inputs_sha256'] = '0' * 64
+                self.assertFalse(runtime.approved_codec_neighbor(path, record, shard, changed, source))
+                for artifact, _ in runtime.CODEC_NEIGHBOR_EVIDENCE:
+                    changed = copy.deepcopy(record)
+                    changed['evidence'] = [e for e in changed['evidence'] if not e['locator'].endswith('artifact ' + artifact)]
+                    self.assertFalse(runtime.approved_codec_neighbor(path, changed, shard, item, source))
+                candidate = copy.deepcopy(config)
+                candidate['targets'][path]['shards'][shard]['estimated_seconds'] = None
+                with self.assertRaises(ValueError):
+                    runtime.shape(candidate)
+        with mock.patch.object(runtime.workflow, 'shard_span', return_value=(0, 1)):
+            shard = 'b10-final-projection-codec-p8'
+            self.assertFalse(runtime.approved_codec_neighbor(path, record, shard, record['shards'][shard], source))
+
     def test_pinned_native_geometry_rejects_tampering(self):
         self.workflow_patcher.stop()
         self.config_patcher.stop()
@@ -909,7 +941,8 @@ class DependencyEndToEndTests(unittest.TestCase):
         with mock.patch.object(runtime, 'files', side_effect=files), mock.patch.object(runtime, 'blob', side_effect=blob), \
              mock.patch.object(runtime, 'git', side_effect=git), \
              mock.patch.object(runtime, 'workflow_matrix', return_value=runtime.workflow.SHARDS), \
-             mock.patch.object(runtime, 'SIX_TAIL_BINDINGS', {}):
+             mock.patch.object(runtime, 'SIX_TAIL_BINDINGS', {}), \
+             mock.patch.object(runtime, 'CODEC_NEIGHBOR', {}):
             base_shared, targets = runtime.input_maps('base')
             sources = {p: blob('base', 'src/Parchwell.Verifier/' + p) for p in targets}
             def config(shared):
