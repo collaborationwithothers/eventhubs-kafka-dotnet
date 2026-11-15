@@ -180,6 +180,11 @@ jobs:
           output = phase.read('ephemeral-output.json')
           values = phase.values('start-line', 1)['runtime']
           assert values['eventhubs'] == module.unwrap(output['eventhubs']) and values['blob'] == module.unwrap(output['blob'])
+          blob_baseline = phase.private / 'smoke-blob-baseline.json'
+          if phase.read('phase.json')['phase'] == 'C0':
+              blob_baseline.write_text(json.dumps(module.unwrap(output['blob'])))
+          else:
+              assert json.loads(blob_baseline.read_text()) == module.unwrap(output['blob'])
           def connections():
               out = phase.read('ephemeral-output.json')
               eh = module.unwrap(out['eventhubs'])['bootstrap_servers'].split(':')[0]
@@ -215,10 +220,48 @@ jobs:
                   assert logs.read_bytes() == b'parchwell-cluster-smoke-ok\n'
               finally:
                   run(['kubectl', 'delete', 'job', job, '-n', 'parchwell', '--ignore-not-found', '--cascade=foreground', '--wait=true', '--timeout=90s', '--request-timeout=30s'], 120)
+          def check_deployed_binding(mode):
+              selected = phase.read('phase.json')
+              job = phase.mode_job(selected, mode, 1)
+              role = 'loadgen' if mode == 'loadgen' else 'verifier'
+              current = phase.read('ephemeral-output.json')
+              eventhubs = module.unwrap(current['eventhubs'])
+              blob = json.loads(blob_baseline.read_text())
+              assert module.unwrap(current['blob']) == blob
+              assert eventhubs['bootstrap_servers'] == eventhubs['namespace_name'] + '.servicebus.windows.net:9093'
+              expected = ({'LoadGen__NamespaceName': eventhubs['namespace_name'], 'LoadGen__BlobEndpoint': blob['account_url'],
+                           'LoadGen__ScenarioId': 'B04', 'LoadGen__ConfigurationId': selected['configuration'],
+                           'LoadGen__RunId': selected['run_id'], 'LoadGen__Phase': selected['phase']} if role == 'loadgen' else
+                          {'Verifier__NamespaceName': eventhubs['namespace_name'], 'Verifier__BlobServiceUri': blob['account_url'],
+                           'Verifier__ScenarioId': 'B04', 'Verifier__ConfigurationId': selected['configuration'],
+                           'Verifier__RunId': selected['run_id'], 'Verifier__Phase': selected['phase'], 'Verifier__Mode': mode})
+              def capture(kind, args):
+                  destination = phase.private / ('binding-' + job + '-' + kind + '.json')
+                  if phase.run(['kubectl', *args, '-n', 'parchwell', '-o', 'json', '--request-timeout=30s'], 60, output=destination, maximum=4 * 1024 * 1024):
+                      raise RuntimeError('worker binding readback failed')
+                  return module.strict_json(destination.read_bytes())
+              deployed = capture('job', ['get', 'job', job])
+              pods = capture('pods', ['get', 'pods', '-l', 'job-name=' + job])['items']
+              assert deployed['metadata']['name'] == job and deployed['metadata']['namespace'] == 'parchwell'
+              uid = deployed['metadata']['uid']
+              assert isinstance(uid, str) and uid and len(pods) == 1
+              pod = pods[0]
+              assert pod['metadata']['namespace'] == 'parchwell'
+              assert any(owner.get('kind') == 'Job' and owner.get('name') == job and owner.get('uid') == uid for owner in pod['metadata'].get('ownerReferences', []))
+              def validate(spec):
+                  containers = [item for item in spec['containers'] if item.get('name') == role]
+                  assert len(containers) == 1
+                  environment = containers[0]['env']
+                  for key, value in expected.items():
+                      entries = [item for item in environment if item.get('name') == key]
+                      assert len(entries) == 1 and entries[0].get('value') == value and 'valueFrom' not in entries[0]
+              validate(deployed['spec']['template']['spec'])
+              validate(pod['spec'])
           def one(mode):
               record = phase.run_mode(mode, 1)
               if record['outcome'] != 'complete' or record.get('collect_gap'):
                   raise RuntimeError('diagnostic worker failed')
+              check_deployed_binding(mode)
           def confirm_loadgen_delivery():
               selected = phase.read('phase.json')
               job = phase.mode_job(selected, 'loadgen', 1)
@@ -391,6 +434,11 @@ jobs:
           output = phase.read('ephemeral-output.json')
           values = phase.values('start-line', 1)['runtime']
           assert values['eventhubs'] == module.unwrap(output['eventhubs']) and values['blob'] == module.unwrap(output['blob'])
+          blob_baseline = phase.private / 'smoke-blob-baseline.json'
+          if phase.read('phase.json')['phase'] == 'C0':
+              blob_baseline.write_text(json.dumps(module.unwrap(output['blob'])))
+          else:
+              assert json.loads(blob_baseline.read_text()) == module.unwrap(output['blob'])
           def connections():
               out = phase.read('ephemeral-output.json')
               eh = module.unwrap(out['eventhubs'])['bootstrap_servers'].split(':')[0]
@@ -426,10 +474,48 @@ jobs:
                   assert logs.read_bytes() == b'parchwell-cluster-smoke-ok\n'
               finally:
                   run(['kubectl', 'delete', 'job', job, '-n', 'parchwell', '--ignore-not-found', '--cascade=foreground', '--wait=true', '--timeout=90s', '--request-timeout=30s'], 120)
+          def check_deployed_binding(mode):
+              selected = phase.read('phase.json')
+              job = phase.mode_job(selected, mode, 1)
+              role = 'loadgen' if mode == 'loadgen' else 'verifier'
+              current = phase.read('ephemeral-output.json')
+              eventhubs = module.unwrap(current['eventhubs'])
+              blob = json.loads(blob_baseline.read_text())
+              assert module.unwrap(current['blob']) == blob
+              assert eventhubs['bootstrap_servers'] == eventhubs['namespace_name'] + '.servicebus.windows.net:9093'
+              expected = ({'LoadGen__NamespaceName': eventhubs['namespace_name'], 'LoadGen__BlobEndpoint': blob['account_url'],
+                           'LoadGen__ScenarioId': 'B04', 'LoadGen__ConfigurationId': selected['configuration'],
+                           'LoadGen__RunId': selected['run_id'], 'LoadGen__Phase': selected['phase']} if role == 'loadgen' else
+                          {'Verifier__NamespaceName': eventhubs['namespace_name'], 'Verifier__BlobServiceUri': blob['account_url'],
+                           'Verifier__ScenarioId': 'B04', 'Verifier__ConfigurationId': selected['configuration'],
+                           'Verifier__RunId': selected['run_id'], 'Verifier__Phase': selected['phase'], 'Verifier__Mode': mode})
+              def capture(kind, args):
+                  destination = phase.private / ('binding-' + job + '-' + kind + '.json')
+                  if phase.run(['kubectl', *args, '-n', 'parchwell', '-o', 'json', '--request-timeout=30s'], 60, output=destination, maximum=4 * 1024 * 1024):
+                      raise RuntimeError('worker binding readback failed')
+                  return module.strict_json(destination.read_bytes())
+              deployed = capture('job', ['get', 'job', job])
+              pods = capture('pods', ['get', 'pods', '-l', 'job-name=' + job])['items']
+              assert deployed['metadata']['name'] == job and deployed['metadata']['namespace'] == 'parchwell'
+              uid = deployed['metadata']['uid']
+              assert isinstance(uid, str) and uid and len(pods) == 1
+              pod = pods[0]
+              assert pod['metadata']['namespace'] == 'parchwell'
+              assert any(owner.get('kind') == 'Job' and owner.get('name') == job and owner.get('uid') == uid for owner in pod['metadata'].get('ownerReferences', []))
+              def validate(spec):
+                  containers = [item for item in spec['containers'] if item.get('name') == role]
+                  assert len(containers) == 1
+                  environment = containers[0]['env']
+                  for key, value in expected.items():
+                      entries = [item for item in environment if item.get('name') == key]
+                      assert len(entries) == 1 and entries[0].get('value') == value and 'valueFrom' not in entries[0]
+              validate(deployed['spec']['template']['spec'])
+              validate(pod['spec'])
           def one(mode):
               record = phase.run_mode(mode, 1)
               if record['outcome'] != 'complete' or record.get('collect_gap'):
                   raise RuntimeError('diagnostic worker failed')
+              check_deployed_binding(mode)
           def confirm_loadgen_delivery():
               selected = phase.read('phase.json')
               job = phase.mode_job(selected, 'loadgen', 1)

@@ -144,6 +144,48 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
                 with mock.patch.dict(os.environ, {'RUNNER_TEMP': temp}), self.assertRaisesRegex(RuntimeError, 'ended during'):
                     namespace['probe_while_loadgen_active']()
 
+    def test_deployed_worker_readback_requires_exact_bindings_in_job_and_pod(self):
+        for entry, phase_name in (('c0', 'C0'), ('c1', 'C1')):
+            code = self.by_id[entry]['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
+            node = next(x for x in ast.parse(code).body if isinstance(x, ast.FunctionDef) and x.name == 'check_deployed_binding')
+            compiled = compile(ast.Module(body=[node], type_ignores=[]), 'binding fixture', 'exec')
+            for mode in ('start-line', 'loadgen', 'verify'):
+                with self.subTest(entry=entry, mode=mode), tempfile.TemporaryDirectory() as temp:
+                    directory = Path(temp)
+                    baseline = directory / 'baseline.json'
+                    blob = {'account_url': 'https://blob.example', 'containers': {'verifier': 'verifier'}}
+                    baseline.write_text(json.dumps(blob))
+                    output = {'eventhubs': {'value': {'namespace_name': 'eh-current', 'bootstrap_servers': 'eh-current.servicebus.windows.net:9093'}}, 'blob': {'value': blob}}
+                    selected = {'run_id': 'b04-1-1', 'phase': phase_name, 'configuration': phase_name}
+                    role = 'loadgen' if mode == 'loadgen' else 'verifier'
+                    prefix = 'LoadGen__' if role == 'loadgen' else 'Verifier__'
+                    expected = {'NamespaceName': 'eh-current', 'BlobEndpoint' if role == 'loadgen' else 'BlobServiceUri': 'https://blob.example', 'ScenarioId': 'B04', 'ConfigurationId': phase_name, 'RunId': 'b04-1-1', 'Phase': phase_name}
+                    if role == 'verifier': expected['Mode'] = mode
+                    def document(changed=None):
+                        env = [{'name': prefix + k, 'value': ('wrong' if k == changed else v)} for k, v in expected.items()]
+                        return {'containers': [{'name': role, 'env': env}]}
+                    def exercise(job_change=None, pod_change=None, uid='uid-1'):
+                        job = {'metadata': {'name': 'worker-job', 'namespace': 'parchwell', 'uid': 'uid-1'}, 'spec': {'template': {'spec': document(job_change)}}}
+                        pod = {'metadata': {'namespace': 'parchwell', 'ownerReferences': [{'kind': 'Job', 'name': 'worker-job', 'uid': uid}]}, 'spec': document(pod_change)}
+                        phase = mock.Mock(private=directory)
+                        phase.read.side_effect = lambda name: selected if name == 'phase.json' else output
+                        phase.mode_job.return_value = 'worker-job'
+                        def capture(args, seconds, output, maximum):
+                            output.write_text(json.dumps({'items': [pod]} if 'pods' in args else job))
+                            return 0
+                        phase.run.side_effect = capture
+                        namespace = {'phase': phase, 'blob_baseline': baseline, 'json': json,
+                                     'module': SimpleNamespace(unwrap=lambda x: x['value'], strict_json=json.loads)}
+                        exec(compiled, namespace)
+                        namespace['check_deployed_binding'](mode)
+                    exercise()
+                    for job_change, pod_change, uid in (('NamespaceName', None, 'uid-1'), (None, 'NamespaceName', 'uid-1'),
+                                                         ('BlobEndpoint' if role == 'loadgen' else 'BlobServiceUri', None, 'uid-1'),
+                                                         (None, 'BlobEndpoint' if role == 'loadgen' else 'BlobServiceUri', 'uid-1'),
+                                                         (None, None, 'wrong-uid')):
+                        with self.subTest(job_change=job_change, pod_change=pod_change, uid=uid), self.assertRaises(AssertionError):
+                            exercise(job_change, pod_change, uid)
+
     def test_worker_delivery_fixture_requires_positive_matched_ledger(self):
         for entry, phase_name in (('c0', 'C0'), ('c1', 'C1')):
             code = self.by_id[entry]['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
