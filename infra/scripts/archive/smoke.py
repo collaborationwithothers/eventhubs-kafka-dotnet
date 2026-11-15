@@ -390,7 +390,7 @@ def command_evidence(code, stderr):
     elif exception == 'SSLError': category = 'tls'
     elif exception in ('ConnectionError', 'ConnectTimeout', 'ReadTimeout', 'ServiceRequestError', 'ServiceResponseError'): category = 'network_or_sdk_transport'
     elif exception == 'ClientAuthenticationError': category = 'authentication'
-    elif re.search(rb'(?i)unrecognized arguments|argument .* (?:required|invalid choice)', stderr): category = 'arguments'
+    elif re.search(rb"(?i)unrecognized arguments|argument .* (?:required|invalid choice)|--only-show-errors can't be used together with --debug or --verbose", stderr): category = 'arguments'
     elif exception: category = 'client'
     else: category = 'unknown'
     return {'outcome': 'success' if code == 0 else 'failure', 'return_code': code,
@@ -489,7 +489,7 @@ def run_probe(c, deadline, clock=time.monotonic, diagnostic_python=None):
         raise Invalid()
     def az(hostname, container, action, name, extra):
         check_deadline(deadline, clock)
-        args = ['az', 'storage', 'blob', action, '--account-name', hostname.split('.')[0], '--container-name', container, '--name', name, '--auth-mode', 'login', '--only-show-errors', '--debug'] + extra
+        args = ['az', 'storage', 'blob', action, '--account-name', hostname.split('.')[0], '--container-name', container, '--name', name, '--auth-mode', 'login', '--debug'] + extra
         target = 'source' if hostname == source else 'archive'
         purpose = ('manifest' if name.endswith('archive-manifest.json') else
                    'completion' if name.endswith('archive-completion.json') else 'fixture')
