@@ -104,14 +104,18 @@ class ArchiveSmokeTest(unittest.TestCase):
         (session / 'freshness.json').write_text(json.dumps({'request_started_monotonic': time.monotonic(), 'assertion_exp': int(time.time()) + 600}))
         pidfile = self.private / 'child.pid'
         fake = self.private / 'az-real'
-        fake.write_text("#!/usr/bin/env python3\nimport subprocess, time\np = subprocess.Popen(['sleep', '30'])\nopen(" + repr(str(pidfile)) + ", 'w').write(str(p.pid))\ntime.sleep(30)\n")
+        fake.write_text("#!/usr/bin/env python3\nimport subprocess, sys, time\np = subprocess.Popen(['sleep', '30'])\nopen(" + repr(str(pidfile)) + ", 'w').write(str(p.pid))\nprint('child ready', file=sys.stderr, flush=True)\ntime.sleep(30)\n")
         fake.chmod(0o700)
         wrapper = PATH.parents[3] / 'scripts' / 'azure-cli-session' / 'az'
         uid = '11111111-1111-1111-1111-111111111111'
         env = {'GITHUB_ACTIONS': 'true', 'GITHUB_REF': 'refs/heads/main', 'PARCHWELL_REAL_AZ': str(fake), 'PARCHWELL_AZ_SESSION_DIRECTORY': str(session), 'AZURE_CLIENT_ID': uid, 'AZURE_TENANT_ID': uid, 'AZURE_SUBSCRIPTION_ID': uid}
-        with patch.dict(os.environ, env):
+        real_monotonic = time.monotonic
+        deadline = real_monotonic() + 10
+        def expire_after_child_starts():
+            return deadline + 1 if pidfile.exists() else real_monotonic()
+        with patch.dict(os.environ, env), patch.object(smoke.time, 'monotonic', side_effect=expire_after_child_starts):
             with self.assertRaises(smoke.Gap) as caught:
-                smoke.command([str(wrapper), 'storage', 'blob', 'show'], time.monotonic() + 0.5)
+                smoke.command([str(wrapper), 'storage', 'blob', 'show'], deadline)
         self.assertEqual(caught.exception.code, 'deadline')
         pid = int(pidfile.read_text())
         proc = Path('/proc') / str(pid) / 'stat'
