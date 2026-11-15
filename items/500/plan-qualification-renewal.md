@@ -2,7 +2,16 @@
 
 Issue: [#500](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/500). This contract-grade plan covers the whole issue as one pull request, `qualification-renewal`. Today any change to a shared mutation input, even a comment, makes the required C5 qualification check reject with `stale_inputs`, and the code-pinned timing hashes make that rejection impossible to clear. The plan adds an explicit, reviewed renewal record that carries the measured estimates forward across such a change, a `renew` command that writes it, and removes a duplicated test.
 
-Revision: r1. Planned against `main` at `392d44f06e6c60fc53d16921c52b0f3dd29f178e`. The files were read, and the prototype run, at `5f88803d54d52ca791f894e463c023f82d21c9b8`; `git diff --quiet 5f88803 392d44f` over `tests/Parchwell.Verifier.Tests/Mutation/`, `docs/operations/verifier-mutation.md`, `.github/workflows/dotnet-verification.yml`, `.github/CODEOWNERS`, AGENTS.md, CLAUDE.md, docs/agents/factory.md and docs/agents/pull-requests.md reports no difference, so every line number below holds at both commits.
+Revision: r2. Planned against `main` at `392d44f06e6c60fc53d16921c52b0f3dd29f178e`. The files were read, and the prototype run, at `5f88803d54d52ca791f894e463c023f82d21c9b8`; `git diff --quiet 5f88803 392d44f` over `tests/Parchwell.Verifier.Tests/Mutation/`, `docs/operations/verifier-mutation.md`, `.github/workflows/dotnet-verification.yml`, `.github/CODEOWNERS`, AGENTS.md, CLAUDE.md, docs/agents/factory.md and docs/agents/pull-requests.md reports no difference, so every line number below holds at both commits.
+
+Changes since r1 (commit `9202b0f0c061ca0fe087b434caae8ab73d98b410`), from the r1 [plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/500#issuecomment-6895920695) and [decision 6895952476](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/500#issuecomment-6895952476):
+- Section 11 reads `None`: the decision adopts the recommended answers to Q1 to Q8 (check finding 1). Section 1 lists the decision; the questions and adopted answers stay in section 11 as a record.
+- Section 2.3 allows `items/500/state.md`, and A7 expects four files (finding 2).
+- Section 2.3 states the protected paths correctly (finding 4).
+- T9 calls `simulated_check(runtime.RUNNER)` (finding 3).
+- T13 adds its renewal to the committed file's existing renewals (finding 5).
+- From the check's two `apply in implementation` P2s: T8 gains a 65-character hex subtest, and T14 subtest (7) uses a head that changes `global.json`.
+Findings 2 to 5 use the check's literal texts.
 
 ## 1. Goal and authority
 
@@ -12,10 +21,11 @@ Authority, in creation order:
 
 1. The issue body (issue created 2026-11-15T12:44:49Z; body `updated_at` read as 2026-11-15T14:01:22Z, the time of the only comment). It scopes the issue to "renewal for changes that are not to targets", leaves sizing for new targets parked in #474, and names the duplicated test as a separate defect in the same record.
 2. [Decision 6895483443](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/500#issuecomment-6895483443) (2026-11-15T14:01:22Z). Point 1: the planning session writes each question the `grilling` skill would ask, with its recommended answer, as an open question in this plan. Point 2: Hari adopts each recommended answer in advance, recorded later by the control session; the plan is then revised so "Open questions for Hari" reads `None`. Point 3: approval is of the revision whose newest plan check states `Blocking findings: none`. Point 4: the adoption does not extend to money, Azure dispatch, verdicts, protected-path merges, scope beyond this issue or the `ready-for-agent` label. No implementing tool is named.
+3. [Decision 6895952476](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/500#issuecomment-6895952476) (2026-11-15T14:20:52Z), recorded by the control session under point 2 of decision 6895483443. It adopts the recommended answers to Q1 to Q8 of r1, section 11. Its Q2 answer amends point 3 of [#474 decision 6880732047](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6880732047) for listed renewals only, and states that point 4 of decision 6895483443 does not exclude it.
 
-No item state file exists (`items/500/state.md` is absent on `main`), and no item plan or parent plan exists; the issue is not a scenario item. The issue's comments at r1 are the decision above only.
+No item state file exists (`items/500/state.md` is absent on `main`), and no item plan or parent plan exists; the issue is not a scenario item. The issue's comments at r2 are the two decisions above, the r1 plan comment, the r1 plan check and one handoff from this planning session.
 
-Evidence used, not authority: the [#474 parking record](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6894378761), first bullet under "Found", and the [#474 pilot decision 6880732047](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6880732047), point 3, which this plan's Q2 asks Hari to amend for renewals only.
+Evidence used, not authority: the [#474 parking record](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6894378761), first bullet under "Found", and the [#474 pilot decision 6880732047](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6880732047), point 3, which decision 6895952476 amends for listed renewals only.
 
 ## 2. Scope
 
@@ -35,8 +45,9 @@ The estimates stay bound to the inputs they were measured with. A new optional t
 - `tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py`
 - `tests/Parchwell.Verifier.Tests/Mutation/test_c5_runtime.py`
 - `docs/operations/verifier-mutation.md`, section "Runtime qualification diagnostics" only
+- `items/500/state.md`, the item state file under docs/agents/factory.md "Item state file"
 
-All three are protected paths (`.github/CODEOWNERS`: `Parchwell.Verifier*/` and `/docs/`), so Hari merges.
+The two files under `tests/Parchwell.Verifier.Tests/` are protected paths (`.github/CODEOWNERS`: `Parchwell.Verifier*/`), so Hari merges. `docs/operations/` is agent-owned (docs/agents/factory.md "Ruleset").
 
 ### 2.4 Paths that must not change
 
@@ -159,13 +170,13 @@ All new tests go in `test_c5_runtime.py`, in one new class `RenewalTests` that r
 | T5 `test_renewal_must_change_the_hash` | R5 | Subtest 1: `{'global.json': {'measured_sha256': D(b'sdk'), 'current_sha256': D(b'sdk'), 'basis': ['x']}}`. Subtest 2: `{'docs/x.json': {'measured_sha256': None, 'current_sha256': None, 'basis': ['x']}}` | `errors() == {'invalid_renewal'}` in both |
 | T6 `test_renewal_must_match_shared_inputs` | R6 | `{'global.json': {'measured_sha256': D(b'old'), 'current_sha256': D(b'other'), 'basis': ['x']}}`, `shared_inputs` unchanged | `errors() == {'invalid_renewal', 'stale_inputs'}` |
 | T7 `test_target_source_cannot_be_renewed` | R4 | `{'src/Parchwell.Verifier/a.cs': {'measured_sha256': D(b'a'), 'current_sha256': None, 'basis': ['x']}}` | `errors() == {'invalid_renewal', 'stale_inputs'}` |
-| T8 `test_malformed_renewals_are_invalid_input` | R2 | One subtest each: `renewals` is `[]`; an entry with an extra key `note`; `measured_sha256` is `'A' * 64`; `current_sha256` is `'a' * 63`; `basis` is `[]`; `basis` is `['  ']`; `basis` is `'x'`; `basis` is `[1]`; top-level extra key `other` | `shape` raises `ValueError`; `simulated_check('README.md') == {'status': 'rejected', 'reasons': ['invalid_input']}` |
-| T9 `test_empty_renewals_are_no_renewals` | R1, R8 | `config['renewals'] = {}` | `errors() == set()`; `simulated_check('global.json') == {'status': 'qualified', 'reasons': []}` |
+| T8 `test_malformed_renewals_are_invalid_input` | R2 | One subtest each: `renewals` is `[]`; an entry with an extra key `note`; `measured_sha256` is `'A' * 64`; `current_sha256` is `'a' * 63`; `current_sha256` is `'a' * 65`; `basis` is `[]`; `basis` is `['  ']`; `basis` is `'x'`; `basis` is `[1]`; top-level extra key `other` | `shape` raises `ValueError`; `simulated_check('README.md') == {'status': 'rejected', 'reasons': ['invalid_input']}` |
+| T9 `test_empty_renewals_are_no_renewals` | R1, R8 | `config['renewals'] = {}` | `errors() == set()`; `simulated_check(runtime.RUNNER) == {'status': 'qualified', 'reasons': []}` |
 | T10 `test_check_discloses_renewed_inputs` | R8 | T2's renewal; `simulated_check('src/Parchwell.Verifier/AssemblyInfo.cs', old_shared={'global.json': D(b'sdk')})` | `{'status': 'qualified', 'reasons': [], 'renewed_inputs': ['global.json']}` |
 | T11 `test_provisional_target_survives_renewal` | R7, R8 | `provisional()`, then T2's renewal; `simulated_check('global.json', old_shared={'global.json': D(b'sdk')})` | `errors() == set()`; result `{'status': 'provisional', 'reasons': [], 'pending_targets': ['a.cs'], 'renewed_inputs': ['global.json']}` |
 | T12 `test_rejected_result_has_no_renewed_inputs` | R8 | T2's renewal plus `config['targets']['b.cs']['shards']['b']['estimated_seconds'] = 1801`; `simulated_check('global.json', old_shared={'global.json': D(b'sdk')})` | `{'status': 'rejected', 'reasons': ['invalid_estimate']}` |
-| T13 `test_committed_qualification_renews_a_comment_change` | R7, issue reproduction | Real repository at `HEAD`: `runtime.blob` patched to return the real bytes of `src/Parchwell.Verifier/AssemblyInfo.cs` plus `b'// renewal test\n'`, other paths unpatched; committed qualification file loaded; `shared, targets = input_maps('HEAD')`; sources and matrix read at `HEAD` as `check` does | Before renewal: `validate(...) == {'stale_inputs'}`. After setting `shared_inputs = shared` and one renewal of that path from the committed hash to the patched hash: `validate(...) == set()` |
-| T14 `test_renew_command` | R9 to R11, section 3.6 | Through `runtime.main()` with `sys.argv` patched, on a temporary qualification file built from the fixture, with `git`, `blob` and `input_maps` mocked as in `simulated_check`. Subtests: (1) head changes `global.json` to `D(b'new sdk')`; (2) then head changes it to `D(b'newer sdk')` with basis `second`; (3) then head returns it to `D(b'sdk')`; (4) no change; (5) head changes `.config/dotnet-tools.json`; (6) head changes target `b.cs`; (7) basis `'  '` | (1) exit 0, stdout `{"renewed": ["global.json"], "status": "renewed"}`, file equals `json.dumps(expected, indent=2, sort_keys=True) + '\n'` with one renewal `{measured: D(b'sdk'), current: D(b'new sdk'), basis: ['synthetic renewal']}`, and `check` on it returns T10's result; (2) exit 0, same renewal with `current_sha256 == D(b'newer sdk')` and `basis == ['synthetic renewal', 'second']`; (3) exit 0, file has no `renewals` key; (4) exit 0, stdout `{"renewed": [], "status": "unchanged"}`, bytes unchanged; (5) exit 1, stderr contains `not renewable: .config/dotnet-tools.json`, bytes unchanged; (6) exit 1, stderr contains `target sources changed`, bytes unchanged; (7) exit 1, bytes unchanged |
+| T13 `test_committed_qualification_renews_a_comment_change` | R7, issue reproduction | Real repository at `HEAD`: `runtime.blob` patched to return the real bytes of `src/Parchwell.Verifier/AssemblyInfo.cs` plus `b'// renewal test\n'`, other paths unpatched; committed qualification file loaded; `shared, targets = input_maps('HEAD')`; sources and matrix read at `HEAD` as `check` does | Before renewal: `validate(...) == {'stale_inputs'}`. After setting `shared_inputs = shared` and adding one renewal of that path to the patched hash to the committed file's `renewals` (an empty object when absent), keeping every renewal already there, with `measured_sha256` equal to that path's existing renewal's `measured_sha256` when it has one and otherwise to the committed `shared_inputs` hash: `validate(...) == set()` |
+| T14 `test_renew_command` | R9 to R11, section 3.6 | Through `runtime.main()` with `sys.argv` patched, on a temporary qualification file built from the fixture, with `git`, `blob` and `input_maps` mocked as in `simulated_check`. Subtests: (1) head changes `global.json` to `D(b'new sdk')`; (2) then head changes it to `D(b'newer sdk')` with basis `second`; (3) then head returns it to `D(b'sdk')`; (4) no change; (5) head changes `.config/dotnet-tools.json`; (6) head changes target `b.cs`; (7) from the fixture qualification file, head changes `global.json` to `D(b'new sdk')`, basis `'  '` | (1) exit 0, stdout `{"renewed": ["global.json"], "status": "renewed"}`, file equals `json.dumps(expected, indent=2, sort_keys=True) + '\n'` with one renewal `{measured: D(b'sdk'), current: D(b'new sdk'), basis: ['synthetic renewal']}`, and `check` on it returns T10's result; (2) exit 0, same renewal with `current_sha256 == D(b'newer sdk')` and `basis == ['synthetic renewal', 'second']`; (3) exit 0, file has no `renewals` key; (4) exit 0, stdout `{"renewed": [], "status": "unchanged"}`, bytes unchanged; (5) exit 1, stderr contains `not renewable: .config/dotnet-tools.json`, bytes unchanged; (6) exit 1, stderr contains `target sources changed`, bytes unchanged; (7) exit 1, bytes unchanged |
 
 R12 is checked by acceptance command A4, not by a test. R13 by A5.
 
@@ -187,10 +198,10 @@ Run from the repository root of the pull request branch.
 | A4 | Script: `grep -c 'def test_excluded_component_source_does_not_change_inputs' tests/Parchwell.Verifier.Tests/Mutation/test_c5_runtime.py`, and `git diff origin/main -- tests/Parchwell.Verifier.Tests/Mutation/test_c5_runtime.py` shows the deleted lines equal to `main` lines 874 to 893 | `1`; the deleted block matches |
 | A5 | `npm run check:docs`, and a script that checks D1 to D3 appear verbatim | No new warning in `verifier-mutation.md`; each text found once |
 | A6 | Scratch worktree at the pull request head, outside the repository: append `// comment only` to `src/Parchwell.Verifier/AssemblyInfo.cs` and commit; run `check --base HEAD~1`; run `renew --basis 'comment-only change'`; commit; run `check --base HEAD~2` | `stale_inputs` rejection; then `{"renewed": ["src/Parchwell.Verifier/AssemblyInfo.cs"], "status": "renewed"}`; then the section 3.4 example result |
-| A7 | `git diff --name-only origin/main` | Only the three files of section 2.3 |
+| A7 | `git diff --name-only origin/main` | Only the four files of section 2.3 |
 | A8 | The verification gates of docs/agents/pull-requests.md "Verification gates", in its order | As that section requires; the hosted `.NET verification` check passes on the final head |
 
-Size, an estimate made 2026-11-15 from the prototype diff (86 lines added and 5 removed in `c5_runtime.py`, counted by `git diff --stat`) plus the test map and section 3.7: about 330 changed lines in 3 files. Size is reported, not enforced.
+Size, an estimate made 2026-11-15 from the prototype diff (86 lines added and 5 removed in `c5_runtime.py`, counted by `git diff --stat`) plus the test map and section 3.7: about 345 changed lines in 4 files, the state file included. Size is reported, not enforced.
 
 ## 9. Sources
 
@@ -211,7 +222,7 @@ Size, an estimate made 2026-11-15 from the prototype diff (86 lines added and 5 
 
 ## 11. Open questions for Hari
 
-These are the questions the `grilling` skill would ask, each with its recommended answer, under decision 6895483443 point 1. The plan above already follows every recommendation, so adopting all of them changes no section.
+None. [Decision 6895952476](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/500#issuecomment-6895952476) adopts the recommended answer to each question below. They stay here as the record of what was asked and adopted; the plan above follows every adopted answer.
 
 Q1. How should a non-target change be renewed? Options: (A) carry the measured estimates forward with an explicit per-path renewal record; (B) require new measurement, which cannot happen before merge, because the C5 workflow is dispatched only on `main` (AGENTS.md hard safety rule 8); (C) detect comment-only C# changes and skip them, which needs a C# tokenizer the checker does not have and covers only one case. Recommended: A. Risk: a renewed test or source change can make mutation jobs slower than their estimates. That shows only in the next `main` mutation run, which the change needs anyway under "Evidence pack".
 
