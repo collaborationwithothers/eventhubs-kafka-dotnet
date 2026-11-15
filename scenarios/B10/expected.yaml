@@ -1,0 +1,103 @@
+schema_version: 1
+id: B10
+
+assessment_rules:
+  authoritative_verifier_counts: complete_valid_runs_only
+  invalid_or_incomplete_run_counts: absent
+  missing_counts_are_zero: false
+  missing_counts_refute_hypotheses: false
+  diagnostic_evidence: retain
+  changed_expectations_require_human_approval: true
+  repeats_per_configuration: 5
+  replacement_repeats: 0
+  rules_source: "docs/blueprint.md ADR-021, Restart decision rules 1 to 7; this file adopts them and adds none"
+  judgement_contract: docs/operations/verifier-contract.md#scientific-b10-final-judgement
+  projection_contract: docs/operations/b10-abrupt-contract.md#final-sweep-projection
+  admissible_runs: "scientific runs only, with run IDs matching ^b10-[0-9]+-[0-9]+$, dispatched on main after this file merges; the smoke run, every diagnostic trial and the governed diagnostic run are never published as a result"
+  timeout_cohort_projection: "the timeout verdict reads only the independently checked timeout cohort: each repeat's timeout counts ok, loss, phantom, reported_failure, duplicate and reorder in b10_final.repeats; probe and warm-up records never enter these counts (ADR-021, Restart decision rules, rule 1)"
+  residual_risk: "A late append after the phase sweep line is not detected."
+  expectations_basis: "written before any scientific B10 result exists. The timeout rule is the one recommended before smoke run 42189889469 was read (decision 6703447017 points 1 and 3). The restart rule is copied from ADR-021, whose restart decision rules entered main on 2026-11-07 and 2026-11-10, after that smoke run of 2026-11-06; how ADR-021's authors derived them was not traced. The author of this file read no B10 run result."
+
+hypotheses:
+  H_timeout_duplicate:
+    question: "Does a send that times out under message.timeout.ms 100, followed by an application resend with the same key and sequence number in the same producer instance, put a duplicate record in document-events?"
+    configurations: [C0, C1]
+    environments: [live]
+    evidence: "b10_final.timeout_rule of the C0 phase candidate; C1 timeout counts are a comparison only"
+    holds_when: "all five C0 repeats are complete_valid with classification_final true, and the checked sum of their duplicate counts is at least 1"
+    not_observed_when: "all five C0 repeats are complete_valid with classification_final true, and the checked sum of their duplicate counts is 0"
+    otherwise: "held: fewer than five complete_valid final C0 repeats, an unavailable or overflowed sum, or a C0 candidate with b10_final null; no replacement repeats"
+    absence_refutes: false
+    attribution: "not attributed; duplicates are counted by logical key and sequence within the timeout cohort, so a duplicate from the application resend and one from librdkafka's own retry cannot be told apart"
+    source_scope: "librdkafka v2.16.0 INTRODUCTION.md places Message persistence status under Idempotent Producer; C0 runs without idempotence, and ADR-021 Context labels the same late append without idempotence an inference"
+    c1_comparison_limit: "C1 adds enable.idempotence true to C0. The four properties that idempotence adjusts already hold the adjusted values in C0: max.in.flight 5 from scenario.yaml, message.send.max.retries 2147483647 and acks -1 from the baseline catalog, and queuing.strategy fifo as the librdkafka v2.16.0 default (CONFIGURATION.md, enable.idempotence and queuing.strategy). The effective values in a run were not observed when this file was written."
+    c1_inference: "librdkafka v2.16.0 states that with idempotence a message is only written to the log once (INTRODUCTION.md, Idempotent Producer, Guarantees); that this covers only librdkafka's own retries, and does not de-duplicate a new application Produce call with the same key and sequence number, is an inference from the sources' silence, not a stated fact"
+  H_restart_duplicate:
+    question: "With idempotence enabled, can application recovery that replaces a killed producer and resends a durably identified but unconfirmed logical message leave both the original and the resend in the log?"
+    configurations: [C1]
+    environments: [live]
+    written_after_smoke: "yes; this hypothesis and its rules were written after smoke run 42189889469 (ADR-021 restart decision rules, main commits a6169c24 of 2026-11-07 and d1966c9d of 2026-11-10)"
+    evidence: "b10_final.restart_rule of the C1 phase candidate and each repeat's restart object in b10_final.repeats"
+    eligibility: "at least 3 of the 5 declared C1 repeats eligible under ADR-021, Restart decision rules, rule 2; all five outcomes, the eligible count and every ineligibility reason are published"
+    qualifying_pair: "an eligible repeat whose cross_restart arm has pair_count at least 1 and unreported_seen at least 1 (ADR-021, Restart decision rules, rule 3)"
+    holds_when: "at least three eligible repeats and at least one qualifying pair"
+    not_observed_when: "at least three eligible repeats, no qualifying pair and no lost resend in an eligible repeat; reason no_cross_restart_duplicate_observed"
+    held_when: "fewer than three eligible repeats, reason fewer_than_three_eligible; or at least three eligible repeats, no qualifying pair and a lost resend in an eligible repeat, reason eligible_loss_without_pair; or a C1 candidate with b10_final null, with the candidate's root reasons, because missing evidence fails eligibility (ADR-021, Restart decision rules, rule 2)"
+    absence_refutes: false
+    comparison: "per repeat, both, cross_restart_only, same_instance_only, neither or unavailable with reasons; both prevents crediting restart for same-instance duplication, and cross_restart_only does not prove causation (ADR-021, Restart decision rules, rule 5)"
+    lost_resend_findings: "a lost resend in any C1 repeat, eligible or ineligible, is a separate published finding, except after a no-kill end, which produces no finding; only loss in eligible repeats affects this verdict (ADR-021, Restart decision rules, rules 3 and 4)"
+
+known_risk:
+  in_flight_timeout_validity: "librdkafka v2.16.0 INTRODUCTION.md, Idempotent Producer, Message timeout considerations: for the idempotent producer, on an in-flight timeout the broker connection will be closed by the client. No cited source states what the non-idempotent C0 producer does. ADR-021 still invalidates a repeat with non-zero txerrs or rxerrs or an error-level native error callback. Whether that close raises any of them is not verified. If it does in C0, a repeat with a possibly persisted timeout cannot be complete_valid, and the timeout verdict is held. If it does in the idempotent C1 timeout instance, that instance is not complete_valid, its repeat is ineligible with b10_restart_timeout_bookkeeping_unavailable (docs/operations/b10-abrupt-contract.md, check 18 and eligibility reason 7), and fewer than three eligible repeats hold the restart verdict."
+
+not_claimed:
+  internal_retry_state: "survival or loss of the producer's internal retry or idempotence state across the restart (ADR-021, Context and rule 7)"
+  pod_or_node_loss: "the restart is a process self-kill followed by pod replacement, not pod or node loss (ADR-021, Restart decision rules, rule 7)"
+  wire_inflight_state: "whether an original was on the wire at the kill; the child cannot observe it (ADR-021, Restart protocol, amendment of 2026-11-11)"
+  universal_causation: "fixed arm order and differing native and broker state are confounds; no measured rate is implied (ADR-021, Consequences)"
+
+verdict:
+  verdicts: [timeout/application retry, restart recovery]
+  basis: "docs/agents/factory.md Evidence pack: for B10, two labelled proposed verdicts, each selected by its own approved decision rule in ADR-021; Hari approves or rejects each separately"
+  timeout_application_retry:
+    label: timeout/application retry
+    subject: "librdkafka's documented risk that an application retry after a timed-out, possibly persisted send risks duplication (librdkafka v2.16.0 INTRODUCTION.md, Message persistence status)"
+    deciding_configuration: C0
+    confirmed_when: "C0 H_timeout_duplicate holds; b10_final.timeout_rule.rule_selection confirmed"
+    untestable_when: "C0 H_timeout_duplicate not observed; b10_final.timeout_rule.rule_selection untestable"
+    held_when: "b10_final.timeout_rule.rule_selection held, or the C0 candidate has b10_final null; no verdict word is proposed"
+    contradicted_when: "never; absence of duplicates never selects contradicted"
+    may_publish_while_restart_held: true
+  restart_recovery:
+    label: restart recovery
+    subject: "With idempotence enabled, application recovery that replaces a killed producer and resends a durably identified but unconfirmed logical message can leave both the original and the resend in the log."
+    deciding_configuration: C1
+    confirmed_when: "H_restart_duplicate holds; b10_final.restart_rule.rule_selection confirmed; published only with the full subject, never a bare word or K-53 confirmed"
+    untestable_when: "H_restart_duplicate not observed; rule_selection untestable, selection_reason no_cross_restart_duplicate_observed"
+    held_when: "rule_selection held, with selection_reason, eligible count and reasons, or the C1 candidate has b10_final null, with its root reasons; shown as held, never blank, a dash or not_tested, and never copied from the timeout verdict"
+    contradicted_when: "never"
+    loss_side_by_side: "a qualifying pair plus loss publishes the confirmed full subject and every lost-resend finding side by side, without waiving any gate"
+  precedence: "smoke, diagnostic or non-scientific run -> no verdict; then each verdict's own rule above, independently"
+  smoke_run: "scenario run 42189889469 is B10's smoke run; it is smoke only and never the verdict run"
+  verdict_run: "a fresh scientific scenario run dispatched on main after this file merges"
+  no_verdict_when: "smoke run, diagnostic trial or governed diagnostic run; no pooling, favourable subset or replacement repeats"
+  text_must_state:
+    - "Microsoft's librdkafka configuration guidance has no message.timeout.ms or idempotence row"
+    - "when the C0 duplicate sum is at least 1, duplicates appeared under timeout plus application resend; in every publication, the verifier does not attribute a duplicate to the application resend rather than librdkafka's own retry"
+    - "A late append after the phase sweep line is not detected."
+    - "workload data is synthetic"
+    - "the restart is a process self-kill followed by pod replacement, with an unknown native tail, a fixed cut position at CutOrdinal 4, a fixed probe rate of 100 originals per second and a fixed arm order, same_instance then cross_restart; these are policy values, not measurements"
+    - "the restart verdict claims neither pod or node loss nor survival of internal retry state"
+  decision_rules_authority: "ADR-021 Restart decision rules, adopted for B10's expected outcomes by Hari's decision 6889976034, which supersedes decision 6703447017 points 1 and 2 where they conflict; Hari's approval of this file's plan"
+  decision: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/356#issuecomment-6889976034
+
+sources:
+- url: https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations
+  version: current
+  read_date: "2026-11-14"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/INTRODUCTION.md
+  version: v2.16.0
+  read_date: "2026-11-14"
+- url: https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md
+  version: v2.16.0
+  read_date: "2026-11-14"
