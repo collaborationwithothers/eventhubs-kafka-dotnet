@@ -22,6 +22,8 @@ class Fake:
     def project_pods(self, raw):
         v = json.loads(raw)
         return json.dumps({'items':[{'name':x['metadata']['name'],'uid':x['metadata']['uid']} for x in v['items']]}).encode()
+    def legacy_source(self, container, name, kind, mode, identity, run_kind): self.source(container, name, kind)
+    def legacy_capture_projection(self, container, name, mode, identity, run_kind): self.source(container, name, 'capture')
     def optional_source(self,*args,**kwargs): self.calls.append(('optional',*args))
     def producer(self,*args): self.calls.append(('producer',*args))
     def capture_name(self,run,phase,mode,job,uid,index,repeat): return ('capture-id',f'{run}/{phase}/r{repeat}/capture-id/')

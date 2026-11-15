@@ -145,11 +145,19 @@ class TransferTests(unittest.TestCase):
         capture_id = 'verify-job-pod-w0000'
         prefix = 'run-1/C0/r1/consumed-metadata/' + capture_id + '/'
         manifest = {'schema_version': 1, 'capture_id': capture_id, 'identity': identity,
-                    'window': {'index': 0, 'kind': 'ordinary', 'repeat': 1, 'topic': 'events', 'start': [], 'end': []},
+                    'window': {'index': 0, 'kind': 'ordinary', 'repeat': 1, 'topic': 'document-events', 'start': [{'partition': 0, 'offset': 0}], 'end': [{'partition': 0, 'offset': 0}]},
                     'chunks': [], 'observed_rows': 0, 'captured_rows': 0, 'complete': True,
                     'first_missing_ordinal': None, 'gaps': []}
         self.blobs[('source', 'verifier', prefix + 'capture.json')] = json.dumps(manifest).encode()
         collector = archive.Collector(self.transfer, 'v1/a/')
+        start_name = 'run-1/C0/r1/start-line.json'; result_name = 'run-1/C0/r1/result.json'
+        start_job = 'run-1-c0-r1-start-line'
+        window_identity = {'scenario_id': 'A01', 'configuration_id': 'C0', 'run_id': 'run-1',
+                           'instance_id': start_job, 'expected_instance_id': start_job, 'client_id': start_job}
+        self.blobs[('source', 'verifier', start_name)] = json.dumps({'identity': window_identity, 'topic': 'document-events', 'verifier_commit': 'a' * 40, 'partition_highs': [{'partition': 0, 'high': 0}]}).encode()
+        self.blobs[('source', 'verifier', result_name)] = json.dumps({'identity': window_identity, 'verifier_commit': 'a' * 40, 'start_line': [{'partition': 0, 'offset': 0}], 'end_line': [{'partition': 0, 'offset': 0}]}).encode()
+        collector.source('verifier', start_name, 'start_line', 1)
+        collector.source('verifier', result_name, 'result', 1)
         collector.capture('verifier', prefix, identity, 'verify', 1, capture_id)
         self.assertTrue(collector.captures[0]['complete'])
         self.assertEqual(0, collector.captures[0]['rows'])
@@ -205,7 +213,15 @@ class TransferTests(unittest.TestCase):
                 def copy(self, container, name, destination, remaining, **kwargs):
                     data = b'abc'
                     parts = name.split('/')
-                    if name.endswith('/registration.json'):
+                    if name.endswith('/start-line.json') or name.endswith('/result.json'):
+                        start_job = f'a01-42-1-c0-{parts[2]}-start-line'
+                        window_identity = {'scenario_id': 'A01', 'configuration_id': 'C0', 'run_id': 'a01-42-1',
+                                           'instance_id': start_job, 'expected_instance_id': start_job, 'client_id': start_job}
+                        if name.endswith('/start-line.json'):
+                            data = json.dumps({'identity': window_identity, 'topic': 'document-events', 'verifier_commit': 'a' * 40, 'partition_highs': [{'partition': 0, 'high': 0}]}).encode()
+                        else:
+                            data = json.dumps({'identity': window_identity, 'verifier_commit': 'a' * 40, 'start_line': [{'partition': 0, 'offset': 0}], 'end_line': [{'partition': 0, 'offset': 0}]}).encode()
+                    elif name.endswith('/registration.json'):
                         pod, repeat = parts[4], int(parts[2][1:])
                         job = pod[:-4]
                         identity = {'scenario_id': 'A01', 'configuration_id': 'C0', 'run_id': 'a01-42-1',
@@ -226,7 +242,7 @@ class TransferTests(unittest.TestCase):
                         identity = {'run_id': 'a01-42-1', 'phase': 'C0', 'scenario_id': 'A01', 'configuration_id': 'C0',
                                     'job_name': job, 'pod_uid': 'uid', 'source_commit': 'a' * 40}
                         data = json.dumps({'schema_version': 1, 'capture_id': capture_id, 'identity': identity,
-                                           'window': {'index': 0, 'kind': 'ordinary', 'repeat': repeat, 'topic': 'events', 'start': [], 'end': []},
+                                           'window': {'index': 0, 'kind': 'ordinary', 'repeat': repeat, 'topic': 'document-events', 'start': [{'partition': 0, 'offset': 0}], 'end': [{'partition': 0, 'offset': 0}]},
                                            'chunks': [], 'observed_rows': 0, 'captured_rows': 0, 'complete': True,
                                            'first_missing_ordinal': None, 'gaps': []}).encode()
                     if kwargs.get('expected_length') is not None: assert kwargs['expected_length'] == len(data)
@@ -424,3 +440,70 @@ class TransferTests(unittest.TestCase):
             self.assertNotIn('source_missing', journal_gaps)
         finally:
             case.doCleanups()
+
+    def test_actual_wrapper_preflight_cli_location_and_sdk_contract(self):
+        import os
+        import time
+        session = Path(self.tmp.name) / 'preflight-session'; session.mkdir(mode=0o700)
+        (session / 'freshness.json').write_text(json.dumps({'request_started_monotonic': time.monotonic(), 'assertion_exp': int(time.time()) + 600}))
+        python = Path(self.tmp.name) / 'cli-python'
+        python.write_text('#!/usr/bin/python3\nimport os\nprint(os.environ.get("ARCHIVE_TEST_SDK", "12.29.0b1"))\n'); python.chmod(0o700)
+        fake = Path(self.tmp.name) / 'az-real-version'
+        fake.write_text('#!/usr/bin/python3\nimport json,os,sys\nif sys.argv[1] == "version": print(json.dumps({"azure-cli": os.environ.get("ARCHIVE_TEST_CLI", "2.92.0")}))\nelse: print(os.environ.get("ARCHIVE_TEST_LOCATION", ""))\n'); fake.chmod(0o700)
+        wrapper_dir = Path(__file__).resolve().parents[4] / 'scripts/azure-cli-session'
+        uid = '11111111-1111-1111-1111-111111111111'
+        env = {'PATH': str(wrapper_dir) + ':' + os.environ['PATH'], 'GITHUB_ACTIONS': 'true', 'GITHUB_REF': 'refs/heads/main',
+               'PARCHWELL_REAL_AZ': str(fake), 'PARCHWELL_AZ_SESSION_DIRECTORY': str(session),
+               'AZURE_CLIENT_ID': uid, 'AZURE_TENANT_ID': uid, 'AZURE_SUBSCRIPTION_ID': uid,
+               'ARCHIVE_TEST_LOCATION': "Python location '" + str(python) + "'"}
+        with patch.dict(os.environ, env):
+            self.assertEqual(str(python), archive._common.preflight(time.monotonic() + 30))
+            cases = ({'ARCHIVE_TEST_CLI': '2.91.0'}, {'ARCHIVE_TEST_SDK': '12.28.0'},
+                     {'ARCHIVE_TEST_LOCATION': ''}, {'ARCHIVE_TEST_LOCATION': "Python location 'relative/python'"},
+                     {'ARCHIVE_TEST_LOCATION': env['ARCHIVE_TEST_LOCATION'] + '\n' + env['ARCHIVE_TEST_LOCATION']},
+                     {'ARCHIVE_TEST_LOCATION': 'Python location /not-quoted'},
+                     {'ARCHIVE_TEST_LOCATION': "Python location '/not/an/executable'"})
+            for changed in cases:
+                with self.subTest(changed=changed), patch.dict(os.environ, changed), self.assertRaises(archive._common.Invalid):
+                    archive._common.preflight(time.monotonic() + 30)
+
+    @patch.object(archive.shutil, 'disk_usage')
+    def test_legacy_projection_retains_metadata_without_source_body(self, disk):
+        import base64
+        import hashlib
+        disk.return_value.free = 2 * archive.ArchiveMaxObjectBytes + 1048576 + 65536
+        body = b'BODY_SECRET_DO_NOT_ARCHIVE'
+        expected = {'run_id': 'run-1', 'scenario_id': 'B01', 'configuration_id': 'C0', 'job_name': 'run-1-b01-c0-single',
+                    'pod_name': 'run-1-b01-c0-single-pod', 'pod_uid': 'uid', 'source_commit': 'a' * 40}
+        repeats = []
+        for number in range(1, 6):
+            repeats.append({'repeat': number, 'client_id': expected['pod_name'] + f'-r{number}', 'action': 'read', 'terminal': True,
+                            'elapsed_ms': 1, 'terminal_unix_ms': 1, 'settings': {}, 'omitted_keys': [], 'result': 'success',
+                            'error': None, 'matched': {'topic': 'document-events', 'partition': 0, 'key_base64': 'aw==',
+                                                       'value_base64': base64.b64encode(body).decode()},
+                            'client_errors': [], 'client_errors_dropped': 0,
+                            'statistics': [{'sequence': 1, 'observed_elapsed_ms': 1, 'raw_base64': 'e30='}], 'diagnostics': []})
+        document = {'schema_version': 1, 'mode': 'single-action', 'synthetic': True,
+                    'identity': {'scenario_id': 'B01', 'configuration_id': 'C0', 'run_id': 'run-1', 'instance_id': expected['pod_name']},
+                    'job_name': expected['job_name'], 'pod_name': expected['pod_name'], 'pod_uid': 'uid', 'source_commit': 'a' * 40,
+                    'managed_version': '1', 'native_version': '1', 'repeats': repeats}
+        original = json.dumps(document, separators=(',', ':')).encode()
+        name = 'run-1/single-action/B01/C0/instances/pod/capture.json'
+        self.blobs[('source', 'single-action', name)] = original
+        collector = archive.Collector(self.transfer, 'v1/a/')
+        collector.legacy_capture_projection('single-action', name, 'single-action', expected, 'batch')
+        self.assertEqual([], collector.gaps)
+        obj = collector.objects[0]
+        self.assertEqual(('source_metadata_projection', 'verified'), (obj['kind'], obj['state']))
+        output = self.blobs[('dest', 'run-evidence', obj['destination_name'])]
+        self.assertNotIn(body, output); self.assertNotIn(base64.b64encode(body), output)
+        projection = json.loads(output)
+        self.assertEqual({'container': 'single-action', 'name': name, 'etag': 'etag', 'bytes': len(original),
+                          'sha256': hashlib.sha256(original).hexdigest()}, projection['source'])
+        self.assertEqual({'is_null': False, 'length': len(body), 'sha256': hashlib.sha256(body).hexdigest()},
+                         projection['metadata']['repeats'][0]['matched']['value_base64'])
+        self.assertEqual('aw==', projection['metadata']['repeats'][0]['matched']['key_base64'])
+        self.assertEqual('e30=', projection['metadata']['repeats'][0]['statistics'][0]['raw_base64'])
+        self.assertNotIn(('dest', 'run-evidence', 'v1/a/objects/single-action/' + name), self.blobs)
+        self.assertEqual(hashlib.sha256(output).hexdigest(), obj['sha256'])
+        self.assertEqual([], list(Path(self.tmp.name).iterdir()))

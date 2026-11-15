@@ -122,7 +122,8 @@ class ProbeV2Tests(unittest.TestCase):
         ident = registration(record['item'], record['configuration'], record['stage'], record['role'])
         raw_registration = json.dumps(ident, indent=None, separators=(', ', ': ')).encode()
         raw_capture = json.dumps(capture(ident), separators=(',', ':')).encode()
-        log = directory / f"{record['job']}-pod.containers.{record['role']}.log"
+        log = v2.actor_log_path(self.private, record['job'], record['job'] + '-pod', record['role'])
+        log.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         log.write_bytes(v2.REGISTRATION_MARKER + raw_registration + b'\n' + v2.CAPTURE_MARKER + raw_capture + b'\n')
         return log, raw_registration, raw_capture
 
@@ -888,7 +889,7 @@ class ProbeV2Tests(unittest.TestCase):
         source_log = v2.REGISTRATION_MARKER + reg + b'\n' + v2.CAPTURE_MARKER + raw + b'\n'
         self.assertGreater(len(source_log), 1048576)
         log.unlink()
-        (log.parent / 'pods.json').unlink()
+        (self.artifacts / record['job'] / 'pods.json').unlink()
         maximum_log = self.subject.limits['execution']['max_container_log_bytes']
         def collect_command(args, seconds, output=None, maximum=4194304):
             if args[1:3] == ['get', 'pods']:
@@ -901,7 +902,7 @@ class ProbeV2Tests(unittest.TestCase):
         with patch.object(self.p, 'run', side_effect=collect_command):
             self.assertEqual((0, True), self.subject.collect(record))
         self.assertEqual(source_log, log.read_bytes())
-        self.assertTrue(json.loads((log.parent / 'collection-status.json').read_bytes())['complete'])
+        self.assertTrue(json.loads((self.artifacts / record['job'] / 'collection-status.json').read_bytes())['complete'])
         with patch.object(self.p, 'run', side_effect=self.fake):
             self.assertTrue(self.subject.transfer(record))
         result = self.transported(record)

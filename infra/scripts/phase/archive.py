@@ -118,6 +118,59 @@ class Transfer:
                 raise Gap('destination_conflict', 'conditional create')
             raise Gap('transport', 'conditional create')
 
+    def project_source(self, container, name, destination, remaining, validate, reserve=None):
+        """Read one original once, project bodies away, and verify only the projection remotely."""
+        import hashlib
+        if not safe_name(container) or not safe_name(name) or not safe_name(destination): raise InvalidArchiveConfig()
+        if shutil.disk_usage(self.spool).free < 2 * ArchiveMaxObjectBytes + 1048576 + 65536:
+            raise Gap('disk_space', 'spool reserve')
+        source, projected, back = (self.spool / 'source.partial', self.spool / 'projection.partial', self.spool / 'readback.partial')
+        try:
+            props = self.properties(self.source_account, container, name, missing_ok=True)
+            if props is None: raise Gap('source_missing', 'source properties')
+            size, etag = props
+            self.download(self.source_account, container, name, etag, source)
+            source_hash = _common.digest(source, size, deadline=self.deadline)
+            source_ref = {'container': container, 'name': name, 'etag': etag, 'bytes': size, 'sha256': source_hash}
+            spec = importlib.util.spec_from_file_location('parchwell_archive_json', Path(__file__).with_name('archive_json.py'))
+            module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+            class Bounded:
+                def __init__(self, output): self.output = output; self.length = 0
+                def write(self, data):
+                    _common.check_deadline(self_deadline, time.monotonic)
+                    if len(data) > ArchiveMaxObjectBytes - self.length: raise Gap('source_too_large', 'projection size')
+                    self.output.write(data); self.length += len(data)
+            self_deadline = self.deadline
+            fd = os.open(projected, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+            with os.fdopen(fd, 'wb') as raw:
+                out = Bounded(raw)
+                header = _common.encoded({'schema_version': 1, 'kind': 'source_metadata_projection',
+                                          'source': source_ref, 'format': 'single_action_capture'}).rstrip(b'\n')
+                out.write(header[:-1] + b',"metadata":')
+                try: document = module.project(source, self.deadline, out)
+                except TimeoutError: raise Gap('deadline', 'source projection') from None
+                except (module.Invalid, UnicodeError): raise Gap('monitoring_incomplete', 'source projection contract') from None
+                out.write(b'}\n')
+                length = out.length
+            valid = validate(document)
+            if length > remaining: raise Gap('byte_limit', 'phase bytes')
+            if reserve is not None: reserve(length)
+            projection_hash = _common.digest(projected, length, deadline=self.deadline)
+            source.unlink()
+            existing = self.properties(self.archive_account, 'run-evidence', destination, missing_ok=True)
+            present = existing is not None
+            if existing is None:
+                self.upload('run-evidence', destination, projected)
+                existing = self.properties(self.archive_account, 'run-evidence', destination)
+            dest_size, dest_etag = existing
+            if dest_size != length: raise Gap('destination_conflict' if present else 'destination_length_mismatch', 'projection properties')
+            self.download(self.archive_account, 'run-evidence', destination, dest_etag, back)
+            if _common.digest(back, length, deadline=self.deadline, side='destination') != projection_hash:
+                raise Gap('destination_conflict' if present else 'destination_hash_mismatch', 'projection readback')
+            return length, projection_hash, etag, dest_etag, source_ref, valid
+        finally:
+            source.unlink(missing_ok=True); projected.unlink(missing_ok=True); back.unlink(missing_ok=True)
+
     def copy_local(self, source_path, destination, remaining, reserve=None):
         """Snapshot an approved runner file and verify the archived snapshot."""
         import hashlib
@@ -431,8 +484,20 @@ def capture_inventory(data, prefix, identity, mode, repeat, capture_id):
             or window['kind'] not in ('ordinary', 'original', 'late', 'final') or not isinstance(window['topic'], str)
             or not isinstance(window['start'], list) or not isinstance(window['end'], list)):
         raise InvalidArchiveConfig()
-    if (not capture_id.endswith(f"-w{window['index']:04d}")
-            or window['repeat'] != (None if window['kind'] == 'final' else repeat)):
+    if mode in ('verify', 'b10-abrupt-verify'):
+        expected_index, expected_kind = 0, 'ordinary'
+    elif mode == 'b10-final-sweep':
+        expected_index, expected_kind = 0, 'final'
+    elif mode == 'b10-sweep' and type(repeat) is int and 1 <= repeat <= 5:
+        if window['index'] not in (2 * (repeat - 1), 2 * (repeat - 1) + 1):
+            raise InvalidArchiveConfig()
+        expected_index = window['index']
+        expected_kind = 'original' if expected_index % 2 == 0 else 'late'
+    else:
+        raise InvalidArchiveConfig()
+    if (window['topic'] != 'document-events' or window['index'] != expected_index
+            or window['kind'] != expected_kind or not capture_id.endswith(f"-w{expected_index:04d}")
+            or window['repeat'] != (None if expected_kind == 'final' else repeat)):
         raise InvalidArchiveConfig()
     for vector in (window['start'], window['end']):
         partitions = []
@@ -443,6 +508,11 @@ def capture_inventory(data, prefix, identity, mode, repeat, capture_id):
                 raise InvalidArchiveConfig()
             partitions.append(entry['partition'])
         if partitions != sorted(set(partitions)): raise InvalidArchiveConfig()
+    starts = {entry['partition']: entry['offset'] for entry in window['start']}
+    ends = {entry['partition']: entry['offset'] for entry in window['end']}
+    if capture['complete'] and (not starts or starts.keys() != ends.keys()
+                                or any(starts[partition] > ends[partition] for partition in starts)):
+        raise InvalidArchiveConfig()
     return {'capture_id': capture_id, 'mode': mode, 'repeat': repeat, 'required': True,
             'complete': capture['complete'], 'rows': capture['captured_rows'], 'first_missing_ordinal': first}, result
 
@@ -566,7 +636,8 @@ def validate_manifest(value):
                 or obj['destination_name'] in names or not isinstance(obj['source'], dict)
                 or set(obj['source']) != {'container', 'name', 'etag'} or not safe_name(obj['source']['container'])
                 or not safe_name(obj['source']['name']) or obj['source']['container'] not in ('ledger', 'verifier', 'single-action', 'runner')
-                or obj['destination_name'] != (prefix + 'runner/' + obj['source']['name'] if obj['source']['container'] == 'runner' else prefix + 'objects/' + obj['source']['container'] + '/' + obj['source']['name'])
+                or obj['destination_name'] != ((prefix + 'runner/' + obj['source']['name'] if obj['source']['container'] == 'runner' else prefix + 'objects/' + obj['source']['container'] + '/' + obj['source']['name'])
+                                                + ('.metadata.json' if obj['kind'] == 'source_metadata_projection' else ''))
                 or (obj['repeat'] is not None and (type(obj['repeat']) is not int or obj['repeat'] < 1))
                 or (obj['capture_id'] is not None and not safe_name(obj['capture_id']))):
             raise InvalidArchiveConfig()
@@ -585,7 +656,7 @@ def validate_manifest(value):
         elif not isinstance(obj['gap_code'], str) or obj['gap_code'] not in GAP_CODES:
             raise InvalidArchiveConfig()
         elif any(obj[key] is not None for key in ('bytes', 'sha256', 'destination_etag')):
-            if (obj['state'] not in ('failed', 'rejected') or obj['gap_code'] not in ('source_length_mismatch', 'source_hash_mismatch', 'monitoring_incomplete')
+            if (obj['state'] not in ('failed', 'rejected') or obj['gap_code'] not in ('source_length_mismatch', 'source_hash_mismatch', 'monitoring_incomplete', 'capture_incomplete')
                     or type(obj['bytes']) is not int or not 0 <= obj['bytes'] <= ArchiveMaxObjectBytes
                     or not isinstance(obj['sha256'], str) or not re.fullmatch(r'[0-9a-f]{64}', obj['sha256'])
                     or not isinstance(obj['source']['etag'], str) or not obj['source']['etag']
@@ -851,6 +922,7 @@ class Collector:
             raise InvalidArchiveConfig()
         self.transfer, self.prefix = transfer, prefix
         self.objects, self.captures, self.gaps = [], [], []
+        self.window_sources = {}
         self.names = set()
         self.verified_bytes = 0
         self.logical_bytes = 0
@@ -870,6 +942,18 @@ class Collector:
             return None
         if not safe_name(container) or '/' in container or not safe_name(name):
             raise InvalidArchiveConfig()
+        if container == 'verifier' and inspect_source is None and (name.endswith('/start-line.json') or name.endswith('/result.json')
+                or name.endswith('/nonfinal-result.json') or name.endswith('/sweep-line.json')):
+            def inspect_window(path, size):
+                try:
+                    spec = importlib.util.spec_from_file_location('parchwell_archive_json', Path(__file__).with_name('archive_json.py'))
+                    module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+                    self.window_sources[name] = module.windows(path, self.transfer.deadline)
+                except TimeoutError:
+                    raise Gap('deadline', 'source window') from None
+                except Exception:
+                    self.window_sources[name] = None
+            inspect_source = inspect_window
         destination = f'{self.prefix}objects/{container}/{name}'
         if destination in self.names: raise InvalidArchiveConfig()
         self.names.add(destination)
@@ -909,6 +993,96 @@ class Collector:
             obj.update(state='rejected', gap_code=code)
             self.verified_bytes -= obj['bytes']
         self.gap(code, boundary, obj['source']['name'] if obj is not None else None)
+
+    def projected_runner(self, name, content):
+        if len(self.objects) >= ArchiveMaxObjects - 2:
+            self.gap('object_limit', 'data object count', name); return
+        if not safe_name(name): raise InvalidArchiveConfig()
+        destination = f'{self.prefix}runner/{name}.metadata.json'
+        if destination in self.names: raise InvalidArchiveConfig()
+        self.names.add(destination)
+        obj = {'kind': 'source_metadata_projection', 'source': {'container': 'runner', 'name': name, 'etag': None},
+               'destination_name': destination, 'required': True, 'repeat': None, 'capture_id': None,
+               'bytes': None, 'sha256': None, 'destination_etag': None, 'state': 'failed', 'gap_code': None}
+        self.objects.append(obj)
+        temporary = self.transfer.spool / 'v2-projection.json'
+        try:
+            if len(content) > ArchiveMaxObjectBytes: raise Gap('source_too_large', 'projection size')
+            _common.safe_write(temporary, content)
+            remaining = ArchiveMaxBytes - 1048576 - 65536 - self.logical_bytes
+            size, sha, etag = self.transfer.copy_local(temporary, destination, remaining,
+                reserve=lambda count: setattr(self, 'logical_bytes', self.logical_bytes + count))
+            obj.update(bytes=size, sha256=sha, destination_etag=etag, state='verified')
+            self.verified_bytes += size
+        except Gap as error:
+            obj.update(gap_code=error.code); self.gap(error.code, error.boundary, name)
+        except KeyboardInterrupt:
+            obj.update(gap_code='interrupted'); self.gap('interrupted', 'source projection', name); raise
+        except Exception:
+            obj.update(gap_code='transport'); self.gap('transport', 'source projection', name)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+    def unavailable_projection(self, name, code='monitoring_incomplete'):
+        if len(self.objects) >= ArchiveMaxObjects - 2:
+            self.gap('object_limit', 'data object count', name); return
+        if not safe_name(name): raise InvalidArchiveConfig()
+        destination = f'{self.prefix}runner/{name}.metadata.json'
+        if destination in self.names: raise InvalidArchiveConfig()
+        self.names.add(destination)
+        self.objects.append({'kind': 'source_metadata_projection', 'source': {'container': 'runner', 'name': name, 'etag': None},
+                             'destination_name': destination, 'required': True, 'repeat': None, 'capture_id': None,
+                             'bytes': None, 'sha256': None, 'destination_etag': None, 'state': 'failed', 'gap_code': code})
+        self.gap(code, 'v2 actor stdout or collection incomplete', name)
+
+    def legacy_source(self, container, name, kind, mode, identity, run_kind):
+        valid = []
+        def inspect(path, size):
+            try:
+                spec = importlib.util.spec_from_file_location('parchwell_archive_json', Path(__file__).with_name('archive_json.py'))
+                module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+                document = module.project(path, self.transfer.deadline)
+                if not legacy_closed(document, kind, mode):
+                    raise Gap('monitoring_incomplete', 'source publication shape')
+                valid.append(validate_legacy_document(document, kind, mode, identity, run_kind))
+            except TimeoutError:
+                raise Gap('deadline', 'source contract') from None
+            except Gap:
+                raise
+            except Exception:
+                raise Gap('monitoring_incomplete', 'source publication shape') from None
+        obj = self.source(container, name, kind, inspect_source=inspect)
+        if obj is not None and valid != [True]:
+            self.reject_binding(obj, 'monitoring_incomplete', 'source publication contract')
+        return obj
+
+    def legacy_capture_projection(self, container, name, mode, identity, run_kind):
+        if len(self.objects) >= ArchiveMaxObjects - 2:
+            self.gap('object_limit', 'data object count', name); return
+        if not safe_name(container) or not safe_name(name): raise InvalidArchiveConfig()
+        destination = f'{self.prefix}objects/{container}/{name}.metadata.json'
+        if destination in self.names: raise InvalidArchiveConfig()
+        self.names.add(destination)
+        obj = {'kind': 'source_metadata_projection', 'source': {'container': container, 'name': name, 'etag': None},
+               'destination_name': destination, 'required': True, 'repeat': None, 'capture_id': None,
+               'bytes': None, 'sha256': None, 'destination_etag': None, 'state': 'failed', 'gap_code': None}
+        self.objects.append(obj)
+        try:
+            remaining = ArchiveMaxBytes - 1048576 - 65536 - self.logical_bytes
+            size, sha, etag, dest_etag, _, valid = self.transfer.project_source(
+                container, name, destination, remaining,
+                lambda doc: validate_capture_projection(doc, mode, identity, run_kind),
+                reserve=lambda count: setattr(self, 'logical_bytes', self.logical_bytes + count))
+            obj.update(bytes=size, sha256=sha, destination_etag=dest_etag, state='verified')
+            obj['source']['etag'] = etag; self.verified_bytes += size
+            if not valid: self.reject_binding(obj, 'monitoring_incomplete', 'source publication contract')
+        except Gap as error:
+            obj.update(state='missing' if error.code == 'source_missing' else 'failed', gap_code=error.code)
+            self.gap(error.code, error.boundary, name)
+        except KeyboardInterrupt:
+            obj.update(gap_code='interrupted'); self.gap('interrupted', 'source projection', name); raise
+        except Exception:
+            obj.update(gap_code='transport'); self.gap('transport', 'source projection', name)
 
     def optional_source(self, container, name, kind, repeat=None):
         try:
@@ -1129,19 +1303,89 @@ class Collector:
             self.source(container, descriptor['name'], 'producer_publication', repeat,
                         expected_length=descriptor['bytes'], expected_sha256=descriptor['sha256'])
 
+    def expected_capture_window(self, identity, mode, repeat, capture_id):
+        run, phase = identity['run_id'], identity['phase']
+        def vector(name, field, coordinate):
+            obj = next((item for item in self.objects if item['source']['container'] == 'verifier'
+                        and item['source']['name'] == name), None)
+            data = self.window_sources.get(name)
+            if obj is None or obj['state'] != 'verified' or not isinstance(data, dict): raise InvalidArchiveConfig()
+            if name.endswith('/sweep-line.json'):
+                if (data.get('run_id') != run or data.get('phase') != phase or data.get('scenario_id') != identity['scenario_id']
+                        or data.get('configuration_id') != identity['configuration_id'] or data.get('source_commit') != identity['source_commit']
+                        or data.get('topic') != 'document-events'):
+                    raise InvalidArchiveConfig()
+            elif name.endswith('/nonfinal-result.json'):
+                source_identity = data.get('identity')
+                if (not isinstance(source_identity, dict) or data.get('kind') != 'nonfinal_result'
+                        or source_identity.get('run_id') != run or source_identity.get('phase') != phase
+                        or source_identity.get('repeat') != repeat or source_identity.get('scenario_id') != identity['scenario_id']
+                        or source_identity.get('configuration_id') != identity['configuration_id']
+                        or source_identity.get('source_commit') != identity['source_commit']
+                        or source_identity.get('job_name') != identity['job_name'] or source_identity.get('pod_uid') != identity['pod_uid']):
+                    raise InvalidArchiveConfig()
+            else:
+                source_identity = data.get('identity')
+                if (not isinstance(source_identity, dict) or source_identity.get('run_id') != run
+                        or source_identity.get('scenario_id') != identity['scenario_id']
+                        or source_identity.get('configuration_id') != identity['configuration_id']
+                        or data.get('verifier_commit') != identity['source_commit']):
+                    raise InvalidArchiveConfig()
+                if name.endswith('/start-line.json'):
+                    match = re.fullmatch(re.escape(f'{run}/{phase}/') + r'r([1-5])/start-line\.json', name)
+                    if match is None: raise InvalidArchiveConfig()
+                    job = f'{run}-{phase.lower()}-r{match.group(1)}-start-line'
+                    if data.get('topic') != 'document-events' or any(source_identity.get(key) != job for key in ('instance_id', 'expected_instance_id', 'client_id')):
+                        raise InvalidArchiveConfig()
+            if field not in data and isinstance(data.get('data'), dict): data = data['data']
+            values = data.get(field)
+            if not isinstance(values, list) or not values: raise InvalidArchiveConfig()
+            result = []
+            for item in values:
+                if (not isinstance(item, dict) or set(item) != {'partition', coordinate}
+                        or type(item['partition']) is not int or item['partition'] < 0
+                        or type(item[coordinate]) is not int or item[coordinate] < 0): raise InvalidArchiveConfig()
+                result.append({'partition': item['partition'], 'offset': item[coordinate]})
+            if [item['partition'] for item in result] != sorted({item['partition'] for item in result}): raise InvalidArchiveConfig()
+            return result
+        if mode == 'b10-final-sweep':
+            candidates = sorted(name for name in self.window_sources if re.fullmatch(re.escape(f'{run}/{phase}/') + r'r[1-5]/start-line\.json', name))
+            if not candidates: raise InvalidArchiveConfig()
+            return vector(candidates[0], 'partition_highs', 'high'), vector(f'{run}/{phase}/sweep-line.json', 'partition_highs', 'high')
+        if type(repeat) is not int: raise InvalidArchiveConfig()
+        root = f'{run}/{phase}/r{repeat}/'
+        start = vector(root + 'start-line.json', 'partition_highs', 'high')
+        result_name = root + ('b10-abrupt/nonfinal-result.json' if mode == 'b10-abrupt-verify' else 'result.json')
+        if mode == 'b10-abrupt-verify' and f'{run}/C1/r{repeat}/b10-abrupt-diagnostic/nonfinal-result.json' in self.window_sources:
+            result_name = root + 'b10-abrupt-diagnostic/nonfinal-result.json'
+        recorded_start = vector(result_name, 'start_line', 'offset')
+        end = vector(result_name, 'end_line', 'offset')
+        if start != recorded_start: raise InvalidArchiveConfig()
+        if mode == 'b10-sweep' and int(capture_id.rsplit('-w', 1)[1]) % 2:
+            return end, vector(f'{run}/{phase}/sweep-line.json', 'partition_highs', 'high')
+        return start, end
+
     def capture(self, container, prefix, identity, mode, repeat, capture_id):
-        parsed = []
+        parsed = []; binding_failed = []
         def inspect(path, size):
             if size > 1048576:
-                self.gap('capture_incomplete', 'capture manifest size', prefix + 'capture.json')
                 return
             try:
                 fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
                 with os.fdopen(fd, 'rb') as stream:
                     data = stream.read(1048577)
-                parsed.append(capture_inventory(data, prefix, identity, mode, repeat, capture_id))
+                summary, chunks = capture_inventory(data, prefix, identity, mode, repeat, capture_id)
+                if summary['complete']:
+                    try:
+                        expected_start, expected_end = self.expected_capture_window(identity, mode, repeat, capture_id)
+                        window = strict_control(data, 1048576)['window']
+                        if window['start'] != expected_start or window['end'] != expected_end: raise InvalidArchiveConfig()
+                    except InvalidArchiveConfig:
+                        binding_failed.append(True)
+                        summary['complete'] = False
+                parsed.append((summary, chunks))
             except (OSError, InvalidArchiveConfig):
-                self.gap('capture_incomplete', 'capture manifest contract', prefix + 'capture.json')
+                pass
         obj = self.source(container, prefix + 'capture.json', 'consumed_capture', repeat, capture_id,
                           inspect_source=inspect)
         if obj is None:
@@ -1152,12 +1396,15 @@ class Collector:
                                   'complete': False, 'rows': None, 'first_missing_ordinal': None})
             return
         if not parsed:
+            self.reject_binding(obj, 'capture_incomplete', 'capture manifest contract')
             self.captures.append({'capture_id': capture_id, 'mode': mode, 'repeat': repeat, 'required': True,
                                   'complete': False, 'rows': None, 'first_missing_ordinal': None})
             return
         capture, chunks = parsed[0]
         self.captures.append(capture)
-        if not capture['complete']:
+        if binding_failed:
+            self.reject_binding(obj, 'capture_incomplete', 'capture window binding')
+        elif not capture['complete']:
             self.gap('capture_incomplete', 'capture incomplete', prefix + 'capture.json')
         for chunk in chunks:
             self.source(container, chunk['name'], 'consumed_metadata', repeat, capture_id,
@@ -1205,7 +1452,7 @@ def verify_controls(manifest_bytes, marker_bytes, receipt_bytes):
     return manifest
 
 
-def read_job_pods(collector, artifacts, job):
+def read_job_pods(collector, artifacts, job, skip_logs=False):
     """Collect a minimal, safe pod projection and return observed pod identities."""
     path = Path(artifacts) / job / 'pods.json'
     projected = collector.transfer.spool / 'pod-projection.json'
@@ -1227,7 +1474,7 @@ def read_job_pods(collector, artifacts, job):
                 kind = 'initContainers' if container['kind'] == 'initContainerStatuses' else 'containers'
                 leaf = f"{pod['name']}.{kind}.{container['name']}.log"
                 path = Path(artifacts) / job / leaf
-                if path.is_file(): collector.runner(f'{job}/{leaf}', path, 'pod_log')
+                if not skip_logs and path.is_file(): collector.runner(f'{job}/{leaf}', path, 'pod_log')
         return value['items']
     except (OSError, InvalidArchiveConfig):
         collector.gap('monitoring_incomplete', 'pod identities unavailable', unit=job)
@@ -1258,6 +1505,76 @@ def project_phase_status(status):
         modes.append(row)
     return _common.encoded({'schema_version': 1, 'kind': 'phase_status_diagnostics', 'run_id': status['run_id'],
                             'phase': status['phase'], 'modes': modes})
+
+
+def check_v2_actor_logs(collector, phase, status, units, artifacts, private):
+    """Bind required stdout evidence and collection success for each V2 actor."""
+    from types import SimpleNamespace
+    spec = importlib.util.spec_from_file_location('parchwell_archive_probe_v2', Path(__file__).with_name('probe_v2.py'))
+    module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+    validator = module.ProbeV2(SimpleNamespace(repo=Path(__file__).resolve().parents[3]))
+    limits = validator.limits
+    by_job = {record.get('job'): record for record in status['modes'] if isinstance(record, dict)}
+    for unit in units:
+        if unit['mode'] != 'single-action-v2' or unit['state'] != 'started': continue
+        job, pod, uid = unit['job_name'], unit['pod_name'], unit['pod_uid']
+        role = None
+        try:
+            record = by_job[job]
+            role, stage = record['role'], record['stage']
+            if role not in module.ACCOUNTS or not isinstance(stage, str) or not safe_name(stage) or not pod or not uid:
+                raise InvalidArchiveConfig()
+            folder = Path(artifacts) / job
+            collection = _common.read_json(folder / 'collection-status.json')
+            if (not isinstance(collection, dict) or set(collection) != {'complete', 'gaps'}
+                    or collection['complete'] is not True or collection['gaps'] != []):
+                raise InvalidArchiveConfig()
+            fd = os.open(Path(private) / 'probe-v2' / 'raw' / job / f'{pod}.containers.{role}.log', os.O_RDONLY | os.O_NOFOLLOW)
+            with os.fdopen(fd, 'rb') as stream:
+                log = stream.read(limits['execution']['max_container_log_bytes'] + 1)
+            if not log or len(log) > limits['execution']['max_container_log_bytes']:
+                raise InvalidArchiveConfig()
+            lines = log.splitlines(keepends=True)
+            indices = []; documents = []
+            for marker, capture in ((module.REGISTRATION_MARKER, False), (module.CAPTURE_MARKER, True)):
+                matches = [(i, line[len(marker):].removesuffix(b'\n').removesuffix(b'\r'))
+                           for i, line in enumerate(lines) if line.startswith(marker)]
+                if len(matches) != 1: raise InvalidArchiveConfig()
+                index, raw = matches[0]; indices.append(index)
+                bound = limits['capture']['MaxCaptureBytes' if capture else 'MaxRegistrationBytes']
+                document = module.decode(raw, bound)
+                fields = module.IDENTITY_KEYS + (['managed_version', 'native_version', 'repeats', 'handler_exit_code', 'cleanup_completed', 'host_cleanup_completed'] if capture else [])
+                expected = {'run_id': phase['run_id'], 'scenario_id': unit['item'], 'configuration_id': record['configuration'],
+                            'stage': stage, 'source_commit': phase['source_commit'], 'job_name': job,
+                            'pod_name': pod, 'pod_uid': uid, 'service_account': role}
+                if (not module.closed(document, fields) or type(document['schema_version']) is not int
+                        or document['schema_version'] != 2 or document['mode'] != 'single-action-v2'
+                        or document['synthetic'] is not True or any(document[key] != value for key, value in expected.items())
+                        or capture and not validator.capture_shape(document)):
+                    raise InvalidArchiveConfig()
+                documents.append(document)
+            if indices[0] >= indices[1]: raise InvalidArchiveConfig()
+            import base64, hashlib
+            def metadata(value):
+                if value is None: return {'is_null': True, 'length': None, 'sha256': None}
+                raw = base64.b64decode(value, validate=True)
+                return {'is_null': False, 'length': len(raw), 'sha256': hashlib.sha256(raw).hexdigest()}
+            for slot in documents[1]['repeats']:
+                if slot['requested'] is not None:
+                    slot['requested']['value_base64'] = metadata(slot['requested']['value_base64'])
+                record_value = slot['read_observation']['record']
+                if record_value is not None:
+                    record_value['value_base64'] = metadata(record_value['value_base64'])
+            name = f'probe-v2/raw/{job}/{pod}.containers.{role}.log'
+            source = {'container': 'runner', 'name': name, 'etag': None, 'bytes': len(log), 'sha256': hashlib.sha256(log).hexdigest()}
+            projection = {'schema_version': 1, 'kind': 'source_metadata_projection', 'source': source,
+                          'format': 'probe_v2_stdout', 'metadata': {'registration': documents[0], 'capture': documents[1]}}
+            collector.projected_runner(name, _common.encoded(projection))
+        except (OSError, ValueError, KeyError, TypeError, AttributeError, _common.Invalid):
+            if pod and 'role' in locals() and isinstance(role, str) and safe_name(role):
+                collector.unavailable_projection(f'probe-v2/raw/{job}/{pod}.containers.{role}.log')
+            else:
+                collector.gap('monitoring_incomplete', 'v2 actor stdout or collection incomplete', unit=job)
 
 
 def collect_ordinary(collector, phase, status, containers, artifacts, job_name):
@@ -1494,8 +1811,10 @@ def execute(phase_instance, environ, deadline=None):
                 spec = importlib.util.spec_from_file_location('parchwell_archive_nonledger', Path(__file__).with_name('archive_nonledger.py'))
                 module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
                 units = module.collect(collector, phase, status, containers, artifacts)
+                if phase['scenario'] == 'probe-batch-2':
+                    check_v2_actor_logs(collector, phase, status, units, artifacts, private)
                 for job in sorted({unit['job_name'] for unit in units if unit['state'] == 'started'}):
-                    read_job_pods(collector, artifacts, job)
+                    read_job_pods(collector, artifacts, job, skip_logs=(phase['scenario'] == 'probe-batch-2' and any(unit['job_name'] == job and unit['mode'] == 'single-action-v2' for unit in units)))
             else:
                 units = collect_ordinary(collector, phase, status, containers, artifacts, phase_instance.mode_job)
             # Cross-check the adapters against the independently derived fixed paths;
@@ -1553,3 +1872,103 @@ def execute(phase_instance, environ, deadline=None):
             except (OSError, InvalidArchiveConfig, _common.Invalid, ValueError, KeyError, TypeError):
                 pass
         return 1
+
+
+def legacy_closed(document, kind, mode):
+    common = {'schema_version', 'mode', 'identity', 'job_name', 'pod_name', 'pod_uid', 'source_commit'}
+    fields = common | ({'repeats_attempted', 'handler_exit_code', 'cleanup_completed'} if kind == 'completion' else set())
+    if kind == 'capture':
+        fields |= {'synthetic', 'managed_version', 'native_version', 'repeats'}
+        if mode == 'idle-observation':
+            fields |= {'run_kind', 'topic', 'partition', 'payload_bytes', 'idle_seconds', 'statistics_interval_ms', 'max_statistics_reports'}
+    if (kind not in ('registration', 'completion', 'capture') or mode not in ('single-action', 'idle-observation')
+            or not isinstance(document, dict) or set(document) != fields
+            or type(document['schema_version']) is not int or not isinstance(document['mode'], str)
+            or not isinstance(document['identity'], dict)
+            or set(document['identity']) != {'scenario_id', 'configuration_id', 'run_id', 'instance_id'}
+            or any(not isinstance(value, str) for value in document['identity'].values())
+            or any(not isinstance(document[key], str) for key in ('job_name', 'pod_name', 'pod_uid', 'source_commit'))):
+        return False
+    if kind == 'completion':
+        return (type(document['repeats_attempted']) is int and type(document['handler_exit_code']) is int
+                and type(document['cleanup_completed']) is bool)
+    if kind == 'capture':
+        if (type(document['synthetic']) is not bool or not isinstance(document['managed_version'], str)
+                or not isinstance(document['native_version'], str) or not isinstance(document['repeats'], list)):
+            return False
+        if mode == 'idle-observation':
+            if not isinstance(document['run_kind'], str) or not isinstance(document['topic'], str) or any(type(document[key]) is not int for key in ('partition', 'payload_bytes', 'idle_seconds', 'statistics_interval_ms', 'max_statistics_reports')):
+                return False
+            repeat_fields = {'repeat', 'client_id', 'settings', 'omitted_keys', 'client_started_unix_ms', 'first',
+                             'idle_started_elapsed_ms', 'idle_ended_elapsed_ms', 'second', 'client_errors',
+                             'client_errors_dropped', 'statistics', 'diagnostics'}
+        else:
+            repeat_fields = {'repeat', 'client_id', 'action', 'terminal', 'elapsed_ms', 'terminal_unix_ms', 'settings',
+                             'omitted_keys', 'result', 'error', 'matched', 'client_errors', 'client_errors_dropped',
+                             'statistics', 'diagnostics'}
+        for repeat in document['repeats']:
+            if (not isinstance(repeat, dict) or set(repeat) != repeat_fields
+                    or type(repeat['repeat']) is not int or not isinstance(repeat['client_id'], str)):
+                return False
+            if mode == 'single-action' and repeat['matched'] is not None:
+                matched = repeat['matched']
+                if (not isinstance(matched, dict) or set(matched) != {'topic', 'partition', 'key_base64', 'value_base64'}
+                        or not isinstance(matched['topic'], str) or type(matched['partition']) is not int
+                        or matched['partition'] < 0 or not isinstance(matched['key_base64'], str)
+                        or not isinstance(matched['value_base64'], dict)):
+                    return False
+                try:
+                    import base64
+                    base64.b64decode(matched['key_base64'], validate=True)
+                except (ValueError, TypeError):
+                    return False
+        return True
+    return True
+
+
+def validate_capture_projection(document, mode, identity, run_kind):
+    if not legacy_closed(document, 'capture', mode):
+        raise Gap('monitoring_incomplete', 'source publication shape')
+    return validate_legacy_document(document, 'capture', mode, identity, run_kind)
+
+
+def validate_legacy_document(document, kind, mode, identity, run_kind):
+    """Validate closed publication envelopes and their job/pod/run bindings."""
+    common = {'schema_version', 'mode', 'identity', 'job_name', 'pod_name', 'pod_uid', 'source_commit'}
+    fields = common | ({'repeats_attempted', 'handler_exit_code', 'cleanup_completed'} if kind == 'completion' else set())
+    if kind == 'capture':
+        fields |= {'synthetic', 'managed_version', 'native_version', 'repeats'}
+        if mode == 'idle-observation':
+            fields |= {'run_kind', 'topic', 'partition', 'payload_bytes', 'idle_seconds', 'statistics_interval_ms', 'max_statistics_reports'}
+    if (not legacy_closed(document, kind, mode) or not isinstance(document, dict) or set(document) != fields or type(document['schema_version']) is not int
+            or document['schema_version'] != 1 or document['mode'] != mode
+            or document['identity'] != {'scenario_id': identity['scenario_id'], 'configuration_id': identity['configuration_id'],
+                                        'run_id': identity['run_id'], 'instance_id': identity['pod_name']}
+            or any(document[key] != identity[key] for key in ('job_name', 'pod_name', 'pod_uid', 'source_commit'))):
+        return False
+    if kind == 'completion':
+        return (type(document['repeats_attempted']) is int and document['repeats_attempted'] == 5
+                and type(document['handler_exit_code']) is int and document['handler_exit_code'] == 0
+                and document['cleanup_completed'] is True)
+    if kind == 'capture':
+        if (document['synthetic'] is not True or not isinstance(document['managed_version'], str) or not document['managed_version']
+                or not isinstance(document['native_version'], str) or not document['native_version']
+                or not isinstance(document['repeats'], list) or len(document['repeats']) != 5):
+            return False
+        if mode == 'idle-observation':
+            if any(document[key] != expected or type(document[key]) is not type(expected) for key, expected in
+                   {'run_kind': run_kind, 'topic': 'document-events', 'partition': 0, 'payload_bytes': 1000,
+                    'idle_seconds': 420, 'statistics_interval_ms': 15000, 'max_statistics_reports': 80}.items()):
+                return False
+            repeat_fields = {'repeat', 'client_id', 'settings', 'omitted_keys', 'client_started_unix_ms', 'first',
+                             'idle_started_elapsed_ms', 'idle_ended_elapsed_ms', 'second', 'client_errors',
+                             'client_errors_dropped', 'statistics', 'diagnostics'}
+        else:
+            repeat_fields = {'repeat', 'client_id', 'action', 'terminal', 'elapsed_ms', 'terminal_unix_ms', 'settings',
+                             'omitted_keys', 'result', 'error', 'matched', 'client_errors', 'client_errors_dropped',
+                             'statistics', 'diagnostics'}
+        for index, repeat in enumerate(document['repeats'], 1):
+            if (not isinstance(repeat, dict) or set(repeat) != repeat_fields or type(repeat['repeat']) is not int
+                    or repeat['repeat'] != index or repeat['client_id'] != f"{identity['pod_name']}-r{index}"):
+                return False
+    return True

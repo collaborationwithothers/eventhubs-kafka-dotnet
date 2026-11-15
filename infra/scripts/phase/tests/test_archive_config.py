@@ -91,7 +91,7 @@ class CaptureInventoryTests(unittest.TestCase):
         identity = {'run_id': 'a01-42-1', 'phase': 'C0', 'scenario_id': 'A01', 'configuration_id': 'C0', 'job_name': 'job', 'pod_uid': 'pod', 'source_commit': 'a' * 40}
         prefix = 'a01-42-1/C0/r1/consumed-metadata/verify-job-pod-w0000/'
         value = {'schema_version': 1, 'capture_id': 'verify-job-pod-w0000', 'identity': identity,
-                 'window': {'index': 0, 'kind': 'ordinary', 'repeat': 1, 'topic': 'events', 'start': [], 'end': []},
+                 'window': {'index': 0, 'kind': 'ordinary', 'repeat': 1, 'topic': 'document-events', 'start': [{'partition': 0, 'offset': 0}], 'end': [{'partition': 0, 'offset': 0}]},
                  'chunks': [], 'observed_rows': 0, 'captured_rows': 0, 'complete': True,
                  'first_missing_ordinal': None, 'gaps': []}
         summary, chunks = archive.capture_inventory(json.dumps(value).encode(), prefix, identity, 'verify', 1, value['capture_id'])

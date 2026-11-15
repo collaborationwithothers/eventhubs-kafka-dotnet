@@ -21,6 +21,25 @@ def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def window_source(run, phase, scenario, repeat, kind, end=0):
+    identity = {'run_id':run, 'scenario_id':scenario, 'configuration_id':phase}
+    start = [{'partition':0,'offset':0}]
+    finish = [{'partition':0,'offset':end}]
+    if kind == 'start':
+        job=f'{run}-{phase.lower()}-r{repeat}-start-line'
+        identity.update(instance_id=job, expected_instance_id=job, client_id=job)
+        return {'identity':identity,'verifier_commit':'a'*40,'topic':'document-events',
+                'partition_highs':[{'partition':0,'high':0}]}
+    if kind == 'sweep':
+        return {'run_id':run,'phase':phase,'scenario_id':scenario,'configuration_id':phase,
+                'source_commit':'a'*40,'topic':'document-events','partition_highs':[{'partition':0,'high':0}]}
+    if kind == 'abrupt':
+        identity.update(phase=phase,repeat=repeat,source_commit='a'*40,
+                        job_name=f'{run}-{phase.lower()}-r{repeat}-b10-abrupt-verify',pod_uid='uid')
+        return {'kind':'nonfinal_result','identity':identity,'data':{'start_line':start,'end_line':finish}}
+    return {'identity':identity,'verifier_commit':'a'*40,'start_line':start,'end_line':finish}
+
+
 class BlobCLI:
     def __init__(self):
         self.blobs = {}
@@ -112,6 +131,57 @@ class Harness:
     def close(self): self.tmp.cleanup()
 
 
+
+def publish_legacy(h, container, prefix, item, config, job, pod, idle=False):
+    identity = {'scenario_id': item, 'configuration_id': config, 'run_id': h.phase['run_id'], 'instance_id': pod}
+    common = {'schema_version': 1, 'mode': 'idle-observation' if idle else 'single-action', 'identity': identity,
+              'job_name': job, 'pod_name': pod, 'pod_uid': 'uid', 'source_commit': 'a'*40}
+    registration = encoded(common)
+    completion = encoded({**common, 'repeats_attempted': 5, 'handler_exit_code': 0, 'cleanup_completed': True})
+    repeats = []
+    for n in range(1, 6):
+        shared = {'repeat': n, 'client_id': f'{pod}-r{n}', 'settings': {}, 'omitted_keys': [],
+                  'client_errors': [], 'client_errors_dropped': 0, 'statistics': [], 'diagnostics': []}
+        if idle:
+            repeats.append({**shared, 'client_started_unix_ms': 0, 'first': None, 'idle_started_elapsed_ms': None,
+                            'idle_ended_elapsed_ms': None, 'second': None})
+        else:
+            repeats.append({**shared, 'action': 'assign_consume', 'terminal': True, 'elapsed_ms': 0,
+                            'terminal_unix_ms': None, 'result': 'success', 'error': None,
+                            'matched': {'topic':'document-events', 'partition':0, 'key_base64':'aw==',
+                                        'value_base64':'Qk9EWV9TRUNSRVQ='}})
+    capture = {**common, 'synthetic': True, 'managed_version':'2.16.0', 'native_version':'2.16.0', 'repeats': repeats}
+    if idle:
+        capture.update(run_kind=h.phase['run_kind'], topic='document-events', partition=0, payload_bytes=1000,
+                       idle_seconds=420, statistics_interval_ms=15000, max_statistics_reports=80)
+    for name, data in [(f'registrations/{pod}.json', registration), (f'instances/{pod}/capture.json', encoded(capture)),
+                       (f'instances/{pod}/completion.json', completion)]:
+        h.cli.put(container, prefix+name, data)
+
+
+def publish_v2_actor(h, job, pod, config, stage):
+    role = 'loadgen' if stage == 'seed' else 'probe' if config == 'C6' else 'enrichment-consumer'
+    h.status['modes'][-1]['role'] = role
+    identity = {'schema_version':2, 'mode':'single-action-v2', 'synthetic':True, 'run_id':h.phase['run_id'],
+                'scenario_id':'F06', 'configuration_id':config, 'stage':stage, 'source_commit':'a'*40,
+                'job_name':job, 'pod_name':pod, 'pod_uid':'uid', 'service_account':role}
+    repeats = [{'repeat':n, 'admission':'not_applicable_no_delivery', 'client_id':None, 'action':'assign_consume',
+                'terminal':False, 'elapsed_ms':0, 'terminal_unix_ms':None, 'settings':{}, 'omitted_keys':[],
+                'metadata_partitions':None, 'requested':None, 'delivery':None,
+                'read_observation':{'records_seen':0, 'eof_count':0, 'record':None}, 'result':None, 'error':None,
+                'client_errors':[], 'statistics':[], 'diagnostics':[]} for n in range(1, 6)]
+    repeats[0]['requested'] = {'topic':'document-events', 'partition_mode':'explicit', 'partition':0, 'offset':None,
+                               'key_base64':'aw==', 'value_base64':'Qk9EWV9TRUNSRVQ='}
+    capture = {**identity, 'managed_version':'2.16.0', 'native_version':'2.16.0', 'repeats':repeats,
+               'handler_exit_code':0, 'cleanup_completed':True, 'host_cleanup_completed':True}
+    folder = h.artifacts/job
+    raw = h.private/'probe-v2'/'raw'/job
+    raw.mkdir(parents=True)
+    (raw/f'{pod}.containers.{role}.log').write_bytes(b'PARCHWELL_PROBE_V2_REGISTRATION '+encoded(identity)+b'\n'+
+                                                     b'PARCHWELL_PROBE_V2_CAPTURE '+encoded(capture)+b'\n')
+    (folder/'collection-status.json').write_bytes(encoded({'complete':True, 'gaps':[]}))
+
+
 def complete_family(h, scenario):
     """Construct fixed publications with independently specified identities and references."""
     run = h.phase['run_id']
@@ -121,8 +191,7 @@ def complete_family(h, scenario):
             job=f'{run}-b01-{config.lower()}-single'
             pod=h.job('single-action',job,'B01',config)
             prefix=f'{run}/single-action/B01/{config}/'
-            for name in (f'registrations/{pod}.json',f'instances/{pod}/capture.json',f'instances/{pod}/completion.json'):
-                h.cli.put('single-action',prefix+name,b'published evidence')
+            publish_legacy(h, 'single-action', prefix, 'B01', config, job, pod)
             judge=job+'-judge'; jp=h.job('single-action-judge',judge,'B01',config)
             h.cli.put('verifier',prefix+'candidate.json',body)
             h.cli.put('verifier',prefix+'judge-completion.json',{'schema_version':1,'mode':'single-action-judge',
@@ -133,8 +202,7 @@ def complete_family(h, scenario):
         for config in ('C0','C1'):
             job=f'{run}-a02-{config.lower()}-idle'; pod=h.job('idle-observation',job,'A02',config)
             prefix=f'{run}/idle-observation/A02/{config}/'
-            for name in (f'registrations/{pod}.json',f'instances/{pod}/capture.json',f'instances/{pod}/completion.json'):
-                h.cli.put('ledger',prefix+name,b'published evidence')
+            publish_legacy(h, 'ledger', prefix, 'A02', config, job, pod, idle=True)
         job=run+'-idle-judge'; pod=h.job('idle-observation-judge',job)
         root=run+'/idle-observation/'; candidate=root+'A02/judge/candidate.json'
         h.cli.put('verifier',candidate,body)
@@ -152,7 +220,7 @@ def complete_family(h, scenario):
                     job=f'{child}-{config.lower()}-r{repeat}-{mode}'; pod=h.job(mode,job,item,config,repeat)
                     if mode=='start-line':
                         for leaf in ('start-line.json','broker-inventory.json','start-line-completion.json'):
-                            h.cli.put('verifier',root+leaf,b'published start')
+                            h.cli.put('verifier',root+leaf,window_source(child,config,item,repeat,'start') if leaf=='start-line.json' else b'published start')
                     elif mode=='loadgen':
                         proot=root+f'producer/{pod}/'
                         ident={'scenario_id':item,'configuration_id':config,'run_id':child,'instance_id':pod,'expected_instance_id':pod,'client_id':pod}
@@ -165,11 +233,12 @@ def complete_family(h, scenario):
                             'artifacts':[{'name':leaf,'length':3,'sha256':sha(b'abc')} for leaf in leaves]})
                         for leaf in leaves: h.cli.put('ledger',proot+'publication/'+leaf,b'abc')
                     else:
-                        for leaf in ('result.json','verify-completion.json'): h.cli.put('verifier',root+leaf,b'published verification')
+                        for leaf in ('result.json','verify-completion.json'):
+                            h.cli.put('verifier',root+leaf,window_source(child,config,item,repeat,'result') if leaf=='result.json' else b'published verification')
                         cid=f'verify-{job}-uid-w0000'; cp=root+'consumed-metadata/'+cid+'/'
                         ident={'run_id':child,'phase':config,'scenario_id':item,'configuration_id':config,'job_name':job,'pod_uid':'uid','source_commit':'a'*40}
                         h.cli.put('verifier',cp+'capture.json',{'schema_version':1,'capture_id':cid,'identity':ident,
-                            'window':{'index':0,'kind':'ordinary','repeat':repeat,'topic':'events','start':[],'end':[]},
+                            'window':{'index':0,'kind':'ordinary','repeat':repeat,'topic':'document-events','start':[{'partition':0,'offset':0}],'end':[{'partition':0,'offset':0}]},
                             'chunks':[],'observed_rows':0,'captured_rows':0,'complete':True,'first_missing_ordinal':None,'gaps':[]})
             judge=f'{child}-{config.lower()}-judge'; h.job('judge',judge,item,config)
             for leaf in ('candidate.json','judge-completion.json'): h.cli.put('verifier',f'{child}/{config}/'+leaf,body)
@@ -223,7 +292,7 @@ def complete_b10(h):
         root=f'{run}/C1/r{repeat}/'
         start=f'{run}-c1-r{repeat}-start-line'; h.job('start-line',start,repeat=repeat)
         for leaf in ('start-line.json','broker-inventory.json','start-line-completion.json'):
-            h.cli.put('verifier',root+leaf,b'fixed output')
+            h.cli.put('verifier',root+leaf,window_source(run,'C1','B10',repeat,'start') if leaf=='start-line.json' else b'fixed output')
         job=f'{run}-c1-r{repeat}-loadgen'; pod=h.job('loadgen',job,repeat=repeat)
         proot=root+f'producer/{pod}/'
         ident={'scenario_id':'B10','configuration_id':'C1','run_id':run,'instance_id':pod,'expected_instance_id':pod,'client_id':pod}
@@ -237,22 +306,22 @@ def complete_b10(h):
         for leaf in leaves: h.cli.put('ledger',proot+'publication/'+leaf,b'abc')
         verify=f'{run}-c1-r{repeat}-b10-abrupt-verify'; h.job('b10-abrupt-verify',verify,repeat=repeat)
         for leaf in ('b10-abrupt/nonfinal-result.json','b10-abrupt/verify-completion.json'):
-            h.cli.put('verifier',root+leaf,b'fixed output')
+            h.cli.put('verifier',root+leaf,window_source(run,'C1','B10',repeat,'abrupt') if leaf.endswith('nonfinal-result.json') else b'fixed output')
         cid=f'b10-abrupt-verify-{verify}-uid-w0000'; cp=root+'consumed-metadata/'+cid+'/'
         ident={'run_id':run,'phase':'C1','scenario_id':'B10','configuration_id':'C1','job_name':verify,'pod_uid':'uid','source_commit':'a'*40}
         h.cli.put('verifier',cp+'capture.json',{'schema_version':1,'capture_id':cid,'identity':ident,
-            'window':{'index':0,'kind':'ordinary','repeat':repeat,'topic':'events','start':[],'end':[]},
+            'window':{'index':0,'kind':'ordinary','repeat':repeat,'topic':'document-events','start':[{'partition':0,'offset':0}],'end':[{'partition':0,'offset':0}]},
             'chunks':[],'observed_rows':0,'captured_rows':0,'complete':True,'first_missing_ordinal':None,'gaps':[]})
     for mode,leaves in [('b10-sweep-line',('sweep-line.json','b10-sweep-line-completion.json')),
                         ('b10-final-sweep',('b10-final-sweep.json','b10-final-sweep-completion.json')),
                         ('judge',('candidate.json','judge-completion.json'))]:
         job=f'{run}-c1-{mode}'; h.job(mode,job)
-        for leaf in leaves: h.cli.put('verifier',f'{run}/C1/'+leaf,b'fixed output')
+        for leaf in leaves: h.cli.put('verifier',f'{run}/C1/'+leaf,window_source(run,'C1','B10',None,'sweep') if leaf=='sweep-line.json' else b'fixed output')
         if mode=='b10-final-sweep':
             cid=f'{mode}-{job}-uid-w0000'; cp=f'{run}/C1/consumed-metadata/{cid}/'
             ident={'run_id':run,'phase':'C1','scenario_id':'B10','configuration_id':'C1','job_name':job,'pod_uid':'uid','source_commit':'a'*40}
             h.cli.put('verifier',cp+'capture.json',{'schema_version':1,'capture_id':cid,'identity':ident,
-                'window':{'index':0,'kind':'final','repeat':None,'topic':'events','start':[],'end':[]},
+                'window':{'index':0,'kind':'final','repeat':None,'topic':'document-events','start':[{'partition':0,'offset':0}],'end':[{'partition':0,'offset':0}]},
                 'chunks':[],'observed_rows':0,'captured_rows':0,'complete':True,'first_missing_ordinal':None,'gaps':[]})
     return target
 
@@ -271,7 +340,9 @@ class InventoryIntegrationTests(unittest.TestCase):
                         job = f'probe-42-1-f06-{config.lower()}-{stage}'
                         mode = 'single-action-v2-judge' if stage == 'judge' else 'single-action-v2'
                         pod = h.job(mode, job, 'F06', config, stage=stage)
-                        if stage != 'judge': continue
+                        if stage != 'judge':
+                            publish_v2_actor(h, job, pod, config, stage)
+                            continue
                         prefix = f'probe-42-1/single-action-v2/F06/{config}/'
                         candidate = b'{"status":"failed"}'
                         h.cli.put('verifier', prefix+'candidate.json', candidate)
@@ -285,8 +356,8 @@ class InventoryIntegrationTests(unittest.TestCase):
                 self.assertEqual(1 if bad else 0, code)
                 self.assertEqual(not bad, receipt['archive_complete'])
                 self.assertEqual(5, len(manifest['expected_units']))
-                self.assertEqual(10, manifest['totals']['expected_objects']) # 4 publications, 5 pods, status
-                self.assertEqual(9 if bad else 10, manifest['totals']['verified_objects'])
+                self.assertEqual(16, manifest['totals']['expected_objects']) # 4 publications, 5 pods, phase status, 3 collection statuses and 3 stdout projections
+                self.assertEqual(15 if bad else 16, manifest['totals']['verified_objects'])
                 if bad:
                     self.assertIsNone(receipt['completion'])
                     self.assertTrue(any(g['code'] == 'source_hash_mismatch' for g in receipt['gaps']))
@@ -297,12 +368,87 @@ class InventoryIntegrationTests(unittest.TestCase):
                     self.assertEqual(sha(mb), receipt['manifest']['sha256'])
                     self.assertEqual(sha(cb), receipt['completion']['sha256'])
                     a.verify_controls(mb, cb, encoded(receipt))
+                    name='probe-v2/raw/probe-42-1-f06-c6-seed/probe-42-1-f06-c6-seed-pod.containers.loadgen.log'
+                    raw=(h.private/name).read_bytes()
+                    obj=next(o for o in manifest['objects'] if o['source']['name']==name)
+                    self.assertEqual('source_metadata_projection',obj['kind'])
+                    projected=h.cli.blobs[('archive123','run-evidence',obj['destination_name'])]
+                    self.assertEqual((len(projected),sha(projected)),(obj['bytes'],obj['sha256']))
+                    projection=json.loads(projected)
+                    self.assertEqual({'container':'runner','name':name,'etag':None,'bytes':len(raw),'sha256':sha(raw)},projection['source'])
+                    self.assertEqual('probe_v2_stdout',projection['format'])
+                    self.assertEqual({'is_null':False,'length':11,'sha256':sha(b'BODY_SECRET')},
+                                     projection['metadata']['capture']['repeats'][0]['requested']['value_base64'])
                     marker = json.loads(cb); marker['identity']['run_id'] = 'wrong-42-1'
                     with self.assertRaises(a.InvalidArchiveConfig): a.verify_controls(mb, encoded(marker), encoded(receipt))
                 archived = b''.join(v for (account, _, _), v in h.cli.blobs.items() if account == 'archive123')
                 self.assertNotIn(b'POD_SECRET', archived)
+                self.assertNotIn(b'BODY_SECRET', archived)
+                self.assertNotIn(b'Qk9EWV9TRUNSRVQ=', archived)
                 self.assertNotIn(b'ephemeral-output', archived)
                 self.assertEqual([], list((h.private/'archive').iterdir()))
+
+    def test_capture_window_mode_index_and_vectors_are_bound(self):
+        identity = {'run_id':'a01-42-1', 'phase':'C0', 'scenario_id':'A01', 'configuration_id':'C0',
+                    'job_name':'a01-42-1-c0-r1-verify', 'pod_uid':'uid', 'source_commit':'a'*40}
+        for mode, index, kind, repeat in [('verify',0,'ordinary',1), ('b10-abrupt-verify',0,'ordinary',1),
+                                           ('b10-final-sweep',0,'final',None), ('b10-sweep',0,'original',1),
+                                           ('b10-sweep',1,'late',1)]:
+            cid = f'{mode}-job-uid-w{index:04d}'
+            window = {'index':index, 'kind':kind, 'repeat':repeat, 'topic':'document-events',
+                      'start':[{'partition':0,'offset':4}], 'end':[{'partition':0,'offset':4}]}
+            capture = {'schema_version':1, 'capture_id':cid, 'identity':identity, 'window':window, 'chunks':[],
+                       'observed_rows':0, 'captured_rows':0, 'complete':True, 'first_missing_ordinal':None, 'gaps':[]}
+            result, _ = a.capture_inventory(encoded(capture), 'source/', identity, mode, repeat, cid)
+            self.assertTrue(result['complete']); self.assertEqual(0, result['rows'])
+            for field, value in [('topic','events'), ('index',index+2), ('kind','late' if kind != 'late' else 'original'),
+                                 ('start',[]), ('end',[]), ('end',[{'partition':1,'offset':4}]),
+                                 ('end',[{'partition':0,'offset':3}])]:
+                with self.subTest(mode=mode, index=index, field=field, value=value):
+                    invalid = {**capture, 'window':{**window, field:value}}
+                    with self.assertRaises(a.InvalidArchiveConfig):
+                        a.capture_inventory(encoded(invalid), 'source/', identity, mode, repeat, cid)
+
+    def test_capture_window_must_match_published_source_vectors(self):
+        h=self.harness('ledger-batch','ledger-batch','ledger-42-1','batch',items=['B06','B07'])
+        complete_family(h,'ledger-batch')
+        name='ledger-42-1-b06/C0/r1/result.json'
+        h.cli.put('verifier',name,window_source('ledger-42-1-b06','C0','B06',1,'result',end=1))
+        code, manifest, receipt=h.run()
+        self.assertEqual(1,code); self.assertFalse(receipt['archive_complete']); self.assertIsNone(receipt['completion'])
+        capture=next(c for c in manifest['captures'] if c['capture_id'].startswith('verify-ledger-42-1-b06-c0-r1-verify-'))
+        self.assertFalse(capture['complete']); self.assertEqual(0,capture['rows'])
+        self.assertTrue(any(g['code']=='capture_incomplete' for g in manifest['gaps']))
+
+    def test_v2_required_stdout_and_collection_fail_closed(self):
+        for fault in ('missing_log', 'truncated_log', 'missing_collection', 'failed_collection'):
+            with self.subTest(fault=fault):
+                h=self.harness('probe-batch-2','single-action','probe-42-1','smoke',items=['F06'],
+                               probe_v2_selection='authentication-controls',capture_authentication_metadata=True)
+                for config, stages in [('C6',('seed','action','judge')),('C9',('action','judge'))]:
+                    for stage in stages:
+                        job=f'probe-42-1-f06-{config.lower()}-{stage}'
+                        mode='single-action-v2-judge' if stage=='judge' else 'single-action-v2'
+                        pod=h.job(mode,job,'F06',config,stage=stage)
+                        if stage != 'judge':
+                            publish_v2_actor(h,job,pod,config,stage)
+                        else:
+                            prefix=f'probe-42-1/single-action-v2/F06/{config}/'; body=b'candidate'
+                            h.cli.put('verifier',prefix+'candidate.json',body)
+                            h.cli.put('verifier',prefix+'judge-completion.json',{'schema_version':2,'mode':mode,'run_id':'probe-42-1',
+                                'scenario_id':'F06','configuration_id':config,'source_commit':'a'*40,'job_name':job,'pod_name':pod,
+                                'pod_uid':'uid','candidate_name':prefix+'candidate.json','candidate_sha256':sha(body),
+                                'handler_exit_code':1,'cleanup_completed':True})
+                folder=h.artifacts/'probe-42-1-f06-c6-seed'
+                log=h.private/'probe-v2'/'raw'/'probe-42-1-f06-c6-seed'/'probe-42-1-f06-c6-seed-pod.containers.loadgen.log'
+                status=folder/'collection-status.json'
+                if fault=='missing_log': log.unlink()
+                elif fault=='truncated_log': log.write_bytes(log.read_bytes()[:-20])
+                elif fault=='missing_collection': status.unlink()
+                else: status.write_bytes(encoded({'complete':False,'gaps':['truncated']}))
+                code, manifest, receipt=h.run()
+                self.assertEqual(1,code); self.assertFalse(receipt['archive_complete']); self.assertIsNone(receipt['completion'])
+                self.assertTrue(any(g['code']=='monitoring_incomplete' for g in manifest['gaps']))
 
     def test_failed_ordinary_capture_zero_vs_missing_and_publication_references(self):
         h = self.harness('A01', 'C0', 'a01-42-1', 'scientific')
@@ -318,13 +464,15 @@ class InventoryIntegrationTests(unittest.TestCase):
         h.cli.put('ledger', root+'publication/index.json', {'schema_version':1,'identity':identity,'worker_status':'failed',
             'bookkeeping_complete':False,'worker_complete':False,'publication_complete':False,'artifacts':artifacts})
         for leaf in leaves: h.cli.put('ledger',root+'publication/'+leaf,b'abc')
+        h.job('start-line','a01-42-1-c0-r1-start-line',repeat=1)
+        h.cli.put('verifier','a01-42-1/C0/r1/start-line.json',window_source('a01-42-1','C0','A01',1,'start'))
         for repeat in (1,2):
             job=f'a01-42-1-c0-r{repeat}-verify'; h.job('verify',job,repeat=repeat)
-            prefix=f'a01-42-1/C0/r{repeat}/'; h.cli.put('verifier',prefix+'result.json',b'failed')
+            prefix=f'a01-42-1/C0/r{repeat}/'; h.cli.put('verifier',prefix+'result.json',window_source('a01-42-1','C0','A01',repeat,'result'))
             if repeat == 1:
                 cid=f'verify-{job}-uid-w0000'; cprefix=prefix+'consumed-metadata/'+cid+'/'
                 ident={'run_id':'a01-42-1','phase':'C0','scenario_id':'A01','configuration_id':'C0','job_name':job,'pod_uid':'uid','source_commit':'a'*40}
-                h.cli.put('verifier',cprefix+'capture.json',{'schema_version':1,'capture_id':cid,'identity':ident,'window':{'index':0,'kind':'ordinary','repeat':1,'topic':'events','start':[],'end':[]},'chunks':[],'observed_rows':0,'captured_rows':0,'complete':True,'first_missing_ordinal':None,'gaps':[]})
+                h.cli.put('verifier',cprefix+'capture.json',{'schema_version':1,'capture_id':cid,'identity':ident,'window':{'index':0,'kind':'ordinary','repeat':1,'topic':'document-events','start':[{'partition':0,'offset':0}],'end':[{'partition':0,'offset':0}]},'chunks':[],'observed_rows':0,'captured_rows':0,'complete':True,'first_missing_ordinal':None,'gaps':[]})
         code,m,r=h.run(); self.assertEqual(1,code); self.assertFalse(r['archive_complete'])
         self.assertEqual([(True,0),(False,None)],[(c['complete'],c['rows']) for c in m['captures']])
         objects={o['source']['name']:o for o in m['objects']}
@@ -347,6 +495,20 @@ class InventoryIntegrationTests(unittest.TestCase):
                 h.phase['run_id']=run
                 mode='b10-sweep' if legacy else 'b10-final-sweep'
                 job=f'{run}-c0-{mode}'; h.job(mode,job)
+                for repeat_number in range(1,6):
+                    start=f'{run}-c0-r{repeat_number}-start-line'; h.job('start-line',start,repeat=repeat_number)
+                    root=f'{run}/C0/r{repeat_number}/'
+                    h.cli.put('verifier',root+'start-line.json',window_source(run,'C0','B10',repeat_number,'start'))
+                    h.cli.put('verifier',root+'result.json',window_source(run,'C0','B10',repeat_number,'result'))
+                    if legacy:
+                        verify=f'{run}-c0-r{repeat_number}-verify'; h.job('verify',verify,repeat=repeat_number)
+                        cid=f'verify-{verify}-uid-w0000'
+                        ident={'run_id':run,'phase':'C0','scenario_id':'B10','configuration_id':'C0','job_name':verify,'pod_uid':'uid','source_commit':'a'*40}
+                        h.cli.put('verifier',root+f'consumed-metadata/{cid}/capture.json',{'schema_version':1,'capture_id':cid,'identity':ident,
+                            'window':{'index':0,'kind':'ordinary','repeat':repeat_number,'topic':'document-events','start':[{'partition':0,'offset':0}],'end':[{'partition':0,'offset':0}]},
+                            'chunks':[],'observed_rows':0,'captured_rows':0,'complete':True,'first_missing_ordinal':None,'gaps':[]})
+                h.job('b10-sweep-line',f'{run}-c0-b10-sweep-line')
+                h.cli.put('verifier',f'{run}/C0/sweep-line.json',window_source(run,'C0','B10',None,'sweep'))
                 for index in range(10 if legacy else 1):
                     repeat=index//2+1 if legacy else None
                     cid=f'{mode}-{job}-uid-w{index:04d}'
@@ -355,7 +517,7 @@ class InventoryIntegrationTests(unittest.TestCase):
                            'job_name':job,'pod_uid':'uid','source_commit':'a'*40}
                     kind='original' if legacy and index%2 == 0 else 'late' if legacy else 'final'
                     h.cli.put('verifier',prefix+'capture.json',{'schema_version':1,'capture_id':cid,'identity':ident,
-                        'window':{'index':index,'kind':kind,'repeat':repeat,'topic':'events','start':[],'end':[]},
+                        'window':{'index':index,'kind':kind,'repeat':repeat,'topic':'document-events','start':[{'partition':0,'offset':0}],'end':[{'partition':0,'offset':0}]},
                         'chunks':[],'observed_rows':0,'captured_rows':0,'complete':True,'first_missing_ordinal':None,'gaps':[]})
                 h.cli.put('verifier',f'{run}/C0/'+('b10-finalization.json' if legacy else 'b10-final-sweep.json'),b'failed final')
                 if not legacy:
@@ -371,7 +533,8 @@ class InventoryIntegrationTests(unittest.TestCase):
                     with patch.object(a.shutil,'disk_usage') as disk:
                         disk.return_value.free=2*a.ArchiveMaxObjectBytes+1048576+65536
                         a.collect_ordinary(collector,h.phase,h.status,{'ledger':'ledger','verifier':'verifier'},h.artifacts,Phase().mode_job)
-                    captures=collector.captures; objects=collector.objects
+                    self.assertEqual(5,sum(c['mode']=='verify' and c['complete'] for c in collector.captures))
+                    captures=[c for c in collector.captures if c['mode']==mode]; objects=collector.objects
                 self.assertEqual(10 if legacy else 1,len(captures))
                 self.assertEqual([f'{mode}-{job}-uid-w{i:04d}' for i in range(10 if legacy else 1)],
                                  [c['capture_id'] for c in captures])
@@ -460,7 +623,9 @@ class InventoryIntegrationTests(unittest.TestCase):
                 job=f'probe-42-1-f06-{config.lower()}-{stage}'
                 mode='single-action-v2-judge' if stage=='judge' else 'single-action-v2'
                 pod=h.job(mode,job,'F06',config,stage=stage)
-                if stage != 'judge': continue
+                if stage != 'judge':
+                    publish_v2_actor(h, job, pod, config, stage)
+                    continue
                 prefix=f'probe-42-1/single-action-v2/F06/{config}/'; body=b'candidate'
                 h.cli.put('verifier',prefix+'candidate.json',body)
                 h.cli.put('verifier',prefix+'judge-completion.json',{'schema_version':2,'mode':mode,'run_id':'probe-42-1',
@@ -469,7 +634,7 @@ class InventoryIntegrationTests(unittest.TestCase):
         h.cli.corrupt_marker=True
         code,m,r=h.run(); self.assertEqual(1,code); self.assertFalse(r['archive_complete'])
         self.assertIsNone(r['completion']); self.assertIsNotNone(r['manifest'])
-        self.assertEqual(10,m['totals']['verified_objects'])
+        self.assertEqual(16,m['totals']['verified_objects'])
         self.assertTrue(any(g['code']=='destination_hash_mismatch' for g in r['gaps']))
         self.assertTrue(any(key[0]=='archive123' and key[2].endswith('/candidate.json') for key in h.cli.blobs))
 
@@ -504,6 +669,38 @@ class InventoryIntegrationTests(unittest.TestCase):
                         marker=h.cli.blobs[('archive123','run-evidence',prefix+'archive-completion.json')]
                         self.assertEqual(sha(marker),r['completion']['sha256'])
                         a.verify_controls(manifest,marker,encoded(r))
+
+    def test_legacy_capture_projection_binds_source_and_excludes_body(self):
+        h=self.harness('probe-batch','single-action','probe-42-1','batch',items=['B01'])
+        complete_family(h,'probe-batch')
+        code, manifest, receipt=h.run()
+        self.assertEqual(0,code); self.assertTrue(receipt['archive_complete'])
+        name='probe-42-1/single-action/B01/C0/instances/probe-42-1-b01-c0-single-pod/capture.json'
+        source=h.cli.blobs[('source123','single-action',name)]
+        obj=next(o for o in manifest['objects'] if o['source']['name']==name)
+        self.assertEqual('source_metadata_projection',obj['kind'])
+        projected=h.cli.blobs[('archive123','run-evidence',obj['destination_name'])]
+        self.assertEqual((len(projected),sha(projected)),(obj['bytes'],obj['sha256']))
+        envelope=json.loads(projected)
+        self.assertEqual({'container':'single-action','name':name,'etag':'etag','bytes':len(source),'sha256':sha(source)},envelope['source'])
+        self.assertEqual('source_metadata_projection',envelope['kind']); self.assertEqual('single_action_capture',envelope['format'])
+        self.assertEqual({'is_null':False,'length':11,'sha256':sha(b'BODY_SECRET')},envelope['metadata']['repeats'][0]['matched']['value_base64'])
+        self.assertEqual('aw==',envelope['metadata']['repeats'][0]['matched']['key_base64'])
+        self.assertNotIn(b'Qk9EWV9TRUNSRVQ=',projected)
+        self.assertNotIn(b'BODY_SECRET',b''.join(v for (account, _, _),v in h.cli.blobs.items() if account=='archive123'))
+
+    def test_invalid_legacy_identity_is_retained_with_gap(self):
+        h=self.harness('idle-observation','idle-observation','idle-42-1','batch',items=['A02'])
+        complete_family(h,'idle-observation')
+        name='idle-42-1/idle-observation/A02/C0/instances/idle-42-1-a02-c0-idle-pod/capture.json'
+        key=('source123','ledger',name); value=json.loads(h.cli.blobs[key]); value['identity']['run_id']='wrong-42-1'
+        h.cli.blobs[key]=encoded(value)
+        code, manifest, receipt=h.run()
+        self.assertEqual(1,code); self.assertFalse(receipt['archive_complete']); self.assertIsNone(receipt['completion'])
+        obj=next(o for o in manifest['objects'] if o['source']['name']==name)
+        self.assertEqual('rejected',obj['state'])
+        self.assertEqual(h.cli.blobs[key],h.cli.blobs[('archive123','run-evidence',obj['destination_name'])])
+        self.assertTrue(any(g['code']=='monitoring_incomplete' for g in manifest['gaps']))
 
     def test_interruption_during_inventory_preserves_verified_objects_and_manifest(self):
         h=self.harness('probe-batch','single-action','probe-42-1','batch',items=['B01'])
@@ -544,9 +741,14 @@ class InventoryIntegrationTests(unittest.TestCase):
                 h.cli.put(container,name,b'available failed evidence')
                 code,m,r=h.run(); self.assertEqual(1,code); self.assertFalse(r['archive_complete'])
                 objects={o['source']['name']:o for o in m['objects']}
-                self.assertEqual('verified',objects[name]['state'])
                 self.assertTrue(any(o['state']=='not_started' for o in m['objects']))
                 self.assertTrue(any(g['code']=='monitoring_incomplete' for g in m['gaps']))
-                self.assertEqual(b'available failed evidence',h.cli.blobs[('archive123','run-evidence',objects[name]['destination_name'])])
+                if scenario == 'ledger-batch':
+                    self.assertEqual('verified',objects[name]['state'])
+                    self.assertEqual(b'available failed evidence',h.cli.blobs[('archive123','run-evidence',objects[name]['destination_name'])])
+                else:
+                    # Unknown captures may contain bodies: retain an explicit gap and never copy their bytes.
+                    self.assertNotEqual('verified',objects[name]['state'])
+                    self.assertNotIn(b'available failed evidence',b''.join(v for (account, _, _),v in h.cli.blobs.items() if account=='archive123'))
 
 if __name__ == '__main__': unittest.main()

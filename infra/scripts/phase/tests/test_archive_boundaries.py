@@ -200,7 +200,7 @@ class InventoryBoundaries(unittest.TestCase):
                     'job_name': 'job', 'pod_uid': 'pod', 'source_commit': 'a' * 40}
         prefix = 'run-1/C0/r1/consumed-metadata/verify-job-pod-w0000/'
         capture = {'schema_version': 1, 'capture_id': 'verify-job-pod-w0000', 'identity': identity,
-                   'window': {'index': 0, 'kind': 'ordinary', 'repeat': 1, 'topic': 'events', 'start': [], 'end': []},
+                   'window': {'index': 0, 'kind': 'ordinary', 'repeat': 1, 'topic': 'document-events', 'start': [{'partition': 0, 'offset': 0}], 'end': [{'partition': 0, 'offset': 0}]},
                    'chunks': [{'name': prefix + 'chunk-000001.jsonl', 'bytes': 1, 'sha256': 'a' * 64, 'rows': 1}],
                    'observed_rows': 1, 'captured_rows': 1, 'complete': True, 'first_missing_ordinal': None, 'gaps': []}
         return identity, prefix, capture
@@ -350,3 +350,135 @@ class InventoryBoundaries(unittest.TestCase):
                     self.assertFalse(written['archive_complete'])
                     self.assertIn('diagnostics_truncated', [gap['code'] for gap in written['gaps']])
                 archive.validate_receipt(written)
+
+class SecretOutputBoundaries(unittest.TestCase):
+    def test_private_inputs_cli_errors_and_spool_stay_out_of_public_outputs(self):
+        import contextlib
+        import io
+
+        fixture_spec = importlib.util.spec_from_file_location(
+            'archive_boundary_integration_fixture', Path(__file__).with_name('test_archive_inventory_integration.py'))
+        fixture = importlib.util.module_from_spec(fixture_spec)
+        fixture_spec.loader.exec_module(fixture)
+        fixture.a = archive
+        sentinels = {
+            'backend.conf': b'BACKEND_PRIVATE_SENTINEL_494',
+            'terraform.tfvars': b'TFVARS_PRIVATE_SENTINEL_494',
+            'oidc-request': b'OIDC_PRIVATE_SENTINEL_494',
+            'access-token': b'TOKEN_PRIVATE_SENTINEL_494',
+            'cli-error': b'CLI_ERROR_PRIVATE_SENTINEL_494',
+            'claim-check': b'CLAIM_CHECK_BODY_SENTINEL_494',
+        }
+        for fail in (False, True):
+            with self.subTest(cli_failure=fail):
+                h = fixture.Harness('A01', 'C0', 'a01-42-1', kind='smoke')
+                self.addCleanup(h.close)
+                for name in ('backend.conf', 'terraform.tfvars', 'oidc-request', 'access-token'):
+                    (h.private / name).write_bytes(sentinels[name])
+                h.cli.put('ledger', 'a01-42-1/C0/source.json', b'{"safe":"permitted metadata"}')
+                h.cli.put('claim-check', 'a01-42-1/C0/body', sentinels['claim-check'])
+                calls = []
+                cli = h.cli
+                def command(args, deadline):
+                    calls.append(args)
+                    if fail and args[3] == 'show' and args[args.index('--account-name') + 1] == 'source123':
+                        return 1, b'', sentinels['cli-error']
+                    return cli(args, deadline)
+                h.cli = command
+                def collect(collector, phase, status, containers, artifacts, job_name):
+                    collector.source('ledger', 'a01-42-1/C0/source.json', 'ledger')
+                    return []
+                stdout, stderr = io.StringIO(), io.StringIO()
+                with patch.object(archive, 'collect_ordinary', side_effect=collect), \
+                        patch.object(archive, 'ordinary_fixed_inventory', return_value=[]), \
+                        patch.object(archive, 'ordinary_units', return_value=([], [])), \
+                        contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                    _, value, result = h.run()
+                self.assertEqual(not fail, result['archive_complete'])
+                self.assertEqual(not fail, value['archive_complete'])
+                public = b'\n'.join(p.read_bytes() for p in h.artifacts.rglob('*') if p.is_file())
+                output = stdout.getvalue().encode() + stderr.getvalue().encode()
+                archived = b'\n'.join(data for (account, _, _), data in cli.blobs.items() if account == 'archive123')
+                for name, secret in sentinels.items():
+                    with self.subTest(secret=name):
+                        self.assertNotIn(secret, public)
+                        self.assertNotIn(secret, output)
+                        self.assertNotIn(secret, archived)
+                self.assertFalse(any('claim-check' in args for args in calls))
+                transfer_paths = [Path(args[args.index('--file') + 1]) for args in calls if '--file' in args]
+                self.assertTrue(transfer_paths)
+                for path in transfer_paths:
+                    self.assertTrue(path.is_relative_to(h.private / 'archive'))
+                    self.assertFalse(path.is_relative_to(h.artifacts))
+
+    def test_pod_and_phase_projections_use_closed_safe_fields(self):
+        secret = 'POD_CONFIG_SECRET_494'
+        pods = {'items': [{'metadata': {'name': 'worker-1', 'uid': 'uid-1', 'annotations': {'token': secret}},
+                           'spec': {'containers': [{'env': [{'value': secret}]}]},
+                           'status': {'phase': 'Failed', 'message': secret,
+                                      'conditions': [{'type': 'Ready', 'status': 'False', 'message': secret},
+                                                     {'type': secret, 'status': 'True'}],
+                                      'containerStatuses': [{'name': 'worker', 'state': {'terminated': {
+                                          'exitCode': 3, 'message': secret}}, 'containerID': secret}]}}]}
+        projection = json.loads(archive.project_pods(json.dumps(pods).encode()))
+        self.assertEqual({'schema_version': 1, 'kind': 'pod_diagnostics', 'items': [
+            {'name': 'worker-1', 'uid': 'uid-1', 'phase': 'Failed',
+             'conditions': [{'type': 'Ready', 'status': 'False'}],
+             'containers': [{'kind': 'containerStatuses', 'name': 'worker', 'terminated_exit_code': 3}]}]}, projection)
+        status = {'run_id': 'a01-42-1', 'phase': 'C0', 'secret': secret,
+                  'modes': [{'job': 'worker-1', 'mode': 'verify', 'repeat': 1, 'outcome': 'failed',
+                             'apply': 0, 'error': secret}]}
+        projected = json.loads(archive.project_phase_status(status))
+        self.assertEqual({'schema_version': 1, 'kind': 'phase_status_diagnostics', 'run_id': 'a01-42-1',
+                          'phase': 'C0', 'modes': [{'job': 'worker-1', 'mode': 'verify', 'repeat': 1,
+                              'outcome': 'failed', 'render': None, 'apply': 0, 'wait': None,
+                              'collect': None, 'delete': None, 'confirm': None}]}, projected)
+        self.assertNotIn(secret, json.dumps(projection) + json.dumps(projected))
+
+    def test_overlapping_private_and_uploaded_directories_are_rejected(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            private = root / 'private'; private.mkdir()
+            nested = private / 'uploaded'; nested.mkdir()
+            for private_path, artifacts_path in ((private, private), (private, nested), (nested, private)):
+                env = {'PARCHWELL_PRIVATE_DIRECTORY': str(private_path),
+                       'PARCHWELL_ARTIFACT_DIRECTORY': str(artifacts_path),
+                       'PARCHWELL_ARCHIVE_DIRECTORY': str(private_path / 'archive'),
+                       'PARCHWELL_ARCHIVE_MANIFEST_DIRECTORY': str(artifacts_path / 'archive'),
+                       'PARCHWELL_ARCHIVE_MANIFEST_PATH': str(artifacts_path / 'archive' / 'archive-manifest.json')}
+                with self.subTest(private=private_path, artifacts=artifacts_path), self.assertRaises(archive.InvalidArchiveConfig):
+                    archive.load_context(env)
+
+    def test_body_projection_preserves_header_and_nonbody_fields(self):
+        import base64
+        import io
+        spec = importlib.util.spec_from_file_location('archive_json_sentinel', Path(__file__).resolve().parents[1] / 'archive_json.py')
+        projection = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(projection)
+        body = b'EXCLUDED_MESSAGE_BODY_SENTINEL_494'
+        encoded_body = base64.b64encode(body).decode()
+        header = base64.b64encode(b'RETAINED_HEADER_SENTINEL_494').decode()
+        source = {'identity': {'run_id': 'a01-42-1'}, 'repeats': [
+            {'repeat': 1, 'matched': {'value_base64': encoded_body, 'key': 'retained-key',
+                                      'headers': [{'key': 'trace', 'value_base64': header}]},
+             'requested': {'value_base64': ''}, 'read_observation': {'record': {'value_base64': None}}}]}
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / 'source.json'
+            path.write_text(json.dumps(source))
+            sink = io.BytesIO()
+            projection.project(path, float('inf'), sink)
+            output = sink.getvalue()
+            result = json.loads(output)
+            row = result['repeats'][0]
+            self.assertEqual({'is_null': False, 'length': len(body), 'sha256': hashlib.sha256(body).hexdigest()}, row['matched']['value_base64'])
+            self.assertEqual({'is_null': False, 'length': 0, 'sha256': hashlib.sha256(b'').hexdigest()}, row['requested']['value_base64'])
+            self.assertEqual({'is_null': True, 'length': None, 'sha256': None}, row['read_observation']['record']['value_base64'])
+            self.assertEqual('retained-key', row['matched']['key'])
+            self.assertEqual([{'key': 'trace', 'value_base64': header}], row['matched']['headers'])
+            self.assertNotIn(body, output)
+            self.assertNotIn(encoded_body.encode(), output)
+            self.assertIn(header.encode(), output)
+            source['repeats'][0]['unrecognized'] = {'value_base64': encoded_body}
+            path.write_text(json.dumps(source))
+            with self.assertRaises(projection.Invalid):
+                projection.project(path, float('inf'), io.BytesIO())

@@ -1,6 +1,7 @@
 """Offline contract tests for the shared scenario workflow and batch smoke."""
 from pathlib import Path
 import importlib.util
+import copy
 import hashlib
 import json
 import os
@@ -344,9 +345,23 @@ esac
                         self.assertEqual(0 if failed is None else 1, results[1])
 
     def test_no_obsolete_text(self):
+        # Only the newly separated archive observations may suppress a step failure.
+        # Preserve the original prohibition for every scientific, cleanup and other step/job.
+        checked = copy.deepcopy(self.workflow)
+        allowed = {(job, step) for job in ('probe', 'full-C0', 'full-C3', 'batch')
+                   for step in ('archive', 'upload_archive_manifest', 'report')}
+        found = set()
+        for job_name, job in checked['jobs'].items():
+            for step in job.get('steps', []):
+                pair = (job_name, step.get('id'))
+                if pair in allowed:
+                    self.assertEqual('true', step.pop('continue-on-error'))
+                    found.add(pair)
+        self.assertEqual(allowed, found)
         for forbidden in ('Parchwell.Runner', 'A01_OUTPUT', 'PARCHWELL_COST', 'READINESS',
-                          'PARCHWELL_DEBUG_FAILURES', '|| true'):
-            self.assertNotIn(forbidden, self.text)
+                          'PARCHWELL_DEBUG_FAILURES', 'continue-on-error', '|| true'):
+            subject = yaml.dump(checked) if forbidden == 'continue-on-error' else self.text
+            self.assertNotIn(forbidden, subject)
 
     def test_selector_shell_paths_with_stubbed_commands(self):
         allowed = self.steps(self.jobs['full-C3'])['allowed']['run']

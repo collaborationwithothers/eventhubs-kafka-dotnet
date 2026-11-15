@@ -130,9 +130,14 @@ def collect(collector, phase, status, containers, artifacts):
             container = containers['single_action'] if scenario == 'probe-batch' else containers['ledger']
             pod = u['pod_name']
             if pod:
+                expected = {'run_id': run, 'scenario_id': item, 'configuration_id': config, 'job_name': job,
+                            'pod_name': pod, 'pod_uid': u['pod_uid'], 'source_commit': phase['source_commit']}
                 for name, typ in ((f'registrations/{pod}.json','registration'),
                                   (f'instances/{pod}/capture.json','capture'), (f'instances/{pod}/completion.json','completion')):
-                    source(u, container, prefix + name, typ)
+                    if typ == 'capture' and mode == 'single-action':
+                        collector.legacy_capture_projection(container, prefix + name, mode, expected, kind)
+                    else:
+                        collector.legacy_source(container, prefix + name, typ, mode, expected, kind)
             elif u['state'] == 'started':
                 collector.gap('monitoring_incomplete', 'capture registration identity', unit=job)
             if scenario == 'probe-batch':
