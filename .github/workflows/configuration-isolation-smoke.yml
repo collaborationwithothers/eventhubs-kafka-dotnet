@@ -936,16 +936,44 @@ jobs:
               lines.append('Job observation start UTC: unavailable')
           lines.extend(name + ': ' + steps.get(name, {}).get('outcome', 'missing') for name in names)
           probe_directory = pathlib.Path(os.environ['RUNNER_TEMP']) / 'configuration-isolation-probes'
+          def cluster_terminal_failure(probe_phase, context):
+              order = (('eventhubs', 'dns'), ('blob', 'dns'), ('eventhubs', 'tcp'), ('blob', 'tcp'))
+              def unique(pairs):
+                  result = {}
+                  for key, value in pairs:
+                      if key in result: raise ValueError()
+                      result[key] = value
+                  return result
+              failure = None
+              for index, (service, operation) in enumerate(order):
+                  keys = (probe_phase, context, 'cluster', service, operation)
+                  path = probe_directory / ('-'.join(keys) + '.json')
+                  if not path.exists():
+                      if failure is None: return None
+                      continue
+                  if failure is not None: return None
+                  try:
+                      data = json.loads(path.read_text(), object_pairs_hook=unique)
+                      if set(data) != {'phase', 'context', 'perspective', 'service', 'operation', 'status', 'reason'}: return None
+                      if tuple(data[k] for k in ('phase', 'context', 'perspective', 'service', 'operation')) != keys: return None
+                      if (data['status'], data['reason']) == ('failed', 'command_failed'): failure = index
+                      elif (data['status'], data['reason']) != ('passed', 'none'): return None
+                  except (OSError, ValueError, TypeError, KeyError):
+                      return None
+              return failure
           for probe_phase in ('C0', 'C1'):
               for context in ('settings', 'idle', 'active'):
                   for perspective in ('runner', 'cluster'):
                       if context == 'settings' and (probe_phase != 'C1' or perspective != 'runner'): continue
                       attempted = (probe_directory / (probe_phase + '-' + context + '-cluster.attempted')).exists()
+                      terminal = cluster_terminal_failure(probe_phase, context) if perspective == 'cluster' and attempted else None
                       for service in ('eventhubs', 'blob'):
                           for operation in ('dns', 'tcp'):
                               keys = (probe_phase, context, perspective, service, operation)
                               path = probe_directory / ('-'.join(keys) + '.json')
-                              status = 'unavailable' if perspective == 'cluster' and attempted else 'not_attempted'
+                              order = (('eventhubs', 'dns'), ('blob', 'dns'), ('eventhubs', 'tcp'), ('blob', 'tcp'))
+                              after_failure = terminal is not None and order.index((service, operation)) > terminal
+                              status = 'unavailable' if perspective == 'cluster' and attempted and not after_failure else 'not_attempted'
                               reason = 'unavailable' if status == 'unavailable' else 'none'
                               if path.exists():
                                   try:

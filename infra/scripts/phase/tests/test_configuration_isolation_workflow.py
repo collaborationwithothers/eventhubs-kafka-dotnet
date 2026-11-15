@@ -531,11 +531,15 @@ service=eventhubs
                     env = {**os.environ, 'PATH': temp + ':' + os.environ['PATH'], 'FAIL': failing, 'CALLS': str(directory / 'calls')}
                     result = subprocess.run(['sh', '-c', namespace['command']], env=env, capture_output=True)
                     self.assertNotEqual(0, result.returncode)
-                    expected = failing.replace(' mixed', ' dns') + ' failed'
-                    self.assertEqual(expected, result.stdout.decode().splitlines()[-1])
+                    operation = failing.replace(' mixed', ' dns')
+                    order = ['eventhubs dns', 'blob dns', 'eventhubs tcp', 'blob tcp']
+                    index = order.index(operation)
+                    self.assertEqual([row + ' passed' for row in order[:index]] + [operation + ' failed'],
+                                     result.stdout.decode().splitlines())
                     self.assertNotIn(b'10.0.0.', result.stdout)
-                    if (directory / 'calls').exists():
-                        self.assertTrue(all(row.startswith('-z -w 15 ') for row in (directory / 'calls').read_text().splitlines()))
+                    expected_calls = ['-z -w 15 10.0.0.1 9093', '-z -w 15 10.0.0.2 443'][:max(0, index - 1)]
+                    actual_calls = (directory / 'calls').read_text().splitlines() if (directory / 'calls').exists() else []
+                    self.assertEqual(expected_calls, actual_calls)
 
     def test_runner_failure_reasons_and_private_recording_errors(self):
         import socket
@@ -622,6 +626,39 @@ service=eventhubs
                     else:
                         self.assertFalse(target.exists())
                     self.assertNotIn('private exception', ''.join(path.read_text() for path in directory.iterdir()))
+
+    def test_cluster_receipt_marks_only_proven_later_operations_not_attempted(self):
+        receipt = self.by_id['receipt']['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
+        order = [('eventhubs', 'dns'), ('blob', 'dns'), ('eventhubs', 'tcp'), ('blob', 'tcp')]
+        for phase in ('C0', 'C1'):
+            for context in ('idle', 'active'):
+                for failure_index in range(4):
+                    with self.subTest(phase=phase, context=context, failure=failure_index), tempfile.TemporaryDirectory() as temp:
+                        directory = Path(temp, 'configuration-isolation-probes')
+                        directory.mkdir()
+                        (directory / (phase + '-' + context + '-cluster.attempted')).touch()
+                        for index, (service, operation) in enumerate(order[:failure_index + 1]):
+                            key = (phase, context, 'cluster', service, operation)
+                            row = dict(zip(('phase', 'context', 'perspective', 'service', 'operation'), key))
+                            row.update(status='failed' if index == failure_index else 'passed', reason='command_failed' if index == failure_index else 'none')
+                            (directory / ('-'.join(key) + '.json')).write_text(json.dumps(row))
+                        with mock.patch.dict(os.environ, {**settings_environment(temp), 'STEP_RESULTS': '{}'}):
+                            exec(compile(receipt, 'cluster receipt', 'exec'), {})
+                        text = Path(temp, 'configuration-smoke-receipt', 'receipt.txt').read_text()
+                        for index, (service, operation) in enumerate(order):
+                            status, reason = (('passed', 'none') if index < failure_index else
+                                              ('failed', 'command_failed') if index == failure_index else ('not_attempted', 'none'))
+                            self.assertIn(f'{phase} {context} cluster {service} {operation}: {status} reason={reason}', text)
+                        if failure_index:
+                            first = directory / (phase + '-' + context + '-cluster-eventhubs-dns.json')
+                            first.unlink()
+                            with mock.patch.dict(os.environ, {**settings_environment(temp), 'STEP_RESULTS': '{}'}):
+                                exec(compile(receipt, 'gap receipt', 'exec'), {})
+                            text = Path(temp, 'configuration-smoke-receipt', 'receipt.txt').read_text()
+                            self.assertIn(f'{phase} {context} cluster eventhubs dns: unavailable reason=unavailable', text)
+                            if failure_index < 3:
+                                service, operation = order[failure_index + 1]
+                                self.assertIn(f'{phase} {context} cluster {service} {operation}: unavailable reason=unavailable', text)
 
     def test_probe_receipt_rejects_contamination_and_preserves_observations(self):
         code = self.by_id['receipt']['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
