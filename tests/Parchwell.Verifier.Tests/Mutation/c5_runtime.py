@@ -715,17 +715,89 @@ def approved_six_tail(path, record, shard, item, source):
     except (KeyError, TypeError, ValueError):
         return False
 
+def provenance_shape(contexts):
+    """Validate the complete measured maps and explicit current-input assessments."""
+    if not isinstance(contexts, dict) or not contexts:
+        raise ValueError('missing timing provenance')
+    for binding, context in contexts.items():
+        if not isinstance(binding, str) or not HEX.fullmatch(binding) or not isinstance(context, dict) or set(context) != {'shared_inputs', 'target_sources', 'assessments'}:
+            raise ValueError('invalid timing provenance')
+        for key in ('shared_inputs', 'target_sources'):
+            mapping = context[key]
+            if not isinstance(mapping, dict) or any(not isinstance(p, str) or not p or not isinstance(h, str) or not HEX.fullmatch(h) for p, h in mapping.items()):
+                raise ValueError('invalid measured inputs')
+        assessments = context['assessments']
+        if not isinstance(assessments, dict) or set(assessments) != {'shared_inputs', 'target_sources'}:
+            raise ValueError('invalid assessments')
+        for changes in assessments.values():
+            if not isinstance(changes, dict):
+                raise ValueError('invalid assessments')
+            for path, item in changes.items():
+                if not isinstance(path, str) or not path or not isinstance(item, dict) or set(item) != {'current_sha256', 'basis'}:
+                    raise ValueError('invalid assessment')
+                current = item['current_sha256']
+                if current is not None and (not isinstance(current, str) or not HEX.fullmatch(current)):
+                    raise ValueError('invalid assessment hash')
+                if not isinstance(item['basis'], list) or not item['basis'] or any(not isinstance(b, str) or not b.strip() for b in item['basis']):
+                    raise ValueError('invalid assessment basis')
+        measured = {k: context[k] for k in ('shared_inputs', 'target_sources')}
+        if digest(canonical(measured)) != binding:
+            raise ValueError('timing provenance hash mismatch')
+
+
+def evidence_matches_target(path, record):
+    """At least one timing or geometry record must name a commit containing this source."""
+    for evidence in record['evidence']:
+        commit = evidence['source_commit']
+        if evidence['kind'] not in {'hosted_complete', 'local_probe', 'partial_timing'} or not re.fullmatch(r'[0-9a-f]{40}', commit):
+            continue
+        try:
+            if digest(blob(commit, 'src/Parchwell.Verifier/' + path)) == record['source_sha256']:
+                return True
+        except subprocess.CalledProcessError:
+            continue
+    return False
+
+
+def provenance_errors(context, shared, targets, owner):
+    """Account for every difference without renewing the estimate's own target."""
+    errors = set()
+    current_maps = {'shared_inputs': shared, 'target_sources': targets}
+    if context['target_sources'].get(owner) != targets.get(owner):
+        errors.add('stale_inputs')
+    for key, current in current_maps.items():
+        measured = context[key]
+        changes = context['assessments'][key]
+        expected = {p for p in measured.keys() | current.keys() if measured.get(p) != current.get(p)}
+        if set(changes) != expected:
+            errors.add('unaccounted_inputs')
+        for path, item in changes.items():
+            if path not in expected or item['current_sha256'] != current.get(path):
+                errors.add('unaccounted_inputs')
+            if key == 'shared_inputs' and path in NON_RENEWABLE:
+                errors.add('invalid_renewal')
+            if key == 'target_sources' and path == owner:
+                errors.add('invalid_renewal')
+    return errors
+
+
 def shape(config):
     if not isinstance(config, dict) or set(config) not in ({'schema_version', 'budget_seconds', 'shared_inputs', 'targets'},
-                                                 {'schema_version', 'budget_seconds', 'shared_inputs', 'targets', 'renewals'}):
+                                                 {'schema_version', 'budget_seconds', 'shared_inputs', 'targets', 'renewals'},
+                                                 {'schema_version', 'budget_seconds', 'shared_inputs', 'targets', 'timing_inputs'}):
         raise ValueError('invalid schema')
-    if type(config['schema_version']) is not int or config['schema_version'] != 1 or type(config['budget_seconds']) is not int or config['budget_seconds'] != 1800:
+    if type(config['schema_version']) is not int or config['schema_version'] not in (1, 2) or type(config['budget_seconds']) is not int or config['budget_seconds'] != 1800:
         raise ValueError('unsupported schema or budget')
     if not isinstance(config['shared_inputs'], dict) or not isinstance(config['targets'], dict):
         raise ValueError('invalid maps')
     for path, sha in config['shared_inputs'].items():
         if not isinstance(path, str) or not isinstance(sha, str) or not HEX.fullmatch(sha):
             raise ValueError('invalid input hash')
+    version = config['schema_version']
+    if (version == 1 and 'timing_inputs' in config) or (version == 2 and ('timing_inputs' not in config or 'renewals' in config)):
+        raise ValueError('invalid version fields')
+    if version == 2:
+        provenance_shape(config['timing_inputs'])
     renewals = config.get('renewals', {})
     if not isinstance(renewals, dict):
         raise ValueError('invalid renewals')
@@ -1038,6 +1110,7 @@ def validate(config, shared, targets, source, matrix):
             measured[path] = old
     timing_hash = digest(canonical({'shared_inputs': measured, 'target_sources': target_sources}))
     all_shards = {}
+    used_contexts = set()
     shard_fields = {'selection_sha256', 'timing_inputs_sha256', 'main_mutants', 'main_work_seconds',
                     'parallelism', 'setup_seconds', 'isolated_seconds', 'estimated_seconds', 'basis'}
     for path, record in config['targets'].items():
@@ -1049,7 +1122,7 @@ def validate(config, shared, targets, source, matrix):
         if provisional:
             if not native_geometry_valid(path, record, source[path]):
                 reasons.add('missing_measurement')
-            if timing_hash != PROVISIONAL_TIMING_INPUTS_HASH:
+            if config['schema_version'] == 1 and timing_hash != PROVISIONAL_TIMING_INPUTS_HASH:
                 reasons.add('stale_inputs')
             source_hash, artifact, evidence_hash = PROVISIONAL_TARGETS[path]
             if record['source_sha256'] != source_hash:
@@ -1066,6 +1139,8 @@ def validate(config, shared, targets, source, matrix):
                 reasons.add('missing_measurement')
         if not record['evidence']:
             reasons.add('missing_measurement')
+        elif config['schema_version'] == 2 and not evidence_matches_target(path, record):
+            reasons.add('missing_measurement')
         for evidence in record['evidence']:
             if evidence['kind'] == 'local_probe' and not all(
                     re.search(r'\b' + field + r'=\S+', evidence['note'])
@@ -1078,8 +1153,19 @@ def validate(config, shared, targets, source, matrix):
             if not isinstance(item, dict) or set(item) != shard_fields:
                 reasons.add('invalid_estimate')
                 continue
-            if item['timing_inputs_sha256'] != timing_hash:
-                reasons.add('stale_inputs')
+            binding = item['timing_inputs_sha256']
+            if config['schema_version'] == 1:
+                if binding != timing_hash:
+                    reasons.add('stale_inputs')
+            else:
+                context = config['timing_inputs'].get(binding)
+                if context is None:
+                    reasons.add('missing_measurement')
+                else:
+                    used_contexts.add(binding)
+                    reasons.update(provenance_errors(context, shared, targets, path))
+                if provisional and binding != PROVISIONAL_TIMING_INPUTS_HASH:
+                    reasons.add('stale_inputs')
             if shard in workflow.SHARDS and workflow.SHARDS[shard] == path:
                 selection = digest(canonical(workflow.shard_config(shard, source[path])))
                 if item['selection_sha256'] != selection:
@@ -1129,6 +1215,8 @@ def validate(config, shared, targets, source, matrix):
             if (item['estimated_seconds'] > 1800
                     and not approved_static_owner(path, record, shard, item, source[path])):
                 reasons.add('shard_over_budget')
+    if config['schema_version'] == 2 and used_contexts != set(config['timing_inputs']):
+        reasons.add('unaccounted_inputs')
     if all_shards != workflow.SHARDS:
         reasons.add('layout_mismatch')
     return reasons
@@ -1175,6 +1263,11 @@ def check(base, head, qualification):
         result = {'status': 'provisional', 'reasons': [], 'pending_targets': pending} if pending else {'status': 'qualified', 'reasons': []}
         if config.get('renewals'):
             result['renewed_inputs'] = sorted(config['renewals'])
+        if config['schema_version'] == 2:
+            assessed = {f'{kind}:{path}' for context in config['timing_inputs'].values()
+                        for kind, changes in context['assessments'].items() for path in changes}
+            if assessed:
+                result['assessed_inputs'] = sorted(assessed)
         return result
     except (ValueError, TypeError, KeyError, OSError, subprocess.CalledProcessError, ET.ParseError, SyntaxError, UnicodeError, OverflowError):
         return {'status': 'rejected', 'reasons': ['invalid_input']}
@@ -1190,6 +1283,8 @@ def renew(head, qualification, basis):
     path = Path(qualification)
     config = json.loads(path.read_text(), parse_constant=lambda value: (_ for _ in ()).throw(ValueError('nonfinite JSON')))
     shape(config)
+    if config['schema_version'] != 1:
+        raise ValueError('renew supports schema version 1 only; assess version 2 provenance explicitly')
     shared, targets = input_maps(head)
     if set(config['targets']) != set(targets) or any(config['targets'][p]['source_sha256'] != targets[p] for p in targets):
         raise ValueError('target sources changed')
