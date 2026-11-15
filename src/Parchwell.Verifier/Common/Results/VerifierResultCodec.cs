@@ -86,6 +86,7 @@ internal static class VerifierResultCodec
             if (result.BatchingRecordedEvidence is not null) WriteBatchingRecordedEvidence(writer, result.BatchingRecordedEvidence);
             WriteJudgedHashes(writer, result.JudgedFileHashes);
             WriteDiagnostics(writer, result.Diagnostics);
+            if (result.Consumer is JsonElement consumer) { writer.WritePropertyName("consumer"); consumer.WriteTo(writer); }
             writer.WriteEndObject();
         }
 
@@ -236,7 +237,7 @@ internal static class VerifierResultCodec
 
         return ParseResult<VerifierResult>.Success(new VerifierResult(
             schemaVersion, identity!, generatorVersion!, runtimeVersions!, verifierCommit!, verifierKafkaVersion!, verifierLibrdkafkaVersion!,
-            status, failedChecks!, startLine, endLine, drainTime, drainElapsed, counts, brokerCount, fidelity, probe, a01, hashes!, diagnostics!, workload, b04, batching, b10Intake, classificationFinal, windowChecksComplete, b10Observations));
+            status, failedChecks!, startLine, endLine, drainTime, drainElapsed, counts, brokerCount, fidelity, probe, a01, hashes!, diagnostics!, workload, b04, batching, b10Intake, classificationFinal, windowChecksComplete, b10Observations, root.TryGetProperty("consumer", out JsonElement consumer) ? consumer.Clone() : null));
     }
 
     private static void ValidateForWrite(VerifierResult result, OutputLimits limits)
@@ -1068,7 +1069,7 @@ internal static class VerifierResultCodec
         var fields = new HashSet<string>(StringComparer.Ordinal)
         {
             "generator_version", "runtime_versions", "start_line", "end_line", "drain_time", "drain_elapsed_at_stop", "drain_elapsed_at_stop_lower_bound",
-            "broker_count", "configuration_fidelity", "probe_observation", "a01_recorded_evidence", "workload_observation", "b04_recorded_evidence", "batching_recorded_evidence", "b10_intake", "classification_final", "b10_window_checks_complete", "b10_producer_observations"
+            "broker_count", "configuration_fidelity", "probe_observation", "a01_recorded_evidence", "workload_observation", "b04_recorded_evidence", "batching_recorded_evidence", "b10_intake", "classification_final", "b10_window_checks_complete", "b10_producer_observations", "consumer"
         };
         fields.UnionWith(CountFields);
         return fields;

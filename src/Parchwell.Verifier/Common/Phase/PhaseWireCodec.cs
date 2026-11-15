@@ -59,8 +59,7 @@ internal static partial class PhaseWireCodec
         if (!PhaseIdentity.IsRunId(value.Identity.RunId) || value.RepeatNumber is < 1 or > 5 ||
             value.JobName != PhaseIdentity.JobName(value.Identity.RunId, value.Phase, value.RepeatNumber))
             throw new PhaseWireIdentityException("Producer completion receipt does not bind to its repeat.");
-        if (!ScenarioPhases.TryGetConfiguration(value.Identity.ScenarioId, value.Phase, out string? expectedConfiguration) ||
-            value.Identity.ConfigurationId != expectedConfiguration ||
+        if (!MatchesPhaseConfiguration(value.Identity.ScenarioId, value.Phase, value.Identity.ConfigurationId) ||
             value.Identity.InstanceId != value.Identity.ExpectedInstanceId)
             throw new PhaseWireIdentityException("Producer completion receipt identity does not match its phase.");
         ValidateRegistration(new ProducerRegistration(value.SchemaVersion, value.Identity, value.Phase, value.RepeatNumber, value.JobName, value.PodName, value.PodUid, value.SourceCommit));
@@ -156,13 +155,14 @@ internal static partial class PhaseWireCodec
         if (r.Mode == "b10-abrupt-verify" &&
             (r.ScenarioId != "B10" || r.ConfigurationId != "C1" || r.Phase != "C1" || r.Repeat is not (>= 1 and <= 5)))
             throw new FormatException("B10 abrupt verifier receipt coordinates are invalid.");
-        if (r.Mode == "start-line" && (!ScenarioPhases.TryGetConfiguration(r.ScenarioId, r.Phase, out string? startConfiguration) || r.ConfigurationId != startConfiguration ||
+        if (r.Mode == "start-line" && (!MatchesPhaseConfiguration(r.ScenarioId, r.Phase, r.ConfigurationId) ||
             r.Identity is { } startIdentity && (startIdentity.ScenarioId != r.ScenarioId || startIdentity.ConfigurationId != r.ConfigurationId ||
                 startIdentity.RunId != r.RunId || startIdentity.InstanceId != startIdentity.ExpectedInstanceId)))
             throw new PhaseWireIdentityException("Start-line receipt identity does not bind to its phase.");
         if (r.SchemaVersion != 1 || r.Mode is not ("start-line" or "verify" or "judge" or "b10-sweep-line" or "b10-sweep" or "b10-abrupt-verify" or "b10-final-sweep") || !PhaseIdentity.IsRunId(r.RunId) || r.SourceCommit.Length != 40 || !CommitRegex().IsMatch(r.SourceCommit)) throw new FormatException("Receipt has invalid fixed identity fields.");
         PhaseIdentity.ValidatePhase(r.Phase);
-        if (!ScenarioPhases.TryGetConfiguration(r.ScenarioId, r.Phase, out string? expectedConfiguration) || r.ConfigurationId != expectedConfiguration) throw new FormatException("Receipt scenario or configuration does not match its phase.");
+        if (!(r.Mode is "start-line" or "verify" ? MatchesPhaseConfiguration(r.ScenarioId, r.Phase, r.ConfigurationId) :
+            ScenarioPhases.TryGetConfiguration(r.ScenarioId, r.Phase, out string? expectedConfiguration) && r.ConfigurationId == expectedConfiguration)) throw new FormatException("Receipt scenario or configuration does not match its phase.");
         if (r.Mode == "b10-abrupt-verify" ? r.Repeat is null || r.Identity is not null :
             r.Mode is "judge" or "b10-sweep-line" or "b10-sweep" or "b10-final-sweep" ? r.Repeat is not null || r.Identity is not null : r.Repeat is null || r.Identity is null) throw new FormatException("Receipt nullable identity fields do not match its mode.");
         if (r.Repeat is int repeat) PhaseIdentity.ValidateRepeat(repeat);
@@ -226,7 +226,7 @@ internal static partial class PhaseWireCodec
         else
         {
             RunIdentity identity=r.Identity!;
-            if (!ScenarioPhases.TryGetConfiguration(identity.ScenarioId, r.Phase, out string? identityConfiguration) || identityConfiguration != r.ConfigurationId || identity.ScenarioId != r.ScenarioId || identity.ConfigurationId != r.ConfigurationId || identity.RunId != r.RunId ||
+            if (!MatchesPhaseConfiguration(identity.ScenarioId, r.Phase, r.ConfigurationId) || identity.ScenarioId != r.ScenarioId || identity.ConfigurationId != r.ConfigurationId || identity.RunId != r.RunId ||
                 identity.InstanceId != identity.ExpectedInstanceId || !Segment(identity.InstanceId) || !Text(identity.ClientId,253,false))
                 throw new FormatException("Receipt producer identity does not bind to its run.");
             int repeatNumber=r.Repeat!.Value;
@@ -341,10 +341,14 @@ internal static partial class PhaseWireCodec
 
     private static void ValidateRegistration(ProducerRegistration v)
     {
-        if (v.SchemaVersion != 1 || !PhaseIdentity.IsRunId(v.Identity.RunId) || !ScenarioPhases.TryGetConfiguration(v.Identity.ScenarioId, v.Phase, out string? expectedConfiguration) || v.Identity.ConfigurationId != expectedConfiguration || v.Identity.InstanceId != v.Identity.ExpectedInstanceId || !Text(v.Identity.ClientId,253,true) || v.RepeatNumber is < 1 or > 5 || !((v.JobName == PhaseIdentity.JobName(v.Identity.RunId, v.Phase, v.RepeatNumber) && v.PredecessorInstanceId is null) ||
+        if (v.SchemaVersion != 1 || !PhaseIdentity.IsRunId(v.Identity.RunId) || !MatchesPhaseConfiguration(v.Identity.ScenarioId, v.Phase, v.Identity.ConfigurationId) || v.Identity.InstanceId != v.Identity.ExpectedInstanceId || !Text(v.Identity.ClientId,253,true) || v.RepeatNumber is < 1 or > 5 || !((v.JobName == PhaseIdentity.JobName(v.Identity.RunId, v.Phase, v.RepeatNumber) && v.PredecessorInstanceId is null) ||
             (v.Identity.ScenarioId == "B10" && v.JobName == PhaseIdentity.RestartJobName(v.Identity.RunId, v.Phase, v.RepeatNumber) &&
                 v.PredecessorInstanceId is not null && Segment(v.PredecessorInstanceId) && !string.Equals(v.PredecessorInstanceId, v.Identity.InstanceId, StringComparison.Ordinal))) || !Segment(v.Identity.InstanceId) || !Text(v.PodName,253,true) || !Text(v.PodUid,253,false) || v.PodUid.Any(char.IsWhiteSpace) || !CommitRegex().IsMatch(v.SourceCommit)) throw new FormatException("Producer registration is malformed or does not bind to its repeat.");
     }
+
+    private static bool MatchesPhaseConfiguration(string scenario, string phase, string configuration) =>
+        scenario is "C01" or "C03" or "C10" && phase is "C0" or "C1" && configuration == phase ||
+        ScenarioPhases.TryGetConfiguration(scenario, phase, out string? expectedConfiguration) && configuration == expectedConfiguration;
 
     private static DateTimeOffset ParseUtc(string value)
     {

@@ -7,6 +7,10 @@ using Parchwell.Scenarios;
 using Parchwell.Verifier.Common.Kafka;
 using Parchwell.Verifier.Common.Scenario;
 using Parchwell.Verifier.Common.Storage;
+using Parchwell.Verifier.Common.Consumer;
+using Parchwell.Verifier.Common.Serialization;
+using Parchwell.Verifier.VerifyRun.Consumer;
+using Parchwell.Verifier.VerifyRun.Consumer.Offsets;
 using Parchwell.Verifier.StartLine;
 using Parchwell.Verifier.ProbeGate;
 using Parchwell.Verifier.VerifyRun;
@@ -101,6 +105,7 @@ internal static partial class Program
 
         RegisterSelectedMode(builder.Services, builder.Configuration);
         configureForTests?.Invoke(builder.Services);
+        ValidateConsumerPlan(builder.Services, builder.Configuration);
         builder.Services.AddHostedService<VerifierWorker>();
         return builder.Build();
     }
@@ -140,7 +145,7 @@ internal static partial class Program
             services.AddSingleton<IVerifierModeHandler,VerifyRun.SingleAction.SingleActionHandler>();
             return;
         }
-        if (mode is not ("start-line" or "verify" or "judge" or "b10-sweep-line" or "b10-sweep" or "b10-final-sweep" or "b10-abrupt-verify")) return;
+        if (mode is not ("consumer-verify" or "start-line" or "verify" or "judge" or "b10-sweep-line" or "b10-sweep" or "b10-final-sweep" or "b10-abrupt-verify")) return;
 
         var preflight=new VerifierHostOptions();
         new VerifierHostOptionsSetup(configuration).Configure(preflight);
@@ -148,7 +153,7 @@ internal static partial class Program
         if(!preflightResult.Succeeded)throw new OptionsValidationException(Options.DefaultName,typeof(VerifierHostOptions),preflightResult.Failures??[]);
         RegisterTelemetry(services,configuration);
 
-        if (mode is "start-line" or "verify" or "b10-sweep-line" or "b10-sweep" or "b10-final-sweep" or "b10-abrupt-verify")
+        if (mode is "consumer-verify" or "start-line" or "verify" or "b10-sweep-line" or "b10-sweep" or "b10-final-sweep" or "b10-abrupt-verify")
         {
             services.AddParchwellKafka(KafkaClientRole.VerifierConsumer, options =>
             {
@@ -172,6 +177,28 @@ internal static partial class Program
                 options.MaxArtifactBytes ?? options.MaxOutputBytes!.Value,
                 options.MaxOutputBytes!.Value);
         });
+        if (mode == "consumer-verify" || mode == "start-line" && ConsumerPlanValidation.IsConsumerScenario(preflight.ScenarioId))
+        {
+            services.AddSingleton(provider =>
+            {
+                var options = provider.GetRequiredService<IOptions<VerifierHostOptions>>().Value;
+                var limits = new InputLimits(options.MaxInputDepth!.Value, options.MaxArtifactBytes ?? options.MaxOutputBytes!.Value,
+                    options.MaxTotalInputBytes ?? long.MaxValue, options.MaxRowBytes ?? 65536,
+                    options.MaxRowsPerArtifact ?? 40000, options.MaxInputEntries ?? long.MaxValue, options.MaxDiagnosticBytes!.Value);
+                return new ConsumerArtifactReader(new BlobProducerArtifactStore(CreateBlobContainer(options, options.ConsumerRecordContainer!),
+                    options.MaxArtifactBytes ?? options.MaxOutputBytes!.Value), limits, options.BlobIoTimeout!.Value, provider.GetRequiredService<TimeProvider>());
+            });
+        }
+        if (mode == "consumer-verify")
+        {
+            services.AddSingleton<ConsumerCommittedOffsetReader>();
+            services.AddSingleton<ConsumerOffsetReader>(provider => provider.GetRequiredService<ConsumerCommittedOffsetReader>().ReadAsync);
+            services.AddSingleton<IRepeatResultExtension>(provider => new ConsumerRepeatExtension(
+                provider.GetRequiredService<IOptions<VerifierHostOptions>>().Value,provider.GetRequiredService<ConsumerVerificationPlan>(),
+                provider.GetRequiredService<ConsumerArtifactReader>(),provider.GetRequiredService<IVerifierArtifactStore>(),
+                provider.GetRequiredService<ConsumerOffsetReader>(),provider.GetRequiredService<TimeProvider>(),
+                provider.GetRequiredService<KafkaConfigurationFactory>().CreateVerifierConsumer().Configuration.BootstrapServers));
+        }
         if (mode == "start-line")
         {
             services.AddSingleton<IVerifierModeHandler, StartLineHandler>();
@@ -254,6 +281,21 @@ internal static partial class Program
         });
         services.AddSingleton<RegisteredProducerConfigurationResolver>();
         services.AddSingleton<IVerifierModeHandler, VerifyRunHandler>();
+    }
+
+    private static void ValidateConsumerPlan(IServiceCollection services, IConfiguration configuration)
+    {
+        if(configuration["Verifier:Mode"] != "consumer-verify") return;
+        var options=new VerifierHostOptions();new VerifierHostOptionsSetup(configuration).Configure(options);
+        using ServiceProvider validation=services.BuildServiceProvider();
+        IConsumerVerificationPlanSource? source=validation.GetService<IConsumerVerificationPlanSource>();
+        ConsumerVerificationPlan? plan=null;
+        if(source is null || !source.TryGetPlan(options.ScenarioId!,options.ConfigurationId!,out plan) || !ConsumerPlanValidation.IsValid(plan,options))
+        {
+            Console.Error.WriteLine("consumer_plan_invalid");
+            throw new OptionsValidationException(Options.DefaultName,typeof(VerifierHostOptions),["consumer_plan_invalid"]);
+        }
+        services.AddSingleton(plan!);
     }
 
     private static void RegisterTelemetry(IServiceCollection services,ConfigurationManager configuration)
@@ -504,7 +546,7 @@ internal sealed class VerifierHostOptionsSetup : IConfigureOptions<VerifierHostO
         string? mode = _configuration["Verifier:Mode"];
         if(mode=="single-action-judge")ValidateSingleActionFields();
         var usedBudgets = new HashSet<string>(AlwaysReadBudgets, StringComparer.OrdinalIgnoreCase);
-        if (mode is "start-line" or "verify" or "b10-sweep-line" or "b10-sweep" or "b10-final-sweep" or "b10-abrupt-verify")
+        if (mode is "consumer-verify" or "start-line" or "verify" or "b10-sweep-line" or "b10-sweep" or "b10-final-sweep" or "b10-abrupt-verify")
         {
             usedBudgets.UnionWith(KafkaBudgets);
         }
