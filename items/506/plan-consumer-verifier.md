@@ -2,13 +2,13 @@
 
 Issue: [#506](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506), child of [#499](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499), split entry 3. Pull request name: `consumer-verifier`. This is the contract-grade plan for that one pull request under docs/agents/factory.md "Item lifecycle" step 3.
 
-Revision 1. Base: `main` at `09c5bfc384dc516e7b9a8a53d38dee30d40755df`, the merge of the predecessor pull request #518 (ADR-022). File paths and line numbers are on that commit unless a line says otherwise.
+Revision 2. Base: `main` at `09c5bfc384dc516e7b9a8a53d38dee30d40755df`, the merge of the predecessor pull request #518 (ADR-022). File paths and line numbers are on that commit unless a line says otherwise.
 
-This pull request adds to the verifier the ADR-022 consumer judgement for C03, C10 and C01. A new `consumer-verify` mode verifies the producer side exactly as `verify` does, then reads both consumer members' records from Blob, makes one independent read of the group's committed offsets, and writes a consumer outcome: four classes when the repeat is complete and valid, otherwise the ADR-022 invalid or incomplete reasons. It also extends the `start-line` mode with a start-assignment snapshot for these items. Section 11 holds seven questions, each with a recommended answer, under point 2 of [decision 6895535291](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6895535291).
+This pull request adds to the verifier the ADR-022 consumer judgement for C03, C10 and C01. A new `consumer-verify` mode verifies the producer side exactly as `verify` does, then reads both consumer members' records from Blob, makes one independent read of the group's committed offsets, and writes a consumer outcome: four classes when the repeat is complete and valid, otherwise the ADR-022 invalid or incomplete reasons. It also extends the `start-line` mode with a start-assignment snapshot for these items. Revision 2 answers the [first plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6899498280); section 14 lists the changes. Section 11 holds eight questions, each with a recommended answer, under point 2 of [decision 6895535291](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6895535291).
 
 ## 1. Goal and authority
 
-Goal: when #507 integrates the consumer Jobs, the verifier can judge a C03, C10 or C01 repeat under ADR-022 with no further verifier change, apart from the production plan source that the scenario children add (section 10a). Unit tests cover every ADR-022 predicate at its boundaries, including the literal cases D1 to D16 of the approved ADR plan. Component tests prove the offset reader against a local broker.
+Goal: when #507 integrates the consumer Jobs, the verifier can judge a C03, C10 or C01 repeat under ADR-022 with no further verifier change, apart from the production plan source that the scenario children add (section 10a). Unit tests cover every ADR-022 predicate at its boundaries, including cases D1 to D16 of the approved ADR plan, adapted as section 6 states. Component tests prove the offset reader against a local broker.
 
 Design authority: ADR-022, docs/blueprint.md lines 735 to 797 on the base, with ADR-012 (lines 369 to 431), ADR-013 (433 to 468), ADR-016 (514 to 535) and ADR-019 (584 to 621).
 
@@ -34,6 +34,7 @@ Files this pull request may add or change:
 - `src/Parchwell.Verifier/VerifyRun/Consumer/**` (new folder in the `VerifyRun` slice).
 - `src/Parchwell.Verifier/StartLine/**`: the consumer start snapshot (3.6) only.
 - `src/Parchwell.Verifier/Program.cs`, `VerifierHostOptions.cs`, `VerifierHostOptionsValidator.cs`, `VerifierWorker.cs`: the new mode, its options and validation only.
+- `src/Parchwell.Verifier/VerifyRun/VerifyRunHandler.cs`: the repeat-result extension seam of 3.8 only. With no extension registered, as in `verify`, its behaviour and output are unchanged.
 - `src/Parchwell.Verifier/Common/Results/VerifierResultCodec.cs` and `Common/Results/VerifierResult.cs`: the optional `consumer` block (3.8) only.
 - `src/Parchwell.Verifier/Common/**` other files: only where a type must be shared between `StartLine` and `VerifyRun` (architecture rule, `tests/Parchwell.ArchitectureTests/CompiledArchitectureTests.cs` lines 54 to 80).
 - `tests/Parchwell.Verifier.Tests/Consumer/**` and `tests/Parchwell.Verifier.Tests/Component/Consumer/**` (new).
@@ -53,11 +54,11 @@ Everything in this section is read or written by #505, #507, a scenario child or
 
 ### 3.1 Scope of the consumer modes
 
-- Scenario IDs: `C01`, `C03`, `C10` only. Phase: matches `^C[0-9]$`. Repeat: 1 to 5.
-- `start-line` accepts these scenarios and phases in addition to the ones it accepts today, and for them also writes the snapshot of 3.6.
+- Scenario IDs: `C01`, `C03`, `C10` only. Phase: `C0` or `C1`. Configuration ID: equal to the phase. Repeat: 1 to 5. Expected load generator: one instance, Job name `PhaseIdentity.JobName(RunId, Phase, Repeat)` (`Common/Phase/PhaseIdentity.cs`), as for B04, B06 and B07 (`VerifierHostOptions.cs` lines 60 to 68). These are the phases `PhaseIdentity.IsPhase` accepts (line 12) that `ScenarioPhases` maps to themselves for B04, B06 and B07 (`src/Parchwell.Scenarios/Contracts/ScenarioPhases.cs` lines 14 to 16) (Q8).
+- `start-line` accepts these scenarios, phases and configuration IDs in addition to the ones it accepts today, and for them also writes the snapshot of 3.6. For them the validator does not consult `ScenarioPhases`; it applies the rules of this section instead. Every other rule `start-line` applies today is unchanged.
 - New mode `Verifier:Mode = consumer-verify` (exact, case-sensitive) accepts only these scenarios.
 - `verify` and every other existing mode keep rejecting `C01`, `C03` and `C10` with their existing validation failure.
-- Repeat prefix: `<RunId>/<Phase>/r<Repeat>/`, the same format as `PhaseIdentity.RepeatPrefix` (`Common/Phase/PhaseIdentity.cs` lines 70 to 77). That method validates the phase with `IsPhase` (line 12), which rejects these phases, so the consumer modes build the prefix without changing it.
+- Repeat prefix: `PhaseIdentity.RepeatPrefix(RunId, Phase, Repeat)` (`Common/Phase/PhaseIdentity.cs` lines 76 to 77), `<RunId>/<Phase>/r<Repeat>/`. Every other path is the `PhasePaths` path `verify` uses for the same identity.
 - Consumer group ID: `<RunId>-<lower(Phase)>-r<Repeat>-consumers`.
 
 ### 3.2 Consumer record blobs (read; #505 writes)
@@ -83,7 +84,7 @@ Every row has `schema_version` (1), `kind`, `instance_id` (equals the member's p
 |---|---|
 | `processed` | `topic` (`document-events`), `partition` (int, at least 0), `offset` (int, at least 0), `producer_instance_id`, `attempt_id`, `key` (each a string or `null`), `sequence` (Int64 or `null`), `slow` (bool), `processing_started_utc`, `processing_ended_utc` |
 | `commit` | `source` (`callback` or `explicit`), `outcome` (`callback` rows: `callback`; `explicit` rows: `returned`, `partition_exception` or `request_exception`), `error_code` (int, 0 when no error), `error_reason` (string, or `null` when `error_code` is 0), `submitted` (`callback` rows: `null`; `explicit` rows: array of `{ "topic", "partition", "offset" }`), `offsets` (array of `{ "topic", "partition", "offset", "error_code" }`), `event_utc` |
-| `partition_event` | `event` (`assigned`, `revoked` or `lost`), `partitions` (array of distinct ints, ascending), `event_utc` |
+| `partition_event` | `event` (`assigned`, `revoked` or `lost`), `partitions` (array of distinct ints, ascending; may be empty), `event_utc` |
 | `kill_intent` | `partition`, `offset`, `event_utc` |
 
 Commit-row meaning, from ADR-022 "Record": `returned` is a successful explicit call, and `offsets` holds the entries the call applied to, each with `error_code` 0. `partition_exception` holds the exception's result list, with top-level `error_code` 0. `request_exception` holds an empty `offsets` and a nonzero `error_code`. A `callback` row is one automatic commit callback. A successful entry is one with `offset` at least 0, entry `error_code` 0 and row `error_code` 0. A row whose fields contradict its `outcome` (for example `request_exception` with `error_code` 0 or a nonempty `offsets`) is malformed.
@@ -96,14 +97,15 @@ This plan owns this format (Q1). #505's next revision cites this section instead
 
 ### 3.3 Options
 
-The new mode binds the options `verify` binds today, with the same keys and rules, plus:
+The new mode binds the options `verify` binds today, with the same keys and rules, except that the scenario, phase and configuration rules are those of 3.1, plus:
 
 | Key | Rule |
 |---|---|
 | `Verifier:Mode` | `consumer-verify` |
 | `Verifier:ConsumerRecordContainer` | exactly `consumer-record` |
 | `Verifier:ScenarioId` | `C01`, `C03` or `C10` |
-| `Verifier:Phase` | matches `^C[0-9]$` |
+| `Verifier:Phase` | `C0` or `C1` |
+| `Verifier:ConfigurationId` | equal to `Verifier:Phase` |
 
 `start-line` for C01, C03 or C10 also requires `Verifier:ConsumerRecordContainer`, with the same rule. A rule failure is a validation failure on start (exit 1), as for the existing keys (`VerifierHostOptionsValidator.cs` lines 13 to 232).
 
@@ -118,16 +120,16 @@ Everything the scenario decides reaches the verifier through one interface at ou
 | `SubjectSettings` | expected effective settings of the subject: map of key to string |
 | `WitnessSettings` | expected effective settings of the witness: map of key to string |
 
-Neither settings map may contain `bootstrap.servers`, `client.id` or `group.id`; those are checked by rule 4.6. A plan that breaks a rule, or a source that has no plan for the pair, is a validation failure on start (exit 1, standard error line `consumer_plan_invalid`), before any Blob or Kafka client is constructed. This pull request ships the interface, the plan type, its validation and a test source, and no production registration (Q2).
+Neither settings map may contain `bootstrap.servers`, `client.id` or `group.id`; those are checked by rule 6 of section 4. Both maps must contain `isolation.level`, with equal values; that value is the group's `isolation.level` for the offset reader (3.5). A plan that breaks a rule, or a source that has no plan for the pair, is a validation failure on start (exit 1, standard error line `consumer_plan_invalid`), before any Blob or Kafka client is constructed. This pull request ships the interface, the plan type, its validation and a test source, and no production registration (Q2).
 
 ### 3.5 Offset reader
 
 A consumer built through the verifier's existing authentication path (`VerifierKafkaSessionFactory.cs` lines 13 to 45), with:
-- the configuration of `KafkaConfigurationFactory.CreateVerifierConsumer()`, then `group.id` set to the repeat's consumer group ID (3.1), `enable.auto.commit` `false`, and `isolation.level` set to the value of `isolation.level` in `SubjectSettings` (3.4);
+- the configuration of `KafkaConfigurationFactory.CreateVerifierConsumer()`, then `group.id` set to the repeat's consumer group ID (3.1), `enable.auto.commit` `false`, and `isolation.level` set to the value both settings maps hold (3.4);
 - no `Subscribe`, `Assign`, `Consume`, `Commit` or `StoreOffset` call;
-- exactly one call `Committed(partitions, timeout)`, then `Dispose`. `partitions` is every partition of the run window (the start-line note's partitions), topic `document-events`, ascending. `timeout` is the time left until the deadline instant of rule 4.10, and the call is not made if that is zero or less.
+- exactly one call `Committed(partitions, timeout)`, then `Dispose`. `partitions` is every partition of the run window (the start-line note's partitions), topic `document-events`, ascending. `timeout` is the time left until the deadline instant of rule 10 of section 4, and the call is not made if that is zero or less.
 
-Read outcome names: `success`; `kafka_exception` (a `KafkaException` that is not a `TopicPartitionOffsetException`); `partition_exception` (`TopicPartitionOffsetException`); `invalid_response` (a returned list whose length differs from the request, or with a partition missing, repeated or on another topic); `not_attempted` (no time left, or rule 4.3 stopped verification before the read).
+Read outcome names: `success`; `kafka_exception` (a `KafkaException` that is not a `TopicPartitionOffsetException`); `partition_exception` (`TopicPartitionOffsetException`); `invalid_response` (a returned list whose length differs from the request, or with a partition missing, repeated or on another topic); `not_attempted` (no time left under rule 10, or rule 2 or rule 3 of section 4 applies).
 
 ### 3.6 Consumer start snapshot (written by `start-line`)
 
@@ -135,7 +137,7 @@ For C01, C03 and C10, `start-line` does, in this order: (1) list members and rea
 
 `schema_version` (1), `kind` (`consumer_start_snapshot`), `group_id`, `first_read_started_utc`, `second_read_ended_utc`, `members`: array sorted by `instance_id` of `{ "instance_id", "role", "first_read_last_row_sequence", "second_read_last_row_sequence" }`, where a member with no row has `-1`. Times are on the verifier's clock.
 
-The snapshot records; it does not judge. `consumer-verify` judges it under rule 4.5.
+The snapshot records; it does not judge. `consumer-verify` judges it under rule 5 of section 4.
 
 ### 3.7 Reason names
 
@@ -145,7 +147,7 @@ Incomplete reasons: `consumer_commit_evidence_unavailable`, `consumer_completion
 
 ### 3.8 Result: the `consumer` block
 
-`consumer-verify` writes `result.json` with the codec of `verify` (`Common/Results/VerifierResultCodec.cs`). Every existing field is computed exactly as `verify` computes it from the same inputs. One optional root field is added, `consumer`, written only by `consumer-verify`:
+`consumer-verify` runs the `verify` handler (`VerifyRun/VerifyRunHandler.cs`) with one repeat-result extension registered. The extension is an interface at our own boundary in the `VerifyRun` slice. The handler calls it once, after it has built the root judgement and before it writes `result.json`, with the root status, the run window, the ledger rows and the verifier-consumed records. The extension returns the `consumer` block and its status. With no extension registered (`verify`), the handler is unchanged. `result.json` keeps the codec of `verify` (`Common/Results/VerifierResultCodec.cs`), and every existing field is computed exactly as without the extension. One optional root field is added, `consumer`, written only when the extension is registered:
 
 | Property | Value |
 |---|---|
@@ -161,24 +163,24 @@ Incomplete reasons: `consumer_commit_evidence_unavailable`, `consumer_completion
 | `reassignment` | only when `status` is `complete_valid` and `kill_count` is not `null`: `{ "microseconds", "unavailable_reason" }`, one of them `null`; `unavailable_reason` is `different_nodes` or `no_reassignment` |
 | `diagnostics` | array of `{ "reason", "member", "artifact", "row_sequence", "field", "detail" }`, at most 64 entries, `detail` at most 256 bytes |
 
-`consumer-verify` exits 0 only when the root `status` and the consumer `status` are both `complete_valid`; otherwise it writes the result and exits 1 (ADR-013 "For an invalid or incomplete run").
+`consumer-verify` exits 0 only when the root `status` and the consumer `status` are both `complete_valid`; otherwise it writes the result and exits 1 (ADR-013 "For an invalid or incomplete run"). It writes the `verify-completion.json` receipt at the path, with the kind (`verify`) and fields that `verify` writes (`VerifyRunHandler.cs` lines 197 to 203), except that the receipt's exit code is the process exit code of this paragraph.
 
 ## 4. Requirements
 
 Definitions. Window: `[S[p], E[p])` per partition from the start-line note and the end line. Delivered in-window messages: each verifier-consumed record in the window joined to a ledger row with `Delivered` true, as `verify` joins them (`VerifyRun/Judgement/OutcomeClassifier.cs` lines 9 to 42); each is identified by `(partition, offset)`. R[p] and B[p] as ADR-022 "Commit agreement". Deadline instant: the time `consumer-verify` captured its end line, plus `CompletionDeadlineMs`, on the verifier's `TimeProvider`.
 
-1. WHEN `consumer-verify` runs THEN it first performs every step of `verify` up to its result, with identical outputs; then it runs rules 2 to 12; then it writes one `result.json`.
+1. WHEN `consumer-verify` runs THEN the `verify` handler performs every step it performs today up to its result, with identical root fields; then the extension runs rules 2 to 14; then the handler writes one `result.json` and the receipt of 3.8.
 2. WHEN the root `status` is not `complete_valid` THEN the consumer `status` is `invalid` with reason `producer_side_not_complete_valid`, the consumer artifacts are still read for diagnostics, and the offset read is `not_attempted`.
-3. Registration. WHEN the number of registration markers is not 2, or their roles are not one `subject` and one `witness`, or a marker breaks 3.2, or a marker's `run_id`, `scenario_id`, `configuration_id`, `phase`, `repeat_number` or `group_id` differs from the options and 3.1, or its `pod_name` differs from its prefix's pod name or from `instance_id`, THEN reason `consumer_registration_invalid`. If no member set of exactly one subject and one witness can be read, rules 4 to 12 are skipped and the offset read is `not_attempted`.
-4. Record. WHEN a member has no `record/000000.jsonl`, a non-contiguous blob index, a blob before the last with other than 40000 rows, a row that breaks 3.2, a `row_sequence` gap or repeat, or a completion receipt whose `rows`, `record_blobs` or `messages_processed` differ from its record, THEN reason `consumer_record_invalid`.
-5. Start assignment. Held set of a member at a row sequence k: apply its `partition_event` rows with `row_sequence` at most k in order (`assigned` sets it to the listed partitions; `revoked` and `lost` remove the listed partitions). WHEN `consumer-start.json` is missing or breaks 3.6, or a member's snapshot `instance_id` set differs from the registered members, or either member has a `partition_event` row with `row_sequence` greater than its `first_read_last_row_sequence` and at most its `second_read_last_row_sequence`, or some window partition is in neither member's held set at its `first_read_last_row_sequence`, or in both, THEN reason `consumer_start_assignment_invalid`.
+3. Registration. WHEN the number of registration markers is not 2, or their roles are not one `subject` and one `witness`, or a marker breaks 3.2, or a marker's `run_id`, `scenario_id`, `configuration_id`, `phase`, `repeat_number` or `group_id` differs from the options and 3.1, or its `pod_name` differs from its prefix's pod name or from `instance_id`, THEN reason `consumer_registration_invalid`. If the markers read are not exactly two that each meet 3.2, one `subject` and one `witness`, rules 4 to 11, 13 and 14 are skipped, the offset read is `not_attempted`, and rule 12 sets the status.
+4. Record. WHEN a member has no `record/000000.jsonl`, a non-contiguous blob index, a blob before the last with other than 40000 rows, a row that breaks 3.2, a `row_sequence` gap or repeat, or a completion receipt whose `rows`, `record_blobs` or `messages_processed` differ from its record, or whose `run_id`, `scenario_id`, `configuration_id`, `phase`, `repeat_number`, `role`, `instance_id`, `job_name`, `pod_uid` or `source_commit` differ from its registration marker, THEN reason `consumer_record_invalid`.
+5. Start assignment. Held set of a member at a row sequence k: apply its `partition_event` rows with `row_sequence` at most k in order (`assigned` sets it to the listed partitions; `revoked` and `lost` remove the listed partitions). WHEN `consumer-start.json` is missing or breaks 3.6, or a member's snapshot `instance_id` set differs from the registered members, or a member has no `assigned` row with `row_sequence` at most its `first_read_last_row_sequence` (ADR-022 "Start order": both members "hold an assignment"; an assignment may be empty), or either member has a `partition_event` row with `row_sequence` greater than its `first_read_last_row_sequence` and at most its `second_read_last_row_sequence`, or some window partition is in neither member's held set at its `first_read_last_row_sequence`, or in both, THEN reason `consumer_start_assignment_invalid`.
 6. Configuration fidelity. WHEN a member's `effective_settings`, without `bootstrap.servers`, `client.id` and `group.id`, differ in any key or value from `SubjectSettings` (subject) or `WitnessSettings` (witness), or its `group.id` differs from 3.1, or its `client.id` differs from its `instance_id`, or its `bootstrap.servers` differs from the verifier's own `bootstrap.servers`, THEN reason `consumer_configuration_mismatch`, with one diagnostic per differing key.
 7. Processed rows. WHEN a `processed` row's `(partition, offset)` is outside the window THEN reason `consumer_processed_outside_window`. WHEN a `processed` row inside the window has a `null` identity field, or no ledger row with its `producer_instance_id` and `attempt_id`, or a `key` or `sequence` that differs from that ledger row, or its `(partition, offset)` is not a verifier-consumed record with the same instance and attempt IDs, THEN reason `consumer_processed_unjoined`.
 8. Stop. With `KillCount` N: WHEN the subject's last row is not a `kill_intent` row, or it has more than one `kill_intent` row, or it has a completion receipt, or its number of `processed` rows differs from N - 1, THEN reason `consumer_stop_invalid`. Without `KillCount`: WHEN the subject has a `kill_intent` row or no completion receipt THEN `consumer_stop_invalid`. In both cases: WHEN the witness has a `kill_intent` row or no completion receipt THEN `consumer_stop_invalid`.
-9. Offset read. WHEN rules 3 to 8 have been evaluated and the root `status` is `complete_valid` and a member set was read THEN the verifier makes the read of 3.5 exactly once, whatever rules 3 to 8 found, and records it in `offset_read`. WHEN the outcome is not `success` THEN reason `consumer_commit_evidence_unavailable`, unless an invalid reason applies (rule 12).
+9. Offset read. WHEN rules 3 to 8 have been evaluated, rules 2 and 3 do not skip the read, and the deadline instant has not passed THEN the verifier makes the read of 3.5 exactly once, whatever rules 4 to 8 found, and records it in `offset_read`. WHEN the outcome is `kafka_exception`, `partition_exception` or `invalid_response` THEN reason `consumer_commit_evidence_unavailable`.
 10. Deadline. WHEN the read outcome is `success` and its end time is later than the deadline instant THEN reason `consumer_completion_deadline`. An end time equal to the deadline instant meets the deadline. WHEN the deadline instant has passed before the read THEN the read is `not_attempted` and the reason is `consumer_completion_deadline`.
 11. Agreement and completion, after a `success` read within the deadline, per partition p of the window: WHEN B[p] is at least 0 and is not in R[p], or B[p] is `Offset.Unset` and R[p] is not empty, or B[p] is negative and not `Offset.Unset`, THEN reason `consumer_commit_record_disagreement`. Otherwise, WHEN S[p] is less than E[p] and (B[p] is `Offset.Unset` or B[p] is less than E[p]) THEN reason `consumer_commit_frontier_short`. A partition with S[p] equal to E[p] needs nothing more.
-12. Status. WHEN any invalid reason (3.7) applies THEN `status` is `invalid` and `reasons` lists every invalid reason found, and no incomplete reason. Otherwise WHEN any incomplete reason applies THEN `status` is `incomplete` and `reasons` holds exactly one of them, chosen in this order: `consumer_commit_evidence_unavailable`, `consumer_completion_deadline`, `consumer_commit_frontier_short`. Otherwise `status` is `complete_valid`. `counts` and `reassignment` are written only for `complete_valid`.
+12. Status. WHEN any invalid reason (3.7) applies THEN `status` is `invalid` and `reasons` lists every invalid reason found, and no incomplete reason. Otherwise WHEN an incomplete reason applies THEN `status` is `incomplete` and `reasons` holds it. At most one incomplete reason can apply: rule 9's reason needs a failed read, rule 10's a late or `not_attempted` read, and rule 11's frontier reason a `success` read within the deadline. Otherwise `status` is `complete_valid`. `counts` and `reassignment` are written only for `complete_valid`.
 13. Classes, for `complete_valid` only, over delivered in-window messages with n = the number of `processed` rows across both members with that `(partition, offset)`: n = 1 is `processed_once`; n > 1 is `processed_again`, adding n - 1 to `processed_again_extra_rows`; n = 0 is `committed_never_processed`. (In a complete run every such message has offset below E[p], at most B[p] - 1, so ADR-022's "not reached" class cannot occur; rule 11 reports it as `consumer_commit_frontier_short`.) `processed` rows for messages the ledger records as failed are not classified.
 14. Reassignment (C01 timing), for `complete_valid` with `KillCount`: WHEN the two members' `node_name` values differ THEN `unavailable_reason` is `different_nodes`. Otherwise let t_s be the time of the subject's last row (`event_utc`, or `processing_ended_utc` for a `processed` row) and H the subject's held set at its last row; WHEN the witness has an `assigned` row with time at least t_s and partitions that include every partition of H THEN `microseconds` is the floor of (the earliest such row's time minus t_s) in microseconds; otherwise `unavailable_reason` is `no_reassignment`.
 15. `start-line` for C01, C03 and C10 writes 3.6; for every other scenario its output is unchanged.
@@ -198,7 +200,7 @@ Definitions. Window: `[S[p], E[p])` per partition from the start-line note and t
 
 Unit tests: xUnit, no I/O, fake stores and a fake offset reader, `FakeTimeProvider` or the existing test clock. Names follow `Given_<state>_When_<action>_Then_<outcome>`. Base fixture B unless a row says otherwise: one partition, S = 100, E = 110, a `complete_valid` producer side with ten delivered in-window messages at offsets 100 to 109, a valid snapshot, two valid members on node `n1`, the subject processing offsets 100 to 104 and the witness 105 to 109 once each, no `KillCount`, both with receipts, `CompletionDeadlineMs` 600000, settings equal to the plan, and a `success` read returning B = 110 with R = {110}.
 
-ADR plan cases (literal from the approved ADR plan, section 6.1):
+ADR plan cases (from the approved ADR plan, section 6.1; D9 maps its error kinds to the read outcomes of 3.5, and D14 restates its case as a call-order test, because `consumer-verify` reads only after every member artifact is loaded):
 
 | Test | Input | Expected |
 |---|---|---|
@@ -223,23 +225,23 @@ Boundary tests for the other predicates (docs/engineering/dotnet.md "Testing": a
 
 | Req | Test | Input | Expected |
 |---|---|---|---|
-| 1, 16 | U1 | fixture run through `verify` and through `consumer-verify` | every root field byte-equal; only `consumer` added |
+| 1, 16 | U1 | one C03 fixture through the `verify` handler with no extension registered and with the consumer extension registered | every root field byte-equal; only `consumer` added; with no extension, `result.json` and the receipt equal what the handler writes on the base for the same inputs |
 | 2 | U2 | producer side `invalid`; separately `incomplete` | consumer `invalid` [`producer_side_not_complete_valid`]; `offset_read.outcome` `not_attempted`; read call count 0 |
 | 3 | U3 | 0, 1, 2, 3 registration markers; two subjects; marker `repeat_number` 2 for repeat 1; `group_id` changed by one character | `consumer_registration_invalid` except at exactly 2 valid; with 0, 1 or 3 markers, read call count 0 |
 | 4 | U4 | blob 0 holds 39999, 40000, 40001 rows with a blob 1 after it; indices 000000 and 000002; `row_sequence` 0, 1, 3; 0, 1, 1; receipt `rows` one more than the record; a row of 65536 and 65537 bytes; an unknown property; a missing `\n` at blob end; an empty record (no blob) | `consumer_record_invalid` in each case except 40000 and 65536 bytes |
-| 5 | U5 | snapshot missing; witness snapshot values 3 and 5 with a `partition_event` row at sequence 3, 4, 5 and 6 in turn; two partitions with one in neither held set; one in both; a member with `-1` | `consumer_start_assignment_invalid` for missing, for 4, for 5, for neither, for both, for `-1`; valid for 3 and 6 |
+| 5 | U5 | snapshot missing; witness snapshot values 3 and 5 with a `partition_event` row at sequence 3, 4, 5 and 6 in turn; two partitions with one in neither held set; one in both; witness snapshot values `-1` and `-1`; witness whose only `assigned` row has an empty `partitions` list and sequence 0, with snapshot values 0 and 0 | `consumer_start_assignment_invalid` for missing, for 4, for 5, for neither, for both, for `-1`; valid for 3, for 6 and for the empty assignment |
 | 6 | U6 | subject `max.poll.interval.ms` differs; witness has one extra key; subject lacks one key; `client.id` differs; `group.id` differs; the plan's `isolation.level` used by the reader | `consumer_configuration_mismatch` with one diagnostic per key; reader configuration has the plan's `isolation.level`, `enable.auto.commit` `false` and the 3.1 group |
 | 7 | U7 | processed offsets 99, 100, 109, 110; `attempt_id` `null`; no ledger row; `sequence` off by one; `(partition, offset)` consumed by the verifier with another attempt ID | `outside_window` for 99 and 110; valid for 100 and 109; `unjoined` for the other four |
 | 8 | U8 | N = 3: subject with 1, 2 and 3 processed rows then `kill_intent`; `kill_intent` not last; two `kill_intent` rows; `kill_intent` plus receipt. No N: subject with `kill_intent`; subject without receipt. Witness without receipt; witness with `kill_intent` | `consumer_stop_invalid` in each case except 2 processed rows then `kill_intent` |
 | 9 | U9 | invalid record plus `success` read | read call count 1; `invalid` with no incomplete reason |
 | 10 | U10 | deadline already passed before the read | read call count 0; `offset_read.outcome` `not_attempted`; `incomplete` [`consumer_completion_deadline`] |
 | 11 | U11 | R entry from a `request_exception` row at 110; a `partition_exception` row with its 110 entry `error_code` 0 and row `error_code` 0; B = 110 | `invalid` [`consumer_commit_record_disagreement`]; `complete_valid` |
-| 12 | U12 | `consumer_record_invalid` and `consumer_stop_invalid` together; frontier short and deadline together | `reasons` both invalid names in ordinal order; `reasons` [`consumer_completion_deadline`] |
+| 12 | U12 | `consumer_record_invalid` and `consumer_stop_invalid` together; R = {109}, B = 109 with the read ending 1 tick after the deadline instant | `reasons` both invalid names in ordinal order; `incomplete` [`consumer_completion_deadline`] only |
 | 13 | U13 | offset 103 processed by both members; offset 104 by none; offset 105 three times; a failed ledger row consumed at 108 with a processed row | `processed_once` 6, `processed_again` 2, `processed_again_extra_rows` 3, `committed_never_processed` 1; offset 108 unclassified |
 | 13 | U13b | delivered in-window messages: none (S = E) | `counts` all 0 |
 | 14 | U14 | N = 3; subject last row at t; witness `assigned` covering H at t - 1 tick, t, t + 1 ms; covering all but one partition of H; nodes `n1` and `n2` | `no_reassignment`; 0; 1000; `no_reassignment`; `different_nodes` |
-| 3.4 | U15 | `KillCount` 0, 1, 1000000, 1000001; `CompletionDeadlineMs` 999, 1000, 3600000, 3600001; `SubjectSettings` with `group.id`; no plan for the pair; no source registered | invalid, valid, valid, invalid; invalid, valid, valid, invalid; invalid; invalid; invalid; each exits 1 with `consumer_plan_invalid` and constructs no client |
-| 3.1, 3.3 | U16 | `consumer-verify` with `ScenarioId` `B10`; Phase `C10`, `probe`, `c1`; `ConsumerRecordContainer` `ledger`; `verify` with `C03` | each a validation failure, exit 1 |
+| 3.4 | U15 | `KillCount` 0, 1, 1000000, 1000001; `CompletionDeadlineMs` 999, 1000, 3600000, 3600001; `SubjectSettings` with `group.id`; `WitnessSettings` without `isolation.level`; `isolation.level` `read_committed` and `read_uncommitted` in the two maps; no plan for the pair; no source registered | invalid, valid, valid, invalid; invalid, valid, valid, invalid; invalid; invalid; invalid; invalid; invalid; each invalid case exits 1 with `consumer_plan_invalid` and constructs no client |
+| 3.1, 3.3 | U16 | `consumer-verify` with `ScenarioId` `B10`; Phase `C3`, `C2`, `probe`, `c1`; Phase `C1` with `ConfigurationId` `C0`; `ConsumerRecordContainer` `ledger`; `verify` with `C03`; `consumer-verify` with `C03`, `C0`, `C0` | each a validation failure, exit 1, except the last, which passes |
 | 15 | U17 | `start-line` for `C03` with two members; for `B10` | snapshot written with the four sequence values and both times, read order first-read, watermarks, second-read; for `B10` no consumer read and an unchanged note |
 | 3.8 | U18 | each status | `consumer` property set exactly as 3.8; `counts` only for `complete_valid`; `reasons` ordinal; diagnostics capped at 64 entries and 256 bytes; no `sasl` or `token` value |
 | 3.8 | U19 | exit code for root and consumer status pairs | 0 only for `complete_valid` and `complete_valid` |
@@ -250,7 +252,7 @@ Component tests (`[Trait("Tier","Docker")]`, `tests/Parchwell.Verifier.Tests/Com
 |---|---|---|
 | CT1 | two member clients in group `run1-c1-r1-consumers` subscribe, receive no messages, close; then the offset reader reads both partitions | outcome `success`; both offsets -1001 |
 | CT2 | 10 messages produced to partition 0; the two members consume, one commits offset 7 explicitly, both close; then the offset reader reads | outcome `success`; partition 0 offset 7; partition 1 -1001; the group has no member after the read; group `parchwell-verifier` committed offsets unchanged |
-| CT3 | the reader with a 1 ms timeout against a paused broker (`ApplyFaultAsync`) | outcome `kafka_exception`; one `Committed` call |
+| CT3 | the reader built against `ProducerBootstrapServers` (the proxy listener) after `ApplyFaultAsync(SpikeFault.Timeout, ...)`, with a 1 ms timeout | outcome `kafka_exception`; one `Committed` call |
 
 Existing tests: rule 16 requires every existing test to pass unchanged. This plan adds checks only to the new mode and to `start-line` for the three new scenarios, so no existing fixture should be rejected. Standing fixture rule, in case one is: when an existing test's fixture is rejected by a new check, the implementer does exactly one of (a) changes the fixture so it passes the new checks, keeping every assertion and the boundary the test exercises; or (b) where invalid input is the test's purpose, keeps the input and changes the expected values to exactly what this plan's checks produce. It never removes a case, loosens an assertion or changes a check. The pull request's implementation notes list each such change with the check that forces it; the cold review and Codex review check each one. Model: [#404 decision 6830544567](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6830544567) point 2.
 
@@ -300,12 +302,12 @@ Repository, on the base: docs/blueprint.md ADR-012, ADR-013, ADR-016, ADR-019, A
 (c) Tests or checks that depend on code, data or behaviour neither on `main` nor in this pull request:
 - The writer's format (3.2): #505 is not implemented; this plan sets the format (Q1). Tests use fixture records built to 3.2.
 - The production plan source and scenario files (Q2); tests use a test source.
-- #507's step order (start-line after both members hold an assignment; `consumer-verify` after the load generator and both consumer Jobs have terminated) and its options: contracts this plan sets for #507, not dependencies of its tests.
+- #507's step order (start-line after both members hold an assignment; `consumer-verify` after the load generator and both consumer Jobs have terminated), its options, and one value: #507 gives the consumer members and the verifier the same namespace input, so their `bootstrap.servers` are equal (`src/Parchwell.Kafka/Configuration/BaselineSettingsCatalog.cs` line 47). These are contracts this plan sets for #507, not dependencies of its tests. If #507 broke the last one, rule 6 would invalidate the run; it could not produce a wrong count.
 - DA1 to DA3 in section 7.
 
 ## 10a. Deferred work
 
-1. Production `IConsumerVerificationPlanSource`, with scenario schema fields for `KillCount`, `CompletionDeadlineMs` and the consumer overrides `max.poll.interval.ms` and `enable.auto.offset.store`, which `KafkaScenarioOverrideSetting.cs` lines 141 to 147 do not allow today. Evidence: no C01, C03 or C10 scenario exists on the base; `ScenarioContracts.cs` has no such fields. On the verdict path: yes. Why deferral is permitted: the data belongs to the scenario children, and no live run can happen before #507. Responsible: the child Q2 names. Stage: before #508's smoke run. Completion evidence: a merged source with tests and `consumer-verify` resolving a C03 plan. Gate: #508's smoke run.
+1. Production `IConsumerVerificationPlanSource`, with scenario schema fields for `KillCount`, `CompletionDeadlineMs` and the consumer overrides `max.poll.interval.ms` and `enable.auto.offset.store`, which `KafkaScenarioOverrideSetting.cs` lines 141 to 147 do not allow today. The same child links `scenarios/<ID>/scenario.yaml` into `src/Parchwell.Verifier/Parchwell.Verifier.csproj` as `Content`, as the existing scenarios are, because `consumer-verify` loads the scenario definition for the producer side as `verify` does (`VerifyRun/VerifyRunHandler.cs` lines 109 to 112). Evidence: no C01, C03 or C10 scenario exists on the base; `ScenarioContracts.cs` has no such fields. On the verdict path: yes. Why deferral is permitted: the data belongs to the scenario children, and no live run can happen before #507. Responsible: the child Q2 names. Stage: before #508's smoke run. Completion evidence: a merged source with tests and `consumer-verify` resolving a C03 plan. Gate: #508's smoke run.
 2. Mutation acceptance. This pull request changes C5 shared inputs, so a passing `verifier-c5-mutation.yml` run dispatched on `main` after it merges is required before any consumer evidence pack is published (factory.md "Evidence pack"). On the verdict path: yes. Responsible: the session that dispatches it after the merge, with Hari's approval of the run. Completion evidence: `summary.json` with `measurement_complete: true` and `break_passed: true` naming a `main` commit that contains this merge. Gate: the C03, C10 and C01 evidence packs. Exhaustion: a failed or incomplete run opens a fix issue (factory.md "Evidence pack").
 3. Event Hubs proof of DA1 and DA2: #508's smoke stage, as the approved ADR plan section 10a item 2 sets. On exhaustion `record the gap and continue`; consumer counts stay unpublished.
 4. Optional, not on the verdict path: adding the consumer judgement files as C5 mutation targets (Q6).
@@ -321,6 +323,7 @@ Each carries a recommended answer under point 2 of decision 6895535291. The cont
 - Q5. C01 reassignment timing in this pull request. The issue body names the join, classes and invalid-run conditions, not timing; ADR-022 "C01 timing" is verifier work. Recommended: include it (rule 14), so no later pull request reopens the protected verifier for it. Alternative: defer it to #510.
 - Q6. Mutation coverage of the new judgement. docs/engineering/dotnet.md's mutation row covers only the C5 target files; the matrix is at its 256-job capacity, and adding targets needs new measurement and a protected workflow change. Recommended: do not add targets in this pull request; renew the qualification (acceptance command 5); the boundary tests of section 6 stand. Alternative: add targets, which needs a separate measured change.
 - Q7. Deployment assumptions DA1 to DA3 (section 7). Recommended: accept each by name; for DA1, adopt the #504 approval's acceptance with its staged proof and publication gate.
+- Q8. Phases and configuration IDs for C01, C03 and C10. No scenario file exists, and the verifier's phase and configuration tables have no entry for them. Recommended: phases `C0` and `C1`, each with a configuration ID equal to its phase, which `PhaseIdentity` already accepts and which keeps every existing phase path unchanged; a scenario child that needs a third configuration amends this plan's 3.1. Alternative: widen `PhaseIdentity` to `C2` to `C9` now, which touches every mode's validation.
 
 ## 12. Stop rule
 
@@ -328,4 +331,19 @@ The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when i
 
 ## 13. Size estimate
 
-Estimate, 2026-11-15, from comparable verifier slices on the base (`VerifyRun/Abrupt/B10AbruptVerifyHandler.cs` 379 lines, `AbruptEvidenceReader.cs` 288 lines, `Common/Window/StartLineNoteCodec.cs` 279 lines): about 1600 added lines of production code in about 14 files, about 2600 added lines of tests in about 10 files, about 60 changed lines in 4 existing host files, and the qualification JSON and `items/506/state.md`. About 30 files. Size is reported, not enforced.
+Estimate, 2026-11-15, from comparable verifier slices on the base (`VerifyRun/Abrupt/B10AbruptVerifyHandler.cs` 379 lines, `AbruptEvidenceReader.cs` 288 lines, `Common/Window/StartLineNoteCodec.cs` 279 lines): about 1600 added lines of production code in about 14 files, about 2600 added lines of tests in about 10 files, about 60 changed lines in 4 existing host files, and the qualification JSON and `items/506/state.md`. About 30 files. Revision 2 adds about 40 lines to `VerifyRunHandler.cs` for the extension seam. Size is reported, not enforced.
+
+## 14. Changes since revision 1
+
+Each answers a finding of the [first plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6899498280).
+
+1. Finding 1: phases `C0` and `C1` with configuration equal to phase, and the load generator Job name (3.1, 3.3, Q8); `VerifyRunHandler.cs` in scope for a repeat-result extension, the receipt pinned (2, 3.8, rule 1); U1 and U16 rewritten.
+2. Finding 2: rule 9 no longer gives `consumer_commit_evidence_unavailable` for a `not_attempted` read; rule 12 states that at most one incomplete reason can apply; U12's second case replaced by a reachable one.
+3. Finding 3: rule 5 requires an `assigned` row by the first read; an assignment may be empty (3.2); U5 extended.
+4. Finding 4: rule 3's skip clause, with the check's text.
+5. Finding 5: both settings maps must hold an equal `isolation.level` (3.4, 3.5); U15 extended.
+6. Finding 6: the shared namespace input is a contract for #507 (10(c)).
+7. Findings 8, 9 and 10: applied as marked (10a item 1; 3.1, whose text finding 1 replaced; section 1 and section 6).
+8. Non-blocking: CT3 uses `SpikeFault.Timeout`, as marked `apply in implementation`; rule 4 checks the receipt's identity fields.
+
+This revision changes contracts, requirements and the scope, so it needs a new check (factory.md "Item lifecycle" step 1).
