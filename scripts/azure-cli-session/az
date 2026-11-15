@@ -9,6 +9,7 @@ import math
 import os
 from pathlib import Path
 import re
+import selectors
 import signal
 import stat
 import subprocess
@@ -25,6 +26,14 @@ MIN_LIFE_SECONDS = 90
 RESPONSE_LIMIT = 1_048_576
 LOCK_POLL_SECONDS = 0.05
 AUDIENCE = "api://AzureADTokenExchange"
+# Only fixed, known authentication labels may leave the quiet CLI's stderr.
+AADSTS_CODES = frozenset((b"AADSTS500011", b"AADSTS50020", b"AADSTS50076",
+                          b"AADSTS50079", b"AADSTS50126", b"AADSTS700016",
+                          b"AADSTS7000215", b"AADSTS7000218", b"AADSTS7000222",
+                          b"AADSTS700024", b"AADSTS700025", b"AADSTS700027",
+                          b"AADSTS700084", b"AADSTS70021", b"AADSTS700213",
+                          b"AADSTS90061"))
+AADSTS_PATTERN = re.compile(rb"(?<![A-Za-z0-9])AADSTS[0-9]{5,7}(?![A-Za-z0-9])")
 
 
 class SessionFailure(Exception):
@@ -42,7 +51,7 @@ class SessionDiagnostics:
         self.monotonic = monotonic
         self.started = monotonic() if enabled else None
 
-    def emit(self, name, event, *, started=None, status=None):
+    def emit(self, name, event, *, started=None, status=None, aadsts=None):
         if not self.enabled:
             return
         now = self.monotonic()
@@ -52,6 +61,8 @@ class SessionDiagnostics:
             line += f" stage_ms={int((now - started) * 1000)}"
         if status is not None:
             line += f" status={status}"
+        if aadsts is not None:
+            line += f" aadsts={aadsts}"
         try:
             print(line, file=sys.stderr, flush=True)
         except (OSError, ValueError):
@@ -160,7 +171,7 @@ def stop_process(process):
             signal.signal(number, handler)
 
 
-def run_process(argv, timeout, quiet, *, diagnostics=None):
+def run_process(argv, timeout, quiet, *, diagnostics=None, inspect_quiet=False):
     diagnostics = diagnostics if diagnostics is not None else SessionDiagnostics()
     started = time.monotonic()
     stream = subprocess.DEVNULL if quiet else None
@@ -170,7 +181,8 @@ def run_process(argv, timeout, quiet, *, diagnostics=None):
     process = None
     try:
         # A signal during Popen must not lose the child before we can reap it.
-        process = subprocess.Popen(argv, stdout=stream, stderr=stream,
+        capture = quiet and inspect_quiet and diagnostics.enabled
+        process = subprocess.Popen(argv, stdout=stream, stderr=subprocess.PIPE if capture else stream,
                                    start_new_session=True, close_fds=True)
         for number, handler in previous.items():
             signal.signal(number, handler)
@@ -179,6 +191,42 @@ def run_process(argv, timeout, quiet, *, diagnostics=None):
         remaining = timeout - (time.monotonic() - started)
         if remaining <= 0:
             raise TimeoutError()
+        if capture:
+            # Drain without retaining raw stderr, including when it exceeds pipe capacity.
+            # Keep a small overlap for labels split across reads; emit at most one label.
+            tail = b" "
+            code = None
+            try:
+                with process.stderr, selectors.DefaultSelector() as selector:
+                    selector.register(process.stderr, selectors.EVENT_READ)
+                    while True:
+                        remaining = timeout - (time.monotonic() - started)
+                        if remaining <= 0:
+                            raise TimeoutError()
+                        ready = selector.select(min(remaining, LOCK_POLL_SECONDS))
+                        if ready:
+                            chunk = os.read(process.stderr.fileno(), 8192)
+                            if not chunk:
+                                if code is None:
+                                    code = next((m.group() for m in AADSTS_PATTERN.finditer(tail)
+                                                 if m.start() > 0 and m.end() == len(tail)
+                                                 and m.group() in AADSTS_CODES), None)
+                                break
+                            data = tail + chunk
+                            if code is None:
+                                code = next((m.group() for m in AADSTS_PATTERN.finditer(data)
+                                             if m.start() > 0 and m.end() >= len(tail)
+                                             and m.end() < len(data) and m.group() in AADSTS_CODES), None)
+                            tail = data[-32:]
+                        elif process.poll() is not None:
+                            break
+            finally:
+                if code is not None:
+                    name = "login" if argv[1] == "login" else "account_select"
+                    diagnostics.emit(name, "auth_code", aadsts=code.decode("ascii"))
+            remaining = timeout - (time.monotonic() - started)
+            if remaining <= 0:
+                raise TimeoutError()
         returncode = process.wait(timeout=remaining)
         return returncode if returncode >= 0 else 128 - returncode
     except BaseException:
@@ -330,13 +378,15 @@ def main(argv, *, environ=None, monotonic=time.monotonic, utc=time.time,
     environ = os.environ if environ is None else environ
     fetch = fetch_response if fetch is None else fetch
     diagnostics = SessionDiagnostics(
-        argv[:3] == ["acr", "repository", "show"]
+        environ.get("PARCHWELL_AZ_SESSION_DIAGNOSTICS") == "true"
+        or argv[:3] == ["acr", "repository", "show"]
         or argv[:2] in (
             ["aks", "show"], ["aks", "start"], ["aks", "stop"]),
         monotonic)
     if launch is None:
         def launch(args, seconds, quiet):
-            return run_process(args, seconds, quiet, diagnostics=diagnostics)
+            return run_process(args, seconds, quiet, diagnostics=diagnostics,
+                               inspect_quiet=environ.get("PARCHWELL_AZ_SESSION_DIAGNOSTICS") == "true")
     deadline = monotonic() + INVOCATION_SECONDS
 
     def traced_launch(args, seconds, quiet):
