@@ -4,6 +4,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 python3 - "$@" <<'PYTHON'
+import importlib.util
 import json
 import math
 import os
@@ -50,7 +51,7 @@ class Lifecycle:
         self.helper = self.repo / "infra/scripts/lifecycle/command.py"
         os.environ["KUBECONFIG"] = str(self.private / "kubeconfig")
 
-    def run(self, args, seconds, output=None, maximum=4 * MIB, end=None, errors=False, env=None):
+    def run(self, args, seconds, output=None, maximum=4 * MIB, end=None, errors=False, env=None, private_capture=False):
         if end is not None:
             seconds = min(seconds, end - time.monotonic())
         if seconds <= 0:
@@ -58,12 +59,14 @@ class Lifecycle:
         if not shutil.which(args[0]):
             raise Failure("required command missing: " + args[0])
         command = [sys.executable, str(self.helper), str(seconds)]
+        if private_capture and output is None:
+            output = self.private / "namespace-transition-command-output.txt"
         if output is not None:
             command += ["--stdout-file", str(output), "--max-bytes", str(maximum)]
         command += ["--", *map(str, args)]
         # Only az error classification needs stderr. Stream every byte while
         # retaining a bounded prefix; a clipped error cannot prove absence.
-        if errors:
+        if errors or private_capture:
             process = subprocess.Popen(command, env=env, cwd=self.repo, stderr=subprocess.PIPE)
             saved = bytearray()
             clipped = False
@@ -74,8 +77,9 @@ class Lifecycle:
                     block = process.stderr.read(4096)
                     if not block:
                         break
-                    sys.stderr.buffer.write(block)
-                    sys.stderr.buffer.flush()
+                    if not private_capture:
+                        sys.stderr.buffer.write(block)
+                        sys.stderr.buffer.flush()
                     remaining = 65536 - len(saved)
                     saved.extend(block[:remaining])
                     clipped = clipped or len(block) > remaining
@@ -85,6 +89,11 @@ class Lifecycle:
             reader.start()
             result = process.wait()
             reader.join()
+            if private_capture:
+                descriptor = os.open(self.private / "namespace-transition-command-errors.txt", os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                os.fchmod(descriptor, 0o600)
+                with os.fdopen(descriptor, "wb") as stream:
+                    stream.write(saved)
             return result, b"" if clipped else bytes(saved)
         return subprocess.call(command, env=env, cwd=self.repo), b""
 
@@ -368,13 +377,21 @@ def main(argv):
         if not argv:
             raise Failure("lifecycle command is required")
         operation, *args = argv
-        expected = 2 if operation == "wait-job" else 1 if operation == "collect-job" else 0
+        expected = 2 if operation == "wait-job" else 1 if operation in ("collect-job", "activate-namespace") else 0
         if len(args) != expected:
-            raise Failure("invalid command arguments")
+            raise Failure("namespace_transition_input_rejected" if operation in ("deactivate-namespace", "activate-namespace") else "invalid command arguments")
         lifecycle = Lifecycle()
         if operation in {action + "-" + root for action in ("init", "plan", "apply") for root in ("cluster", "ephemeral")} or operation == "destroy-ephemeral":
             action, root = operation.split("-", 1)
             lifecycle.terraform(action, root)
+        elif operation in ("deactivate-namespace", "activate-namespace"):
+            spec = importlib.util.spec_from_file_location("configuration_isolation", lifecycle.repo / "infra/scripts/lifecycle/configuration-isolation.py")
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            try:
+                module.transition(lifecycle, args[0] if args else None)
+            except module.TransitionError as error:
+                raise Failure(str(error), error.code) from None
         elif operation in ("start-cluster", "stop-cluster"):
             lifecycle.cluster(operation == "start-cluster")
         elif operation == "credentials":

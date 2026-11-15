@@ -104,7 +104,7 @@ override_resource {
 }
 
 override_resource {
-  target          = module.eventhubs.azurerm_eventhub_namespace.this[0]
+  target          = module.eventhubs[0].azurerm_eventhub_namespace.this[0]
   override_during = plan
   values = {
     "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1"
@@ -112,7 +112,7 @@ override_resource {
 }
 
 override_resource {
-  target          = module.eventhubs.azurerm_eventhub.this["document-events"]
+  target          = module.eventhubs[0].azurerm_eventhub.this["document-events"]
   override_during = plan
   values = {
     "id"            = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events"
@@ -121,7 +121,7 @@ override_resource {
 }
 
 override_resource {
-  target          = module.eventhubs.azurerm_eventhub.this["document-events-dlq"]
+  target          = module.eventhubs[0].azurerm_eventhub.this["document-events-dlq"]
   override_during = plan
   values = {
     "id"            = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events-dlq"
@@ -130,7 +130,7 @@ override_resource {
 }
 
 override_resource {
-  target          = azurerm_eventhub.state
+  target          = azurerm_eventhub.state[0]
   override_during = plan
   values = {
     "id"            = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-state"
@@ -139,7 +139,7 @@ override_resource {
 }
 
 override_resource {
-  target          = module.eventhubs.azurerm_private_endpoint.this["eventhubs"]
+  target          = module.eventhubs[0].azurerm_private_endpoint.this["eventhubs"]
   override_during = plan
   values = {
     "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Network/privateEndpoints/pe-eventhubs-offline1"
@@ -263,27 +263,27 @@ run "foundation" {
   command = plan
 
   assert {
-    condition     = module.eventhubs.resource.sku == "Premium" && module.eventhubs.resource.capacity == 1 && !module.eventhubs.resource.local_authentication_enabled && !module.eventhubs.resource.public_network_access_enabled && module.eventhubs.resource.minimum_tls_version == "1.2"
+    condition     = module.eventhubs[0].resource.sku == "Premium" && module.eventhubs[0].resource.capacity == 1 && !module.eventhubs[0].resource.local_authentication_enabled && !module.eventhubs[0].resource.public_network_access_enabled && module.eventhubs[0].resource.minimum_tls_version == "1.2"
     error_message = "Event Hubs namespace must retain Premium/1 PU, Entra/private access and TLS 1.2."
   }
 
   assert {
-    condition     = jsonencode(keys(module.eventhubs.resource_eventhubs)) == jsonencode(["document-events", "document-events-dlq"])
+    condition     = jsonencode(keys(module.eventhubs[0].resource_eventhubs)) == jsonencode(["document-events", "document-events-dlq"])
     error_message = "Only the two delete topics belong to the AVM."
   }
 
   assert {
-    condition     = module.eventhubs.resource_eventhubs["document-events"].partition_count == 32 && module.eventhubs.resource_eventhubs["document-events-dlq"].partition_count == 4 && alltrue([for hub in module.eventhubs.resource_eventhubs : hub.message_retention == 7 && hub.status == "Active"])
+    condition     = module.eventhubs[0].resource_eventhubs["document-events"].partition_count == 32 && module.eventhubs[0].resource_eventhubs["document-events-dlq"].partition_count == 4 && alltrue([for hub in module.eventhubs[0].resource_eventhubs : hub.message_retention == 7 && hub.status == "Active"])
     error_message = "Delete topics must keep fixed partitions, seven-day retention and Active status."
   }
 
   assert {
-    condition     = azurerm_eventhub.state.name == "document-state" && azurerm_eventhub.state.namespace_id == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1" && azurerm_eventhub.state.partition_count == 32 && azurerm_eventhub.state.retention_description[0].cleanup_policy == "Compact" && azurerm_eventhub.state.retention_description[0].tombstone_retention_time_in_hours == 168 && azurerm_eventhub.state.retention_description[0].retention_time_in_hours == null
+    condition     = azurerm_eventhub.state[0].name == "document-state" && azurerm_eventhub.state[0].namespace_id == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1" && azurerm_eventhub.state[0].partition_count == 32 && azurerm_eventhub.state[0].retention_description[0].cleanup_policy == "Compact" && azurerm_eventhub.state[0].retention_description[0].tombstone_retention_time_in_hours == 168 && azurerm_eventhub.state[0].retention_description[0].retention_time_in_hours == null
     error_message = "The single direct state topic must use Compact and the fixed tombstone period."
   }
 
   assert {
-    condition     = module.eventhubs.private_endpoints.eventhubs.subnet_id == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Network/virtualNetworks/vnet-parchwell-offline1/subnets/snet-private-endpoints" && length(module.eventhubs.private_endpoints.eventhubs.private_service_connection) == 1 && module.eventhubs.private_endpoints.eventhubs.private_service_connection[0].name == "pse-eh-parchwell-offline1" && module.eventhubs.private_endpoints.eventhubs.private_service_connection[0].private_connection_resource_id == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1" && !module.eventhubs.private_endpoints.eventhubs.private_service_connection[0].is_manual_connection && toset(module.eventhubs.private_endpoints.eventhubs.private_service_connection[0].subresource_names) == toset(["namespace"]) && length(module.eventhubs.private_endpoints.eventhubs.private_dns_zone_group) == 1 && toset(module.eventhubs.private_endpoints.eventhubs.private_dns_zone_group[0].private_dns_zone_ids) == toset(["/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-platform-privatedns/providers/Microsoft.Network/privateDnsZones/privatelink.servicebus.windows.net"])
+    condition     = module.eventhubs[0].private_endpoints.eventhubs.subnet_id == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Network/virtualNetworks/vnet-parchwell-offline1/subnets/snet-private-endpoints" && length(module.eventhubs[0].private_endpoints.eventhubs.private_service_connection) == 1 && module.eventhubs[0].private_endpoints.eventhubs.private_service_connection[0].name == "pse-eh-parchwell-offline1" && module.eventhubs[0].private_endpoints.eventhubs.private_service_connection[0].private_connection_resource_id == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1" && !module.eventhubs[0].private_endpoints.eventhubs.private_service_connection[0].is_manual_connection && toset(module.eventhubs[0].private_endpoints.eventhubs.private_service_connection[0].subresource_names) == toset(["namespace"]) && length(module.eventhubs[0].private_endpoints.eventhubs.private_dns_zone_group) == 1 && toset(module.eventhubs[0].private_endpoints.eventhubs.private_dns_zone_group[0].private_dns_zone_ids) == toset(["/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-platform-privatedns/providers/Microsoft.Network/privateDnsZones/privatelink.servicebus.windows.net"])
     error_message = "Event Hubs endpoint must target its namespace through the persistent PE subnet and DNS zone."
   }
 
@@ -464,12 +464,12 @@ run "foundation" {
   }
 
   assert {
-    condition     = azurerm_monitor_diagnostic_setting.eventhubs.target_resource_id == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1" && azurerm_monitor_diagnostic_setting.eventhubs.log_analytics_workspace_id == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.OperationalInsights/workspaces/law-parchwell-offline1" && azurerm_monitor_diagnostic_setting.eventhubs.log_analytics_destination_type == "Dedicated" && length(azurerm_monitor_diagnostic_setting.eventhubs.enabled_log) == 1 && one(azurerm_monitor_diagnostic_setting.eventhubs.enabled_log).category_group == "allLogs" && length(azurerm_monitor_diagnostic_setting.eventhubs.enabled_metric) == 1 && one(azurerm_monitor_diagnostic_setting.eventhubs.enabled_metric).category == "AllMetrics"
+    condition     = azurerm_monitor_diagnostic_setting.eventhubs[0].target_resource_id == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1" && azurerm_monitor_diagnostic_setting.eventhubs[0].log_analytics_workspace_id == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.OperationalInsights/workspaces/law-parchwell-offline1" && azurerm_monitor_diagnostic_setting.eventhubs[0].log_analytics_destination_type == "Dedicated" && length(azurerm_monitor_diagnostic_setting.eventhubs[0].enabled_log) == 1 && one(azurerm_monitor_diagnostic_setting.eventhubs[0].enabled_log).category_group == "allLogs" && length(azurerm_monitor_diagnostic_setting.eventhubs[0].enabled_metric) == 1 && one(azurerm_monitor_diagnostic_setting.eventhubs[0].enabled_metric).category == "AllMetrics"
     error_message = "Diagnostics must target Event Hubs and the persistent workspace using allLogs/AllMetrics."
   }
 
   assert {
-    condition = alltrue([for actual in [azurerm_resource_group.ephemeral.tags, module.eventhubs.resource.tags, module.storage.resource.tags, module.eventhubs.private_endpoints.eventhubs.tags] : jsonencode(actual) == jsonencode({
+    condition = alltrue([for actual in [azurerm_resource_group.ephemeral.tags, module.eventhubs[0].resource.tags, module.storage.resource.tags, module.eventhubs[0].private_endpoints.eventhubs.tags] : jsonencode(actual) == jsonencode({
       "repo"       = "eventhubs-kafka-dotnet"
       "layer"      = "ephemeral"
       "scenario"   = "A01"
@@ -667,4 +667,70 @@ run "probe_v2_roles_true" {
     condition     = jsonencode(output.probe_v2_role_scope.accounts) == jsonencode(run.probe_v2_roles_false.probe_v2_role_scope.accounts) && jsonencode(output.probe_v2_role_scope.topics) == jsonencode(run.probe_v2_roles_false.probe_v2_role_scope.topics) && output.probe_v2_role_scope.namespace_id == run.probe_v2_roles_false.probe_v2_role_scope.namespace_id
     error_message = "The namespace-role switch must not alter any identity or target."
   }
+}
+
+run "default_active_contract" {
+  command = plan
+  assert {
+    condition = jsonencode(nonsensitive(output.configuration_lifecycle)) == jsonencode({
+      eventhubs_enabled                 = true
+      storage_account_resource_id       = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1"
+      blob_private_endpoint_resource_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Network/privateEndpoints/pe-blob-offline1"
+      container_resource_ids = {
+        ledger        = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/ledger"
+        verifier      = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/verifier"
+        claim_check   = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/claim-check"
+        single_action = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/single-action"
+      }
+      workspace_resource_id                  = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.OperationalInsights/workspaces/law-parchwell-offline1"
+      blob_diagnostic_target_resource_id     = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default"
+      namespace_resource_id                  = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1"
+      eventhubs_private_endpoint_resource_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Network/privateEndpoints/pe-eventhubs-offline1"
+    }) && local.names.eventhubs_private_endpoint == "pe-eventhubs-offline1"
+    error_message = "Active lifecycle output must expose exactly the intended private resource identities and default endpoint."
+  }
+}
+
+run "namespace_off_retains_storage" {
+  command = plan
+  variables {
+    eventhubs_enabled = false
+  }
+  assert {
+    condition     = output.eventhubs == null && output.probe_v2_role_scope == null && output.private_endpoint_ips.eventhubs == null && output.private_endpoint_ips.blob == "10.240.4.5" && length(module.eventhubs) == 0 && length(azurerm_eventhub.state) == 0 && length(azurerm_monitor_diagnostic_setting.eventhubs) == 0
+    error_message = "Off mode must remove namespace dependencies while preserving the Blob endpoint."
+  }
+  assert {
+    condition     = nonsensitive(output.configuration_lifecycle.eventhubs_enabled) == false && nonsensitive(output.configuration_lifecycle.namespace_resource_id) == null && nonsensitive(output.configuration_lifecycle.eventhubs_private_endpoint_resource_id) == null && nonsensitive(output.configuration_lifecycle.storage_account_resource_id) == nonsensitive(run.foundation.configuration_lifecycle.storage_account_resource_id) && nonsensitive(output.configuration_lifecycle.blob_private_endpoint_resource_id) == nonsensitive(run.foundation.configuration_lifecycle.blob_private_endpoint_resource_id) && jsonencode(nonsensitive(output.configuration_lifecycle.container_resource_ids)) == jsonencode(nonsensitive(run.foundation.configuration_lifecycle.container_resource_ids)) && nonsensitive(output.configuration_lifecycle.blob_diagnostic_target_resource_id) == nonsensitive(run.foundation.configuration_lifecycle.blob_diagnostic_target_resource_id) && length(azurerm_role_assignment.workload) == 6 && alltrue([for role in azurerm_role_assignment.workload : startswith(role.role_definition_name, "Storage Blob Data ")])
+    error_message = "Off mode must preserve shared identities, diagnostics target and Blob-scoped roles."
+  }
+}
+
+run "diagnostic_destinations" {
+  command = plan
+  assert {
+    condition     = local.storage_blob_diagnostics.law.name == "diag-blob-offline1" && local.storage_blob_diagnostics.law.workspace_resource_id == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.OperationalInsights/workspaces/law-parchwell-offline1" && local.storage_blob_diagnostics.law.log_analytics_destination_type == "Dedicated" && toset([for item in local.storage_blob_diagnostics.law.logs : item.category]) == toset(["StorageRead", "StorageWrite", "StorageDelete"]) && toset([for item in local.storage_blob_diagnostics.law.metrics : item.category]) == toset(["Transaction"]) && nonsensitive(output.configuration_lifecycle.blob_diagnostic_target_resource_id) == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default"
+    error_message = "Blob diagnostics must target the Blob service with exact categories and existing workspace."
+  }
+}
+
+run "private_endpoint_override" {
+  command = plan
+  variables {
+    eventhub_namespace_name        = "eh-new"
+    eventhub_private_endpoint_name = "pe-eh-new"
+  }
+  assert {
+    condition     = local.names.eventhubs_private_endpoint == "pe-eh-new" && local.eventhubs_config.private_endpoints.eventhubs.name == "pe-eh-new"
+    error_message = "Explicit endpoint name must follow the current namespace."
+  }
+}
+
+run "reject_private_endpoint_override" {
+  command = plan
+  variables {
+    eventhub_namespace_name        = "eh-new"
+    eventhub_private_endpoint_name = "pe-other"
+  }
+  expect_failures = [var.eventhub_private_endpoint_name]
 }
