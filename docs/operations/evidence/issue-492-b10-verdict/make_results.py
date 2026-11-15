@@ -717,6 +717,18 @@ def check_g7(document):
         expect(isinstance(value, str) and value not in ("", "0"), "G7", f"an unavailable measurement ({key}) is zero or empty")
 
 
+def check_g7_report(md):
+    """G7 on the rendered report: unavailable measurements are never shown as 0."""
+    match = re.search(r"^## C1 timeout counts, comparison only\n(.*?)(?=^## |\Z)", md, re.S | re.M)
+    expect(match is not None, "G7", "the C1 comparison section is missing")
+    rows = [line for line in match.group(1).splitlines() if line.startswith("| 1 |")]
+    expect(len(rows) == 1, "G7", "the C1 comparison section has no single repeat 1 row")
+    cells = [cell.strip() for cell in rows[0].strip("|").split("|")]
+    expect(cells[1:] == ["absent"] * 6, "G7", "C1 repeat 1 timeout counts are not all absent in the report")
+    expect(TEXT_BROKER in md, "G7", "the broker connection count statement is missing")
+    expect(not re.search(r"broker connection counts: 0", md, re.I), "G7", "the report shows broker connection counts as 0")
+
+
 def check_g8(md):
     head, _, tail = md.partition("\n" + VERDICT_LINE_TIMEOUT)
     expect(tail != "", "G8", "the proposed-verdict lines are missing")
@@ -981,6 +993,7 @@ def pipeline(raw, mode="write", hooks=None, committed=None):
     md_box = [render_md(ctx, document)]
     hook("md", md_box)
     md = md_box[0]
+    check_g7_report(md)
     check_g8(md)
     json_text = json.dumps(document, indent=2, ensure_ascii=True) + "\n"
     check_g11(md, json_text, README_ROW)
@@ -1008,12 +1021,12 @@ def read_committed():
 
 
 def write_outputs(result):
-    (ROOT / "results" / "B10").mkdir(parents=True, exist_ok=True)
-    (ROOT / MD_PATH).write_text(result["md"], encoding="utf-8", newline="\n")
-    (ROOT / JSON_PATH).write_text(result["json"], encoding="utf-8", newline="\n")
     readme_path = ROOT / "README.md"
     lines = readme_path.read_text(encoding="utf-8").split("\n")
     expect(lines[README_LINE - 1].startswith("| B10 |"), "G9", f"README.md line {README_LINE} is not the B10 row")
+    (ROOT / "results" / "B10").mkdir(parents=True, exist_ok=True)
+    (ROOT / MD_PATH).write_text(result["md"], encoding="utf-8", newline="\n")
+    (ROOT / JSON_PATH).write_text(result["json"], encoding="utf-8", newline="\n")
     lines[README_LINE - 1] = result["row"]
     readme_path.write_text("\n".join(lines), encoding="utf-8", newline="\n")
 

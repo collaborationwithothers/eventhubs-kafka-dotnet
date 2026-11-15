@@ -31,7 +31,7 @@ This receipt describes how the B10 evidence pack in `results/B10/2026-11-15.md` 
 
 - The plan says each pods-artifact member is pinned by hash in the generator. A pods artifact holds 55 (C0) and 240 (C1) members. The generator pins one digest per artifact over every member path and member SHA-256, plus the five journals individually. The ZIP hash already fixes every byte, so the manifest adds no coverage beyond naming what each pin protects.
 - Running the generator without a mode flag also replaces README line 28, which must be the existing B10 row; the plan said it prints the row. It prints the row as well. `--check` requires line 28 to equal it.
-- G7 is enforced on the structured values (broker counts, C1 repeat 1 counts, failed per-instance check) and on the absence of C1 root counts, not by scanning rendered cells.
+- G7 is enforced on the structured values (broker counts, C1 repeat 1 counts, failed per-instance check) and on the absence of C1 root counts, and after rendering on the C1 comparison table's repeat 1 row (every cell `absent`) and the broker statement. The rendered-report part was added after cold review round 1. It has no self-test case, so the plan's count of 23 stands; a one-off probe that set one repeat 1 cell to 0 failed at G7, and nothing from that probe is committed.
 - The 46 pod rows show exit codes taken from `b10_lifecycle` where the Job is listed there and otherwise from `pods.json`. A one-off scan of the report confirmed the plan's expected codes: 1 for each C0 verify Job and the C1 judge, 0 for the other 40.
 - Sizes against the plan's estimate: the generator is 1162 lines (estimate about 1200), the report 214 lines (estimate 350), the JSON 1314 lines (not estimated). The pull request is within the estimate.
 
