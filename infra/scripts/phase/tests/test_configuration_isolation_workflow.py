@@ -78,7 +78,8 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
             self.assertIn("one('start-line')", self.by_id[entry]['run'])
             self.assertIn("pool.submit(one, 'loadgen')", self.by_id[entry]['run'])
             self.assertIn("one('verify')", self.by_id[entry]['run'])
-            self.assertIn('pod_connections()', self.by_id[entry]['run'])
+            self.assertIn("pod_connections('idle')", self.by_id[entry]['run'])
+            self.assertIn("pod_connections('active')", self.by_id[entry]['run'])
             self.assertIn('confirm_loadgen_delivery()', self.by_id[entry]['run'])
             self.assertIn("if row['delivered'] is True:", self.by_id[entry]['run'])
 
@@ -86,8 +87,8 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
         import socket
         for entry in ('c0', 'c1'):
             code = self.by_id[entry]['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
-            fn = next(x for x in ast.parse(code).body if isinstance(x, ast.FunctionDef) and x.name == 'connections')
-            compiled = compile(ast.Module(body=[fn], type_ignores=[]), 'runner probe fixture', 'exec')
+            nodes = [x for x in ast.parse(code).body if isinstance(x, ast.FunctionDef) and x.name in ('save_probe', 'probe_runner', 'connections')]
+            compiled = compile(ast.Module(body=nodes, type_ignores=[]), 'runner probe fixture', 'exec')
             output = {'eventhubs': {'value': {'bootstrap_servers': 'eh.example:9093'}},
                       'private_endpoint_ips': {'value': {'eventhubs': '10.0.0.1', 'blob': '10.0.0.2'}}}
             phase = mock.Mock()
@@ -103,15 +104,17 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
                     connection = mock.MagicMock()
                     connection.__enter__.return_value.getpeername.return_value = address
                     return connection
-                fake_socket = SimpleNamespace(SOCK_STREAM=socket.SOCK_STREAM, getaddrinfo=addresses, create_connection=connect)
-                namespace = {'phase': phase, 'module': SimpleNamespace(unwrap=lambda x: x['value']), 'socket': fake_socket}
-                exec(compiled, namespace)
-                namespace['connections']()
+                fake_socket = SimpleNamespace(SOCK_STREAM=socket.SOCK_STREAM, timeout=socket.timeout, getaddrinfo=addresses, create_connection=connect)
+                namespace = {'phase': phase, 'module': SimpleNamespace(unwrap=lambda x: x['value']), 'socket': fake_socket, 'pathlib': __import__('pathlib'), 'os': os, 'json': json}
+                phase.read.side_effect = lambda name: {'phase': entry.upper()} if name == 'phase.json' else output
+                with tempfile.TemporaryDirectory() as temp, mock.patch.dict(os.environ, {'RUNNER_TEMP': temp}):
+                    exec(compiled, namespace)
+                    namespace['connections']('idle')
                 return calls
             with self.subTest(entry=entry):
                 self.assertEqual([('10.0.0.1', 9093), ('10.0.0.2', 443)], exercise(['10.0.0.1']))
                 for answers in ([], ['10.0.0.10'], ['10.0.0.1', '10.0.0.10']):
-                    with self.subTest(answers=answers), self.assertRaises(AssertionError): exercise(answers)
+                    with self.subTest(answers=answers), self.assertRaisesRegex(RuntimeError, 'runner DNS probe failed'): exercise(answers)
 
     def test_pod_dns_requires_exact_answers_and_connects_to_private_ips(self):
         for entry in ('c0', 'c1'):
@@ -129,7 +132,7 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
                 env = {**os.environ, 'PATH': temp + ':' + os.environ['PATH'], 'CALLS': str(calls), 'EH_ANSWER': '10.0.0.1'}
                 result = subprocess.run(['sh', '-c', namespace['command']], env=env, capture_output=True)
                 self.assertEqual(0, result.returncode)
-                self.assertEqual(b'parchwell-cluster-smoke-ok\n', result.stdout)
+                self.assertEqual(b'eventhubs dns passed\nblob dns passed\neventhubs tcp passed\nblob tcp passed\n', result.stdout)
                 self.assertEqual(['-z -w 15 10.0.0.1 9093', '-z -w 15 10.0.0.2 443'], calls.read_text().splitlines())
                 calls.unlink()
                 env['EH_ANSWER'] = '10.0.0.10'
@@ -149,7 +152,9 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
                 def one(mode):
                     self.assertEqual('loadgen', mode)
                     self.assertTrue(release.wait(3))
-                def probe(): release.set()
+                def probe(context):
+                    self.assertEqual('active', context)
+                    release.set()
                 invoke = mock.Mock(return_value=SimpleNamespace(returncode=0, stdout=b'{"status":{"active":1}}'))
                 namespace = {'phase': phase, 'subprocess': SimpleNamespace(run=invoke), 'json': json, 'time': time,
                              'pathlib': __import__('pathlib'), 'os': os, 'one': one, 'pod_connections': probe}
@@ -396,7 +401,7 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
                 self.assertEqual([('10.0.0.1', 9093), ('10.0.0.2', 443)], connections)
         exercise(after, b'sentinel')
         for answers in ((), ('10.0.0.10',), ('10.0.0.1', '10.0.0.10')):
-            with self.subTest(answers=answers), self.assertRaises(AssertionError):
+            with self.subTest(answers=answers), self.assertRaisesRegex(RuntimeError, 'runner DNS probe failed'):
                 exercise(after, b'sentinel', answers)
         for state, sentinel in (({**after, 'storage_account_resource_id': '/different'}, b'sentinel'), (after, b'changed')):
             with self.subTest(state=state, sentinel=sentinel), self.assertRaises(AssertionError):
@@ -452,6 +457,123 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
             with mock.patch.dict(os.environ, env):
                 exec(compile(code, 'missing receipt fixture', 'exec'), {})
             self.assertIn('C0 start-line worker execution: unavailable', Path(temp, 'configuration-smoke-receipt', 'receipt.txt').read_text())
+
+    def test_runner_probe_failure_records_preceding_success_without_private_exception(self):
+        import socket
+        for entry, phase_name, context in (('c0', 'C0', 'idle'), ('c0', 'C0', 'active'),
+                                            ('c1', 'C1', 'idle'), ('c1', 'C1', 'active'),
+                                            ('c1_settings', 'C1', 'settings')):
+            code = self.by_id[entry]['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
+            nodes = [x for x in ast.parse(code).body if isinstance(x, ast.FunctionDef) and x.name in ('save_probe', 'probe_runner')]
+            compiled = compile(ast.Module(body=nodes, type_ignores=[]), 'probe fixture', 'exec')
+            for service, failure, expected in (('eventhubs', socket.timeout('sensitive exception'), 'timeout'),
+                                                ('blob', OSError('sensitive exception'), 'failed')):
+                with self.subTest(entry=entry, context=context, service=service), tempfile.TemporaryDirectory() as temp:
+                    calls = []
+                    def addresses(host, port, **kwargs):
+                        return [(None, None, None, None, ('10.0.0.1' if port == 9093 else '10.0.0.2', port))]
+                    def connect(address, timeout):
+                        calls.append((address, timeout))
+                        if (address[1] == 9093) == (service == 'eventhubs'):
+                            raise failure
+                        connection = mock.MagicMock()
+                        connection.__enter__.return_value.getpeername.return_value = address
+                        return connection
+                    fake = SimpleNamespace(SOCK_STREAM=socket.SOCK_STREAM, timeout=socket.timeout,
+                                           getaddrinfo=addresses, create_connection=connect)
+                    namespace = {'socket': fake, 'pathlib': __import__('pathlib'), 'os': os, 'json': json}
+                    with mock.patch.dict(os.environ, {'RUNNER_TEMP': temp}):
+                        exec(compiled, namespace)
+                        with self.assertRaisesRegex(RuntimeError, '^runner TCP probe failed$'):
+                            namespace['probe_runner'](phase_name, context, 'eh.example', 'blob.example',
+                                                      {'eventhubs': '10.0.0.1', 'blob': '10.0.0.2'})
+                    directory = Path(temp, 'configuration-isolation-probes')
+                    def status(svc, op):
+                        return json.loads(Path(directory, '-'.join((phase_name, context, 'runner', svc, op)) + '.json').read_text())['status']
+                    self.assertEqual('passed', status(service, 'dns'))
+                    self.assertEqual(expected, status(service, 'tcp'))
+                    tcp_record = json.loads((directory / '-'.join((phase_name, context, 'runner', service, 'tcp'))).with_suffix('.json').read_text())
+                    self.assertEqual('timeout' if expected == 'timeout' else 'connection_error', tcp_record['reason'])
+                    self.assertTrue(all(timeout == 15 for _, timeout in calls))
+                    if service == 'blob':
+                        self.assertEqual('passed', status('eventhubs', 'dns'))
+                        self.assertEqual('passed', status('eventhubs', 'tcp'))
+                    else:
+                        self.assertFalse(Path(directory, phase_name + '-' + context + '-runner-blob-dns.json').exists())
+                    self.assertNotIn('sensitive exception', ''.join(path.read_text() for path in directory.iterdir()))
+                    self.assertNotIn('10.0.0.', ''.join(path.read_text() for path in directory.iterdir()))
+
+    def test_failed_cluster_wait_collects_rows_before_delete_and_rejects_injection(self):
+        for entry, phase_name in (('c0', 'C0'), ('c1', 'C1')):
+            code = self.by_id[entry]['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
+            nodes = [x for x in ast.parse(code).body if isinstance(x, ast.FunctionDef) and x.name in ('save_probe', 'pod_connections')]
+            compiled = compile(ast.Module(body=nodes, type_ignores=[]), 'cluster fixture', 'exec')
+            for logs, expected in (('eventhubs dns passed\nblob dns failed\n', 'failed'),
+                                   ('eventhubs dns passed\n10.9.8.7 private exception\n', None),
+                                   ('', None)):
+                with self.subTest(entry=entry, logs=logs), tempfile.TemporaryDirectory() as temp:
+                    phase = mock.Mock(private=Path(temp))
+                    phase.read.return_value = {'phase': phase_name}
+                    calls = []
+                    def invoke(args, **kwargs):
+                        calls.append(args)
+                        if 'helm' in args:
+                            return SimpleNamespace(stdout=b'          command: []\n')
+                        if 'wait-job' in args:
+                            raise subprocess.CalledProcessError(1, args)
+                        if '--stdout-file' in args:
+                            Path(args[args.index('--stdout-file') + 1]).write_text(logs)
+                        return SimpleNamespace(stdout=b'')
+                    namespace = {'phase': phase, 'connections': lambda context: ('eh.example', 'blob.example', {'eventhubs': '10.0.0.1', 'blob': '10.0.0.2'}),
+                                 'os': os, 'pathlib': __import__('pathlib'), 'ipaddress': __import__('ipaddress'), 're': re, 'json': json,
+                                 'subprocess': SimpleNamespace(run=invoke)}
+                    with mock.patch.dict(os.environ, {'RUNNER_TEMP': temp, 'PARCHWELL_RUN_ID': 'synthetic'}):
+                        exec(compiled, namespace)
+                        with self.assertRaises(RuntimeError): namespace['pod_connections']('idle')
+                    self.assertTrue(any('delete' in call for call in calls))
+                    self.assertLess(next(i for i, c in enumerate(calls) if '--stdout-file' in c),
+                                    next(i for i, c in enumerate(calls) if 'delete' in c))
+                    directory = Path(temp, 'configuration-isolation-probes')
+                    target = directory / (phase_name + '-idle-cluster-blob-dns.json')
+                    if expected:
+                        self.assertEqual(expected, json.loads(target.read_text())['status'])
+                        self.assertEqual('command_failed', json.loads(target.read_text())['reason'])
+                        self.assertEqual('passed', json.loads((directory / (phase_name + '-idle-cluster-eventhubs-dns.json')).read_text())['status'])
+                    else:
+                        self.assertFalse(target.exists())
+                    self.assertNotIn('private exception', ''.join(path.read_text() for path in directory.iterdir()))
+
+    def test_probe_receipt_rejects_contamination_and_preserves_observations(self):
+        code = self.by_id['receipt']['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp, 'configuration-isolation-probes')
+            directory.mkdir()
+            def record(phase, context, perspective, service, operation, status):
+                key = '-'.join((phase, context, perspective, service, operation))
+                row = dict(phase=phase, context=context, perspective=perspective,
+                           service=service, operation=operation, status=status,
+                           reason={'passed': 'none', 'timeout': 'timeout', 'failed': 'dns_error'}[status])
+                Path(directory, key + '.json').write_text(json.dumps(row))
+                return Path(directory, key + '.json')
+            record('C0', 'idle', 'runner', 'eventhubs', 'dns', 'passed')
+            record('C0', 'idle', 'runner', 'eventhubs', 'tcp', 'timeout')
+            record('C1', 'settings', 'runner', 'blob', 'dns', 'failed')
+            Path(directory, 'C0-active-cluster.attempted').touch()
+            record('C0', 'active', 'cluster', 'eventhubs', 'dns', 'passed')
+            bad = record('C0', 'active', 'cluster', 'eventhubs', 'tcp', 'passed')
+            bad.write_text('{"phase":"C0","secret":"10.9.8.7 private exception"}')
+            with mock.patch.dict(os.environ, {**settings_environment(temp), 'STEP_RESULTS': '{}'}):
+                exec(compile(code, 'probe receipt fixture', 'exec'), {})
+            text = Path(temp, 'configuration-smoke-receipt', 'receipt.txt').read_text()
+            for line in ('C0 idle runner eventhubs dns: passed reason=none',
+                         'C0 idle runner eventhubs tcp: timeout reason=timeout',
+                         'C1 settings runner blob dns: failed reason=dns_error',
+                         'C0 active cluster eventhubs dns: passed reason=none',
+                         'C0 active cluster eventhubs tcp: unavailable reason=unavailable',
+                         'C1 idle runner blob tcp: not_attempted reason=none'):
+                self.assertIn(line, text)
+            self.assertNotIn('10.9.8.7', text)
+            self.assertNotIn('private exception', text)
 
     def test_cleanup_failure_matrix_and_report_never_pass_incomplete_run(self):
         destroy_guard = self.by_id['destroy']['if']
