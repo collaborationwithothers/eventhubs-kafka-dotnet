@@ -2,9 +2,15 @@
 
 Issue: [#505](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/505), child of [#499](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499), split entry 2. Pull request name: `consumer-worker`. This is the contract-grade plan for that one pull request under docs/agents/factory.md "Item lifecycle" step 3.
 
-Revision 3. Base: `main` at 09c5bfc384dc516e7b9a8a53d38dee30d40755df, the merge of #504's pull request #518. File paths and line numbers below are on that commit unless a line says otherwise. Between revision 1's base (23a6fb2639a9e0ea1c74dc466d7eba4a8c0a5c9a) and this one, no file under `src/` or `tests/Parchwell.*` changed, so every code line cited below is the same on both.
+Revision 4. Base: `main` at 09c5bfc384dc516e7b9a8a53d38dee30d40755df, the merge of #504's pull request #518. File paths and line numbers below are on that commit unless a line says otherwise. Between revision 1's base (23a6fb2639a9e0ea1c74dc466d7eba4a8c0a5c9a) and this one, no file under `src/` or `tests/Parchwell.*` changed, so every code line cited below is the same on both.
 
-Changes since revision 2, from its [plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/505#issuecomment-6899350281), by finding:
+Changes since revision 3:
+- Section 11 reads `None`. Q1 is answered by Hari's [decision 6899939624](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6899939624) on #499, point 1, adopted on #505 by [6899939867](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/505#issuecomment-6899939867): #505 ships the seam only, #508 adds the production source and the schema, and #510 extends it. Q2 and Q3 are adopted by [decision 6899404704](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/505#issuecomment-6899404704).
+- Section 3.5 cites section 3.2 of the #506 plan, revision 2, for the wire format instead of restating it. That adds `outcome` and `submitted` to commit rows (written as `callback` and `null`). Section 3.2's `Phase` rule narrows to `C0` or `C1`, and 3.3's `ConfigurationId` must equal the phase, both following #506 plan section 3.1. The basis is #506 decision [6899542333](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6899542333) points 1 and 7; section 1 notes that it is not adopted on #505.
+- Section 7: D1 to D5 move back to deployment assumptions, accepted by name by decision 6899404704.
+- Tests U6 and U23 compare against the #506 format. The stop rule covers a change to that format.
+
+Changes in revision 3, since revision 2, from its [plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/505#issuecomment-6899350281), by finding:
 - 2 to 4: the component tests CT1 to CT4 are redesigned. Messages are produced only after the start condition holds, because the baseline `auto.offset.reset` is `latest` (`BaselineSettingsCatalog.cs` line 185) and each repeat has a fresh group. CT2 and CT3 use a 2-partition topic, a committed offset before the slow message, and slow ordinal 11. CT2's `lost` row is expected after the slow row, because the lost handler runs only inside `Consume` or `Close`. CT3 names the subject's partition and counts only rows after the slow message starts.
 - 5: plan validation checks that effective `max.poll.interval.ms` is at least effective `session.timeout.ms` before registration; U4 gains the boundary cases.
 - 6: `tests/Parchwell.ArchitectureTests/packages.lock.json` joins the file scope.
@@ -38,6 +44,11 @@ Authorities, in creation order (factory.md "Item lifecycle" step 3, child issues
 
 Parent decisions read as context (#505 body names them): #499 [6894534441](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894534441) (batch, K-55, K-28, K-57, K-47), [6894564479](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894564479) (heartbeats versus the poll limit), [6894587233](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894587233) (split approved; Claude review gate), [6894614673](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894614673) (Claude plans; Codex implements). Under factory.md step 3 they change this plan only through the adopting decisions above; none of them conflicts with this plan.
 
+6. #505 [decision 6899404704](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/505#issuecomment-6899404704): Q2 (the C03 slow-message fault, `inline` or `pause`) and Q3 (D1 to D5 accepted by name) of revision 3 are adopted.
+7. #505 [decision 6899939867](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/505#issuecomment-6899939867) adopts #499 [decision 6899939624](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6899939624), Hari's own answer. Point 1: #505 ships only its settings seam with no production source; #508 adds the production source and the scenario-schema and profile changes, and #510 extends them. Point 2 adds split entry 11, #521, a consumer phase judge; it does not change this pull request.
+
+Record format. #506 [decision 6899542333](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6899542333) point 1 makes the #506 plan's section 3.2 the record wire format and says #505 cites it. That decision is posted on #506, and no decision on #505 adopts it, so under factory.md step 3 it does not bind this plan. This plan follows it anyway as an ordinary choice under factory.md "Act or ask": one owner of the format avoids two contracts drifting apart, and the choice is reversible. A `## Decision` on #505 adopting 6899542333 would close the gap.
+
 Evidence, not authority: [proposal revision 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894560135), "Proposed split" row 2.
 
 Not adopted on #505: the decisions and approvals on #504. This plan relies on them only through ADR-022's merged text on `main`, which carries them.
@@ -60,7 +71,7 @@ Files this pull request may add or change:
 
 Must not change: `src/Parchwell.Enrichment/SeedF04/**` and the F04 and `--image-smoke` behaviour of `Program.cs`; `src/Parchwell.Kafka/**`, `src/Parchwell.Scenarios/**`, `src/Parchwell.LoadGen/**`, `src/Parchwell.Verifier/**`; `Directory.Packages.props`; `scenarios/`, `results/`, `docs/`, `charts/`, `infra/`, `.github/`, `scripts/`; `AGENTS.md`, `CLAUDE.md`, `README.md`.
 
-Out of scope, owned elsewhere: SIGKILL self-termination and the kill-intent row write (#509); verifier join and checks (#506); chart, Job, environment values and role assignments (#507); scenario files, profile schema and in-process scenario resolution for C03, C10 and C01 (Q1 in section 11); the verifier's group-offset read (#506, ADR-022 "Independent commit evidence"); `document-state` and `document-events-dlq` writes (none, ADR-022 "No topic writes").
+Out of scope, owned elsewhere: SIGKILL self-termination and the kill-intent row write (#509); verifier join and checks (#506); chart, Job, environment values and role assignments (#507); scenario files, profile schema and in-process scenario resolution for C03, C10 and C01 (#508 and #510, decision 6899939624 point 1); the verifier's group-offset read (#506, ADR-022 "Independent commit evidence"); `document-state` and `document-events-dlq` writes (none, ADR-022 "No topic writes").
 
 Protected and P1 under AGENTS.md "Code Review Rules": three new package references (`Azure.Storage.Blobs`, `Azure.Core` in the enrichment project; `Testcontainers` in its test project). The plan requires them, so the implementer keeps them and lists them in the pull request description; Hari merges (docs/agents/pull-requests.md rule 8, fourth paragraph).
 
@@ -81,7 +92,7 @@ Bound with `ErrorOnUnknownConfiguration = true` and validated on start, as `Seed
 |---|---|
 | `RunId` | DNS label, length 1 to 29 |
 | `ScenarioId` | one of `C03`, `C10`, `C01` |
-| `Phase` | `C0` to `C9`, matching `^C[0-9]$` |
+| `Phase` | `C0` or `C1` (#506 plan section 3.1) |
 | `RepeatNumber` | integer 1 to 5 |
 | `Role` | `subject` or `witness` |
 | `JobName` | equals `<RunId>-<lower(Phase)>-r<RepeatNumber>-consumer-<Role>` |
@@ -104,7 +115,7 @@ The member gets everything a scenario decides through one interface at our own b
 
 | Field | Rule |
 |---|---|
-| `ConfigurationId` | `^C[0-9]$` |
+| `ConfigurationId` | equal to `Phase` (#506 plan section 3.1) |
 | `ProcessingDelayMs` | integer 0 to 60000; applied to every message both members process |
 | `WindowMs` | integer 1000 to 3600000 |
 | `SlowMessage` | absent, or: `Ordinal` integer 1 to 1000000, `DurationMs` integer 1 to 3600000, `Mode` `inline` or `pause` |
@@ -122,7 +133,7 @@ Consumer settings a plan may set, applied over `KafkaConfigurationFactory.Create
 
 Bounds are librdkafka v2.16.0 CONFIGURATION.md lines 131, 137 and 140.
 
-This pull request ships the interface, the plan type and its validation, and a test source. It ships no production source: in `Program.cs` the `--consumer-processing` mode resolves `IConsumerProcessingPlanSource` from DI, and no production registration exists until the child Q2 names adds one. Without a registration, the mode exits 1 with `consumer_plan_invalid` before registration and before any Kafka or Blob client is constructed.
+This pull request ships the interface, the plan type and its validation, and a test source. It ships no production source: in `Program.cs` the `--consumer-processing` mode resolves `IConsumerProcessingPlanSource` from DI, and no production registration exists until #508 adds one (decision 6899939624 point 1). Without a registration, the mode exits 1 with `consumer_plan_invalid` before registration and before any Kafka or Blob client is constructed.
 
 ### 3.4 Kafka client
 
@@ -147,24 +158,15 @@ Record rules:
 - Roll-over: after 40000 appends to the current blob, the next row goes to a new blob with the next index. 40000 is below the 50,000-append limit (S2).
 - `row_sequence` starts at 0 for the member and increases by 1 per row across blobs.
 
-JSON: property names exactly as below, no other properties, `null` where stated. Times are UTC, written with format `yyyy-MM-ddTHH:mm:ss.fffffffZ` from `TimeProvider.GetUtcNow()`. Integers are JSON numbers.
+Wire format: the row kinds, their properties, the registration marker and the completion receipt are exactly those of section 3.2 of the [consumer-verifier plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/100a832e44af447ae8a2107155ebfccd283c5bdf/items/506/plan-consumer-verifier.md), revision 2, commit `100a832e44af447ae8a2107155ebfccd283c5bdf` (#506 decision [6899542333](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6899542333) point 1, which makes that section the format and says #505 cites it). This plan does not restate them. If #506's approved revision changes its section 3.2, the implementer follows section 12. Times are written with format `yyyy-MM-ddTHH:mm:ss.fffffffZ` from `TimeProvider.GetUtcNow()`, which produces the pattern that section requires.
 
-Common to every row: `schema_version` (1), `kind`, `instance_id` (`PodName`), `row_sequence`.
-
-| `kind` | Further properties |
-|---|---|
-| `processed` | `topic` (`document-events`), `partition`, `offset`, `producer_instance_id`, `attempt_id`, `key`, `sequence`, `slow` (bool), `processing_started_utc`, `processing_ended_utc` |
-| `commit` | `source` (`callback` or `explicit`), `error_code` (int; 0 when no error), `error_reason` (string or `null` when no error), `offsets`: array of `{ "topic", "partition", "offset", "error_code" }` sorted by topic then partition, `event_utc` |
-| `partition_event` | `event` (`assigned`, `revoked` or `lost`), `partitions` (array of ints, ascending), `event_utc` |
-| `kill_intent` | `partition`, `offset`, `event_utc`. Defined here for #506 and #509; this pull request never writes it |
-
-`processed` fields: `producer_instance_id` and `attempt_id` are the UTF-8 values of headers `instance-id` and `attempt-id` (`src/Parchwell.LoadGen/Run/Execution/RunExecutor.cs` lines 623 to 624); `sequence` is header `sequence` parsed as a base-10 Int64 (line 621); `key` is the message key decoded as UTF-8. Each is `null` when absent, duplicated, not valid UTF-8, or (for `sequence`) not a base-10 Int64. A `null` field does not stop the member; #506 invalidates the run (ADR-022 "Invalid run"). `slow` is `true` only for the message selected by `SlowMessage`.
-
-`commit` fields: a `callback` row is one `OffsetsCommitted` handler call (Confluent.Kafka `CommittedOffsets`). Its `error_code` and `error_reason` are the result's overall `Error`. Its `offsets` hold every `TopicPartitionOffsetError` of the result, each with its own `Error.Code`. `offset` is the `Offset.Value` the client reports, unchanged (for example -1001 for unset). An entry is not filtered, merged or reordered beyond the sort. `explicit` is reserved for an item that already requires explicit commits (ADR-022 "Record"). No item in this batch requires one, so this pull request writes no `explicit` row and makes no `Commit` call.
-
-Registration marker JSON: `schema_version` (1), `kind` (`consumer_registration`), `run_id`, `scenario_id`, `configuration_id`, `phase`, `repeat_number`, `role`, `instance_id`, `job_name`, `pod_name`, `pod_uid`, `node_name`, `source_commit`, `group_id`, `effective_settings` (object of every effective setting of 3.4, key to string value, keys in ordinal order), `registered_utc`. At most 65536 bytes.
-
-Completion receipt JSON: `schema_version` (1), `kind` (`consumer_completion`), `run_id`, `scenario_id`, `configuration_id`, `phase`, `repeat_number`, `role`, `instance_id`, `job_name`, `pod_uid`, `source_commit`, `rows` (the number of rows written), `record_blobs` (the number of record blobs created), `messages_processed` (the number of `processed` rows), `closed_utc` (after `Close` returned). At most 65536 bytes.
+What this worker writes into that format:
+- `processed`: `producer_instance_id` and `attempt_id` are the UTF-8 values of headers `instance-id` and `attempt-id` (`src/Parchwell.LoadGen/Run/Execution/RunExecutor.cs` lines 623 to 624). `sequence` is header `sequence` parsed as a base-10 Int64 (line 621). `key` is the message key decoded as UTF-8. Each is `null` when absent, duplicated, not valid UTF-8, or (for `sequence`) not a base-10 Int64. A `null` field does not stop the member; #506 invalidates the run (ADR-022 "Invalid run"). `slow` is `true` only for the message selected by `SlowMessage`.
+- `commit`: only `callback` rows, one per `OffsetsCommitted` handler call (Confluent.Kafka `CommittedOffsets`), with `outcome` `callback` and `submitted` `null`. `error_code` and `error_reason` are the result's overall `Error`. `offsets` holds every `TopicPartitionOffsetError` of the result in topic then partition order, each with its own `Error.Code` and the client's `Offset.Value` unchanged (for example -1001 for unset), with no entry filtered or merged. This pull request writes no `explicit` row and makes no `Commit` call. ADR-022 "Record" allows explicit commits only where an item already requires them, and no item in this batch does.
+- `partition_event`: the handler's partitions, distinct and ascending, including an empty list when the client passes one.
+- `kill_intent`: never written by this pull request (#509).
+- Registration marker: `effective_settings` holds every effective setting of 3.4. `configuration_id` is the plan's `ConfigurationId`; `node_name` is `NodeName`.
+- Completion receipt: `rows` is the number of rows written, `record_blobs` the number of record blobs created, `messages_processed` the number of `processed` rows, and `closed_utc` the time after `Close` returned.
 
 ### 3.6 Failure names
 
@@ -233,7 +235,7 @@ Start condition, used by every component test: each member's newest `partition_e
 | 2 | U3 | `ConsumerSettings` `{"fetch.wait.max.ms":"100"}` | exit 1; `reason=consumer_setting_not_supported` |
 | 2 | U4 | `ProcessingDelayMs` -1, 0, 60000, 60001; `WindowMs` 999, 1000; `SlowMessage` on witness; `Mode` `pause` with `enable.auto.offset.store` `true`; `WindowMs` 5000 with `DurationMs` 5000; `session.timeout.ms` 30000 with `max.poll.interval.ms` 29999, then 30000; `max.poll.interval.ms` 20000 alone (baseline session 30000) | invalid, valid, valid, invalid; invalid, valid; invalid; invalid; invalid; invalid, valid; invalid. Each invalid case: exit 1, `reason=consumer_plan_invalid`, store calls 0, consumer factory calls 0 |
 | 3 | U5 | store throws on registration | exit 1; `reason=consumer_registration_failed`; consumer factory calls 0 |
-| 4 | U6 | valid inputs, Role `subject`, Phase `C1`, RepeatNumber 2, RunId `run1` | marker path `run1/C1/r2/consumer/<PodName>/registration.json`; `group_id` `run1-c1-r2-consumers`; `effective_settings` equals builder configuration key for key; keys ordinal-sorted; JSON property set equals 3.5 exactly |
+| 4 | U6 | valid inputs, Role `subject`, Phase `C1`, RepeatNumber 2, RunId `run1` | marker path `run1/C1/r2/consumer/<PodName>/registration.json`; `group_id` `run1-c1-r2-consumers`; `effective_settings` equals builder configuration key for key; keys ordinal-sorted; JSON property set equals the #506 plan's section 3.2 registration marker exactly |
 | 5 | U7 | 3 messages, store-after-process | call order per message: append `processed` then `StoreOffset(offset+1)`; rows `row_sequence` 1, 2, 3 after an `assigned` row 0 |
 | 6 | U8 | append fails on the 2nd `processed` row | `StoreOffset` called once (1st message only); `Commit` calls 0; no receipt; `Close` called once; exit 1; `reason=consumer_record_append_failed` |
 | 6 | U8b | 1 `processed` row, then the fake store fails the append of the `revoked` row that the revoked handler makes inside a `Consume` call | no `StoreOffset` call after the failure; no further row appended; no receipt; `Close` called once; exit 1; standard error line starts `consumer_processing_failed reason=consumer_record_append_failed` |
@@ -252,7 +254,7 @@ Start condition, used by every component test: each member's newest `partition_e
 | 15 | U21 | one row of 65536 bytes including `\n`; one of 65537 | accepted; `consumer_record_append_failed` |
 | 16 | U22 | message with no `attempt-id`; with `sequence` `12x`; with key bytes `0xFF` | rows with `attempt_id` null; `sequence` null; `key` null; exit 0 |
 | 3.1 | U25 | the test clock passes `WindowMs + 120000` ms after `Subscribe` while `Close` blocks | the watchdog's exit action is invoked once with code 124; no receipt |
-| 3.5 | U23 | one row of each kind written, `kill_intent` built by the serializer only | each row's JSON property set equals 3.5 exactly; times match `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{7}Z$`; no production path writes `kill_intent` |
+| 3.5 | U23 | one row of each kind written, `kill_intent` built by the serializer only | each row's JSON property set equals the #506 plan's section 3.2 for its kind exactly; the `commit` row has `source` `callback`, `outcome` `callback` and `submitted` `null`; times match `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{7}Z$`; no production path writes `kill_intent` |
 | 5 | U24 | `effective_settings` with a token file present | no setting value equals the token file content; no key `sasl.oauthbearer.token` |
 | 5, 13 | CT1 | 6 partitions; two members, delay 0, `WindowMs` 60000; after the start condition, 100 messages produced to each partition | union of `processed` rows covers every produced offset exactly once; each member has a receipt. After both members exit, a test-only client calls `Committed` for the group's 6 partitions (as ADR-022 "Independent commit evidence" describes, outside the worker). For every partition, the returned offset is 100, and it equals the `offset` of at least one entry with `error_code` 0, in a `commit` row with `error_code` 0, in either member's record (ADR-022 "Commit agreement") |
 | 11, 12, 10 | CT2 (K-55 case 1) | 2 partitions; `session.timeout.ms` 6000, `max.poll.interval.ms` 10000 on both members; subject `inline`, Ordinal 11, DurationMs 20000. After the start condition, 10 messages per partition, then a wait of 7000 ms (above `auto.commit.interval.ms` 5000), then 1 message per partition. P is the partition of the subject's newest `assigned` row before its slow row | the subject's slow row has partition P and offset 10. The subject has a `lost` row with `row_sequence` above the slow row's. The witness has an `assigned` row that includes P, with `event_utc` at least 9500 ms after the slow row's `processing_started_utc` (the poll limit, not the 6000 ms session timeout, removed the subject) and before its `processing_ended_utc`. Partition P offset 10 appears in `processed` rows of both members. The only commit rows are `callback` rows |
@@ -265,7 +267,7 @@ Existing tests: `tests/Parchwell.Enrichment.Tests/SeedF04/SeedF04HostTests.cs` a
 
 ## 7. Deployment assumptions
 
-No test in this pull request runs on AKS, Event Hubs or Azure Storage. Each item below is evidence-free until #508's smoke run, and is listed under Q3 in section 11 until Hari accepts the risk by name.
+No test in this pull request runs on AKS, Event Hubs or Azure Storage. Each item below is evidence-free until #508's smoke run. Each is accepted by name by [decision 6899404704](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/505#issuecomment-6899404704) point 2, under point 2 of decision 6895535291.
 
 - D1. The enrichment-consumer identity can create and append blobs in `consumer-record` with `WorkloadIdentityCredential`. Evidence: none taken; the role is #507's (ADR-022 "Durability"). The load generator's equivalent path works for `ledger` (B06 and B07 runs), on fresh pods, under load; that is a different identity and container.
 - D2. #507 sets every 3.2 key and the `PARCHWELL_*` values, including `PARCHWELL_NODE_NAME` from the pod's node. Evidence: none; #507's plan must cite 3.2.
@@ -311,32 +313,28 @@ Repository: `src/Parchwell.Enrichment/Program.cs`, `SeedF04/*.cs`, `Parchwell.En
 - Roll-over at 40000 appends, not "before 50,000". A margin choice; ADR-022 allows it.
 - One row per Append Block and the append-position condition. ADR-022 does not pin them; they make a gap or a duplicate append visible.
 - `null` for malformed headers rather than stopping the member. ADR-022 puts the consequence on the verifier.
-- Slow-message fault (`SlowMessage`) and its two modes. ADR-022 says the subject "carries the configuration's fault" but does not define the C03 fault. Question Q2.
+- Slow-message fault (`SlowMessage`) and its two modes. ADR-022 says the subject "carries the configuration's fault" but does not define the C03 fault. Adopted by decision 6899404704 point 1.
 - The three-key settings allowlist. ADR-022 does not list which settings vary; the three serve C01, C03 and C10's questions (blueprint section 12 rows C01, C03, C10).
 - `node_name` in the registration marker. ADR-022 "Group" says each run records both members' node names; this pins where.
 
 (c) Tests or checks that depend on code, data or behaviour neither on `main` nor in this pull request:
 - The verifier's group-offset read (#506) is what makes commit rows authoritative. CT1 imitates it with a test-only client; the worker does not depend on it.
-- The production plan source and scenario files (Q1), which no test here needs: tests use the test source.
+- The production plan source and scenario files (#508, decision 6899939624 point 1), which no test here needs: tests use the test source.
 - #506's reading of 3.5 and #507's setting of 3.2 (D2): contracts this plan sets for them, not dependencies of its tests.
 - D1, D3 and D4 in section 7.
 
 ## 10a. Deferred work
 
-1. Production `IConsumerProcessingPlanSource`. Evidence: no scenario file for C03, C10 or C01 exists at the base (`scenarios/` lists none), `ScenarioPhases.cs` has no entry for them, and the profile schema has no processing delay (`src/Parchwell.Scenarios/Loading/ProfileReader.cs` line 26). On the verdict path: yes; no live run can start without it. Why deferral is permitted: the item data it reads belongs to the scenario children, and this pull request cannot run live before #507. Responsible: the child Q1 names. Stage: before #508's smoke run. Completion evidence: a merged source with tests, and `--consumer-processing` resolving a C03 plan in-process. Gate it blocks: #508's smoke run.
+1. Production `IConsumerProcessingPlanSource`. Evidence: no scenario file for C03, C10 or C01 exists at the base (`scenarios/` lists none), `ScenarioPhases.cs` has no entry for them, and the profile schema has no processing delay (`src/Parchwell.Scenarios/Loading/ProfileReader.cs` line 26). On the verdict path: yes; no live run can start without it. Why deferral is permitted: the item data it reads belongs to the scenario children, and this pull request cannot run live before #507. Responsible: #508, extended by #510 (decision 6899939624 point 1). Stage: before #508's smoke run. Completion evidence: a merged source with tests, and `--consumer-processing` resolving a C03 plan in-process. Gate it blocks: #508's smoke run.
 2. Kill-intent writing and SIGKILL (#509). Not deferred work of this plan; it is #509's entry. Listed so a reader does not take its absence for a gap.
 
 ## 11. Open questions for Hari
 
-Each question carries a recommended answer, under point 2 of decision 6895535291. The control session records adoption in a `## Decision` on #505. Q1 assigns work to a later child, which may be a split change outside that decision's point 4, so the control session decides whether Q1 needs Hari himself.
-
-- Q1. Where the processing plan comes from. ADR-014 says each worker resolves its configuration in-process. docs/engineering/dotnet.md "Kubernetes workers" says each worker "resolves its selected configuration in-process through Parchwell.Scenarios". No scenario file, profile field or phase entry exists for C03, C10 or C01, and no split row names that schema work. Recommended: #505 ships the seam (3.3) without a production source. #508 (C03 scenario) adds the production source with the scenario-schema and profile changes it needs, and #510 extends it for C10 and C01. Alternative: #505 also adds the Parchwell.Scenarios schema, with fixture scenarios. That needs a project reference from `Parchwell.Enrichment` to `Parchwell.Scenarios`, another P1 under the Code Review Rules.
-- Q2. The C03 subject fault. Recommended: one slow message, selected by its ordinal among the messages `Consume` returns to the subject (the same counting as ADR-022's kill point). It is processed either `inline`, with no `Consume` calls (K-55 case 1), or under `pause`, which pauses and keeps calling `Consume` (K-55 case 2). Alternative: a delay distribution from the profile, which the profile schema does not have.
-- Q3. Deployment assumptions D1 to D5 (section 7). Recommended: accept each by name. #508's smoke run is the first evidence for D1, D2, D4 and D5, and #508's and #510's plans count repeats against D3.
+None. Revision 3's Q1 is answered by decision 6899939624, adopted on #505, and Q2 and Q3 by decision 6899404704.
 
 ## 12. Stop rule
 
-The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it would need to change any contract in section 3, a requirement, the file scope, a test's literal expected value, or when acceptance command 1 finds ADR-022 changed since the base.
+The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it would need to change any contract in section 3, a requirement, the file scope, a test's literal expected value, or when acceptance command 1 finds ADR-022 changed since the base. It also stops when #506's approved plan revision has a section 3.2 that differs from that section at commit `100a832e44af447ae8a2107155ebfccd283c5bdf`, or when #506 has no approved plan when implementation starts.
 
 ## 13. Size estimate
 
