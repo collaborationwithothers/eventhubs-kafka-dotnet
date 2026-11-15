@@ -477,13 +477,208 @@ PROVISIONAL_TARGETS = {
 }
 # Canonical maps of shard ID to generated selection hash for the approved pilot.
 PROVISIONAL_LAYOUT_HASHES = {
-    'Common/Phase/B10FinalProjectionCodec.cs': 'e2ec8902c5fb6bd30c65859348ef88bb2953a51e8bfa892961c826e3975cb6a3',
-    'Judge/B10FinalJudge.cs': '0edc49b41523422087ea8a0cc90bb2f781fc84074f43e92c42d762c1bd635aad',
-    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': '5df9f551a2f05b2db584b83a6fddc3274685f572995edcf49e04f368405c65d5',
+    'Common/Phase/B10FinalProjectionCodec.cs': 'c079e7c0c823129e3abec4c18a8849acd446d5123fb89636e7d37e03c5ecd956',
+    'Judge/B10FinalJudge.cs': '0c197df0b6b6625ba5822425a08fac2b67436f8b83aa6744d5e9150d06c4a238',
+    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': '844276e4b9f4d432c3ae298bdb0f3cf2ce42f4f41231ef781142518a2da473ee',
 }
 PROVISIONAL_TIMING_INPUTS_HASH = 'e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463'
 PROVISIONAL_STATUS = 'pending_native_report'
 NUMERIC_FIELDS = ('main_mutants', 'main_work_seconds', 'parallelism', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')
+
+
+# Exact source-bound estimates and evidence for the six-tail batch.
+SIX_TAIL_EVIDENCE = {'Judge/PhaseJudge.cs': (('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165 '
+                          'artifact 14138923535',
+                          '389cec813b0d324b4ffba490b5ea55d1cccd3bdd551f5e0fcf7222620187d03c',
+                          '3c4df3d040f55356597f83f1cf460956adb49197'),
+                         ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630810798',
+                          '1e9329e34bdae6b2a2300797bd39ac7492d9af45bde4a70a5cfa5cf39f628d03',
+                          '3c4df3d040f55356597f83f1cf460956adb49197'),
+                         ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630811266',
+                          '3e039e30be211496628da64570483e90202b66ff0c85de54056e895e82f05b58',
+                          '3c4df3d040f55356597f83f1cf460956adb49197'),
+                         ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630810948',
+                          '9f3e7eb3a92de58caca63c5dbc484c2e47e063e63ed27ed78ccb6f577af5222a',
+                          '3c4df3d040f55356597f83f1cf460956adb49197')),
+ 'Judge/B10FinalJudge.cs': (('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165 '
+                             'artifact 14139008781',
+                             'd0a8e484b1409ba7c7299eb62ab04077f71c40dc62765e89ff26409ad4acbb40',
+                             '3c4df3d040f55356597f83f1cf460956adb49197'),
+                            ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822191',
+                             '6a561ddbc53398d0972c75f3e71019aa497e17ee05b1bb3d49edd15591b0f455',
+                             '3c4df3d040f55356597f83f1cf460956adb49197'),
+                            ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822187',
+                             '15f719122b96c3888a3a6a258d42e7fc23d1a9f3fdb7361241ef53978db075c7',
+                             '3c4df3d040f55356597f83f1cf460956adb49197'),
+                            ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822180',
+                             'c3bd050aefe7b3a998431ef0f841c6a7445901c96b6d27a95ba3495824cbae19',
+                             '3c4df3d040f55356597f83f1cf460956adb49197'),
+                            ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822192',
+                             'bd2e53c44dd7582b3a8d81a19d5d6b4b96283afc96353240514f0c3902439034',
+                             '3c4df3d040f55356597f83f1cf460956adb49197')),
+ 'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': (('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165 '
+                                                   'artifact 14138048823',
+                                                   'c5291da1c660e87316e88c12342bb1d46ac2be373403e535e3df04c50ddfefdb',
+                                                   '3c4df3d040f55356597f83f1cf460956adb49197'),
+                                                  ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630817760',
+                                                   '9ca53cc00fd4f42b89008cf2a374cb4606790c21ce4b0a6e956c2c2a64a096ee',
+                                                   '3c4df3d040f55356597f83f1cf460956adb49197'),
+                                                  ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630817798',
+                                                   '2a278e14485f904b1f63cf018cb8c8353a0c2a6cd1c4d845a250adf9e1120865',
+                                                   '3c4df3d040f55356597f83f1cf460956adb49197')),
+ 'Common/Phase/B10FinalProjectionCodec.cs': (('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165 '
+                                              'artifact 14138414593',
+                                              '9a08acea11d9c799899e0386e724cc808dff5df84769987bf085edc10e7828aa',
+                                              '3c4df3d040f55356597f83f1cf460956adb49197'),
+                                             ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165 '
+                                              'artifact 14139166517',
+                                              '76c8085f61c5211b0c18612d1f4db38cd102c380fb10ccb05f5339828941e241',
+                                              '3c4df3d040f55356597f83f1cf460956adb49197'),
+                                             ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822052',
+                                              'a62be57ee9d9d5440c08fe0295ba785b220e62e9d4b63b33502dbd3b6e17b6cd',
+                                              '3c4df3d040f55356597f83f1cf460956adb49197'),
+                                             ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822076',
+                                              'dbfb0b202d1a145c91c8abba309f0833231e275b6f264b8fbc110e0193d9c1f0',
+                                              '3c4df3d040f55356597f83f1cf460956adb49197'),
+                                             ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822104',
+                                              '19fcc55f6c7a33d77adfc37b67b2dccdb92a21d0b3b63f9975152d8fa6c9d830',
+                                              '3c4df3d040f55356597f83f1cf460956adb49197')),
+ 'VerifyRun/Input/B10PhaseRegistrationReader.cs': (('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165 '
+                                                    'artifact 14138599172',
+                                                    'cd138c63b78d4e4a9f218c61e1e3326cd798cc7214125e9fa8be21c52db40702',
+                                                    '3c4df3d040f55356597f83f1cf460956adb49197'),
+                                                   ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630813451',
+                                                    'e1d3a5322cdf451b20f1f1ce95c7c3439d7110ea9f7f6147485ae4f30bb4b9de',
+                                                    '3c4df3d040f55356597f83f1cf460956adb49197')),
+ 'VerifyRun/B10Final/B10FinalClassification.cs': (('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43642679359 '
+                                                   'artifact 14132628130',
+                                                   'd9c0963089d092792a7381ac35c89154f522ab9a704d6c6a1758a6e973d9905f',
+                                                   'ed79ae741a082f1cc55d753bb64dec5a74d5a49c'),
+                                                  ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43642679359 '
+                                                   'artifact 14132628130',
+                                                   'd9c0963089d092792a7381ac35c89154f522ab9a704d6c6a1758a6e973d9905f',
+                                                   'ed79ae741a082f1cc55d753bb64dec5a74d5a49c'),
+                                                  ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630817843',
+                                                   'a08a59167a86ffac8fc97a29fc2b6418f2afd5b3c502ae6b723c42d66c7eb65e',
+                                                   '3c4df3d040f55356597f83f1cf460956adb49197'),
+                                                  ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630817802',
+                                                   '5b41f9f2742724704cdfce5d77bd68076b066665e1d57f39da00547834bdb6bd',
+                                                   '3c4df3d040f55356597f83f1cf460956adb49197'),
+                                                  ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630817823',
+                                                   '132ec6e1a39ed2f1eb509426f6bad16f9a1464598df06c6bbf2184864979e12e',
+                                                   '3c4df3d040f55356597f83f1cf460956adb49197'),
+                                                  ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630817818',
+                                                   '0a9b94e3f674599de1c0106896a90e201ee7eb3a540091845cf9e11d82b54bc7',
+                                                   '3c4df3d040f55356597f83f1cf460956adb49197'),
+                                                  ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822035',
+                                                   'c634f2873141dfdd4aaa484727fabdbcfb952f0dd63759a1ddfb5420f01d0a38',
+                                                   '3c4df3d040f55356597f83f1cf460956adb49197'),
+                                                  ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822030',
+                                                   '55681cf9eafee605f8c62984876e8c85ae63afeb60131fb8e9d1b9b412a04e0c',
+                                                   '3c4df3d040f55356597f83f1cf460956adb49197'),
+                                                  ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822007',
+                                                   '0267f4d32392987b7f36888ff1421f9812aa84e6c0ff5e267beef09f4b2074ff',
+                                                   '3c4df3d040f55356597f83f1cf460956adb49197'),
+                                                  ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822073',
+                                                   '2e9717318de2debdc21af404292220b6b517cac56d22e0b693f04a96c1ec7b5d',
+                                                   '3c4df3d040f55356597f83f1cf460956adb49197'),
+                                                  ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822009',
+                                                   'e0efa060d82972f92a45e8a2382e9469ee306fbbdf7a7f51645f939de08255c9',
+                                                   '3c4df3d040f55356597f83f1cf460956adb49197')),
+ 'Common/Phase/B10FinalRegistrationReader.cs': (('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165 '
+                                                 'artifact 14137399692',
+                                                 '1c0c4967a8da432d8cb40a291aa6c0ca26e6b951c761941a121aa1ad8805d3f3',
+                                                 '3c4df3d040f55356597f83f1cf460956adb49197'),
+                                                ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822078',
+                                                 '0b60306d3a8b9b224047ca1c3270ce3fb61bdd0a127a49ea6cad4942028d3f47',
+                                                 '3c4df3d040f55356597f83f1cf460956adb49197'),
+                                                ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822178',
+                                                 '6c3ecc86cf6ef2c5eee1f187cd752f6f345d5164c630cfe756555afb9fd879de',
+                                                 '3c4df3d040f55356597f83f1cf460956adb49197'),
+                                                ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822102',
+                                                 'd57b950ce8c6c3fcfd4da096bec28c3db169e66929ac28ada2b65613889f9cc0',
+                                                 '3c4df3d040f55356597f83f1cf460956adb49197'))}
+SIX_TAIL_ESTIMATES = {'phase-p5': ('Judge/PhaseJudge.cs',
+              '22c56f360af0ccab6123c471d7c092d588ca7547323a5415f606bee0368aa2f9',
+              'b426dd705e84c23731afb72ad17cd0d3ee5835e3e719546e9b8853077c32340d'),
+ 'phase-p6': ('Judge/PhaseJudge.cs',
+              '22c56f360af0ccab6123c471d7c092d588ca7547323a5415f606bee0368aa2f9',
+              'ea29c6b9d02782598b76b1e3f4da3a5ccafe5e37debc55e37f69b6b6657a0d53'),
+ 'phase-crossing': ('Judge/PhaseJudge.cs',
+                    '22c56f360af0ccab6123c471d7c092d588ca7547323a5415f606bee0368aa2f9',
+                    '23935e63ee29d7438939b7c8990966cd2602f1aff032221ce07f7da0311380f5'),
+ 'b10-final-judge-p9': ('Judge/B10FinalJudge.cs',
+                        'cd88f482f9c93947e613ec4b13a34ff554331dfe8ebd9a3e400ed3bbb360d34a',
+                        'a0284b41a27b2f6bf7dbb8eedcf433eedb1312be9718b1507a80f6f171873de2'),
+ 'b10-final-judge-p10': ('Judge/B10FinalJudge.cs',
+                         'cd88f482f9c93947e613ec4b13a34ff554331dfe8ebd9a3e400ed3bbb360d34a',
+                         '0bd9cca2a5b9ea76c66f5193c488ad21f1804c7fb8746d7bbc90bcf506571cf4'),
+ 'b10-final-judge-p11': ('Judge/B10FinalJudge.cs',
+                         'cd88f482f9c93947e613ec4b13a34ff554331dfe8ebd9a3e400ed3bbb360d34a',
+                         '80974d326c841b1e06542560b44414a331c905fa60e5129139be2d47152babba'),
+ 'b10-final-judge-crossing': ('Judge/B10FinalJudge.cs',
+                              'cd88f482f9c93947e613ec4b13a34ff554331dfe8ebd9a3e400ed3bbb360d34a',
+                              '9636705d357d7e5eb6d8dc89b9c9aba5027dee1640158dc39fc3c399a64e1ff4'),
+ 'b10-final-repeat-evidence-p7': ('VerifyRun/B10Final/B10FinalRepeatEvidence.cs',
+                                  '4e533dd7aa4205e0a5a121b94b9441af7438e5d878600a3b65dc6ad5f4edab68',
+                                  '907ba1207533c228a3acc8256811b906682b2e1ede64ad7d5cf34aeb1e0a4585'),
+ 'b10-final-repeat-evidence-p8': ('VerifyRun/B10Final/B10FinalRepeatEvidence.cs',
+                                  '4e533dd7aa4205e0a5a121b94b9441af7438e5d878600a3b65dc6ad5f4edab68',
+                                  'b12f8961df3f582e87e31ed56f4bbb06b166f8bd77a9d23d03c6e6d99547d0f9'),
+ 'b10-final-repeat-evidence-crossing': ('VerifyRun/B10Final/B10FinalRepeatEvidence.cs',
+                                        '4e533dd7aa4205e0a5a121b94b9441af7438e5d878600a3b65dc6ad5f4edab68',
+                                        '4bd01a70d54ec4d134c5861cce43448267f796cac7cb6a6764c78eac9a378ed4'),
+ 'b10-final-projection-codec-p8': ('Common/Phase/B10FinalProjectionCodec.cs',
+                                   'c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5',
+                                   '9da4337e719518f23e3e56634867169b02ca97459e4b1ff715eed4fa2feaff6c'),
+ 'b10-final-projection-codec-p9': ('Common/Phase/B10FinalProjectionCodec.cs',
+                                   'c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5',
+                                   '30788b2d0094ecf8406b35af2a728f25e0bf470a5a84843f2262111f75a58b3d'),
+ 'b10-final-projection-codec-p11': ('Common/Phase/B10FinalProjectionCodec.cs',
+                                    'c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5',
+                                    '1e2fa28e3e4f026a2615fdf5a4489848871fa0e6e012e5004f89564acbbec06f'),
+ 'b10-final-projection-codec-p12': ('Common/Phase/B10FinalProjectionCodec.cs',
+                                    'c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5',
+                                    '7c6978d1471ed3360bce59ae4e328d53e87969ebb04f3a3684019902383192ab'),
+ 'b10-final-projection-codec-crossing': ('Common/Phase/B10FinalProjectionCodec.cs',
+                                         'c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5',
+                                         '5a02e4c75b9bfa4c0396726dd4e37b6ffdf5609c86e37f2c0549addf7e88e1e1'),
+ 'b10-phase-registrations-p1': ('VerifyRun/Input/B10PhaseRegistrationReader.cs',
+                                'e73faee335b336fb7d06590fa6d0c7f22f0c188dbcce3495b673c839fbe1c5c0',
+                                'f2c1d80f5c5914f19133b559ed76a7a4c9e3c3d7a67c21967791af0d824d4bcf'),
+ 'b10-phase-registrations-p2': ('VerifyRun/Input/B10PhaseRegistrationReader.cs',
+                                'e73faee335b336fb7d06590fa6d0c7f22f0c188dbcce3495b673c839fbe1c5c0',
+                                'cfe7d500d14703552891f88d5c3a041f9017694803f70680673ec0d0de3a7ec0'),
+ 'b10-phase-registrations-crossing': ('VerifyRun/Input/B10PhaseRegistrationReader.cs',
+                                      'e73faee335b336fb7d06590fa6d0c7f22f0c188dbcce3495b673c839fbe1c5c0',
+                                      '383f01545b1da8302edab349afe42f86b6788aeb96b6072e42ab61fe375b9f1f'),
+ 'b10-final-classification-p2': ('VerifyRun/B10Final/B10FinalClassification.cs',
+                                 'ad710e8960395058a357a2a7e817cc2bc450524c0a82e3e97f73d9cef0f52957',
+                                 '89c3213ef9464b72cd5e0df93b073f7c8bd37b3aaeefb772d3efe3d769966df7'),
+ 'b10-final-classification-p3': ('VerifyRun/B10Final/B10FinalClassification.cs',
+                                 'ad710e8960395058a357a2a7e817cc2bc450524c0a82e3e97f73d9cef0f52957',
+                                 '83e5b4ae448ee6be1888445505fe08e072e6875fb4ef17da034899c4b0a2f3ed'),
+ 'b10-final-classification-p20': ('VerifyRun/B10Final/B10FinalClassification.cs',
+                                  'ad710e8960395058a357a2a7e817cc2bc450524c0a82e3e97f73d9cef0f52957',
+                                  '9fee1914b1224dfdda749ed829d508ac1cbf268b5d1fa7e3f15945a399306018'),
+ 'b10-final-classification-p22': ('VerifyRun/B10Final/B10FinalClassification.cs',
+                                  'ad710e8960395058a357a2a7e817cc2bc450524c0a82e3e97f73d9cef0f52957',
+                                  'd50e303f28b1dc3cc4e5a5dc0131a24349194307ffd44b2f06449e18ff6d00d7'),
+ 'b10-final-registrations-p1': ('Common/Phase/B10FinalRegistrationReader.cs',
+                                '7a28b10054c4620b8a84f0513244da2b96b89fbe748a157eb491bfcce6d755ba',
+                                '8df19b04965238a04803b689993149fa917c769794289b33693e6aa0bedbe129')}
+SIX_TAIL_BINDINGS = {shard: (path, source, estimate, SIX_TAIL_EVIDENCE[path])
+                     for shard, (path, source, estimate) in SIX_TAIL_ESTIMATES.items()}
+
+def approved_six_tail(path, record, shard, item, source):
+    try:
+        target, source_hash, estimate_hash, evidence = SIX_TAIL_BINDINGS[shard]
+        return (path == target and digest(source) == source_hash
+                and digest(canonical(item)) == estimate_hash
+                and all(any(e['kind'] == 'hosted_complete' and (e['locator'], e['sha256'], e['source_commit']) == required
+                            for e in record['evidence']) for required in evidence))
+    except (KeyError, TypeError, ValueError):
+        return False
 
 def shape(config):
     if not isinstance(config, dict) or set(config) != {'schema_version', 'budget_seconds', 'shared_inputs', 'targets'}:
@@ -516,10 +711,10 @@ def shape(config):
             if any(not HEX.fullmatch(item[k]) for k in ('selection_sha256', 'timing_inputs_sha256')):
                 raise ValueError('invalid shard hash')
             if provisional:
-                if ((path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS) or (path == REPEAT_TARGET and shard in REPEAT_BOUNDS) or shard in TAIL_SPLITS) and any(item[k] is None for k in NUMERIC_FIELDS):
+                if ((path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS) or (path == REPEAT_TARGET and shard in REPEAT_BOUNDS) or shard in TAIL_SPLITS or shard in SIX_TAIL_BINDINGS) and any(item[k] is None for k in NUMERIC_FIELDS):
                     raise ValueError('pinned owner requires its estimate')
                 if any(item[k] is not None for k in NUMERIC_FIELDS) and not (
-                    ((path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS) or (path == REPEAT_TARGET and shard in REPEAT_BOUNDS) or shard in TAIL_SPLITS)
+                    ((path == CODEC_TARGET and shard in CODEC_PROVISIONAL_SHARDS) or (path == REPEAT_TARGET and shard in REPEAT_BOUNDS) or shard in TAIL_SPLITS or shard in SIX_TAIL_BINDINGS)
                     and all(type(item[k]) in (int, float) for k in NUMERIC_FIELDS)):
                     raise ValueError('provisional estimates must be unknown except for pinned owners')
             elif any(type(item[k]) not in (int, float, bool) for k in NUMERIC_FIELDS):
@@ -662,17 +857,15 @@ REPEAT_TARGET = 'VerifyRun/B10Final/B10FinalRepeatEvidence.cs'
 REPEAT_BOUNDS = {
     'b10-final-repeat-evidence-p1': ((0, 5565), (44, 1255, 1, 107, 0, 1362)),
     'b10-final-repeat-evidence-p2': ((5565, 13837), (167, 961, 1, 107, 0, 1068)),
-    'b10-final-repeat-evidence-p21': ((41582, 42920), (41, 2957, 2, 229, 0, 1708)),
-    'b10-final-repeat-evidence-p22': ((42920, 44372), (39, 2753, 2, 229, 0, 1606)),
-    'b10-final-repeat-evidence-crossing': (None, (36, 1075, 1, 107, 0, 1182)),
+    'b10-final-repeat-evidence-p22': ((41582, 42920), (41, 2957, 2, 229, 0, 1708)),
+    'b10-final-repeat-evidence-p23': ((42920, 44372), (39, 2753, 2, 229, 0, 1606)),
 }
 
 REPEAT_BOUND_JOBS = {
     'b10-final-repeat-evidence-p1': (('132582438060', '5f0524883832ef096c14da1c8bd6a86ba0a86e7c8bcb14a28b7c0e4972ab70ca'), ('132582438086', '54d604bdc8ab6abd1fb463aae881875ad02196a8221a70341bcbb62282a4638a')),
     'b10-final-repeat-evidence-p2': (('132582438127', '1b5893a9410de6d5203058a98173d9031db407c2b9c6b5e191786f2ec8542dae'), ('132582438524', 'ebc28d4ca57b5cf4ab5d855ce9c662962eb78d3de1f7c0584cd97ff5d5c2c89b')),
-    'b10-final-repeat-evidence-p21': (('132582438152', '3fdf2cae2513f6a62151d65de56bbb3639bbe5437db4168305b8ac4268fc7726'),),
     'b10-final-repeat-evidence-p22': (('132582438152', '3fdf2cae2513f6a62151d65de56bbb3639bbe5437db4168305b8ac4268fc7726'),),
-    'b10-final-repeat-evidence-crossing': (('132582438212', '462816c11d5b3c3d26fd384242f83c7cbc96ebeee97fb8a10744f5e9a0b7e01f'),),
+    'b10-final-repeat-evidence-p23': (('132582438152', '3fdf2cae2513f6a62151d65de56bbb3639bbe5437db4168305b8ac4268fc7726'),),
 }
 
 
@@ -697,10 +890,10 @@ def approved_repeat_merged_owner(path, record, shard, item, source):
 
 # Source-bound split estimates use measured tested work and job overhead.
 TAIL_SPLITS = {
-    'b10-final-repeat-evidence-p9': (REPEAT_TARGET, (24938, 26076), (38, 1951, 2, 183.5, 0, 1159), '14134281282', '2bad7544a96c4c7ff6b84b976667c3f11be18ad77e81febec9c6c9f0b9793d6b'),
-    'b10-final-repeat-evidence-p10': (REPEAT_TARGET, (26076, 27770), (42, 2096, 2, 183.5, 0, 1232), '14134281282', '2bad7544a96c4c7ff6b84b976667c3f11be18ad77e81febec9c6c9f0b9793d6b'),
-    'b10-final-projection-codec-p11': (CODEC_TARGET, (11973, 12732), (39, 2799, 2, 197, 0, 1597), '14133942300', '8cc93fd4ffb21dd8afcc793d8c30906d5cb6f9c79bb43d0947c6c0e0229ce427'),
-    'b10-final-projection-codec-p12': (CODEC_TARGET, (12732, 13486), (32, 2279, 2, 197, 0, 1337), '14133942300', '8cc93fd4ffb21dd8afcc793d8c30906d5cb6f9c79bb43d0947c6c0e0229ce427'),
+    'b10-final-repeat-evidence-p10': (REPEAT_TARGET, (24938, 26076), (38, 1951, 2, 183.5, 0, 1159), '14134281282', '2bad7544a96c4c7ff6b84b976667c3f11be18ad77e81febec9c6c9f0b9793d6b'),
+    'b10-final-repeat-evidence-p11': (REPEAT_TARGET, (26076, 27770), (42, 2096, 2, 183.5, 0, 1232), '14134281282', '2bad7544a96c4c7ff6b84b976667c3f11be18ad77e81febec9c6c9f0b9793d6b'),
+    'b10-final-projection-codec-p13': (CODEC_TARGET, (11973, 12732), (39, 2799, 2, 197, 0, 1597), '14133942300', '8cc93fd4ffb21dd8afcc793d8c30906d5cb6f9c79bb43d0947c6c0e0229ce427'),
+    'b10-final-projection-codec-p14': (CODEC_TARGET, (12732, 13486), (32, 2279, 2, 197, 0, 1337), '14133942300', '8cc93fd4ffb21dd8afcc793d8c30906d5cb6f9c79bb43d0947c6c0e0229ce427'),
 }
 
 def approved_tail_split(path, record, shard, item, source):
@@ -726,9 +919,9 @@ NATIVE_GEOMETRY_BINDINGS = {
 
 # Digests of the reviewed compact proofs; the full inventories remain in hosted artifacts.
 NATIVE_PROOF_HASHES = {
-    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': '67f4aa655b8cfaf8dcad31afde11f8574ac40df9a5a0be6312aaeed820700d99',
-    'Common/Phase/B10FinalProjectionCodec.cs': '183e61118dc81c769777241b0ffed5ce87ade1a08c81f270f26deee2837b3a45',
-    'Judge/B10FinalJudge.cs': '554f7cc41d40bae23185db9b7e9f7ed4e0dd89154977ea33a0b5d108d9836b48',
+    'VerifyRun/B10Final/B10FinalRepeatEvidence.cs': '568aa15ae5e1d03f26d08ec3bf1d433cd4a494e99dfb9cd972f570a56a0362d3',
+    'Common/Phase/B10FinalProjectionCodec.cs': 'afe40312f556801bb99d953df40f98cb287c0f6322fac1c9102133ed950e6a96',
+    'Judge/B10FinalJudge.cs': 'e829a0e8e7f17fc51b6ac648955287f6ef6c52014982a9849ceac75d6e80c1ae',
 }
 
 
@@ -841,7 +1034,10 @@ def validate(config, shared, targets, source, matrix):
                 continue
             if provisional and not (approved_codec_static_owner(path, record, shard, item, source[path])
                                     or approved_repeat_merged_owner(path, record, shard, item, source[path])
-                                    or approved_tail_split(path, record, shard, item, source[path])):
+                                    or approved_tail_split(path, record, shard, item, source[path])
+                                    or approved_six_tail(path, record, shard, item, source[path])):
+                reasons.add('invalid_estimate')
+            if shard in SIX_TAIL_BINDINGS and not approved_six_tail(path, record, shard, item, source[path]):
                 reasons.add('invalid_estimate')
             numeric = ('main_work_seconds', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')
             valid = (type(item['main_mutants']) is int and item['main_mutants'] >= 0

@@ -321,6 +321,35 @@ class QualificationTests(unittest.TestCase):
                 with mock.patch.dict(runtime.workflow.COHORTS, {shard: ('wrong', ())}):
                     self.assertFalse(runtime.approved_codec_static_owner(path, record, shard, item, source))
 
+    def test_six_tail_estimates_require_source_evidence_and_promoted_charges(self):
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        for shard, (path, _, _, _) in runtime.SIX_TAIL_BINDINGS.items():
+            record = config['targets'][path]
+            source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+            item = record['shards'][shard]
+            with self.subTest(shard=shard):
+                self.assertTrue(runtime.approved_six_tail(path, record, shard, item, source))
+                self.assertFalse(runtime.approved_six_tail(path, record, shard, item, source + b'x'))
+                changed = copy.deepcopy(item)
+                changed['setup_seconds'] -= 1
+                self.assertFalse(runtime.approved_six_tail(path, record, shard, changed, source))
+                changed_record = copy.deepcopy(record)
+                locator = runtime.SIX_TAIL_BINDINGS[shard][3][0][0]
+                changed_record['evidence'] = [e for e in record['evidence'] if e['locator'] != locator]
+                self.assertFalse(runtime.approved_six_tail(path, changed_record, shard, item, source))
+        for shard, charge, estimate in [('b10-final-classification-p20', 69, 1440),
+                                         ('b10-final-registrations-p1', 67, 1742)]:
+            path = runtime.SIX_TAIL_BINDINGS[shard][0]
+            record = config['targets'][path]
+            item = record['shards'][shard]
+            self.assertEqual(estimate, item['estimated_seconds'])
+            changed = copy.deepcopy(item)
+            changed['setup_seconds'] -= charge
+            changed['estimated_seconds'] -= charge
+            source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+            self.assertFalse(runtime.approved_six_tail(path, record, shard, changed, source))
+
     def test_tail_splits_require_exact_source_cost_and_evidence(self):
         import copy
         config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
@@ -826,7 +855,8 @@ class DependencyEndToEndTests(unittest.TestCase):
             raise AssertionError(args)
         with mock.patch.object(runtime, 'files', side_effect=files), mock.patch.object(runtime, 'blob', side_effect=blob), \
              mock.patch.object(runtime, 'git', side_effect=git), \
-             mock.patch.object(runtime, 'workflow_matrix', return_value=runtime.workflow.SHARDS):
+             mock.patch.object(runtime, 'workflow_matrix', return_value=runtime.workflow.SHARDS), \
+             mock.patch.object(runtime, 'SIX_TAIL_BINDINGS', {}):
             base_shared, targets = runtime.input_maps('base')
             sources = {p: blob('base', 'src/Parchwell.Verifier/' + p) for p in targets}
             def config(shared):

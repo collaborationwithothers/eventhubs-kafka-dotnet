@@ -269,7 +269,11 @@ jobs:
             target: VerifyRun/Judgement/B10RepeatChecks.cs
           - shard: b10-repeat-crossing
             target: VerifyRun/Judgement/B10RepeatChecks.cs
-          - shard: b10-phase-registrations
+          - shard: b10-phase-registrations-p1
+            target: VerifyRun/Input/B10PhaseRegistrationReader.cs
+          - shard: b10-phase-registrations-p2
+            target: VerifyRun/Input/B10PhaseRegistrationReader.cs
+          - shard: b10-phase-registrations-crossing
             target: VerifyRun/Input/B10PhaseRegistrationReader.cs
           - shard: b10-late-write-p1
             target: VerifyRun/Judgement/B10LateWriteChecks.cs
@@ -365,6 +369,8 @@ jobs:
             target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
           - shard: b10-final-repeat-evidence-p24
             target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
+          - shard: b10-final-repeat-evidence-p25
+            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
           - shard: b10-final-repeat-evidence-crossing
             target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
           - shard: b10-final-classification-p1
@@ -411,14 +417,6 @@ jobs:
             target: VerifyRun/B10Final/B10FinalClassification.cs
           - shard: b10-final-classification-p22
             target: VerifyRun/B10Final/B10FinalClassification.cs
-          - shard: b10-final-classification-p23
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-          - shard: b10-final-classification-p24
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-          - shard: b10-final-classification-p25
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-          - shard: b10-final-classification-p26
-            target: VerifyRun/B10Final/B10FinalClassification.cs
           - shard: b10-final-classification-crossing
             target: VerifyRun/B10Final/B10FinalClassification.cs
           - shard: b10-final-projection
@@ -459,6 +457,10 @@ jobs:
             target: Common/Phase/B10FinalProjectionCodec.cs
           - shard: b10-final-projection-codec-p15
             target: Common/Phase/B10FinalProjectionCodec.cs
+          - shard: b10-final-projection-codec-p16
+            target: Common/Phase/B10FinalProjectionCodec.cs
+          - shard: b10-final-projection-codec-p17
+            target: Common/Phase/B10FinalProjectionCodec.cs
           - shard: b10-final-projection-codec-crossing
             target: Common/Phase/B10FinalProjectionCodec.cs
           - shard: b10-final-registrations-p1
@@ -494,8 +496,6 @@ jobs:
           - shard: b10-final-registrations-p16
             target: Common/Phase/B10FinalRegistrationReader.cs
           - shard: b10-final-registrations-p17
-            target: Common/Phase/B10FinalRegistrationReader.cs
-          - shard: b10-final-registrations-p18
             target: Common/Phase/B10FinalRegistrationReader.cs
           - shard: b10-final-registrations-crossing
             target: Common/Phase/B10FinalRegistrationReader.cs
