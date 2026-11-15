@@ -16,7 +16,9 @@ public sealed class B10FinalSweepLinePrecisionTests(B10AbruptVerifyKafkaFixture 
     public async Task Given_WholeSecondPodTimeRaisedToItsLastTick_When_FinalSweepAndJudgeRun_Then_CandidateIsCompleteValid(string phase)
     {
         using B10FinalSweepHarness fixture = phase == "C0" ? await B10FinalSweepHarness.CreateC0Async(kafka) : await B10FinalSweepHarness.CreateAsync(kafka);
-        await fixture.CaptureSweepFromPodSecondsAsync(raise: true);
+        (_, string lastVerifier) = await fixture.CaptureSweepFromPodSecondsAsync(raise: true);
+        // The same text the phase.py tests pin for b10_second_upper_bound (test_phase.py).
+        Assert.EndsWith(".9999999+00:00", lastVerifier, StringComparison.Ordinal);
         Assert.Equal(0, await fixture.RunAsync());
         using JsonDocument projection = JsonDocument.Parse(fixture.Verifier[PhasePaths.B10FinalSweep(B10FinalSweepHarness.Run, phase)]);
         Assert.True(projection.RootElement.GetProperty("data").GetProperty("scan_complete").GetBoolean());
@@ -36,7 +38,7 @@ public sealed class B10FinalSweepLinePrecisionTests(B10AbruptVerifyKafkaFixture 
     public async Task Given_WholeSecondPodTimeNotRaised_When_FinalSweepRuns_Then_EveryRepeatFailsTheSweepLine(string phase)
     {
         using B10FinalSweepHarness fixture = phase == "C0" ? await B10FinalSweepHarness.CreateC0Async(kafka) : await B10FinalSweepHarness.CreateAsync(kafka);
-        DateTimeOffset receipt = await fixture.CaptureSweepFromPodSecondsAsync(raise: false);
+        (DateTimeOffset receipt, _) = await fixture.CaptureSweepFromPodSecondsAsync(raise: false);
         // A receipt exactly on a whole second would not reproduce the live failure.
         Assert.NotEqual(0, receipt.UtcTicks % TimeSpan.TicksPerSecond);
         await fixture.RunAsync();

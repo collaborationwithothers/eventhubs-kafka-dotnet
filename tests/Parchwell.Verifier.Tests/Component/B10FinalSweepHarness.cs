@@ -257,25 +257,34 @@ internal sealed class B10FinalSweepHarness : IDisposable
             "document-events", [new(0, high ?? High()), new(1, 0), new(2, 0)], captured, completed, captured.AddSeconds(-60), 60000));
     }
     /// <summary>
-    /// Rewrites the sweep line the way the scientific phase builds it in a live run, not from the receipts as
-    /// <see cref="CaptureSweep"/> does. Kubernetes reports each verify pod's <c>finishedAt</c> in whole seconds, so the
-    /// latest receipt time is first cut to its second. <c>phase.py</c> <c>b10_second_upper_bound</c> then raises it to
-    /// the last tick of that second; with <paramref name="raise"/> false the cut value is used, as before issue #483.
-    /// Like the phase's settle wait, this waits until the chosen time has passed before capturing.
+    /// Builds the sweep line the way a live scientific phase does, instead of from the receipts as <see cref="CaptureSweep"/>
+    /// does. Kubernetes reports each verify pod's <c>finishedAt</c> in whole seconds, so the latest receipt time is first cut
+    /// to its second and written in the form <c>phase.py</c> stores, for example <c>2026-11-14T20:50:21.0000000+00:00</c>.
+    /// With <paramref name="raise"/> true it is raised to the last tick of that second, as <c>phase.py</c>
+    /// <c>b10_second_upper_bound</c> does since issue #483. Like the phase's settle wait, this waits until that time has
+    /// passed, then runs the real <c>b10-sweep-line</c> mode with the text as <c>B10LastVerifierCompletedUtc</c>.
     /// </summary>
-    internal async Task<DateTimeOffset> CaptureSweepFromPodSecondsAsync(bool raise)
+    internal async Task<(DateTimeOffset Receipt, string LastVerifier)> CaptureSweepFromPodSecondsAsync(bool raise)
     {
         DateTimeOffset receipt = Verifier.Where(pair => pair.Key.EndsWith("verify-completion.json", StringComparison.Ordinal))
             .Select(pair => DateTimeOffset.Parse(JsonNode.Parse(pair.Value)!["completed_utc"]!.GetValue<string>(), CultureInfo.InvariantCulture))
             .Max();
-        DateTimeOffset podSecond = receipt.AddTicks(-(receipt.UtcTicks % TimeSpan.TicksPerSecond));
-        DateTimeOffset completed = raise ? podSecond.AddTicks(TimeSpan.TicksPerSecond - 1) : podSecond;
+        string podSecond = receipt.ToUniversalTime().ToString("yyyy'-'MM'-'dd'T'HH':'mm':'ss", CultureInfo.InvariantCulture);
+        string lastVerifier = podSecond + (raise ? ".9999999+00:00" : ".0000000+00:00");
+        DateTimeOffset completed = DateTimeOffset.ParseExact(lastVerifier, "O", CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
         TimeSpan wait = completed - TimeProvider.System.GetUtcNow();
         if (wait > TimeSpan.Zero) await Task.Delay(wait + TimeSpan.FromMilliseconds(1), TestContext.Current.CancellationToken);
-        DateTimeOffset captured = TimeProvider.System.GetUtcNow();
-        Verifier[PhasePaths.SweepLine(Run, Phase)] = B10SweepEvidenceCodec.WriteSweepLine(new B10SweepLine(1, "B10", Phase, Run, Phase, B10AbruptVerifyEvidence.Commit,
-            "document-events", [new(0, High()), new(1, 0), new(2, 0)], captured, completed, captured.AddSeconds(-60), 60000));
-        return receipt;
+        Verifier.Remove(PhasePaths.SweepLine(Run, Phase));
+        Verifier.Remove(PhasePaths.B10SweepLineCompletion(Run, Phase));
+        var saved = new Dictionary<string, string>(Configuration);
+        Configuration["Verifier:Mode"] = "b10-sweep-line";
+        Configuration["Verifier:JobName"] = PhaseIdentity.B10SweepLineJobName(Run, Phase);
+        Configuration["Verifier:B10LastVerifierCompletedUtc"] = lastVerifier;
+        Configuration["Verifier:B10LastLoadgenTerminatedUtc"] = completed.AddSeconds(-60).ToString("O", CultureInfo.InvariantCulture);
+        try { Assert.Equal(0, await RunHostAsync(host)); }
+        finally { Configuration.Clear(); foreach ((string key, string value) in saved) Configuration[key] = value; }
+        Assert.True(Verifier.ContainsKey(PhasePaths.SweepLine(Run, Phase)));
+        return (receipt, lastVerifier);
     }
     internal Task<int> RunAsync() => RunHostAsync(host);
     private async Task<int> RunHostAsync(B10AbruptVerifyHarness target)
