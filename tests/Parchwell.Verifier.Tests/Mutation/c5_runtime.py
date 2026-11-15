@@ -316,6 +316,8 @@ WORKFLOW = '.github/workflows/verifier-c5-mutation.yml'
 RUNNER = 'tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py'
 TEST_PROJECT = 'tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj'
 HEX = re.compile(r'^[0-9a-f]{64}$')
+NON_RENEWABLE = {RUNNER, WORKFLOW, 'tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py',
+                 'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json', '.config/dotnet-tools.json'}
 EXCLUDED = ('Component/', 'Support/ComponentEvidenceBuilder.cs', 'Host/VerifyRunHandlerTests.cs',
             'Host/VerifierHostTests.cs', 'Host/B10AbruptRejectionTests.cs')
 REMOVE = 'Component/**/*.cs;Support/ComponentEvidenceBuilder.cs;Host/VerifyRunHandlerTests.cs;Host/VerifierHostTests.cs;Host/B10AbruptRejectionTests.cs'
@@ -713,7 +715,8 @@ def approved_six_tail(path, record, shard, item, source):
         return False
 
 def shape(config):
-    if not isinstance(config, dict) or set(config) != {'schema_version', 'budget_seconds', 'shared_inputs', 'targets'}:
+    if not isinstance(config, dict) or set(config) not in ({'schema_version', 'budget_seconds', 'shared_inputs', 'targets'},
+                                                 {'schema_version', 'budget_seconds', 'shared_inputs', 'targets', 'renewals'}):
         raise ValueError('invalid schema')
     if type(config['schema_version']) is not int or config['schema_version'] != 1 or type(config['budget_seconds']) is not int or config['budget_seconds'] != 1800:
         raise ValueError('unsupported schema or budget')
@@ -722,6 +725,18 @@ def shape(config):
     for path, sha in config['shared_inputs'].items():
         if not isinstance(path, str) or not isinstance(sha, str) or not HEX.fullmatch(sha):
             raise ValueError('invalid input hash')
+    renewals = config.get('renewals', {})
+    if not isinstance(renewals, dict):
+        raise ValueError('invalid renewals')
+    for path, renewal in renewals.items():
+        if not isinstance(path, str) or not isinstance(renewal, dict) or set(renewal) != {'measured_sha256', 'current_sha256', 'basis'}:
+            raise ValueError('invalid renewal')
+        if any(value is not None and (not isinstance(value, str) or not HEX.fullmatch(value))
+               for value in (renewal['measured_sha256'], renewal['current_sha256'])):
+            raise ValueError('invalid renewal hash')
+        basis = renewal['basis']
+        if not isinstance(basis, list) or not basis or any(not isinstance(item, str) or not item.strip() for item in basis):
+            raise ValueError('invalid renewal basis')
     for path, record in config['targets'].items():
         if not isinstance(path, str) or not isinstance(record, dict):
             raise ValueError('invalid target')
@@ -1010,7 +1025,17 @@ def validate(config, shared, targets, source, matrix):
     if matrix != workflow.SHARDS:
         reasons.add('layout_mismatch')
     target_sources = {p: v['source_sha256'] for p, v in config['targets'].items()}
-    timing_hash = digest(canonical({'shared_inputs': config['shared_inputs'], 'target_sources': target_sources}))
+    measured = config['shared_inputs'].copy()
+    for path, renewal in config.get('renewals', {}).items():
+        old, current = renewal['measured_sha256'], renewal['current_sha256']
+        if (path in NON_RENEWABLE or path in {'src/Parchwell.Verifier/' + p for p in config['targets']}
+                or old == current or current != config['shared_inputs'].get(path)):
+            reasons.add('invalid_renewal')
+        if old is None:
+            measured.pop(path, None)
+        else:
+            measured[path] = old
+    timing_hash = digest(canonical({'shared_inputs': measured, 'target_sources': target_sources}))
     all_shards = {}
     shard_fields = {'selection_sha256', 'timing_inputs_sha256', 'main_mutants', 'main_work_seconds',
                     'parallelism', 'setup_seconds', 'isolated_seconds', 'estimated_seconds', 'basis'}
@@ -1146,12 +1171,51 @@ def check(base, head, qualification):
             return {'status': 'rejected', 'reasons': reasons}
         pending = sorted(path for path, record in config['targets'].items()
                          if record.get('geometry_status') == PROVISIONAL_STATUS)
-        if pending:
-            return {'status': 'provisional', 'reasons': [], 'pending_targets': pending}
-        return {'status': 'qualified', 'reasons': []}
+        result = {'status': 'provisional', 'reasons': [], 'pending_targets': pending} if pending else {'status': 'qualified', 'reasons': []}
+        if config.get('renewals'):
+            result['renewed_inputs'] = sorted(config['renewals'])
+        return result
     except (ValueError, TypeError, KeyError, OSError, subprocess.CalledProcessError, ET.ParseError, SyntaxError, UnicodeError, OverflowError):
         return {'status': 'rejected', 'reasons': ['invalid_input']}
 
+
+
+def renew(head, qualification, basis):
+    if not basis.strip():
+        raise ValueError('basis must not be empty')
+    head = git('rev-parse', '--verify', head + '^{commit}').decode().strip()
+    if Path(workflow.__file__).read_bytes() != blob(head, RUNNER):
+        raise ValueError('checker is not running the requested revision')
+    path = Path(qualification)
+    config = json.loads(path.read_text(), parse_constant=lambda value: (_ for _ in ()).throw(ValueError('nonfinite JSON')))
+    shape(config)
+    shared, targets = input_maps(head)
+    if set(config['targets']) != set(targets) or any(config['targets'][p]['source_sha256'] != targets[p] for p in targets):
+        raise ValueError('target sources changed')
+    old = config['shared_inputs']
+    changed = sorted(p for p in old.keys() | shared.keys() if old.get(p) != shared.get(p))
+    blocked = sorted(set(changed) & NON_RENEWABLE)
+    if blocked:
+        raise ValueError('not renewable: ' + ', '.join(blocked))
+    if not changed:
+        return {'renewed': [], 'status': 'unchanged'}
+    renewals = config.get('renewals', {})
+    for p in changed:
+        if p not in renewals:
+            renewals[p] = {'measured_sha256': old.get(p), 'current_sha256': shared.get(p), 'basis': [basis]}
+        else:
+            renewal = renewals[p]
+            renewal['current_sha256'] = shared.get(p)
+            renewal['basis'].append(basis)
+            if renewal['current_sha256'] == renewal['measured_sha256']:
+                del renewals[p]
+    config['shared_inputs'] = shared
+    if renewals:
+        config['renewals'] = renewals
+    else:
+        config.pop('renewals', None)
+    path.write_text(json.dumps(config, indent=2, sort_keys=True) + '\n')
+    return {'renewed': changed, 'status': 'renewed'}
 
 
 def bounded_probe(target, span, output_dir, tally_path, timeout=600, launcher=workflow.local_check):
@@ -1187,6 +1251,10 @@ def main():
     c.add_argument('--base')
     c.add_argument('--head', required=True)
     c.add_argument('--qualification', required=True)
+    r = commands.add_parser('renew')
+    r.add_argument('--head', required=True)
+    r.add_argument('--qualification', required=True)
+    r.add_argument('--basis', required=True)
     perf = commands.add_parser('performance')
     perf.add_argument('--run-json', required=True)
     perf.add_argument('--jobs-json', required=True)
@@ -1196,6 +1264,13 @@ def main():
         result = check(args.base, args.head, args.qualification)
         print(json.dumps(result, sort_keys=True))
         return int(result['status'] == 'rejected')
+    if args.command == 'renew':
+        try:
+            print(json.dumps(renew(args.head, args.qualification, args.basis), sort_keys=True))
+            return 0
+        except (ValueError, TypeError, KeyError, OSError, subprocess.CalledProcessError, ET.ParseError, SyntaxError, UnicodeError, OverflowError) as error:
+            print(str(error), file=sys.stderr)
+            return 1
     if args.command == 'profile':
         try:
             return profile(args.output_dir, args.timeout, ROOT)
