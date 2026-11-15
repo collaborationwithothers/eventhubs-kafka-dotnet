@@ -152,10 +152,10 @@ done
 run cmp .github/workflows/sweeper.yml docs/operations/workflows/sweeper.yml.txt
 run cmp .github/workflows/scenario.yml docs/operations/workflows/scenario.yml.txt
 run cmp .github/workflows/b10-abrupt-trial.yml docs/operations/workflows/b10-abrupt-trial.yml.txt
-run actionlint -ignore '^unexpected key "queue" for "concurrency" section\. expected one of "cancel-in-progress", "group"$' .github/workflows/cluster-smoke.yml .github/workflows/sweeper.yml .github/workflows/b10-abrupt-trial.yml
+run actionlint -ignore '^unexpected key "queue" for "concurrency" section\. expected one of "cancel-in-progress", "group"$' .github/workflows/cluster-smoke.yml .github/workflows/sweeper.yml .github/workflows/b10-abrupt-trial.yml .github/workflows/configuration-isolation-smoke.yml
 for workflow in .github/workflows/*.yml; do
   case "$workflow" in
-    .github/workflows/cluster-smoke.yml|.github/workflows/sweeper.yml|.github/workflows/b10-abrupt-trial.yml) continue ;;
+    .github/workflows/cluster-smoke.yml|.github/workflows/sweeper.yml|.github/workflows/b10-abrupt-trial.yml|.github/workflows/configuration-isolation-smoke.yml) continue ;;
   esac
   if [ "$workflow" = .github/workflows/scenario.yml ] && "$python" -c 'import sys,yaml; sys.exit("queue" not in yaml.load(open(sys.argv[1]), Loader=yaml.BaseLoader).get("concurrency", {}))' "$workflow"; then
     run actionlint -ignore '^unexpected key "queue" for "concurrency" section\. expected one of "cancel-in-progress", "group"$' "$workflow"
