@@ -172,8 +172,63 @@ override_data {
   }
 }
 
+override_resource {
+  target          = module.archive.azapi_resource.this
+  override_during = plan
+  values = {
+    id     = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Storage/storageAccounts/stparchwellarcoffline1"
+    output = { properties = { primaryEndpoints = { blob = "https://stparchwellarcoffline1.blob.core.windows.net/" }, secondaryEndpoints = {}, primaryLocation = "uksouth", secondaryLocation = null } }
+  }
+}
+
+override_resource {
+  target          = module.archive.module.containers["run_evidence"].azapi_resource.this
+  override_during = plan
+  values          = { id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Storage/storageAccounts/stparchwellarcoffline1/blobServices/default/containers/run-evidence", output = {} }
+}
+
+override_resource {
+  target          = module.archive.module.private_endpoints["blob"].azapi_resource.this
+  override_during = plan
+  values = {
+    id     = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Network/privateEndpoints/pep-archive-blob-offline1"
+    output = {}
+  }
+}
+
+override_data {
+  target          = module.archive.module.containers["run_evidence"].module.role_assignments.module.interfaces.data.azapi_resource_list.role_definitions[0]
+  override_during = plan
+  values          = { output = { results = [{ id = "/subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.Authorization/roleDefinitions/00000000-0000-0000-0000-000000000033", role_name = "Storage Blob Data Contributor" }] } }
+}
+
 run "foundation" {
   command = plan
+
+  assert {
+    condition     = local.archive_config.name == "stparchwellarcoffline1" && local.archive_config.location == "uksouth" && local.archive_config.parent_id == azurerm_resource_group.persistent.id && local.archive_config.account_kind == "StorageV2" && local.archive_config.account_sku_name == "Standard_LRS" && local.archive_config.access_tier == "Hot" && local.archive_config.enable_telemetry == false && jsonencode(local.archive_config.tags) == jsonencode(local.tags)
+    error_message = "Archive must use the exact persistent storage configuration and tags."
+  }
+  assert {
+    condition     = module.archive.resource.name == "stparchwellarcoffline1" && module.archive.resource.location == "uksouth" && module.archive.resource.parent_id == azurerm_resource_group.persistent.id && module.archive.resource.body.kind == "StorageV2" && module.archive.resource.body.sku.name == "Standard_LRS" && module.archive.resource.body.properties.accessTier == "Hot" && jsonencode(module.archive.resource.tags) == jsonencode(local.tags) && jsonencode(keys(module.archive.private_endpoints)) == jsonencode(["blob"]) && module.archive.private_endpoints.blob.name == "pep-archive-blob-offline1" && jsonencode(keys(module.archive.containers)) == jsonencode(["run_evidence"])
+    error_message = "The instantiated AVM must receive the archive account, endpoint, container and tags."
+  }
+  assert {
+    condition     = module.archive.resource.body.properties.allowSharedKeyAccess == false && module.archive.resource.body.properties.defaultToOAuthAuthentication == true && module.archive.resource.body.properties.publicNetworkAccess == "Disabled" && module.archive.resource.body.properties.minimumTlsVersion == "TLS1_2" && module.archive.resource.body.properties.supportsHttpsTrafficOnly == true && module.archive.resource.body.properties.allowBlobPublicAccess == false && length(local.archive_config.role_assignments) == 0
+    error_message = "Archive account must enforce private OAuth-only TLS access and no account role grants."
+  }
+  assert {
+    condition     = jsonencode(local.archive_config.containers) == jsonencode({ run_evidence = { name = "run-evidence", public_access = "None", role_assignments = { workflow = { role_definition_id_or_name = "Storage Blob Data Contributor", principal_id = "00000000-0000-0000-0000-000000000009", principal_type = "ServicePrincipal", skip_service_principal_aad_check = true } } } }) && jsonencode(local.archive_config.blob_properties) == jsonencode({ versioning_enabled = false, delete_retention_policy = { enabled = false }, container_delete_retention_policy = { enabled = false } }) && jsonencode(local.archive_config.storage_management_policy_rule) == jsonencode({ delete_run_evidence = { name = "delete-run-evidence-after-90-days", enabled = true, filters = { blob_types = ["blockBlob"], prefix_match = ["run-evidence/"] }, actions = { base_blob = { delete_after_days_since_creation_greater_than = 90 } } } })
+    error_message = "Archive container and lifecycle must use the exact creation-age policy and disable versioning and soft delete."
+  }
+  assert {
+    condition     = local.archive_config.private_endpoints_manage_dns_zone_group && jsonencode(local.archive_config.private_endpoints) == jsonencode({ blob = { name = "pep-archive-blob-offline1", subnet_resource_id = module.spoke.subnets.private_endpoints.resource_id, subresource_name = "blob", private_dns_zone_resource_ids = [local.private_dns_zone_ids.blob], tags = local.tags, role_assignments = {} } })
+    error_message = "Archive endpoint must use the shared subnet and blob DNS with persistent tags."
+  }
+  assert {
+    condition     = jsonencode(output.evidence_archive) == jsonencode({ storage_account_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Storage/storageAccounts/stparchwellarcoffline1", account_name = "stparchwellarcoffline1", blob_service_uri = "https://stparchwellarcoffline1.blob.core.windows.net", container_name = "run-evidence", container_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Storage/storageAccounts/stparchwellarcoffline1/blobServices/default/containers/run-evidence", retention_days = 90 }) && output.workflow_principal_id == "00000000-0000-0000-0000-000000000009"
+    error_message = "Archive and private principal outputs must match the exact synthetic contract."
+  }
 
   assert {
     condition = jsonencode(local.application_insights_roles) == jsonencode({

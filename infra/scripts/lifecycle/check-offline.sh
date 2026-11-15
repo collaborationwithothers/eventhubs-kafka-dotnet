@@ -51,7 +51,7 @@ def load_yaml(text):
 
 def check_queue(document, filename):
     expected = {'group': 'parchwell-ephemeral', 'queue': 'max', 'cancel-in-progress': 'false'}
-    required = filename in ('cluster-smoke.yml', 'sweeper.yml', 'b10-abrupt-trial.yml')
+    required = filename in ('cluster-smoke.yml', 'sweeper.yml', 'b10-abrupt-trial.yml', 'archive-smoke.yml')
     allowed = required or filename == 'scenario.yml' and isinstance(document.get('concurrency'), dict) and 'queue' in document['concurrency']
     if allowed and document.get('concurrency') != expected:
         raise ValueError(f'{filename}: concurrency must be exactly {expected}')
@@ -76,6 +76,7 @@ def check_workflows(repository):
                                          'type': 'boolean', 'required': 'true', 'default': 'false'}}}},
         'b10-offline-image.yml': {'workflow_dispatch': ''},
         'cluster-smoke.yml': {'workflow_dispatch': ''},
+        'archive-smoke.yml': {'workflow_dispatch': ''},
         'scenario.yml': {'workflow_dispatch': {'inputs': {
             'scenario': {'description': 'Scenario definition to run', 'type': 'choice', 'required': 'true', 'default': 'A01', 'options': ['A01', 'B04', 'B10', 'probe-batch', 'probe-batch-2', 'idle-observation', 'ledger-batch']},
             'run_kind': {'description': 'Probe batch run kind', 'type': 'choice', 'required': 'true', 'default': 'smoke', 'options': ['smoke', 'batch']},
@@ -96,6 +97,11 @@ def check_workflows(repository):
             uploads = [step for job in document['jobs'].values() for step in job.get('steps', []) if str(step.get('uses', '')).startswith('actions/upload-artifact@')]
             if len(uploads) != 1 or uploads[0].get('with', {}).get('path') != '${{ env.PARCHWELL_ARTIFACT_DIRECTORY }}':
                 raise ValueError('smoke uploads must select only the public artifact directory')
+        if path.name == 'archive-smoke.yml':
+            uploads = [step for job in document['jobs'].values() for step in job.get('steps', []) if str(step.get('uses', '')).startswith('actions/upload-artifact@')]
+            expected = [f'${{{{ env.PARCHWELL_ARTIFACT_DIRECTORY }}}}/archive/{name}' for name in ('archive-smoke.json', 'archive-manifest.json', 'archive-receipt.json')]
+            if len(uploads) != 1 or uploads[0].get('with', {}).get('path', '').splitlines() != expected:
+                raise ValueError('archive smoke uploads must select exactly the public archive files')
         triggers = document.get('on', {})
         if 'pull_request' in triggers or 'pull_request_target' in triggers:
             jobs = document.get('jobs', {})
@@ -104,6 +110,8 @@ def check_workflows(repository):
             for job in jobs.values():
                 if job.get('permissions', {}).get('id-token') == 'write' or any(str(step.get('uses', '')).startswith('azure/login@') for step in job.get('steps', [])):
                     raise ValueError(f'{path.name}: PR job requests Azure identity')
+    if (repository / '.github/workflows/archive-smoke.yml').read_bytes() != (repository / 'docs/operations/workflows/archive-smoke.yml.txt').read_bytes():
+        raise ValueError('archive smoke mirror differs')
     if (repository / '.github/workflows/b10-abrupt-trial.yml').read_bytes() != (repository / 'docs/operations/workflows/b10-abrupt-trial.yml.txt').read_bytes():
         raise ValueError('B10 abrupt trial mirror differs')
     if (repository / '.github/workflows/sweeper.yml').read_bytes() != (repository / 'docs/operations/workflows/sweeper.yml.txt').read_bytes():
@@ -151,10 +159,11 @@ done
 run cmp .github/workflows/sweeper.yml docs/operations/workflows/sweeper.yml.txt
 run cmp .github/workflows/scenario.yml docs/operations/workflows/scenario.yml.txt
 run cmp .github/workflows/b10-abrupt-trial.yml docs/operations/workflows/b10-abrupt-trial.yml.txt
-run actionlint -ignore '^unexpected key "queue" for "concurrency" section\. expected one of "cancel-in-progress", "group"$' .github/workflows/cluster-smoke.yml .github/workflows/sweeper.yml .github/workflows/b10-abrupt-trial.yml
+run cmp .github/workflows/archive-smoke.yml docs/operations/workflows/archive-smoke.yml.txt
+run actionlint -ignore '^unexpected key "queue" for "concurrency" section\. expected one of "cancel-in-progress", "group"$' .github/workflows/cluster-smoke.yml .github/workflows/sweeper.yml .github/workflows/b10-abrupt-trial.yml .github/workflows/archive-smoke.yml
 for workflow in .github/workflows/*.yml; do
   case "$workflow" in
-    .github/workflows/cluster-smoke.yml|.github/workflows/sweeper.yml|.github/workflows/b10-abrupt-trial.yml) continue ;;
+    .github/workflows/cluster-smoke.yml|.github/workflows/sweeper.yml|.github/workflows/b10-abrupt-trial.yml|.github/workflows/archive-smoke.yml) continue ;;
   esac
   if [ "$workflow" = .github/workflows/scenario.yml ] && "$python" -c 'import sys,yaml; sys.exit("queue" not in yaml.load(open(sys.argv[1]), Loader=yaml.BaseLoader).get("concurrency", {}))' "$workflow"; then
     run actionlint -ignore '^unexpected key "queue" for "concurrency" section\. expected one of "cancel-in-progress", "group"$' "$workflow"

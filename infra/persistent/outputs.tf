@@ -43,3 +43,21 @@ output "application_insights_connection_string" {
   sensitive   = true
   value       = module.application_insights.connection_string
 }
+
+output "evidence_archive" {
+  description = "Private archive storage and retention configuration."
+  value = {
+    storage_account_id = module.archive.resource_id
+    account_name       = local.names.archive_storage
+    blob_service_uri   = "https://${module.archive.fqdn.blob}"
+    container_name     = module.archive.containers.run_evidence.name
+    container_id       = module.archive.containers.run_evidence.id
+    retention_days     = 90
+  }
+}
+
+output "workflow_principal_id" {
+  description = "Existing workflow principal for optional smoke source access."
+  sensitive   = true
+  value       = var.workflow_principal_id
+}

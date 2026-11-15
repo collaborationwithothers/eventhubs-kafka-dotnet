@@ -74,3 +74,9 @@ variable "probe_namespace_data_roles" {
   default     = false
   description = "Enable the explicitly approved test-only probe V2 namespace Sender and Receiver exception."
 }
+
+variable "archive_smoke_enabled" {
+  type        = bool
+  default     = false
+  description = "Create the temporary source container and workflow grant for the archive smoke."
+}
