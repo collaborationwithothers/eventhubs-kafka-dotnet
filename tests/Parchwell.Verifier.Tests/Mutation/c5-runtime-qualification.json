@@ -426,6 +426,27 @@
           "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
           "sha256": "19fcc55f6c7a33d77adfc37b67b2dccdb92a21d0b3b63f9975152d8fa6c9d830",
           "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43663685095 artifact 14142136390",
+          "note": "API archive digest, 458 source inputs at receipt commit, clean before/after state, config, report and log hashes verified; complete selected timing pairs. The changed layout has not been measured.",
+          "sha256": "795083ceb93c9486e0f1044ffd278f656f2584d525689a3e59c82b93dfeeb22f",
+          "source_commit": "336f4e53f3f8329fae297c7438eef3e86df40120"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43663685095 artifact 14141193428",
+          "note": "API archive digest, 458 source inputs at receipt commit, clean before/after state, config, report and log hashes verified; complete selected timing pairs. The changed layout has not been measured.",
+          "sha256": "e1fb439e4798090794410baf0300058c05e020e878548dc760f49279e8be8539",
+          "source_commit": "336f4e53f3f8329fae297c7438eef3e86df40120"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43663685095 artifact 14142551423",
+          "note": "API archive digest, 458 source inputs at receipt commit, clean before/after state, config, report and log hashes verified; complete selected timing pairs. The changed layout has not been measured.",
+          "sha256": "a51445f3ceb325bcd9de1d80768076ff071bb3418ac86076c108ecc814f5cda1",
+          "source_commit": "336f4e53f3f8329fae297c7438eef3e86df40120"
         }
       ],
       "geometry_status": "pending_native_report",
@@ -434,12 +455,12 @@
         "artifact_id": "14127755542",
         "cohorts_sha256": "52946f91e400b9575fab5a3667d5371b8cc3a5eec239399455e9eb6c3e7a1031",
         "inventory_sha256": "d5a7f544377a3d8b2c66e120e92efcee3f0a07ecabe5b45f36a40f2334251b8f",
-        "layout_sha256": "c079e7c0c823129e3abec4c18a8849acd446d5123fb89636e7d37e03c5ecd956",
+        "layout_sha256": "38b2a6d046381a2043a5b3502b242c832591ffaf415c10119ae2878234a8201e",
         "native_count": 730,
         "owner_counts": {
-          "b10-final-projection-codec-crossing": 18,
+          "b10-final-projection-codec-crossing": 20,
           "b10-final-projection-codec-p1": 12,
-          "b10-final-projection-codec-p10": 68,
+          "b10-final-projection-codec-p10": 43,
           "b10-final-projection-codec-p11": 34,
           "b10-final-projection-codec-p12": 34,
           "b10-final-projection-codec-p13": 51,
@@ -453,26 +474,26 @@
           "b10-final-projection-codec-p5": 63,
           "b10-final-projection-codec-p6": 57,
           "b10-final-projection-codec-p7": 60,
-          "b10-final-projection-codec-p8": 29,
-          "b10-final-projection-codec-p9": 32
+          "b10-final-projection-codec-p8": 42,
+          "b10-final-projection-codec-p9": 42
         },
         "ownership_archive_sha256": "8cc93fd4ffb21dd8afcc793d8c30906d5cb6f9c79bb43d0947c6c0e0229ce427",
         "ownership_artifact_id": "14133942300",
-        "ownership_proof_sha256": "c526555215312adcac6c23d13d3b42b0da36dc70563b4fb0f11476cec0a9710c",
+        "ownership_proof_sha256": "ffe6abeb9aa2858c2792894ab07ee010b4515b529fda2f52f7496c30fa88cfc9",
         "report_sha256": "ab0e4d0677136a516821fff731e36d439ff57e40857c8e77bdda7e4c5183c37a",
         "source_commit": "dbc25c2005c3409ffd5f079c40b061d82c4b02aa",
         "source_sha256": "c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5"
       },
       "shards": {
         "b10-final-projection-codec-crossing": {
-          "basis": "Full crossing wall 501s plus measured IDs 390, 398, 530, 535 (72, 74, 68, 67s). Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound. Count covers the full native owner inventory, including identities already represented in the charged full wall.",
-          "estimated_seconds": 782,
+          "basis": "Run 43663685095, 2026-11-15: full old crossing wall 394s plus 281s measured for newly crossing IDs 402, 403, 411, 455; observed_workers=2. Estimate, not a scheduler guarantee.",
+          "estimated_seconds": 675,
           "isolated_seconds": 0,
-          "main_mutants": 18,
+          "main_mutants": 20,
           "main_work_seconds": 281,
           "parallelism": 1,
-          "selection_sha256": "736991e527829519009af44f370805e7c950e3dfecfa264afd1e17fffffa3361",
-          "setup_seconds": 501,
+          "selection_sha256": "0682943b8a6e83b90452bbf4493ea15c3592b2684cf6576da51ad3b05f87492d",
+          "setup_seconds": 394,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-projection-codec-p1-a": {
@@ -498,14 +519,14 @@
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-projection-codec-p10": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "d7ee3dcc1d248a665c949b01e02a30d1389403649d9feb9e19722aff598a49a9",
-          "setup_seconds": null,
+          "basis": "Run 43663685095, 2026-11-15: matched tested work with maximum observed overhead 201s and half longest invocation in setup; p8 adds 105s serial each for promoted IDs 390 and 398, whose prior global status is unknown. observed_workers=2. Two-worker sizing estimate, not a measured new-layout time or scheduler guarantee.",
+          "estimated_seconds": 1684,
+          "isolated_seconds": 0,
+          "main_mutants": 40,
+          "main_work_seconds": 2891,
+          "parallelism": 2,
+          "selection_sha256": "148329560a80c38548cfffc215d119654cb2e1b999f61a45b5045708609eb70b",
+          "setup_seconds": 238.5,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-projection-codec-p11": {
@@ -674,25 +695,25 @@
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-projection-codec-p8": {
-          "basis": "Old p8 measured 2183s over 29 tested IDs and 194.5s effective overhead. Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound.",
-          "estimated_seconds": 1286,
-          "isolated_seconds": 0,
-          "main_mutants": 29,
-          "main_work_seconds": 2183,
+          "basis": "Run 43663685095, 2026-11-15: matched tested work with maximum observed overhead 201s and half longest invocation in setup; p8 adds 105s serial each for promoted IDs 390 and 398, whose prior global status is unknown. observed_workers=2. Two-worker sizing estimate, not a measured new-layout time or scheduler guarantee.",
+          "estimated_seconds": 1656,
+          "isolated_seconds": 210,
+          "main_mutants": 38,
+          "main_work_seconds": 2384,
           "parallelism": 2,
-          "selection_sha256": "440111a70945f5129a7295ff4ff86c9328c46905cd7e997b09d1df0f5ab8ba00",
-          "setup_seconds": 194.5,
+          "selection_sha256": "4e946f055291f9183c1f06385d453e87c1d0281dc3b54a66282da15373429197",
+          "setup_seconds": 253.5,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-projection-codec-p9": {
-          "basis": "Old p8 measured 2138s over 29 tested IDs and 194.5s effective overhead. Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound.",
-          "estimated_seconds": 1264,
+          "basis": "Run 43663685095, 2026-11-15: matched tested work with maximum observed overhead 201s and half longest invocation in setup; p8 adds 105s serial each for promoted IDs 390 and 398, whose prior global status is unknown. observed_workers=2. Two-worker sizing estimate, not a measured new-layout time or scheduler guarantee.",
+          "estimated_seconds": 1684,
           "isolated_seconds": 0,
-          "main_mutants": 29,
-          "main_work_seconds": 2138,
+          "main_mutants": 40,
+          "main_work_seconds": 2861,
           "parallelism": 2,
-          "selection_sha256": "fe470a0cd335408e45633e115b692f20a1602e12abaa2f35bcfc367f81d86171",
-          "setup_seconds": 194.5,
+          "selection_sha256": "8cae2970a8a0b1080edab2396bb926372efc13b01e7eebca40fe0166ad921c9d",
+          "setup_seconds": 253,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         }
       },
