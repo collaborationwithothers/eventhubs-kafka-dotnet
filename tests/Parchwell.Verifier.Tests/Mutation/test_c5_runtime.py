@@ -544,6 +544,61 @@ class QualificationTests(unittest.TestCase):
             shard = 'b10-final-projection-codec-p8'
             self.assertFalse(runtime.approved_codec_neighbor(path, record, shard, record['shards'][shard], source))
 
+    def test_codec_neighborhood_evidence_fields_and_adjacent_spans(self):
+        self.workflow_patcher.stop()
+        self.config_patcher.stop()
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        path = runtime.CODEC_TARGET
+        record = config['targets'][path]
+        source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+        for shard, (span, _) in runtime.CODEC_NEIGHBOR.items():
+            item = record['shards'][shard]
+            for artifact, sha in runtime.CODEC_NEIGHBOR_EVIDENCE:
+                for field, value in (('kind', 'partial_timing'), ('source_commit', '0' * 40),
+                                     ('locator', 'unrelated'), ('sha256', '0' * 64)):
+                    with self.subTest(shard=shard, artifact=artifact, field=field):
+                        changed = copy.deepcopy(record)
+                        matches = [e for e in changed['evidence'] if e['locator'].endswith('artifact ' + artifact)
+                                   and e['sha256'] == sha]
+                        self.assertTrue(matches)
+                        for evidence in matches:
+                            evidence[field] = value
+                        self.assertFalse(runtime.approved_codec_neighbor(path, changed, shard, item, source))
+            for evidence in ([], [{'kind': 'hosted_complete', 'source_commit': '0' * 40,
+                                   'locator': 'unrelated', 'sha256': '0' * 64, 'note': 'unrelated'}]):
+                with self.subTest(shard=shard, evidence=evidence):
+                    changed = copy.deepcopy(record)
+                    changed['evidence'] = evidence
+                    self.assertFalse(runtime.approved_codec_neighbor(path, changed, shard, item, source))
+            if span is not None:
+                for adjacent in ((span[0] - 1, span[1]), (span[0] + 1, span[1]),
+                                 (span[0], span[1] - 1), (span[0], span[1] + 1)):
+                    with self.subTest(shard=shard, adjacent=adjacent), \
+                         mock.patch.object(runtime.workflow, 'shard_span', return_value=adjacent):
+                        self.assertFalse(runtime.approved_codec_neighbor(path, record, shard, item, source))
+
+    def test_codec_neighborhood_validation_guard_overrides_other_approval(self):
+        self.workflow_patcher.stop()
+        self.config_patcher.stop()
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        targets = {path: record['source_sha256'] for path, record in config['targets'].items()}
+        sources = {path: (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes() for path in targets}
+        path = runtime.CODEC_TARGET
+        with mock.patch.object(runtime, 'approved_codec_static_owner', return_value=True) as other_approval:
+            self.assertEqual(set(), runtime.validate(config, config['shared_inputs'], targets, sources, runtime.workflow.SHARDS))
+            for shard in runtime.CODEC_NEIGHBOR:
+                with self.subTest(shard=shard):
+                    changed = copy.deepcopy(config)
+                    item = changed['targets'][path]['shards'][shard]
+                    item['setup_seconds'] += 1
+                    item['estimated_seconds'] += 1
+                    self.assertEqual({'invalid_estimate'}, runtime.validate(
+                        changed, changed['shared_inputs'], targets, sources, runtime.workflow.SHARDS))
+                    self.assertTrue(any(call.args[0] == path and call.args[2] == shard
+                                        for call in other_approval.call_args_list))
+
     def test_pinned_native_geometry_rejects_tampering(self):
         self.workflow_patcher.stop()
         self.config_patcher.stop()
