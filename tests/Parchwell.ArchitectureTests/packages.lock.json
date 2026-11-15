@@ -582,6 +582,8 @@
       "parchwell.enrichment": {
         "type": "Project",
         "dependencies": {
+          "Azure.Core": "[1.63.0, )",
+          "Azure.Storage.Blobs": "[12.30.1, )",
           "Confluent.Kafka": "[2.16.0, )",
           "Microsoft.Extensions.Hosting": "[10.0.13, )",
           "Parchwell.Kafka": "[1.0.0, )"

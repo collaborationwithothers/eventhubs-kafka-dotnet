@@ -1,10 +1,14 @@
+using Azure.Identity;
+using Azure.Storage.Blobs;
 using Confluent.Kafka;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Parchwell.Enrichment.SeedF04;
+using Parchwell.Enrichment.ConsumerProcessing;
 using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Configuration;
 
@@ -29,6 +33,8 @@ internal static class Program
             }
             catch (Exception) { return 1; }
         }
+        if (args is ["--consumer-processing"])
+            return await RunConsumerProcessingAsync(configure, hostFactory).ConfigureAwait(false);
         bool validation = args is ["--validate-seed-configuration"];
         if (!validation && args is not ["--single-action-seed"]) return 2;
         IHost? host = null;
@@ -133,4 +139,97 @@ internal static class Program
         }
         return builder.Build();
     }
+
+    private static async Task<int> RunConsumerProcessingAsync(Action<HostApplicationBuilder>? configure, Func<IHost>? hostFactory)
+    {
+        IHost? host = null;
+        ConsumerProcessingOptions? options = null;
+        string reason = "consumer_identity_invalid";
+        try
+        {
+            host = hostFactory?.Invoke() ?? BuildConsumerProcessingHost(configure);
+            options = host.Services.GetRequiredService<IOptions<ConsumerProcessingOptions>>().Value;
+            options.ValidateDeploymentIdentity(host.Services.GetRequiredService<IConfiguration>());
+            reason = "consumer_plan_invalid";
+            if (host.Services.GetService<IConsumerProcessingPlanSource>() is null)
+                throw new InvalidOperationException(reason);
+            await host.StartAsync().ConfigureAwait(false);
+            return await host.Services.GetRequiredService<ConsumerProcessingWorker>()
+                .ExecuteAsync(host.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            await Console.Error.WriteLineAsync($"consumer_processing_failed reason={reason} scenario_id={ConsumerIdentity(options?.ScenarioId)} run_id={ConsumerIdentity(options?.RunId)} role={ConsumerIdentity(options?.Role)}").ConfigureAwait(false);
+            return 1;
+        }
+        finally
+        {
+            if (host is not null)
+            {
+                TimeProvider clock = host.Services.GetService<TimeProvider>() ?? TimeProvider.System;
+                using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10), clock);
+                try { await host.StopAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false); }
+                catch (Exception) { }
+                try { await Task.Run(host.Dispose, CancellationToken.None).WaitAsync(cleanup.Token).ConfigureAwait(false); }
+                catch (Exception) { }
+            }
+        }
+    }
+
+    internal static IHost BuildConsumerProcessingHost(Action<HostApplicationBuilder>? configure = null)
+    {
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
+        builder.Logging.ClearProviders();
+        configure?.Invoke(builder);
+        ConfigurationManager configuration = builder.Configuration;
+        builder.Services.TryAddSingleton(TimeProvider.System);
+        builder.Services.AddOptions<ConsumerProcessingOptions>()
+            .Bind(configuration.GetSection(ConsumerProcessingOptions.SectionName), binding => binding.ErrorOnUnknownConfiguration = true)
+            .Validate(options => { options.ValidateDeploymentIdentity(configuration); return true; }).ValidateOnStart();
+        builder.Services.AddParchwellKafka(KafkaClientRole.EnrichmentConsumer, options =>
+        {
+            options.NamespaceName = configuration["ConsumerProcessing:NamespaceName"] ?? string.Empty;
+            options.ClientId = configuration["ConsumerProcessing:PodName"] ?? string.Empty;
+            string run = configuration["ConsumerProcessing:RunId"] ?? string.Empty;
+            string phase = configuration["ConsumerProcessing:Phase"] ?? string.Empty;
+            string repeat = configuration["ConsumerProcessing:RepeatNumber"] ?? string.Empty;
+            options.EnrichmentGroupId = $"{run}-{phase.ToLowerInvariant()}-r{repeat}-consumers";
+        });
+        builder.Services.AddParchwellKafkaAuthentication(options =>
+        {
+            options.TenantId = configuration["AZURE_TENANT_ID"];
+            options.ClientId = configuration["AZURE_CLIENT_ID"];
+            options.TokenFilePath = configuration["AZURE_FEDERATED_TOKEN_FILE"];
+        });
+        builder.Services.TryAddSingleton<Func<ConsumerConfig>>(services =>
+            () => services.GetRequiredService<KafkaConfigurationFactory>().CreateEnrichmentConsumer().Configuration);
+        builder.Services.TryAddSingleton<Func<IConsumerRecordStore>>(services => () =>
+        {
+            ConsumerProcessingOptions options = services.GetRequiredService<IOptions<ConsumerProcessingOptions>>().Value;
+            var client = new BlobServiceClient(new Uri(options.BlobEndpoint, UriKind.Absolute), new WorkloadIdentityCredential(), new BlobClientOptions());
+            return new BlobConsumerRecordStore(client, options.Prefix);
+        });
+        builder.Services.TryAddSingleton<ConsumerProcessingConsumerFactory>(services => (consumerConfiguration, handlers) =>
+        {
+            ConsumerProcessingOptions options = services.GetRequiredService<IOptions<ConsumerProcessingOptions>>().Value;
+            KafkaAuthenticationFactory authentication = services.GetRequiredService<KafkaAuthenticationFactory>();
+            CancellationToken stopping = services.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
+            KafkaOAuthBearerSession session = authentication.CreateSession(new KafkaAuthenticationIdentity(
+                options.ScenarioId, options.RunId, KafkaClientRole.EnrichmentConsumer, options.PodName), stopping);
+            return authentication.CreateConsumerBuilder<byte[], byte[]>(consumerConfiguration, session)
+                .SetPartitionsAssignedHandler(handlers.Assigned)
+                .SetPartitionsRevokedHandler((consumer, partitions) => handlers.Revoked(consumer, partitions.Select(partition => partition.TopicPartition).ToList()))
+                .SetPartitionsLostHandler((consumer, partitions) => handlers.Lost(consumer, partitions.Select(partition => partition.TopicPartition).ToList()))
+                .SetOffsetsCommittedHandler(handlers.OffsetsCommitted).Build();
+        });
+        builder.Services.TryAddSingleton<Action<int>>(_ => Environment.Exit);
+        builder.Services.AddSingleton(services => new ConsumerProcessingWorker(
+            services.GetRequiredService<IOptions<ConsumerProcessingOptions>>(), services.GetService<IConsumerProcessingPlanSource>(),
+            services.GetRequiredService<Func<ConsumerConfig>>(), services.GetRequiredService<Func<IConsumerRecordStore>>(),
+            services.GetRequiredService<ConsumerProcessingConsumerFactory>(), services.GetRequiredService<TimeProvider>(),
+            services.GetRequiredService<Action<int>>()));
+        return builder.Build();
+    }
+
+    private static string ConsumerIdentity(string? value) => string.IsNullOrEmpty(value) ? "unknown" : value;
 }
