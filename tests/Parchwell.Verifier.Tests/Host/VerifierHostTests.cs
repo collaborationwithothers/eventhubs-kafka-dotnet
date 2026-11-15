@@ -168,6 +168,51 @@ public sealed class VerifierHostTests
     }
 
     [Theory]
+    [InlineData("row", null, false)] [InlineData("row", 0L, false)] [InlineData("row", -1L, false)]
+    [InlineData("row", 1048575L, true)] [InlineData("row", 1048576L, true)] [InlineData("row", 1048577L, false)]
+    [InlineData("chunk", null, false)] [InlineData("chunk", 0L, false)] [InlineData("chunk", -1L, false)]
+    [InlineData("chunk", 134217727L, true)] [InlineData("chunk", 134217728L, true)] [InlineData("chunk", 134217729L, false)]
+    [InlineData("total", null, false)] [InlineData("total", 0L, false)] [InlineData("total", -1L, false)]
+    [InlineData("total", 17179869183L, true)] [InlineData("total", 17179869184L, true)] [InlineData("total", 17179869185L, false)]
+    public void ConsumedMetadata_OptionsIndividualBoundaries(string field, long? value, bool valid)
+    {
+        var options = ValidOptions("verify"); var limits = options.ConsumedMetadata!;
+        // Keep the other fields valid and below the varied limit wherever the value permits.
+        if (field == "row") limits.MaxRowBytes = value;
+        if (field == "chunk") { limits.MaxRowBytes = 1; limits.MaxChunkBytes = value; }
+        if (field == "total") { limits.MaxRowBytes = 1; limits.MaxChunkBytes = 1; limits.MaxBytes = value; }
+        var result = new VerifierHostOptionsValidator().Validate(null, options);
+        Assert.Equal(valid, result.Succeeded);
+        if (!valid) Assert.Equal("Verifier:ConsumedMetadata requires enabled capture and valid bounded row, chunk and total limits.", Assert.Single(result.Failures!));
+    }
+
+    [Theory]
+    [InlineData("row_chunk", 99L, true)] [InlineData("row_chunk", 100L, true)] [InlineData("row_chunk", 101L, false)]
+    [InlineData("chunk_total", 99L, true)] [InlineData("chunk_total", 100L, true)] [InlineData("chunk_total", 101L, false)]
+    public void ConsumedMetadata_OptionsRelationsBelowAtAbove(string relation, long left, bool valid)
+    {
+        var options = ValidOptions("verify"); var limits = options.ConsumedMetadata!;
+        if (relation == "row_chunk") { limits.MaxRowBytes = left; limits.MaxChunkBytes = 100; limits.MaxBytes = 200; }
+        else { limits.MaxRowBytes = 1; limits.MaxChunkBytes = left; limits.MaxBytes = 100; }
+        var result = new VerifierHostOptionsValidator().Validate(null, options);
+        Assert.Equal(valid, result.Succeeded);
+        if (!valid) Assert.Equal("Verifier:ConsumedMetadata requires enabled capture and valid bounded row, chunk and total limits.", Assert.Single(result.Failures!));
+    }
+
+    [Fact]
+    public void ConsumedMetadata_OptionsMissingEnabledAndPrecedence()
+    {
+        var validator = new VerifierHostOptionsValidator(); var options = ValidOptions("verify");
+        options.ConsumedMetadata!.Enabled = null;
+        Assert.False(validator.Validate(null, options).Succeeded);
+        options.ConsumedMetadata.Enabled = false; options.ConsumedMetadata.MaxRowBytes = 0;
+        var combined = validator.Validate(null, options);
+        Assert.Equal("Verifier:ConsumedMetadata requires enabled capture and valid bounded row, chunk and total limits.", Assert.Single(combined.Failures!));
+        options.ConsumedMetadata.Enabled = true; options.ConsumedMetadata.MaxRowBytes = 1;
+        Assert.True(validator.Validate(null, options).Succeeded);
+    }
+
+    [Theory]
     [MemberData(nameof(RequiredOptions))]
     public void Given_MissingRequiredOption_When_Validated_Then_ReportsStartupFailure(string mode, string propertyName)
     {

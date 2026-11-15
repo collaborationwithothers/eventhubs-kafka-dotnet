@@ -63,6 +63,18 @@ public sealed class ConsumedMetadataCaptureTests
         var row = doc.RootElement; Assert.Equal(keyBase64, row.GetProperty("key_base64").GetString());
         Assert.Equal(valueBase64, row.GetProperty("headers")[2].GetProperty("value_base64").GetString());
         Assert.Equal(value is null, row.GetProperty("payload").GetProperty("is_null").GetBoolean());
+        var payload = row.GetProperty("payload");
+        if (value is null)
+        {
+            Assert.Equal(JsonValueKind.Null, payload.GetProperty("length").ValueKind);
+            Assert.Equal(JsonValueKind.Null, payload.GetProperty("sha256").ValueKind);
+        }
+        else
+        {
+            Assert.Equal(value.Length, payload.GetProperty("length").GetInt64());
+            Assert.Equal(value.Length == 0 ? "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" :
+                "ae4b3280e56e2faf83f414a6e3dabe9d5fbe18976544c05fed121accb85b53fc", payload.GetProperty("sha256").GetString());
+        }
         Assert.Equal(timestampType == TimestampType.NotAvailable ? JsonValueKind.Null : JsonValueKind.Number,
             row.GetProperty("timestamp").GetProperty("unix_milliseconds").ValueKind);
         Assert.Equal(timestampType switch { TimestampType.CreateTime => "create_time", TimestampType.LogAppendTime => "log_append_time", _ => "not_available" },
@@ -195,6 +207,33 @@ public sealed class ConsumedMetadataCaptureTests
         }
     }
 
+    [Theory]
+    [InlineData(-1, 2)] [InlineData(0, 1)] [InlineData(1, 1)]
+    public void ConsumedMetadata_ValidChunkRotationAroundTwoWholeRows(int delta, int expectedChunks)
+    {
+        var options = VerifierHostTestOptions.ValidOptions("verify");
+        var record = new ConsumeResult<byte[], byte[]> { Topic = "document-events", Partition = new Partition(0), Offset = new Offset(0),
+            Message = new Message<byte[], byte[]> { Key = [], Value = [] } };
+        var probeStore = new Store(); var probe = ConsumedMetadataCapture.TryStart(options, probeStore, Window(), 0, "ordinary", 1)!;
+        probe.Observe(record); probe.Observe(record); probe.Finish(true);
+        byte[] bothRows = probeStore.Objects.Single(pair => pair.Key.EndsWith(".jsonl", StringComparison.Ordinal)).Value;
+        long rowBytes = bothRows.LongLength / 2;
+        Assert.Equal(rowBytes * 2, bothRows.LongLength);
+        Assert.Equal((byte)'\n', bothRows[(int)rowBytes - 1]); Assert.Equal((byte)'\n', bothRows[^1]);
+        options.ConsumedMetadata!.MaxRowBytes = rowBytes;
+        options.ConsumedMetadata.MaxChunkBytes = bothRows.LongLength + delta;
+        options.ConsumedMetadata.MaxBytes = bothRows.LongLength + 1;
+        Assert.True(options.ConsumedMetadata.MaxRowBytes <= options.ConsumedMetadata.MaxChunkBytes);
+        Assert.True(options.ConsumedMetadata.MaxChunkBytes <= options.ConsumedMetadata.MaxBytes);
+        var store = new Store(); var capture = ConsumedMetadataCapture.TryStart(options, store, Window(), 0, "ordinary", 1)!;
+        capture.Observe(record); capture.Observe(record); capture.Finish(true);
+        using var manifest = JsonDocument.Parse(store.Objects.Single(pair => pair.Key.EndsWith("capture.json", StringComparison.Ordinal)).Value);
+        Assert.True(manifest.RootElement.GetProperty("complete").GetBoolean());
+        Assert.Equal(expectedChunks, manifest.RootElement.GetProperty("chunks").GetArrayLength());
+        Assert.Equal(2, manifest.RootElement.GetProperty("captured_rows").GetInt64());
+        Assert.Equal(bothRows.LongLength, manifest.RootElement.GetProperty("chunks").EnumerateArray().Sum(chunk => chunk.GetProperty("bytes").GetInt64()));
+    }
+
     [Fact]
     public void ConsumedMetadata_LegacySweepWindowsHaveIndependentCaptures()
     {
@@ -243,6 +282,29 @@ public sealed class ConsumedMetadataCaptureTests
         Assert.Equal("write_failed", manifest.RootElement.GetProperty("gaps")[0].GetProperty("code").GetString());
         Assert.Single(manifest.RootElement.GetProperty("chunks").EnumerateArray());
         Assert.Single(store.Objects, p => p.Key.EndsWith(".jsonl", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(false, "upload_failed", 0L)]
+    [InlineData(true, "write_failed", 1L)]
+    public void ConsumedMetadata_SealAndCleanupFailuresRemainCaptureGaps(bool failDispose, string expectedCode, long missing)
+    {
+        var options = VerifierHostTestOptions.ValidOptions("verify"); var store = new Store();
+        var capture = ConsumedMetadataCapture.TryStart(options, store, Window(), 0, "ordinary", 1, () => new FinalizeFaultStream(failDispose))!;
+        capture.Observe(new ConsumeResult<byte[], byte[]> { Topic = "document-events", Partition = new Partition(0), Offset = new Offset(0),
+            Message = new Message<byte[], byte[]> { Key = [], Value = [] } });
+        capture.Finish(true);
+        using var manifest = JsonDocument.Parse(store.Objects.Single(pair => pair.Key.EndsWith("capture.json", StringComparison.Ordinal)).Value);
+        Assert.False(manifest.RootElement.GetProperty("complete").GetBoolean());
+        Assert.Equal(expectedCode, manifest.RootElement.GetProperty("gaps")[0].GetProperty("code").GetString());
+        Assert.Equal(missing, manifest.RootElement.GetProperty("first_missing_ordinal").GetInt64());
+        Assert.Equal(failDispose ? 1 : 0, manifest.RootElement.GetProperty("captured_rows").GetInt64());
+    }
+
+    private sealed class FinalizeFaultStream(bool failDispose) : MemoryStream
+    {
+        public override void Flush() { if (!failDispose) throw new IOException("synthetic flush failure"); base.Flush(); }
+        protected override void Dispose(bool disposing) { base.Dispose(disposing); if (failDispose) throw new IOException("synthetic disposal failure"); }
     }
 
     private sealed class FaultingStream : MemoryStream

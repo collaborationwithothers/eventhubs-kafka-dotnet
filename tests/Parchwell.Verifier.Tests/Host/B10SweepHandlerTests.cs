@@ -57,6 +57,37 @@ public sealed class B10SweepHandlerTests
     }
 
     [Fact]
+    public async Task ConsumedMetadata_LegacySweepActualDrainsHaveCompleteEmptyAndPartialCaptures()
+    {
+        using PhaseFixture fixture=await PhaseFixture.Create();
+        fixture.FailCaptureWindow="-w0001/";
+        Assert.Equal(0,await fixture.Run(TestContext.Current.CancellationToken));
+        B10Finalization finalization=fixture.Finalization();
+        Assert.True(finalization.ScanComplete);
+        Assert.All(finalization.Repeats,repeat=>{Assert.True(repeat.ClassificationFinal);Assert.Equal(VerifierResultStatus.CompleteValid,repeat.Status);Assert.Equal(new OutcomeCounts(1,0,0,0,0,0),repeat.Counts);});
+        var captures=fixture.MetadataObjects.Where(pair=>pair.Key.EndsWith("capture.json",StringComparison.Ordinal)).OrderBy(pair=>pair.Key,StringComparer.Ordinal).ToArray();
+        Assert.Equal(10,captures.Length); int empty=0, completeNonempty=0, partial=0;
+        for(int index=0;index<captures.Length;index++)
+        {
+            using JsonDocument capture=JsonDocument.Parse(captures[index].Value); JsonElement root=capture.RootElement,window=root.GetProperty("window");
+            Assert.Contains($"-w{index:D4}/capture.json",captures[index].Key,StringComparison.Ordinal);
+            Assert.Equal(index,window.GetProperty("index").GetInt32()); Assert.Equal(index/2+1,window.GetProperty("repeat").GetInt32());
+            Assert.Equal(index%2==0?"original":"late",window.GetProperty("kind").GetString());
+            if(index==1)
+            {
+                Assert.False(root.GetProperty("complete").GetBoolean()); Assert.True(root.GetProperty("observed_rows").GetInt64()>0);
+                Assert.Equal("upload_failed",root.GetProperty("gaps")[0].GetProperty("code").GetString()); partial++;
+            }
+            else
+            {
+                Assert.True(root.GetProperty("complete").GetBoolean());
+                if(root.GetProperty("observed_rows").GetInt64()==0)empty++;else completeNonempty++;
+            }
+        }
+        Assert.Equal(1,partial); Assert.True(empty>0); Assert.True(completeNonempty>0);
+    }
+
+    [Fact]
     public async Task Given_EarlierRepeatLateCopyInsideLaterOriginalWindow_When_Swept_Then_OnlyItsOwnerClassifiesTheCopy()
     {
         using PhaseFixture fixture=await PhaseFixture.Create();
@@ -360,6 +391,7 @@ public sealed class B10SweepHandlerTests
         internal int RecordsRead { get; private set; }
         internal long ConsumedBytes { get; private set; }
         internal Action? AfterRecord { get; set; }
+        internal string? FailCaptureWindow { get; set; }
         internal long ReadBytes { get; private set; }
         internal long ListedBytes { get; private set; }
         internal string? LastRead { get; private set; }
@@ -524,6 +556,8 @@ public sealed class B10SweepHandlerTests
         internal Dictionary<string, byte[]> MetadataObjects { get; } = new(StringComparer.Ordinal);
         public async Task CreateStreamAsync(string name, Stream content, CancellationToken cancellationToken)
         {
+            if (FailCaptureWindow is not null && name.Contains(FailCaptureWindow,StringComparison.Ordinal))
+                throw new IOException("synthetic capture upload failure");
             using var buffer = new MemoryStream();
             await content.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
             await CreateAsync(name, buffer.ToArray(), cancellationToken).ConfigureAwait(false);

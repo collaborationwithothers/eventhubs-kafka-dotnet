@@ -59,9 +59,11 @@ internal sealed class ConsumedMetadataCapture
         try { _observed = checked(_observed + 1); }
         catch (OverflowException) { Gap("byte_limit", ordinal); return; }
         if (_firstMissing is not null) return;
-        long checkpoint = _file?.Length ?? 0;
+        long checkpoint = 0;
+        bool writing = false;
         try
         {
+            checkpoint = _file?.Length ?? 0;
             // Reject large base64 sources before allocating decoded identity strings or JSON buffers.
             long minimum = 0;
             static long Base64Length(long n) => checked(((n + 2) / 3) * 4);
@@ -145,14 +147,21 @@ internal sealed class ConsumedMetadataCapture
             // cannot publish more data objects than the entire inventory can admit.
             if (_file is null && _chunks.Count >= 1021) { Gap("byte_limit", ordinal); return; }
             _file ??= _openChunk();
-            row.Position = 0; row.CopyTo(_file); _file.WriteByte((byte)'\n'); _chunkRows++; _captured++; _bytes = checked(_bytes + length);
+            row.Position = 0; writing = true; row.CopyTo(_file); _file.WriteByte((byte)'\n'); _chunkRows++; _captured++; _bytes = checked(_bytes + length);
         }
         catch (RowLimitException) { Gap("row_limit", ordinal); }
         catch (OverflowException) { Gap("byte_limit", ordinal); }
         catch (Exception)
         {
-            try { if (_file is not null) { _file.SetLength(checkpoint); _file.Position = checkpoint; } }
-            catch (Exception) { long first = _captured - _chunkRows; _captured = first; _chunkRows = 0; _file?.Dispose(); _file = null; Gap("write_failed", first); }
+            if (writing)
+            {
+                try { if (_file is not null) { _file.SetLength(checkpoint); _file.Position = checkpoint; } }
+                catch (Exception)
+                {
+                    long first = _captured - _chunkRows; _captured = first; _chunkRows = 0;
+                    DisposeChunk(); Gap("write_failed", first);
+                }
+            }
             Gap("write_failed", ordinal);
         }
     }
@@ -160,7 +169,7 @@ internal sealed class ConsumedMetadataCapture
     private void Seal()
     {
         if (_file is null) return;
-        if (_chunkRows == 0) { _file.Dispose(); _file = null; return; }
+        if (_chunkRows == 0) { DisposeChunk(); return; }
         long first = _captured - _chunkRows;
         try
         {
@@ -172,7 +181,15 @@ internal sealed class ConsumedMetadataCapture
             _chunks.Add(new { name, bytes = length, sha256 = sha, rows = _chunkRows });
         }
         catch (Exception) { _captured = first; Gap("upload_failed", first); }
-        finally { _file.Dispose(); _file = null; _chunkRows = 0; }
+        finally { DisposeChunk(); _chunkRows = 0; }
+    }
+
+    private void DisposeChunk()
+    {
+        Stream? file = _file;
+        _file = null;
+        try { file?.Dispose(); }
+        catch (Exception) { Gap("write_failed", _observed); }
     }
 
     private void Gap(string code, long? ordinal)
