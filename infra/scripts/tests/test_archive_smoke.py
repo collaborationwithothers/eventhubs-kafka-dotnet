@@ -33,6 +33,9 @@ class ArchiveSmokeTest(unittest.TestCase):
         self.marker_failure = False
 
     def fake(self, args, deadline, cap=smoke.MIB):
+        # Knack rejects this combination before an Azure request is made.
+        if '--only-show-errors' in args and ('--debug' in args or '--verbose' in args):
+            return 1, b'', b"ERROR: --only-show-errors can't be used together with --debug or --verbose"
         action = args[3]; account = args[args.index('--account-name') + 1]
         container = args[args.index('--container-name') + 1]; name = args[args.index('--name') + 1]
         key = (account, container, name); self.calls.append((action, key, args))
@@ -335,6 +338,19 @@ class ArchiveSmokeTest(unittest.TestCase):
         self.assertEqual(report['diagnostics'][0]['service_code'], 'AuthorizationFailure')
         self.assertEqual(report['diagnostics'][1]['outcome'], 'success')
         self.assertNotIn('secret-token', json.dumps(report))
+
+    def test_cli_verbosity_conflict_is_classified_without_retaining_stderr(self):
+        original = self.fake
+        def failed(args, deadline, cap=smoke.MIB):
+            if args[3] == 'upload' and args[args.index('--account-name') + 1] == 'source123':
+                return 1, b'', b"ERROR: --only-show-errors can't be used together with --debug or --verbose\nsecret-token"
+            return original(args, deadline, cap)
+        with patch.object(smoke, 'command', failed):
+            self.assertEqual(smoke.run_probe(self.context, float('inf')), 1)
+        report = json.loads((self.public / 'archive' / 'archive-smoke.json').read_bytes())
+        self.assertEqual(report['diagnostics'][0]['category'], 'arguments')
+        self.assertNotIn('secret-token', json.dumps(report))
+        self.assertNotIn('--only-show-errors', json.dumps(report))
 
     def test_diagnostic_interruption_and_output_limit_recorded(self):
         for code, boundary in (('interrupted', 'command interrupted'),
