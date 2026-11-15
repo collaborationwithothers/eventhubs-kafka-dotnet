@@ -29,7 +29,6 @@ locals {
 }
 
 module "eventhubs" {
-  count                                   = var.eventhubs_enabled ? 1 : 0
   source                                  = "Azure/avm-res-eventhub-namespace/azurerm"
   version                                 = "0.1.1"
   name                                    = local.eventhubs_config.name
@@ -52,9 +51,8 @@ module "eventhubs" {
 # AGENTS.md hard safety rule 6 requires every ephemeral run to destroy its resources.
 # tflint-ignore: azurerm_resources_missing_prevent_destroy
 resource "azurerm_eventhub" "state" {
-  count           = var.eventhubs_enabled ? 1 : 0
   name            = "document-state"
-  namespace_id    = module.eventhubs[0].resource_id
+  namespace_id    = module.eventhubs.resource_id
   partition_count = 32
   retention_description {
     cleanup_policy                    = "Compact"

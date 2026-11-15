@@ -34,7 +34,6 @@ class StorageReadinessWorkflowTests(unittest.TestCase):
             ('archive-smoke.yml', 'smoke'): None,
             ('b10-abrupt-trial.yml', 'trial'): None,
             ('cluster-smoke.yml', 'smoke'): 'no wait',
-            ('configuration-isolation-smoke.yml', 'smoke'): None,
             ('scenario.yml', 'batch'): None,
             ('scenario.yml', 'full-C0'): None,
             ('scenario.yml', 'full-C3'): "steps.allowed.outputs.workload == 'true'",

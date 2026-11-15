@@ -25,6 +25,7 @@ jobs:
       PARCHWELL_SCENARIO: A01
       PARCHWELL_PHASE: probe
       TF_VAR_archive_smoke_enabled: "true"
+      PARCHWELL_AZ_SESSION_DIAGNOSTICS: "true"
     steps:
       - name: Require the main branch before login
         id: guard

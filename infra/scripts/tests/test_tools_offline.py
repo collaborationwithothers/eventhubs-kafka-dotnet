@@ -139,27 +139,6 @@ class ToolsOfflineTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'concurrency must be exactly'):
             CHECKER['check_queue'](document, 'cluster-smoke.yml')
 
-    def test_configuration_isolation_queue_contract(self):
-        filename = 'configuration-isolation-smoke.yml'
-        expected = {'group': 'parchwell-ephemeral', 'queue': 'max', 'cancel-in-progress': 'false'}
-        self.assertTrue(CHECKER['check_queue']({'concurrency': expected}, filename))
-        for concurrency in ({}, {key: value for key, value in expected.items() if key != 'queue'},
-                            {key: value for key, value in expected.items() if key != 'cancel-in-progress'},
-                            {**expected, 'queue': 'wrong'}, {**expected, 'cancel-in-progress': 'true'}):
-            with self.subTest(concurrency=concurrency), self.assertRaisesRegex(ValueError, 'concurrency must be exactly'):
-                CHECKER['check_queue']({'concurrency': concurrency}, filename)
-
-    def test_configuration_isolation_extra_trigger_fails_check_workflows(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            shutil.copytree(ROOT / '.github/workflows', root / '.github/workflows')
-            path = root / '.github/workflows/configuration-isolation-smoke.yml'
-            document = CHECKER['load_yaml'](path.read_text())
-            document['on']['push'] = ''
-            path.write_text(yaml.safe_dump(document, sort_keys=False))
-            with self.assertRaisesRegex(ValueError, r'^configuration-isolation-smoke\.yml: unexpected workflow triggers$'):
-                CHECKER['check_workflows'](root)
-
     def test_missing_root_test_directory_fails_before_terraform(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

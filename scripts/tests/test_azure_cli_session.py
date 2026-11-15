@@ -240,8 +240,8 @@ class AzureCliSessionTests(unittest.TestCase):
             if not line.startswith('azure_cli_session_stage '):
                 continue
             self.assertRegex(line, r'^azure_cli_session_stage pid=[0-9]+ stage=[a-z_]+ '
-                             r'event=(start|end|exit|timeout|interrupted|error) elapsed_ms=[0-9]+'
-                             r'( stage_ms=[0-9]+)?( status=[0-9]+)?$')
+                             r'event=(start|end|exit|timeout|interrupted|error|auth_code) elapsed_ms=[0-9]+'
+                             r'( stage_ms=[0-9]+)?( status=[0-9]+)?( aadsts=AADSTS[0-9]+)?$')
             rows.append(dict(field.split('=', 1) for field in line.split()[1:]))
         self.assertTrue(rows, 'registry lookup emitted no stage diagnostics')
         self.assertEqual(1, len({row['pid'] for row in rows}))
@@ -250,6 +250,130 @@ class AzureCliSessionTests(unittest.TestCase):
                 self.assertNotIn(value, '\n'.join(line for line in text.splitlines()
                                                if line.startswith('azure_cli_session_stage ')))
         return rows
+
+    def test_opt_in_storage_diagnostics_cold_fresh_and_selector(self):
+        args = ['storage', 'blob', 'upload', '--name', 'synthetic-private-name']
+        for value, enabled in ((None, False), ('false', False), ('TRUE', False), ('true', True)):
+            with self.subTest(value=value):
+                self.reset()
+                if value is None:
+                    self.env.pop('PARCHWELL_AZ_SESSION_DIAGNOSTICS', None)
+                else:
+                    self.env['PARCHWELL_AZ_SESSION_DIAGNOSTICS'] = value
+                self.assertEqual(0, self.invoke(args))
+                if enabled:
+                    rows = self.stage_rows(self.diagnostics)
+                    self.assertEqual(['lock', 'authentication', 'token_request', 'login', 'account_select', 'command'],
+                                     [r['stage'] for r in rows if r['event'] == 'start'])
+                    self.diagnostics = ''
+                    self.assertEqual(0, self.invoke(args))
+                    self.assertEqual(['lock', 'command'],
+                                     [r['stage'] for r in self.stage_rows(self.diagnostics) if r['event'] == 'start'])
+                else:
+                    self.assertEqual('', self.diagnostics)
+                    self.assertEqual(0, self.invoke(self.registry_args()))
+                    self.assertTrue(self.stage_rows(self.diagnostics))
+
+    def test_opt_in_quiet_errors_are_bounded_and_command_output_transparent(self):
+        self.env['PARCHWELL_AZ_SESSION_DIAGNOSTICS'] = 'true'
+        self.cli.write_text('#!' + sys.executable + '\n' + r'''
+import os, sys
+stage = sys.argv[1]
+if stage == os.environ['FAIL_STAGE']:
+    os.write(2, b'synthetic-secret ' + b'x' * 200000 + b' AADSTS700213: synthetic-token https://secret.invalid/\n')
+    sys.exit(17)
+if stage not in ('login', 'account'):
+    os.write(1, b'command-stdout\x00')
+    os.write(2, b'command-stderr\xff')
+''')
+        args = ['storage', 'blob', 'upload']
+        for stage, expected in (('login', 'login'), ('account', 'account_select')):
+            with self.subTest(stage=stage):
+                self.state.unlink(missing_ok=True)
+                self.env['FAIL_STAGE'] = stage
+                result = self.real(args)
+                self.assertEqual((1, b''), (result.returncode, result.stdout))
+                text = result.stderr.decode()
+                rows = self.stage_rows(text)
+                self.assertTrue(any(r['stage'] == expected and r['event'] == 'auth_code'
+                                    and r['aadsts'] == 'AADSTS700213' for r in rows))
+                self.assertTrue(any(r['stage'] == expected and r.get('status') == '17' for r in rows))
+                self.assertNotIn('command', [r['stage'] for r in rows])
+                self.assertNotIn('synthetic-secret', text)
+                self.assertNotIn('synthetic-token', text)
+                self.assertNotIn('secret.invalid', text)
+                self.assertLess(len(result.stderr), 4096)
+                self.assertFalse(self.state.exists())
+        self.env['FAIL_STAGE'] = 'none'
+        result = self.real(args)
+        self.assertEqual(0, result.returncode)
+        self.assertEqual(b'command-stdout\x00', result.stdout)
+        self.assertIn(b'command-stderr\xff', result.stderr)
+
+    def test_quiet_code_recognition_rejects_untrusted_and_split_labels(self):
+        self.env['PARCHWELL_AZ_SESSION_DIAGNOSTICS'] = 'true'
+        self.cli.write_text('#!' + sys.executable + '\n' + r'''
+import os, sys, time
+os.write(2, b'AADSTS70021')
+time.sleep(.05)
+os.write(2, b'3X AADSTS99999 synthetic-secret AADSTS7002')
+time.sleep(.05)
+os.write(2, b'13: secret\n')
+sys.exit(12)
+''')
+        result = self.real(['storage', 'blob', 'upload'])
+        self.assertEqual(1, result.returncode)
+        rows = self.stage_rows(result.stderr.decode())
+        self.assertEqual(['AADSTS700213'], [r['aadsts'] for r in rows if r['event'] == 'auth_code'])
+        self.assertNotIn(b'synthetic-secret', result.stderr)
+        self.assertNotIn(b'AADSTS99999', result.stderr)
+
+    def test_opt_in_quiet_timeout_and_cancellation_reap_process_group(self):
+        self.env['PARCHWELL_AZ_SESSION_DIAGNOSTICS'] = 'true'
+        self.cli.write_text('#!' + sys.executable + '\n' + r'''
+import os, signal, subprocess, sys, time
+from pathlib import Path
+child = subprocess.Popen([sys.executable, '-c', 'import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(30)'])
+Path(os.environ['FIXTURE_DIR'], 'quiet-pids').write_text(str(os.getpid()) + ' ' + str(child.pid))
+os.write(2, b'AADSTS700213: synthetic-secret\n')
+signal.signal(signal.SIGTERM, signal.SIG_IGN)
+time.sleep(30)
+''')
+        driver = ('import importlib.machinery,os; '
+                  'm=importlib.machinery.SourceFileLoader("shim",os.environ["FIXTURE_WRAPPER"]).load_module(); '
+                  'm.INVOCATION_SECONDS=int(os.environ["FIXTURE_BUDGET"]); '
+                  'raise SystemExit(m.main(["storage","blob","upload"], '
+                  'fetch=lambda *a: os.environ["FIXTURE_BODY"].encode()))')
+        for termination in ('timeout', 'cancel'):
+            with self.subTest(termination=termination):
+                self.state.unlink(missing_ok=True)
+                pids_path = self.root / 'quiet-pids'
+                pids_path.unlink(missing_ok=True)
+                env = dict(self.env, FIXTURE_WRAPPER=str(WRAPPER),
+                           FIXTURE_BODY=body(token(int(time.time()) + 600)).decode(),
+                           FIXTURE_BUDGET='1' if termination == 'timeout' else '60')
+                process = subprocess.Popen([sys.executable, '-c', driver], env=env,
+                                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                self.addCleanup(lambda p=process: p.kill() if p.poll() is None else None)
+                deadline = time.monotonic() + 3
+                while not pids_path.exists() and time.monotonic() < deadline:
+                    time.sleep(.01)
+                self.assertTrue(pids_path.exists())
+                direct, grandchild = map(int, pids_path.read_text().split())
+                if termination == 'cancel':
+                    process.send_signal(signal.SIGTERM)
+                stdout, stderr = process.communicate(timeout=5)
+                self.assertEqual(124 if termination == 'timeout' else 143, process.returncode)
+                self.assertEqual(b'', stdout)
+                rows = self.stage_rows(stderr.decode())
+                self.assertTrue(any(r['stage'] == 'login' and r['event'] ==
+                                    ('timeout' if termination == 'timeout' else 'interrupted') for r in rows))
+                self.assertTrue(any(r['stage'] == 'cleanup' and r['event'] == 'end' for r in rows))
+                self.assertNotIn(b'synthetic-secret', stderr)
+                self.assertFalse(self.state.exists())
+                self.assertFalse(Path('/proc', str(direct)).exists())
+                stat_path = Path('/proc', str(grandchild), 'stat')
+                self.assertTrue(not stat_path.exists() or stat_path.read_text().split()[2] == 'Z')
 
     def test_registry_diagnostics_separate_auth_and_command(self):
         self.assertEqual(0, self.invoke(self.registry_args()))
