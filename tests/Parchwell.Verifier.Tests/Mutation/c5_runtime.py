@@ -307,6 +307,7 @@ import math
 from pathlib import Path, PurePosixPath
 import re
 import subprocess
+import tempfile
 import xml.etree.ElementTree as ET
 
 import c5_workflow as workflow
@@ -1214,7 +1215,15 @@ def renew(head, qualification, basis):
         config['renewals'] = renewals
     else:
         config.pop('renewals', None)
-    path.write_text(json.dumps(config, indent=2, sort_keys=True) + '\n')
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', dir=path.parent, encoding='utf-8', delete=False) as output:
+            temporary = Path(output.name)
+            output.write(json.dumps(config, indent=2, sort_keys=True) + '\n')
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
     return {'renewed': changed, 'status': 'renewed'}
 
 

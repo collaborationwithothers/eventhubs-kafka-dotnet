@@ -1416,3 +1416,14 @@ class RenewalTests(unittest.TestCase):
                 self.assertEqual('', stdout)
                 self.assertIn('target sources changed', stderr)
                 self.assertEqual(before, path.read_bytes())
+            with self.subTest(case='atomic replacement fails'):
+                before = path.read_bytes()
+                entries = set(Path(directory).iterdir())
+                with mock.patch.object(runtime.os, 'replace', side_effect=OSError('synthetic replacement failure')) as replace:
+                    status, stdout, stderr = invoke({'global.json': new}, self.targets)
+                replace.assert_called_once()
+                self.assertEqual(1, status)
+                self.assertEqual('', stdout)
+                self.assertIn('synthetic replacement failure', stderr)
+                self.assertEqual(before, path.read_bytes())
+                self.assertEqual(entries, set(Path(directory).iterdir()))
