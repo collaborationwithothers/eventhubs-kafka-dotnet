@@ -1640,3 +1640,153 @@ class RenewalTests(unittest.TestCase):
                 self.assertIn('synthetic replacement failure', stderr)
                 self.assertEqual(before, path.read_bytes())
                 self.assertEqual(entries, set(Path(directory).iterdir()))
+
+
+class LocalShardTests(unittest.TestCase):
+    def setUp(self):
+        from contextlib import ExitStack
+        self.stack = ExitStack()
+        self.addCleanup(self.stack.close)
+        self.tmp = self.stack.enter_context(tempfile.TemporaryDirectory())
+        self.output = Path(self.tmp) / 'receipt'
+        self.workflow = profile_module.workflow
+        self.snapshot = {'src/example.cs': 'a' * 64}
+        self.identity = self.stack.enter_context(mock.patch.object(self.workflow, 'identity', return_value=('commit', 'tree', True)))
+        self.snapshots = self.stack.enter_context(mock.patch.object(self.workflow, 'snapshot', return_value=self.snapshot))
+        self.stack.enter_context(mock.patch.object(self.workflow, 'git', side_effect=lambda root, *args:
+            (root / args[-1].split(':', 1)[1]).read_bytes()))
+        self.stack.enter_context(mock.patch.object(profile_module.shutil, 'which', return_value='/usr/bin/dotnet'))
+        self.stack.enter_context(mock.patch.object(profile_module.subprocess, 'check_output', side_effect=lambda args, **kwargs:
+            '10.0.402' if args[-1] == '--version' else 'dotnet-stryker 5.0.0 stryker'))
+        def prepare(root, staging, target, retained):
+            path = staging / (self.workflow.projection.VERIFIER + target)
+            path.parent.mkdir(parents=True)
+            path.write_bytes((root / (self.workflow.projection.VERIFIER + target)).read_bytes())
+            retained.mkdir()
+            return {}
+        self.stack.enter_context(mock.patch.object(self.workflow.projection, 'prepare', side_effect=prepare))
+        self.stack.enter_context(mock.patch.object(self.workflow.projection, 'finish', side_effect=lambda root, manifest, out: out.write_text('{}')))
+        self.stack.enter_context(mock.patch.object(self.workflow.projection, 'validate', return_value='hash'))
+        self.launch = self.stack.enter_context(mock.patch.object(self.workflow, 'launch', side_effect=self.completed_launch))
+        self.isolate = self.stack.enter_context(mock.patch.object(self.workflow, 'run_isolated', return_value=([], None)))
+
+    def completed_launch(self, argv, cwd, log, timeout):
+        log.write_text('workers observed in this raw log')
+        report = self.output / self.workflow.REPORT_PATH
+        report.parent.mkdir(parents=True)
+        report.write_text('{}')
+        return 0, None
+
+    def receipt(self):
+        return json.loads((self.output / 'local-shard-receipt.json').read_text())
+
+    def test_exact_primary_and_complement_use_production_selector_without_workflow_identity(self):
+        candidates = [name for name, part in self.workflow.PARTS.items()
+                      if part[0] == 'b10-final-sweep-handler']
+        for shard in (candidates[0], candidates[-1]):
+            with self.subTest(shard=shard):
+                self.output = Path(self.tmp) / shard
+                env = dict(os.environ)
+                with mock.patch.dict(os.environ, {'GITHUB_SHA': 'branch', 'GITHUB_REF': 'refs/heads/branch'}):
+                    self.assertEqual(0, profile_module.local_shard(shard, self.output, 100))
+                    self.assertEqual('branch', os.environ['GITHUB_SHA'])
+                    self.assertEqual('refs/heads/branch', os.environ['GITHUB_REF'])
+                self.assertEqual(env, dict(os.environ))
+                target = self.workflow.SHARDS[shard]
+                source = (ROOT / (self.workflow.projection.VERIFIER + target)).read_bytes()
+                self.assertEqual(self.workflow.shard_config(shard, source), json.loads((self.output / 'shard-config.json').read_text()))
+                self.assertEqual('completed_unverified', self.receipt()['status'])
+                self.assertIsNone(self.receipt()['observed_workers'])
+        self.assertFalse((Path(self.launch.call_args.args[1])).exists())
+
+    def test_invalid_preflight_does_not_launch_or_create_output(self):
+        shard = next(iter(self.workflow.SHARDS))
+        for bad_shard, output, timeout in [('unknown', self.output, 1), (shard, self.output, 0),
+                                            (shard, self.output, float('nan')), (shard, self.output, 16201),
+                                            (shard, ROOT / 'out', 1), (shard, Path(self.tmp), 1)]:
+            with self.subTest(shard=bad_shard, output=output, timeout=timeout):
+                with self.assertRaises(ValueError):
+                    profile_module.local_shard(bad_shard, output, timeout)
+        self.identity.return_value = ('commit', 'tree', False)
+        with self.assertRaises(ValueError):
+            profile_module.local_shard(shard, self.output, 1)
+        self.launch.assert_not_called()
+        self.assertFalse(self.output.exists())
+
+    def test_timeout_and_source_drift_are_incomplete_and_retained(self):
+        shard = next(iter(self.workflow.SHARDS))
+        self.launch.side_effect = lambda argv, cwd, log, timeout: (None, 'time_cap_exceeded')
+        self.assertEqual(1, profile_module.local_shard(shard, self.output, 100))
+        self.assertEqual('time_cap_exceeded', self.receipt()['termination_reason'])
+        self.assertEqual('incomplete', self.receipt()['status'])
+        self.output = Path(self.tmp) / 'drift'
+        self.launch.side_effect = self.completed_launch
+        self.snapshots.side_effect = [self.snapshot, {'src/example.cs': 'b' * 64}]
+        self.assertEqual(1, profile_module.local_shard(shard, self.output, 100))
+        self.assertEqual('incomplete', self.receipt()['status'])
+
+    def test_config_change_and_isolation_failure_remain_incomplete(self):
+        shard = next(iter(self.workflow.SHARDS))
+        def change(argv, cwd, log, timeout):
+            result = self.completed_launch(argv, cwd, log, timeout)
+            (self.output / 'shard-config.json').write_text('{}')
+            return result
+        self.launch.side_effect = change
+        self.assertEqual(1, profile_module.local_shard(shard, self.output, 100))
+        self.assertNotEqual(self.receipt()['config_sha256_before'], self.receipt()['config_sha256_after'])
+
+    def test_boundary_error_is_preserved_before_launch(self):
+        shard = next(iter(self.workflow.SHARDS))
+        with mock.patch.object(self.workflow, 'shard_config', side_effect=ValueError('static field declaration crosses a span boundary')):
+            self.assertEqual(1, profile_module.local_shard(shard, self.output, 100))
+        self.assertIn('crosses', self.receipt()['error'])
+        self.launch.assert_not_called()
+
+    def test_isolation_uses_remaining_deadline_and_failure_is_retained(self):
+        shard = next(iter(self.workflow.SHARDS))
+        self.isolate.return_value = ([{'mutant_id': '1'}], 'shard time limit reached')
+        with mock.patch.object(self.workflow, 'shard_static_regions', return_value=[(1, 2)]):
+            before = profile_module.time.monotonic()
+            self.assertEqual(1, profile_module.local_shard(shard, self.output, 100))
+            after = profile_module.time.monotonic()
+        deadline = self.isolate.call_args.args[-1]
+        self.assertGreaterEqual(deadline, before + 100)
+        self.assertLessEqual(deadline, after + 100)
+        self.assertEqual('shard time limit reached', self.receipt()['isolation_error'])
+        self.assertEqual([{'mutant_id': '1'}], self.receipt()['isolated'])
+
+    def test_executing_helper_mismatch_rejected_before_launch(self):
+        self.stack.enter_context(mock.patch.object(self.workflow, 'git', return_value=b'other revision'))
+        with self.assertRaisesRegex(ValueError, 'differs from committed source'):
+            profile_module.local_shard(next(iter(self.workflow.SHARDS)), self.output, 100)
+        self.launch.assert_not_called()
+        self.assertFalse(self.output.exists())
+
+    def test_interruption_during_projection_preserves_receipt(self):
+        with mock.patch.object(self.workflow.projection, 'prepare', side_effect=KeyboardInterrupt):
+            self.assertEqual(1, profile_module.local_shard(next(iter(self.workflow.SHARDS)), self.output, 100))
+        self.assertIn('KeyboardInterrupt', self.receipt()['error'])
+        self.assertEqual('incomplete', self.receipt()['status'])
+        self.launch.assert_not_called()
+
+    def test_runtime_helper_is_not_a_qualification_input(self):
+        # Use the real Git-backed discovery, not a synthetic input map.
+        shared, _ = profile_module.input_maps('HEAD')
+        self.assertNotIn('tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py', shared)
+
+    def test_exit_two_with_unclassified_report_does_not_claim_verified_population(self):
+        shard = next(iter(self.workflow.SHARDS))
+        def launch(argv, cwd, log, timeout):
+            self.completed_launch(argv, cwd, log, timeout)
+            return 2, None
+        self.launch.side_effect = launch
+        self.assertEqual(0, profile_module.local_shard(shard, self.output, 100))
+        self.assertEqual('completed_unverified', self.receipt()['status'])
+        self.assertNotIn('mutant_count', self.receipt())
+
+    def test_wrong_sdk_is_rejected_before_execution(self):
+        with mock.patch.object(profile_module.subprocess, 'check_output', side_effect=['0.0.0', 'dotnet-stryker 5.0.0 stryker']):
+            with self.assertRaisesRegex(ValueError, 'selected SDK'):
+                profile_module.local_shard(next(iter(self.workflow.SHARDS)), self.output, 100)
+        self.assertFalse(self.output.exists())
+        self.launch.assert_not_called()

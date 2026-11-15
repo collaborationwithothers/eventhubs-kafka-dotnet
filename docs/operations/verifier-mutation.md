@@ -13,10 +13,15 @@ Run the commands from the repository root. Keep profiling output outside the rep
 
 ```bash
 python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py profile --output-dir DIR --timeout 600
+python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py local-shard --shard SHARD --output-dir DIR --timeout SECONDS
 python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py check --base BASE_SHA --head HEAD_SHA --qualification FILE
 python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py renew --head HEAD_SHA --qualification FILE --basis TEXT
 python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py performance --run-json RUN_JSON --jobs-json JOBS_JSON --output-dir DIR
 ```
+
+`local-shard` is a diagnostic on a clean committed checkout, not hosted acceptance or a qualification result. Select a physical shard from the current runner's shard table and give an explicit timeout no greater than 16200 seconds. Its output directory must not exist and must be outside Git worktrees. Install the pinned SDK and restore the local tool and dependencies before running it; preflight checks the selected SDK and listed local tool version, but does not prove that the tool or dependencies are restored. It uses the production shard selector and projection, and runs required static isolation sequentially within the remaining deadline. Cohort shards use the same cohort helper. Each diagnostic uses a private temporary namespace for its sequential Stryker invocations.
+
+The retained config, projection, raw logs, reports and `local-shard-receipt.json` identify the source, machine, SDK, overrides, timing, hashes and any incomplete execution. A completed receipt means only that the local commands and integrity checks completed; it does not validate the native inventory, prove mutant counts or establish a hosted result. Worker count is deliberately left unknown in the receipt: inspect the retained logs for actual observed workers and record supporting evidence before using a timing estimate. Timeout, interruption, missing reports, source drift and isolation errors remain visible as incomplete evidence. Inspect native reports for compile errors and empty selections; the receipt does not classify their populations. Respect the measurement allowance authorized for the work before invoking this command.
 
 The planning goal is 1800 seconds for the complete workflow, from creation through completion. For the initial live qualification, the [later decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6880732047) accepts a complete passing workflow within 2400 seconds. A longer complete passing mutation measurement remains valid mutation evidence, but leaves performance acceptance open. The performance helper reports the earlier 1800-second goal; compare its actual workflow elapsed time separately with 2400 seconds. The unchanged process and hosted-job limits remain execution safeguards.
 
