@@ -256,6 +256,27 @@ internal sealed class B10FinalSweepHarness : IDisposable
         Verifier[PhasePaths.SweepLine(Run, Phase)] = B10SweepEvidenceCodec.WriteSweepLine(new B10SweepLine(1, "B10", Phase, Run, Phase, B10AbruptVerifyEvidence.Commit,
             "document-events", [new(0, high ?? High()), new(1, 0), new(2, 0)], captured, completed, captured.AddSeconds(-60), 60000));
     }
+    /// <summary>
+    /// Rewrites the sweep line the way the scientific phase builds it in a live run, not from the receipts as
+    /// <see cref="CaptureSweep"/> does. Kubernetes reports each verify pod's <c>finishedAt</c> in whole seconds, so the
+    /// latest receipt time is first cut to its second. <c>phase.py</c> <c>b10_second_upper_bound</c> then raises it to
+    /// the last tick of that second; with <paramref name="raise"/> false the cut value is used, as before issue #483.
+    /// Like the phase's settle wait, this waits until the chosen time has passed before capturing.
+    /// </summary>
+    internal async Task<DateTimeOffset> CaptureSweepFromPodSecondsAsync(bool raise)
+    {
+        DateTimeOffset receipt = Verifier.Where(pair => pair.Key.EndsWith("verify-completion.json", StringComparison.Ordinal))
+            .Select(pair => DateTimeOffset.Parse(JsonNode.Parse(pair.Value)!["completed_utc"]!.GetValue<string>(), CultureInfo.InvariantCulture))
+            .Max();
+        DateTimeOffset podSecond = receipt.AddTicks(-(receipt.UtcTicks % TimeSpan.TicksPerSecond));
+        DateTimeOffset completed = raise ? podSecond.AddTicks(TimeSpan.TicksPerSecond - 1) : podSecond;
+        TimeSpan wait = completed - TimeProvider.System.GetUtcNow();
+        if (wait > TimeSpan.Zero) await Task.Delay(wait + TimeSpan.FromMilliseconds(1), TestContext.Current.CancellationToken);
+        DateTimeOffset captured = TimeProvider.System.GetUtcNow();
+        Verifier[PhasePaths.SweepLine(Run, Phase)] = B10SweepEvidenceCodec.WriteSweepLine(new B10SweepLine(1, "B10", Phase, Run, Phase, B10AbruptVerifyEvidence.Commit,
+            "document-events", [new(0, High()), new(1, 0), new(2, 0)], captured, completed, captured.AddSeconds(-60), 60000));
+        return receipt;
+    }
     internal Task<int> RunAsync() => RunHostAsync(host);
     private async Task<int> RunHostAsync(B10AbruptVerifyHarness target)
     {
