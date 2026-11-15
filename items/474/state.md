@@ -1,6 +1,6 @@
 # State: #474 verifier mutation runtime
 
-Covers: comment 6894509069, read 2026-11-15
+Covers: comment 6894509069 created 2026-11-15T12:44:48Z; read at 2026-11-15T12:55:16Z
 Parent items: [#347](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/347)
 Item plan: [mutation runtime plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6876990691)
 Implementing tool: Claude Code. Source: [decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6894078013) point 6, restated in the [approval](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6894509069)
@@ -27,8 +27,9 @@ Decisions in force:
 - Rebalance the three-job codec neighborhood and measure the new layout on main. Source: [decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6887981346)
 - Scope is questions 1 and 3 of the issue body. Source: [decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6893688070)
 - No `since` or `with-baseline`; a change to any mutation input needs a new passing run on `main`; ownership checks and their tests stay. Source: [decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6894078013) points 4, 5 and 7
+- Size-only split for new targets (option B) replaces point 1 of the previous decision; "Evidence pack is unchanged" there refers to incremental runs only, and point 5 changes the trigger. Source: [decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6894120017)
 - Sizing is parked; only the acceptance trigger ships. Source: [decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6894368044)
 - Approve revision 3 with both handoff fixes (R2 wording; `dotnet.md:55` and `factory.md:54` added to scope). Source: [approval](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6894509069)
 Open questions:
 - None. Source: [plan section 10](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/0e7e1276c0da24dc4ee3bfadb749741b163dc1db/items/474/plan-sizing-and-reuse.md#10-open-questions-for-hari)
-Next action: Cold review, then open the pull request for Hari's merge (protected path).
+Next action: No mutation run is needed for this change (plan section 9). Sizing stays parked until a change adds a new mutation target (decision 6894368044). The `stale_inputs` blocker belongs to issue 500.
