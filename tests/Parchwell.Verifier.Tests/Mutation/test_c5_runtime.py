@@ -1335,11 +1335,11 @@ class RenewalTests(unittest.TestCase):
             path = Path(directory) / 'qualification.json'
             initial = copy.deepcopy(self.config)
             path.write_text(json.dumps(initial, indent=2, sort_keys=True) + '\n')
-            def invoke(shared, targets, basis='synthetic renewal'):
+            def invoke(shared, targets, basis='synthetic renewal', head_runner=None):
                 stdout, stderr = io.StringIO(), io.StringIO()
                 argv = ['c5_runtime.py', 'renew', '--head', 'head', '--qualification', str(path), '--basis', basis]
                 with mock.patch.object(sys, 'argv', argv), mock.patch.object(runtime, 'git', return_value=b'head\n'), \
-                     mock.patch.object(runtime, 'blob', return_value=runner), \
+                     mock.patch.object(runtime, 'blob', return_value=runner if head_runner is None else head_runner), \
                      mock.patch.object(runtime, 'input_maps', return_value=(shared, targets)), \
                      contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
                     status = runtime.main()
@@ -1391,4 +1391,28 @@ class RenewalTests(unittest.TestCase):
                 status, stdout, _ = invoke({'global.json': new}, self.targets, '  ')
                 self.assertEqual(1, status)
                 self.assertEqual('', stdout)
+                self.assertEqual(before, path.read_bytes())
+            with self.subTest(case='runner differs from head'):
+                before = path.read_bytes()
+                status, stdout, stderr = invoke({'global.json': new}, self.targets, head_runner=b'changed runner')
+                self.assertEqual(1, status)
+                self.assertEqual('', stdout)
+                self.assertIn('checker is not running the requested revision', stderr)
+                self.assertEqual(before, path.read_bytes())
+            with self.subTest(case='malformed qualification'):
+                malformed = copy.deepcopy(initial)
+                malformed['renewals'] = {'global.json': 'invalid'}
+                path.write_text(json.dumps(malformed))
+                before = path.read_bytes()
+                status, stdout, _ = invoke({'global.json': new}, self.targets)
+                self.assertEqual(1, status)
+                self.assertEqual('', stdout)
+                self.assertEqual(before, path.read_bytes())
+            with self.subTest(case='target set changed'):
+                path.write_text(json.dumps(initial, indent=2, sort_keys=True) + '\n')
+                before = path.read_bytes()
+                status, stdout, stderr = invoke({'global.json': new}, {'a.cs': self.targets['a.cs']})
+                self.assertEqual(1, status)
+                self.assertEqual('', stdout)
+                self.assertIn('target sources changed', stderr)
                 self.assertEqual(before, path.read_bytes())
