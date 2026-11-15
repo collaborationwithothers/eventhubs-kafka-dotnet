@@ -168,7 +168,7 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
     def test_deployed_worker_readback_requires_exact_bindings_in_job_and_pod(self):
         for entry, phase_name in (('c0', 'C0'), ('c1', 'C1')):
             code = self.by_id[entry]['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
-            node = next(x for x in ast.parse(code).body if isinstance(x, ast.FunctionDef) and x.name == 'check_deployed_binding')
+            node = next(x for x in ast.parse(code).body if isinstance(x, ast.FunctionDef) and x.name == 'assert_deployed_binding')
             compiled = compile(ast.Module(body=[node], type_ignores=[]), 'binding fixture', 'exec')
             for mode in ('start-line', 'loadgen', 'verify'):
                 with self.subTest(entry=entry, mode=mode), tempfile.TemporaryDirectory() as temp:
@@ -198,7 +198,7 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
                         namespace = {'phase': phase, 'blob_baseline': baseline, 'json': json,
                                      'module': SimpleNamespace(unwrap=lambda x: x['value'], strict_json=json.loads)}
                         exec(compiled, namespace)
-                        namespace['check_deployed_binding'](mode)
+                        namespace['assert_deployed_binding'](mode)
                     exercise()
                     for job_change, pod_change, uid in (('NamespaceName', None, 'uid-1'), (None, 'NamespaceName', 'uid-1'),
                                                          ('BlobEndpoint' if role == 'loadgen' else 'BlobServiceUri', None, 'uid-1'),
@@ -401,6 +401,29 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
         for state, sentinel in (({**after, 'storage_account_resource_id': '/different'}, b'sentinel'), (after, b'changed')):
             with self.subTest(state=state, sentinel=sentinel), self.assertRaises(AssertionError):
                 exercise(state, sentinel)
+
+    def test_binding_receipt_retains_success_failure_and_unattempted_without_exception_text(self):
+        for entry, phase_name in (('c0', 'C0'), ('c1', 'C1')):
+            code = self.by_id[entry]['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
+            fn = next(x for x in ast.parse(code).body if isinstance(x, ast.FunctionDef) and x.name == 'check_deployed_binding')
+            compiled = compile(ast.Module(body=[fn], type_ignores=[]), 'binding result fixture', 'exec')
+            receipt = self.by_id['receipt']['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
+            with self.subTest(entry=entry), tempfile.TemporaryDirectory() as temp:
+                phase = mock.Mock()
+                phase.read.return_value = {'phase': phase_name}
+                check = mock.Mock()
+                namespace = {'phase': phase, 'assert_deployed_binding': check, 'pathlib': __import__('pathlib'), 'os': os, 'json': json}
+                with mock.patch.dict(os.environ, {**settings_environment(temp), 'STEP_RESULTS': '{}'}):
+                    exec(compiled, namespace)
+                    namespace['check_deployed_binding']('start-line')
+                    check.side_effect = AssertionError('private resource and secret')
+                    with self.assertRaises(AssertionError): namespace['check_deployed_binding']('loadgen')
+                    exec(compile(receipt, 'binding receipt fixture', 'exec'), {})
+                text = Path(temp, 'configuration-smoke-receipt', 'receipt.txt').read_text()
+                self.assertIn(phase_name + ' start-line deployed binding: passed', text)
+                self.assertIn(phase_name + ' loadgen deployed binding: failed reason=binding_unconfirmed', text)
+                self.assertIn(phase_name + ' verify deployed binding: not_attempted', text)
+                self.assertNotIn('private resource and secret', text)
 
     def test_receipt_projects_worker_status_without_raw_metadata_or_logs(self):
         code = self.by_id['receipt']['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]

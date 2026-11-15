@@ -221,7 +221,7 @@ jobs:
                   assert logs.read_bytes() == b'parchwell-cluster-smoke-ok\n'
               finally:
                   run(['kubectl', 'delete', 'job', job, '-n', 'parchwell', '--ignore-not-found', '--cascade=foreground', '--wait=true', '--timeout=90s', '--request-timeout=30s'], 120)
-          def check_deployed_binding(mode):
+          def assert_deployed_binding(mode):
               selected = phase.read('phase.json')
               job = phase.mode_job(selected, mode, 1)
               role = 'loadgen' if mode == 'loadgen' else 'verifier'
@@ -258,6 +258,20 @@ jobs:
                       assert len(entries) == 1 and entries[0].get('value') == value and 'valueFrom' not in entries[0]
               validate(deployed['spec']['template']['spec'])
               validate(pod['spec'])
+          def check_deployed_binding(mode):
+              selected = phase.read('phase.json')
+              phase_name = selected['phase']
+              assert phase_name in ('C0', 'C1') and mode in ('start-line', 'loadgen', 'verify')
+              directory = pathlib.Path(os.environ['RUNNER_TEMP']) / 'configuration-isolation-bindings'
+              directory.mkdir(mode=0o700, exist_ok=True)
+              destination = directory / (phase_name + '-' + mode + '.json')
+              def save(status):
+                  partial = destination.with_suffix('.partial')
+                  partial.write_text(json.dumps({'phase': phase_name, 'mode': mode, 'status': status}))
+                  partial.replace(destination)
+              save('failed')
+              assert_deployed_binding(mode)
+              save('passed')
           def one(mode):
               record = phase.run_mode(mode, 1)
               if record['outcome'] != 'complete' or record.get('collect_gap'):
@@ -632,7 +646,7 @@ jobs:
                   assert logs.read_bytes() == b'parchwell-cluster-smoke-ok\n'
               finally:
                   run(['kubectl', 'delete', 'job', job, '-n', 'parchwell', '--ignore-not-found', '--cascade=foreground', '--wait=true', '--timeout=90s', '--request-timeout=30s'], 120)
-          def check_deployed_binding(mode):
+          def assert_deployed_binding(mode):
               selected = phase.read('phase.json')
               job = phase.mode_job(selected, mode, 1)
               role = 'loadgen' if mode == 'loadgen' else 'verifier'
@@ -669,6 +683,20 @@ jobs:
                       assert len(entries) == 1 and entries[0].get('value') == value and 'valueFrom' not in entries[0]
               validate(deployed['spec']['template']['spec'])
               validate(pod['spec'])
+          def check_deployed_binding(mode):
+              selected = phase.read('phase.json')
+              phase_name = selected['phase']
+              assert phase_name in ('C0', 'C1') and mode in ('start-line', 'loadgen', 'verify')
+              directory = pathlib.Path(os.environ['RUNNER_TEMP']) / 'configuration-isolation-bindings'
+              directory.mkdir(mode=0o700, exist_ok=True)
+              destination = directory / (phase_name + '-' + mode + '.json')
+              def save(status):
+                  partial = destination.with_suffix('.partial')
+                  partial.write_text(json.dumps({'phase': phase_name, 'mode': mode, 'status': status}))
+                  partial.replace(destination)
+              save('failed')
+              assert_deployed_binding(mode)
+              save('passed')
           def one(mode):
               record = phase.run_mode(mode, 1)
               if record['outcome'] != 'complete' or record.get('collect_gap'):
@@ -823,6 +851,21 @@ jobs:
                           lines.append(prefix + 'failed reason=worker_incomplete')
                       else:
                           lines.append(prefix + 'failed reason=status_invalid')
+          binding_directory = pathlib.Path(os.environ['RUNNER_TEMP']) / 'configuration-isolation-bindings'
+          for phase in ('C0', 'C1'):
+              for mode in ('start-line', 'loadgen', 'verify'):
+                  prefix = phase + ' ' + mode + ' deployed binding: '
+                  path = binding_directory / (phase + '-' + mode + '.json')
+                  if not path.exists():
+                      lines.append(prefix + 'not_attempted')
+                      continue
+                  try:
+                      binding = json.loads(path.read_text())
+                      assert set(binding) == {'phase', 'mode', 'status'} and binding['phase'] == phase and binding['mode'] == mode
+                      assert binding['status'] in ('passed', 'failed')
+                      lines.append(prefix + ('passed' if binding['status'] == 'passed' else 'failed reason=binding_unconfirmed'))
+                  except (ValueError, TypeError, KeyError, AssertionError, OSError):
+                      lines.append(prefix + 'failed reason=status_invalid')
           lines.append('Workload-active means the loadgen Job was active; exact overlap with delivered traffic is not established.')
           for phase in ('c0', 'c1'):
               timestamp = pathlib.Path(os.environ['RUNNER_TEMP']) / ('configuration-' + phase + '-time')
