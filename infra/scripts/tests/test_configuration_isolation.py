@@ -36,6 +36,7 @@ class SyntheticLifecycle:
         self.private = path
         self.results = list(results)
         self.calls = []
+        self.budgets = []
         self.variables = path / "inputs.tfvars.json"
         self.variables.write_text('{}')
 
@@ -47,6 +48,7 @@ class SyntheticLifecycle:
 
     def run(self, args, seconds, output=None, **kwargs):
         self.calls.append(args)
+        self.budgets.append((seconds, kwargs.get("maximum"), kwargs.get("end")))
         result = self.results.pop(0)
         if output is not None:
             output.write_text(result.get("stdout", ""))
@@ -201,7 +203,24 @@ class ConfigurationIsolationTests(unittest.TestCase):
                 (path / "namespace-transition.json").write_text(json.dumps({"initial": old, "old_ids": old_ids}))
                 absent = {"status": 1, "stderr": b"ERROR: (ResourceNotFound) absent"}
                 plan = json.dumps(valid_plan([change('module.eventhubs[0].azurerm_eventhub_namespace.this[0]', ["create"])]))
-                lifecycle = SyntheticLifecycle(path, [{"stdout": "azurerm_resource_group.ephemeral\nmodule.storage.azapi_resource.this\n"}, absent, absent, {}, {"stdout": plan}, {}, {"stdout": json.dumps(new)}, {"stdout": "10.0.0.99 STREAM\n"}])
+                lifecycle = SyntheticLifecycle(path, [{"stdout": "azurerm_resource_group.ephemeral\nmodule.storage.azapi_resource.this\n"}, absent, absent, {}, {"stdout": plan}, {}, {"stdout": json.dumps(new)}, {"stdout": '["10.0.0.99"]'}])
+                with patch.dict('os.environ', {"PARCHWELL_RUN_ID": "run-id"}), self.assertRaises(module.TransitionError) as caught:
+                    module.transition(lifecycle, "eh-new")
+                self.assertEqual((1, "namespace_activation_unconfirmed"), (caught.exception.code, str(caught.exception)))
+                self.assertTrue((path / "namespace-transition.json").exists())
+
+    def test_activation_rejects_malformed_or_mixed_dns(self):
+        cases = ('{invalid', '{}', '[]', '["10.0.0.2", "10.0.0.3"]', '["10.0.0.2", "invalid"]', '["10.0.0.2", 2]')
+        for response in cases:
+            with self.subTest(response=response), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory)
+                old, off, new = output(True), output(False), output(True, "eh-new")
+                (path / "ephemeral-output.json").write_text(json.dumps(off))
+                old_ids = [old["configuration_lifecycle"]["value"][key] for key in ("namespace_resource_id", "eventhubs_private_endpoint_resource_id")]
+                (path / "namespace-transition.json").write_text(json.dumps({"initial": old, "old_ids": old_ids}))
+                absent = {"status": 1, "stderr": b"ERROR: (ResourceNotFound) absent"}
+                plan = json.dumps(valid_plan([change('module.eventhubs[0].azurerm_eventhub_namespace.this[0]', ["create"])]))
+                lifecycle = SyntheticLifecycle(path, [{"stdout": "azurerm_resource_group.ephemeral\nmodule.storage.azapi_resource.this\n"}, absent, absent, {}, {"stdout": plan}, {}, {"stdout": json.dumps(new)}, {"stdout": response}])
                 with patch.dict('os.environ', {"PARCHWELL_RUN_ID": "run-id"}), self.assertRaises(module.TransitionError) as caught:
                     module.transition(lifecycle, "eh-new")
                 self.assertEqual((1, "namespace_activation_unconfirmed"), (caught.exception.code, str(caught.exception)))
@@ -215,10 +234,13 @@ class ConfigurationIsolationTests(unittest.TestCase):
             (path / "namespace-transition.json").write_text(json.dumps({"initial": old, "old_ids": [old["configuration_lifecycle"]["value"]["namespace_resource_id"], old["configuration_lifecycle"]["value"]["eventhubs_private_endpoint_resource_id"]]}))
             absent = {"status": 1, "stderr": b"ERROR: (ResourceNotFound) gone"}
             plan = json.dumps(valid_plan([change('module.eventhubs[0].azurerm_eventhub_namespace.this[0]', ["create"])]))
-            lifecycle = SyntheticLifecycle(path, [{"stdout": "azurerm_resource_group.ephemeral\nmodule.storage.account[0]\n"}, absent, absent, {}, {"stdout": plan}, {}, {"stdout": json.dumps(new)}, {"stdout": "10.0.0.2 STREAM\n"}])
+            lifecycle = SyntheticLifecycle(path, [{"stdout": "azurerm_resource_group.ephemeral\nmodule.storage.account[0]\n"}, absent, absent, {}, {"stdout": plan}, {}, {"stdout": json.dumps(new)}, {"stdout": '["10.0.0.2"]'}])
             with patch.dict('os.environ', {"PARCHWELL_RUN_ID": "run-id"}):
                 module.transition(lifecycle, "eh-new")
             self.assertIn("-var=eventhub_private_endpoint_name=pe-eh-new", lifecycle.calls[3])
+            self.assertEqual([module.sys.executable, "infra/scripts/phase/phase.py", "resolve", "eh-new.servicebus.windows.net"], lifecycle.calls[-1])
+            self.assertEqual((15, 65536), lifecycle.budgets[-1][:2])
+            self.assertIsNotNone(lifecycle.budgets[-1][2])
             self.assertEqual(new, json.loads((path / "ephemeral-output.json").read_text()))
             self.assertFalse((path / "namespace-transition.json").exists())
 

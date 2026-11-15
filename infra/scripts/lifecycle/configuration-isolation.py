@@ -167,9 +167,9 @@ def transition(lifecycle, name=None):
         env = dict(os.environ, TF_DATA_DIR=str(private / "tfdata-ephemeral"))
         base = ["terraform", "-chdir=infra/ephemeral"]
         end = time.monotonic() + 600
-        def command(args, path=None, errors=False):
+        def command(args, path=None, errors=False, seconds=600, maximum=4 * 1024 * 1024):
             try:
-                return lifecycle.run(args, 600, output=path, errors=errors, env=env, end=end, private_capture=True)
+                return lifecycle.run(args, seconds, output=path, maximum=maximum, errors=errors, env=env, end=end, private_capture=True)
             except Exception:
                 return 1, b""
         def absent(ids):
@@ -239,13 +239,15 @@ def transition(lifecycle, name=None):
             eh = after_data["eventhubs"]["value"]
             if eh["namespace_name"] != name or not after[0]["namespace_resource_id"].casefold().endswith("/namespaces/" + name.casefold()) or not after[0]["eventhubs_private_endpoint_resource_id"].casefold().endswith("/privateendpoints/pe-" + name.casefold()):
                 reject("namespace_activation_unconfirmed", 1)
-            dns = private / "namespace-transition-dns.txt"
-            status, _ = command(["getent", "ahostsv4", name + ".servicebus.windows.net"], dns)
+            dns = private / "namespace-transition-dns.json"
+            status, _ = command([sys.executable, "infra/scripts/phase/phase.py", "resolve", name + ".servicebus.windows.net"], dns, seconds=15, maximum=65536)
             try:
-                resolved = {line.split()[0] for line in dns.read_text().splitlines() if line.split()} if not status else set()
-            except (OSError, UnicodeError):
-                resolved = set()
-            if after[1]["eventhubs"] not in resolved:
+                resolved = lifecycle.read_json(dns) if not status else None
+                if not isinstance(resolved, list) or not resolved or any(not isinstance(item, str) for item in resolved):
+                    raise ValueError()
+                if any(str(ipaddress.ip_address(item)) != item for item in resolved) or set(resolved) != {after[1]["eventhubs"]}:
+                    raise ValueError()
+            except Exception:
                 reject("namespace_activation_unconfirmed", 1)
             marker.unlink()
     except TransitionError:
