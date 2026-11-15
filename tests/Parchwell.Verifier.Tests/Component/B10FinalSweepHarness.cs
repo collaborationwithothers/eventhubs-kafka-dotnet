@@ -280,7 +280,9 @@ internal sealed class B10FinalSweepHarness : IDisposable
         Configuration["Verifier:Mode"] = "b10-sweep-line";
         Configuration["Verifier:JobName"] = PhaseIdentity.B10SweepLineJobName(Run, Phase);
         Configuration["Verifier:B10LastVerifierCompletedUtc"] = lastVerifier;
-        Configuration["Verifier:B10LastLoadgenTerminatedUtc"] = completed.AddSeconds(-60).ToString("O", CultureInfo.InvariantCulture);
+        // Producer pod times are never raised, so the producer input keeps the stored whole-second form.
+        Configuration["Verifier:B10LastLoadgenTerminatedUtc"] = DateTimeOffset.ParseExact(podSecond + ".0000000+00:00", "O", CultureInfo.InvariantCulture,
+            DateTimeStyles.RoundtripKind).AddSeconds(-60).ToString("yyyy'-'MM'-'dd'T'HH':'mm':'ss", CultureInfo.InvariantCulture) + ".0000000+00:00";
         try { Assert.Equal(0, await RunHostAsync(host)); }
         finally { Configuration.Clear(); foreach ((string key, string value) in saved) Configuration[key] = value; }
         Assert.True(Verifier.ContainsKey(PhasePaths.SweepLine(Run, Phase)));
