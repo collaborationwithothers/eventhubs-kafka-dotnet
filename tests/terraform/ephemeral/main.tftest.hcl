@@ -261,6 +261,10 @@ override_data {
 
 run "foundation" {
   command = plan
+  assert {
+    condition     = var.archive_smoke_enabled == false && !contains(keys(local.storage_config.containers), "archive_smoke_source") && !contains(keys(output.blob.containers), "archive_smoke_source")
+    error_message = "Default plans must not require the workflow principal or add a smoke source or grant."
+  }
 
   assert {
     condition     = module.eventhubs[0].resource.sku == "Premium" && module.eventhubs[0].resource.capacity == 1 && !module.eventhubs[0].resource.local_authentication_enabled && !module.eventhubs[0].resource.public_network_access_enabled && module.eventhubs[0].resource.minimum_tls_version == "1.2"
@@ -666,6 +670,76 @@ run "probe_v2_roles_true" {
   assert {
     condition     = jsonencode(output.probe_v2_role_scope.accounts) == jsonencode(run.probe_v2_roles_false.probe_v2_role_scope.accounts) && jsonencode(output.probe_v2_role_scope.topics) == jsonencode(run.probe_v2_roles_false.probe_v2_role_scope.topics) && output.probe_v2_role_scope.namespace_id == run.probe_v2_roles_false.probe_v2_role_scope.namespace_id
     error_message = "The namespace-role switch must not alter any identity or target."
+  }
+}
+
+run "archive_smoke_source" {
+  command = plan
+  variables {
+    archive_smoke_enabled = true
+  }
+  override_data {
+    target          = data.terraform_remote_state.persistent
+    override_during = plan
+    values = {
+      "outputs" = {
+        "workflow_principal_id"      = "00000000-0000-0000-0000-000000000009"
+        "spoke_vnet_id"              = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Network/virtualNetworks/vnet-parchwell-offline1"
+        "aks_subnet_id"              = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Network/virtualNetworks/vnet-parchwell-offline1/subnets/snet-aks"
+        "private_endpoint_subnet_id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.Network/virtualNetworks/vnet-parchwell-offline1/subnets/snet-private-endpoints"
+        "private_dns_zone_ids" = {
+          "eventhubs" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-platform-privatedns/providers/Microsoft.Network/privateDnsZones/privatelink.servicebus.windows.net"
+          "blob"      = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-platform-privatedns/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net"
+        }
+        "log_analytics_workspace_id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.OperationalInsights/workspaces/law-parchwell-offline1"
+        "workload_identities" = {
+          "loadgen" = {
+            "id"           = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-loadgen-offline1"
+            "client_id"    = "00000000-0000-0000-0000-000000000001"
+            "principal_id" = "00000000-0000-0000-0000-000000000004"
+          }
+          "enrichment-consumer" = {
+            "id"           = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-enrichment-consumer-offline1"
+            "client_id"    = "00000000-0000-0000-0000-000000000002"
+            "principal_id" = "00000000-0000-0000-0000-000000000005"
+          }
+          "verifier" = {
+            "id"           = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-verifier-offline1"
+            "client_id"    = "00000000-0000-0000-0000-000000000003"
+            "principal_id" = "00000000-0000-0000-0000-000000000006"
+          }
+          "probe" = {
+            "id"           = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-probe-offline1"
+            "client_id"    = "00000000-0000-0000-0000-000000000012"
+            "principal_id" = "00000000-0000-0000-0000-000000000013"
+          }
+        }
+        "aks_identity_id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ManagedIdentity/userAssignedIdentities/uami-aks-offline1"
+        "acr" = {
+          "id"           = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-persist/providers/Microsoft.ContainerRegistry/registries/acrparchwelloffline1"
+          "name"         = "acrparchwelloffline1"
+          "login_server" = "acrparchwelloffline1.azurecr.io"
+        }
+      }
+    }
+  }
+  override_data {
+    target          = module.storage.module.containers["archive_smoke_source"].module.role_assignments.module.interfaces.data.azapi_resource_list.role_definitions[0]
+    override_during = plan
+    values          = { output = { results = [{ id = "/subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.Authorization/roleDefinitions/00000000-0000-0000-0000-000000000033", role_name = "Storage Blob Data Contributor" }] } }
+  }
+  override_resource {
+    target          = module.storage.module.containers["archive_smoke_source"].azapi_resource.this
+    override_during = plan
+    values          = { id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/archive-smoke-source", output = {} }
+  }
+  assert {
+    condition     = jsonencode(local.storage_config.containers.archive_smoke_source) == jsonencode({ name = "archive-smoke-source", public_access = "None", role_assignments = { workflow = { role_definition_id_or_name = "Storage Blob Data Contributor", principal_id = "00000000-0000-0000-0000-000000000009", principal_type = "ServicePrincipal", skip_service_principal_aad_check = true } } }) && length(local.storage_config.containers) == 5 && length(local.storage_config.role_assignments) == 0 && output.blob.containers.archive_smoke_source == "archive-smoke-source" && length(output.blob.containers) == 5
+    error_message = "Smoke adds exactly one nonpublic source container and its output without account grants."
+  }
+  assert {
+    condition     = module.storage.containers.archive_smoke_source.id == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/archive-smoke-source" && jsonencode(output.probe_v2_role_scope.assignments) == jsonencode(run.foundation.probe_v2_role_scope.assignments)
+    error_message = "Smoke grant is scoped to the source container and preserves workload roles."
   }
 }
 

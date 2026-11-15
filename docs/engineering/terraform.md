@@ -7,7 +7,7 @@ Binding for all Terraform in this repository. Status: approved by Hari on 2026-1
 ```
 infra/
   persistent/     applied by Hari only: spoke VNet and peering, DNS links,
-                  Log Analytics, Application Insights, identities and ACR
+                  Log Analytics, Application Insights, identities, ACR and archive storage
   cluster/        applied by workflows: reusable AKS, cluster federation and role assignments;
                   its own resource group and external backend key
   ephemeral/      applied/destroyed by repository workflows or Hari: Event Hubs,
@@ -52,7 +52,7 @@ All three roots use Hari's existing external Entra-authenticated private backend
 
 Formatting that `terraform fmt` enforces. Module choices already recorded in ADR-011.
 
-[ADR-020](../blueprint.md#adr-020-the-workflow-owns-the-infrastructure-lifecycle-no-net-code-orchestrates) removes persistent run storage and the budget alert. The external Terraform backend is retained and is not run-evidence storage. Mock plans establish configuration only.
+[ADR-020](../blueprint.md#adr-020-the-workflow-owns-the-infrastructure-lifecycle-no-net-code-orchestrates) owns the separate persistent archive readiness store and the existing run-retention behavior. The removed Runner-owned store and budget alert are not restored. The external Terraform backend is retained and is not run-evidence storage. Mock plans establish configuration only. Follow the [archive smoke runbook](../operations/archive-smoke.md) before deploying its optional source container or claiming live archive readiness.
 
 ## Scientific permission-audit reader prerequisites
 

@@ -83,6 +83,7 @@ class FakeHTTP:
 class DispatchStateTests(unittest.TestCase):
     def evaluate(self, replies, expected):
         replies = {runs_path("b10-abrupt-trial.yml"): page("workflow_runs", []),
+                   runs_path("archive-smoke.yml"): page("workflow_runs", []),
                    runs_path("configuration-isolation-smoke.yml"): page("workflow_runs", []), **replies}
         http = FakeHTTP(replies)
         with tempfile.TemporaryDirectory() as temporary:
@@ -112,7 +113,7 @@ class DispatchStateTests(unittest.TestCase):
             jobs_path(1): page("jobs", [{"id": 11, "completed_at": stamp(3599)}]),
         }, (True, False))
         self.assertIn('"age_seconds": 3599.0', logs)
-        self.assertEqual(5, len(http.calls))
+        self.assertEqual(6, len(http.calls))
 
     def test_old_created_rerun_ends_last_at_3600_seconds_with_job_pagination(self):
         http, logs = self.evaluate({
@@ -126,7 +127,7 @@ class DispatchStateTests(unittest.TestCase):
         }, (True, True))
         self.assertIn('"age_seconds": 3600.0', logs)
         self.assertIn('"run_attempt": 3', logs)
-        self.assertEqual(7, len(http.calls))
+        self.assertEqual(8, len(http.calls))
         self.assertFalse(any("/runs/3/" in path for path, _ in http.calls))
 
     def test_completed_run_without_completed_jobs_and_absent_workflow_is_idle_only(self):
@@ -143,7 +144,7 @@ class DispatchStateTests(unittest.TestCase):
             runs_path("scenario.yml"): page("workflow_runs", [run(1, status="new_api_status")]),
             runs_path("cluster-smoke.yml"): page("workflow_runs", [run(2, status="in_progress")]),
         }, (False, False))
-        self.assertEqual(4, len(http.calls))
+        self.assertEqual(5, len(http.calls))
         self.assertIn('"event": "dispatch_active_or_unknown"', logs)
 
     def test_run_pagination_cap_cannot_establish_idle(self):
@@ -166,7 +167,7 @@ class DispatchStateTests(unittest.TestCase):
                for index in range(1, 21)},
         }
         http, logs = self.evaluate(replies, (True, False))
-        self.assertEqual(24, len(http.calls))
+        self.assertEqual(25, len(http.calls))
         self.assertIn('"reason": "completed_run_cap"', logs)
         self.assertIn('"inspected": 20', logs)
 
@@ -185,8 +186,8 @@ class DispatchStateTests(unittest.TestCase):
             runs_path("scenario.yml"): page("workflow_runs", [run(3, status="in_progress")]),
             runs_path("cluster-smoke.yml"): page("workflow_runs", []),
         }, (False, False))
-        self.assertEqual(("scenario.yml", "cluster-smoke.yml", "b10-abrupt-trial.yml", "configuration-isolation-smoke.yml"), dispatch.WORKFLOWS)
-        self.assertEqual(4, len(http.calls))
+        self.assertEqual(("scenario.yml", "cluster-smoke.yml", "b10-abrupt-trial.yml", "archive-smoke.yml", "configuration-isolation-smoke.yml"), dispatch.WORKFLOWS)
+        self.assertEqual(5, len(http.calls))
         self.assertIn('"event": "dispatch_active_or_unknown"', logs)
 
 
@@ -208,7 +209,7 @@ class DispatchStateTests(unittest.TestCase):
                     runs_path("cluster-smoke.yml"): page("workflow_runs", []),
                     runs_path("b10-abrupt-trial.yml"): page("workflow_runs", [run(7, status=status)]),
                 }, (False, False))
-                self.assertEqual(4, len(http.calls))
+                self.assertEqual(5, len(http.calls))
                 self.assertIn('"event": "dispatch_active_or_unknown"', logs)
 
     def test_abrupt_trial_latest_completion_boundary(self):
@@ -221,7 +222,7 @@ class DispatchStateTests(unittest.TestCase):
                     jobs_path(7): page("jobs", [{"id": 71, "completed_at": stamp(age)}]),
                 }, (True, eligible))
                 self.assertIn('"age_seconds": ' + str(float(age)), logs)
-                self.assertEqual(5, len(http.calls))
+                self.assertEqual(6, len(http.calls))
 
     def test_abrupt_trial_unreadable_history_blocks_all_cleanup(self):
         for response in (403, 500, (b'{broken', False), page('workflow_runs', [], total=1)):
@@ -252,7 +253,7 @@ class DispatchStateTests(unittest.TestCase):
             runs_path("b10-abrupt-trial.yml"): 404,
             jobs_path(1): page("jobs", [{"id": 11, "completed_at": stamp(3600)}]),
         }, (True, True))
-        self.assertEqual(5, len(http.calls))
+        self.assertEqual(6, len(http.calls))
         self.assertIn('"event": "workflow_absent"', logs)
 
     def test_abrupt_trial_unknown_completion_never_authorizes_stop(self):
@@ -263,6 +264,49 @@ class DispatchStateTests(unittest.TestCase):
             jobs_path(7): page("jobs", [{"id": 71, "completed_at": None}]),
         }, (True, False))
         self.assertIn('"reason": "no_completed_jobs"', logs)
+
+    def test_archive_smoke_activity_and_rerun_completion(self):
+        for status in ("in_progress", "waiting", "unknown_status"):
+            with self.subTest(status=status):
+                _, logs = self.evaluate({
+                    runs_path("scenario.yml"): page("workflow_runs", []),
+                    runs_path("cluster-smoke.yml"): page("workflow_runs", []),
+                    runs_path("archive-smoke.yml"): page("workflow_runs", [run(8, status=status)]),
+                }, (False, False))
+                self.assertIn('"event": "dispatch_active_or_unknown"', logs)
+        for age, eligible in ((3599, False), (3600, True)):
+            with self.subTest(age=age):
+                http, logs = self.evaluate({
+                    runs_path("scenario.yml"): page("workflow_runs", [run(1, created=20000, updated=7200)]),
+                    runs_path("cluster-smoke.yml"): page("workflow_runs", []),
+                    runs_path("archive-smoke.yml"): page("workflow_runs", [run(8, created=100000, updated=age, attempt=3)]),
+                    jobs_path(1): page("jobs", [{"id": 11, "completed_at": stamp(7200)}]),
+                    jobs_path(8, 3): page("jobs", [{"id": 81, "completed_at": stamp(age)}]),
+                }, (True, eligible))
+                self.assertEqual(7, len(http.calls))
+                self.assertIn('"age_seconds": ' + str(float(age)), logs)
+                self.assertIn('"run_attempt": 3', logs)
+
+    def test_archive_smoke_absence_and_unreadable_history(self):
+        base = {runs_path("scenario.yml"): page("workflow_runs", [run(1)]),
+                runs_path("cluster-smoke.yml"): page("workflow_runs", []),
+                jobs_path(1): page("jobs", [{"id": 11, "completed_at": stamp(3600)}])}
+        _, logs = self.evaluate({**base, runs_path("archive-smoke.yml"): 404}, (True, True))
+        self.assertIn('"event": "workflow_absent"', logs)
+        for response in (403, 500, (b'{broken', False), page('workflow_runs', [], total=1)):
+            with self.subTest(response=response):
+                _, logs = self.evaluate({**base, runs_path("archive-smoke.yml"): response}, (False, False))
+                self.assertIn('"event": "dispatch_activity_unknown"', logs)
+
+    def test_archive_smoke_truncated_history_blocks_cleanup(self):
+        replies = {runs_path("scenario.yml"): page("workflow_runs", []),
+                   runs_path("cluster-smoke.yml"): page("workflow_runs", []),
+                   **{runs_path("archive-smoke.yml", number): page("workflow_runs",
+                       [run(i, status="queued") for i in range((number - 1) * 100 + 1, number * 100 + 1)],
+                       total=301, more=True) for number in range(1, 4)}}
+        http, logs = self.evaluate(replies, (False, False))
+        self.assertEqual(6, len(http.calls))
+        self.assertIn('"reason": "pagination_cap"', logs)
 
 
 if __name__ == "__main__":

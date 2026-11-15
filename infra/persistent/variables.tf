@@ -71,7 +71,7 @@ variable "create_private_dns_zones" {
 
 variable "workflow_principal_id" {
   type        = string
-  description = "Existing workflow principal receiving registry push permission."
+  description = "Existing workflow principal receiving registry push and archive container permissions."
   validation {
     condition     = can(regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", var.workflow_principal_id))
     error_message = "workflow_principal_id: invalid value."

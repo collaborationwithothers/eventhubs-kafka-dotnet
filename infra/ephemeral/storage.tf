@@ -24,12 +24,25 @@ locals {
     https_traffic_only_enabled      = true
     min_tls_version                 = "TLS1_2"
     role_assignments                = {}
-    containers = {
+    containers = merge({
       ledger        = { name = "ledger", public_access = "None", role_assignments = {} }
       verifier      = { name = "verifier", public_access = "None", role_assignments = {} }
       claim_check   = { name = "claim-check", public_access = "None", role_assignments = {} }
       single_action = { name = "single-action", public_access = "None", role_assignments = {} }
-    }
+      }, var.archive_smoke_enabled ? {
+      archive_smoke_source = {
+        name          = "archive-smoke-source"
+        public_access = "None"
+        role_assignments = {
+          workflow = {
+            role_definition_id_or_name       = "Storage Blob Data Contributor"
+            principal_id                     = local.persistent.workflow_principal_id
+            principal_type                   = "ServicePrincipal"
+            skip_service_principal_aad_check = true
+          }
+        }
+      }
+    } : {})
     private_endpoints_manage_dns_zone_group = true
     private_endpoints = {
       blob = {
