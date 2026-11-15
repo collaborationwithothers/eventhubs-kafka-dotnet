@@ -871,26 +871,6 @@ class AdditionalProjectAndLauncherTests(unittest.TestCase):
             self.assertEqual(before, runtime.input_maps('HEAD'))
             changed.add(included)
             self.assertNotEqual(before, runtime.input_maps('HEAD'))
-    def test_excluded_component_source_does_not_change_inputs(self):
-        names = runtime.files('HEAD')
-        excluded = next(p for p in names if p.startswith('tests/Parchwell.Verifier.Tests/Component/') and p.endswith('.cs'))
-        included = next(p for p in names if p.startswith('tests/Parchwell.Verifier.Tests/Host/') and p.endswith('.cs') and p not in {
-            'tests/Parchwell.Verifier.Tests/' + value for value in runtime.EXCLUDED})
-        actual_blob = runtime.blob
-        cache = {}
-        changed = set()
-        def get_blob(ref, path):
-            if path in changed:
-                return b'changed synthetic contents'
-            if path not in cache:
-                cache[path] = actual_blob(ref, path)
-            return cache[path]
-        with mock.patch.object(runtime, 'blob', side_effect=get_blob), mock.patch.object(runtime, 'files', return_value=names):
-            before = runtime.input_maps('HEAD')
-            changed.add(excluded)
-            self.assertEqual(before, runtime.input_maps('HEAD'))
-            changed.add(included)
-            self.assertNotEqual(before, runtime.input_maps('HEAD'))
 
     def test_probe_budget_and_failed_invocation(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1200,3 +1180,250 @@ class ProvisionalQualificationTests(unittest.TestCase):
         self.assertIn('layout_mismatch', runtime.validate(self.config, self.shared, self.targets, self.source, matrix))
         matrix = {f'job{i}': 'a.cs' for i in range(257)}
         self.assertIn('matrix_over_capacity', runtime.validate(self.config, self.shared, self.targets, self.source, matrix))
+
+
+class RenewalTests(unittest.TestCase):
+    setUp = QualificationTests.setUp
+    errors = QualificationTests.errors
+    simulated_check = AdditionalQualificationTests.simulated_check
+    provisional = ProvisionalQualificationTests.provisional
+
+    def renew_fixture(self, path, old, new):
+        if new is None:
+            self.shared.pop(path, None)
+        else:
+            self.shared[path] = new
+        self.config['shared_inputs'] = self.shared.copy()
+        self.config['renewals'] = {path: {'measured_sha256': old, 'current_sha256': new,
+                                          'basis': ['synthetic renewal']}}
+
+    def test_unrenewed_shared_change_stays_stale(self):
+        self.shared['global.json'] = runtime.digest(b'new sdk')
+        self.config['shared_inputs'] = self.shared.copy()
+        self.assertEqual({'stale_inputs'}, self.errors())
+
+    def test_renewed_change_keeps_measured_estimates(self):
+        self.renew_fixture('global.json', runtime.digest(b'sdk'), runtime.digest(b'new sdk'))
+        self.assertEqual(set(), self.errors())
+
+    def test_renewed_addition_and_deletion(self):
+        for path, old, new in [('tests/fixtures/verifier-v1/new.json', None, runtime.digest(b'x')),
+                               ('global.json', runtime.digest(b'sdk'), None)]:
+            with self.subTest(path=path):
+                self.setUp()
+                self.renew_fixture(path, old, new)
+                self.assertEqual(set(), self.errors())
+
+    def test_non_renewable_paths(self):
+        for path in ('tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py',
+                     '.github/workflows/verifier-c5-mutation.yml',
+                     'tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py',
+                     'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json',
+                     '.config/dotnet-tools.json'):
+            with self.subTest(path=path):
+                self.setUp()
+                self.shared[path] = runtime.digest(b'r1')
+                self.config['shared_inputs'] = self.shared.copy()
+                timing = runtime.digest(runtime.canonical({'shared_inputs': self.shared, 'target_sources': self.targets}))
+                for record in self.config['targets'].values():
+                    for item in record['shards'].values():
+                        item['timing_inputs_sha256'] = timing
+                self.assertEqual(set(), self.errors())
+                self.renew_fixture(path, runtime.digest(b'r1'), runtime.digest(b'r2'))
+                self.assertEqual({'invalid_renewal'}, self.errors())
+
+    def test_renewal_must_change_the_hash(self):
+        for path, value in [('global.json', runtime.digest(b'sdk')), ('docs/x.json', None)]:
+            with self.subTest(path=path):
+                self.config['renewals'] = {path: {'measured_sha256': value, 'current_sha256': value, 'basis': ['x']}}
+                self.assertEqual({'invalid_renewal'}, self.errors())
+
+    def test_renewal_must_match_shared_inputs(self):
+        self.config['renewals'] = {'global.json': {'measured_sha256': runtime.digest(b'old'),
+            'current_sha256': runtime.digest(b'other'), 'basis': ['x']}}
+        self.assertEqual({'invalid_renewal', 'stale_inputs'}, self.errors())
+
+    def test_target_source_cannot_be_renewed(self):
+        self.config['renewals'] = {'src/Parchwell.Verifier/a.cs': {'measured_sha256': runtime.digest(b'a'),
+            'current_sha256': None, 'basis': ['x']}}
+        self.assertEqual({'invalid_renewal', 'stale_inputs'}, self.errors())
+
+    def test_malformed_renewals_are_invalid_input(self):
+        valid = {'measured_sha256': runtime.digest(b'sdk'), 'current_sha256': runtime.digest(b'new sdk'), 'basis': ['x']}
+        cases = [[], {'global.json': {**valid, 'note': 'x'}},
+                 {'global.json': {**valid, 'measured_sha256': 'A' * 64}},
+                 {'global.json': {**valid, 'current_sha256': 'a' * 63}},
+                 {'global.json': {**valid, 'current_sha256': 'a' * 65}},
+                 *({'global.json': {**valid, 'basis': value}} for value in ([], ['  '], 'x', [1])),
+                 {'global.json': {'measured_sha256': valid['measured_sha256'], 'current_sha256': valid['current_sha256']}},
+                 {'global.json': 'x'}]
+        for value in cases:
+            with self.subTest(renewals=value):
+                self.config['renewals'] = value
+                with self.assertRaises(ValueError):
+                    runtime.shape(self.config)
+                self.assertEqual({'status': 'rejected', 'reasons': ['invalid_input']}, self.simulated_check('README.md'))
+        self.config.pop('renewals')
+        self.config['other'] = 'x'
+        with self.assertRaises(ValueError):
+            runtime.shape(self.config)
+        self.assertEqual({'status': 'rejected', 'reasons': ['invalid_input']}, self.simulated_check('README.md'))
+
+    def test_empty_renewals_are_no_renewals(self):
+        self.config['renewals'] = {}
+        self.assertEqual(set(), self.errors())
+        self.assertEqual({'status': 'qualified', 'reasons': []}, self.simulated_check(runtime.RUNNER))
+
+    def test_check_discloses_renewed_inputs(self):
+        self.renew_fixture('global.json', runtime.digest(b'sdk'), runtime.digest(b'new sdk'))
+        self.assertEqual({'status': 'qualified', 'reasons': [], 'renewed_inputs': ['global.json']},
+            self.simulated_check('src/Parchwell.Verifier/AssemblyInfo.cs', old_shared={'global.json': runtime.digest(b'sdk')}))
+
+    def test_provisional_target_survives_renewal(self):
+        self.provisional()
+        self.renew_fixture('global.json', runtime.digest(b'sdk'), runtime.digest(b'new sdk'))
+        self.assertEqual(set(), self.errors())
+        self.assertEqual({'status': 'provisional', 'reasons': [], 'pending_targets': ['a.cs'], 'renewed_inputs': ['global.json']},
+            self.simulated_check('global.json', old_shared={'global.json': runtime.digest(b'sdk')}))
+
+    def test_rejected_result_has_no_renewed_inputs(self):
+        for case in ('estimate', 'layout', 'not_applicable'):
+            with self.subTest(case=case):
+                self.setUp()
+                self.renew_fixture('global.json', runtime.digest(b'sdk'), runtime.digest(b'new sdk'))
+                if case == 'estimate':
+                    self.config['targets']['b.cs']['shards']['b']['estimated_seconds'] = 1801
+                    expected = {'status': 'rejected', 'reasons': ['invalid_estimate']}
+                elif case == 'layout':
+                    self.config['targets']['b.cs']['shards']['b']['selection_sha256'] = '0' * 64
+                    expected = {'status': 'rejected', 'reasons': ['layout_mismatch']}
+                else:
+                    expected = {'status': 'not_applicable', 'reasons': []}
+                result = (self.simulated_check('README.md') if case == 'not_applicable' else
+                          self.simulated_check('global.json', old_shared={'global.json': runtime.digest(b'sdk')}))
+                self.assertEqual(expected, result)
+
+    def test_committed_qualification_renews_a_comment_change(self):
+        self.workflow_patcher.stop()
+        self.config_patcher.stop()
+        path = 'src/Parchwell.Verifier/AssemblyInfo.cs'
+        actual_blob = runtime.blob
+        def blob(ref, name):
+            data = actual_blob(ref, name)
+            return data + b'// renewal test\n' if name == path else data
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        with mock.patch.object(runtime, 'blob', side_effect=blob):
+            shared, targets = runtime.input_maps('HEAD')
+            sources = {p: runtime.blob('HEAD', 'src/Parchwell.Verifier/' + p) for p in targets}
+            matrix = runtime.workflow_matrix(runtime.blob('HEAD', runtime.WORKFLOW))
+            self.assertEqual({'stale_inputs'}, runtime.validate(config, shared, targets, sources, matrix))
+            renewals = config.setdefault('renewals', {})
+            measured = renewals[path]['measured_sha256'] if path in renewals else config['shared_inputs'].get(path)
+            renewals[path] = {'measured_sha256': measured, 'current_sha256': shared[path], 'basis': ['synthetic renewal']}
+            config['shared_inputs'] = shared
+            self.assertEqual(set(), runtime.validate(config, shared, targets, sources, matrix))
+
+    def test_renew_command(self):
+        import contextlib
+        import io
+        import sys
+        old = runtime.digest(b'sdk')
+        new = runtime.digest(b'new sdk')
+        newer = runtime.digest(b'newer sdk')
+        runner = Path(runtime.workflow.__file__).read_bytes()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'qualification.json'
+            initial = copy.deepcopy(self.config)
+            path.write_text(json.dumps(initial, indent=2, sort_keys=True) + '\n')
+            def invoke(shared, targets, basis='synthetic renewal', head_runner=None):
+                stdout, stderr = io.StringIO(), io.StringIO()
+                argv = ['c5_runtime.py', 'renew', '--head', 'head', '--qualification', str(path), '--basis', basis]
+                with mock.patch.object(sys, 'argv', argv), mock.patch.object(runtime, 'git', return_value=b'head\n'), \
+                     mock.patch.object(runtime, 'blob', return_value=runner if head_runner is None else head_runner), \
+                     mock.patch.object(runtime, 'input_maps', return_value=(shared, targets)), \
+                     contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                    status = runtime.main()
+                return status, stdout.getvalue(), stderr.getvalue()
+
+            with self.subTest(case='first renewal'):
+                self.assertEqual((0, '{"renewed": ["global.json"], "status": "renewed"}\n', ''),
+                                 invoke({'global.json': new}, self.targets))
+                expected = copy.deepcopy(initial)
+                expected['shared_inputs'] = {'global.json': new}
+                expected['renewals'] = {'global.json': {'measured_sha256': old, 'current_sha256': new,
+                                                         'basis': ['synthetic renewal']}}
+                self.assertEqual(json.dumps(expected, indent=2, sort_keys=True) + '\n', path.read_text())
+                self.config = json.loads(path.read_text())
+                self.shared = {'global.json': new}
+                self.assertEqual({'status': 'qualified', 'reasons': [], 'renewed_inputs': ['global.json']},
+                                 self.simulated_check('global.json', old_shared={'global.json': old}))
+            with self.subTest(case='second renewal'):
+                self.assertEqual((0, '{"renewed": ["global.json"], "status": "renewed"}\n', ''),
+                                 invoke({'global.json': newer}, self.targets, 'second'))
+                expected['shared_inputs'] = {'global.json': newer}
+                expected['renewals']['global.json']['current_sha256'] = newer
+                expected['renewals']['global.json']['basis'].append('second')
+                self.assertEqual(json.dumps(expected, indent=2, sort_keys=True) + '\n', path.read_text())
+            with self.subTest(case='return to measured'):
+                self.assertEqual((0, '{"renewed": ["global.json"], "status": "renewed"}\n', ''),
+                                 invoke({'global.json': old}, self.targets))
+                self.assertEqual(initial, json.loads(path.read_text()))
+            with self.subTest(case='unchanged'):
+                before = path.read_bytes()
+                self.assertEqual((0, '{"renewed": [], "status": "unchanged"}\n', ''), invoke({'global.json': old}, self.targets))
+                self.assertEqual(before, path.read_bytes())
+            with self.subTest(case='blocked'):
+                before = path.read_bytes()
+                status, stdout, stderr = invoke({'global.json': old, '.config/dotnet-tools.json': new}, self.targets)
+                self.assertEqual(1, status)
+                self.assertEqual('', stdout)
+                self.assertIn('not renewable: .config/dotnet-tools.json', stderr)
+                self.assertEqual(before, path.read_bytes())
+            with self.subTest(case='target changed'):
+                before = path.read_bytes()
+                status, stdout, stderr = invoke({'global.json': old}, {**self.targets, 'b.cs': new})
+                self.assertEqual(1, status)
+                self.assertEqual('', stdout)
+                self.assertIn('target sources changed', stderr)
+                self.assertEqual(before, path.read_bytes())
+            with self.subTest(case='blank basis'):
+                before = path.read_bytes()
+                status, stdout, _ = invoke({'global.json': new}, self.targets, '  ')
+                self.assertEqual(1, status)
+                self.assertEqual('', stdout)
+                self.assertEqual(before, path.read_bytes())
+            with self.subTest(case='runner differs from head'):
+                before = path.read_bytes()
+                status, stdout, stderr = invoke({'global.json': new}, self.targets, head_runner=b'changed runner')
+                self.assertEqual(1, status)
+                self.assertEqual('', stdout)
+                self.assertIn('checker is not running the requested revision', stderr)
+                self.assertEqual(before, path.read_bytes())
+            with self.subTest(case='malformed qualification'):
+                malformed = copy.deepcopy(initial)
+                malformed['renewals'] = {'global.json': 'invalid'}
+                path.write_text(json.dumps(malformed))
+                before = path.read_bytes()
+                status, stdout, _ = invoke({'global.json': new}, self.targets)
+                self.assertEqual(1, status)
+                self.assertEqual('', stdout)
+                self.assertEqual(before, path.read_bytes())
+            with self.subTest(case='target set changed'):
+                path.write_text(json.dumps(initial, indent=2, sort_keys=True) + '\n')
+                before = path.read_bytes()
+                status, stdout, stderr = invoke({'global.json': new}, {'a.cs': self.targets['a.cs']})
+                self.assertEqual(1, status)
+                self.assertEqual('', stdout)
+                self.assertIn('target sources changed', stderr)
+                self.assertEqual(before, path.read_bytes())
+            with self.subTest(case='atomic replacement fails'):
+                before = path.read_bytes()
+                entries = set(Path(directory).iterdir())
+                with mock.patch.object(runtime.os, 'replace', side_effect=OSError('synthetic replacement failure')) as replace:
+                    status, stdout, stderr = invoke({'global.json': new}, self.targets)
+                replace.assert_called_once()
+                self.assertEqual(1, status)
+                self.assertEqual('', stdout)
+                self.assertIn('synthetic replacement failure', stderr)
+                self.assertEqual(before, path.read_bytes())
+                self.assertEqual(entries, set(Path(directory).iterdir()))
