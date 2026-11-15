@@ -335,7 +335,7 @@
         {
           "kind": "hosted_complete",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14106480996",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "a459f8fd5eecd04b6af5d9a4fcf6d1462288e1f02e9e64e6b98f5a41f047b983",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         }
@@ -360,7 +360,7 @@
         {
           "kind": "partial_timing",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14111558997",
-          "note": "API ZIP digest and projected source verified; command.log sha256=1037c49f2c7fee6482a553bed2b60b607bd00117c6b1e30b63e1ec915889831a; paired timestamps provide rates only, with no native report, receipt, isolation or acceptance. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest and projected source verified; command.log sha256=1037c49f2c7fee6482a553bed2b60b607bd00117c6b1e30b63e1ec915889831a; paired timestamps provide rates only, with no native report, receipt, isolation or acceptance. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "cfe9779a0ddaf62f8e9d43aa7ab8724904efd07f3a77a51e4c59f9d18633145e",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         },
@@ -384,6 +384,69 @@
           "note": "API archive digest and receipt-bound per-ID fresh isolated invocation elapsed times; observed timing, not acceptance of this layout. The receipt records 456 tracked inputs (426 C#); all C# inputs and non-tooling inputs match the current source. The changed runner orchestration was source-reviewed; the test population is unchanged.",
           "sha256": "cd5c86cf36ed2833a01e4b3cc74755ba533e22742d8a4018ac74ba6c098c385a",
           "source_commit": "dbc25c2005c3409ffd5f079c40b061d82c4b02aa"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43642679359 artifact 14133942300",
+          "note": "Receipt-bound native report and clean source snapshots verified; old-layout hosted evidence, not a measurement of the proposed layout.",
+          "sha256": "8cc93fd4ffb21dd8afcc793d8c30906d5cb6f9c79bb43d0947c6c0e0229ce427",
+          "source_commit": "ed79ae741a082f1cc55d753bb64dec5a74d5a49c"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165 artifact 14138414593",
+          "note": "Receipt-verified source snapshots, report, log and shard configuration; native per-ID invocation timings. Observed two workers; estimates do not guarantee future wall time.",
+          "sha256": "9a08acea11d9c799899e0386e724cc808dff5df84769987bf085edc10e7828aa",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165 artifact 14139166517",
+          "note": "Receipt-verified source snapshots, report, log and shard configuration; native per-ID invocation timings. Observed two workers; estimates do not guarantee future wall time.",
+          "sha256": "76c8085f61c5211b0c18612d1f4db38cd102c380fb10ccb05f5339828941e241",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822052",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "a62be57ee9d9d5440c08fe0295ba785b220e62e9d4b63b33502dbd3b6e17b6cd",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822076",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "dbfb0b202d1a145c91c8abba309f0833231e275b6f264b8fbc110e0193d9c1f0",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822104",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "19fcc55f6c7a33d77adfc37b67b2dccdb92a21d0b3b63f9975152d8fa6c9d830",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43663685095 artifact 14142136390",
+          "note": "API archive digest, 458 source inputs at receipt commit, clean before/after state, config, report and log hashes verified; complete selected timing pairs. The changed layout has not been measured.",
+          "sha256": "795083ceb93c9486e0f1044ffd278f656f2584d525689a3e59c82b93dfeeb22f",
+          "source_commit": "336f4e53f3f8329fae297c7438eef3e86df40120"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43663685095 artifact 14141193428",
+          "note": "API archive digest, 458 source inputs at receipt commit, clean before/after state, config, report and log hashes verified; complete selected timing pairs. The changed layout has not been measured.",
+          "sha256": "e1fb439e4798090794410baf0300058c05e020e878548dc760f49279e8be8539",
+          "source_commit": "336f4e53f3f8329fae297c7438eef3e86df40120"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43663685095 artifact 14142551423",
+          "note": "API archive digest, 458 source inputs at receipt commit, clean before/after state, config, report and log hashes verified; complete selected timing pairs. The changed layout has not been measured.",
+          "sha256": "a51445f3ceb325bcd9de1d80768076ff071bb3418ac86076c108ecc814f5cda1",
+          "source_commit": "336f4e53f3f8329fae297c7438eef3e86df40120"
         }
       ],
       "geometry_status": "pending_native_report",
@@ -392,40 +455,45 @@
         "artifact_id": "14127755542",
         "cohorts_sha256": "52946f91e400b9575fab5a3667d5371b8cc3a5eec239399455e9eb6c3e7a1031",
         "inventory_sha256": "d5a7f544377a3d8b2c66e120e92efcee3f0a07ecabe5b45f36a40f2334251b8f",
-        "layout_sha256": "ad21dfabb9441f5b8f766e201676ac01d38563f61b21767c34d8f23589b69ff9",
+        "layout_sha256": "38b2a6d046381a2043a5b3502b242c832591ffaf415c10119ae2878234a8201e",
         "native_count": 730,
         "owner_counts": {
-          "b10-final-projection-codec-crossing": 14,
+          "b10-final-projection-codec-crossing": 20,
           "b10-final-projection-codec-p1": 12,
-          "b10-final-projection-codec-p10": 70,
-          "b10-final-projection-codec-p11": 93,
-          "b10-final-projection-codec-p12": 60,
-          "b10-final-projection-codec-p13": 50,
-          "b10-final-projection-codec-p14": 67,
+          "b10-final-projection-codec-p10": 43,
+          "b10-final-projection-codec-p11": 34,
+          "b10-final-projection-codec-p12": 34,
+          "b10-final-projection-codec-p13": 51,
+          "b10-final-projection-codec-p14": 42,
+          "b10-final-projection-codec-p15": 60,
+          "b10-final-projection-codec-p16": 50,
+          "b10-final-projection-codec-p17": 67,
           "b10-final-projection-codec-p2": 15,
           "b10-final-projection-codec-p3": 13,
           "b10-final-projection-codec-p4": 25,
           "b10-final-projection-codec-p5": 63,
           "b10-final-projection-codec-p6": 57,
           "b10-final-projection-codec-p7": 60,
-          "b10-final-projection-codec-p8": 63,
-          "b10-final-projection-codec-p9": 68
+          "b10-final-projection-codec-p8": 42,
+          "b10-final-projection-codec-p9": 42
         },
-        "ownership_proof_sha256": "d5a7f544377a3d8b2c66e120e92efcee3f0a07ecabe5b45f36a40f2334251b8f",
+        "ownership_archive_sha256": "8cc93fd4ffb21dd8afcc793d8c30906d5cb6f9c79bb43d0947c6c0e0229ce427",
+        "ownership_artifact_id": "14133942300",
+        "ownership_proof_sha256": "ffe6abeb9aa2858c2792894ab07ee010b4515b529fda2f52f7496c30fa88cfc9",
         "report_sha256": "ab0e4d0677136a516821fff731e36d439ff57e40857c8e77bdda7e4c5183c37a",
         "source_commit": "dbc25c2005c3409ffd5f079c40b061d82c4b02aa",
         "source_sha256": "c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5"
       },
       "shards": {
         "b10-final-projection-codec-crossing": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "466918206decf5c1a9e9ee69c9e614d92b3fa9888c5d60aaaa4f1aebc68901d0",
-          "setup_seconds": null,
+          "basis": "Run 43663685095, 2026-11-15: full old crossing wall 394s plus 281s measured for newly crossing IDs 402, 403, 411, 455; observed_workers=2. Estimate, not a scheduler guarantee.",
+          "estimated_seconds": 675,
+          "isolated_seconds": 0,
+          "main_mutants": 20,
+          "main_work_seconds": 281,
+          "parallelism": 1,
+          "selection_sha256": "0682943b8a6e83b90452bbf4493ea15c3592b2684cf6576da51ad3b05f87492d",
+          "setup_seconds": 394,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-projection-codec-p1-a": {
@@ -451,28 +519,61 @@
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-projection-codec-p10": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "9cda765e2a778bca859476cb0d09235ff299b99a4f4a70086506edf74acd07dc",
-          "setup_seconds": null,
+          "basis": "Run 43663685095, 2026-11-15: matched tested work with maximum observed overhead 201s and half longest invocation in setup; p8 adds 105s serial each for promoted IDs 390 and 398, whose prior global status is unknown. observed_workers=2. Two-worker sizing estimate, not a measured new-layout time or scheduler guarantee.",
+          "estimated_seconds": 1684,
+          "isolated_seconds": 0,
+          "main_mutants": 40,
+          "main_work_seconds": 2891,
+          "parallelism": 2,
+          "selection_sha256": "148329560a80c38548cfffc215d119654cb2e1b999f61a45b5045708609eb70b",
+          "setup_seconds": 238.5,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-projection-codec-p11": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "579f63b01a33299e63bb5a772bde68d596e40a7380eaa31a6bb5730da7504186",
-          "setup_seconds": null,
+          "basis": "Old p10 measured 2272s over 32 tested IDs and 208s effective overhead. Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound.",
+          "estimated_seconds": 1344,
+          "isolated_seconds": 0,
+          "main_mutants": 32,
+          "main_work_seconds": 2272,
+          "parallelism": 2,
+          "selection_sha256": "b4425a0db4c6ce93f62c6b73cce6c5c54d972ec7c42ec9f524d8aeb8e60851a2",
+          "setup_seconds": 208,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-projection-codec-p12": {
+          "basis": "Old p10 measured 2281s over 33 tested IDs and 208s effective overhead. Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound.",
+          "estimated_seconds": 1349,
+          "isolated_seconds": 0,
+          "main_mutants": 33,
+          "main_work_seconds": 2281,
+          "parallelism": 2,
+          "selection_sha256": "ec950039139dffdc32ab0b59e2361850c138734e8b419de71e98ecca60c35ae8",
+          "setup_seconds": 208,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "b10-final-projection-codec-p13": {
+          "basis": "Estimate from same-profile hosted primary mutant work and whole-job overhead, 2026-11-14; proposed split is unmeasured. Count is tested IDs, not all native identities. observed_workers=2.",
+          "estimated_seconds": 1597,
+          "isolated_seconds": 0,
+          "main_mutants": 39,
+          "main_work_seconds": 2799,
+          "parallelism": 2,
+          "selection_sha256": "a48079fa76ca26537391efa1807bcd4ecdea474ac493a262a1a61f87949ca1d6",
+          "setup_seconds": 197,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "b10-final-projection-codec-p14": {
+          "basis": "Estimate from same-profile hosted primary mutant work and whole-job overhead, 2026-11-14; proposed split is unmeasured. Count is tested IDs, not all native identities. observed_workers=2.",
+          "estimated_seconds": 1337,
+          "isolated_seconds": 0,
+          "main_mutants": 32,
+          "main_work_seconds": 2279,
+          "parallelism": 2,
+          "selection_sha256": "d30067dbccc440c9c83c9fe9d8595ab510b7d8a96dbb7c35c4dbfcb5cfc28151",
+          "setup_seconds": 197,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "b10-final-projection-codec-p15": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -483,7 +584,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-projection-codec-p13": {
+        "b10-final-projection-codec-p16": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -494,7 +595,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-projection-codec-p14": {
+        "b10-final-projection-codec-p17": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -594,25 +695,25 @@
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-projection-codec-p8": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "fe6a861109cd7218f83b76f58fbfdc1efbdef8f806682de2ecfda2124d1d70b8",
-          "setup_seconds": null,
+          "basis": "Run 43663685095, 2026-11-15: matched tested work with maximum observed overhead 201s and half longest invocation in setup; p8 adds 105s serial each for promoted IDs 390 and 398, whose prior global status is unknown. observed_workers=2. Two-worker sizing estimate, not a measured new-layout time or scheduler guarantee.",
+          "estimated_seconds": 1656,
+          "isolated_seconds": 210,
+          "main_mutants": 38,
+          "main_work_seconds": 2384,
+          "parallelism": 2,
+          "selection_sha256": "4e946f055291f9183c1f06385d453e87c1d0281dc3b54a66282da15373429197",
+          "setup_seconds": 253.5,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-projection-codec-p9": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "d7ee3dcc1d248a665c949b01e02a30d1389403649d9feb9e19722aff598a49a9",
-          "setup_seconds": null,
+          "basis": "Run 43663685095, 2026-11-15: matched tested work with maximum observed overhead 201s and half longest invocation in setup; p8 adds 105s serial each for promoted IDs 390 and 398, whose prior global status is unknown. observed_workers=2. Two-worker sizing estimate, not a measured new-layout time or scheduler guarantee.",
+          "estimated_seconds": 1684,
+          "isolated_seconds": 0,
+          "main_mutants": 40,
+          "main_work_seconds": 2861,
+          "parallelism": 2,
+          "selection_sha256": "8cae2970a8a0b1080edab2396bb926372efc13b01e7eebca40fe0166ad921c9d",
+          "setup_seconds": 253,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         }
       },
@@ -623,7 +724,7 @@
         {
           "kind": "partial_timing",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14111204685",
-          "note": "API ZIP digest and projected source verified; command.log sha256=a5e57342a06a75a0fcdbcb92ea08b22e2f4a03a4952e319ec06134cc2213a7ca; paired timestamps provide rates only, with no native report, receipt, isolation or acceptance. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest and projected source verified; command.log sha256=a5e57342a06a75a0fcdbcb92ea08b22e2f4a03a4952e319ec06134cc2213a7ca; paired timestamps provide rates only, with no native report, receipt, isolation or acceptance. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "ee42adeabd1f7e0e828871de606562362c87a853e4c3155d6fdda25f9ce5d446",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         },
@@ -633,6 +734,34 @@
           "note": "purpose=rate_and_geometry hardware=Linux_x86_64,_5_logical_CPUs calibration=Layout_follows_same-target_hosted_partial_timing;_local_samples_are_diagnostic_and_have_different_IDs,_without_same-mutant_calibration.; local-check --target Common/Phase/B10FinalRegistrationReader.cs --span 13728..2147483647 --timeout 570.0; log sha256=6ea542296086e03b1959c5fe13eadb6371aa74ef25c713df018db554494c1836; local rates are estimates, not hosted acceptance.",
           "sha256": "57fe01828a6c6ece02ada6caf633401629e36cd228bff400001bb26f592bbe3e",
           "source_commit": "9a8ab000f2dc9e4000345a285855ce9e0f424137"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165 artifact 14137399692",
+          "note": "Clean receipt, source snapshots, report, log and configuration verified; native ID 864 promoted by removing boundary 1607.",
+          "sha256": "1c0c4967a8da432d8cb40a291aa6c0ca26e6b951c761941a121aa1ad8805d3f3",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822078",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "0b60306d3a8b9b224047ca1c3270ce3fb61bdd0a127a49ea6cad4942028d3f47",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822178",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "6c3ecc86cf6ef2c5eee1f187cd752f6f345d5164c630cfe756555afb9fd879de",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822102",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "d57b950ce8c6c3fcfd4da096bec28c3db169e66929ac28ada2b65613889f9cc0",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
         }
       ],
       "shards": {
@@ -643,33 +772,22 @@
           "main_mutants": 17,
           "main_work_seconds": 2023,
           "parallelism": 2,
-          "selection_sha256": "1a0558bd6ab723ee3959a5ae07548166ab46831427953c1eadb79fd691bb83d3",
+          "selection_sha256": "65c3f94fd0fe882748195c88c011087696d907be9d1003443694b59f37bb095c",
           "setup_seconds": 267,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-registrations-p1": {
-          "basis": "Native local probe /tmp/474-probe-06-registrations; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 119s from timing-only hosted artifact 14111204685. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
-          "estimated_seconds": 1636,
-          "isolated_seconds": 0.0,
-          "main_mutants": 23,
-          "main_work_seconds": 2737,
+          "basis": "Full old p2 wall 621s plus full crossing wall 507s, plus (1027s matched old p1 work and 67s longest invocation)/2, and an additional serial 67s charge for promoted ID 864. The filtered report does not establish whether 864 was tested in its old owner. Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound.",
+          "estimated_seconds": 1742,
+          "isolated_seconds": 0,
+          "main_mutants": 48,
+          "main_work_seconds": 1027,
           "parallelism": 2,
-          "selection_sha256": "1b3fab5d66a84e091cb40dd4f0406ee76455969dece276531296c00626c806e6",
-          "setup_seconds": 267,
+          "selection_sha256": "dda0ee1c481a78c4e70255c755ddfc40e8ee2b144654d32bb97fbac0d7175e18",
+          "setup_seconds": 1228.5,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-registrations-p10": {
-          "basis": "Native local probe /tmp/474-probe-06-registrations; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 119s from timing-only hosted artifact 14111204685. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
-          "estimated_seconds": 1636,
-          "isolated_seconds": 0.0,
-          "main_mutants": 23,
-          "main_work_seconds": 2737,
-          "parallelism": 2,
-          "selection_sha256": "ffce0019b207f7763bf62e0841bb57275d769e4b96288d081eb808b57adab632",
-          "setup_seconds": 267,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
-        "b10-final-registrations-p11": {
           "basis": "Native local probe /tmp/474-probe-06-registrations; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 119s from timing-only hosted artifact 14111204685. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1100,
           "isolated_seconds": 0.0,
@@ -680,7 +798,7 @@
           "setup_seconds": 267,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-registrations-p12": {
+        "b10-final-registrations-p11": {
           "basis": "Native local probe /tmp/474-probe-06-registrations; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 119s from timing-only hosted artifact 14111204685. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1755,
           "isolated_seconds": 0.0,
@@ -691,7 +809,7 @@
           "setup_seconds": 267,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-registrations-p13": {
+        "b10-final-registrations-p12": {
           "basis": "Native local probe /tmp/474-probe-06-registrations; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 119s from timing-only hosted artifact 14111204685. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1100,
           "isolated_seconds": 0.0,
@@ -702,7 +820,7 @@
           "setup_seconds": 267,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-registrations-p14": {
+        "b10-final-registrations-p13": {
           "basis": "Native local probe /tmp/474-probe-06-registrations; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 119s from timing-only hosted artifact 14111204685. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1755,
           "isolated_seconds": 0.0,
@@ -713,7 +831,7 @@
           "setup_seconds": 267,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-registrations-p15": {
+        "b10-final-registrations-p14": {
           "basis": "Native local probe /tmp/474-probe-06-registrations; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 119s from timing-only hosted artifact 14111204685. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1517,
           "isolated_seconds": 0.0,
@@ -724,7 +842,7 @@
           "setup_seconds": 267,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-registrations-p16": {
+        "b10-final-registrations-p15": {
           "basis": "Native local probe /tmp/474-probe-06-registrations; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 119s from timing-only hosted artifact 14111204685. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1755,
           "isolated_seconds": 0.0,
@@ -735,7 +853,7 @@
           "setup_seconds": 267,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-registrations-p17": {
+        "b10-final-registrations-p16": {
           "basis": "Native local probe /tmp/474-probe-06-registrations; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 119s from timing-only hosted artifact 14111204685. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1695,
           "isolated_seconds": 0.0,
@@ -746,7 +864,7 @@
           "setup_seconds": 267,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-registrations-p18": {
+        "b10-final-registrations-p17": {
           "basis": "Native local probe /tmp/474-probe-06-registrations; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 119s from timing-only hosted artifact 14111204685. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1251,
           "isolated_seconds": 0.0,
@@ -759,12 +877,12 @@
         },
         "b10-final-registrations-p2": {
           "basis": "Native local probe /tmp/474-probe-06-registrations; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 119s from timing-only hosted artifact 14111204685. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
-          "estimated_seconds": 1695,
+          "estimated_seconds": 1755,
           "isolated_seconds": 0.0,
-          "main_mutants": 24,
-          "main_work_seconds": 2856,
+          "main_mutants": 25,
+          "main_work_seconds": 2975,
           "parallelism": 2,
-          "selection_sha256": "33c6b481066a3b46a7505f2678e7c12187dc39cfae7bc27e601f03a2b517e111",
+          "selection_sha256": "90091dc01d5d70eda5f51447be5051d83f2ebc7cb946f4f58c09a27605f67185",
           "setup_seconds": 267,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
@@ -775,7 +893,7 @@
           "main_mutants": 25,
           "main_work_seconds": 2975,
           "parallelism": 2,
-          "selection_sha256": "90091dc01d5d70eda5f51447be5051d83f2ebc7cb946f4f58c09a27605f67185",
+          "selection_sha256": "1ea4f0f2180f7be2e53ca3f0091108073e49ef78ea2948b78b5fbe02d95ad9e7",
           "setup_seconds": 267,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
@@ -786,22 +904,11 @@
           "main_mutants": 25,
           "main_work_seconds": 2975,
           "parallelism": 2,
-          "selection_sha256": "1ea4f0f2180f7be2e53ca3f0091108073e49ef78ea2948b78b5fbe02d95ad9e7",
-          "setup_seconds": 267,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
-        "b10-final-registrations-p5": {
-          "basis": "Native local probe /tmp/474-probe-06-registrations; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 119s from timing-only hosted artifact 14111204685. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
-          "estimated_seconds": 1755,
-          "isolated_seconds": 0.0,
-          "main_mutants": 25,
-          "main_work_seconds": 2975,
-          "parallelism": 2,
           "selection_sha256": "1692cdc63bc5634c876f453bc1228a2311cb6b15dec988e89b2258a7561c9647",
           "setup_seconds": 267,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-registrations-p6": {
+        "b10-final-registrations-p5": {
           "basis": "Native local probe /tmp/474-probe-06-registrations; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 119s from timing-only hosted artifact 14111204685. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1695,
           "isolated_seconds": 0.0,
@@ -812,7 +919,7 @@
           "setup_seconds": 267,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-registrations-p7": {
+        "b10-final-registrations-p6": {
           "basis": "Native local probe /tmp/474-probe-06-registrations; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 119s from timing-only hosted artifact 14111204685. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1695,
           "isolated_seconds": 0.0,
@@ -823,7 +930,7 @@
           "setup_seconds": 267,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-registrations-p8": {
+        "b10-final-registrations-p7": {
           "basis": "Native local probe /tmp/474-probe-06-registrations; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 119s from timing-only hosted artifact 14111204685. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1755,
           "isolated_seconds": 0.0,
@@ -834,7 +941,7 @@
           "setup_seconds": 267,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-registrations-p9": {
+        "b10-final-registrations-p8": {
           "basis": "Native local probe /tmp/474-probe-06-registrations; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 119s from timing-only hosted artifact 14111204685. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1219,
           "isolated_seconds": 0.0,
@@ -842,6 +949,17 @@
           "main_work_seconds": 1904,
           "parallelism": 2,
           "selection_sha256": "75447ea8ef47f57051259741449a3a7f663bba58dbd80411a247b17329b2066c",
+          "setup_seconds": 267,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "b10-final-registrations-p9": {
+          "basis": "Native local probe /tmp/474-probe-06-registrations; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 119s from timing-only hosted artifact 14111204685. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
+          "estimated_seconds": 1636,
+          "isolated_seconds": 0.0,
+          "main_mutants": 23,
+          "main_work_seconds": 2737,
+          "parallelism": 2,
+          "selection_sha256": "ffce0019b207f7763bf62e0841bb57275d769e4b96288d081eb808b57adab632",
           "setup_seconds": 267,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         }
@@ -853,7 +971,7 @@
         {
           "kind": "hosted_complete",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14108143645",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "40d2fc8467dec74370ad0026bc679faf63a7296ad8b1df2c10d7432574e578ea",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         },
@@ -998,7 +1116,7 @@
         {
           "kind": "partial_timing",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14111392757",
-          "note": "API ZIP digest and projected source verified; command.log sha256=92ae589b8d679bffb50314c0989c1c66c8dc9fe1475387c47294d61cc11177d7; paired timestamps provide rates only, with no native report, receipt, isolation or acceptance. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest and projected source verified; command.log sha256=92ae589b8d679bffb50314c0989c1c66c8dc9fe1475387c47294d61cc11177d7; paired timestamps provide rates only, with no native report, receipt, isolation or acceptance. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "7c300f5fd0185d8952b4bfa5229432b829b4713f793a5b62ea7afd63cca4a709",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         },
@@ -1008,6 +1126,41 @@
           "note": "API ZIP digest, source hashes and complete native report receipt verified; inventory and ownership stored in native_geometry.",
           "sha256": "5daf8d8f214957e7e8f6a91db1d2093fa3c0cf0827267a07ee77da9ef14ab119",
           "source_commit": "dbc25c2005c3409ffd5f079c40b061d82c4b02aa"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165 artifact 14139008781",
+          "note": "Receipt-verified source snapshots, report, log and shard configuration; native per-ID invocation timings. Observed two workers; estimates do not guarantee future wall time.",
+          "sha256": "d0a8e484b1409ba7c7299eb62ab04077f71c40dc62765e89ff26409ad4acbb40",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822191",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "6a561ddbc53398d0972c75f3e71019aa497e17ee05b1bb3d49edd15591b0f455",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822187",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "15f719122b96c3888a3a6a258d42e7fc23d1a9f3fdb7361241ef53978db075c7",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822180",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "c3bd050aefe7b3a998431ef0f841c6a7445901c96b6d27a95ba3495824cbae19",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822192",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "bd2e53c44dd7582b3a8d81a19d5d6b4b96283afc96353240514f0c3902439034",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
         }
       ],
       "geometry_status": "pending_native_report",
@@ -1015,13 +1168,13 @@
         "archive_sha256": "5daf8d8f214957e7e8f6a91db1d2093fa3c0cf0827267a07ee77da9ef14ab119",
         "artifact_id": "14127550132",
         "inventory_sha256": "b57b1426e4cd0f4a5a21e06aa665f7bedf5568fcb62bc5beffe1e2885a5c9d40",
-        "layout_sha256": "0edc49b41523422087ea8a0cc90bb2f781fc84074f43e92c42d762c1bd635aad",
+        "layout_sha256": "0c197df0b6b6625ba5822425a08fac2b67436f8b83aa6744d5e9150d06c4a238",
         "native_count": 710,
         "owner_counts": {
-          "b10-final-judge-crossing": 28,
+          "b10-final-judge-crossing": 32,
           "b10-final-judge-p1": 27,
-          "b10-final-judge-p10": 76,
-          "b10-final-judge-p11": 45,
+          "b10-final-judge-p10": 44,
+          "b10-final-judge-p11": 52,
           "b10-final-judge-p12": 49,
           "b10-final-judge-p13": 64,
           "b10-final-judge-p2": 57,
@@ -1031,23 +1184,23 @@
           "b10-final-judge-p6": 63,
           "b10-final-judge-p7": 40,
           "b10-final-judge-p8": 37,
-          "b10-final-judge-p9": 39
+          "b10-final-judge-p9": 60
         },
-        "ownership_proof_sha256": "b57b1426e4cd0f4a5a21e06aa665f7bedf5568fcb62bc5beffe1e2885a5c9d40",
+        "ownership_proof_sha256": "ac039102318993f2a0b9fbf327f52401744c4152d31073a3bbc3674a38cfe3a5",
         "report_sha256": "e9ec6237585270a6ab9e2dea44998171e276656fab9da65b2aea3a96bd19cf93",
         "source_commit": "dbc25c2005c3409ffd5f079c40b061d82c4b02aa",
         "source_sha256": "cd88f482f9c93947e613ec4b13a34ff554331dfe8ebd9a3e400ed3bbb360d34a"
       },
       "shards": {
         "b10-final-judge-crossing": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "88ca31dd691957f9d1c8f8f3db10c363f4b3888f2a69fff06f664ce8046092e6",
-          "setup_seconds": null,
+          "basis": "Full crossing wall 511s plus IDs 6447, 6462, 6504, 6509 charged 108, 71, 76, 70s respectively. Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound. Count covers the full native owner inventory, including identities already represented in the charged full wall.",
+          "estimated_seconds": 836,
+          "isolated_seconds": 0,
+          "main_mutants": 32,
+          "main_work_seconds": 325,
+          "parallelism": 1,
+          "selection_sha256": "7269897c8208dcbda14c04c578ac5d32349402fb653336ee1f17c579d917ac3d",
+          "setup_seconds": 511,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-judge-p1": {
@@ -1062,25 +1215,25 @@
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-judge-p10": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "48ee54d475909abd671035f952c87e23b514b5755923d523109f64f420646beb",
-          "setup_seconds": null,
+          "basis": "Old p10 matched retained work 2978s and effective overhead 202.5s. Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound.",
+          "estimated_seconds": 1692,
+          "isolated_seconds": 0,
+          "main_mutants": 42,
+          "main_work_seconds": 2978,
+          "parallelism": 2,
+          "selection_sha256": "96b70c7c8a87a4c08223775ab8b85c715051360997e35247693519543a0a88a5",
+          "setup_seconds": 202.5,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-judge-p11": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "995af1d719eca27ef458ea56615faedbcc8fc0a067eabd154c47b94910bd1743",
-          "setup_seconds": null,
+          "basis": "Full p11 wall 1376s plus (492s added work + 75s longest invocation)/2; no promotion. Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound. Count covers the full native owner inventory, including identities already represented in the charged full wall.",
+          "estimated_seconds": 1660,
+          "isolated_seconds": 0,
+          "main_mutants": 52,
+          "main_work_seconds": 492,
+          "parallelism": 2,
+          "selection_sha256": "e0672dbca8f43283fb6f6f6f2b80865d6d445593db8b37fe765de73e095d6b0b",
+          "setup_seconds": 1413.5,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-judge-p12": {
@@ -1183,14 +1336,14 @@
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-judge-p9": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "8236c6e40c55c2abce821a5eae9e7450c2a82918ca1c3dfaeba3d6055e90fdea",
-          "setup_seconds": null,
+          "basis": "Full p9 wall 903s plus (1402s added work + 108s longest invocation)/2; no promotion. Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound. Count covers the full native owner inventory, including identities already represented in the charged full wall.",
+          "estimated_seconds": 1658,
+          "isolated_seconds": 0,
+          "main_mutants": 60,
+          "main_work_seconds": 1402,
+          "parallelism": 2,
+          "selection_sha256": "090e0b4f2106a2fb8dd70126e163ca7672e0e4244d5ad1a163c607c28113db42",
+          "setup_seconds": 957,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         }
       },
@@ -1201,7 +1354,7 @@
         {
           "kind": "hosted_complete",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14107279950",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "2fb97fc176a73abf6ac8627ccd8e92432c9d5537f02cfe0dc445ab03449b7468",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         }
@@ -1259,7 +1412,7 @@
         {
           "kind": "hosted_complete",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14106598150",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "fff193b3677535c700c7d60525ce9f6772fe00888e9e9a444dc882395f5bf683",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         },
@@ -1324,7 +1477,7 @@
         {
           "kind": "hosted_complete",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14107009173",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "cf85ee640e6e44eca33e61d20bc4e9a291f4549b7bf062e52731a7d5910ca5b0",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         },
@@ -1348,18 +1501,46 @@
           "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout.",
           "sha256": "ee5ea49f941e16ce7bebe02b7936abfbf73f5560bfba821ce6f6ee1482f211a3",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165 artifact 14138923535",
+          "note": "Receipt-verified source snapshots, report, log and shard configuration; native per-ID invocation timings. Observed two workers; estimates do not guarantee future wall time.",
+          "sha256": "389cec813b0d324b4ffba490b5ea55d1cccd3bdd551f5e0fcf7222620187d03c",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630810798",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "1e9329e34bdae6b2a2300797bd39ac7492d9af45bde4a70a5cfa5cf39f628d03",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630811266",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "3e039e30be211496628da64570483e90202b66ff0c85de54056e895e82f05b58",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630810948",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "9f3e7eb3a92de58caca63c5dbc484c2e47e063e63ed27ed78ccb6f577af5222a",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
         }
       ],
       "shards": {
         "phase-crossing": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers. observed_workers=2.",
-          "estimated_seconds": 188,
-          "isolated_seconds": 0.0,
-          "main_mutants": 1,
-          "main_work_seconds": 69,
-          "parallelism": 2,
-          "selection_sha256": "06106a0c28199a8400a6343b07cd4f1a844945882f0c6e01051220ff76f8ec43",
-          "setup_seconds": 153,
+          "basis": "Full crossing wall 190s plus measured IDs 9359, 9360, 9362, 9365 (281s). Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound. Count covers the full native owner inventory, including identities already represented in the charged full wall.",
+          "estimated_seconds": 471,
+          "isolated_seconds": 0,
+          "main_mutants": 7,
+          "main_work_seconds": 281,
+          "parallelism": 1,
+          "selection_sha256": "fa6210f389bc5f82efd40da9d6060575834dd5ca763b8664f5ba31ef58ce0f56",
+          "setup_seconds": 190,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "phase-p1": {
@@ -1407,25 +1588,25 @@
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "phase-p5": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1746,
-          "isolated_seconds": 0.0,
-          "main_mutants": 65,
-          "main_work_seconds": 3186,
+          "basis": "Old p5 matched work 2821s, effective overhead 210.5s. Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound.",
+          "estimated_seconds": 1621,
+          "isolated_seconds": 0,
+          "main_mutants": 39,
+          "main_work_seconds": 2821,
           "parallelism": 2,
-          "selection_sha256": "af5633293d4796ee0840cf5fe15914ec6ae9f7a2cd72c2a293d090c2a67e358b",
-          "setup_seconds": 153,
+          "selection_sha256": "429b98286099ec08b074673bad934d9e65ab738673fb01b76a91a732cc614a0d",
+          "setup_seconds": 210.5,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "phase-p6": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 448,
-          "isolated_seconds": 0.0,
-          "main_mutants": 13,
-          "main_work_seconds": 590,
+          "basis": "Full p6 wall 675s; 1583s added work and longest added invocation 76s, divided by two; promoted ID 9388 charged serially at 110s. Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound. Count covers the full native owner inventory, including identities already represented in the charged full wall.",
+          "estimated_seconds": 1615,
+          "isolated_seconds": 0,
+          "main_mutants": 39,
+          "main_work_seconds": 1583,
           "parallelism": 2,
-          "selection_sha256": "cbb80c3dd6a525d0edfc62f40f722a6350d7eff925aaea685b1a6beaf1b9d032",
-          "setup_seconds": 153,
+          "selection_sha256": "a31dc19621ebef2be613b2ba7de5b988c352d5b7ada289233ac3a4486966f4b7",
+          "setup_seconds": 823,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         }
       },
@@ -1436,7 +1617,7 @@
         {
           "kind": "hosted_complete",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 c5-mutation-43575009980-1-a01",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "46899cee7f523b61680d01c6298eba84d3a0af7efba8496197d99d1777ab6c63",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         }
@@ -1483,7 +1664,7 @@
         {
           "kind": "hosted_complete",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14108037350",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "5d4fbe718bef08208860ea59c0bc6ebea373b114eb965165331b2249008325c1",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         }
@@ -1541,7 +1722,7 @@
         {
           "kind": "partial_timing",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14111723636",
-          "note": "API ZIP digest and projected source verified; command.log sha256=22f15789ea152203163aa2eb80a6adad7ace8d2f67f9c74c2e020f9e255213ad; paired timestamps provide rates only, with no native report, receipt, isolation or acceptance. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest and projected source verified; command.log sha256=22f15789ea152203163aa2eb80a6adad7ace8d2f67f9c74c2e020f9e255213ad; paired timestamps provide rates only, with no native report, receipt, isolation or acceptance. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "243ad17946f5ebb0a964b3423c0f5efd5b18af79685303ecf77c785fe71f1e1e",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         },
@@ -1551,6 +1732,118 @@
           "note": "purpose=rate_and_geometry hardware=Linux_x86_64,_5_logical_CPUs calibration=Layout_follows_same-target_hosted_partial_timing;_local_samples_are_diagnostic_and_have_different_IDs,_without_same-mutant_calibration.; local-check --target VerifyRun/B10Final/B10FinalClassification.cs --span 9674..10424 --timeout 570.0; log sha256=cf16e426354606b63ff148431d9f72b6d96fd0f6d4439b0d7de409edc1f893a1; local rates are estimates, not hosted acceptance.",
           "sha256": "7cc567961a0953c00f4d717b76e3adb081dd7309536bbb026921808161e90aa4",
           "source_commit": "9a8ab000f2dc9e4000345a285855ce9e0f424137"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43642679359 artifact 14132628130",
+          "note": "Receipt-bound native report and clean source snapshots verified; old-layout hosted evidence, not a measurement of the proposed layout.",
+          "sha256": "d9c0963089d092792a7381ac35c89154f522ab9a704d6c6a1758a6e973d9905f",
+          "source_commit": "ed79ae741a082f1cc55d753bb64dec5a74d5a49c"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43642679359/job/132593498792",
+          "note": "Canonical job API record; whole-job duration contributes to conservative merge estimates.",
+          "sha256": "903eaf34c38917405ed7511909468e1257ba2d4cf99aa22199486bd98aebd9e7",
+          "source_commit": "ed79ae741a082f1cc55d753bb64dec5a74d5a49c"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43642679359/job/132593498700",
+          "note": "Canonical job API record; whole-job duration contributes to conservative merge estimates.",
+          "sha256": "e7cb02e9749ab545e799b94e92a966a7b7714a8ef07a7bef666f83b61e6079bc",
+          "source_commit": "ed79ae741a082f1cc55d753bb64dec5a74d5a49c"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43642679359/job/132593503735",
+          "note": "Canonical job API record; whole-job duration contributes to conservative merge estimates.",
+          "sha256": "7fee9b1282f320535ddd43d38a179d75d371b8285e2a1d6c15018b10ce9c4bf2",
+          "source_commit": "ed79ae741a082f1cc55d753bb64dec5a74d5a49c"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43642679359/job/132593503585",
+          "note": "Canonical job API record; whole-job duration contributes to conservative merge estimates.",
+          "sha256": "5cc4917a57d6cf0013497551f40dce2398e38e841dea0a6cd89cba512e5d64b8",
+          "source_commit": "ed79ae741a082f1cc55d753bb64dec5a74d5a49c"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43642679359/job/132593503664",
+          "note": "Canonical job API record; whole-job duration contributes to conservative merge estimates.",
+          "sha256": "b620cc7e0f440eaaac9aa8c49b26bc508123fecefa917fbb5af8b5ce80d4f9f6",
+          "source_commit": "ed79ae741a082f1cc55d753bb64dec5a74d5a49c"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43642679359 artifact 14132628130",
+          "note": "Native geometry verifies promoted identity 15059 at the removed 20145 boundary; other removed boundaries promote none.",
+          "sha256": "d9c0963089d092792a7381ac35c89154f522ab9a704d6c6a1758a6e973d9905f",
+          "source_commit": "ed79ae741a082f1cc55d753bb64dec5a74d5a49c"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630817843",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "a08a59167a86ffac8fc97a29fc2b6418f2afd5b3c502ae6b723c42d66c7eb65e",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630817802",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "5b41f9f2742724704cdfce5d77bd68076b066665e1d57f39da00547834bdb6bd",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630817823",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "132ec6e1a39ed2f1eb509426f6bad16f9a1464598df06c6bbf2184864979e12e",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630817818",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "0a9b94e3f674599de1c0106896a90e201ee7eb3a540091845cf9e11d82b54bc7",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822035",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "c634f2873141dfdd4aaa484727fabdbcfb952f0dd63759a1ddfb5420f01d0a38",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822030",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "55681cf9eafee605f8c62984876e8c85ae63afeb60131fb8e9d1b9b412a04e0c",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822007",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "0267f4d32392987b7f36888ff1421f9812aa84e6c0ff5e267beef09f4b2074ff",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822073",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "2e9717318de2debdc21af404292220b6b517cac56d22e0b693f04a96c1ec7b5d",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630822009",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "e0efa060d82972f92a45e8a2382e9469ee306fbbdf7a7f51645f939de08255c9",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
         }
       ],
       "shards": {
@@ -1561,55 +1854,22 @@
           "main_mutants": 13,
           "main_work_seconds": 1534,
           "parallelism": 2,
-          "selection_sha256": "a980733b68449de7ac277bf118e5fba8c05f789791f318230e9efe6436860fba",
+          "selection_sha256": "ce7362106c298d4ba06b7aa8f1ac8e225bae2c1ab8ef0f2886a4d234e64588e8",
           "setup_seconds": 281,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-classification-p1": {
-          "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
-          "estimated_seconds": 1225,
-          "isolated_seconds": 0.0,
-          "main_mutants": 16,
-          "main_work_seconds": 1888,
-          "parallelism": 2,
-          "selection_sha256": "a94df052c4847ede0a1bd927a32e38d4a41c8c79e6639aec21c24c19afb39c70",
-          "setup_seconds": 281,
+          "basis": "Conservative estimate from same-profile full job walls plus full crossing-job wall, 2026-11-14; 1320s total plus 1s bookkeeping. Count bounds all native identities; proposed merge is unmeasured. observed_workers=2.",
+          "estimated_seconds": 1321,
+          "isolated_seconds": 0,
+          "main_mutants": 26,
+          "main_work_seconds": 1320,
+          "parallelism": 1,
+          "selection_sha256": "f6a5fd7226e09b1d58e755fb5eede83416f5e4c276bc3c687b408ec26e2c304d",
+          "setup_seconds": 1,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-classification-p10": {
-          "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
-          "estimated_seconds": 1756,
-          "isolated_seconds": 0.0,
-          "main_mutants": 25,
-          "main_work_seconds": 2950,
-          "parallelism": 2,
-          "selection_sha256": "55ade251baf273a00339e35ae8d8955ebb9dc5841d0bafec36096e6624536f78",
-          "setup_seconds": 281,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
-        "b10-final-classification-p11": {
-          "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
-          "estimated_seconds": 1583,
-          "isolated_seconds": 0.0,
-          "main_mutants": 21,
-          "main_work_seconds": 2604,
-          "parallelism": 2,
-          "selection_sha256": "7ad5fc6aaaba917fc0549f0ac685c6a11c1f6f1ec9e3f579665119d3e42de326",
-          "setup_seconds": 281,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
-        "b10-final-classification-p12": {
-          "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
-          "estimated_seconds": 1579,
-          "isolated_seconds": 0.0,
-          "main_mutants": 22,
-          "main_work_seconds": 2596,
-          "parallelism": 2,
-          "selection_sha256": "bf4cfeb568d43e9c8a29b6ed7c99f6ae96dd483f5c134ded9076b652dfddc7b1",
-          "setup_seconds": 281,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
-        "b10-final-classification-p13": {
           "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1697,
           "isolated_seconds": 0.0,
@@ -1620,7 +1880,7 @@
           "setup_seconds": 281,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-classification-p14": {
+        "b10-final-classification-p11": {
           "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1638,
           "isolated_seconds": 0.0,
@@ -1631,7 +1891,7 @@
           "setup_seconds": 281,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-classification-p15": {
+        "b10-final-classification-p12": {
           "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1343,
           "isolated_seconds": 0.0,
@@ -1642,7 +1902,7 @@
           "setup_seconds": 281,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-classification-p16": {
+        "b10-final-classification-p13": {
           "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1638,
           "isolated_seconds": 0.0,
@@ -1653,7 +1913,7 @@
           "setup_seconds": 281,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-classification-p17": {
+        "b10-final-classification-p14": {
           "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1461,
           "isolated_seconds": 0.0,
@@ -1664,7 +1924,7 @@
           "setup_seconds": 281,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-classification-p18": {
+        "b10-final-classification-p15": {
           "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1520,
           "isolated_seconds": 0.0,
@@ -1675,7 +1935,7 @@
           "setup_seconds": 281,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-classification-p19": {
+        "b10-final-classification-p16": {
           "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1756,
           "isolated_seconds": 0.0,
@@ -1686,18 +1946,7 @@
           "setup_seconds": 281,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-classification-p2": {
-          "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
-          "estimated_seconds": 871,
-          "isolated_seconds": 0.0,
-          "main_mutants": 10,
-          "main_work_seconds": 1180,
-          "parallelism": 2,
-          "selection_sha256": "a5d6c898e67405e63faf311d7f30deb5f33744aea6dc7a2a64208473a0f1f896",
-          "setup_seconds": 281,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
-        "b10-final-classification-p20": {
+        "b10-final-classification-p17": {
           "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1756,
           "isolated_seconds": 0.0,
@@ -1708,29 +1957,18 @@
           "setup_seconds": 281,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-classification-p21": {
-          "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
-          "estimated_seconds": 1756,
-          "isolated_seconds": 0.0,
-          "main_mutants": 25,
-          "main_work_seconds": 2950,
-          "parallelism": 2,
-          "selection_sha256": "5d20f324ca8bbf4d2781dfbd09dfad6887bbfe20f15d2744f19c285271db2b25",
-          "setup_seconds": 281,
+        "b10-final-classification-p18": {
+          "basis": "Conservative estimate from same-profile full job walls plus full crossing-job wall, 2026-11-14; 1297s total plus 1s bookkeeping. Count bounds all native identities; proposed merge is unmeasured. observed_workers=2.",
+          "estimated_seconds": 1298,
+          "isolated_seconds": 0,
+          "main_mutants": 32,
+          "main_work_seconds": 1297,
+          "parallelism": 1,
+          "selection_sha256": "bbeda900faa35960256d6ecc38c39965183c0072659819bf0c0eca04f86e5c86",
+          "setup_seconds": 1,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-classification-p22": {
-          "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
-          "estimated_seconds": 517,
-          "isolated_seconds": 0.0,
-          "main_mutants": 4,
-          "main_work_seconds": 472,
-          "parallelism": 2,
-          "selection_sha256": "799d419a223a940e5172b3c2531d1de276e96e416d27ddc6b8b9bc7018a6611f",
-          "setup_seconds": 281,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
-        "b10-final-classification-p23": {
+        "b10-final-classification-p19": {
           "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1756,
           "isolated_seconds": 0.0,
@@ -1741,29 +1979,29 @@
           "setup_seconds": 281,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-classification-p24": {
-          "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
-          "estimated_seconds": 576,
-          "isolated_seconds": 0.0,
-          "main_mutants": 5,
-          "main_work_seconds": 590,
-          "parallelism": 2,
-          "selection_sha256": "31f6ac04da7fbb50b7f7c952bd08470e24d9d12a5a46e8b27e5ae17964a69063",
-          "setup_seconds": 281,
+        "b10-final-classification-p2": {
+          "basis": "Full old p2+p3 walls 952+413s plus full crossing wall 330s; no promoted identity. Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound.",
+          "estimated_seconds": 1695,
+          "isolated_seconds": 0,
+          "main_mutants": 39,
+          "main_work_seconds": 1365,
+          "parallelism": 1,
+          "selection_sha256": "dbcc5d4ed26fcacb6c8379c571336c6d16030a989a230cf737a2f4f6ded92b69",
+          "setup_seconds": 330,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-classification-p25": {
-          "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
-          "estimated_seconds": 1756,
-          "isolated_seconds": 0.0,
-          "main_mutants": 25,
-          "main_work_seconds": 2950,
-          "parallelism": 2,
-          "selection_sha256": "53536165069a92fec704d18f8bcaa1ffd87e9ec7f99d01a2ff3c17359ba665f8",
-          "setup_seconds": 281,
+        "b10-final-classification-p20": {
+          "basis": "Full old p22+p23 walls 429+612s plus full crossing wall 330s and a separate serial 69s comparable maximum for promoted ID 15059. The filtered report does not establish whether 15059 was tested in its old owner. Hosted run 43654777165, 2026-11-15; observed_workers=2. This estimate does not guarantee future wall time.",
+          "estimated_seconds": 1440,
+          "isolated_seconds": 0,
+          "main_mutants": 31,
+          "main_work_seconds": 1041,
+          "parallelism": 1,
+          "selection_sha256": "bf9e7f89321d6565a183f7b4a2f68535ea42626ed17bc3c83b7ef55ab19965fd",
+          "setup_seconds": 399,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-classification-p26": {
+        "b10-final-classification-p21": {
           "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1697,
           "isolated_seconds": 0.0,
@@ -1774,73 +2012,29 @@
           "setup_seconds": 281,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-classification-p27": {
-          "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
-          "estimated_seconds": 989,
-          "isolated_seconds": 0.0,
-          "main_mutants": 12,
-          "main_work_seconds": 1416,
-          "parallelism": 2,
-          "selection_sha256": "2d0e509577dbd62ce8a3fa84512f16e3bd1e18a94b067905a6ceb4ac11260213",
-          "setup_seconds": 281,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
-        "b10-final-classification-p28": {
-          "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
-          "estimated_seconds": 1579,
-          "isolated_seconds": 0.0,
-          "main_mutants": 22,
-          "main_work_seconds": 2596,
-          "parallelism": 2,
-          "selection_sha256": "a225f0feba8b4e13f492c30f639bdd2712b76272f1bb87fc01c6d2aa5a483843",
-          "setup_seconds": 281,
+        "b10-final-classification-p22": {
+          "basis": "Full old p25+p26 walls 357+966s plus full crossing wall 330s; no promoted identity. Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound.",
+          "estimated_seconds": 1653,
+          "isolated_seconds": 0,
+          "main_mutants": 34,
+          "main_work_seconds": 1323,
+          "parallelism": 1,
+          "selection_sha256": "ab95888d00f02f31de345b8c70fc7b6477eb4d3d903872c93289696a37e6ec3d",
+          "setup_seconds": 330,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-classification-p3": {
-          "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
-          "estimated_seconds": 1756,
-          "isolated_seconds": 0.0,
-          "main_mutants": 25,
-          "main_work_seconds": 2950,
-          "parallelism": 2,
-          "selection_sha256": "e6fcc6a126019f60e829e4161c322a997852da8f78d68dc3953aae0da78a035b",
-          "setup_seconds": 281,
+          "basis": "Full old p4+p5 walls 686+763s plus full crossing wall 330s; no promoted identity. Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound.",
+          "estimated_seconds": 1779,
+          "isolated_seconds": 0,
+          "main_mutants": 45,
+          "main_work_seconds": 1449,
+          "parallelism": 1,
+          "selection_sha256": "16148dda1c8077f7540a370e280e0021c06c4643b0249db76b5491ee64ecc88f",
+          "setup_seconds": 330,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-classification-p4": {
-          "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
-          "estimated_seconds": 1107,
-          "isolated_seconds": 0.0,
-          "main_mutants": 14,
-          "main_work_seconds": 1652,
-          "parallelism": 2,
-          "selection_sha256": "b9f0cec11f17b705566b9e6abcec13fe918419bf99eaaaa248c082040cc5896d",
-          "setup_seconds": 281,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
-        "b10-final-classification-p5": {
-          "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
-          "estimated_seconds": 1756,
-          "isolated_seconds": 0.0,
-          "main_mutants": 25,
-          "main_work_seconds": 2950,
-          "parallelism": 2,
-          "selection_sha256": "66829fc0bfb23b0a7891129114683fcef035b77a4dfaa4aac174d4e7fc33e5f9",
-          "setup_seconds": 281,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
-        "b10-final-classification-p6": {
-          "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
-          "estimated_seconds": 1461,
-          "isolated_seconds": 0.0,
-          "main_mutants": 20,
-          "main_work_seconds": 2360,
-          "parallelism": 2,
-          "selection_sha256": "585f2c60386acc37c13b672100a174e3c1c3c6fbd5aa4d024ec9eb929f55c198",
-          "setup_seconds": 281,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
-        "b10-final-classification-p7": {
           "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1756,
           "isolated_seconds": 0.0,
@@ -1851,7 +2045,7 @@
           "setup_seconds": 281,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-classification-p8": {
+        "b10-final-classification-p5": {
           "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1461,
           "isolated_seconds": 0.0,
@@ -1862,7 +2056,7 @@
           "setup_seconds": 281,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-classification-p9": {
+        "b10-final-classification-p6": {
           "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
           "estimated_seconds": 1756,
           "isolated_seconds": 0.0,
@@ -1870,6 +2064,39 @@
           "main_work_seconds": 2950,
           "parallelism": 2,
           "selection_sha256": "8214709b524479736eefef681133e8b0cf0d23dca7c31ea04b86774d54a33337",
+          "setup_seconds": 281,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "b10-final-classification-p7": {
+          "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
+          "estimated_seconds": 1756,
+          "isolated_seconds": 0.0,
+          "main_mutants": 25,
+          "main_work_seconds": 2950,
+          "parallelism": 2,
+          "selection_sha256": "55ade251baf273a00339e35ae8d8955ebb9dc5841d0bafec36096e6624536f78",
+          "setup_seconds": 281,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "b10-final-classification-p8": {
+          "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
+          "estimated_seconds": 1583,
+          "isolated_seconds": 0.0,
+          "main_mutants": 21,
+          "main_work_seconds": 2604,
+          "parallelism": 2,
+          "selection_sha256": "7ad5fc6aaaba917fc0549f0ac685c6a11c1f6f1ec9e3f579665119d3e42de326",
+          "setup_seconds": 281,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "b10-final-classification-p9": {
+          "basis": "Native local probe /tmp/474-probe-04-classification; measured local IDs retain their measured durations; unobserved identities weighted at same-target hosted partial-log maximum 118s from timing-only hosted artifact 14111723636. Unmeasured isolates use 267.226s each, the rounded maximum of 68 hosted isolated invocations; target/mutant variation is uncertain. Local hardware 5 logical CPUs; hosted/local timing equality is not assumed, and the hosted-rate estimate is not a worst-case guarantee. Estimated setup includes elapsed outside measured execution and two seconds timestamp precision. observed_workers=2.",
+          "estimated_seconds": 1579,
+          "isolated_seconds": 0.0,
+          "main_mutants": 22,
+          "main_work_seconds": 2596,
+          "parallelism": 2,
+          "selection_sha256": "bf4cfeb568d43e9c8a29b6ed7c99f6ae96dd483f5c134ded9076b652dfddc7b1",
           "setup_seconds": 281,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         }
@@ -1881,7 +2108,7 @@
         {
           "kind": "hosted_complete",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43625662806/job/132540792966",
-          "note": "Hosted job API record, SHA-256 of canonical JSON; whole-job duration used in conservative merged-owner estimate. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "Hosted job API record, SHA-256 of canonical JSON; whole-job duration used in conservative merged-owner estimate. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "cc3a8b11d1624b469b887d9222c9fe22952bc2eb63a2de050cf1a89a4f87cf02",
           "source_commit": "dbc25c2005c3409ffd5f079c40b061d82c4b02aa"
         },
@@ -1954,6 +2181,34 @@
           "note": "Canonical job metadata; whole job started 2026-11-14T20:44:56Z and completed 2026-11-14T21:02:51Z; Statsbeat enabled. Old-layout timing, not current-profile measurement.",
           "sha256": "462816c11d5b3c3d26fd384242f83c7cbc96ebeee97fb8a10744f5e9a0b7e01f",
           "source_commit": "4aa6218f9c0750f80b072e0bab1e26e754de8f94"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43642679359 artifact 14134281282",
+          "note": "Receipt-bound native report and clean source snapshots verified; old-layout hosted evidence, not a measurement of the proposed layout.",
+          "sha256": "2bad7544a96c4c7ff6b84b976667c3f11be18ad77e81febec9c6c9f0b9793d6b",
+          "source_commit": "ed79ae741a082f1cc55d753bb64dec5a74d5a49c"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165 artifact 14138048823",
+          "note": "Receipt-verified source snapshots, report, log and shard configuration; native per-ID invocation timings. Observed two workers; estimates do not guarantee future wall time.",
+          "sha256": "c5291da1c660e87316e88c12342bb1d46ac2be373403e535e3df04c50ddfefdb",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630817760",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "9ca53cc00fd4f42b89008cf2a374cb4606790c21ce4b0a6e956c2c2a64a096ee",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630817798",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "2a278e14485f904b1f63cf018cb8c8353a0c2a6cd1c4d845a250adf9e1120865",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
         }
       ],
       "geometry_status": "pending_native_report",
@@ -1961,49 +2216,53 @@
         "archive_sha256": "3268e1a3b6c52c469e74f6b5680aa40d2096a1901780c8c0d6416c394ed88d90",
         "artifact_id": "14127456699",
         "inventory_sha256": "2bc0f8acfd79364d414b7cd46dde2804c930adc2a1fbbb9f6ad05d67a79d298a",
-        "layout_sha256": "b1dcdfc584604447104cf8e8ea0ca1126b74da498f0fedbc24c3e6908ae6242a",
+        "layout_sha256": "844276e4b9f4d432c3ae298bdb0f3cf2ce42f4f41231ef781142518a2da473ee",
         "native_count": 1306,
         "owner_counts": {
-          "b10-final-repeat-evidence-crossing": 36,
+          "b10-final-repeat-evidence-crossing": 39,
           "b10-final-repeat-evidence-p1": 44,
-          "b10-final-repeat-evidence-p10": 53,
-          "b10-final-repeat-evidence-p11": 50,
-          "b10-final-repeat-evidence-p12": 33,
-          "b10-final-repeat-evidence-p13": 40,
-          "b10-final-repeat-evidence-p14": 51,
-          "b10-final-repeat-evidence-p15": 45,
-          "b10-final-repeat-evidence-p16": 66,
-          "b10-final-repeat-evidence-p17": 33,
-          "b10-final-repeat-evidence-p18": 33,
+          "b10-final-repeat-evidence-p10": 39,
+          "b10-final-repeat-evidence-p11": 48,
+          "b10-final-repeat-evidence-p12": 53,
+          "b10-final-repeat-evidence-p13": 50,
+          "b10-final-repeat-evidence-p14": 33,
+          "b10-final-repeat-evidence-p15": 40,
+          "b10-final-repeat-evidence-p16": 51,
+          "b10-final-repeat-evidence-p17": 45,
+          "b10-final-repeat-evidence-p18": 66,
           "b10-final-repeat-evidence-p19": 33,
           "b10-final-repeat-evidence-p2": 167,
-          "b10-final-repeat-evidence-p20": 42,
-          "b10-final-repeat-evidence-p21": 47,
-          "b10-final-repeat-evidence-p22": 77,
-          "b10-final-repeat-evidence-p23": 63,
+          "b10-final-repeat-evidence-p20": 33,
+          "b10-final-repeat-evidence-p21": 33,
+          "b10-final-repeat-evidence-p22": 42,
+          "b10-final-repeat-evidence-p23": 47,
+          "b10-final-repeat-evidence-p24": 77,
+          "b10-final-repeat-evidence-p25": 63,
           "b10-final-repeat-evidence-p3": 44,
           "b10-final-repeat-evidence-p4": 40,
           "b10-final-repeat-evidence-p5": 31,
           "b10-final-repeat-evidence-p6": 59,
-          "b10-final-repeat-evidence-p7": 85,
-          "b10-final-repeat-evidence-p8": 47,
-          "b10-final-repeat-evidence-p9": 87
+          "b10-final-repeat-evidence-p7": 42,
+          "b10-final-repeat-evidence-p8": 40,
+          "b10-final-repeat-evidence-p9": 47
         },
-        "ownership_proof_sha256": "c938740ad16ff088aae7e4ae49508f99defea313249e02810734a3c197fecc2b",
+        "ownership_archive_sha256": "2bad7544a96c4c7ff6b84b976667c3f11be18ad77e81febec9c6c9f0b9793d6b",
+        "ownership_artifact_id": "14134281282",
+        "ownership_proof_sha256": "904134393accb478ae4f36e57345d074c06cb0f893238430584300e563bffb30",
         "report_sha256": "c9ac4182741b1f87d383ad950806a069d786e4cf8dfc55c5f0a17641f47922a3",
         "source_commit": "dbc25c2005c3409ffd5f079c40b061d82c4b02aa",
         "source_sha256": "4e533dd7aa4205e0a5a121b94b9441af7438e5d878600a3b65dc6ad5f4edab68"
       },
       "shards": {
         "b10-final-repeat-evidence-crossing": {
-          "basis": "Provisional authored bound 1182s (1075s full job wall plus 107s for new crossing ID 16255); older hosted timing had Statsbeat enabled. This layout has not been measured. Counts for merged and crossing shards bound all native identities. observed_workers=2.",
-          "estimated_seconds": 1182,
+          "basis": "Full crossing wall 1023s plus IDs 15607, 15608 at 101s comparable maximum each and ID 15609 at 70s. Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound. Count covers the full native owner inventory, including identities already represented in the charged full wall.",
+          "estimated_seconds": 1295,
           "isolated_seconds": 0,
-          "main_mutants": 36,
-          "main_work_seconds": 1075,
+          "main_mutants": 39,
+          "main_work_seconds": 272,
           "parallelism": 1,
-          "selection_sha256": "ab56ae67fbba30f17d1fb31875da4eb4739bbb4ddbc0e2da8efcbeed56c1bcf0",
-          "setup_seconds": 107,
+          "selection_sha256": "e6f5ee7d283f1737b9f17609a9b93c8e2b841227d198ef9fbfdcc7b477894493",
+          "setup_seconds": 1023,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-repeat-evidence-p1": {
@@ -2018,6 +2277,28 @@
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-repeat-evidence-p10": {
+          "basis": "Estimate from same-profile hosted primary mutant work and whole-job overhead, 2026-11-14; proposed split is unmeasured. Count is tested IDs, not all native identities. observed_workers=2.",
+          "estimated_seconds": 1159,
+          "isolated_seconds": 0,
+          "main_mutants": 38,
+          "main_work_seconds": 1951,
+          "parallelism": 2,
+          "selection_sha256": "a454f0d48877c92d167225bf78b5dfb7cf109f31de7b23c3a7cc367ddaad37f8",
+          "setup_seconds": 183.5,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "b10-final-repeat-evidence-p11": {
+          "basis": "Estimate from same-profile hosted primary mutant work and whole-job overhead, 2026-11-14; proposed split is unmeasured. Count is tested IDs, not all native identities. observed_workers=2.",
+          "estimated_seconds": 1232,
+          "isolated_seconds": 0,
+          "main_mutants": 42,
+          "main_work_seconds": 2096,
+          "parallelism": 2,
+          "selection_sha256": "d10d1093cd94fe6099fb522436b4cf8a7c62fd68673fa48869f6fcc43caf8569",
+          "setup_seconds": 183.5,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "b10-final-repeat-evidence-p12": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2028,7 +2309,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p11": {
+        "b10-final-repeat-evidence-p13": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2039,7 +2320,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p12": {
+        "b10-final-repeat-evidence-p14": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2050,7 +2331,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p13": {
+        "b10-final-repeat-evidence-p15": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2061,7 +2342,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p14": {
+        "b10-final-repeat-evidence-p16": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2072,7 +2353,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p15": {
+        "b10-final-repeat-evidence-p17": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2083,7 +2364,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p16": {
+        "b10-final-repeat-evidence-p18": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2094,28 +2375,6 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p17": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "deabe945cb9a3116efb4f83b7693cb02e732825fbd8c5eab92ffbf4a03a95b53",
-          "setup_seconds": null,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
-        "b10-final-repeat-evidence-p18": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "35b2a88365d7c638eaa10b6cd793670990df70ae248f95a4073e978ecc3dfba1",
-          "setup_seconds": null,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
-        },
         "b10-final-repeat-evidence-p19": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
@@ -2123,7 +2382,7 @@
           "main_mutants": null,
           "main_work_seconds": null,
           "parallelism": null,
-          "selection_sha256": "f30459db46e96ee81fc4794641bbc9b011983aae8a31516299764fdd733df41f",
+          "selection_sha256": "deabe945cb9a3116efb4f83b7693cb02e732825fbd8c5eab92ffbf4a03a95b53",
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
@@ -2139,6 +2398,28 @@
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-repeat-evidence-p20": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "35b2a88365d7c638eaa10b6cd793670990df70ae248f95a4073e978ecc3dfba1",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "b10-final-repeat-evidence-p21": {
+          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
+          "estimated_seconds": null,
+          "isolated_seconds": null,
+          "main_mutants": null,
+          "main_work_seconds": null,
+          "parallelism": null,
+          "selection_sha256": "f30459db46e96ee81fc4794641bbc9b011983aae8a31516299764fdd733df41f",
+          "setup_seconds": null,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "b10-final-repeat-evidence-p22": {
           "basis": "Provisional authored bound 1708s (2957s matched work and 229s effective overhead, two workers); older hosted timing had Statsbeat enabled. This layout has not been measured. Counts for merged and crossing shards bound all native identities. observed_workers=2.",
           "estimated_seconds": 1708,
           "isolated_seconds": 0,
@@ -2149,7 +2430,7 @@
           "setup_seconds": 229,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p21": {
+        "b10-final-repeat-evidence-p23": {
           "basis": "Provisional authored bound 1606s (2753s matched work and 229s effective overhead, two workers); older hosted timing had Statsbeat enabled. This layout has not been measured. Counts for merged and crossing shards bound all native identities. observed_workers=2.",
           "estimated_seconds": 1606,
           "isolated_seconds": 0,
@@ -2160,7 +2441,7 @@
           "setup_seconds": 229,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p22": {
+        "b10-final-repeat-evidence-p24": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2171,7 +2452,7 @@
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
-        "b10-final-repeat-evidence-p23": {
+        "b10-final-repeat-evidence-p25": {
           "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
           "estimated_seconds": null,
           "isolated_seconds": null,
@@ -2227,25 +2508,25 @@
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-repeat-evidence-p7": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "a270773b7bafb33b060fb9cbed5f9383f0fa44b998223c33b2ed83536612c187",
-          "setup_seconds": null,
+          "basis": "Old p7 measured 2156s over 30 tested IDs and 243s effective overhead. Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound.",
+          "estimated_seconds": 1321,
+          "isolated_seconds": 0,
+          "main_mutants": 30,
+          "main_work_seconds": 2156,
+          "parallelism": 2,
+          "selection_sha256": "ff06c9bfc7970de1b9c3062045e298467321675b5223a531ec2f9175d53ac8d0",
+          "setup_seconds": 243,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-repeat-evidence-p8": {
-          "basis": "Retained hosted native geometry and selected hosted timings inform this corrective layout; full per-owner timing remains unknown and this target remains provisional.",
-          "estimated_seconds": null,
-          "isolated_seconds": null,
-          "main_mutants": null,
-          "main_work_seconds": null,
-          "parallelism": null,
-          "selection_sha256": "b327dc3809edc02607a4842bc1c3c09291fe421edce11d850e7ad87193856191",
-          "setup_seconds": null,
+          "basis": "Old p7 measured 2392s over 34 tested IDs and 243s effective overhead. Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound.",
+          "estimated_seconds": 1439,
+          "isolated_seconds": 0,
+          "main_mutants": 34,
+          "main_work_seconds": 2392,
+          "parallelism": 2,
+          "selection_sha256": "74f17a6a49dc20c307c30dc483fd2afb483f2b9b3983d3b8ce9d9c815b37ef55",
+          "setup_seconds": 243,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-final-repeat-evidence-p9": {
@@ -2255,7 +2536,7 @@
           "main_mutants": null,
           "main_work_seconds": null,
           "parallelism": null,
-          "selection_sha256": "8314a3b9d92ff1eda335e40894290528bc656a035850af2368f54cbb145fb8a1",
+          "selection_sha256": "b327dc3809edc02607a4842bc1c3c09291fe421edce11d850e7ad87193856191",
           "setup_seconds": null,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         }
@@ -2267,7 +2548,7 @@
         {
           "kind": "hosted_complete",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14109651144",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "69626e7a5746a5476e6b6d416edbeb0173c1f98345c8888c27ad4e97ec9b93e2",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         }
@@ -2336,7 +2617,7 @@
         {
           "kind": "hosted_complete",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14106951449",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "87c19c484a8799f5481d482ad37bd16d8afad76fdd9aecb862a52891b38dd9b2",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         }
@@ -2361,7 +2642,7 @@
         {
           "kind": "hosted_complete",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14107153687",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "6a064b753650f061eba4fd906a4774db0f84dec0013f747261b76aef50b9b61d",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         },
@@ -2553,21 +2834,57 @@
         {
           "kind": "hosted_complete",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14106264937",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "c5bdfbab3e75efbc94c0c044efea977305552e36e90221ebbd6a517c1ee9bd76",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165 artifact 14138599172",
+          "note": "Receipt-verified source snapshots, report, log and shard configuration; native per-ID invocation timings. Observed two workers; estimates do not guarantee future wall time.",
+          "sha256": "cd138c63b78d4e4a9f218c61e1e3326cd798cc7214125e9fa8be21c52db40702",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43654777165/job/132630813451",
+          "note": "Canonical Actions job API record; full job wall from started_at to completed_at.",
+          "sha256": "e1d3a5322cdf451b20f1f1ce95c7c3439d7110ea9f7f6147485ae4f30bb4b9de",
+          "source_commit": "3c4df3d040f55356597f83f1cf460956adb49197"
         }
       ],
       "shards": {
-        "b10-phase-registrations": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1453,
-          "isolated_seconds": 0.0,
-          "main_mutants": 87,
-          "main_work_seconds": 2715,
+        "b10-phase-registrations-crossing": {
+          "basis": "191s effective overhead plus ignored IDs 18399 and 18415 at 106s each, and measured IDs 18449 and 18450 at 49 and 74s. Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound.",
+          "estimated_seconds": 526,
+          "isolated_seconds": 0,
+          "main_mutants": 4,
+          "main_work_seconds": 335,
+          "parallelism": 1,
+          "selection_sha256": "6b907ef440d83b4be4e8a388da2b6df974ebd4a70d1a277345c3d59964e739c9",
+          "setup_seconds": 191,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "b10-phase-registrations-p1": {
+          "basis": "Old singleton measured 2288s over 43 tested IDs and 191s effective overhead. Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound.",
+          "estimated_seconds": 1335,
+          "isolated_seconds": 0,
+          "main_mutants": 43,
+          "main_work_seconds": 2288,
           "parallelism": 2,
-          "selection_sha256": "01413a945a5b2e808ed4618939edaa29d847e8e395fab073f3139da42a998444",
-          "setup_seconds": 95,
+          "selection_sha256": "152530aef6d245e084bddb49ae636b58de646650417b4de1dec0dd73f86a9083",
+          "setup_seconds": 191,
+          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+        },
+        "b10-phase-registrations-p2": {
+          "basis": "Old singleton measured 2221s over 42 tested IDs and 191s effective overhead. Hosted run 43654777165, 2026-11-15; observed_workers=2. Explicit observed two-worker estimate; scheduling and completion vary, not a hard wall-time bound.",
+          "estimated_seconds": 1302,
+          "isolated_seconds": 0,
+          "main_mutants": 42,
+          "main_work_seconds": 2221,
+          "parallelism": 2,
+          "selection_sha256": "a6ea2896c270db9bbc0e81875cd83fe7ed19622253014a3402d8b586c99cfd07",
+          "setup_seconds": 191,
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         }
       },
@@ -2578,7 +2895,7 @@
         {
           "kind": "hosted_complete",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14106970438",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "b3abc9f2f3369a4ac797e1735950e6e731ad525119f38cffbd5748032ce67908",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         },
@@ -2661,7 +2978,7 @@
         {
           "kind": "hosted_complete",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14107574572",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "a632800de54011acfc935290041ba35546e0822ff734b513ddfa6cba9b950668",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         }
@@ -2719,7 +3036,7 @@
         {
           "kind": "hosted_complete",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14107598147",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "cab2c53732266525c6117c5158eb15d2f945d88d42e0e2116261192530314b1c",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         }
@@ -2766,7 +3083,7 @@
         {
           "kind": "hosted_complete",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14107754138",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "adef7cd07fb52017c2f1391491d9585f12895d0f08403bf44f8032da1a7165ae",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         },
@@ -2860,7 +3177,7 @@
         {
           "kind": "hosted_complete",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14107538234",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "732e9ec005a5433da9197a293cd5f884dee90abe6b247206d022854e41b9a9fc",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         }
@@ -2907,7 +3224,7 @@
         {
           "kind": "hosted_complete",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14108535341",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "94ef3194376c54f69d7e3e9ebc26b61ac4464289cc640bf909998f001d7a1145",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         },
@@ -3023,7 +3340,7 @@
         {
           "kind": "hosted_complete",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14108737660",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "9b7a95e65a68f21196479ae6511912cc22efd3064275170a2eead1991a720eae",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         },
@@ -3734,7 +4051,7 @@
         {
           "kind": "hosted_complete",
           "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14107337867",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The current profile has not been measured.",
+          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "d5c1af8b74c6c44eaeaa3de96c9a367116ab5a5644d8c3dff2adacb81c0c4147",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
         },

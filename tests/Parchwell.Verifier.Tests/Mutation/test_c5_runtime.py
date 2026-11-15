@@ -321,6 +321,154 @@ class QualificationTests(unittest.TestCase):
                 with mock.patch.dict(runtime.workflow.COHORTS, {shard: ('wrong', ())}):
                     self.assertFalse(runtime.approved_codec_static_owner(path, record, shard, item, source))
 
+    def test_six_tail_estimates_require_source_evidence_and_promoted_charges(self):
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        for shard, (path, _, _, _) in runtime.SIX_TAIL_BINDINGS.items():
+            record = config['targets'][path]
+            source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+            item = record['shards'][shard]
+            with self.subTest(shard=shard):
+                self.assertTrue(runtime.approved_six_tail(path, record, shard, item, source))
+                self.assertFalse(runtime.approved_six_tail(path, record, shard, item, source + b'x'))
+                changed = copy.deepcopy(item)
+                changed['setup_seconds'] -= 1
+                self.assertFalse(runtime.approved_six_tail(path, record, shard, changed, source))
+                changed_record = copy.deepcopy(record)
+                locator = runtime.SIX_TAIL_BINDINGS[shard][3][0][0]
+                changed_record['evidence'] = [e for e in record['evidence'] if e['locator'] != locator]
+                self.assertFalse(runtime.approved_six_tail(path, changed_record, shard, item, source))
+        for shard, charge, estimate in [('b10-final-classification-p20', 69, 1440),
+                                         ('b10-final-registrations-p1', 67, 1742)]:
+            path = runtime.SIX_TAIL_BINDINGS[shard][0]
+            record = config['targets'][path]
+            item = record['shards'][shard]
+            self.assertEqual(estimate, item['estimated_seconds'])
+            changed = copy.deepcopy(item)
+            changed['setup_seconds'] -= charge
+            changed['estimated_seconds'] -= charge
+            source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+            self.assertFalse(runtime.approved_six_tail(path, record, shard, changed, source))
+
+    def test_six_tail_rejects_each_evidence_field_and_wrong_inputs(self):
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        for shard, (path, _, _, required) in runtime.SIX_TAIL_BINDINGS.items():
+            record = config['targets'][path]
+            source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+            item = record['shards'][shard]
+            with self.subTest(shard=shard, case='wrong target'):
+                self.assertFalse(runtime.approved_six_tail('wrong.cs', record, shard, item, source))
+            with self.subTest(shard=shard, case='wrong shard'):
+                self.assertFalse(runtime.approved_six_tail(path, record, 'wrong-shard', item, source))
+            with self.subTest(shard=shard, case='empty evidence'):
+                changed = copy.deepcopy(record)
+                changed['evidence'] = []
+                self.assertFalse(runtime.approved_six_tail(path, changed, shard, item, source))
+            for locator, sha, commit in set(required):
+                for field, value in [('kind', 'partial_timing'), ('sha256', '0' * 64),
+                                     ('source_commit', '0' * 40)]:
+                    with self.subTest(shard=shard, locator=locator, field=field):
+                        changed = copy.deepcopy(record)
+                        # Repeated identical references are equivalent evidence; change all copies.
+                        matching = [e for e in changed['evidence'] if (e['locator'], e['sha256'], e['source_commit']) == (locator, sha, commit) and e['kind'] == 'hosted_complete']
+                        self.assertTrue(matching)
+                        for evidence in matching:
+                            evidence[field] = value
+                        self.assertFalse(runtime.approved_six_tail(path, changed, shard, item, source))
+        self.assertFalse(runtime.approved_six_tail('', {}, '', {}, b''))
+        shard, (path, _, _, _) = next(iter(runtime.SIX_TAIL_BINDINGS.items()))
+        record = config['targets'][path]
+        source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+        self.assertFalse(runtime.approved_six_tail(path, {}, shard, record['shards'][shard], source))
+        self.assertFalse(runtime.approved_six_tail(path, record, shard, {}, source))
+        self.assertFalse(runtime.approved_six_tail(path, record, shard, record['shards'][shard], b''))
+
+    def test_six_tail_validation_guard_overrides_other_approval(self):
+        import copy
+        self.workflow_patcher.stop()
+        self.config_patcher.stop()
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        targets = {path: record['source_sha256'] for path, record in config['targets'].items()}
+        sources = {path: (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes() for path in targets}
+        shard = 'b10-final-judge-p9'
+        path = runtime.SIX_TAIL_BINDINGS[shard][0]
+        with mock.patch.object(runtime, 'approved_codec_static_owner', return_value=True) as other_approval:
+            self.assertEqual(set(), runtime.validate(config, config['shared_inputs'], targets, sources, runtime.workflow.SHARDS))
+            changed = copy.deepcopy(config)
+            item = changed['targets'][path]['shards'][shard]
+            item['setup_seconds'] += 1
+            item['estimated_seconds'] += 1
+            reasons = runtime.validate(changed, changed['shared_inputs'], targets, sources, runtime.workflow.SHARDS)
+            self.assertEqual({'invalid_estimate'}, reasons)
+            self.assertTrue(any(call.args[0] == path and call.args[2] == shard for call in other_approval.call_args_list))
+
+    def test_tail_splits_require_exact_source_cost_and_evidence(self):
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        for shard, (path, _, _, artifact, _) in runtime.TAIL_SPLITS.items():
+            with self.subTest(shard=shard):
+                record = config['targets'][path]
+                source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+                item = record['shards'][shard]
+                self.assertTrue(runtime.approved_tail_split(path, record, shard, item, source))
+                self.assertFalse(runtime.approved_tail_split(path, record, shard, item, source + b'x'))
+                changed = copy.deepcopy(item)
+                changed['main_work_seconds'] -= 1
+                self.assertFalse(runtime.approved_tail_split(path, record, shard, changed, source))
+                changed_record = copy.deepcopy(record)
+                changed_record['evidence'] = [e for e in record['evidence'] if artifact not in e['locator']]
+                self.assertFalse(runtime.approved_tail_split(path, changed_record, shard, item, source))
+                changed_config = copy.deepcopy(config)
+                changed_config['targets'][path]['shards'][shard]['main_mutants'] = None
+                with self.assertRaises(ValueError):
+                    runtime.shape(changed_config)
+
+    def test_tail_split_checks_span_and_each_evidence_field(self):
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        for shard, (path, span, _, artifact, _) in runtime.TAIL_SPLITS.items():
+            record = config['targets'][path]
+            source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+            item = record['shards'][shard]
+            evidence = next(e for e in record['evidence'] if artifact in e['locator'])
+            with self.subTest(shard=shard, case='span'):
+                with mock.patch.object(runtime.workflow, 'shard_span', return_value=(span[0], span[1] + 1)):
+                    self.assertFalse(runtime.approved_tail_split(path, record, shard, item, source))
+            for field, value in [('kind', 'partial_timing'), ('source_commit', '0' * 40),
+                                 ('locator', evidence['locator'] + '-other'), ('sha256', '0' * 64)]:
+                with self.subTest(shard=shard, field=field):
+                    changed = copy.deepcopy(record)
+                    changed['evidence'] = [copy.deepcopy(evidence)]
+                    changed['evidence'][0][field] = value
+                    self.assertFalse(runtime.approved_tail_split(path, changed, shard, item, source))
+            for evidence_list in ([], [e for e in record['evidence'] if artifact not in e['locator']]):
+                changed = copy.deepcopy(record)
+                changed['evidence'] = evidence_list
+                self.assertFalse(runtime.approved_tail_split(path, changed, shard, item, source))
+
+    def test_native_geometry_requires_exact_ownership_evidence(self):
+        self.workflow_patcher.stop()
+        self.config_patcher.stop()
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        for path in (runtime.REPEAT_TARGET, runtime.CODEC_TARGET):
+            record = config['targets'][path]
+            source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+            artifact = record['native_geometry']['ownership_artifact_id']
+            evidence = next(e for e in record['evidence'] if artifact in e['locator'])
+            self.assertTrue(runtime.native_geometry_valid(path, record, source))
+            for field, value in [(None, None), ('kind', 'partial_timing'), ('source_commit', '0' * 40),
+                                 ('locator', evidence['locator'] + '-other'), ('sha256', '0' * 64)]:
+                with self.subTest(path=path, field=field):
+                    changed = copy.deepcopy(record)
+                    changed['evidence'] = [e for e in changed['evidence'] if artifact not in e['locator']]
+                    if field is not None:
+                        altered = copy.deepcopy(evidence)
+                        altered[field] = value
+                        changed['evidence'].append(altered)
+                    self.assertFalse(runtime.native_geometry_valid(path, changed, source))
+
     def test_codec_over_budget_has_no_exception(self):
         path = runtime.CODEC_TARGET
         data = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
@@ -363,6 +511,93 @@ class QualificationTests(unittest.TestCase):
                 changed['evidence'] = [e for e in changed['evidence'] if not e['locator'].endswith('/job/' + job)]
                 self.assertFalse(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, changed, shard, item, source))
                 self.assertFalse(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, record, shard, item, source + b'changed'))
+
+    def test_codec_neighborhood_requires_exact_evidence_and_estimates(self):
+        self.workflow_patcher.stop()
+        self.config_patcher.stop()
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        path = runtime.CODEC_TARGET
+        record = config['targets'][path]
+        source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+        for shard in runtime.CODEC_NEIGHBOR:
+            with self.subTest(shard=shard):
+                item = record['shards'][shard]
+                self.assertTrue(runtime.approved_codec_neighbor(path, record, shard, item, source))
+                self.assertFalse(runtime.approved_codec_neighbor(path, record, shard, item, source + b'changed'))
+                for field in runtime.NUMERIC_FIELDS:
+                    changed = copy.deepcopy(item)
+                    changed[field] += 1
+                    self.assertFalse(runtime.approved_codec_neighbor(path, record, shard, changed, source))
+                changed = copy.deepcopy(item)
+                changed['timing_inputs_sha256'] = '0' * 64
+                self.assertFalse(runtime.approved_codec_neighbor(path, record, shard, changed, source))
+                for artifact, _ in runtime.CODEC_NEIGHBOR_EVIDENCE:
+                    changed = copy.deepcopy(record)
+                    changed['evidence'] = [e for e in changed['evidence'] if not e['locator'].endswith('artifact ' + artifact)]
+                    self.assertFalse(runtime.approved_codec_neighbor(path, changed, shard, item, source))
+                candidate = copy.deepcopy(config)
+                candidate['targets'][path]['shards'][shard]['estimated_seconds'] = None
+                with self.assertRaises(ValueError):
+                    runtime.shape(candidate)
+        with mock.patch.object(runtime.workflow, 'shard_span', return_value=(0, 1)):
+            shard = 'b10-final-projection-codec-p8'
+            self.assertFalse(runtime.approved_codec_neighbor(path, record, shard, record['shards'][shard], source))
+
+    def test_codec_neighborhood_evidence_fields_and_adjacent_spans(self):
+        self.workflow_patcher.stop()
+        self.config_patcher.stop()
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        path = runtime.CODEC_TARGET
+        record = config['targets'][path]
+        source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+        for shard, (span, _) in runtime.CODEC_NEIGHBOR.items():
+            item = record['shards'][shard]
+            for artifact, sha in runtime.CODEC_NEIGHBOR_EVIDENCE:
+                for field, value in (('kind', 'partial_timing'), ('source_commit', '0' * 40),
+                                     ('locator', 'unrelated'), ('sha256', '0' * 64)):
+                    with self.subTest(shard=shard, artifact=artifact, field=field):
+                        changed = copy.deepcopy(record)
+                        matches = [e for e in changed['evidence'] if e['locator'].endswith('artifact ' + artifact)
+                                   and e['sha256'] == sha]
+                        self.assertTrue(matches)
+                        for evidence in matches:
+                            evidence[field] = value
+                        self.assertFalse(runtime.approved_codec_neighbor(path, changed, shard, item, source))
+            for evidence in ([], [{'kind': 'hosted_complete', 'source_commit': '0' * 40,
+                                   'locator': 'unrelated', 'sha256': '0' * 64, 'note': 'unrelated'}]):
+                with self.subTest(shard=shard, evidence=evidence):
+                    changed = copy.deepcopy(record)
+                    changed['evidence'] = evidence
+                    self.assertFalse(runtime.approved_codec_neighbor(path, changed, shard, item, source))
+            if span is not None:
+                for adjacent in ((span[0] - 1, span[1]), (span[0] + 1, span[1]),
+                                 (span[0], span[1] - 1), (span[0], span[1] + 1)):
+                    with self.subTest(shard=shard, adjacent=adjacent), \
+                         mock.patch.object(runtime.workflow, 'shard_span', return_value=adjacent):
+                        self.assertFalse(runtime.approved_codec_neighbor(path, record, shard, item, source))
+
+    def test_codec_neighborhood_validation_guard_overrides_other_approval(self):
+        self.workflow_patcher.stop()
+        self.config_patcher.stop()
+        import copy
+        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        targets = {path: record['source_sha256'] for path, record in config['targets'].items()}
+        sources = {path: (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes() for path in targets}
+        path = runtime.CODEC_TARGET
+        with mock.patch.object(runtime, 'approved_codec_static_owner', return_value=True) as other_approval:
+            self.assertEqual(set(), runtime.validate(config, config['shared_inputs'], targets, sources, runtime.workflow.SHARDS))
+            for shard in runtime.CODEC_NEIGHBOR:
+                with self.subTest(shard=shard):
+                    changed = copy.deepcopy(config)
+                    item = changed['targets'][path]['shards'][shard]
+                    item['setup_seconds'] += 1
+                    item['estimated_seconds'] += 1
+                    self.assertEqual({'invalid_estimate'}, runtime.validate(
+                        changed, changed['shared_inputs'], targets, sources, runtime.workflow.SHARDS))
+                    self.assertTrue(any(call.args[0] == path and call.args[2] == shard
+                                        for call in other_approval.call_args_list))
 
     def test_pinned_native_geometry_rejects_tampering(self):
         self.workflow_patcher.stop()
@@ -760,7 +995,9 @@ class DependencyEndToEndTests(unittest.TestCase):
             raise AssertionError(args)
         with mock.patch.object(runtime, 'files', side_effect=files), mock.patch.object(runtime, 'blob', side_effect=blob), \
              mock.patch.object(runtime, 'git', side_effect=git), \
-             mock.patch.object(runtime, 'workflow_matrix', return_value=runtime.workflow.SHARDS):
+             mock.patch.object(runtime, 'workflow_matrix', return_value=runtime.workflow.SHARDS), \
+             mock.patch.object(runtime, 'SIX_TAIL_BINDINGS', {}), \
+             mock.patch.object(runtime, 'CODEC_NEIGHBOR', {}):
             base_shared, targets = runtime.input_maps('base')
             sources = {p: blob('base', 'src/Parchwell.Verifier/' + p) for p in targets}
             def config(shared):
