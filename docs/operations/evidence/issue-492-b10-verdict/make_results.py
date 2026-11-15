@@ -145,7 +145,7 @@ TEXT_REPEAT1 = (
     "verifier raises when the timeout producer's evidence fails abrupt check 18: one of per-instance checks "
     "1 to 6 or 12 to 27, or the retry rule. The verifier does not record which; the timeout producer's "
     "stored evidence was destroyed with the ephemeral storage, and its pod log has no warning or error "
-    "line. Its timeout counts are absent, not zero. Its restart arms are shown below for completeness and "
+    "line. Its timeout counts are absent, not zero. Its restart arms are shown above for completeness and "
     "do not count toward the verdict."
 )
 TEXT_EXIT_CODES = (
