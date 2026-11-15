@@ -503,6 +503,86 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
                     self.assertNotIn('sensitive exception', ''.join(path.read_text() for path in directory.iterdir()))
                     self.assertNotIn('10.0.0.', ''.join(path.read_text() for path in directory.iterdir()))
 
+    def test_cluster_shell_failure_matrix_and_mixed_dns(self):
+        for entry in ('c0', 'c1'):
+            code = self.by_id[entry]['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
+            fn = next(x for x in ast.parse(code).body if isinstance(x, ast.FunctionDef) and x.name == 'pod_connections')
+            nodes = [x for x in fn.body if isinstance(x, ast.Assign) and any(isinstance(t, ast.Name) and t.id in ('resolve', 'command') for t in x.targets)]
+            namespace = {'eh': 'eh.example', 'blob': 'blob.example', 'ips': {'eventhubs': '10.0.0.1', 'blob': '10.0.0.2'}}
+            exec(compile(ast.Module(body=nodes, type_ignores=[]), 'cluster shell', 'exec'), namespace)
+            for failing in ('eventhubs dns', 'blob dns', 'eventhubs tcp', 'blob tcp', 'eventhubs mixed', 'blob mixed'):
+                with self.subTest(entry=entry, failing=failing), tempfile.TemporaryDirectory() as temp:
+                    directory = Path(temp)
+                    (directory / 'nslookup').write_text('''#!/bin/sh
+service=eventhubs; ip=10.0.0.1
+[ "$1" = blob.example ] && service=blob && ip=10.0.0.2
+printf "Name: %s\nAddress: %s\n" "$1" "$ip"
+[ "$FAIL" = "$service dns" ] && printf "Address: 10.0.0.9\n"
+[ "$FAIL" = "$service mixed" ] && printf "Address: 10.0.0.9\n"
+exit 0
+''')
+                    (directory / 'nc').write_text('''#!/bin/sh
+printf "%s\n" "$*" >> "$CALLS"
+service=eventhubs
+[ "$4" = 10.0.0.2 ] && service=blob
+[ "$FAIL" != "$service tcp" ]
+''')
+                    for name in ('nslookup', 'nc'): (directory / name).chmod(0o755)
+                    env = {**os.environ, 'PATH': temp + ':' + os.environ['PATH'], 'FAIL': failing, 'CALLS': str(directory / 'calls')}
+                    result = subprocess.run(['sh', '-c', namespace['command']], env=env, capture_output=True)
+                    self.assertNotEqual(0, result.returncode)
+                    expected = failing.replace(' mixed', ' dns') + ' failed'
+                    self.assertEqual(expected, result.stdout.decode().splitlines()[-1])
+                    self.assertNotIn(b'10.0.0.', result.stdout)
+                    if (directory / 'calls').exists():
+                        self.assertTrue(all(row.startswith('-z -w 15 ') for row in (directory / 'calls').read_text().splitlines()))
+
+    def test_runner_failure_reasons_and_private_recording_errors(self):
+        import socket
+        for entry, phase_name, context in (('c0', 'C0', 'idle'), ('c1', 'C1', 'active'), ('c1_settings', 'C1', 'settings')):
+            code = self.by_id[entry]['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
+            nodes = [x for x in ast.parse(code).body if isinstance(x, ast.FunctionDef) and x.name in ('save_probe', 'probe_runner')]
+            compiled = compile(ast.Module(body=nodes, type_ignores=[]), 'probe fixture', 'exec')
+            for service in ('eventhubs', 'blob'):
+                for failure, reason, operation in (('lookup', 'dns_error', 'dns'), ('wrong', 'dns_mismatch', 'dns'),
+                                                    ('peer', 'peer_mismatch', 'tcp'), ('connection', 'connection_error', 'tcp')):
+                    with self.subTest(entry=entry, service=service, failure=failure), tempfile.TemporaryDirectory() as temp:
+                        calls = []
+                        def addresses(host, port, **kwargs):
+                            calls.append(('dns', port))
+                            selected = (port == 9093) == (service == 'eventhubs')
+                            if selected and failure == 'lookup': raise OSError('private lookup exception')
+                            ip = '10.0.0.1' if port == 9093 else '10.0.0.2'
+                            if selected and failure == 'wrong': ip = '10.0.0.9'
+                            return [(None, None, None, None, (ip, port))]
+                        def connect(address, timeout):
+                            calls.append(('tcp', address[1]))
+                            selected = (address[1] == 9093) == (service == 'eventhubs')
+                            if selected and failure == 'connection': raise OSError('private connection exception')
+                            connection = mock.MagicMock()
+                            connection.__enter__.return_value.getpeername.return_value = ('10.0.0.9' if selected and failure == 'peer' else address[0], address[1])
+                            return connection
+                        fake = SimpleNamespace(SOCK_STREAM=socket.SOCK_STREAM, timeout=socket.timeout, getaddrinfo=addresses, create_connection=connect)
+                        namespace = {'socket': fake, 'pathlib': __import__('pathlib'), 'os': os, 'json': json}
+                        with mock.patch.dict(os.environ, {'RUNNER_TEMP': temp}):
+                            exec(compiled, namespace)
+                            with self.assertRaises(RuntimeError) as caught:
+                                namespace['probe_runner'](phase_name, context, 'eh.example', 'blob.example', {'eventhubs': '10.0.0.1', 'blob': '10.0.0.2'})
+                        self.assertNotIn('private', str(caught.exception))
+                        target = Path(temp, 'configuration-isolation-probes', '-'.join((phase_name, context, 'runner', service, operation)) + '.json')
+                        data = json.loads(target.read_text())
+                        self.assertEqual(('failed', reason), (data['status'], data['reason']))
+                        self.assertEqual((operation, 9093 if service == 'eventhubs' else 443), calls[-1])
+            with tempfile.TemporaryDirectory() as temp:
+                fake = SimpleNamespace(SOCK_STREAM=socket.SOCK_STREAM, timeout=socket.timeout,
+                                       getaddrinfo=mock.Mock(side_effect=OSError('private lookup exception')))
+                namespace = {'socket': fake, 'pathlib': __import__('pathlib'), 'os': os, 'json': json}
+                with mock.patch.dict(os.environ, {'RUNNER_TEMP': temp}), mock.patch.object(Path, 'write_text', side_effect=OSError('private write exception')):
+                    exec(compiled, namespace)
+                    with self.assertRaisesRegex(RuntimeError, '^probe recording failed$') as caught:
+                        namespace['probe_runner'](phase_name, context, 'eh.example', 'blob.example', {'eventhubs': '10.0.0.1', 'blob': '10.0.0.2'})
+                self.assertTrue(caught.exception.__suppress_context__)
+
     def test_failed_cluster_wait_collects_rows_before_delete_and_rejects_injection(self):
         for entry, phase_name in (('c0', 'C0'), ('c1', 'C1')):
             code = self.by_id[entry]['run'].split("python3 - <<'PYTHON'\n", 1)[1].split('\nPYTHON', 1)[0]
@@ -574,6 +654,13 @@ class ConfigurationIsolationWorkflowTests(unittest.TestCase):
                 self.assertIn(line, text)
             self.assertNotIn('10.9.8.7', text)
             self.assertNotIn('private exception', text)
+            duplicate = directory / 'C0-idle-runner-eventhubs-dns.json'
+            duplicate.write_text('{"phase":"C0","phase":"private duplicate","context":"idle","perspective":"runner","service":"eventhubs","operation":"dns","status":"passed","reason":"none"}')
+            with mock.patch.dict(os.environ, {**settings_environment(temp), 'STEP_RESULTS': '{}'}):
+                exec(compile(code, 'duplicate probe receipt fixture', 'exec'), {})
+            text = Path(temp, 'configuration-smoke-receipt', 'receipt.txt').read_text()
+            self.assertIn('C0 idle runner eventhubs dns: unavailable reason=unavailable', text)
+            self.assertNotIn('private duplicate', text)
 
     def test_cleanup_failure_matrix_and_report_never_pass_incomplete_run(self):
         destroy_guard = self.by_id['destroy']['if']

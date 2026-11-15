@@ -187,13 +187,16 @@ jobs:
           else:
               assert json.loads(blob_baseline.read_text()) == module.unwrap(output['blob'])
           def save_probe(phase_name, context, perspective, service, operation, status, reason='none'):
-              directory = pathlib.Path(os.environ['RUNNER_TEMP']) / 'configuration-isolation-probes'
-              directory.mkdir(mode=0o700, exist_ok=True)
-              record = dict(phase=phase_name, context=context, perspective=perspective, service=service, operation=operation, status=status, reason=reason)
-              destination = directory / ('-'.join((phase_name, context, perspective, service, operation)) + '.json')
-              partial = destination.with_suffix('.partial')
-              partial.write_text(json.dumps(record))
-              partial.replace(destination)
+              try:
+                  directory = pathlib.Path(os.environ['RUNNER_TEMP']) / 'configuration-isolation-probes'
+                  directory.mkdir(mode=0o700, exist_ok=True)
+                  record = dict(phase=phase_name, context=context, perspective=perspective, service=service, operation=operation, status=status, reason=reason)
+                  destination = directory / ('-'.join((phase_name, context, perspective, service, operation)) + '.json')
+                  partial = destination.with_suffix('.partial')
+                  partial.write_text(json.dumps(record))
+                  partial.replace(destination)
+              except Exception:
+                  raise RuntimeError('probe recording failed') from None
           def probe_runner(phase_name, context, eh, blob, ips):
               for service, host, port, ip in (('eventhubs', eh, 9093, ips['eventhubs']), ('blob', blob, 443, ips['blob'])):
                   try:
@@ -633,13 +636,16 @@ jobs:
           eh = module.unwrap(output['eventhubs'])['bootstrap_servers'].split(':')[0]
           ips = module.unwrap(output['private_endpoint_ips'])
           def save_probe(phase_name, context, perspective, service, operation, status, reason='none'):
-              directory = pathlib.Path(os.environ['RUNNER_TEMP']) / 'configuration-isolation-probes'
-              directory.mkdir(mode=0o700, exist_ok=True)
-              record = dict(phase=phase_name, context=context, perspective=perspective, service=service, operation=operation, status=status, reason=reason)
-              destination = directory / ('-'.join((phase_name, context, perspective, service, operation)) + '.json')
-              partial = destination.with_suffix('.partial')
-              partial.write_text(json.dumps(record))
-              partial.replace(destination)
+              try:
+                  directory = pathlib.Path(os.environ['RUNNER_TEMP']) / 'configuration-isolation-probes'
+                  directory.mkdir(mode=0o700, exist_ok=True)
+                  record = dict(phase=phase_name, context=context, perspective=perspective, service=service, operation=operation, status=status, reason=reason)
+                  destination = directory / ('-'.join((phase_name, context, perspective, service, operation)) + '.json')
+                  partial = destination.with_suffix('.partial')
+                  partial.write_text(json.dumps(record))
+                  partial.replace(destination)
+              except Exception:
+                  raise RuntimeError('probe recording failed') from None
           def probe_runner(phase_name, context, eh, blob, ips):
               for service, host, port, ip in (('eventhubs', eh, 9093, ips['eventhubs']), ('blob', blob, 443, ips['blob'])):
                   try:
@@ -690,13 +696,16 @@ jobs:
           else:
               assert json.loads(blob_baseline.read_text()) == module.unwrap(output['blob'])
           def save_probe(phase_name, context, perspective, service, operation, status, reason='none'):
-              directory = pathlib.Path(os.environ['RUNNER_TEMP']) / 'configuration-isolation-probes'
-              directory.mkdir(mode=0o700, exist_ok=True)
-              record = dict(phase=phase_name, context=context, perspective=perspective, service=service, operation=operation, status=status, reason=reason)
-              destination = directory / ('-'.join((phase_name, context, perspective, service, operation)) + '.json')
-              partial = destination.with_suffix('.partial')
-              partial.write_text(json.dumps(record))
-              partial.replace(destination)
+              try:
+                  directory = pathlib.Path(os.environ['RUNNER_TEMP']) / 'configuration-isolation-probes'
+                  directory.mkdir(mode=0o700, exist_ok=True)
+                  record = dict(phase=phase_name, context=context, perspective=perspective, service=service, operation=operation, status=status, reason=reason)
+                  destination = directory / ('-'.join((phase_name, context, perspective, service, operation)) + '.json')
+                  partial = destination.with_suffix('.partial')
+                  partial.write_text(json.dumps(record))
+                  partial.replace(destination)
+              except Exception:
+                  raise RuntimeError('probe recording failed') from None
           def probe_runner(phase_name, context, eh, blob, ips):
               for service, host, port, ip in (('eventhubs', eh, 9093, ips['eventhubs']), ('blob', blob, 443, ips['blob'])):
                   try:
