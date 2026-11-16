@@ -111,7 +111,7 @@ internal static class KafkaNativeMetricReplay
                 {
                     string raw = reports[lifetime][index];
                     original += Encoding.UTF8.GetByteCount(raw);
-                    byte[] row = JsonSerializer.SerializeToUtf8Bytes(new RawRow(lifetime + 1, index + 1, raw), JsonOptions);
+                    byte[] row = JsonSerializer.SerializeToUtf8Bytes(new RawRow(1, index + 1, raw), JsonOptions);
                     jsonl += row.Length + 1;
                     gzip.Write(row);
                     gzip.WriteByte((byte)'\n');
@@ -135,6 +135,8 @@ internal static class KafkaNativeMetricReplay
             {
                 TelemetryTestPipeline.Configure(options);
                 options.ServiceInstanceId = instance;
+                options.ServiceName = lifetime < 20 ? "Parchwell.LoadGen" : "Parchwell.Enrichment";
+                options.RunId = "synthetic-replay";
             });
             var resource = pipeline.Meter.GetResource().Attributes.ToDictionary(pair => pair.Key, pair => pair.Value);
             if (!resource.TryGetValue("service.instance.id", out object? actualInstance) || !Equals(instance, actualInstance) || !identities.Add(instance))
