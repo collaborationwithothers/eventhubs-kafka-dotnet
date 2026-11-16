@@ -223,9 +223,9 @@ public sealed class B10AbruptProducerTests
     [Fact]
     public async Task Given_AllMembersConfirmed_When_ControlCheckpoints_Then_ExposureInconclusive()
     {
-        await using var fixture = new Fixture();
+        await using var fixture = Fixture.ForCutRace();
         fixture.Native.OnProduce = (_, callback) => { callback(Report()); fixture.Journal.DrainAvailable().GetAwaiter().GetResult(); };
-        fixture.StartReports();
+        fixture.StartReports(advanceClock: false);
         Assert.Equal(3, await fixture.Runner.RunFirstAsync(Profile(), fixture.Identity, fixture.Options, TestContext.Current.CancellationToken));
         Assert.Equal("b10_abrupt_exposure_inconclusive", fixture.Journal.Frames[^1].Data.GetProperty("reason").GetString());
         Assert.Equal("no_kill", fixture.Journal.Frames[^1].Kind);
