@@ -73,7 +73,8 @@ public sealed class KafkaStatisticsMetricsTests
             ["kafka.broker.disconnects"] = ("count", "Counter`1")
         };
 
-        foreach (var instrument in instruments)
+        var legacy = instruments.Where(instrument => expected.ContainsKey(instrument.Name)).ToArray();
+        foreach (var instrument in legacy)
         {
             Assert.Equal(MeterName, instrument.MeterName);
             Assert.True(expected.TryGetValue(instrument.Name, out var contract), $"Unexpected instrument {instrument.Name}.");
@@ -81,7 +82,18 @@ public sealed class KafkaStatisticsMetricsTests
             Assert.Equal(contract.Kind, instrument.Kind);
         }
 
-        Assert.Equal(expected.Keys.Order(), instruments.Select(instrument => instrument.Name).Distinct().Order());
+        Assert.Equal(expected.Keys.Order(), legacy.Select(instrument => instrument.Name).Distinct().Order());
+
+        var native = instruments.Where(instrument => instrument.Name.StartsWith("kafka.librdkafka.", StringComparison.Ordinal)).ToArray();
+        Assert.Equal(NativeMetricContract.Rows.Select(row => row.Name).Order(), native.Select(instrument => instrument.Name).Order());
+        foreach (var row in NativeMetricContract.Rows)
+        {
+            var instrument = Assert.Single(native, item => item.Name == row.Name);
+            Assert.Equal(MeterName, instrument.MeterName);
+            Assert.Equal(row.Unit, instrument.Unit);
+            Assert.Equal(row.Kind, instrument.Kind);
+        }
+        Assert.Equal(expected.Count + NativeMetricContract.Rows.Length, instruments.Count);
     }
 
     private static void AssertMeasurements(
