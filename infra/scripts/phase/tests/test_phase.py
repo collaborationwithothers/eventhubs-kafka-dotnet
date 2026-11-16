@@ -1549,6 +1549,87 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
         with self.mocked():
             self.assertEqual(1, self.main('use-images', DIGESTS['loadgen'], DIGESTS['verifier']))
 
+    # Plan consumer-jobs T5
+    def test_validate_scenario_admits_consumer_scenarios(self):
+        for selected, expected in (('C03', 0), ('C10', 0), ('C01', 0), ('C02', 2), ('c03', 2)):
+            with self.subTest(scenario=selected), patch.dict(os.environ, {'PARCHWELL_SCENARIO': selected}):
+                self.assertEqual(expected, self.main('validate-scenario'))
+
+    # Plan consumer-jobs T6
+    def test_prepare_consumer_scenario_phases(self):
+        os.environ['PARCHWELL_SCENARIO'] = 'C03'
+        for selected in ('C0', 'C1'):
+            with self.subTest(phase=selected):
+                self.assertEqual(0, self.main('prepare', selected))
+                private = Path(dict(line.split('=', 1) for line in self.env_file.read_text().splitlines())['PARCHWELL_PRIVATE_DIRECTORY'])
+                state = json.loads((private / 'phase.json').read_text())
+                self.assertEqual(('C03', selected, selected, 'c03-40121134428-1'), (state['scenario'], state['phase'], state['configuration'], state['run_id']))
+        for selected in ('C3', 'probe'):
+            with self.subTest(phase=selected):
+                self.assertEqual(2, self.main('prepare', selected))
+
+    # Plan consumer-jobs T7
+    def test_allow_images_for_consumer_scenarios_needs_three_digests(self):
+        enrichment = BATCH_DIGESTS['enrichment']
+        cases = [('C03', enrichment, True), ('C03', '', False), ('C03', None, False), ('C03', 'sha256:' + 'a' * 63, False),
+                 ('C10', enrichment, True), ('C01', enrichment, True), ('B04', '', True), ('B04', None, True), ('A01', None, True)]
+        for selected, value, allowed in cases:
+            with self.subTest(scenario=selected, enrichment=value):
+                self.output_file.write_text('')
+                env = {'GITHUB_OUTPUT': str(self.output_file), 'PARCHWELL_SCENARIO': selected,
+                       'LOADGEN_DIGEST': DIGESTS['loadgen'], 'VERIFIER_DIGEST': DIGESTS['verifier']}
+                if value is not None:
+                    env['ENRICHMENT_DIGEST'] = value
+                with patch.dict(os.environ, env, clear=True), contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(0, phase.main(['allow-images']))
+                self.assertEqual('workload=' + str(allowed).lower() + '\n', self.output_file.read_text())
+
+    def readback(self, worker, digest):
+        return ('az', 'acr', 'repository', 'show', '--name', 'parchwellacr', '--image', f'parchwell/{worker}:{SHA}', '--query', 'digest', '--output', 'tsv'), (0, digest + '\n')
+
+    # Plan consumer-jobs T7a
+    def test_publish_images_for_consumer_scenarios(self):
+        digests = {'loadgen': 'sha256:' + '1' * 64, 'verifier': 'sha256:' + '2' * 64, 'enrichment': 'sha256:' + '3' * 64}
+        for selected, workers in (('C03', ('loadgen', 'verifier', 'enrichment')), ('B04', ('loadgen', 'verifier'))):
+            with self.subTest(scenario=selected):
+                os.environ['PARCHWELL_SCENARIO'] = selected
+                self.prepare('C0')
+                self.fake = ScriptedCommands()
+                self.output_file.write_text('')
+                for worker in digests:
+                    key, value = self.readback(worker, digests[worker])
+                    self.fake.responses[key] = value
+                with self.mocked():
+                    self.assertEqual(0, self.main('publish-images'))
+                projects = [call[0][2] for call in self.fake.calls if call[0][:2] == ['dotnet', 'publish']]
+                names = {'loadgen': 'LoadGen', 'verifier': 'Verifier', 'enrichment': 'Enrichment'}
+                self.assertEqual([f'src/Parchwell.{names[w]}/Parchwell.{names[w]}.csproj' for w in workers], projects)
+                self.assertEqual(''.join(f'{w}_digest={digests[w]}\n' for w in workers), self.output_file.read_text())
+
+    # Plan consumer-jobs T7b
+    def test_use_images_for_consumer_scenarios(self):
+        os.environ['PARCHWELL_SCENARIO'] = 'C03'
+        digests = {'loadgen': 'sha256:' + '1' * 64, 'verifier': 'sha256:' + '2' * 64, 'enrichment': 'sha256:' + '3' * 64}
+        for readback_enrichment, code in ((digests['enrichment'], 0), ('sha256:' + '4' * 64, 1)):
+            with self.subTest(readback=readback_enrichment):
+                self.prepare('C0')
+                self.fake = ScriptedCommands()
+                for worker in digests:
+                    key, value = self.readback(worker, digests[worker])
+                    self.fake.responses[(key[:7] + (f'parchwell/{worker}@{digests[worker]}',) + key[8:])] = value
+                self.fake.responses[('az', 'acr', 'repository', 'show', '--name', 'parchwellacr', '--image',
+                                     'parchwell/enrichment@' + digests['enrichment'], '--query', 'digest', '--output', 'tsv')] = (0, readback_enrichment + '\n')
+                os.environ['ENRICHMENT_DIGEST'] = digests['enrichment']
+                stderr = io.StringIO()
+                with self.mocked(), contextlib.redirect_stderr(stderr), contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(code, phase.main(['use-images', digests['loadgen'], digests['verifier']]))
+                if code:
+                    self.assertIn('image digest mismatch: enrichment', stderr.getvalue())
+                else:
+                    state = json.loads((self.private / 'phase.json').read_text())
+                    self.assertEqual(['loadgen', 'verifier', 'enrichment'], list(state['images']))
+        del os.environ['ENRICHMENT_DIGEST']
+
     def test_check_dns(self):
         for code, response, expected in [(0, '["10.0.0.4"]', 0), (0, '["10.0.0.4", "20.1.1.1"]', 1), (124, '', 1)]:
             with self.subTest(code=code, response=response):

@@ -103,6 +103,7 @@ runtime:
       start_line_job_seconds: 150
       gate_job_seconds: 90
       termination_grace_seconds: 30
+      consumer_job_seconds: 1800
     single_action_capture:
       ProcessLifetimeSeconds: 1920
       PostTerminalStatisticsSeconds: 20
