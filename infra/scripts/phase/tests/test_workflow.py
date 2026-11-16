@@ -92,6 +92,11 @@ class ArchiveSuppressionPolicyTests(unittest.TestCase):
             {'id': 'science_report', 'continue-on-error': 'true'}]}}}
         with self.assertRaises(AssertionError):
             assert_archive_suppression_only(self, workflow)
+        workflow = {'jobs': {'probe': {'steps': [
+            {'id': 'archive', 'continue-on-error': 'true'},
+            {'id': 'science_report'}, {'id': 'science_report'}]}}}
+        with self.assertRaises(AssertionError):
+            assert_archive_suppression_only(self, workflow)
 
 
 class WorkflowTests(unittest.TestCase):
