@@ -15,13 +15,14 @@ internal sealed class SingleActionSessionFactory
         _producer = (settings, capture, cancellation) =>
         {
             KafkaNativeMonitoringLifetime? lifetime = monitoring?.Begin(new(options.ScenarioId, options.RunId, role, settings["client.id"]));
+            Action<string> statistics = NativeMonitoringCallback.Create(capture.TryStatistics, monitoring, lifetime);
             try
             {
             KafkaOAuthBearerSession session = authentication.CreateSession(new(options.ScenarioId, options.RunId, role, settings["client.id"]), cancellation);
             IProducer<byte[], byte[]> client = authentication.CreateProducerBuilder<byte[], byte[]>(new ProducerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)), session)
                 .SetLogHandler((_, message) => capture.Log(message))
                 .SetErrorHandler((_, error) => capture.Error(error))
-                .SetStatisticsHandler((_, report) => { if (capture.TryStatistics(report, out long sequence) && lifetime is not null) monitoring!.Capture(lifetime, report, sequence); }).Build();
+                .SetStatisticsHandler((_, report) => statistics(report)).Build();
             lifetime?.MarkBuilt();
             return client;
             }
@@ -30,13 +31,14 @@ internal sealed class SingleActionSessionFactory
         _consumer = (settings, capture, cancellation) =>
         {
             KafkaNativeMonitoringLifetime? lifetime = monitoring?.Begin(new(options.ScenarioId, options.RunId, role, settings["client.id"]));
+            Action<string> statistics = NativeMonitoringCallback.Create(capture.TryStatistics, monitoring, lifetime);
             try
             {
             KafkaOAuthBearerSession session = authentication.CreateSession(new(options.ScenarioId, options.RunId, role, settings["client.id"]), cancellation);
             IConsumer<byte[], byte[]> client = authentication.CreateConsumerBuilder<byte[], byte[]>(new ConsumerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)), session)
                 .SetLogHandler((_, message) => capture.Log(message))
                 .SetErrorHandler((_, error) => capture.Error(error))
-                .SetStatisticsHandler((_, report) => { if (capture.TryStatistics(report, out long sequence) && lifetime is not null) monitoring!.Capture(lifetime, report, sequence); })
+                .SetStatisticsHandler((_, report) => statistics(report))
                 .SetPartitionsAssignedHandler((_, assigned) => capture.AssignedPartitions(assigned.Count)).Build();
             lifetime?.MarkBuilt();
             return client;

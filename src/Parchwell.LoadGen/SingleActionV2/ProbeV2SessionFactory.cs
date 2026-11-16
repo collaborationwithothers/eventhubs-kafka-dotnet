@@ -19,13 +19,14 @@ internal sealed class ProbeV2SessionFactory
         producer = (settings, capture, cancellation) =>
         {
             KafkaNativeMonitoringLifetime? lifetime = monitoring?.Begin(new(options.ScenarioId, options.RunId, stage.Role, settings["client.id"]));
+            Action<string> statistics = NativeMonitoringCallback.Create(capture.TryStatistics, monitoring, lifetime);
             try
             {
             if (options.NativeAuthentication.Length != 0)
             {
                 IProducer<byte[], byte[]> native = new ProducerBuilder<byte[], byte[]>(new ProducerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)))
                     .SetLogHandler((_, value) => capture.Log(value)).SetErrorHandler((_, value) => capture.Error(value))
-                    .SetStatisticsHandler((_, value) => { if (capture.TryStatistics(value, out long sequence) && lifetime is not null) monitoring!.Capture(lifetime, value, sequence); }).Build();
+                    .SetStatisticsHandler((_, value) => statistics(value)).Build();
                 lifetime?.MarkBuilt();
                 return native;
             }
@@ -38,7 +39,7 @@ internal sealed class ProbeV2SessionFactory
             capture.AttachAuthentication(session);
             IProducer<byte[], byte[]> client = authentication.CreateProducerBuilder<byte[], byte[]>(new ProducerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)), session)
                 .SetLogHandler((_, value) => capture.Log(value)).SetErrorHandler((_, value) => capture.Error(value))
-                .SetStatisticsHandler((_, value) => { if (capture.TryStatistics(value, out long sequence) && lifetime is not null) monitoring!.Capture(lifetime, value, sequence); }).Build();
+                .SetStatisticsHandler((_, value) => statistics(value)).Build();
             lifetime?.MarkBuilt();
             return client;
             }
@@ -47,6 +48,7 @@ internal sealed class ProbeV2SessionFactory
         consumer = (settings, capture, cancellation) =>
         {
             KafkaNativeMonitoringLifetime? lifetime = monitoring?.Begin(new(options.ScenarioId, options.RunId, stage.Role, settings["client.id"]));
+            Action<string> statistics = NativeMonitoringCallback.Create(capture.TryStatistics, monitoring, lifetime);
             try
             {
             if (options.NativeAuthentication.Length != 0) throw new InvalidOperationException("v2_native_consumer");
@@ -59,7 +61,7 @@ internal sealed class ProbeV2SessionFactory
             capture.AttachAuthentication(session);
             IConsumer<byte[], byte[]> client = authentication.CreateConsumerBuilder<byte[], byte[]>(new ConsumerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)), session)
                 .SetLogHandler((_, value) => capture.Log(value)).SetErrorHandler((_, value) => capture.Error(value))
-                .SetStatisticsHandler((_, value) => { if (capture.TryStatistics(value, out long sequence) && lifetime is not null) monitoring!.Capture(lifetime, value, sequence); }).Build();
+                .SetStatisticsHandler((_, value) => statistics(value)).Build();
             lifetime?.MarkBuilt();
             return (client, session);
             }
