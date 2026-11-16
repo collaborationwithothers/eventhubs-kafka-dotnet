@@ -1,5 +1,231 @@
 {
   "budget_seconds": 1800,
+  "renewals": {
+    "src/Parchwell.Kafka/Authentication/KafkaOAuthBearerSession.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "82f91ef61374177bd31bae7606bfcee687ca01b8761d4354947c1d140b2fecf1",
+      "measured_sha256": "a2262cb42e459294767ae1ab8915c4a5c5e4c60bf26c7d75de3718f0db846fc9"
+    },
+    "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifactCodec.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "0b61f41ad55754a1342ce837aae7e8e7296dfce4181a163395b2a7e27d0b0f68",
+      "measured_sha256": null
+    },
+    "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifactReader.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "9f894b2dd8178af0cdbb965c27c1d4edcb62d356163ab61ac8d48ad82adc5840",
+      "measured_sha256": null
+    },
+    "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifacts.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "ab9e5c90b886c8fd07bda7fa85956f5d0b235a38c285a3f1f304ace6879a13dc",
+      "measured_sha256": null
+    },
+    "src/Parchwell.Verifier/Common/Consumer/ConsumerRecordLimits.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "7e772a07fcc98dc19a3524d82f7e3bd37467009d7f46fa9b05b503311d78a16c",
+      "measured_sha256": null
+    },
+    "src/Parchwell.Verifier/Common/Consumer/ConsumerVerificationPlan.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "39fea56cdc8688df7d6c47412ec80f9ebeb8e3cf63fcd36a92475d7c9abd4860",
+      "measured_sha256": null
+    },
+    "src/Parchwell.Verifier/Common/Phase/PhaseWireCodec.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "1c6e89e4626ab4c3e9ed4b4db673b902c5e0958c2dc36a4cad528b1c61395e61",
+      "measured_sha256": "396f558b1405638fd16b9e07a3c56fd1f0f502020f1114c73825d415bc776640"
+    },
+    "src/Parchwell.Verifier/Common/Results/VerifierResult.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "1a8c2a2b44f43a6f7971f03e782ff1d872644277a299bf8182fe325fc4d433d4",
+      "measured_sha256": "cea4db52bde66bdd3491471bb42e22116a2bdc3b3f61ebbb489bd73cca79fa1f"
+    },
+    "src/Parchwell.Verifier/Common/Results/VerifierResultCodec.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "322c636f7a47fc97fed7f12d163e1a70390355c2a047b5c5123639c7f1c8cf0b",
+      "measured_sha256": "e88d9c8a5b7bff1fff36f2c7c36ea4d3cb82ba526a49172c0127c9b03c66088e"
+    },
+    "src/Parchwell.Verifier/Program.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "3aca2a97ba0369fe43b70c95284c4b895cedb31d44273b024e5cf5077e5fabaf",
+      "measured_sha256": "b187138fb3ab8a46e961d76c0844ff4efa362ea9150185eeafebe89ffde98fa9"
+    },
+    "src/Parchwell.Verifier/StartLine/StartLineHandler.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "d9b11257f06b305d3397a3899af365ee18c1038b577d72ca9667bbed03e285d7",
+      "measured_sha256": "d433a7ae9726b53e4291eae297bccb6f78271b339e4d08c31237ef5109a4fa75"
+    },
+    "src/Parchwell.Verifier/VerifierHostOptions.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "a2f31c034db30df79808e198d429a09815f57766713cad1bdd53f1d5ee70f1f9",
+      "measured_sha256": "5a21e99828a85a2799bd6fae778f3baeb0a733d62c98e8f4be0716f342359b59"
+    },
+    "src/Parchwell.Verifier/VerifierHostOptionsValidator.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "d9dc2860c44e166ae38975f5ca0c81a959f859c6ad33aa819e42968413b13a59",
+      "measured_sha256": "078e37d9acb3d3c7d6beb95c9587d6032c3c36c7f16114e69d633fc9b5934525"
+    },
+    "src/Parchwell.Verifier/VerifyRun/Consumer/ConsumerRepeatExtension.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "6d564c03b57b02c2ac6ab280107bce2aaa8c477ac4a592044dc0c9159682c114",
+      "measured_sha256": null
+    },
+    "src/Parchwell.Verifier/VerifyRun/Consumer/IRepeatResultExtension.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "a7549004b04f7d80171cd7366674abc15ca6bedb09786106318fd6c052d3ba7b",
+      "measured_sha256": null
+    },
+    "src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "6f07335ff44e6f72b972cd338833e3bd1fb3c2060ce1a4b47c61292ffbffd89d",
+      "measured_sha256": null
+    },
+    "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerCommittedOffsetReader.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "3b3275e5753035dd9f8b25496037368e28770f4c4110bcfcba0907344b4553ac",
+      "measured_sha256": null
+    },
+    "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerOffsetRead.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "cfadc39c9393d8c6c78f7a920490b17f6f5c29d220d44b67b0b88c580f2691fc",
+      "measured_sha256": null
+    },
+    "src/Parchwell.Verifier/VerifyRun/VerifyRunHandler.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "3934db9b2c3a9ea973fbf63e249651b30fc3339ba3b90962c413b09b85383eed",
+      "measured_sha256": "46987685ff2511fba4bfb2efaafa2339b40843b653fb242b9f010292d739aa61"
+    },
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerArtifactTests.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "d132b70d93c40210bb082f591edca3696865f02a625f012a486aa4d91615f4b6",
+      "measured_sha256": null
+    },
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerExtensionTests.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "2e7515888feeb9567df7f3aaf010c5e965ebd25f914248ba8cc83a8a624de887",
+      "measured_sha256": null
+    },
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementFixture.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "6f508fa7a0ca17e66d10f32ae15cefb2ed19a67162c4dcfc9847509b1f2294db",
+      "measured_sha256": null
+    },
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "a6e438bb37f3eb00955e87330bdbd033b1f3317916fcd26a7c82d67b2e6eca0d",
+      "measured_sha256": null
+    },
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerWireFixture.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "3eb6be4374b4b9b7a4f724cd95d8a5d09a3bf3c885f1478c1879cbe0b71fe1a9",
+      "measured_sha256": null
+    },
+    "tests/Parchwell.Verifier.Tests/Consumer/HostOptionsTests.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "e81fc1b25198c2ab80b07a81fd03645add29bd52e199b16fc172898042dc7062",
+      "measured_sha256": null
+    },
+    "tests/Parchwell.Verifier.Tests/Consumer/IntegrationB04BaseFixtures.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "18155738be160a48c88d36aa00c24fd765c71f8667b079a7d70f7b8c74d06311",
+      "measured_sha256": null
+    },
+    "tests/Parchwell.Verifier.Tests/Consumer/IntegrationConsumerHostTests.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "da52e7806fa3042eb5609ccad16cc225a55bbf26538ed300a3dc925d760f05ec",
+      "measured_sha256": null
+    },
+    "tests/Parchwell.Verifier.Tests/Consumer/OffsetAuthenticationTests.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "34702028d2dc8ebcf0100ddec740670c60c0f57b01f558b1f09e7215d12da570",
+      "measured_sha256": null
+    },
+    "tests/Parchwell.Verifier.Tests/Consumer/OffsetReaderTests.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "c0fa74c0345d036f3f2be9bec030929f0aa729a6204d21e43944372d9c147fba",
+      "measured_sha256": null
+    },
+    "tests/Parchwell.Verifier.Tests/Consumer/PhaseWireBaseFixtures.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "f98cd76eb2b6fbb4c54db0e8977265d2fb7a4f1acfc9725333d70fb611c13b6e",
+      "measured_sha256": null
+    },
+    "tests/Parchwell.Verifier.Tests/Consumer/PhaseWireConsumerTests.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "221350313eb2020c2bd1e40355b6c0728b719493e83a73b8f4a15195d4c0399e",
+      "measured_sha256": null
+    },
+    "tests/Parchwell.Verifier.Tests/Consumer/StartSnapshotTests.cs": {
+      "basis": [
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+      ],
+      "current_sha256": "c0bf1695e8e14e7e54b716d213a07f01e22e3c7acd72f9f25550b3d59af95a31",
+      "measured_sha256": null
+    }
+  },
   "schema_version": 1,
   "shared_inputs": {
     ".config/dotnet-tools.json": "50249a8f3a7134b08b4409c485dfe67afb17910e5a2329bf65810c3338231244",
@@ -38,7 +264,7 @@
     "src/Parchwell.Kafka/Authentication/KafkaAuthenticationLifecycleObservation.cs": "857f1027a09344c0bfc371c293fcd241dc398c865d4838fac7b4d4540bda8296",
     "src/Parchwell.Kafka/Authentication/KafkaAuthenticationMetrics.cs": "6b4b6366028f3e0e7982a856384a38c762d887eab166f816f4d1df4390ffe56f",
     "src/Parchwell.Kafka/Authentication/KafkaAuthenticationServiceCollectionExtensions.cs": "c5c1cbc9bb588d52cf040b86ad9b389fa2cbbadb8246ce8c76834cbe1fb45902",
-    "src/Parchwell.Kafka/Authentication/KafkaOAuthBearerSession.cs": "a2262cb42e459294767ae1ab8915c4a5c5e4c60bf26c7d75de3718f0db846fc9",
+    "src/Parchwell.Kafka/Authentication/KafkaOAuthBearerSession.cs": "82f91ef61374177bd31bae7606bfcee687ca01b8761d4354947c1d140b2fecf1",
     "src/Parchwell.Kafka/Authentication/KafkaWorkloadIdentityOptions.cs": "4269992f4f9262a00fd77f09daa8d328480bbc7314f0849a21b8366382e848f8",
     "src/Parchwell.Kafka/Authentication/KafkaWorkloadIdentityOptionsValidator.cs": "715c1cd555c3c63f0523565e5831cfe74912cbb98ff009f932bbdbe2fd7c28ec",
     "src/Parchwell.Kafka/Authentication/ProjectedTokenFileObserver.cs": "35fc8d2908d4c15cdac6a9a7e6896ba3ee30ae38a8f5c1fdfc65305954686c6c",
@@ -103,6 +329,11 @@
     "src/Parchwell.Scenarios/ScenarioServiceCollectionExtensions.cs": "549ad00e7882df296c8110016f6b4d4c7a1ffb3e72730362f1d079276f40155b",
     "src/Parchwell.Scenarios/packages.lock.json": "dfa542e0f44824734c5a13615d1afbdc34a69da040edaeb9d9bec9e7a16533b4",
     "src/Parchwell.Verifier/AssemblyInfo.cs": "6e4b9fa6a51796a8cfbf259852e73263bf241b124c1cd504344c023f2a392978",
+    "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifactCodec.cs": "0b61f41ad55754a1342ce837aae7e8e7296dfce4181a163395b2a7e27d0b0f68",
+    "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifactReader.cs": "9f894b2dd8178af0cdbb965c27c1d4edcb62d356163ab61ac8d48ad82adc5840",
+    "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifacts.cs": "ab9e5c90b886c8fd07bda7fa85956f5d0b235a38c285a3f1f304ace6879a13dc",
+    "src/Parchwell.Verifier/Common/Consumer/ConsumerRecordLimits.cs": "7e772a07fcc98dc19a3524d82f7e3bd37467009d7f46fa9b05b503311d78a16c",
+    "src/Parchwell.Verifier/Common/Consumer/ConsumerVerificationPlan.cs": "39fea56cdc8688df7d6c47412ec80f9ebeb8e3cf63fcd36a92475d7c9abd4860",
     "src/Parchwell.Verifier/Common/Contracts/CheckAssessment.cs": "954935825eb8acf1f92c912c19afdbc0e140b272504d63d2c71fcc4b4e193edc",
     "src/Parchwell.Verifier/Common/Contracts/RunIdentity.cs": "53b552ed4a123fbcb128a20715225a4efc778e464df52e2fb951bd4bf76cd019",
     "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSession.cs": "61699a578df86cf471981b44eda8d28bd712c21d38dd9b755472176913790354",
@@ -111,11 +342,11 @@
     "src/Parchwell.Verifier/Common/Phase/B10SweepEvidence.cs": "92fd2a1cfb72e9454682a8b6ca39c90f13dd8a87a071f9350cdca76fd748f9a5",
     "src/Parchwell.Verifier/Common/Phase/PhaseIdentity.cs": "f9a5baf696556088f72d8891a8da83348eb72a4fa944c5d7c61b3c4d6d06941b",
     "src/Parchwell.Verifier/Common/Phase/PhasePaths.cs": "fbcfeda8b4a94f0b6876702adcfa50a4f09ad9be224c4b2717f5d6a9bfd5b53a",
-    "src/Parchwell.Verifier/Common/Phase/PhaseWireCodec.cs": "396f558b1405638fd16b9e07a3c56fd1f0f502020f1114c73825d415bc776640",
+    "src/Parchwell.Verifier/Common/Phase/PhaseWireCodec.cs": "1c6e89e4626ab4c3e9ed4b4db673b902c5e0958c2dc36a4cad528b1c61395e61",
     "src/Parchwell.Verifier/Common/Phase/ProducerRegistration.cs": "2a4dda01365845fd94ae48aa3d77f0561e6aebf81957a5b26c530571855b3068",
     "src/Parchwell.Verifier/Common/Results/B10ProducerObservationsCodec.cs": "173cec5ddafd634b54270548fd8b7127ff12f6c1d8ae3c6bd1d9831f4dc998ff",
-    "src/Parchwell.Verifier/Common/Results/VerifierResult.cs": "cea4db52bde66bdd3491471bb42e22116a2bdc3b3f61ebbb489bd73cca79fa1f",
-    "src/Parchwell.Verifier/Common/Results/VerifierResultCodec.cs": "e88d9c8a5b7bff1fff36f2c7c36ea4d3cb82ba526a49172c0127c9b03c66088e",
+    "src/Parchwell.Verifier/Common/Results/VerifierResult.cs": "1a8c2a2b44f43a6f7971f03e782ff1d872644277a299bf8182fe325fc4d433d4",
+    "src/Parchwell.Verifier/Common/Results/VerifierResultCodec.cs": "322c636f7a47fc97fed7f12d163e1a70390355c2a047b5c5123639c7f1c8cf0b",
     "src/Parchwell.Verifier/Common/Scenario/FileSystemScenarioSource.cs": "eba56bc542517e3f609c496dbf8de16b3a873cec79144047afadcc0e4da56373",
     "src/Parchwell.Verifier/Common/Serialization/DeploymentJson.cs": "a4063de459234656d6d250b1a5e57fca959bb7ae8e52446286dac2f483704dec",
     "src/Parchwell.Verifier/Common/Serialization/StrictJson.cs": "0db8159e387ecb3466c1cda72dcd129974740f78faa42542b0aff0fb97bfad4d",
@@ -141,13 +372,13 @@
     "src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs": "6a4872672703e12d6368a8e027b7fe8accf38630731da74fa610b21d9b0ae939",
     "src/Parchwell.Verifier/ProbeGate/ProbeGateRequest.cs": "e3199ed7633543e25d1a4b2c8d4fa839382035eb750f24b57dadb6b4ff2049f2",
     "src/Parchwell.Verifier/ProbeGate/ProbeGateResult.cs": "26f62dc09a9af721e47df90a353e638cf117aa52cf9e05da726876c4bc310fc6",
-    "src/Parchwell.Verifier/Program.cs": "b187138fb3ab8a46e961d76c0844ff4efa362ea9150185eeafebe89ffde98fa9",
+    "src/Parchwell.Verifier/Program.cs": "3aca2a97ba0369fe43b70c95284c4b895cedb31d44273b024e5cf5077e5fabaf",
     "src/Parchwell.Verifier/StartLine/B10SweepLineHandler.cs": "0ec9027a631af6f0646b4fbe5079580f22b71c69f2939a9be1bffd55a0a09caf",
     "src/Parchwell.Verifier/StartLine/BrokerInventoryCodec.cs": "4d3095eba706234f73739afb2c6b4b5d4b4a67b3a42e619b4f3476c0c1092041",
-    "src/Parchwell.Verifier/StartLine/StartLineHandler.cs": "d433a7ae9726b53e4291eae297bccb6f78271b339e4d08c31237ef5109a4fa75",
+    "src/Parchwell.Verifier/StartLine/StartLineHandler.cs": "d9b11257f06b305d3397a3899af365ee18c1038b577d72ca9667bbed03e285d7",
     "src/Parchwell.Verifier/VerifierCompletionState.cs": "87bb1a0cf9c156777c5cab123dd09e8a95b494e9040954797b68ee37010a6ad6",
-    "src/Parchwell.Verifier/VerifierHostOptions.cs": "5a21e99828a85a2799bd6fae778f3baeb0a733d62c98e8f4be0716f342359b59",
-    "src/Parchwell.Verifier/VerifierHostOptionsValidator.cs": "078e37d9acb3d3c7d6beb95c9587d6032c3c36c7f16114e69d633fc9b5934525",
+    "src/Parchwell.Verifier/VerifierHostOptions.cs": "a2f31c034db30df79808e198d429a09815f57766713cad1bdd53f1d5ee70f1f9",
+    "src/Parchwell.Verifier/VerifierHostOptionsValidator.cs": "d9dc2860c44e166ae38975f5ca0c81a959f859c6ad33aa819e42968413b13a59",
     "src/Parchwell.Verifier/VerifierWorker.cs": "1ad54c9ff68f5cc35a28076cfd075098c0521854074db7107bdc282f4e3a47cc",
     "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptClassification.cs": "5a19508461b7a112baed9bc861503eb75376ee110e986ed524b8b44ef0b44378",
     "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptDiagnostics.cs": "a3c787c0101ead81ceef9099d4af2f482a10d9740a818bb5d23ff8e4fa5ab146",
@@ -164,6 +395,11 @@
     "src/Parchwell.Verifier/VerifyRun/B04/B04EvidenceRecorder.cs": "1fd4571c9d4e33df692115e7c36ea5fff253a1aef35dabfec967266ee18bcfa6",
     "src/Parchwell.Verifier/VerifyRun/B10LateObservationDiagnostics.cs": "79e54486c7f8a9d1983563a7e46caa6f93994a2a67ea3d4c6850733408078210",
     "src/Parchwell.Verifier/VerifyRun/Configuration/RegisteredProducerConfigurationResolver.cs": "c47970a4cf28d10efecb369dbc3e034c2dc0e90d3dae91de83fd64ec60a22a5a",
+    "src/Parchwell.Verifier/VerifyRun/Consumer/ConsumerRepeatExtension.cs": "6d564c03b57b02c2ac6ab280107bce2aaa8c477ac4a592044dc0c9159682c114",
+    "src/Parchwell.Verifier/VerifyRun/Consumer/IRepeatResultExtension.cs": "a7549004b04f7d80171cd7366674abc15ca6bedb09786106318fd6c052d3ba7b",
+    "src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs": "6f07335ff44e6f72b972cd338833e3bd1fb3c2060ce1a4b47c61292ffbffd89d",
+    "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerCommittedOffsetReader.cs": "3b3275e5753035dd9f8b25496037368e28770f4c4110bcfcba0907344b4553ac",
+    "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerOffsetRead.cs": "cfadc39c9393d8c6c78f7a920490b17f6f5c29d220d44b67b0b88c580f2691fc",
     "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationJudgeHandler.cs": "7d9329fec7609b5238f7f01f65d15948bdb52ad5cca44abb97c80c9e460c529f",
     "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationJudgeHost.cs": "e36235d5999d47a7966e71f56c61d1505232cb3232b88e0fed2cf9a123466462",
     "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationJudgeOptions.cs": "30ebf6c5e0f8674d29ba1ecd2c00ef71adbd8528c43db53445ebd1246bc7a11d",
@@ -196,7 +432,7 @@
     "src/Parchwell.Verifier/VerifyRun/SingleAction/SingleActionScenarioResolver.cs": "3c3ee661f083232f05a4bd4d4dad2eb870c7f1cb6a57b1f9537e6cb022bbb77e",
     "src/Parchwell.Verifier/VerifyRun/Storage/BlobLedgerArtifactSource.cs": "33a412d197586445cb00f9a9b19e2d3efd91cac8727df96cc313296109402957",
     "src/Parchwell.Verifier/VerifyRun/Storage/ILedgerArtifactSource.cs": "fe80ebf52231a21f79bfe34530dfd8faa4400e5f4c3108c764c10403c2dd7c78",
-    "src/Parchwell.Verifier/VerifyRun/VerifyRunHandler.cs": "46987685ff2511fba4bfb2efaafa2339b40843b653fb242b9f010292d739aa61",
+    "src/Parchwell.Verifier/VerifyRun/VerifyRunHandler.cs": "3934db9b2c3a9ea973fbf63e249651b30fc3339ba3b90962c413b09b85383eed",
     "src/Parchwell.Verifier/VerifyRun/Window/ConsumedRecordBudget.cs": "7d7376af1ca61985e716fd949159b3218fcee967cfd22c4278104e368747f1b8",
     "src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs": "b2012594b326ea2afd577d123867af37e0078e0f1da961a9dda5d2555aaefcca",
     "src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs": "87d5e8057535d0a2895d19c0a45fdc90df491787869ade1dfb08a2c6c0695c98",
@@ -212,6 +448,19 @@
     "tests/Parchwell.Verifier.Tests/A01/WorkloadRecorderTests.cs": "e4555eeba7bee230f47f4e1ddb97338d81bf9fee640db453a082db3fac198e43",
     "tests/Parchwell.Verifier.Tests/Authentication/VerifierKafkaTokenProviderRetryTests.cs": "a0e7bb8f7bab5f2f8324a7dbe266bdd5a28bacfabb3e6233c32fbf93f996a4c3",
     "tests/Parchwell.Verifier.Tests/B04/B04EvidenceRecorderTests.cs": "a2cca43cd9a7b5a7affde0597fdfa4f3e85e4d8a2a876d132492f47174d3f741",
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerArtifactTests.cs": "d132b70d93c40210bb082f591edca3696865f02a625f012a486aa4d91615f4b6",
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerExtensionTests.cs": "2e7515888feeb9567df7f3aaf010c5e965ebd25f914248ba8cc83a8a624de887",
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementFixture.cs": "6f508fa7a0ca17e66d10f32ae15cefb2ed19a67162c4dcfc9847509b1f2294db",
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": "a6e438bb37f3eb00955e87330bdbd033b1f3317916fcd26a7c82d67b2e6eca0d",
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerWireFixture.cs": "3eb6be4374b4b9b7a4f724cd95d8a5d09a3bf3c885f1478c1879cbe0b71fe1a9",
+    "tests/Parchwell.Verifier.Tests/Consumer/HostOptionsTests.cs": "e81fc1b25198c2ab80b07a81fd03645add29bd52e199b16fc172898042dc7062",
+    "tests/Parchwell.Verifier.Tests/Consumer/IntegrationB04BaseFixtures.cs": "18155738be160a48c88d36aa00c24fd765c71f8667b079a7d70f7b8c74d06311",
+    "tests/Parchwell.Verifier.Tests/Consumer/IntegrationConsumerHostTests.cs": "da52e7806fa3042eb5609ccad16cc225a55bbf26538ed300a3dc925d760f05ec",
+    "tests/Parchwell.Verifier.Tests/Consumer/OffsetAuthenticationTests.cs": "34702028d2dc8ebcf0100ddec740670c60c0f57b01f558b1f09e7215d12da570",
+    "tests/Parchwell.Verifier.Tests/Consumer/OffsetReaderTests.cs": "c0fa74c0345d036f3f2be9bec030929f0aa729a6204d21e43944372d9c147fba",
+    "tests/Parchwell.Verifier.Tests/Consumer/PhaseWireBaseFixtures.cs": "f98cd76eb2b6fbb4c54db0e8977265d2fb7a4f1acfc9725333d70fb611c13b6e",
+    "tests/Parchwell.Verifier.Tests/Consumer/PhaseWireConsumerTests.cs": "221350313eb2020c2bd1e40355b6c0728b719493e83a73b8f4a15195d4c0399e",
+    "tests/Parchwell.Verifier.Tests/Consumer/StartSnapshotTests.cs": "c0bf1695e8e14e7e54b716d213a07f01e22e3c7acd72f9f25550b3d59af95a31",
     "tests/Parchwell.Verifier.Tests/Host/B10EarlierRepeatExclusionTests.cs": "48c8e18f0b6ca5b0f4d1c50f38e797f85dfff58b6546b261d24b4661ccd448ff",
     "tests/Parchwell.Verifier.Tests/Host/B10ExpectedProducerJobsTests.cs": "46cdbfea42d395729283a2f9c403269ba10eb0256c350ca73d3d6adcfc5a582a",
     "tests/Parchwell.Verifier.Tests/Host/B10FinalHostTests.cs": "b23938fcf6d20c323dbc53adae963508544753aedda03ffa1a526365da0ebdda",
