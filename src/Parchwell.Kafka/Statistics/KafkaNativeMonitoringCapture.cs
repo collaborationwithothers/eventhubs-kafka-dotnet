@@ -67,11 +67,11 @@ public sealed class KafkaNativeMonitoringFactory
 /// <summary>Coordinates bounded native monitoring capture for one pod.</summary>
 public sealed class KafkaNativeMonitoringCoordinator
 {
-    private const int MaxReferences = 4096;
-    private const int MaxDiagnostics = 128;
-    private const int MaxReportBytes = 1024 * 1024;
-    private const int MaxIndexBytes = 1024 * 1024;
-    private const long MaxRawBytes = 128L * 1024 * 1024;
+    internal const int MaxReferences = 4096;
+    internal const int MaxDiagnostics = 128;
+    internal const int MaxReportBytes = 1024 * 1024;
+    internal const int MaxIndexBytes = 1024 * 1024;
+    internal const long MaxRawBytes = 128L * 1024 * 1024;
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
     private readonly object _gate = new();
     private readonly IKafkaNativeMonitoringStore _store;
@@ -81,6 +81,7 @@ public sealed class KafkaNativeMonitoringCoordinator
     private readonly List<KafkaNativeMonitoringLifetime> _clients = [];
     private readonly Channel<Work> _queue = Channel.CreateBounded<Work>(new BoundedChannelOptions(128) { SingleReader = true, FullMode = BoundedChannelFullMode.Wait });
     private readonly Task _worker;
+    private readonly Func<Task>? _beforeProcess;
     private long _rawBytes;
     private int _references;
     private int _diagnostics;
@@ -90,8 +91,9 @@ public sealed class KafkaNativeMonitoringCoordinator
     private bool _gap;
     private KafkaNativeMonitoringLifetime? _refusedLifetime;
 
-    internal KafkaNativeMonitoringCoordinator(IKafkaNativeMonitoringStore store, KafkaStatisticsMetrics metrics, TimeProvider time, KafkaNativeMonitoringIdentity identity)
+    internal KafkaNativeMonitoringCoordinator(IKafkaNativeMonitoringStore store, KafkaStatisticsMetrics metrics, TimeProvider time, KafkaNativeMonitoringIdentity identity, Func<Task>? beforeProcess = null)
     {
+        _beforeProcess = beforeProcess;
         _store = store;
         _metrics = metrics;
         _time = time;
@@ -171,11 +173,24 @@ public sealed class KafkaNativeMonitoringCoordinator
         }
     }
 
+    internal void SetRetainedCountsForTest(int references, long rawBytes)
+    {
+        lock (_gate)
+        {
+            _references = references;
+            _rawBytes = rawBytes;
+        }
+    }
+
     private async Task ProcessAsync()
     {
         await foreach (Work work in _queue.Reader.ReadAllAsync().ConfigureAwait(false))
         {
-            try { Process(work); }
+            try
+            {
+                if (_beforeProcess is not null) await _beforeProcess().ConfigureAwait(false);
+                Process(work);
+            }
             catch (Exception) { Gap(work.Client, "processing_failure"); }
         }
     }
@@ -286,7 +301,7 @@ public sealed class KafkaNativeMonitoringCoordinator
         }
         var clients = _clients.Select(c => new ClientIndex(c.Ordinal, c.Identity.Role.ToString(), c.Identity.ClientId, c.Name,
             c.BuildStatus, c.Count, c.Sources, c.Diagnostics.Order(StringComparer.Ordinal).ToArray(), !c.Gap && c.Closed && c.CompleteFlag, c.ExportTailStatus)).ToArray();
-        byte[] index = JsonSerializer.SerializeToUtf8Bytes(new Index(1, _identity, clients, !_gap && !_truncated && clients.All(c => c.CaptureComplete), _truncated), JsonOptions);
+        byte[] index = JsonSerializer.SerializeToUtf8Bytes(new Index(1, _identity, clients, !_gap && !_truncated && clients.Length > 0 && clients.All(c => c.CaptureComplete), _truncated), JsonOptions);
         if (index.Length > MaxIndexBytes) throw new InvalidOperationException("Native monitoring index exceeds its limit.");
         await _store.CreateAsync($"{prefix}/index.json", index, cancellationToken).ConfigureAwait(false);
     }
