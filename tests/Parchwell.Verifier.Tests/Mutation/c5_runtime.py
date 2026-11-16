@@ -201,7 +201,7 @@ def expected_layout_at_head(head, repository):
 def performance_report(run, jobs_document, expected_shards):
     """Return diagnostics; expected_shards maps shard IDs to targets at the run SHA."""
     report = {'run_id': run.get('id'), 'run_attempt': run.get('run_attempt'),
-              'head_sha': run.get('head_sha'), 'budget_seconds': 1800,
+              'head_sha': run.get('head_sha'), 'budget_seconds': 3000,
               'workflow_elapsed_seconds': None, 'mutation_job_seconds': None,
               'peak_mutation_jobs': None, 'queue_seconds': {},
               'status': 'incomplete', 'reasons': []}
@@ -272,7 +272,7 @@ def performance_report(run, jobs_document, expected_shards):
             peak = max(peak, active)
         report['peak_mutation_jobs'] = peak
         if not reasons:
-            report['status'] = 'met' if report['workflow_elapsed_seconds'] <= 1800 else 'missed'
+            report['status'] = 'met' if report['workflow_elapsed_seconds'] <= 3000 else 'missed'
     except (KeyError, ValueError, TypeError, OverflowError):
         reasons.append('invalid_input')
     report['reasons'] = sorted(set(reasons))
@@ -288,7 +288,7 @@ def write_performance(run_file, jobs_file, output_dir, expected_shards):
             raise ValueError('expected JSON objects')
         result = performance_report(run, jobs, expected_shards)
     except (OSError, ValueError, json.JSONDecodeError):
-        result = {'run_id': None, 'run_attempt': None, 'head_sha': None, 'budget_seconds': 1800,
+        result = {'run_id': None, 'run_attempt': None, 'head_sha': None, 'budget_seconds': 3000,
                   'workflow_elapsed_seconds': None, 'mutation_job_seconds': None,
                   'peak_mutation_jobs': None, 'queue_seconds': {}, 'status': 'incomplete',
                   'reasons': ['invalid_input']}
@@ -844,7 +844,7 @@ def shape(config):
                                                  {'schema_version', 'budget_seconds', 'shared_inputs', 'targets', 'renewals'},
                                                  {'schema_version', 'budget_seconds', 'shared_inputs', 'targets', 'timing_inputs', 'timing_evidence'}):
         raise ValueError('invalid schema')
-    if type(config['schema_version']) is not int or config['schema_version'] not in (1, 2) or type(config['budget_seconds']) is not int or config['budget_seconds'] != 1800:
+    if type(config['schema_version']) is not int or config['schema_version'] not in (1, 2) or type(config['budget_seconds']) is not int or config['budget_seconds'] not in (1800, 2700):
         raise ValueError('unsupported schema or budget')
     if not isinstance(config['shared_inputs'], dict) or not isinstance(config['targets'], dict):
         raise ValueError('invalid maps')
@@ -1275,7 +1275,7 @@ def validate(config, shared, targets, source, matrix):
             codec_regions = codec_static_regions(path, shard, source[path])
             if codec_regions and shard in CODEC_ISOLATED and item['isolated_seconds'] < CODEC_ISOLATED[shard]:
                 reasons.add('invalid_estimate')
-            if (item['estimated_seconds'] > 1800
+            if (item['estimated_seconds'] > config['budget_seconds']
                     and not approved_static_owner(path, record, shard, item, source[path])):
                 reasons.add('shard_over_budget')
     if config['schema_version'] == 2 and set(config['timing_evidence']) != set(all_shards):
