@@ -1,3 +1,4 @@
+using Parchwell.Verifier.VerifyRun.Consumer;
 using System.Security.Cryptography;
 using System.Text;
 using Confluent.Kafka;
@@ -113,7 +114,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
             IReadOnlyList<string> expectedBrokers=inventory.Value?.Brokers.Select(b=>b.Name).Order(StringComparer.Ordinal).ToArray()??[];
 
             VerifierKafkaSession? session=null;ITimer? safetyTimer=null;using var kafkaWork=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            byte[]? resultBytes=null;VerifierResultStatus status=VerifierResultStatus.Incomplete;string coverage="unavailable";bool consumerComplete=true;DateTimeOffset consumerDeadline=clock.GetUtcNow();
+            byte[]? resultBytes=null;VerifierResultStatus status=VerifierResultStatus.Incomplete;string coverage="unavailable";bool consumerComplete=true;DateTimeOffset consumerDeadline=default;
             try
             {
                 var assessments=new List<CheckAssessment>();IReadOnlyDictionary<int,long>? ends=null;long origin=0;

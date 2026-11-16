@@ -4,7 +4,7 @@ using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.VerifyRun.Input;
 using Parchwell.Verifier.VerifyRun.Window;
 
-namespace Parchwell.Verifier.VerifyRun;
+namespace Parchwell.Verifier.VerifyRun.Consumer;
 
 internal interface IRepeatResultExtension
 {

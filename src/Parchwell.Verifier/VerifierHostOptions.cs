@@ -175,6 +175,6 @@ internal static class VerifierModeParser
             _ => default
         };
 
-        return value is "start-line" or "verify" or "judge" or "probe-gate" or "single-action-judge" or "b10-sweep" or "b10-final-sweep" or "b10-sweep-line" or "b10-abrupt-verify";
+        return value is "start-line" or "verify" or "consumer-verify" or "judge" or "probe-gate" or "single-action-judge" or "b10-sweep" or "b10-final-sweep" or "b10-sweep-line" or "b10-abrupt-verify";
     }
 }

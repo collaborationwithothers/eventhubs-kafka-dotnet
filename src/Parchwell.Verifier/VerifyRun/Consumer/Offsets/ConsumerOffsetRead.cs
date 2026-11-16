@@ -1,4 +1,4 @@
-namespace Parchwell.Verifier.Common.Consumer;
+namespace Parchwell.Verifier.VerifyRun.Consumer.Offsets;
 
 internal sealed record ConsumerObservedOffset(int Partition, long Offset, int ErrorCode);
 internal sealed record ConsumerOffsetRead(string Outcome, IReadOnlyList<int> RequestedPartitions,

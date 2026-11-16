@@ -27,7 +27,7 @@ internal static class ConsumerArtifactCodec
     }
     internal static ConsumerRow ReadRow(ReadOnlyMemory<byte> bytes)
     {
-        Require(bytes.Length+1<=65536); using JsonDocument doc=Document(bytes,65535);JsonElement x=doc.RootElement;
+        Require(bytes.Length+1<=ConsumerRecordLimits.MaximumRowBytes); using JsonDocument doc=Document(bytes,ConsumerRecordLimits.MaximumRowBytes-1);JsonElement x=doc.RootElement;
         string kind=S(x,"kind"), instance=S(x,"instance_id");long seq=Long(x,"row_sequence");Require(seq>=0);Version(x,kind);
         const string common="schema_version kind instance_id row_sequence ";
         switch(kind)
@@ -42,12 +42,12 @@ internal static class ConsumerArtifactCodec
             case "kill_intent":
                 Shape(x,common+"partition offset event_utc");return new(kind,instance,seq,Time(x,"event_utc"),NonnegativeInt(x,"partition"),NonnegativeLong(x,"offset"));
             case "commit":
-                Shape(x,common+"source outcome error_code error_reason submitted offsets event_utc");string source=S(x,"source"),outcome=S(x,"outcome");int error=Int(x,"error_code");string? reason=NullableString(x,"error_reason");Require(error!=0||reason is null);
-                IReadOnlyList<ConsumerCommitOffset>? submitted=x.GetProperty("submitted").ValueKind==JsonValueKind.Null?null:Offsets(x.GetProperty("submitted"),false);IReadOnlyList<ConsumerCommitOffset> offsets=Offsets(x.GetProperty("offsets"),true);
+                Shape(x,common+"source outcome error_code error_reason submitted offsets event_utc");string source=S(x,"source"),outcome=S(x,"outcome");int error=Int(x,"error_code");string? reason=NullableString(x,"error_reason");Require(error==0||reason is not null);
+                IReadOnlyList<ConsumerCommitOffset>? submitted=x.GetProperty("submitted").ValueKind==JsonValueKind.Null?null:Offsets(x.GetProperty("submitted"),false);ConsumerCommitOffset[] offsets=Offsets(x.GetProperty("offsets"),true);
                 Require(source is "callback" or "explicit");Require(outcome is "callback" or "returned" or "partition_exception" or "request_exception");
                 Require(source=="callback"?outcome=="callback"&&submitted is null:outcome!="callback"&&submitted is not null);
                 Require(outcome!="returned"||(error==0&&offsets.All(p=>p.ErrorCode==0)&&submitted!.SequenceEqual(offsets)));
-                Require(outcome!="partition_exception"||error==0);Require(outcome!="request_exception"||(error!=0&&offsets.Count==0));
+                Require(outcome!="partition_exception"||error==0);Require(outcome!="request_exception"||(error!=0&&offsets.Length==0));
                 return new(kind,instance,seq,Time(x,"event_utc"),Source:source,Outcome:outcome,ErrorCode:error,ErrorReason:reason,Submitted:submitted,Offsets:offsets);
             default: throw new FormatException("consumer_row_kind");
         }
@@ -71,7 +71,7 @@ internal static class ConsumerArtifactCodec
     }
     private static void ValidateUnique(JsonElement x){if(x.ValueKind==JsonValueKind.Object){var names=new HashSet<string>(StringComparer.Ordinal);foreach(JsonProperty p in x.EnumerateObject()){Require(names.Add(p.Name));ValidateUnique(p.Value);}}else if(x.ValueKind==JsonValueKind.Array)foreach(JsonElement v in x.EnumerateArray())ValidateUnique(v);}
     private static void Shape(JsonElement x,string fields){Require(x.ValueKind==JsonValueKind.Object);string[] names=fields.Split(' ',StringSplitOptions.RemoveEmptyEntries);Require(x.EnumerateObject().Select(p=>p.Name).Order(StringComparer.Ordinal).SequenceEqual(names.Order(StringComparer.Ordinal)));}
-    private static IReadOnlyList<ConsumerCommitOffset> Offsets(JsonElement x,bool error){Require(x.ValueKind==JsonValueKind.Array);return x.EnumerateArray().Select(p=>{Shape(p,error?"topic partition offset error_code":"topic partition offset");return new ConsumerCommitOffset(S(p,"topic"),NonnegativeInt(p,"partition"),Long(p,"offset"),error?Int(p,"error_code"):0);}).ToArray();}
+    private static ConsumerCommitOffset[] Offsets(JsonElement x,bool error){Require(x.ValueKind==JsonValueKind.Array);return x.EnumerateArray().Select(p=>{Shape(p,error?"topic partition offset error_code":"topic partition offset");return new ConsumerCommitOffset(S(p,"topic"),NonnegativeInt(p,"partition"),Long(p,"offset"),error?Int(p,"error_code"):0);}).ToArray();}
     private static void Version(JsonElement x,string kind){Require(Int(x,"schema_version")==1&&S(x,"kind")==kind);}
     private static string Role(JsonElement x){string role=S(x,"role");Require(role is "subject" or "witness");return role;}
     private static string S(JsonElement x,string key)=>String(x.GetProperty(key));

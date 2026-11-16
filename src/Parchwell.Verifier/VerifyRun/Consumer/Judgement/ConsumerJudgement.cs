@@ -1,3 +1,4 @@
+using Parchwell.Verifier.VerifyRun.Consumer.Offsets;
 using System.Text;
 using System.Text.Json;
 using Parchwell.Verifier.Common.Consumer;
@@ -27,7 +28,7 @@ internal static class ConsumerJudgement
             bool registrationShape=request.Artifacts.RegistrationCount==2&&request.Artifacts.Members.Count==2&&members.Length==2&&members.All(m=>!m.RegistrationInvalid)&&members.Count(m=>m.Registration!.Role=="subject")==1&&members.Count(m=>m.Registration!.Role=="witness")==1;
             bool registrationIdentity=members.All(m=>{ConsumerRegistration r=m.Registration!;return r.RunId==request.RunId&&r.ScenarioId==request.ScenarioId&&r.ConfigurationId==request.ConfigurationId&&r.Phase==request.Phase&&r.RepeatNumber==request.Repeat&&r.GroupId==request.GroupId&&r.PodName==r.InstanceId;});
             if(!registrationShape||!registrationIdentity)invalid.Add("consumer_registration_invalid");
-            if(!registrationShape)skip=true;
+            if(!registrationShape||!registrationIdentity)skip=true;
             if(!skip)
             {
                 foreach(ConsumerMember member in members)
@@ -42,7 +43,7 @@ internal static class ConsumerJudgement
                         if(row.Key is null||row.Sequence is null||ledger is null||ledger.Attempt.Key!=row.Key||ledger.Attempt.Sequence!=row.Sequence||!request.ConsumedRecords.Any(c=>c.Partition==row.Partition&&c.Offset==row.Offset&&c.InstanceId==row.ProducerInstanceId&&c.AttemptId==row.AttemptId))Add("consumer_processed_unjoined",member,row);
                     }
                     bool subject=member.Registration!.Role=="subject";int kills=member.Rows.Count(r=>r.Kind=="kill_intent");
-                    bool stopped=subject&&request.Plan.KillCount is int n?member.Rows.LastOrDefault()?.Kind=="kill_intent"&&kills==1&&member.Completion is null&&member.Rows.Count(r=>r.Kind=="processed")==n-1:kills==0&&member.Completion is not null;
+                    bool stopped=subject&&request.Plan.KillCount is int n?member.Rows.Count>0&&member.Rows[^1].Kind=="kill_intent"&&kills==1&&member.Completion is null&&member.Rows.Count(r=>r.Kind=="processed")==n-1:kills==0&&member.Completion is not null;
                     if(!stopped)Add("consumer_stop_invalid",member);
                 }
                 if(!ValidStart(request,members))invalid.Add("consumer_start_assignment_invalid");
@@ -68,7 +69,7 @@ internal static class ConsumerJudgement
         var block=new Dictionary<string,object?>
         {
             ["schema_version"]=1,["status"]=Status(status),["reasons"]=reasons,["group_id"]=request.GroupId,["kill_count"]=request.Plan.KillCount,
-            ["members"]=members.OrderBy(m=>m.Registration!.Role,StringComparer.Ordinal).Select(m=>new {m.Registration!.Role,m.Registration.InstanceId,m.Registration.NodeName,Rows=m.Rows.Count,ProcessedRows=m.Rows.Count(r=>r.Kind=="processed"),Ending=m.Completion is not null?"completion_receipt":m.Rows.LastOrDefault()?.Kind=="kill_intent"?"kill_intent":"none"}).ToArray(),
+            ["members"]=members.OrderBy(m=>m.Registration!.Role,StringComparer.Ordinal).Select(m=>new {m.Registration!.Role,m.Registration.InstanceId,m.Registration.NodeName,Rows=m.Rows.Count,ProcessedRows=m.Rows.Count(r=>r.Kind=="processed"),Ending=m.Completion is not null?"completion_receipt":m.Rows.Count>0&&m.Rows[^1].Kind=="kill_intent"?"kill_intent":"none"}).ToArray(),
             ["offset_read"]=new {read.Outcome,read.RequestedPartitions,StartedUtc=Stamp(read.StartedUtc),EndedUtc=Stamp(read.EndedUtc),read.ErrorCode,read.Offsets},
             ["partitions"]=request.Window.Partitions.OrderBy(p=>p.Partition).Select(p=>new {p.Partition,p.Start,p.End,Observed=read.Outcome=="success"?(long?)read.Offsets.FirstOrDefault(o=>o.Partition==p.Partition)?.Offset:null}).ToArray(),
             ["diagnostics"]=diagnostics.Take(64).Select(d=>d with { Detail=Bound(d.Detail,d.Field) }).ToArray()

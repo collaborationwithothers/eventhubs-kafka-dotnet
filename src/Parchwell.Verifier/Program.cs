@@ -182,11 +182,11 @@ internal static partial class Program
             services.AddSingleton(provider =>
             {
                 var options = provider.GetRequiredService<IOptions<VerifierHostOptions>>().Value;
-                var limits = new InputLimits(options.MaxInputDepth!.Value, options.MaxArtifactBytes ?? options.MaxOutputBytes!.Value,
-                    options.MaxTotalInputBytes ?? long.MaxValue, options.MaxRowBytes ?? 65536,
-                    options.MaxRowsPerArtifact ?? 40000, options.MaxInputEntries ?? long.MaxValue, options.MaxDiagnosticBytes!.Value);
+                var limits = new InputLimits(options.MaxInputDepth!.Value, options.MaxArtifactBytes ?? ConsumerRecordLimits.MaximumBlobBytes,
+                    options.MaxTotalInputBytes ?? long.MaxValue, options.MaxRowBytes ?? ConsumerRecordLimits.MaximumRowBytes,
+                    options.MaxRowsPerArtifact ?? ConsumerRecordLimits.MaximumRowsPerBlob, options.MaxInputEntries ?? long.MaxValue, options.MaxDiagnosticBytes!.Value);
                 return new ConsumerArtifactReader(new BlobProducerArtifactStore(CreateBlobContainer(options, options.ConsumerRecordContainer!),
-                    options.MaxArtifactBytes ?? options.MaxOutputBytes!.Value), limits, options.BlobIoTimeout!.Value, provider.GetRequiredService<TimeProvider>());
+                    options.MaxArtifactBytes ?? ConsumerRecordLimits.MaximumBlobBytes), limits, options.BlobIoTimeout!.Value, provider.GetRequiredService<TimeProvider>());
             });
         }
         if (mode == "consumer-verify")
@@ -283,7 +283,7 @@ internal static partial class Program
         services.AddSingleton<IVerifierModeHandler, VerifyRunHandler>();
     }
 
-    private static void ValidateConsumerPlan(IServiceCollection services, IConfiguration configuration)
+    private static void ValidateConsumerPlan(IServiceCollection services, ConfigurationManager configuration)
     {
         if(configuration["Verifier:Mode"] != "consumer-verify") return;
         var options=new VerifierHostOptions();new VerifierHostOptionsSetup(configuration).Configure(options);
@@ -551,12 +551,12 @@ internal sealed class VerifierHostOptionsSetup : IConfigureOptions<VerifierHostO
             usedBudgets.UnionWith(KafkaBudgets);
         }
 
-        if (mode is "probe-gate" or "verify" or "judge" or "b10-sweep-line" or "b10-sweep" or "b10-final-sweep" or "b10-abrupt-verify")
+        if (mode is "consumer-verify" or "probe-gate" or "verify" or "judge" or "b10-sweep-line" or "b10-sweep" or "b10-final-sweep" or "b10-abrupt-verify")
         {
             usedBudgets.Add(nameof(VerifierHostOptions.IoTimeout));
         }
 
-        if (mode is "verify" or "b10-sweep" or "b10-final-sweep" or "b10-abrupt-verify")
+        if (mode is "consumer-verify" or "verify" or "b10-sweep" or "b10-final-sweep" or "b10-abrupt-verify")
         {
             usedBudgets.Add(nameof(VerifierHostOptions.SafetyStop));
         }
@@ -623,7 +623,7 @@ internal sealed class VerifierHostOptionsSetup : IConfigureOptions<VerifierHostO
         if (property.Equals(nameof(VerifierHostOptions.MaxConsumedRecords), StringComparison.OrdinalIgnoreCase)
             || property.Equals(nameof(VerifierHostOptions.MaxConsumedBytes), StringComparison.OrdinalIgnoreCase))
         {
-            return mode is "verify" or "b10-sweep" or "b10-final-sweep" or "b10-abrupt-verify";
+            return mode is "consumer-verify" or "verify" or "b10-sweep" or "b10-final-sweep" or "b10-abrupt-verify";
         }
 
         return !IsBudget(property) || usedBudgets.Contains(property);

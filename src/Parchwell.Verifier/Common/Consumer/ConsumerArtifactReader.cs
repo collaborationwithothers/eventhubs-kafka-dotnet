@@ -18,7 +18,7 @@ internal sealed class ConsumerArtifactReader(IProducerArtifactStore store, Input
             {
                 artifact=marker;byte[]? registrationBytes=await Read(marker).ConfigureAwait(false);ConsumerRegistration? registration=null;bool registrationInvalid=false,recordInvalid=false;
                 string prefix=marker[..^"registration.json".Length];
-                try { registration=ConsumerArtifactCodec.ReadRegistration(registrationBytes??[]);string escaped=prefix[root.Length..^1];if(escaped.Contains('/')||registration.PodName!=Uri.UnescapeDataString(escaped)||registration.InstanceId!=registration.PodName)registrationInvalid=true; }
+                try { registration=ConsumerArtifactCodec.ReadRegistration(registrationBytes??[]);string escaped=prefix[root.Length..^1];if(escaped!=Uri.EscapeDataString(registration.PodName)||registration.InstanceId!=registration.PodName)registrationInvalid=true; }
                 catch(Exception e) when(e is FormatException or KeyNotFoundException or InvalidOperationException){registrationInvalid=true;}
                 var rows=new List<ConsumerRow>();string[] blobs=listing.Names.Where(n=>n.StartsWith(prefix+"record/",StringComparison.Ordinal)).Order(StringComparer.Ordinal).ToArray();
                 for(int index=0;index<blobs.Length;index++)
@@ -34,9 +34,9 @@ internal sealed class ConsumerArtifactReader(IProducerArtifactStore store, Input
                         catch(Exception e) when(e is FormatException or KeyNotFoundException or InvalidOperationException){recordInvalid=true;}
                         start=end+1;
                     }
-                    if(lineCount>40000||(index<blobs.Length-1&&lineCount!=40000))recordInvalid=true;
+                    if(lineCount>ConsumerRecordLimits.MaximumRowsPerBlob||(index<blobs.Length-1&&lineCount!=ConsumerRecordLimits.MaximumRowsPerBlob))recordInvalid=true;
                 }
-                if(blobs.Length==0)recordInvalid=true;
+                if(readCompletions&&blobs.Length==0)recordInvalid=true;
                 ConsumerCompletion? completion=null;
                 if(readCompletions)
                 {
@@ -50,7 +50,7 @@ internal sealed class ConsumerArtifactReader(IProducerArtifactStore store, Input
             }
             return new(members,count,false,diagnostics);
         }
-        catch(Exception e) when(!token.IsCancellationRequested && e is RequestFailedException or OperationCanceledException or InputLimitExceededException or IOException)
+        catch(Exception e) when(!token.IsCancellationRequested && e is RequestFailedException or OperationCanceledException or InputLimitExceededException or IOException or TimeoutException)
         { diagnostics.Add(new("consumer_record_unavailable",Artifact:artifact,Detail:e.GetType().Name));return new(members,count,true,diagnostics); }
         async Task<byte[]?> Read(string name){byte[]? bytes=await Bounded(t=>store.ReadBoundedAsync(name,limits.MaxArtifactBytes,t),token).ConfigureAwait(false);if(bytes is not null){if(bytes.LongLength>limits.MaxArtifactBytes)throw new InputLimitExceededException("consumer_artifact_bytes");budget.ConsumeBytes(bytes.LongLength);}return bytes;}
     }
