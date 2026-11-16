@@ -30,7 +30,8 @@ public sealed class ConsumerPhaseJudgeTests
         "reassignment-bad-reason", "reassignment-negative", "outcome-ok", "partitions-descending", "partitions-repeated",
         "timestamp-without-fraction", "not-attempted-with-error-code", "members-object", "reassignment-without-kill",
         "partition-negative", "offset-missing-error-code", "counts-extra-property", "committed-never-negative", "partitions-object",
-        "processed-again-above-extra-rows"
+        "processed-again-above-extra-rows", "complete-with-reasons", "duplicate-reasons", "incomplete-with-reassignment",
+        "not-attempted-with-started", "not-attempted-with-ended", "schema-0"
     };
 
     private static void BreakBlock(string change, JsonObject block)
@@ -79,6 +80,18 @@ public sealed class ConsumerPhaseJudgeTests
             case "committed-never-negative": counts()["committed_never_processed"] = -1; break;
             case "partitions-object": block["partitions"] = new JsonObject(); break;
             case "processed-again-above-extra-rows": counts()["processed_again"] = 3; break;
+            case "complete-with-reasons": block["reasons"] = new JsonArray("consumer_stop_invalid"); break;
+            case "duplicate-reasons":
+                block["status"] = "invalid"; block.Remove("counts");
+                block["reasons"] = new JsonArray("consumer_record_invalid", "consumer_record_invalid"); break;
+            case "incomplete-with-reassignment":
+                block["status"] = "incomplete"; block.Remove("counts"); block["reasons"] = new JsonArray("consumer_completion_deadline");
+                block["kill_count"] = 5; block["reassignment"] = Reassignment(5, null); break;
+            case "not-attempted-with-started":
+                offsetRead()["outcome"] = "not_attempted"; offsetRead()["ended_utc"] = null; offsetRead()["error_code"] = null; offsetRead()["offsets"] = new JsonArray(); break;
+            case "not-attempted-with-ended":
+                offsetRead()["outcome"] = "not_attempted"; offsetRead()["started_utc"] = null; offsetRead()["error_code"] = null; offsetRead()["offsets"] = new JsonArray(); break;
+            case "schema-0": block["schema_version"] = 0; break;
             default: throw new ArgumentOutOfRangeException(nameof(change));
         }
     }
@@ -116,7 +129,7 @@ public sealed class ConsumerPhaseJudgeTests
     }
 
     private static readonly string[] CountFields = ["ok", "loss", "phantom", "reported_failure", "duplicate", "reorder"];
-    private static readonly string[] StatusChanges = ["status-done", "reasons-unordered", "invalid-without-reasons", "unknown-reason", "incomplete-with-counts"];
+    private static readonly string[] StatusChanges = ["status-done", "reasons-unordered", "invalid-without-reasons", "unknown-reason", "incomplete-with-counts", "duplicate-reasons", "incomplete-with-reassignment"];
 
     [Theory]
     [MemberData(nameof(BrokenBlocks))]
@@ -402,6 +415,17 @@ public sealed class ConsumerPhaseJudgeTests
     }
 
     private static async Task<byte[]> Judge(Stores stores, string scenario) => (await JudgeAsync(stores.Copy(), scenario, "C0")).Bytes;
+
+    [Theory]
+    [InlineData("C1", "C0")]
+    [InlineData("C3", "C3")]
+    [InlineData("C0", "C1")]
+    public async Task Given_ConsumerCandidateWithAMismatchedPair_When_Read_Then_Rejects(string phase, string configuration)
+    {
+        JsonObject root = await JudgedRoot();
+        root["phase"] = phase; root["configuration_id"] = configuration;
+        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(Encoding.UTF8.GetBytes(root.ToJsonString())));
+    }
 
     public static TheoryData<int> ShapeCases => new() { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 

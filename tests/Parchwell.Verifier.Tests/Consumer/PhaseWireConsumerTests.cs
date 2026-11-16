@@ -96,6 +96,16 @@ public sealed class PhaseWireConsumerTests
     }
 
     [Theory]
+    [InlineData("C03", "C0", "C1")]
+    [InlineData("C03", "C3", "C3")]
+    [InlineData("C02", "C0", "C0")]
+    public void Given_JudgeReceiptWithAMismatchedConsumerPair_When_Written_Then_Rejects(string scenario, string phase, string configuration)
+    {
+        WorkerReceipt value = Receipt(scenario, phase, configuration, "judge");
+        Assert.ThrowsAny<Exception>(() => PhaseWireCodec.WriteReceipt(value));
+    }
+
+    [Theory]
     [InlineData("b10-sweep-line")]
     [InlineData("b10-sweep")]
     [InlineData("b10-final-sweep")]
