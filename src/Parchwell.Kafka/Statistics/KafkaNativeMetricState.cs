@@ -11,6 +11,7 @@ internal sealed class KafkaNativeMetricState
 {
     private const int MaxLifetimes = 32;
     private const int MaxTuples = 2000;
+    private const int MaxDiagnosticDetails = 252;
     private readonly KafkaStatisticsMetrics _metrics;
     private readonly KafkaStatisticsIdentity _identity;
     private readonly bool _compatibilityBacked;
@@ -20,6 +21,7 @@ internal sealed class KafkaNativeMetricState
     private readonly HashSet<(string Topic, int Partition)> _partitions = new();
     private readonly HashSet<KafkaNativeMetricDiagnostic> _diagnostics = [];
     private bool _admitted;
+    private int _diagnosticDetails;
 
     internal KafkaNativeMetricState(KafkaStatisticsMetrics metrics, KafkaStatisticsIdentity identity, bool compatibilityBacked)
     {
@@ -44,11 +46,11 @@ internal sealed class KafkaNativeMetricState
         {
             foreach (var diagnostic in projection.Diagnostics)
             {
-                if (_diagnostics.Count < 256) _diagnostics.Add(diagnostic);
+                AddDiagnostic(diagnostic);
             }
             if (!projection.IsValid || projection.Identity is null)
             {
-                _diagnostics.Add(new("invalid_projection", null));
+                AddDiagnostic(new("invalid_projection", null));
                 return;
             }
 
@@ -69,7 +71,7 @@ internal sealed class KafkaNativeMetricState
                     if (point.Value < previous.Value)
                     {
                         _counters[key] = previous with { Quarantined = true };
-                        _diagnostics.Add(new("counter_reset", null));
+                        AddDiagnostic(new("counter_reset", null));
                         continue;
                     }
                     _metrics.RecordNative(point, projection.Identity, _identity, point.Value - previous.Value);
@@ -91,6 +93,27 @@ internal sealed class KafkaNativeMetricState
             AddCanonical(points, "kafka.librdkafka.broker.disconnects", broker, brokerAddress, disconnectDelta);
             if (points.Count == 0 || !Admit(nativeIdentity, points)) return;
             foreach (var point in points) _metrics.RecordNative(point, nativeIdentity, _identity, point.Value);
+        }
+    }
+
+    private void AddDiagnostic(KafkaNativeMetricDiagnostic diagnostic)
+    {
+        // Reserve room for the three local failure codes and a truncation marker.
+        if (diagnostic.Field is null && diagnostic.Code is "invalid_projection" or "counter_reset" or "admission_limit" or "diagnostics_truncated")
+        {
+            _diagnostics.Add(diagnostic);
+        }
+        else if (!_diagnostics.Contains(diagnostic))
+        {
+            if (_diagnosticDetails < MaxDiagnosticDetails)
+            {
+                _diagnostics.Add(diagnostic);
+                _diagnosticDetails++;
+            }
+            else
+            {
+                _diagnostics.Add(new("diagnostics_truncated", null));
+            }
         }
     }
 
@@ -127,7 +150,7 @@ internal sealed class KafkaNativeMetricState
                 ? existing.Count + pair.Value.Count(tuple => !existing.Contains(tuple)) > MaxTuples
                 : pair.Value.Count > MaxTuples))
         {
-            _diagnostics.Add(new("admission_limit", null));
+            AddDiagnostic(new("admission_limit", null));
             return false;
         }
         if (!_admitted) { _metrics.NativeLifetimes++; _admitted = true; }

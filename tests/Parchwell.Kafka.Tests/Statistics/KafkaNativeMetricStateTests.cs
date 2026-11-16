@@ -91,6 +91,36 @@ public sealed class KafkaNativeMetricStateTests
         Assert.Contains(state.Diagnostics, item => item.Code == "admission_limit");
     }
 
+    [Fact]
+    public void Given_DiagnosticLimit_When_NewFailuresContinue_Then_TruncationAndCoverageGapsStayVisible()
+    {
+        using var metrics = new KafkaStatisticsMetrics();
+        var state = metrics.CreateNativeState(Identity("diagnostics"), false);
+        var details = Enumerable.Range(0, 252)
+            .Select(index => new KafkaNativeMetricDiagnostic("invalid_field", index.ToString(System.Globalization.CultureInfo.InvariantCulture)))
+            .ToImmutableArray();
+        state.Record(new KafkaNativeMetricProjection(false, Native, [], details));
+        Assert.Equal(253, state.Diagnostics.Length);
+        Assert.DoesNotContain(state.Diagnostics, item => item.Code == "diagnostics_truncated");
+
+        var overflow = new KafkaNativeMetricProjection(false, Native, [], [new("invalid_field", "overflow")]);
+        state.Record(overflow);
+        state.Record(overflow);
+        state.Record(Projection(Point(Tx, 5)));
+        state.Record(Projection(Point(Tx, 2)));
+        Assert.Equal(255, state.Diagnostics.Length);
+        Assert.Single(state.Diagnostics, item => item.Code == "diagnostics_truncated");
+        Assert.Contains(state.Diagnostics, item => item.Code == "invalid_projection");
+        Assert.Contains(state.Diagnostics, item => item.Code == "counter_reset");
+        for (var index = 0; index < 65; index++)
+            state.Record(Projection(Point(Timeout, 1, index.ToString(System.Globalization.CultureInfo.InvariantCulture))));
+        Assert.Equal(256, state.Diagnostics.Length);
+        Assert.Contains(state.Diagnostics, item => item.Code == "admission_limit");
+        state.Record(overflow);
+        Assert.Equal(256, state.Diagnostics.Length);
+        Assert.False(state.IsComplete);
+    }
+
     private static KafkaNativeMetricDefinition Definition(string name) => KafkaNativeMetricCatalogue.Definitions.Single(item => item.Name == name);
     private static KafkaNativeMetricPoint Point(KafkaNativeMetricDefinition definition, long value, string? broker = null, string? address = null) =>
         new(definition, value, broker, null, null, null, null, address);
