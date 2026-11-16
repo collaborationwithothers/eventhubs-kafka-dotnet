@@ -1,3 +1,4 @@
+using Parchwell.LoadGen.Tests.Host;
 using System.Collections.Immutable;
 using System.Reflection;
 using System.Text;
@@ -160,6 +161,8 @@ public sealed class IdleObservationLifecycleTests
             services.AddSingleton<IOptions<IdleObservationOptions>>(Microsoft.Extensions.Options.Options.Create(options));
             services.AddSingleton(options);
             services.AddSingleton<TimeProvider>(clock);
+            _ = NativeMonitoringFixture.Register(services, options.RunId, options.ScenarioId, options.ConfigurationId,
+                options.JobName, options.PodUid, options.SourceCommit, "ledger/synthetic/capture.json");
             services.AddSingleton<IIdleObservationPublication>(Publication);
             services.AddSingleton<IHostApplicationLifetime, Lifetime>();
             services.AddParchwellScenarios(value =>

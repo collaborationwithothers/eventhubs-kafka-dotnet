@@ -155,7 +155,8 @@ internal static class ProbeV2Host
         {
             try
             {
-                await monitoring.CompleteAsync(captureWritten && worker?.CleanupSucceeded == true && hostCleanup,
+                await monitoring.CompleteAsync(captureWritten && worker is { CleanupSucceeded: true } && hostCleanup &&
+                    !worker.Repeats.Any(value => value.Diagnostics.Contains("capture_limit", StringComparer.Ordinal)),
                     cleanupBudget?.Token ?? new CancellationToken(canceled: true)).ConfigureAwait(false);
             }
             catch (Exception exception) { await ReportFailure(logs, "native_monitoring_completion_failed", exception, options).ConfigureAwait(false); }

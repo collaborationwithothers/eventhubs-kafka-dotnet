@@ -1,3 +1,4 @@
+using Parchwell.LoadGen.Tests.Host;
 using System.Reflection;
 using System.Text.Json;
 using Confluent.Kafka;
@@ -205,6 +206,8 @@ public sealed class SingleActionLifecycleTests
             services.AddSingleton<IOptions<SingleActionHostOptions>>(Microsoft.Extensions.Options.Options.Create(options));
             services.AddSingleton(options);
             services.AddSingleton<TimeProvider>(clock);
+            _ = NativeMonitoringFixture.Register(services, options.RunId, options.ScenarioId, options.ConfigurationId,
+                options.JobName, options.PodUid, options.SourceCommit, "ledger/synthetic/capture.json");
             services.AddSingleton<ISingleActionPublication>(Publication);
             services.AddSingleton<IHostApplicationLifetime, Lifetime>();
             services.AddParchwellScenarios(value =>
