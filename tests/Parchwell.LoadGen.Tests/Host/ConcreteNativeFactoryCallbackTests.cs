@@ -22,7 +22,7 @@ namespace Parchwell.LoadGen.Tests.Host;
 #pragma warning disable CA1707
 public sealed class ConcreteNativeFactoryCallbackTests
 {
-    private static string Raw(int repeat, bool consumer) => $"{{\"name\":\"native\",\"client_id\":\"same-client\",\"type\":\"{(consumer ? "consumer" : "producer")}\",\"ts\":5,\"time\":1,\"age\":5,\"tx\":{(repeat == 0 ? 5 : 2)}}}";
+    private static string Raw(int repeat, bool consumer, bool cleanup = false) => $"{{\"name\":\"native\",\"client_id\":\"same-client\",\"type\":\"{(consumer ? "consumer" : "producer")}\",\"ts\":{(cleanup ? 6 : 5)},\"time\":1,\"age\":{(cleanup ? 6 : 5)},\"tx\":{(repeat == 0 ? 5 : 2)}}}";
 
     [Theory]
     [InlineData("single-producer")]
@@ -125,17 +125,22 @@ public sealed class ConcreteNativeFactoryCallbackTests
         Assert.Equal(2, callbacks.Count);
         Assert.Single(captured[0]());
         Assert.Equal(path.StartsWith("v2", StringComparison.Ordinal) ? 0 : 1, captured[1]().Count);
-        for (int i = 0; i < callbacks.Count; i++) callbacks[i](Raw(i, consumer)); // final native cleanup callback
+        for (int i = 0; i < callbacks.Count; i++) callbacks[i](Raw(i, consumer, cleanup: true)); // final native cleanup callback
         for (int i = 0; i < captured.Count; i++)
         {
             var values = captured[i]();
             int expected = path.StartsWith("v2", StringComparison.Ordinal) ? 1 : 2;
             Assert.Equal(expected, values.Count);
-            Assert.All(values, value => Assert.Equal(Raw(i, consumer), Encoding.UTF8.GetString(Convert.FromBase64String(value))));
+            Assert.Equal(Raw(i, consumer, cleanup: path.StartsWith("v2", StringComparison.Ordinal) && i == 1),
+                Encoding.UTF8.GetString(Convert.FromBase64String(values[0])));
+            if (expected == 2)
+                Assert.Equal(Raw(i, consumer, cleanup: true), Encoding.UTF8.GetString(Convert.FromBase64String(values[1])));
         }
         await monitoring.CompleteAsync(true, TestContext.Current.CancellationToken);
         using JsonDocument index = JsonDocument.Parse(Assert.Single(store.Objects, p => p.Key.EndsWith("/index.json", StringComparison.Ordinal)).Value);
         Assert.Equal(run, index.RootElement.GetProperty("identity").GetProperty("run_id").GetString());
+        Assert.Equal(phase, index.RootElement.GetProperty("identity").GetProperty("phase").GetString());
+        Assert.True(index.RootElement.GetProperty("capture_complete").GetBoolean());
         JsonElement clients = index.RootElement.GetProperty("clients");
         Assert.Equal(2, clients.GetArrayLength());
         for (int i = 0; i < 2; i++)
@@ -144,19 +149,39 @@ public sealed class ConcreteNativeFactoryCallbackTests
             Assert.Equal("same-client", client.GetProperty("client_id").GetString());
             Assert.Equal(role.ToString(), client.GetProperty("role").GetString());
             Assert.Equal("built", client.GetProperty("build_status").GetString());
-            int expected = path.StartsWith("v2", StringComparison.Ordinal) ? 1 : 2;
-            Assert.Equal(expected, client.GetProperty("report_count").GetInt32());
-            JsonElement sources = client.GetProperty("raw_sources");
-            Assert.Equal(expected, sources.GetArrayLength());
-            foreach (JsonElement source in sources.EnumerateArray())
+            Assert.Equal(2, client.GetProperty("report_count").GetInt32());
+            Assert.True(client.GetProperty("capture_complete").GetBoolean());
+            Assert.Empty(client.GetProperty("diagnostics").EnumerateArray());
+            JsonElement[] sources = client.GetProperty("raw_sources").EnumerateArray().ToArray();
+            Assert.Equal(2, sources.Length);
+            Assert.Equal(new long[] { 1, 2 }, sources.Select(source => source.GetProperty("capture_ordinal").GetInt64()));
+            bool selective = path.StartsWith("v2", StringComparison.Ordinal);
+            for (int ordinal = 1; ordinal <= 2; ordinal++)
             {
-                Assert.Equal("existing_capture", source.GetProperty("kind").GetString());
-                Assert.Equal(Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(Raw(i, consumer)))), source.GetProperty("sha256").GetString());
+                JsonElement source = sources[ordinal - 1];
+                bool selected = !selective || (i == 0 ? ordinal == 1 : ordinal == 2);
+                string raw = Raw(i, consumer, cleanup: ordinal == 2);
+                Assert.Equal(1, source.GetProperty("row_count").GetInt64());
+                if (selected)
+                {
+                    Assert.Equal("existing_capture", source.GetProperty("kind").GetString());
+                    Assert.Equal(Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(raw))), source.GetProperty("sha256").GetString());
+                }
+                else
+                {
+                    Assert.Equal("raw_chunk", source.GetProperty("kind").GetString());
+                    Assert.Equal(ordinal, source.GetProperty("report_ordinal").GetInt64());
+                    byte[] chunk = store.Objects[source.GetProperty("source").GetString()!];
+                    Assert.Equal(Convert.ToHexStringLower(SHA256.HashData(chunk)), source.GetProperty("sha256").GetString());
+                    using JsonDocument row = JsonDocument.Parse(Encoding.UTF8.GetString(chunk).TrimEnd('\n'));
+                    Assert.Equal(i + 1, row.RootElement.GetProperty("client_ordinal").GetInt32());
+                    Assert.Equal(ordinal, row.RootElement.GetProperty("report_ordinal").GetInt64());
+                    Assert.Equal(raw, row.RootElement.GetProperty("raw").GetString());
+                }
             }
-            if (expected == 1) Assert.Contains(client.GetProperty("diagnostics").EnumerateArray(), d => d.GetString() == "raw_capture_rejected");
         }
-        Assert.Single(store.Objects); // no duplicate raw objects
-        Assert.Equal(new long[] { 5, 2 }, measurements.Select(m => m.Value));
+        Assert.Equal(path.StartsWith("v2", StringComparison.Ordinal) ? 3 : 1, store.Objects.Count);
+        Assert.Equal(new long[] { 5, 2, 0, 0 }, measurements.Select(m => m.Value));
         Assert.All(measurements, measurement =>
         {
             Assert.Equal(scenario, measurement.Tags["scenario"]);
