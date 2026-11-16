@@ -16,17 +16,13 @@ jobs:
   diagnostic:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:
         shard:
           - b10-sweep
-          - b10-final-sweep-handler-p1
           - b10-final-sweep-handler-p2
-          - b10-final-sweep-handler-p3
-          - b10-final-sweep-handler-p4
-          - b10-final-sweep-handler-crossing
     env:
       SOURCE_SHA: ${{ inputs.source_sha }}
       SHARD: ${{ matrix.shard }}
@@ -83,7 +79,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py local-shard \
-            --shard "$SHARD" --output-dir "$DIAGNOSTIC_DIR/shard" --timeout 1800 \
+            --shard "$SHARD" --output-dir "$DIAGNOSTIC_DIR/shard" --timeout 2700 \
             2>&1 | tee "$DIAGNOSTIC_DIR/launcher.log"
           printf 'completed_unverified\n' > "$DIAGNOSTIC_DIR/status.txt"
       - name: Retain diagnostic evidence
