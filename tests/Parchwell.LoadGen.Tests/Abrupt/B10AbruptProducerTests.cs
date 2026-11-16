@@ -20,6 +20,7 @@ using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Input;
 using Parchwell.LoadGen.Run.Ledger;
 using Parchwell.LoadGen.Run.Workload;
+using Parchwell.LoadGen.Tests.Execution;
 using Parchwell.Scenarios;
 using Xunit;
 
@@ -88,6 +89,43 @@ public sealed class B10AbruptProducerTests
         Assert.NotNull(attempt.Terminal);
         Assert.Equal(["child_started", "warmup_prepared", "warmup_terminal", "prepared", "pre_acceptance_report", "terminal", "accepted"], fixture.Journal.Frames.Select(frame => frame.Kind));
         Assert.Equal(2, attempt.Terminal.Value.GetProperty("persistence_status").GetInt32());
+    }
+
+    [Theory]
+    [InlineData("delivered")]
+    [InlineData("failed")]
+    [InlineData("duplicate")]
+    [InlineData("unknown")]
+    [InlineData("rejected")]
+    [InlineData("exception")]
+    public async Task Given_ControlResend_When_Invoked_Then_RecordsOnlyObservedTransitions(string outcome)
+    {
+        await using var fixture = new Fixture(); fixture.Initialize();
+        var original = await fixture.Runner.InvokeProbe("same_instance", [1], null, 0, TestContext.Current.CancellationToken);
+        using var metrics = new RetryMetricCapture("run-1", "B10", "pod-1");
+        fixture.Native.OnProduce = (_, callback) =>
+        {
+            if (outcome == "rejected") throw new ProduceException<byte[], byte[]>(new Error(ErrorCode.Local_QueueFull), new DeliveryResult<byte[], byte[]>());
+            if (outcome == "exception") throw new InvalidOperationException("synthetic");
+            if (outcome == "unknown") return;
+            callback(Report(outcome == "failed" ? ErrorCode.Local_MsgTimedOut : ErrorCode.NoError,
+                outcome == "failed" ? PersistenceStatus.PossiblyPersisted : PersistenceStatus.Persisted));
+            if (outcome == "duplicate") callback(Report());
+        };
+        if (outcome == "exception")
+            await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Runner.InvokeProbe("same_instance", [1], original.AttemptId, 0, TestContext.Current.CancellationToken));
+        else
+            await fixture.Runner.InvokeProbe("same_instance", [1], original.AttemptId, 0, TestContext.Current.CancellationToken);
+        string[] expected = outcome switch
+        {
+            "rejected" => ["invoked", "synchronous_rejected"],
+            "exception" => ["invoked", "invocation_exception"],
+            "unknown" => ["invoked", "accepted"],
+            "failed" => ["invoked", "terminal_failed", "accepted"],
+            _ => ["invoked", "terminal_delivered", "accepted"]
+        };
+        Assert.Equal(expected, metrics.Events("same_instance_control"));
+        Assert.Empty(metrics.Events("cross_restart_successor"));
     }
 
     [Fact]
@@ -438,6 +476,7 @@ public sealed class B10AbruptProducerTests
     public async Task Given_SealedKillSelection_When_Replaying_Then_InvokesOnceWithoutRetryAndDrains(ErrorCode outcome)
     {
         await using var fixture = new Fixture(); await fixture.StartJournalAsync(); fixture.StartReports();
+        using var metrics = new RetryMetricCapture("run-1", "B10", "pod-1");
         fixture.Native.OnProduce = (_, callback) => callback(Report(outcome, outcome == ErrorCode.NoError ? PersistenceStatus.Persisted : PersistenceStatus.PossiblyPersisted));
         byte[] payload = GeneratedPayload();
         JsonElement selection = JsonSerializer.SerializeToElement(new[] { new
@@ -446,6 +485,7 @@ public sealed class B10AbruptProducerTests
             payload_length = payload.Length, payload_sha256 = Convert.ToHexStringLower(SHA256.HashData(payload))
         } });
         var artifacts = await fixture.Runner.RunSuccessorAsync(Profile(), fixture.Identity, fixture.Options, selection, fixture.Clock.GetUtcNow().AddSeconds(1), TestContext.Current.CancellationToken);
+        Assert.Equal(["invoked", outcome == ErrorCode.NoError ? "terminal_delivered" : "terminal_failed", "accepted"], metrics.Events("cross_restart_successor"));
         Assert.Single(fixture.Native.Calls); Assert.Equal(payload, fixture.Native.Calls[0].Value); Assert.Equal(1, fixture.Native.Disposals);
         Assert.Empty(fixture.Native.WarmupCalls);
         Assert.DoesNotContain(fixture.Journal.Frames, frame => frame.Kind == "warmup_prepared");
@@ -455,6 +495,44 @@ public sealed class B10AbruptProducerTests
         Assert.Equal(1, manifest.RootElement.GetProperty("data").GetProperty("inventory_count").GetInt32());
         Assert.Equal("predecessor-cross_restart-0", artifacts.Invocations[0].GetProperty("predecessor_attempt_id").GetString());
         Assert.NotEqual("predecessor-cross_restart-0", artifacts.Invocations[0].GetProperty("attempt_id").GetString());
+    }
+
+    [Theory]
+    [InlineData("rejected")]
+    [InlineData("exception")]
+    [InlineData("duplicate")]
+    [InlineData("unknown")]
+    public async Task Given_SuccessorResend_When_ProduceCompletesUnusually_Then_RecordsObservedTransitions(string outcome)
+    {
+        await using var fixture = new Fixture(); await fixture.StartJournalAsync(); fixture.StartReports();
+        using var metrics = new RetryMetricCapture("run-1", "B10", "pod-1");
+        fixture.Native.OnProduce = (_, callback) =>
+        {
+            if (outcome == "rejected") throw new ProduceException<byte[], byte[]>(new Error(ErrorCode.Local_QueueFull), new DeliveryResult<byte[], byte[]>());
+            if (outcome == "exception") throw new InvalidOperationException("synthetic");
+            if (outcome == "unknown") return;
+            callback(Report()); callback(Report());
+        };
+        byte[] payload = GeneratedPayload();
+        JsonElement selection = JsonSerializer.SerializeToElement(new[] { new
+        {
+            attempt_id = "predecessor-cross_restart-0", key = "B10/run-1/C1/1/cross_restart", sequence = 0,
+            payload_length = payload.Length, payload_sha256 = Convert.ToHexStringLower(SHA256.HashData(payload))
+        } });
+        Task operation = fixture.Runner.RunSuccessorAsync(Profile(), fixture.Identity, fixture.Options, selection,
+            fixture.Clock.GetUtcNow().AddSeconds(1), TestContext.Current.CancellationToken);
+        if (outcome == "rejected") await Assert.ThrowsAsync<ProduceException<byte[], byte[]>>(() => operation);
+        else if (outcome == "exception") await Assert.ThrowsAsync<InvalidOperationException>(() => operation);
+        else await Assert.ThrowsAsync<InvalidDataException>(() => operation);
+        string[] expected = outcome switch
+        {
+            "rejected" => ["invoked", "synchronous_rejected"],
+            "exception" => ["invoked", "invocation_exception"],
+            "unknown" => ["invoked", "accepted"],
+            _ => ["invoked", "terminal_delivered", "accepted"]
+        };
+        Assert.Equal(expected, metrics.Events("cross_restart_successor"));
+        Assert.Single(fixture.Native.Calls);
     }
 
     [Theory]

@@ -20,6 +20,7 @@ public sealed class RunExecutorRetryTests
     [InlineData(PersistenceStatus.NotPersisted)]
     public async Task Given_B10PolicyAndTimedOutSend_When_Executing_Then_RetriesOnceInDrainWithNewAttemptId(PersistenceStatus status)
     {
+        using var metrics = new RetryMetricCapture("run-1", "A01", "loadgen");
         await RunAsync(Profile(), B10, [(ErrorCode.Local_MsgTimedOut, status)], async (result, produced, rows) =>
         {
             Assert.Equal(0, result.ExitCode);
@@ -29,6 +30,7 @@ public sealed class RunExecutorRetryTests
             Assert.Equal(2, result.Manifest.AttemptCount);
             Assert.Null(result.Manifest.FirstUnexecutedOrdinal);
             Assert.Equal(2, produced.Count);
+            Assert.Equal(["invoked", "terminal_delivered", "accepted"], metrics.Events("timeout"));
             Assert.Equal(["instance-1-0", "instance-1-1"], result.Manifest.Inventory.Select(entry => entry.AttemptId));
             Assert.Equal([0L, 1L], result.Manifest.Inventory.Select(entry => entry.Ordinal));
             AttemptEntry retry = result.Manifest.Inventory[1];
@@ -52,6 +54,7 @@ public sealed class RunExecutorRetryTests
     [Fact]
     public async Task Given_B10PolicyAndRetryAlsoTimesOut_When_Executing_Then_StopsAfterOneRetry()
     {
+        using var metrics = new RetryMetricCapture("run-1", "A01", "loadgen");
         await RunAsync(Profile(), B10,
             [(ErrorCode.Local_MsgTimedOut, PersistenceStatus.PossiblyPersisted),
              (ErrorCode.Local_MsgTimedOut, PersistenceStatus.PossiblyPersisted)],
@@ -62,9 +65,43 @@ public sealed class RunExecutorRetryTests
                 Assert.Equal(2, result.Manifest.AttemptCount);
                 Assert.Equal(2, produced.Count);
                 Assert.Contains("application_retry_limit_reached", result.Manifest.Diagnostics);
+                Assert.Equal(["invoked", "terminal_failed", "accepted"], metrics.Events("timeout"));
                 Assert.All(rows, row => Assert.False(row.Delivered));
                 await Task.CompletedTask;
             });
+    }
+
+    [Theory]
+    [InlineData("rejected")]
+    [InlineData("exception")]
+    [InlineData("duplicate")]
+    [InlineData("unknown")]
+    public async Task Given_TimeoutRetry_When_ProduceCompletesUnusually_Then_RecordsObservedTransitions(string outcome)
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "loadgen-retry-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            await using var ledger = NewLedger(directory, out _, out _);
+            var native = DispatchProxy.Create<IProducer<byte[], byte[]>, ScriptedProducer>();
+            var scripted = (ScriptedProducer)(object)native;
+            scripted.Enqueue(ErrorCode.Local_MsgTimedOut, PersistenceStatus.PossiblyPersisted);
+            scripted.RetryOutcome = outcome;
+            using var metrics = new RetryMetricCapture("run-1", "A01", "loadgen");
+            var result = await new RunExecutor(() => native, ledger, TimeProvider.System).ExecuteAsync(
+                Profile(), Identity(), Options(directory, B10), TestContext.Current.CancellationToken);
+            Assert.Equal(2, scripted.Produced.Count);
+            string[] expected = outcome switch
+            {
+                "rejected" => ["invoked", "synchronous_rejected"],
+                "exception" => ["invoked", "invocation_exception"],
+                "unknown" => ["invoked", "accepted"],
+                _ => ["invoked", "terminal_delivered", "accepted"]
+            };
+            Assert.Equal(expected, metrics.Events("timeout"));
+            if (outcome == "exception") Assert.Contains("native_produce_exception", result.Manifest.Diagnostics);
+        }
+        finally { Directory.Delete(directory, recursive: true); }
     }
 
     [Fact]
@@ -240,6 +277,7 @@ public sealed class RunExecutorRetryTests
         private readonly List<Message<byte[], byte[]>> produced = [];
 
         public IReadOnlyList<Message<byte[], byte[]>> Produced => produced;
+        public string? RetryOutcome { get; set; }
 
         public void Enqueue(ErrorCode code, PersistenceStatus status) => outcomes.Enqueue((code, status));
 
@@ -249,9 +287,15 @@ public sealed class RunExecutorRetryTests
             {
                 case "Produce" when args is { Length: 3 }:
                     produced.Add((Message<byte[], byte[]>)args[1]!);
+                    if (produced.Count == 2 && RetryOutcome == "rejected")
+                        throw new ProduceException<byte[], byte[]>(new Error(ErrorCode.Local_QueueFull), new DeliveryResult<byte[], byte[]>());
+                    if (produced.Count == 2 && RetryOutcome == "exception") throw new InvalidOperationException("synthetic");
+                    if (produced.Count == 2 && RetryOutcome == "unknown") return null;
                     var (code, status) = outcomes.Count > 0 ? outcomes.Dequeue() : (ErrorCode.NoError, PersistenceStatus.Persisted);
                     ((Action<DeliveryReport<byte[], byte[]>>)args[2]!)(
                         new DeliveryReport<byte[], byte[]> { Error = new Error(code), Status = status });
+                    if (produced.Count == 2 && RetryOutcome == "duplicate")
+                        ((Action<DeliveryReport<byte[], byte[]>>)args[2]!)(new DeliveryReport<byte[], byte[]> { Error = new Error(code), Status = status });
                     return null;
                 case "Flush":
                     return 0;
