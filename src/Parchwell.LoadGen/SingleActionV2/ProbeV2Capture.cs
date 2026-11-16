@@ -115,21 +115,26 @@ internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, l
             result = "no_outcome";
         }
     }
-    internal void Statistics(string raw)
+    internal void Statistics(string raw) => TryStatistics(raw, out _);
+
+    internal bool TryStatistics(string raw, out long admittedSequence)
     {
+        admittedSequence = 0;
         lock (gate)
         {
             long order = ++sequence;
-            if (!terminal || statistics.Count != 0 || limit || ElapsedMs - terminalElapsed > limits.PostTerminalStatisticsSeconds * 1000L) return;
+            if (!terminal || statistics.Count != 0 || limit || ElapsedMs - terminalElapsed > limits.PostTerminalStatisticsSeconds * 1000L) return false;
             try
             {
                 var utf8 = new UTF8Encoding(false, true);
                 int bytes = utf8.GetByteCount(raw);
                 if (bytes > limits.MaxStatisticsReportBytes)
-                { MarkLimit(nameof(limits.MaxStatisticsReportBytes), bytes, limits.MaxStatisticsReportBytes); return; }
+                { MarkLimit(nameof(limits.MaxStatisticsReportBytes), bytes, limits.MaxStatisticsReportBytes); return false; }
                 statistics.Add(new(order, ElapsedMs, Convert.ToBase64String(utf8.GetBytes(raw))));
+                admittedSequence = order;
+                return true;
             }
-            catch (EncoderFallbackException) { MarkLimit("capture_rejected:StatisticsUtf8"); }
+            catch (EncoderFallbackException) { MarkLimit("capture_rejected:StatisticsUtf8"); return false; }
         }
     }
     internal void Log(LogMessage message)

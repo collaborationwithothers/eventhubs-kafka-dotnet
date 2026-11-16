@@ -7,6 +7,8 @@ using Microsoft.Extensions.Options;
 using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Telemetry;
+using Parchwell.Kafka.Statistics;
+using Parchwell.LoadGen.Run.Monitoring;
 using Parchwell.Scenarios;
 
 namespace Parchwell.LoadGen.SingleActionV2;
@@ -55,7 +57,29 @@ internal static class ProbeV2Host
                 value.ScenarioId = options.ScenarioId;
                 value.RunId = options.RunId;
             });
-        builder.Services.AddSingleton(provider => new ProbeV2SessionFactory(provider.GetRequiredService<KafkaAuthenticationFactory>(), options));
+        if (telemetry)
+        {
+            var nativeOptions = new KafkaNativeMonitoringOptions
+            {
+                BlobEndpoint = environment.GetValueOrDefault("NativeMonitoring__BlobEndpoint") ?? "",
+                BlobContainer = environment.GetValueOrDefault("NativeMonitoring__BlobContainer") ?? "",
+                RunId = environment.GetValueOrDefault("NativeMonitoring__RunId") ?? "",
+                Phase = environment.GetValueOrDefault("NativeMonitoring__Phase") ?? "",
+                ScenarioId = environment.GetValueOrDefault("NativeMonitoring__ScenarioId") ?? "",
+                ConfigurationId = environment.GetValueOrDefault("NativeMonitoring__ConfigurationId") ?? "",
+                JobName = environment.GetValueOrDefault("NativeMonitoring__JobName") ?? "",
+                PodUid = environment.GetValueOrDefault("NativeMonitoring__PodUid") ?? "",
+                SourceCommit = environment.GetValueOrDefault("NativeMonitoring__SourceCommit") ?? ""
+            };
+            if (nativeOptions.RunId != options.RunId || nativeOptions.ScenarioId != options.ScenarioId ||
+                nativeOptions.ConfigurationId != options.ConfigurationId || nativeOptions.JobName != options.JobName ||
+                nativeOptions.PodUid != options.PodUid || nativeOptions.SourceCommit != options.SourceCommit)
+                throw new InvalidOperationException("native_monitoring_identity_mismatch");
+            NativeMonitoringHost.Register(builder.Services, nativeOptions,
+                $"runner/probe-v2/raw/{options.JobName}/{options.PodName}.containers.{options.ServiceAccount}.log");
+        }
+        builder.Services.AddSingleton(provider => new ProbeV2SessionFactory(provider.GetRequiredService<KafkaAuthenticationFactory>(), options,
+            provider.GetService<NativeMonitoringHost>()));
         builder.Services.AddSingleton(provider => new ProbeV2Inputs(options, provider.GetRequiredService<TimeProvider>()));
         builder.Services.AddSingleton<ProbeV2Worker>();
         configureServices?.Invoke(builder.Services);
@@ -73,11 +97,15 @@ internal static class ProbeV2Host
         TimeProvider clock = TimeProvider.System;
         int exit = 1;
         bool hostCleanup = true;
+        NativeMonitoringHost? monitoring = null;
+        bool captureWritten = false;
+        CancellationTokenSource? cleanupBudget = null;
         try
         {
             host = hostFactory?.Invoke() ?? BuildHost(configureServices);
             options = host.Services.GetRequiredService<IOptions<ProbeV2Options>>().Value;
             clock = host.Services.GetRequiredService<TimeProvider>();
+            monitoring = host.Services.GetService<NativeMonitoringHost>();
             watchdog = clock.CreateTimer(_ => Environment.Exit(124), null, TimeSpan.FromSeconds(options.ProcessLifetimeSeconds), Timeout.InfiniteTimeSpan);
             await host.StartAsync().ConfigureAwait(false);
             using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(options.ProcessLifetimeSeconds), clock);
@@ -95,10 +123,13 @@ internal static class ProbeV2Host
         {
             if (host is not null)
             {
-                using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(options?.Limits.HostCleanupSeconds ?? 10), clock);
-                try { await host.StopAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false); }
+                cleanupBudget = new CancellationTokenSource(TimeSpan.FromSeconds(options?.Limits.HostCleanupSeconds ?? 10), clock);
+                CancellationToken cleanup = cleanupBudget.Token;
+                try { if (monitoring is not null) await monitoring.DrainAsync(cleanup).ConfigureAwait(false); }
+                catch (Exception exception) { await ReportFailure(logs, "native_monitoring_drain_failed", exception, options).ConfigureAwait(false); }
+                try { await host.StopAsync(cleanup).WaitAsync(cleanup).ConfigureAwait(false); }
                 catch (Exception exception) { hostCleanup = false; await ReportFailure(logs, "probe_v2_host_stop_failed", exception, options).ConfigureAwait(false); }
-                try { await Task.Run(host.Dispose).WaitAsync(cleanup.Token).ConfigureAwait(false); }
+                try { await Task.Run(host.Dispose).WaitAsync(cleanup).ConfigureAwait(false); }
                 catch (Exception exception) { hostCleanup = false; await ReportFailure(logs, "probe_v2_host_dispose_failed", exception, options).ConfigureAwait(false); }
             }
         }
@@ -116,9 +147,20 @@ internal static class ProbeV2Host
                     typeof(ProducerConfig).Assembly.GetName().Version!.ToString(), Library.VersionString, worker.Repeats,
                     exit, worker.CleanupSucceeded, hostCleanup);
                 await worker.WriteAsync(output, "PARCHWELL_PROBE_V2_CAPTURE ", capture, options.Limits.MaxCaptureBytes, CancellationToken.None).ConfigureAwait(false);
+                captureWritten = true;
             }
             catch (Exception exception) { exit = 1; await ReportFailure(logs, "probe_v2_capture_failed", exception, options).ConfigureAwait(false); }
         }
+        if (monitoring is not null)
+        {
+            try
+            {
+                await monitoring.CompleteAsync(captureWritten && worker?.CleanupSucceeded == true && hostCleanup,
+                    cleanupBudget?.Token ?? new CancellationToken(canceled: true)).ConfigureAwait(false);
+            }
+            catch (Exception exception) { await ReportFailure(logs, "native_monitoring_completion_failed", exception, options).ConfigureAwait(false); }
+        }
+        cleanupBudget?.Dispose();
         return exit;
     }
     private static Task ReportFailure(TextWriter logs, string operation, Exception exception, ProbeV2Options? options) =>

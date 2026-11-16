@@ -1,5 +1,7 @@
 using Confluent.Kafka;
 using Parchwell.Kafka.Authentication;
+using Parchwell.Kafka.Statistics;
+using Parchwell.LoadGen.Run.Monitoring;
 
 namespace Parchwell.LoadGen.SingleActionV2;
 
@@ -10,16 +12,23 @@ internal sealed class ProbeV2SessionFactory
     private readonly Func<IClient, string, TimeSpan, int[]> metadata;
     private readonly Func<Func<ProjectedTokenFileObservation>> createProjectedFileSampler;
     private readonly bool testHandlerRefreshPath;
-    internal ProbeV2SessionFactory(KafkaAuthenticationFactory authentication, ProbeV2Options options)
+    internal ProbeV2SessionFactory(KafkaAuthenticationFactory authentication, ProbeV2Options options, NativeMonitoringHost? monitoring = null)
     {
         testHandlerRefreshPath = options.TestHandlerRefreshPath;
         ProbeV2Stage stage = ProbeV2Stage.For(options.ScenarioId, options.ConfigurationId, options.Stage);
         producer = (settings, capture, cancellation) =>
         {
+            KafkaNativeMonitoringLifetime? lifetime = monitoring?.Begin(capture, new(options.ScenarioId, options.RunId, stage.Role, settings["client.id"]));
+            try
+            {
             if (options.NativeAuthentication.Length != 0)
-                return new ProducerBuilder<byte[], byte[]>(new ProducerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)))
+            {
+                IProducer<byte[], byte[]> native = new ProducerBuilder<byte[], byte[]>(new ProducerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)))
                     .SetLogHandler((_, value) => capture.Log(value)).SetErrorHandler((_, value) => capture.Error(value))
-                    .SetStatisticsHandler((_, value) => capture.Statistics(value)).Build();
+                    .SetStatisticsHandler((_, value) => { if (capture.TryStatistics(value, out long sequence) && lifetime is not null) monitoring!.Capture(lifetime, value, sequence); }).Build();
+                lifetime?.MarkBuilt();
+                return native;
+            }
             var identity = new KafkaAuthenticationIdentity(options.ScenarioId, options.RunId, stage.Role, settings["client.id"]);
             KafkaOAuthBearerSession session = options.TestHandlerRefreshPath
                 ? authentication.CreateRefreshPathTestSession(identity, 5000, cancellation)
@@ -27,12 +36,19 @@ internal sealed class ProbeV2SessionFactory
                     ? authentication.CreateObservedSession(identity, cancellation)
                     : authentication.CreateSession(identity, cancellation);
             capture.AttachAuthentication(session);
-            return authentication.CreateProducerBuilder<byte[], byte[]>(new ProducerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)), session)
+            IProducer<byte[], byte[]> client = authentication.CreateProducerBuilder<byte[], byte[]>(new ProducerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)), session)
                 .SetLogHandler((_, value) => capture.Log(value)).SetErrorHandler((_, value) => capture.Error(value))
-                .SetStatisticsHandler((_, value) => capture.Statistics(value)).Build();
+                .SetStatisticsHandler((_, value) => { if (capture.TryStatistics(value, out long sequence) && lifetime is not null) monitoring!.Capture(lifetime, value, sequence); }).Build();
+            lifetime?.MarkBuilt();
+            return client;
+            }
+            catch { lifetime?.MarkBuildFailed(); throw; }
         };
         consumer = (settings, capture, cancellation) =>
         {
+            KafkaNativeMonitoringLifetime? lifetime = monitoring?.Begin(capture, new(options.ScenarioId, options.RunId, stage.Role, settings["client.id"]));
+            try
+            {
             if (options.NativeAuthentication.Length != 0) throw new InvalidOperationException("v2_native_consumer");
             var identity = new KafkaAuthenticationIdentity(options.ScenarioId, options.RunId, stage.Role, settings["client.id"]);
             KafkaOAuthBearerSession session = options.TestHandlerRefreshPath
@@ -43,8 +59,11 @@ internal sealed class ProbeV2SessionFactory
             capture.AttachAuthentication(session);
             IConsumer<byte[], byte[]> client = authentication.CreateConsumerBuilder<byte[], byte[]>(new ConsumerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)), session)
                 .SetLogHandler((_, value) => capture.Log(value)).SetErrorHandler((_, value) => capture.Error(value))
-                .SetStatisticsHandler((_, value) => capture.Statistics(value)).Build();
+                .SetStatisticsHandler((_, value) => { if (capture.TryStatistics(value, out long sequence) && lifetime is not null) monitoring!.Capture(lifetime, value, sequence); }).Build();
+            lifetime?.MarkBuilt();
             return (client, session);
+            }
+            catch { lifetime?.MarkBuildFailed(); throw; }
         };
         metadata = (client, topic, timeout) =>
         {
