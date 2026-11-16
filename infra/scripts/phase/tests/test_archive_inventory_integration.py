@@ -1,4 +1,5 @@
 """Offline archive command integration against the real transfer protocol."""
+import base64
 import hashlib
 import importlib.util
 import json
@@ -19,6 +20,36 @@ def encoded(value):
 
 def sha(data):
     return hashlib.sha256(data).hexdigest()
+
+
+BODY = b'BODY_SENTINEL_494'
+
+
+def candidate_fixture(run, config):
+    """Shape of ProbeV2Candidate and its nested writer DTOs."""
+    repeats = []
+    for n, body in enumerate((BODY, None, b'', BODY, None), 1):
+        record = {'topic':'document-events', 'partition':0, 'offset':n, 'key_base64':'aw==',
+                  'value_base64':None if body is None else base64.b64encode(body).decode(),
+                  'observed_elapsed_ms':n, 'sequence':n}
+        repeats.append({'repeat':n, 'status':'complete_valid', 'reasons':['reason retained'], 'outcome_class':None,
+                        'broker_count':1, 'statistics_reference':{'sequence':n, 'native_time':n, 'native_ts':n, 'raw_sha256':'c'*64},
+                        'semantic_outcome':{'delivered_partition':0, 'consumed_partition':0, 'key_base64':'aw==',
+                                            'value_kind':'null' if body is None else 'empty' if not body else 'bytes', 'value_match':True},
+                        'delivery':{'topic':'document-events', 'partition':0, 'offset':n, 'persistence_status':'persisted',
+                                    'error':{'code':1, 'is_fatal':False, 'origin':'client', 'reason':'native error retained',
+                                             'observed_elapsed_ms':n, 'sequence':n}, 'observed_elapsed_ms':n, 'sequence':n},
+                        'read_observation':{'records_seen':1, 'eof_count':0, 'record':record},
+                        'seed_reference':{'run_id':run, 'scenario_id':'F06', 'configuration_id':config, 'stage':'seed',
+                                          'source_commit':'a'*40, 'job_name':run+'-seed', 'pod_uid':'uid', 'raw_sha256':'d'*64},
+                        'control_references':[], 'clients':[]})
+    return {'schema_version':2, 'mode':'single-action-v2', 'synthetic':True, 'run_id':run,
+            'scenario_id':'F06', 'configuration_id':config, 'source_commit':'a'*40,
+            'managed_version':'2.16.0', 'native_version':'2.16.0',
+            'image_digests':{'loadgen':'sha256:'+'b'*64, 'verifier':'sha256:'+'b'*64},
+            'status':'complete_valid', 'repeats':repeats, 'deterministic':True, 'outcome_class':None,
+            'adr012_counts':'not_applicable', 'diagnostics':['diagnostic retained'], 'security_finding':False,
+            'item_assessment':None}
 
 
 def window_source(run, phase, scenario, repeat, kind, end=0):
@@ -364,7 +395,8 @@ class InventoryIntegrationTests(unittest.TestCase):
             for case in cases:
                 with self.subTest(scenario=scenario, case=case):
                     h = self.harness(scenario, phase, run, 'batch', items=items)
-                    complete_family(h, scenario)
+                    container, candidate, _, _, _ = complete_family(h, scenario)
+                    original_candidate = h.cli.blobs[('source123', container, candidate)]
                     record = h.status['modes'][0]
                     folder = h.artifacts / record['job']
                     status = folder / 'collection-status.json'
@@ -391,7 +423,12 @@ class InventoryIntegrationTests(unittest.TestCase):
                     self.assertIsNone(receipt['completion'])
                     self.assertTrue(receipt['gaps'])
                     self.assertNotIn(b'DO_NOT_ARCHIVE', b''.join(h.cli.blobs.values()))
-                    self.assertTrue(any(o['kind'] == 'verifier_output' and o['state'] == 'verified' for o in manifest['objects']))
+                    obj = next(o for o in manifest['objects'] if o['source']['name'] == candidate)
+                    destination = manifest['destination']['prefix'] + 'objects/' + container + '/' + candidate
+                    self.assertEqual(('candidate', 'verified', container, destination, len(original_candidate), sha(original_candidate)),
+                                     (obj['kind'], obj['state'], obj['source']['container'], obj['destination_name'], obj['bytes'], obj['sha256']))
+                    self.assertEqual(b'published candidate', original_candidate)
+                    self.assertEqual(original_candidate, h.cli.blobs[('archive123', 'run-evidence', destination)])
 
     def test_ordinary_and_nonledger_judges_require_successful_collection(self):
         for family in ('ordinary', 'legacy', 'idle'):
@@ -444,7 +481,7 @@ class InventoryIntegrationTests(unittest.TestCase):
                             publish_v2_actor(h, job, pod, config, stage)
                             continue
                         prefix = f'probe-42-1/single-action-v2/F06/{config}/'
-                        candidate = b'{"status":"failed"}'
+                        candidate = encoded(candidate_fixture('probe-42-1', config))
                         h.cli.put('verifier', prefix+'candidate.json', candidate)
                         receipt = {'schema_version': 2, 'mode': mode, 'run_id': 'probe-42-1', 'scenario_id': 'F06',
                                    'configuration_id': config, 'source_commit': 'a'*40, 'job_name': job, 'pod_name': pod,
@@ -538,7 +575,7 @@ class InventoryIntegrationTests(unittest.TestCase):
                         if stage != 'judge':
                             publish_v2_actor(h,job,pod,config,stage)
                         else:
-                            prefix=f'probe-42-1/single-action-v2/F06/{config}/'; body=b'candidate'
+                            prefix=f'probe-42-1/single-action-v2/F06/{config}/'; body=encoded(candidate_fixture('probe-42-1', config))
                             h.cli.put('verifier',prefix+'candidate.json',body)
                             h.cli.put('verifier',prefix+'judge-completion.json',{'schema_version':2,'mode':mode,'run_id':'probe-42-1',
                                 'scenario_id':'F06','configuration_id':config,'source_commit':'a'*40,'job_name':job,'pod_name':pod,
@@ -741,7 +778,7 @@ class InventoryIntegrationTests(unittest.TestCase):
                 if stage != 'judge':
                     publish_v2_actor(h, job, pod, config, stage)
                     continue
-                prefix=f'probe-42-1/single-action-v2/F06/{config}/'; body=b'candidate'
+                prefix=f'probe-42-1/single-action-v2/F06/{config}/'; body=encoded(candidate_fixture('probe-42-1', config))
                 h.cli.put('verifier',prefix+'candidate.json',body)
                 h.cli.put('verifier',prefix+'judge-completion.json',{'schema_version':2,'mode':mode,'run_id':'probe-42-1',
                     'scenario_id':'F06','configuration_id':config,'source_commit':'a'*40,'job_name':job,'pod_name':pod,'pod_uid':'uid',

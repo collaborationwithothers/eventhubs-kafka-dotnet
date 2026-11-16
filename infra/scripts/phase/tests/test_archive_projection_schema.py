@@ -35,6 +35,20 @@ class ProjectionSchemaTests(unittest.TestCase):
         if not idle:
             del h.cli.blobs[('source123', 'verifier', f"{h.phase['run_id']}/single-action/B01/C0/judge-completion.json")]
 
+    def retained_metadata(self, h, key, original, obj):
+        archived = h.cli.blobs[('archive123', 'run-evidence', obj['destination_name'])]
+        self.assertEqual(len(archived), obj['bytes'])
+        self.assertEqual(hashlib.sha256(archived).hexdigest(), obj['sha256'])
+        if key[1] == 'ledger':
+            self.assertEqual(original, archived)
+            return json.loads(archived)
+        projected = json.loads(archived)
+        self.assertEqual(len(original), projected['source']['bytes'])
+        self.assertEqual(hashlib.sha256(original).hexdigest(), projected['source']['sha256'])
+        self.assertNotEqual(original, archived)
+        self.assertNotEqual(projected['source']['sha256'], obj['sha256'])
+        return projected['metadata']
+
     def assert_retained_failure(self, h, key, capture):
         original = fixture.encoded(capture)
         h.cli.blobs[key] = original
@@ -44,12 +58,7 @@ class ProjectionSchemaTests(unittest.TestCase):
         self.assertIsNone(receipt['completion'])
         obj = next(o for o in manifest['objects'] if o['source']['name'] == key[2])
         self.assertEqual('verified', obj['state'])
-        archived = h.cli.blobs[('archive123', 'run-evidence', obj['destination_name'])]
-        projected = json.loads(archived)
-        self.assertEqual(len(original), projected['source']['bytes'])
-        self.assertEqual(hashlib.sha256(original).hexdigest(), projected['source']['sha256'])
-        self.assertEqual(hashlib.sha256(archived).hexdigest(), obj['sha256'])
-        return projected['metadata']
+        return self.retained_metadata(h, key, original, obj)
 
     def test_settings_producer_thresholds_retain_failed_capture(self):
         for idle in (False, True):
@@ -121,7 +130,7 @@ class ProjectionSchemaTests(unittest.TestCase):
                 _, manifest, _ = h.run()
                 obj = next(o for o in manifest['objects'] if o['source']['name'] == key[2])
                 self.assertEqual('verified', obj['state'])
-                projected = json.loads(h.cli.blobs[('archive123', 'run-evidence', obj['destination_name'])])['metadata']['repeats'][0]
+                projected = self.retained_metadata(h, key, fixture.encoded(capture), obj)['repeats'][0]
                 for field in ('settings', 'omitted_keys', 'client_errors', 'statistics', 'diagnostics'):
                     self.assertEqual(row[field], projected[field])
                 if idle: self.assertEqual(row['first'], projected['first'])

@@ -459,8 +459,8 @@ class SecretOutputBoundaries(unittest.TestCase):
         encoded_body = base64.b64encode(body).decode()
         header = base64.b64encode(b'RETAINED_HEADER_SENTINEL_494').decode()
         source = {'identity': {'run_id': 'a01-42-1'}, 'repeats': [
-            {'repeat': 1, 'matched': {'value_base64': encoded_body, 'key': 'retained-key',
-                                      'headers': [{'key': 'trace', 'value_base64': header}]},
+            {'repeat': 1, 'matched': {'value_base64': encoded_body, 'key_base64': 'cmV0YWluZWQta2V5',
+                                      'topic': 'document-events', 'partition': 0},
              'requested': {'value_base64': ''}, 'read_observation': {'record': {'value_base64': None}}}]}
         with tempfile.TemporaryDirectory() as root:
             path = Path(root) / 'source.json'
@@ -473,11 +473,22 @@ class SecretOutputBoundaries(unittest.TestCase):
             self.assertEqual({'is_null': False, 'length': len(body), 'sha256': hashlib.sha256(body).hexdigest()}, row['matched']['value_base64'])
             self.assertEqual({'is_null': False, 'length': 0, 'sha256': hashlib.sha256(b'').hexdigest()}, row['requested']['value_base64'])
             self.assertEqual({'is_null': True, 'length': None, 'sha256': None}, row['read_observation']['record']['value_base64'])
-            self.assertEqual('retained-key', row['matched']['key'])
-            self.assertEqual([{'key': 'trace', 'value_base64': header}], row['matched']['headers'])
+            self.assertEqual('cmV0YWluZWQta2V5', row['matched']['key_base64'])
+            self.assertEqual('document-events', row['matched']['topic'])
+            self.assertEqual(0, row['matched']['partition'])
             self.assertNotIn(body, output)
             self.assertNotIn(encoded_body.encode(), output)
-            self.assertIn(header.encode(), output)
+            # SingleActionMatched is closed and cannot carry headers.
+            source['repeats'][0]['matched']['headers'] = [{'key': 'trace', 'value_base64': header}]
+            path.write_text(json.dumps(source))
+            with self.assertRaises(projection.Invalid):
+                projection.project(path, float('inf'), io.BytesIO())
+            source['repeats'][0]['matched']['key'] = 'retained-key'
+            path.write_text(json.dumps(source))
+            with self.assertRaises(projection.Invalid):
+                projection.project(path, float('inf'), io.BytesIO())
+            del source['repeats'][0]['matched']['key']
+            del source['repeats'][0]['matched']['headers']
             source['repeats'][0]['unrecognized'] = {'value_base64': encoded_body}
             path.write_text(json.dumps(source))
             with self.assertRaises(projection.Invalid):

@@ -167,6 +167,58 @@ class TransferTests(unittest.TestCase):
         self.assertEqual('capture_missing', collector.gaps[0]['code'])
 
     @patch.object(archive.shutil, 'disk_usage')
+    def test_consumed_metadata_chunk_retains_ordered_headers(self, disk):
+        import base64
+        import hashlib
+        disk.return_value.free = 2 * archive.ArchiveMaxObjectBytes + 1048576 + 65536
+        identity = {'run_id': 'run-1', 'phase': 'C0', 'scenario_id': 'A01', 'configuration_id': 'C0',
+                    'job_name': 'job', 'pod_uid': 'pod', 'source_commit': 'a' * 40}
+        capture_id = 'verify-job-pod-w0000'
+        prefix = 'run-1/C0/r1/consumed-metadata/' + capture_id + '/'
+        body = b'EXCLUDED_MESSAGE_BODY_SENTINEL_494'
+        header = base64.b64encode(b'RETAINED_HEADER_SENTINEL_494').decode()
+        headers = [{'name': 'trace', 'value_base64': header}, {'name': 'trace', 'value_base64': None}]
+        row = {'schema_version': 1, 'capture_id': capture_id, 'ordinal': 0, 'topic': 'document-events',
+               'partition': 0, 'offset': 0, 'timestamp': {'type': 'not_available', 'unix_milliseconds': None},
+               'key_base64': 'cmV0YWluZWQta2V5', 'key': 'retained-key', 'instance_id': None,
+               'attempt_id': None, 'sequence': None, 'headers': headers,
+               'payload': {'is_null': False, 'length': len(body), 'sha256': hashlib.sha256(body).hexdigest()},
+               'identity_problems': []}
+        data = json.dumps(row, separators=(',', ':')).encode() + b'\n'
+        name = prefix + 'chunk-000001.jsonl'
+        digest = hashlib.sha256(data).hexdigest()
+        manifest = {'schema_version': 1, 'capture_id': capture_id, 'identity': identity,
+                    'window': {'index': 0, 'kind': 'ordinary', 'repeat': 1, 'topic': 'document-events',
+                               'start': [{'partition': 0, 'offset': 0}], 'end': [{'partition': 0, 'offset': 1}]},
+                    'chunks': [{'name': name, 'bytes': len(data), 'sha256': digest, 'rows': 1}],
+                    'observed_rows': 1, 'captured_rows': 1, 'complete': True,
+                    'first_missing_ordinal': None, 'gaps': []}
+        self.blobs[('source', 'verifier', prefix + 'capture.json')] = json.dumps(manifest).encode()
+        self.blobs[('source', 'verifier', name)] = data
+        collector = archive.Collector(self.transfer, 'v1/a/')
+        start_name = 'run-1/C0/r1/start-line.json'; result_name = 'run-1/C0/r1/result.json'
+        start_job = 'run-1-c0-r1-start-line'
+        window_identity = {'scenario_id': 'A01', 'configuration_id': 'C0', 'run_id': 'run-1',
+                           'instance_id': start_job, 'expected_instance_id': start_job, 'client_id': start_job}
+        self.blobs[('source', 'verifier', start_name)] = json.dumps({'identity': window_identity, 'topic': 'document-events', 'verifier_commit': 'a' * 40, 'partition_highs': [{'partition': 0, 'high': 0}]}).encode()
+        self.blobs[('source', 'verifier', result_name)] = json.dumps({'identity': window_identity, 'verifier_commit': 'a' * 40, 'start_line': [{'partition': 0, 'offset': 0}], 'end_line': [{'partition': 0, 'offset': 1}]}).encode()
+        collector.source('verifier', start_name, 'start_line', 1)
+        collector.source('verifier', result_name, 'result', 1)
+        collector.capture('verifier', prefix, identity, 'verify', 1, capture_id)
+        self.assertTrue(collector.captures[0]['complete'])
+        self.assertEqual(1, collector.captures[0]['rows'])
+        self.assertEqual([], collector.gaps)
+        obj = next(o for o in collector.objects if o['source']['name'] == name)
+        self.assertEqual(('consumed_metadata', 'verified', len(data), digest),
+                         (obj['kind'], obj['state'], obj['bytes'], obj['sha256']))
+        archived = self.blobs[('dest', 'run-evidence', obj['destination_name'])]
+        self.assertEqual(data, archived)
+        self.assertEqual(headers, json.loads(archived)['headers'])
+        self.assertIn(header.encode(), archived)
+        self.assertNotIn(body, archived)
+        self.assertNotIn(base64.b64encode(body), archived)
+
+    @patch.object(archive.shutil, 'disk_usage')
     def test_missing_publication_index_is_not_replaced_by_listing(self, disk):
         disk.return_value.free = 2 * archive.ArchiveMaxObjectBytes + 1048576 + 65536
         prefix = 'run/a/publication/'
@@ -277,13 +329,15 @@ class TransferTests(unittest.TestCase):
             shutil.rmtree(artifacts / 'archive')
             shutil.rmtree(private / 'archive')
             records = [{'job': Phase().mode_job(phase, mode, repeat), 'repeat': repeat, 'mode': mode,
-                        'outcome': 'complete', 'apply': 0} for repeat in range(1, 6)
+                        'outcome': 'complete', 'apply': 0, 'collect': 0} for repeat in range(1, 6)
                        for mode in ('start-line', 'loadgen', 'verify')]
             records.append({'job': Phase().mode_job(phase, 'judge', None), 'repeat': None,
-                            'mode': 'judge', 'outcome': 'complete', 'apply': 0})
+                            'mode': 'judge', 'outcome': 'complete', 'apply': 0, 'collect': 0})
             for record in records:
                 directory = artifacts / record['job']; directory.mkdir()
-                (directory / 'pods.json').write_text(json.dumps({'items': [{'metadata': {'name': record['job'] + '-pod', 'uid': 'uid'}, 'status': {'phase': 'Succeeded', 'containerStatuses': []}}]}))
+                (directory / 'pods.json').write_text(json.dumps({'items': [{'metadata': {'name': record['job'] + '-pod', 'uid': 'uid'}, 'spec': {'containers': [{'name': 'worker'}]}, 'status': {'phase': 'Succeeded', 'containerStatuses': []}}]}))
+                (directory / 'collection-status.json').write_text(json.dumps({'complete': True, 'smoke_marker_valid': False, 'gaps': []}))
+                (directory / (record['job'] + '-pod.containers.worker.log')).write_bytes(b'')
             (artifacts / 'phase-status.json').write_text(json.dumps({'run_id': 'a01-42-1', 'phase': 'C0',
                                                                      'candidate': science['candidate'], 'full_allowed': False, 'modes': records}))
             Controls.writes.clear()

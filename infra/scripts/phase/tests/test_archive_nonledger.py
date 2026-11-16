@@ -18,6 +18,8 @@ class Fake:
             with tempfile.NamedTemporaryFile() as f:
                 f.write(json.dumps(self.contents[name]).encode()); f.flush()
                 kw['inspect_source'](f.name, pathlib.Path(f.name).stat().st_size)
+    def v2_candidate_projection(self, container, name, identity, expected_sha256):
+        self.calls.append(('source', container, name, 'candidate', {'expected_sha256': expected_sha256, 'identity': identity}))
     def not_started(self, container, name, kind, **kw): self.calls.append(('not_started',container,name,kind,kw))
     def project_pods(self, raw):
         v = json.loads(raw)
@@ -34,7 +36,8 @@ class InventoryTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup)
         self.artifacts = pathlib.Path(self.tmp.name)
         self.containers = {'ledger':'ledger','verifier':'verifier','single_action':'single-action'}
-        self.phase = {'run_id':'probe-1-1','scenario':'probe-batch','run_kind':'batch','items':['B01'],'source_commit':'a'*40}
+        self.phase = {'run_id':'probe-1-1','scenario':'probe-batch','run_kind':'batch','items':['B01'],'source_commit':'a'*40,
+                      'images':{w:{'digest':'sha256:'+'b'*64} for w in ('loadgen','verifier')}}
         self.f = Fake()
     def add_pod(self,job):
         d=self.artifacts/job; d.mkdir(); (d/'pods.json').write_text(json.dumps({'items':[{'metadata':{'name':job+'-pod','uid':'1234'}}]}))

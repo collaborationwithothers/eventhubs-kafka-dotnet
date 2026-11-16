@@ -273,3 +273,126 @@ def windows(path, deadline):
         raise Invalid() from None
     finally:
         reader.close()
+
+
+def candidate(path, deadline, sink, validate):
+    """Validate a bounded V2 candidate and write its body-free projection."""
+    if time.monotonic() >= deadline: raise TimeoutError()
+    # This is the candidate writer/reader's MaxCandidateBytes, not the archive cap.
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    with os.fdopen(fd, 'rb') as stream:
+        raw = stream.read(16777217)
+    if not raw or len(raw) > 16777216: raise Invalid()
+    def pairs(items):
+        result = {}
+        for key, value in items:
+            if key in result: raise Invalid()
+            result[key] = value
+        return result
+    try:
+        text = raw.decode('utf-8', errors='strict')
+        depth = 0; quoted = escaped = False
+        for ch in text:
+            if quoted:
+                if escaped: escaped = False
+                elif ch == '\\': escaped = True
+                elif ch == '"': quoted = False
+            elif ch == '"': quoted = True
+            elif ch in '[{':
+                depth += 1
+                if depth > 32: raise Invalid()
+            elif ch in ']}': depth -= 1
+        value = json.loads(text, object_pairs_hook=pairs, parse_constant=lambda _: (_ for _ in ()).throw(Invalid()))
+        def obj(v, keys):
+            if not isinstance(v, dict) or set(v) != set(keys.split()): raise Invalid()
+        def arr(v):
+            if not isinstance(v, list): raise Invalid()
+        def scalar(v, typ, nullable=False, bits=32):
+            if nullable and v is None: return
+            if type(v) is not typ: raise Invalid()
+            if typ is int and not -(1 << (bits - 1)) <= v < (1 << (bits - 1)): raise Invalid()
+        def strings(v):
+            arr(v)
+            for x in v: scalar(x, str)
+        def outcome(v):
+            if v is None: return
+            obj(v, 'result error_code is_fatal origin')
+            scalar(v['result'], str); scalar(v['error_code'], int, True); scalar(v['is_fatal'], bool, True); scalar(v['origin'], str, True)
+        def reference(v):
+            obj(v, 'run_id scenario_id configuration_id stage source_commit job_name pod_uid raw_sha256')
+            for x in v.values(): scalar(x, str)
+            if not re.fullmatch(r'[0-9a-f]{64}', v['raw_sha256']): raise Invalid()
+        def statistics(v):
+            if v is None: return
+            obj(v, 'sequence native_time native_ts raw_sha256')
+            for k in ('sequence', 'native_time', 'native_ts'): scalar(v[k], int, bits=64)
+            scalar(v['raw_sha256'], str)
+            if not re.fullmatch(r'[0-9a-f]{64}', v['raw_sha256']): raise Invalid()
+        def binary(v, nullable=False):
+            if v is None and nullable: return None
+            scalar(v, str)
+            return base64.b64decode(v, validate=True)
+        def error(v):
+            if v is None: return
+            obj(v, 'code is_fatal origin reason observed_elapsed_ms sequence')
+            scalar(v['code'], int)
+            for k in ('observed_elapsed_ms', 'sequence'): scalar(v[k], int, bits=64)
+            scalar(v['is_fatal'], bool)
+            for k in ('origin', 'reason'): scalar(v[k], str)
+        obj(value, 'schema_version mode synthetic run_id scenario_id configuration_id source_commit managed_version native_version image_digests status repeats deterministic outcome_class adr012_counts diagnostics security_finding item_assessment')
+        scalar(value['schema_version'], int); scalar(value['synthetic'], bool)
+        for k in ('mode', 'run_id', 'scenario_id', 'configuration_id', 'source_commit', 'status', 'adr012_counts'): scalar(value[k], str)
+        for k in ('managed_version', 'native_version'): scalar(value[k], str, True)
+        scalar(value['deterministic'], bool, True); scalar(value['security_finding'], bool)
+        if not isinstance(value['image_digests'], dict) or any(type(k) is not str or type(v) is not str for k, v in value['image_digests'].items()): raise Invalid()
+        if value['status'] not in ('complete_valid', 'invalid', 'incomplete'): raise Invalid()
+        strings(value['diagnostics']); outcome(value['outcome_class'])
+        assessment = value['item_assessment']
+        if assessment is not None:
+            obj(assessment, 'verdict hypotheses reason')
+            scalar(assessment['verdict'], str, True); scalar(assessment['reason'], str, True)
+            if not isinstance(assessment['hypotheses'], dict) or any(type(k) is not str or type(v) is not str for k, v in assessment['hypotheses'].items()): raise Invalid()
+        arr(value['repeats'])
+        if len(value['repeats']) != 5: raise Invalid()
+        for ordinal, r in enumerate(value['repeats'], 1):
+            obj(r, 'repeat status reasons outcome_class broker_count statistics_reference semantic_outcome delivery read_observation seed_reference control_references clients')
+            scalar(r['repeat'], int)
+            if r['repeat'] != ordinal: raise Invalid()
+            scalar(r['status'], str)
+            if r['status'] not in ('complete_valid', 'invalid', 'incomplete'): raise Invalid()
+            strings(r['reasons']); outcome(r['outcome_class']); scalar(r['broker_count'], int, True); statistics(r['statistics_reference'])
+            sem = r['semantic_outcome']; obj(sem, 'delivered_partition consumed_partition key_base64 value_kind value_match')
+            for k in ('delivered_partition', 'consumed_partition'): scalar(sem[k], int, True)
+            binary(sem['key_base64'], True); scalar(sem['value_kind'], str, True); scalar(sem['value_match'], bool, True)
+            d = r['delivery']
+            if d is not None:
+                obj(d, 'topic partition offset persistence_status error observed_elapsed_ms sequence')
+                for k in ('topic', 'persistence_status'): scalar(d[k], str)
+                scalar(d['partition'], int)
+                for k in ('offset', 'observed_elapsed_ms', 'sequence'): scalar(d[k], int, bits=64)
+                error(d['error'])
+            observation = r['read_observation']
+            if observation is not None:
+                obj(observation, 'records_seen eof_count record')
+                for k in ('records_seen', 'eof_count'): scalar(observation[k], int)
+                record = observation['record']
+                if record is not None:
+                    obj(record, 'topic partition offset key_base64 value_base64 observed_elapsed_ms sequence')
+                    scalar(record['topic'], str)
+                    scalar(record['partition'], int)
+                    for k in ('offset', 'observed_elapsed_ms', 'sequence'): scalar(record[k], int, bits=64)
+                    binary(record['key_base64']); body = binary(record['value_base64'], True)
+                    record['value_base64'] = {'is_null': body is None, 'length': None if body is None else len(body), 'sha256': None if body is None else hashlib.sha256(body).hexdigest()}
+            if r['seed_reference'] is not None: reference(r['seed_reference'])
+            arr(r['control_references'])
+            for ref in r['control_references']: reference(ref)
+            arr(r['clients'])
+            for client in r['clients']:
+                obj(client, 'client_id stage broker_count statistics_reference')
+                scalar(client['client_id'], str); scalar(client['stage'], str); scalar(client['broker_count'], int, True); statistics(client['statistics_reference'])
+        if not validate(value): raise Invalid()
+        if time.monotonic() >= deadline: raise TimeoutError()
+        sink.write(json.dumps(value, ensure_ascii=True, separators=(',', ':'), allow_nan=False).encode())
+        return value
+    except (ValueError, TypeError, KeyError, UnicodeError, RecursionError):
+        raise Invalid() from None

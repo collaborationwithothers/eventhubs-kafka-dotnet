@@ -105,8 +105,15 @@ def collect(collector, phase, status, containers, artifacts):
             except (OSError, ValueError, KeyError, TypeError, AttributeError):
                 collector.gap('monitoring_incomplete', 'judge receipt contract', prefix + 'judge-completion.json')
         source(u, containers['verifier'], prefix + 'judge-completion.json', 'judge_completion', inspect_source=inspect)
-        source(u, containers['verifier'], prefix + 'candidate.json', 'candidate',
-               expected_sha256=declared[0] if declared and hashes else None)
+        if hashes and u['state'] == 'started':
+            parts = prefix.rstrip('/').split('/')
+            collector.v2_candidate_projection(containers['verifier'], prefix + 'candidate.json',
+                {'run_id': run, 'scenario_id': parts[-2], 'configuration_id': parts[-1],
+                 'source_commit': phase['source_commit'],
+                 'image_digests': {worker: phase['images'][worker]['digest'] for worker in ('loadgen', 'verifier')}},
+                declared[0] if declared else None)
+        else:
+            source(u, containers['verifier'], prefix + 'candidate.json', 'candidate')
     items = phase.get('items')
     allowed = {'probe-batch': tuple(dict.fromkeys(i for i, _ in V1)), 'probe-batch-2': ('B08','E01','F06'),
                'idle-observation': ('A02','A03','A04'), 'ledger-batch': ('B06','B07')}

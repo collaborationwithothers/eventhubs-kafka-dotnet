@@ -118,7 +118,8 @@ class Transfer:
                 raise Gap('destination_conflict', 'conditional create')
             raise Gap('transport', 'conditional create')
 
-    def project_source(self, container, name, destination, remaining, validate, reserve=None):
+    def project_source(self, container, name, destination, remaining, validate, reserve=None,
+                       projection_format='single_action_capture', expected_sha256=None):
         """Read one original once, project bodies away, and verify only the projection remotely."""
         import hashlib
         if not safe_name(container) or not safe_name(name) or not safe_name(destination): raise InvalidArchiveConfig()
@@ -129,8 +130,12 @@ class Transfer:
             props = self.properties(self.source_account, container, name, missing_ok=True)
             if props is None: raise Gap('source_missing', 'source properties')
             size, etag = props
+            if projection_format == 'probe_v2_candidate' and size > 16777216:
+                raise Gap('source_too_large', 'candidate size')
             self.download(self.source_account, container, name, etag, source)
             source_hash = _common.digest(source, size, deadline=self.deadline)
+            if projection_format == 'probe_v2_candidate' and (expected_sha256 is None or source_hash != expected_sha256):
+                raise Gap('source_hash_mismatch', 'candidate receipt hash')
             source_ref = {'container': container, 'name': name, 'etag': etag, 'bytes': size, 'sha256': source_hash}
             spec = importlib.util.spec_from_file_location('parchwell_archive_json', Path(__file__).with_name('archive_json.py'))
             module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
@@ -145,14 +150,18 @@ class Transfer:
             with os.fdopen(fd, 'wb') as raw:
                 out = Bounded(raw)
                 header = _common.encoded({'schema_version': 1, 'kind': 'source_metadata_projection',
-                                          'source': source_ref, 'format': 'single_action_capture'}).rstrip(b'\n')
+                                          'source': source_ref, 'format': projection_format}).rstrip(b'\n')
                 out.write(header[:-1] + b',"metadata":')
-                try: document = module.project(source, self.deadline, out)
+                try:
+                    if projection_format == 'probe_v2_candidate':
+                        document = module.candidate(source, self.deadline, out, validate)
+                    else:
+                        document = module.project(source, self.deadline, out)
                 except TimeoutError: raise Gap('deadline', 'source projection') from None
                 except (module.Invalid, UnicodeError): raise Gap('monitoring_incomplete', 'source projection contract') from None
                 out.write(b'}\n')
                 length = out.length
-            valid = validate(document)
+            valid = True if projection_format == 'probe_v2_candidate' else validate(document)
             if length > remaining: raise Gap('byte_limit', 'phase bytes')
             if reserve is not None: reserve(length)
             projection_hash = _common.digest(projected, length, deadline=self.deadline)
@@ -1076,6 +1085,37 @@ class Collector:
             obj.update(bytes=size, sha256=sha, destination_etag=dest_etag, state='verified')
             obj['source']['etag'] = etag; self.verified_bytes += size
             if not valid: self.reject_binding(obj, 'monitoring_incomplete', 'source publication contract')
+        except Gap as error:
+            obj.update(state='missing' if error.code == 'source_missing' else 'failed', gap_code=error.code)
+            self.gap(error.code, error.boundary, name)
+        except KeyboardInterrupt:
+            obj.update(gap_code='interrupted'); self.gap('interrupted', 'source projection', name); raise
+        except Exception:
+            obj.update(gap_code='transport'); self.gap('transport', 'source projection', name)
+
+    def v2_candidate_projection(self, container, name, identity, expected_sha256):
+        if len(self.objects) >= ArchiveMaxObjects - 2:
+            self.gap('object_limit', 'data object count', name); return
+        if not safe_name(container) or not safe_name(name): raise InvalidArchiveConfig()
+        destination = f'{self.prefix}objects/{container}/{name}.metadata.json'
+        if destination in self.names: raise InvalidArchiveConfig()
+        self.names.add(destination)
+        obj = {'kind': 'source_metadata_projection', 'source': {'container': container, 'name': name, 'etag': None},
+               'destination_name': destination, 'required': True, 'repeat': None, 'capture_id': None,
+               'bytes': None, 'sha256': None, 'destination_etag': None, 'state': 'failed', 'gap_code': None}
+        self.objects.append(obj)
+        def validate(doc):
+            return (doc['schema_version'] == 2 and doc['mode'] == 'single-action-v2'
+                    and doc['synthetic'] is True and doc['adr012_counts'] == 'not_applicable'
+                    and all(doc[k] == v for k, v in identity.items()))
+        try:
+            remaining = ArchiveMaxBytes - 1048576 - 65536 - self.logical_bytes
+            size, sha, etag, dest_etag, _, _ = self.transfer.project_source(
+                container, name, destination, remaining, validate,
+                reserve=lambda count: setattr(self, 'logical_bytes', self.logical_bytes + count),
+                projection_format='probe_v2_candidate', expected_sha256=expected_sha256)
+            obj.update(bytes=size, sha256=sha, destination_etag=dest_etag, state='verified')
+            obj['source']['etag'] = etag; self.verified_bytes += size
         except Gap as error:
             obj.update(state='missing' if error.code == 'source_missing' else 'failed', gap_code=error.code)
             self.gap(error.code, error.boundary, name)
