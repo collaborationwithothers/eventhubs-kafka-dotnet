@@ -156,7 +156,9 @@ class Reader:
             if len(relative) == 2 and relative[0] == 'settings' and ch != '"': raise Invalid()
         if ch == '{':
             self.take(); keys = set(); result = {}; self.whitespace()
-            if self.peek() == '}': self.take(); return result if mode != 'skip' else None
+            settings = mode == 'shape' and path == ('repeats', '*', 'settings')
+            if self.peek() == '}':
+                self.take(); return ('settings',) if settings else result if mode != 'skip' else None
             while True:
                 self.whitespace(); key = self.string(True)
                 if len(key) > 1024 or key in keys or len(keys) >= 100000: raise Invalid()
@@ -173,7 +175,6 @@ class Reader:
                         ('repeats', '*', 'second', 'error'): {'code', 'is_fatal', 'origin', 'reason'},
                     }
                     if path in schemas and key not in schemas[path]: raise Invalid()
-                    if path == ('repeats', '*', 'settings') and len(keys) > 128: raise Invalid()
                 if self.take() != ':': raise Invalid()
                 child_mode = ('shape' if mode == 'shape' else
                               'shape' if mode == 'repeat' and key in ('settings', 'omitted_keys', 'result', 'error', 'first', 'second', 'client_errors', 'statistics', 'diagnostics', 'client_started_unix_ms', 'idle_started_elapsed_ms', 'idle_ended_elapsed_ms') else
@@ -190,7 +191,15 @@ class Reader:
                 body_path = (path == ('repeats', '*', 'matched') or path == ('repeats', '*', 'requested')
                              or path == ('repeats', '*', 'read_observation', 'record'))
                 self.whitespace()
-                if mode == 'shape' and key == 'raw_base64' and path == ('repeats', '*', 'statistics', '*') and self.peek() == '"':
+                if settings:
+                    if self.peek() != '"': raise Invalid()
+                    self.string(False); value = None
+                elif mode == 'shape' and key == 'reason' and path in {
+                        ('repeats', '*', 'error'), ('repeats', '*', 'client_errors', '*'),
+                        ('repeats', '*', 'first', 'error'), ('repeats', '*', 'second', 'error')}:
+                    if self.peek() != '"': raise Invalid()
+                    self.string(False); value = ('error_reason',)
+                elif mode == 'shape' and key == 'raw_base64' and path == ('repeats', '*', 'statistics', '*') and self.peek() == '"':
                     value = self.raw_statistics()
                 elif key == 'value_base64' and body_path:
                     value = self.body()
@@ -198,11 +207,11 @@ class Reader:
                     raise Invalid()
                 else:
                     value = self.value(depth + 1, child_mode, path + (key,))
-                if mode != 'skip': result[key] = value
+                if mode != 'skip' and not settings: result[key] = value
                 self.whitespace(); separator = self.take()
                 if separator == '}': break
                 if separator != ',': raise Invalid()
-            return result if mode != 'skip' else None
+            return ('settings',) if settings else result if mode != 'skip' else None
         if ch == '[':
             self.take(); values = []; count = 0; previous = None; self.whitespace()
             omissions = mode == 'shape' and path == ('repeats', '*', 'omitted_keys')

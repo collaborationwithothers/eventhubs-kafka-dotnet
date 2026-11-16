@@ -1,5 +1,6 @@
 """Regression coverage for the closed legacy capture projection wire."""
 import base64
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
@@ -22,6 +23,81 @@ class ProjectionSchemaTests(unittest.TestCase):
         name = f'{run}/{phase}/{item}/C0/instances/{run}-{item.lower()}-c0-{suffix}-pod/capture.json'
         key = ('source123', container, name)
         return harness, key, json.loads(harness.cli.blobs[key])
+
+    def failed_capture(self, h, key, capture, idle):
+        for row in capture['repeats']:
+            row['diagnostics'] = ['capture_limit']
+            if idle:
+                row.update(first=None, second=None, idle_started_elapsed_ms=None, idle_ended_elapsed_ms=None)
+            else:
+                row.update(terminal=False, terminal_unix_ms=None, result=None, error=None, matched=None)
+        del h.cli.blobs[(key[0], key[1], key[2].replace('capture.json', 'completion.json'))]
+        if not idle:
+            del h.cli.blobs[('source123', 'verifier', f"{h.phase['run_id']}/single-action/B01/C0/judge-completion.json")]
+
+    def assert_retained_failure(self, h, key, capture):
+        original = fixture.encoded(capture)
+        h.cli.blobs[key] = original
+        code, manifest, receipt = h.run()
+        self.assertEqual(1, code)
+        self.assertFalse(receipt['archive_complete'])
+        self.assertIsNone(receipt['completion'])
+        obj = next(o for o in manifest['objects'] if o['source']['name'] == key[2])
+        self.assertEqual('verified', obj['state'])
+        archived = h.cli.blobs[('archive123', 'run-evidence', obj['destination_name'])]
+        projected = json.loads(archived)
+        self.assertEqual(len(original), projected['source']['bytes'])
+        self.assertEqual(hashlib.sha256(original).hexdigest(), projected['source']['sha256'])
+        self.assertEqual(hashlib.sha256(archived).hexdigest(), obj['sha256'])
+        return projected['metadata']
+
+    def test_settings_producer_thresholds_retain_failed_capture(self):
+        for idle in (False, True):
+            for kind, amount in [('keys', 127), ('keys', 128), ('keys', 129),
+                                 ('bytes', 16383), ('bytes', 16384), ('bytes', 16385)]:
+                with self.subTest(idle=idle, kind=kind, amount=amount):
+                    h, key, capture = self.capture(idle)
+                    self.failed_capture(h, key, capture, idle)
+                    for row in capture['repeats']:
+                        settings = {'client.id': row['client_id']}
+                        if idle: settings['statistics.interval.ms'] = '15000'
+                        if kind == 'keys':
+                            settings.update({f'fixture.{n:03}': 'v' for n in range(amount - len(settings))})
+                        else:
+                            used = sum(len(k.encode()) + len(v.encode()) for k, v in settings.items())
+                            settings['fixture'] = 'x' * (amount - used - len('fixture'))
+                        row['settings'] = settings
+                    projected = self.assert_retained_failure(h, key, capture)
+                    self.assertEqual([r['settings'] for r in capture['repeats']],
+                                     [r['settings'] for r in projected['repeats']])
+                    self.assertEqual([['capture_limit']] * 5, [r['diagnostics'] for r in projected['repeats']])
+
+    def test_very_large_settings_values_are_streamed_and_retained(self):
+        for idle in (False, True):
+            with self.subTest(idle=idle):
+                h, key, capture = self.capture(idle)
+                self.failed_capture(h, key, capture, idle)
+                for row in capture['repeats']:
+                    row['settings'] = {'client.id': row['client_id'], 'fixture': 'x' * 200000 + '\n"\\é'}
+                    if idle: row['settings']['statistics.interval.ms'] = '15000'
+                projected = self.assert_retained_failure(h, key, capture)
+                self.assertEqual([r['settings'] for r in capture['repeats']],
+                                 [r['settings'] for r in projected['repeats']])
+
+    def test_idle_large_construction_error_reason_is_retained(self):
+        h, key, capture = self.capture(True)
+        self.failed_capture(h, key, capture, True)
+        for repeat in capture['repeats']:
+            repeat['settings'] = {'client.id': repeat['client_id'], 'statistics.interval.ms': '15000'}
+        row = capture['repeats'][0]
+        row['diagnostics'] = []
+        reason = 'native construction failure ' + 'x' * 140000 + '\n"\\é'
+        row['first'] = {'attempt': 1, 'key': 'A02:C0:idle-42-1:r1:p1', 'started_elapsed_ms': 0,
+                        'terminal': True, 'result': 'error',
+                        'error': {'code': -1, 'is_fatal': False, 'origin': 'construction', 'reason': reason},
+                        'terminal_elapsed_ms': 1, 'terminal_unix_ms': 2}
+        projected = self.assert_retained_failure(h, key, capture)
+        self.assertEqual(row['first'], projected['repeats'][0]['first'])
 
     def test_valid_nested_evidence_is_preserved(self):
         for idle in (False, True):
@@ -82,7 +158,8 @@ class ProjectionSchemaTests(unittest.TestCase):
         produce = {'attempt': 1, 'key': 'key', 'started_elapsed_ms': 0, 'terminal': True,
                    'result': 'success', 'error': None, 'terminal_elapsed_ms': 1, 'terminal_unix_ms': 2}
         cases = [
-            ('settings', sentinel), ('settings', {'key': 7}), ('omitted_keys', [sentinel, None]),
+            ('settings', sentinel), ('settings', {'key': 7}), ('settings', {'key': {'unknown': sentinel}}),
+            ('omitted_keys', [sentinel, None]),
             ('client_errors', [{**error, 'observed_elapsed_ms': True}]),
             ('client_errors', [{**error, 'observed_elapsed_ms': 1, 'unknown': sentinel}]),
             ('statistics', [{'sequence': 1, 'observed_elapsed_ms': 2, 'raw_base64': sentinel}]),

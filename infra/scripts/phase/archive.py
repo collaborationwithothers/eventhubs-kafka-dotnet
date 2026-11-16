@@ -1972,7 +1972,7 @@ def legacy_error(value, callback=False):
     return (isinstance(value, dict) and set(value) == fields
             and legacy_integer(value['code'], 32) and type(value['is_fatal']) is bool
             and value['origin'] in ('construction', 'local', 'broker')
-            and isinstance(value['reason'], str) and len(value['reason'].encode('utf-8')) <= 4096
+            and value['reason'] == ('error_reason',)
             and (not callback or legacy_integer(value['observed_elapsed_ms'], nonnegative=True)))
 
 
@@ -1990,10 +1990,7 @@ def legacy_produce(value):
 def legacy_repeat_shape(repeat, mode):
     settings = repeat['settings']; omitted = repeat['omitted_keys']
     errors = repeat['client_errors']; statistics = repeat['statistics']; diagnostics = repeat['diagnostics']
-    if (not isinstance(settings, dict) or len(settings) > 128
-            or any(not isinstance(k, str) or not isinstance(v, str) for k, v in settings.items())
-            or sum(len(k.encode('utf-8')) + len(v.encode('utf-8')) for k, v in settings.items()) > 16384
-            or omitted != ('omitted_keys',)
+    if (settings != ('settings',) or omitted != ('omitted_keys',)
             or not isinstance(errors, list) or len(errors) > 64 or any(not legacy_error(v, True) for v in errors)
             or not legacy_integer(repeat['client_errors_dropped'], nonnegative=True)
             or not isinstance(statistics, list) or len(statistics) > (80 if mode == 'idle-observation' else 64)
