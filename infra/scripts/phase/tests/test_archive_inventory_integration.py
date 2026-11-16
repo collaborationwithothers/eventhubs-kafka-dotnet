@@ -515,8 +515,8 @@ class InventoryIntegrationTests(unittest.TestCase):
                 self.assertEqual(not bad, receipt['archive_complete'])
                 self.assertEqual(5, len(manifest['expected_units']))
                 self.assert_fixture_diagnostics(h, manifest, v2=True)
-                self.assertEqual(16, manifest['totals']['expected_objects'] - 4) # 4 publications, 5 pods, phase status, 3 collection statuses and 3 stdout projections
-                self.assertEqual(15 if bad else 16, manifest['totals']['verified_objects'] - 4)
+                self.assertEqual(16, manifest['totals']['expected_objects'] - 4 - sum(o['kind']=='native_monitoring_index' for o in manifest['objects'])) # Original publications, pods, status and stdout projections remain required.
+                self.assertEqual(15 if bad else 16, manifest['totals']['verified_objects'] - 4 - sum(o['kind']=='native_monitoring_index' and o['state']=='verified' for o in manifest['objects']))
                 if bad:
                     self.assertIsNone(receipt['completion'])
                     self.assertTrue(any(g['code'] == 'source_hash_mismatch' for g in receipt['gaps']))
