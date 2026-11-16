@@ -1853,20 +1853,28 @@ def collect_ordinary(collector, phase, status, containers, artifacts, job_name):
     return units
 
 
+NATIVE_MONITORING_MODES = frozenset((
+    'loadgen', 'loadgen2', 'loadgen-restart', 'loadgen-successor',
+    'single-action', 'single-action-seed', 'single-action-v2', 'idle-observation',
+    'consumer-verify', 'start-line', 'verify', 'b10-sweep-line', 'b10-sweep',
+    'b10-final-sweep', 'b10-abrupt-verify',
+))
+
+
 def collect_native_monitoring(collector, phase, status, units):
-    """Read pod indexes from recorded starts; never discover objects by listing."""
+    """Read native-host indexes from recorded starts; never list storage."""
     spec = importlib.util.spec_from_file_location('parchwell_archive_native', Path(__file__).with_name('archive_native_monitoring.py'))
     native = importlib.util.module_from_spec(spec); spec.loader.exec_module(native)
     by_job = {r['job']: r for r in status['modes'] if isinstance(r, dict) and isinstance(r.get('job'), str)}
     for unit in units:
-        if unit['state'] != 'started' or not unit['pod_uid']:
+        if (unit['state'] != 'started' or not unit['pod_uid']
+                or unit['mode'] not in NATIVE_MONITORING_MODES
+                or phase['scenario'] == 'probe-batch' and phase.get('run_kind') == 'smoke'):
             continue
         job = unit['job_name']
         record = by_job.get(job, {})
         scenario = unit['item'] or phase['scenario']
         configuration = record.get('configuration') or phase.get('configuration') or phase['phase']
-        if phase['scenario'] == 'idle-observation' and unit['mode'] == 'idle-observation-judge':
-            scenario, configuration = 'A04', 'C1'
         run = phase['run_id']
         selected = phase['phase']
         if phase['scenario'] in ('probe-batch', 'probe-batch-2', 'idle-observation', 'ledger-batch'):

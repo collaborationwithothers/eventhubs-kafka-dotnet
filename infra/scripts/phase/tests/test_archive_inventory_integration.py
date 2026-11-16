@@ -129,13 +129,11 @@ class Harness:
         self.status['modes'].append(r)
         # A killed process cannot publish a final index. Other fixture pods explicitly
         # report a built lifetime with no callbacks, as required by the amendment.
-        if mode != 'loadgen-restart':
+        if mode not in ('loadgen-restart', 'judge', 'single-action-judge', 'single-action-v2-judge', 'idle-observation-judge', 'probe-gate') and not (self.phase['scenario'] == 'probe-batch' and self.phase['run_kind'] == 'smoke'):
             run = self.phase['run_id']
             selected = self.phase['phase']
             scenario = item or self.phase['scenario']
             configuration = config or self.phase['configuration']
-            if self.phase['scenario'] == 'idle-observation' and mode == 'idle-observation-judge':
-                scenario, configuration = 'A04', 'C1'
             if self.phase['scenario'] in ('probe-batch', 'probe-batch-2', 'idle-observation', 'ledger-batch'):
                 selected = configuration
             if self.phase['scenario'] == 'ledger-batch' and item:
@@ -217,7 +215,7 @@ def publish_legacy(h, container, prefix, item, config, job, pod, idle=False):
         h.cli.put(container, prefix+name, data)
 
 
-def publish_v2_actor(h, job, pod, config, stage):
+def publish_v2_actor(h, job, pod, config, stage, native_report=None):
     role = 'loadgen' if stage == 'seed' else 'probe' if config == 'C6' else 'enrichment-consumer'
     h.status['modes'][-1]['role'] = role
     identity = {'schema_version':2, 'mode':'single-action-v2', 'synthetic':True, 'run_id':h.phase['run_id'],
@@ -230,6 +228,17 @@ def publish_v2_actor(h, job, pod, config, stage):
                 'client_errors':[], 'statistics':[], 'diagnostics':[]} for n in range(1, 6)]
     repeats[0]['requested'] = {'topic':'document-events', 'partition_mode':'explicit', 'partition':0, 'offset':None,
                                'key_base64':'aw==', 'value_base64':'Qk9EWV9TRUNSRVQ='}
+    if native_report is not None:
+        repeats[0].update(admission='required', client_id=pod + '-r1', action='produce', terminal=True,
+                          result='success', statistics=[{'sequence':3, 'observed_elapsed_ms':10,
+                                                         'raw_base64':base64.b64encode(native_report).decode()}])
+        index_key = ('source123', 'native-monitoring', f'probe-42-1/{config}/{job}/uid/native-monitoring/index.json')
+        index = json.loads(h.cli.blobs[index_key])
+        locator = f'runner/probe-v2/raw/{job}/{pod}.containers.{role}.log'
+        index['clients'][0].update(client_id=pod + '-r1', report_count=1, raw_sources=[{
+            'kind':'existing_capture', 'source':locator, 'byte_length':len(native_report),
+            'sha256':sha(native_report), 'report_ordinal':3, 'row_count':1}])
+        h.cli.blobs[index_key] = encoded(index)
     capture = {**identity, 'managed_version':'2.16.0', 'native_version':'2.16.0', 'repeats':repeats,
                'handler_exit_code':0, 'cleanup_completed':True, 'host_cleanup_completed':True}
     folder = h.artifacts/job
@@ -489,8 +498,9 @@ class InventoryIntegrationTests(unittest.TestCase):
                             for o in manifest['objects']))
 
     def test_v2_complete_and_control_readback_and_bad_hash(self):
-        for bad in (False, True):
-            with self.subTest(bad=bad):
+        for fault in ('none', 'candidate_hash', 'native_hash'):
+            with self.subTest(fault=fault):
+                bad = fault != 'none'
                 h = self.harness('probe-batch-2', 'single-action', 'probe-42-1', 'smoke', items=['F06'],
                                  probe_v2_selection='authentication-controls', capture_authentication_metadata=True)
                 for config, stages in [('C6', ('seed','action','judge')), ('C9', ('action','judge'))]:
@@ -499,7 +509,8 @@ class InventoryIntegrationTests(unittest.TestCase):
                         mode = 'single-action-v2-judge' if stage == 'judge' else 'single-action-v2'
                         pod = h.job(mode, job, 'F06', config, stage=stage)
                         if stage != 'judge':
-                            publish_v2_actor(h, job, pod, config, stage)
+                            publish_v2_actor(h, job, pod, config, stage,
+                                             b'{"name":"native-producer","client_id":"fixture"}' if config == 'C6' and stage == 'seed' else None)
                             continue
                         prefix = f'probe-42-1/single-action-v2/F06/{config}/'
                         candidate = encoded(candidate_fixture('probe-42-1', config))
@@ -507,19 +518,25 @@ class InventoryIntegrationTests(unittest.TestCase):
                         receipt = {'schema_version': 2, 'mode': mode, 'run_id': 'probe-42-1', 'scenario_id': 'F06',
                                    'configuration_id': config, 'source_commit': 'a'*40, 'job_name': job, 'pod_name': pod,
                                    'pod_uid': 'uid', 'candidate_name': prefix+'candidate.json',
-                                   'candidate_sha256': ('0'*64 if bad and config == 'C6' else sha(candidate)),
+                                   'candidate_sha256': ('0'*64 if fault == 'candidate_hash' and config == 'C6' else sha(candidate)),
                                    'handler_exit_code': 1, 'cleanup_completed': True}
                         h.cli.put('verifier', prefix+'judge-completion.json', receipt)
+                if fault == 'native_hash':
+                    key = ('source123', 'native-monitoring', 'probe-42-1/C6/probe-42-1-f06-c6-seed/uid/native-monitoring/index.json')
+                    index = json.loads(h.cli.blobs[key])
+                    index['clients'][0]['raw_sources'][0]['sha256'] = 'f'*64
+                    h.cli.blobs[key] = encoded(index)
                 code, manifest, receipt = h.run()
                 self.assertEqual(1 if bad else 0, code)
                 self.assertEqual(not bad, receipt['archive_complete'])
+                self.assertFalse(any(o['kind']=='native_monitoring_raw' for o in manifest['objects']))
                 self.assertEqual(5, len(manifest['expected_units']))
                 self.assert_fixture_diagnostics(h, manifest, v2=True)
                 self.assertEqual(16, manifest['totals']['expected_objects'] - 4 - sum(o['kind']=='native_monitoring_index' for o in manifest['objects'])) # Original publications, pods, status and stdout projections remain required.
-                self.assertEqual(15 if bad else 16, manifest['totals']['verified_objects'] - 4 - sum(o['kind']=='native_monitoring_index' and o['state']=='verified' for o in manifest['objects']))
+                self.assertEqual(15 if fault == 'candidate_hash' else 16, manifest['totals']['verified_objects'] - 4 - sum(o['kind']=='native_monitoring_index' and o['state']=='verified' for o in manifest['objects']))
                 if bad:
                     self.assertIsNone(receipt['completion'])
-                    self.assertTrue(any(g['code'] == 'source_hash_mismatch' for g in receipt['gaps']))
+                    self.assertTrue(any(g['code'] == ('source_hash_mismatch' if fault == 'candidate_hash' else 'monitoring_incomplete') for g in receipt['gaps']))
                 else:
                     prefix = manifest['destination']['prefix']
                     mb = h.cli.blobs[('archive123','run-evidence',prefix+'archive-manifest.json')]
@@ -811,6 +828,27 @@ class InventoryIntegrationTests(unittest.TestCase):
         self.assertTrue(any(g['code']=='destination_hash_mismatch' for g in r['gaps']))
         self.assertTrue(any(key[0]=='archive123' and key[2].endswith('/candidate.json.metadata.json') for key in h.cli.blobs))
         self.assertFalse(any(key[0]=='archive123' and key[2].endswith('/candidate.json') for key in h.cli.blobs))
+
+    def test_judge_has_no_monitoring_index_but_native_host_requires_one(self):
+        for missing_native in (False, True):
+            with self.subTest(missing_native=missing_native):
+                h = self.harness('probe-batch', 'single-action', 'probe-42-1', 'batch', items=['B01'])
+                complete_family(h, 'probe-batch')
+                judge = 'probe-42-1-b01-c0-single-judge'
+                judge_index = f'probe-42-1/C0/{judge}/uid/native-monitoring/index.json'
+                self.assertNotIn(('source123', 'native-monitoring', judge_index), h.cli.blobs)
+                native_job = 'probe-42-1-b01-c0-single'
+                native_index = f'probe-42-1/C0/{native_job}/uid/native-monitoring/index.json'
+                if missing_native:
+                    del h.cli.blobs[('source123', 'native-monitoring', native_index)]
+                code, manifest, receipt = h.run()
+                self.assertEqual(1 if missing_native else 0, code)
+                self.assertEqual(not missing_native, receipt['archive_complete'])
+                self.assertFalse(any(o['source']['name'] == judge_index for o in manifest['objects']))
+                if missing_native:
+                    self.assertIsNone(receipt['completion'])
+                    self.assertTrue(any(g['code'] == 'monitoring_incomplete' and g['expected_unit'] == native_job
+                                        for g in manifest['gaps']))
 
     def test_native_existing_legacy_reference_binds_raw_bytes(self):
         for changed in (False, True):
