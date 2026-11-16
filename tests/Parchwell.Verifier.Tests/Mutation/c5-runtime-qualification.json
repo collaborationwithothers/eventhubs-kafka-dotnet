@@ -1,6 +1,6 @@
 {
-  "budget_seconds": 1800,
-  "schema_version": 1,
+  "budget_seconds": 2700,
+  "schema_version": 2,
   "shared_inputs": {
     ".config/dotnet-tools.json": "50249a8f3a7134b08b4409c485dfe67afb17910e5a2329bf65810c3338231244",
     ".github/workflows/verifier-c5-mutation.yml": "50e10f7edfeb8128d3bdb2c54c3de25dde473c5dca9ae33a53a925f4209acd8f",
@@ -110,7 +110,7 @@
     "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaTokenProvider.cs": "ece4f51e384b5e83bc913d3cefe08ac542b5480e0e223e251deec103723f36d2",
     "src/Parchwell.Verifier/Common/Phase/B10SweepEvidence.cs": "92fd2a1cfb72e9454682a8b6ca39c90f13dd8a87a071f9350cdca76fd748f9a5",
     "src/Parchwell.Verifier/Common/Phase/PhaseIdentity.cs": "f9a5baf696556088f72d8891a8da83348eb72a4fa944c5d7c61b3c4d6d06941b",
-    "src/Parchwell.Verifier/Common/Phase/PhasePaths.cs": "fbcfeda8b4a94f0b6876702adcfa50a4f09ad9be224c4b2717f5d6a9bfd5b53a",
+    "src/Parchwell.Verifier/Common/Phase/PhasePaths.cs": "4d22f738676b82048a4b1b9feccfeceb01427a2802c1e6f147102861551e93c1",
     "src/Parchwell.Verifier/Common/Phase/PhaseWireCodec.cs": "396f558b1405638fd16b9e07a3c56fd1f0f502020f1114c73825d415bc776640",
     "src/Parchwell.Verifier/Common/Phase/ProducerRegistration.cs": "2a4dda01365845fd94ae48aa3d77f0561e6aebf81957a5b26c530571855b3068",
     "src/Parchwell.Verifier/Common/Results/B10ProducerObservationsCodec.cs": "173cec5ddafd634b54270548fd8b7127ff12f6c1d8ae3c6bd1d9831f4dc998ff",
@@ -122,10 +122,10 @@
     "src/Parchwell.Verifier/Common/SingleAction/SingleActionLimits.cs": "8bed22307d3b3c144cc93745bb5aa3e9f63b44b1b759250005be01f4dc77b968",
     "src/Parchwell.Verifier/Common/SingleAction/SingleActionWire.cs": "171c02eb80722e38056c304b1ab149dc6a9431289dc2acdf0e0bad3b4f1b5158",
     "src/Parchwell.Verifier/Common/Storage/BlobProducerArtifactStore.cs": "e820f20ad43a2d85a5958ff7f01b31a223fdb25b35e5253a828374f2a479d56e",
-    "src/Parchwell.Verifier/Common/Storage/BlobVerifierArtifactStore.cs": "1cb1c8707c2ab524a8cf8069ad4e8dc2bd2c61c1618ce6b9f4a1a06695813b89",
+    "src/Parchwell.Verifier/Common/Storage/BlobVerifierArtifactStore.cs": "02f27feb7551ebdab83b33e5465af160c90f63cc24a29a24e1e6b79b7ce8494c",
     "src/Parchwell.Verifier/Common/Storage/ICompletionReceiptPublisher.cs": "5a633d5c492d30139cf2ae2b520f6bb593cd957082f086be1b6866fe5885a662",
     "src/Parchwell.Verifier/Common/Storage/IProducerArtifactStore.cs": "989abefbbc37d6fc769d8756e88b6a70244b23fa7b8767e4c77a1f321c538452",
-    "src/Parchwell.Verifier/Common/Storage/IVerifierArtifactStore.cs": "5d479a4642528a0d1525ffd9c70a882beb166ae84a9787a489f2a8da188d553c",
+    "src/Parchwell.Verifier/Common/Storage/IVerifierArtifactStore.cs": "260b2f7d7013771a89216e6bed987eab4b5de474b98f2cb82e5b4c6c0fa5fa4f",
     "src/Parchwell.Verifier/Common/Window/BrokerInventory.cs": "4dd0d92e52227a27a0bee068216ab5780457afd2044aff0193923c563d257964",
     "src/Parchwell.Verifier/Common/Window/BrokerInventoryReader.cs": "84fad19b214dab36bf40dd9b318f6b9bfb3b8a34aaf1105eeddea41a6b632edf",
     "src/Parchwell.Verifier/Common/Window/StartLineNote.cs": "249dca8c9c1ce896f9275a7c2766eeb788805a8a5bfa3ec8738baf45cd25a0aa",
@@ -146,8 +146,8 @@
     "src/Parchwell.Verifier/StartLine/BrokerInventoryCodec.cs": "4d3095eba706234f73739afb2c6b4b5d4b4a67b3a42e619b4f3476c0c1092041",
     "src/Parchwell.Verifier/StartLine/StartLineHandler.cs": "d433a7ae9726b53e4291eae297bccb6f78271b339e4d08c31237ef5109a4fa75",
     "src/Parchwell.Verifier/VerifierCompletionState.cs": "87bb1a0cf9c156777c5cab123dd09e8a95b494e9040954797b68ee37010a6ad6",
-    "src/Parchwell.Verifier/VerifierHostOptions.cs": "5a21e99828a85a2799bd6fae778f3baeb0a733d62c98e8f4be0716f342359b59",
-    "src/Parchwell.Verifier/VerifierHostOptionsValidator.cs": "078e37d9acb3d3c7d6beb95c9587d6032c3c36c7f16114e69d633fc9b5934525",
+    "src/Parchwell.Verifier/VerifierHostOptions.cs": "3575d8df8556a015e84ba7c6999420ce157bca60707fb102d520225f74e022de",
+    "src/Parchwell.Verifier/VerifierHostOptionsValidator.cs": "7ab501b53440974d3f79fd094a559559f5778b6f18611547d31250b050fdebd3",
     "src/Parchwell.Verifier/VerifierWorker.cs": "1ad54c9ff68f5cc35a28076cfd075098c0521854074db7107bdc282f4e3a47cc",
     "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptClassification.cs": "5a19508461b7a112baed9bc861503eb75376ee110e986ed524b8b44ef0b44378",
     "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptDiagnostics.cs": "a3c787c0101ead81ceef9099d4af2f482a10d9740a818bb5d23ff8e4fa5ab146",
@@ -156,7 +156,7 @@
     "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptGuard.cs": "11a37566cb8f4e7f89b44ca62053aabeca104c3981d0f910119ff03bfd38c125",
     "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptGuardConfiguration.cs": "4d197708fe9ad8f1f71bb9c1b92c0d904cbe3b6a7ffdc3487996bdde73b52df0",
     "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptReconciliation.cs": "d500af3b52e6ca9f056a4ea3a95ad0d629a475124cad2c96f1d48f0828349db8",
-    "src/Parchwell.Verifier/VerifyRun/Abrupt/B10AbruptVerifyHandler.cs": "8e14c8d5e0b19b158e57b3e7627bcb465463844358e1f1ed05eb412a84d0d688",
+    "src/Parchwell.Verifier/VerifyRun/Abrupt/B10AbruptVerifyHandler.cs": "99f6511ba44a5c33346334d613e242473bfd139a6c1146605b7cb8dcc91f4233",
     "src/Parchwell.Verifier/VerifyRun/Abrupt/EarlierRepeatEvidenceReader.cs": "312865b5fb2ec95761dc8fbacc041ebeab94571dd5f18d459e19187123d02c34",
     "src/Parchwell.Verifier/VerifyRun/Abrupt/StartLineEvidenceReader.cs": "04640f3fcbd6352a54a2f01ced057e50eb3ff3ec1c433cfaaf9a34796f68baa9",
     "src/Parchwell.Verifier/VerifyRun/Abrupt/TimeoutEvidenceReader.cs": "de5ed498e05474f3ee5c6352e4f9de332f9b1ed57dc2a5ebda43a4f828537564",
@@ -196,11 +196,12 @@
     "src/Parchwell.Verifier/VerifyRun/SingleAction/SingleActionScenarioResolver.cs": "3c3ee661f083232f05a4bd4d4dad2eb870c7f1cb6a57b1f9537e6cb022bbb77e",
     "src/Parchwell.Verifier/VerifyRun/Storage/BlobLedgerArtifactSource.cs": "33a412d197586445cb00f9a9b19e2d3efd91cac8727df96cc313296109402957",
     "src/Parchwell.Verifier/VerifyRun/Storage/ILedgerArtifactSource.cs": "fe80ebf52231a21f79bfe34530dfd8faa4400e5f4c3108c764c10403c2dd7c78",
-    "src/Parchwell.Verifier/VerifyRun/VerifyRunHandler.cs": "46987685ff2511fba4bfb2efaafa2339b40843b653fb242b9f010292d739aa61",
+    "src/Parchwell.Verifier/VerifyRun/VerifyRunHandler.cs": "937b839dcb2a86301b575c13423431258cfffc39f554811f9df322f6494616a4",
+    "src/Parchwell.Verifier/VerifyRun/Window/ConsumedMetadataCapture.cs": "361308efb4718c12fca1863d661380c82f2a167fbe1c97f37924957e1bb2d8b5",
     "src/Parchwell.Verifier/VerifyRun/Window/ConsumedRecordBudget.cs": "7d7376af1ca61985e716fd949159b3218fcee967cfd22c4278104e368747f1b8",
     "src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs": "b2012594b326ea2afd577d123867af37e0078e0f1da961a9dda5d2555aaefcca",
     "src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs": "87d5e8057535d0a2895d19c0a45fdc90df491787869ade1dfb08a2c6c0695c98",
-    "src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs": "a8bc1a8108372349ad7191975fd97d5646fa9a5f9edcd7d303e0f85d97b10751",
+    "src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs": "51482cfcf3e471552d374c2fe237476204ca39f5a3efaa9e9a9cdd52bf14a1a7",
     "src/Parchwell.Verifier/packages.lock.json": "c9c2f3096cba8a0c3dc705fd2c9c5f0404ebf5a173837b5ffd9c0f73ba7d4e26",
     "tests/Parchwell.ArchitectureTests/packages.lock.json": "04c93d3fea203e1ae71afa8666bf6c58c3c84b8f2e72807d39e90b76df2b1023",
     "tests/Parchwell.Enrichment.Tests/packages.lock.json": "94fab36e68ded99c90663c4fbab74cf26f76e6bab97a83cba9ac047bc2553c56",
@@ -214,27 +215,28 @@
     "tests/Parchwell.Verifier.Tests/B04/B04EvidenceRecorderTests.cs": "a2cca43cd9a7b5a7affde0597fdfa4f3e85e4d8a2a876d132492f47174d3f741",
     "tests/Parchwell.Verifier.Tests/Host/B10EarlierRepeatExclusionTests.cs": "48c8e18f0b6ca5b0f4d1c50f38e797f85dfff58b6546b261d24b4661ccd448ff",
     "tests/Parchwell.Verifier.Tests/Host/B10ExpectedProducerJobsTests.cs": "46cdbfea42d395729283a2f9c403269ba10eb0256c350ca73d3d6adcfc5a582a",
-    "tests/Parchwell.Verifier.Tests/Host/B10FinalHostTests.cs": "b23938fcf6d20c323dbc53adae963508544753aedda03ffa1a526365da0ebdda",
-    "tests/Parchwell.Verifier.Tests/Host/B10LateObservationDiagnosticsTests.cs": "da5297a042f412d10e90a79b8f2a019e16bcd15dedb341e02449ce9a3ab077f1",
+    "tests/Parchwell.Verifier.Tests/Host/B10FinalHostTests.cs": "94c1a570c0d8d5b4124c7119ce5f6e4a9b7ba2bec0a1dbf9efa275de14e68619",
+    "tests/Parchwell.Verifier.Tests/Host/B10FinalSweepUnitTests.cs": "45fd88227d7d1fdc97f4ed6674b7a90bae54bed7352f54dca6a5d3e09c939f6e",
+    "tests/Parchwell.Verifier.Tests/Host/B10LateObservationDiagnosticsTests.cs": "69096977206e0c7a28f4d5becca94e2a7e06061c4608922eab3d96a5dc564ccb",
     "tests/Parchwell.Verifier.Tests/Host/B10OneJobC0VerifyTests.cs": "517588e82c60148f117391efd629bbf2e218920d8857694601716d968f2b5872",
     "tests/Parchwell.Verifier.Tests/Host/B10RepeatVerifyTests.cs": "f4f613f02a059203ac4f98bc9c7fd4ce7460788e82a59243cb95c72c2354aa27",
     "tests/Parchwell.Verifier.Tests/Host/B10ScientificThreeJobLegacyReaderTests.cs": "e5febabc6ff4cff4409b45b7d1eea4140537a8a50ece2513997c6ac5a037b4f8",
     "tests/Parchwell.Verifier.Tests/Host/B10ScientificThreeJobOptionsTests.cs": "c5902b41f4aa867e92a438330321b4378500a21c72aee768e43a4b89516cf87d",
-    "tests/Parchwell.Verifier.Tests/Host/B10SweepHandlerTests.cs": "24dc8b416ef45b8ceb46f3e519237f98997e352e0af1e6d9e5d03ae8c8a0a926",
+    "tests/Parchwell.Verifier.Tests/Host/B10SweepHandlerTests.cs": "a22aac994165638c1825ddff184051fdf25919211e2dac0a058beb9374028e15",
     "tests/Parchwell.Verifier.Tests/Host/B10SweepLineHandlerTests.cs": "d420f375ad14e970787aef9d8137cd2708435df029787d3aeb4e448f3a01cfbb",
     "tests/Parchwell.Verifier.Tests/Host/B10SweepLineOptionsTests.cs": "3cc0cf3ea36bcb8fb6c17906c0921c4b513f969d3a47daa556546fc094cc2191",
-    "tests/Parchwell.Verifier.Tests/Host/B10SweepOptionsTests.cs": "941e5c2439012490a84f3986a866cdf9eba66f676e2e78ad877f5b143c2bcd2e",
+    "tests/Parchwell.Verifier.Tests/Host/B10SweepOptionsTests.cs": "8b3992e3630be2f69101e6c3af4aec96e37b47940f12a67ce45ae4d324651932",
     "tests/Parchwell.Verifier.Tests/Host/B10TrialStartLineOptionsTests.cs": "383a2553cdb4f58b20be06f74572ce8397f7d4c6a07eb099aac1634d4e792d73",
     "tests/Parchwell.Verifier.Tests/Host/B10TwoInstanceVerifyTests.cs": "ccca452e11a55689a736a1acbb268300381b72ffa277508f613723beee44819d",
     "tests/Parchwell.Verifier.Tests/Host/BrokerInventoryTests.cs": "e2ec290b2450ec05986765f7995df6703e1ba1aea0d31f72bb9282056099bc92",
     "tests/Parchwell.Verifier.Tests/Host/C3HandlerTests.cs": "cc7daabb792a37e7da99a05d32768fd83815be2fa227e094fa38c4b3d40f26b8",
-    "tests/Parchwell.Verifier.Tests/Host/ChartEnvironmentVerifierHostTests.cs": "a450c1a3551d7589019afe9a12dbf0aff1c90bca52a990602547f90c6df2265b",
+    "tests/Parchwell.Verifier.Tests/Host/ChartEnvironmentVerifierHostTests.cs": "77b34aeb5a421c7286a04e440780737412179a85bfdf84af1e3e2c36ffef766b",
     "tests/Parchwell.Verifier.Tests/Host/ImageSmokeTests.cs": "be613a4b55103a0538dddee591e47c26b10033fc972c0b56710ca18eb4a101e4",
     "tests/Parchwell.Verifier.Tests/Host/StartLineHandlerTests.cs": "0255aff534a2ae853ae813dfa1f424d69b6ea82752da1d65bf1b114f3264741a",
     "tests/Parchwell.Verifier.Tests/Host/TelemetryWiringTests.cs": "ecfc325e82f9b8c787a158eede69ebb44188082d2ddcd29e3d7465568d474262",
     "tests/Parchwell.Verifier.Tests/Host/VerifierCompletionTests.cs": "09fbab7f9fd35d873bbabf10aabe4651aea1083dc623a3fe0db033bc0ed38a4e",
-    "tests/Parchwell.Verifier.Tests/Host/VerifierKafkaTokenProviderHostTests.cs": "13a6215e36b6980b6ab3c0ba8559f877640cd479352a893b914014087ede404c",
-    "tests/Parchwell.Verifier.Tests/Host/VerifyInputCapacityTests.cs": "c7127baeab6f6cb7dbb00ee71fc67f108a3cacc925671f7df0bd5c88cd461107",
+    "tests/Parchwell.Verifier.Tests/Host/VerifierKafkaTokenProviderHostTests.cs": "9a301d3232e73ce0b1a634607a12fbee18b5da43b060909717e91147b0cfc061",
+    "tests/Parchwell.Verifier.Tests/Host/VerifyInputCapacityTests.cs": "1a4cfa11b8b6d7f1dcd7dbe494bc683c818dec4e23d94595fff3483823095d97",
     "tests/Parchwell.Verifier.Tests/Host/VerifyRunDiagnosticTests.cs": "3d98c0a523717ff8fc4f544e6e405a870ad4a9646025f03eff7e2eb04081734e",
     "tests/Parchwell.Verifier.Tests/IdleObservation/IdleFixture.cs": "94b64bce8181ab4ed28be480db2f4facb217a4142dbe2b03ffece99ef217cdd8",
     "tests/Parchwell.Verifier.Tests/IdleObservation/IdleObservationJudgeHandlerTests.cs": "07546cd59da494d2684c67d8eb19a7fb64fd1f2250f8e87f7f32824ba2d149d6",
@@ -306,19 +308,20 @@
     "tests/Parchwell.Verifier.Tests/Support/B10AbruptVerifyEvidence.cs": "527c3e9d22c1aec8b72fe0a1175a8b57f1cddda895dc175c337c86c1da49f29d",
     "tests/Parchwell.Verifier.Tests/Support/B10AbruptVerifyFixtureBuilder.cs": "cfd95435aeebc095073093200360c0ba8efa8740a1e8c067ec1ffcaaf91bfa7b",
     "tests/Parchwell.Verifier.Tests/Support/B10SweepFixture.cs": "f648d74ab97161049394b6fa6fe3b8a26c4d094df942864d1ab9d10b2ba6fc2a",
-    "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": "9a0a4aa34655a85a7bc073233d594f2943704a2a97d13e68fe57405cba1ab459",
+    "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": "d16f72187085d0545f7625a6546c53eaa436249c801f62908ae35e9f8ea2636e",
     "tests/Parchwell.Verifier.Tests/Support/KafkaSessionTestSupport.cs": "d4b4b06c096c80ad6b4cdbdb5f16df5639ea53912b276f827e80850752e5c7d3",
     "tests/Parchwell.Verifier.Tests/Support/ProbeGateEvidenceBuilder.cs": "45acec2e62becd32a7b3e4f9349a3d366dc824d216fab847eafb708c92adb278",
     "tests/Parchwell.Verifier.Tests/Support/RecordedEvidence.cs": "428e8f4dcd5e9b160b1daa60d6ff04e4e292d1b2493f1b9b7fed62b341b4a7b7",
-    "tests/Parchwell.Verifier.Tests/Support/VerifierHostTestOptions.cs": "4c5e6c31e295c749a9149ae4f2cfbf6a927a3ebb75e2ddf5d7eae0dd4ad1dda1",
+    "tests/Parchwell.Verifier.Tests/Support/VerifierHostTestOptions.cs": "9824f6035d61539ed4c5122ddf171ba72f618b061517334d1efc35bd3046100c",
     "tests/Parchwell.Verifier.Tests/Window/B10RunWindowTests.cs": "bcead6b4e5318a2b1b0a28e8aa01d3a94f5cdb9d2068c1da728a0bd6d7df029a",
     "tests/Parchwell.Verifier.Tests/Window/B10ScientificThreeJobStartLineCodecTests.cs": "91543ad9a424770553838dc4e9ffb91dc68f680ba281e38a4392255473d8e0d2",
     "tests/Parchwell.Verifier.Tests/Window/B10TrialStartLineCodecTests.cs": "b326978264d5bb953fdfb3f4db32871de86cc98ba7c14d5a04b1fa5d2defec06",
+    "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": "c4ae6838205ff88b2568ced00a3e0b874d24ecb3ead55898b15d44a365dc3b95",
     "tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs": "b7ea0fe4e83e3da2dc34790fb637cfa04d10fc1dd77cdc9b4dc03719b3ca2d4e",
     "tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs": "aa7bef8c9e41ac307fc9724e33381d4c33ccc6b7bcae8560429c0202a7d51710",
     "tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs": "c571be0a01efd0f523a727774ba5a6e517719dfb0d6c42c620cdb2be5a97d508",
     "tests/Parchwell.Verifier.Tests/Window/TokenPumpTests.cs": "44b672baffc7ee86dd2eefd45d515d3489301fe1e2dd659bf80555a9b5080b2f",
-    "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": "e87ae0e7911d27f615ef7661cf589e3360652cdc3d9fcfc3ae99b33810aa3590",
+    "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": "e8e5761f0db2e6426b7a8330453853bd1ff9f0c4a8f0429d2f0d1b79bd92c4ce",
     "tests/Parchwell.Verifier.Tests/packages.lock.json": "6b08c8d420de3207678ae7338e89831ee55696be7e963c80b76c4e1a538fc335",
     "tests/fixtures/ProbeV2MockCluster.cs": "9acd4b0f66c3e4fd51f1c8ec4f79c1f5d644fff61512d6f9caadddb975d62c2d",
     "tests/fixtures/verifier-v1/README.md": "583e9275404bc839a0a27cfaa4545fd1f6db2a3dd68804d10904391e94f43b80",
@@ -2546,96 +2549,124 @@
     "VerifyRun/B10Final/B10FinalSweepHandler.cs": {
       "evidence": [
         {
-          "kind": "hosted_complete",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14109651144",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
-          "sha256": "69626e7a5746a5476e6b6d416edbeb0173c1f98345c8888c27ad4e97ec9b93e2",
-          "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
+          "kind": "local_probe",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43816213193 artifact 14203309562",
+          "note": "Measured 2026-11-16; hardware=AMD_EPYC_9V74_80-Core_Processor,_4_logical_CPUs; calibration=unadjusted_actual_same-profile_hosted_diagnostic. Source/config/projection/receipt/native-report hashes and actual dispatch completions verified. Raw wall 1570.509425359 seconds; native target rows 199; raw score 71.11%, child exit 0. Completed local-shard diagnostic on a hosted runner, not full hosted mutation acceptance. No CPU normalization; hardware variation and future scheduling remain uncertainty. All five final-handler reports reconcile across the same source-bound 199 native identities; sweep has its independent complete 441-row native report. Earlier incomplete diagnostics remain retained and are not timing estimates. Existing workflow artifact has one-day retention; original ZIP is also saved in the implementing workspace.",
+          "sha256": "e883b115805df9ff68665db0e3884770a6b30f19fd8680715bf6327737571b60",
+          "source_commit": "6c291d8832d0c722352ff979545a136e5ea2ddeb"
+        },
+        {
+          "kind": "local_probe",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43826077590 artifact 14208775426",
+          "note": "Measured 2026-11-16; hardware=Intel_Xeon_Platinum_8370C,_4_logical_CPUs; calibration=unadjusted_actual_same-profile_hosted_diagnostic. Source/config/projection/receipt/native-report hashes and actual dispatch completions verified. Raw wall 1886.857977212 seconds; native target rows 199; raw score 11.63%, child exit 2. Completed local-shard diagnostic on a hosted runner, not full hosted mutation acceptance. No CPU normalization; hardware variation and future scheduling remain uncertainty. All five final-handler reports reconcile across the same source-bound 199 native identities; sweep has its independent complete 441-row native report. Earlier incomplete diagnostics remain retained and are not timing estimates. Existing workflow artifact has one-day retention; original ZIP is also saved in the implementing workspace.",
+          "sha256": "37f1ee8b6546f4ed3491562875972488b582e46eb1236ac0563e25229bc11b3d",
+          "source_commit": "6c291d8832d0c722352ff979545a136e5ea2ddeb"
+        },
+        {
+          "kind": "local_probe",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43816213193 artifact 14204120583",
+          "note": "Measured 2026-11-16; hardware=AMD_EPYC_7763_64-Core_Processor,_4_logical_CPUs; calibration=unadjusted_actual_same-profile_hosted_diagnostic. Source/config/projection/receipt/native-report hashes and actual dispatch completions verified. Raw wall 1795.309042086 seconds; native target rows 199; raw score 48.78%, child exit 2. Completed local-shard diagnostic on a hosted runner, not full hosted mutation acceptance. No CPU normalization; hardware variation and future scheduling remain uncertainty. All five final-handler reports reconcile across the same source-bound 199 native identities; sweep has its independent complete 441-row native report. Earlier incomplete diagnostics remain retained and are not timing estimates. Existing workflow artifact has one-day retention; original ZIP is also saved in the implementing workspace.",
+          "sha256": "84c329a7182e60cd137cea661f2207dcd75d468b8f1cee578080cc95e343de47",
+          "source_commit": "6c291d8832d0c722352ff979545a136e5ea2ddeb"
+        },
+        {
+          "kind": "local_probe",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43816213193 artifact 14202933815",
+          "note": "Measured 2026-11-16; hardware=AMD_EPYC_9V74_80-Core_Processor,_4_logical_CPUs; calibration=unadjusted_actual_same-profile_hosted_diagnostic. Source/config/projection/receipt/native-report hashes and actual dispatch completions verified. Raw wall 1449.164471772 seconds; native target rows 199; raw score 36.59%, child exit 2. Completed local-shard diagnostic on a hosted runner, not full hosted mutation acceptance. No CPU normalization; hardware variation and future scheduling remain uncertainty. All five final-handler reports reconcile across the same source-bound 199 native identities; sweep has its independent complete 441-row native report. Earlier incomplete diagnostics remain retained and are not timing estimates. Existing workflow artifact has one-day retention; original ZIP is also saved in the implementing workspace.",
+          "sha256": "81cf9595c855fd2c2e9964b8c0b23377da27623ea33375bebd1934a4c60ebc35",
+          "source_commit": "6c291d8832d0c722352ff979545a136e5ea2ddeb"
+        },
+        {
+          "kind": "local_probe",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43816213193 artifact 14202751024",
+          "note": "Measured 2026-11-16; hardware=AMD_EPYC_7763_64-Core_Processor,_4_logical_CPUs; calibration=unadjusted_actual_same-profile_hosted_diagnostic. Source/config/projection/receipt/native-report hashes and actual dispatch completions verified. Raw wall 229.944036813 seconds; native target rows 199; raw score 0.00%, child exit 2. Completed local-shard diagnostic on a hosted runner, not full hosted mutation acceptance. No CPU normalization; hardware variation and future scheduling remain uncertainty. All five final-handler reports reconcile across the same source-bound 199 native identities; sweep has its independent complete 441-row native report. Earlier incomplete diagnostics remain retained and are not timing estimates. Existing workflow artifact has one-day retention; original ZIP is also saved in the implementing workspace.",
+          "sha256": "d6951a4d0a211d6c4d2fd31fa87d7f9607d7268520f806a071a9aa640abdfb61",
+          "source_commit": "6c291d8832d0c722352ff979545a136e5ea2ddeb"
         }
       ],
       "shards": {
         "b10-final-sweep-handler-crossing": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers. observed_workers=2.",
-          "estimated_seconds": 159,
-          "isolated_seconds": 0.0,
-          "main_mutants": 0,
-          "main_work_seconds": 0,
-          "parallelism": 2,
-          "selection_sha256": "0ff6c363eb80ea918162d1eca26cdfd177639d8a1356e64e93fffc1e72212e60",
-          "setup_seconds": 159,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+          "basis": "Measured 2026-11-16. https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43816213193 artifact 14202751024; ZIP SHA-256 d6951a4d0a211d6c4d2fd31fa87d7f9607d7268520f806a071a9aa640abdfb61. observed_workers=1. Full receipt monotonic wall; setup is receipt UTC start to first actual logged mutant dispatch. Main work is the remaining full receipt wall including idle and teardown multiplied by peak overlapping actual dispatches, a capacity envelope rather than a per-mutant duration sum. Round setup and capacity upward, then round setup + capacity / parallelism upward. One-second log timestamps limit precision; no unmeasured-ID extrapolation or hardware scaling. No static declarations in these selectors; no isolated work is omitted. Qualification budget 2700 seconds under decision6909923442; not full mutation acceptance.",
+          "estimated_seconds": 231,
+          "isolated_seconds": 0,
+          "main_mutants": 1,
+          "main_work_seconds": 74,
+          "parallelism": 1,
+          "selection_sha256": "276ddc0ecf7cf1c0b4815478ce13b0b01e9f4a4cbb785c33ff8a045c873a4d5f",
+          "setup_seconds": 157,
+          "timing_inputs_sha256": "d700bd7823eba6654556c98af0e44bf1541adb877ee4d19bda63fdcb78959dd5"
         },
         "b10-final-sweep-handler-p1": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1779,
-          "isolated_seconds": 0.0,
+          "basis": "Measured 2026-11-16. https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43816213193 artifact 14203309562; ZIP SHA-256 e883b115805df9ff68665db0e3884770a6b30f19fd8680715bf6327737571b60. observed_workers=2. Full receipt monotonic wall; setup is receipt UTC start to first actual logged mutant dispatch. Main work is the remaining full receipt wall including idle and teardown multiplied by peak overlapping actual dispatches, a capacity envelope rather than a per-mutant duration sum. Round setup and capacity upward, then round setup + capacity / parallelism upward. One-second log timestamps limit precision; no unmeasured-ID extrapolation or hardware scaling. No static declarations in these selectors; no isolated work is omitted. Qualification budget 2700 seconds under decision6909923442; not full mutation acceptance.",
+          "estimated_seconds": 1571,
+          "isolated_seconds": 0,
           "main_mutants": 45,
-          "main_work_seconds": 3239,
+          "main_work_seconds": 2896,
           "parallelism": 2,
           "selection_sha256": "564aff00a45a64e2e1bf3f8539c43c7fd0d808a54ea35553597c1e9a14eb49d3",
-          "setup_seconds": 159,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+          "setup_seconds": 123,
+          "timing_inputs_sha256": "d700bd7823eba6654556c98af0e44bf1541adb877ee4d19bda63fdcb78959dd5"
         },
         "b10-final-sweep-handler-p2": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1798,
-          "isolated_seconds": 0.0,
-          "main_mutants": 45,
-          "main_work_seconds": 3278,
+          "basis": "Measured 2026-11-16. https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43826077590 artifact 14208775426; ZIP SHA-256 37f1ee8b6546f4ed3491562875972488b582e46eb1236ac0563e25229bc11b3d. observed_workers=2. Full receipt monotonic wall; setup is receipt UTC start to first actual logged mutant dispatch. Main work is the remaining full receipt wall including idle and teardown multiplied by peak overlapping actual dispatches, a capacity envelope rather than a per-mutant duration sum. Round setup and capacity upward, then round setup + capacity / parallelism upward. One-second log timestamps limit precision; no unmeasured-ID extrapolation or hardware scaling. No static declarations in these selectors; no isolated work is omitted. Qualification budget 2700 seconds under decision6909923442; not full mutation acceptance.",
+          "estimated_seconds": 1888,
+          "isolated_seconds": 0,
+          "main_mutants": 43,
+          "main_work_seconds": 3441,
           "parallelism": 2,
           "selection_sha256": "408d265eba4811b9a1e11f0bfd95bc877d1c80aa07119ff2f1ab0cd46a23757e",
-          "setup_seconds": 159,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+          "setup_seconds": 167,
+          "timing_inputs_sha256": "d700bd7823eba6654556c98af0e44bf1541adb877ee4d19bda63fdcb78959dd5"
         },
         "b10-final-sweep-handler-p3": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1625,
-          "isolated_seconds": 0.0,
-          "main_mutants": 39,
-          "main_work_seconds": 2932,
+          "basis": "Measured 2026-11-16. https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43816213193 artifact 14204120583; ZIP SHA-256 84c329a7182e60cd137cea661f2207dcd75d468b8f1cee578080cc95e343de47. observed_workers=2. Full receipt monotonic wall; setup is receipt UTC start to first actual logged mutant dispatch. Main work is the remaining full receipt wall including idle and teardown multiplied by peak overlapping actual dispatches, a capacity envelope rather than a per-mutant duration sum. Round setup and capacity upward, then round setup + capacity / parallelism upward. One-second log timestamps limit precision; no unmeasured-ID extrapolation or hardware scaling. No static declarations in these selectors; no isolated work is omitted. Qualification budget 2700 seconds under decision6909923442; not full mutation acceptance.",
+          "estimated_seconds": 1796,
+          "isolated_seconds": 0,
+          "main_mutants": 41,
+          "main_work_seconds": 3265,
           "parallelism": 2,
           "selection_sha256": "1896d23f6f64c29702b0cdb8db0583b815bf039f2d8da42cbd24f477cfad5ece",
-          "setup_seconds": 159,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+          "setup_seconds": 163,
+          "timing_inputs_sha256": "d700bd7823eba6654556c98af0e44bf1541adb877ee4d19bda63fdcb78959dd5"
         },
         "b10-final-sweep-handler-p4": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1689,
-          "isolated_seconds": 0.0,
-          "main_mutants": 40,
-          "main_work_seconds": 3060,
+          "basis": "Measured 2026-11-16. https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43816213193 artifact 14202933815; ZIP SHA-256 81cf9595c855fd2c2e9964b8c0b23377da27623ea33375bebd1934a4c60ebc35. observed_workers=2. Full receipt monotonic wall; setup is receipt UTC start to first actual logged mutant dispatch. Main work is the remaining full receipt wall including idle and teardown multiplied by peak overlapping actual dispatches, a capacity envelope rather than a per-mutant duration sum. Round setup and capacity upward, then round setup + capacity / parallelism upward. One-second log timestamps limit precision; no unmeasured-ID extrapolation or hardware scaling. No static declarations in these selectors; no isolated work is omitted. Qualification budget 2700 seconds under decision6909923442; not full mutation acceptance.",
+          "estimated_seconds": 1450,
+          "isolated_seconds": 0,
+          "main_mutants": 41,
+          "main_work_seconds": 2638,
           "parallelism": 2,
           "selection_sha256": "e1d5d4b942e8eb77dcbf62fc80237ba051aa2fb229742675780db5f6813acc26",
-          "setup_seconds": 159,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+          "setup_seconds": 131,
+          "timing_inputs_sha256": "d700bd7823eba6654556c98af0e44bf1541adb877ee4d19bda63fdcb78959dd5"
         }
       },
-      "source_sha256": "5363f75013c9d3477a71167e2e585c87e53afff1aaad18d9aa895567167c33d7"
+      "source_sha256": "cb14b6e7c68fe38a9fafa54ce89fae68b35c8f26917b4b49d74a38f3b740e5a3"
     },
     "VerifyRun/B10SweepHandler.cs": {
       "evidence": [
         {
-          "kind": "hosted_complete",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43575009980 artifact 14106951449",
-          "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
-          "sha256": "87c19c484a8799f5481d482ad37bd16d8afad76fdd9aecb862a52891b38dd9b2",
-          "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
+          "kind": "local_probe",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43826077590 artifact 14208537386",
+          "note": "Measured 2026-11-16; hardware=Intel_Xeon_Platinum_8370C,_4_logical_CPUs; calibration=unadjusted_actual_same-profile_hosted_diagnostic. Source/config/projection/receipt/native-report hashes and actual dispatch completions verified. Raw wall 2420.344878296 seconds; native target rows 441; raw score 61.97%, child exit 0. Completed local-shard diagnostic on a hosted runner, not full hosted mutation acceptance. No CPU normalization; hardware variation and future scheduling remain uncertainty. All five final-handler reports reconcile across the same source-bound 199 native identities; sweep has its independent complete 441-row native report. Earlier incomplete diagnostics remain retained and are not timing estimates. Existing workflow artifact has one-day retention; original ZIP is also saved in the implementing workspace.",
+          "sha256": "98dccdc8ba45efd9400f0bad8e01243599061914d3fc9d97a8dc769e658f1808",
+          "source_commit": "6c291d8832d0c722352ff979545a136e5ea2ddeb"
         }
       ],
       "shards": {
         "b10-sweep": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1585,
-          "isolated_seconds": 0.0,
+          "basis": "Measured 2026-11-16. https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/43826077590 artifact 14208537386; ZIP SHA-256 98dccdc8ba45efd9400f0bad8e01243599061914d3fc9d97a8dc769e658f1808. observed_workers=2. Full receipt monotonic wall; setup is receipt UTC start to first actual logged mutant dispatch. Main work is the remaining full receipt wall including idle and teardown multiplied by peak overlapping actual dispatches, a capacity envelope rather than a per-mutant duration sum. Round setup and capacity upward, then round setup + capacity / parallelism upward. One-second log timestamps limit precision; no unmeasured-ID extrapolation or hardware scaling. No static declarations in these selectors; no isolated work is omitted. Qualification budget 2700 seconds under decision6909923442; not full mutation acceptance.",
+          "estimated_seconds": 2422,
+          "isolated_seconds": 0,
           "main_mutants": 71,
-          "main_work_seconds": 2948,
+          "main_work_seconds": 4509,
           "parallelism": 2,
           "selection_sha256": "df2b7c449f5252860e3d2c4291d6448da94fd11b40803082da32c5c26b720a5c",
-          "setup_seconds": 111,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+          "setup_seconds": 167,
+          "timing_inputs_sha256": "d700bd7823eba6654556c98af0e44bf1541adb877ee4d19bda63fdcb78959dd5"
         }
       },
-      "source_sha256": "e35d51681b080e2ffde5f49345824b8c786775018874e5cb950df4edbd22c4ce"
+      "source_sha256": "0d8d8975156db241f59636384139f19e540eec574f80f056eaadbf7f44443d63"
     },
     "VerifyRun/IdleObservation/IdleObservationJudgement.cs": {
       "evidence": [
@@ -4351,27 +4382,1770 @@
       "source_sha256": "5c0788ac841b4397610f602435cd7ef923b1b4caa36d701c454891f79b2706a8"
     }
   },
-  "renewals": {
-    "src/Parchwell.Enrichment/packages.lock.json": {
-      "basis": [
-        "Approved consumer-worker package references regenerate only Enrichment, Enrichment.Tests and ArchitectureTests locks. Verifier project closure and resolved Verifier package versions, target sources, runner, shard layout and runtime settings are unchanged. Renew input hashes while retaining original measured timing and budgets; no new measurement is claimed."
-      ],
-      "current_sha256": "65611537a0ac37d1be8aaa363260e8179b05e1ad4dbc4f6eecff193427dd54b3",
-      "measured_sha256": "94d31a93607e554463345a15dcd869171ca8654d05e47666a019a1daf21a7207"
+  "timing_evidence": {
+    "a01-crossing": {
+      "kind": "historical"
     },
-    "tests/Parchwell.ArchitectureTests/packages.lock.json": {
-      "basis": [
-        "Approved consumer-worker package references regenerate only Enrichment, Enrichment.Tests and ArchitectureTests locks. Verifier project closure and resolved Verifier package versions, target sources, runner, shard layout and runtime settings are unchanged. Renew input hashes while retaining original measured timing and budgets; no new measurement is claimed."
-      ],
-      "current_sha256": "04c93d3fea203e1ae71afa8666bf6c58c3c84b8f2e72807d39e90b76df2b1023",
-      "measured_sha256": "6721af88dd05b1eea04b5c8727cadd5169be4207bb12b142e4367be1836f882b"
+    "a01-p1": {
+      "kind": "historical"
     },
-    "tests/Parchwell.Enrichment.Tests/packages.lock.json": {
-      "basis": [
-        "Approved consumer-worker package references regenerate only Enrichment, Enrichment.Tests and ArchitectureTests locks. Verifier project closure and resolved Verifier package versions, target sources, runner, shard layout and runtime settings are unchanged. Renew input hashes while retaining original measured timing and budgets; no new measurement is claimed."
-      ],
-      "current_sha256": "94fab36e68ded99c90663c4fbab74cf26f76e6bab97a83cba9ac047bc2553c56",
-      "measured_sha256": "1e46ef67581a676209334db4d561e5037e0475f52d735ffafedac4caab154bb0"
+    "a01-p2": {
+      "kind": "historical"
+    },
+    "b10-final-classification-crossing": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p1": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p10": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p11": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p12": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p13": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p14": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p15": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p16": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p17": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p18": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p19": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p2": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p20": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p21": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p22": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p3": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p4": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p5": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p6": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p7": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p8": {
+      "kind": "historical"
+    },
+    "b10-final-classification-p9": {
+      "kind": "historical"
+    },
+    "b10-final-judge-crossing": {
+      "kind": "historical"
+    },
+    "b10-final-judge-p1": {
+      "kind": "historical"
+    },
+    "b10-final-judge-p10": {
+      "kind": "historical"
+    },
+    "b10-final-judge-p11": {
+      "kind": "historical"
+    },
+    "b10-final-judge-p12": {
+      "kind": "historical"
+    },
+    "b10-final-judge-p13": {
+      "kind": "historical"
+    },
+    "b10-final-judge-p2": {
+      "kind": "historical"
+    },
+    "b10-final-judge-p3": {
+      "kind": "historical"
+    },
+    "b10-final-judge-p4": {
+      "kind": "historical"
+    },
+    "b10-final-judge-p5": {
+      "kind": "historical"
+    },
+    "b10-final-judge-p6": {
+      "kind": "historical"
+    },
+    "b10-final-judge-p7": {
+      "kind": "historical"
+    },
+    "b10-final-judge-p8": {
+      "kind": "historical"
+    },
+    "b10-final-judge-p9": {
+      "kind": "historical"
+    },
+    "b10-final-projection": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-crossing": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-p1-a": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-p1-b": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-p10": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-p11": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-p12": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-p13": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-p14": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-p15": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-p16": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-p17": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-p2-a": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-p2-b": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-p3-a": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-p3-b": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-p4": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-p5": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-p6": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-p7": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-p8": {
+      "kind": "historical"
+    },
+    "b10-final-projection-codec-p9": {
+      "kind": "historical"
+    },
+    "b10-final-registrations-crossing": {
+      "kind": "historical"
+    },
+    "b10-final-registrations-p1": {
+      "kind": "historical"
+    },
+    "b10-final-registrations-p10": {
+      "kind": "historical"
+    },
+    "b10-final-registrations-p11": {
+      "kind": "historical"
+    },
+    "b10-final-registrations-p12": {
+      "kind": "historical"
+    },
+    "b10-final-registrations-p13": {
+      "kind": "historical"
+    },
+    "b10-final-registrations-p14": {
+      "kind": "historical"
+    },
+    "b10-final-registrations-p15": {
+      "kind": "historical"
+    },
+    "b10-final-registrations-p16": {
+      "kind": "historical"
+    },
+    "b10-final-registrations-p17": {
+      "kind": "historical"
+    },
+    "b10-final-registrations-p2": {
+      "kind": "historical"
+    },
+    "b10-final-registrations-p3": {
+      "kind": "historical"
+    },
+    "b10-final-registrations-p4": {
+      "kind": "historical"
+    },
+    "b10-final-registrations-p5": {
+      "kind": "historical"
+    },
+    "b10-final-registrations-p6": {
+      "kind": "historical"
+    },
+    "b10-final-registrations-p7": {
+      "kind": "historical"
+    },
+    "b10-final-registrations-p8": {
+      "kind": "historical"
+    },
+    "b10-final-registrations-p9": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-crossing": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p1": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p10": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p11": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p12": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p13": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p14": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p15": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p16": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p17": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p18": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p19": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p2": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p20": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p21": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p22": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p23": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p24": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p25": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p3": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p4": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p5": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p6": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p7": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p8": {
+      "kind": "historical"
+    },
+    "b10-final-repeat-evidence-p9": {
+      "kind": "historical"
+    },
+    "b10-final-sweep-handler-crossing": {
+      "artifact_sha256": "d6951a4d0a211d6c4d2fd31fa87d7f9607d7268520f806a071a9aa640abdfb61",
+      "kind": "measured",
+      "method": "Full receipt monotonic wall; setup is receipt UTC start to first actual logged mutant dispatch. Main work is the remaining full receipt wall including idle and teardown multiplied by peak overlapping actual dispatches, a capacity envelope rather than a per-mutant duration sum. Round setup and capacity upward, then round setup + capacity / parallelism upward. One-second log timestamps limit precision; no unmeasured-ID extrapolation or hardware scaling. No static declarations in these selectors; no isolated work is omitted.",
+      "observed_seconds": 229.94403681300003,
+      "observed_workers": 1,
+      "source_commit": "6c291d8832d0c722352ff979545a136e5ea2ddeb",
+      "timing_inputs_sha256": "d700bd7823eba6654556c98af0e44bf1541adb877ee4d19bda63fdcb78959dd5"
+    },
+    "b10-final-sweep-handler-p1": {
+      "artifact_sha256": "e883b115805df9ff68665db0e3884770a6b30f19fd8680715bf6327737571b60",
+      "kind": "measured",
+      "method": "Full receipt monotonic wall; setup is receipt UTC start to first actual logged mutant dispatch. Main work is the remaining full receipt wall including idle and teardown multiplied by peak overlapping actual dispatches, a capacity envelope rather than a per-mutant duration sum. Round setup and capacity upward, then round setup + capacity / parallelism upward. One-second log timestamps limit precision; no unmeasured-ID extrapolation or hardware scaling. No static declarations in these selectors; no isolated work is omitted.",
+      "observed_seconds": 1570.509425359,
+      "observed_workers": 2,
+      "source_commit": "6c291d8832d0c722352ff979545a136e5ea2ddeb",
+      "timing_inputs_sha256": "d700bd7823eba6654556c98af0e44bf1541adb877ee4d19bda63fdcb78959dd5"
+    },
+    "b10-final-sweep-handler-p2": {
+      "artifact_sha256": "37f1ee8b6546f4ed3491562875972488b582e46eb1236ac0563e25229bc11b3d",
+      "kind": "measured",
+      "method": "Full receipt monotonic wall; setup is receipt UTC start to first actual logged mutant dispatch. Main work is the remaining full receipt wall including idle and teardown multiplied by peak overlapping actual dispatches, a capacity envelope rather than a per-mutant duration sum. Round setup and capacity upward, then round setup + capacity / parallelism upward. One-second log timestamps limit precision; no unmeasured-ID extrapolation or hardware scaling. No static declarations in these selectors; no isolated work is omitted.",
+      "observed_seconds": 1886.857977212,
+      "observed_workers": 2,
+      "source_commit": "6c291d8832d0c722352ff979545a136e5ea2ddeb",
+      "timing_inputs_sha256": "d700bd7823eba6654556c98af0e44bf1541adb877ee4d19bda63fdcb78959dd5"
+    },
+    "b10-final-sweep-handler-p3": {
+      "artifact_sha256": "84c329a7182e60cd137cea661f2207dcd75d468b8f1cee578080cc95e343de47",
+      "kind": "measured",
+      "method": "Full receipt monotonic wall; setup is receipt UTC start to first actual logged mutant dispatch. Main work is the remaining full receipt wall including idle and teardown multiplied by peak overlapping actual dispatches, a capacity envelope rather than a per-mutant duration sum. Round setup and capacity upward, then round setup + capacity / parallelism upward. One-second log timestamps limit precision; no unmeasured-ID extrapolation or hardware scaling. No static declarations in these selectors; no isolated work is omitted.",
+      "observed_seconds": 1795.309042086,
+      "observed_workers": 2,
+      "source_commit": "6c291d8832d0c722352ff979545a136e5ea2ddeb",
+      "timing_inputs_sha256": "d700bd7823eba6654556c98af0e44bf1541adb877ee4d19bda63fdcb78959dd5"
+    },
+    "b10-final-sweep-handler-p4": {
+      "artifact_sha256": "81cf9595c855fd2c2e9964b8c0b23377da27623ea33375bebd1934a4c60ebc35",
+      "kind": "measured",
+      "method": "Full receipt monotonic wall; setup is receipt UTC start to first actual logged mutant dispatch. Main work is the remaining full receipt wall including idle and teardown multiplied by peak overlapping actual dispatches, a capacity envelope rather than a per-mutant duration sum. Round setup and capacity upward, then round setup + capacity / parallelism upward. One-second log timestamps limit precision; no unmeasured-ID extrapolation or hardware scaling. No static declarations in these selectors; no isolated work is omitted.",
+      "observed_seconds": 1449.164471772,
+      "observed_workers": 2,
+      "source_commit": "6c291d8832d0c722352ff979545a136e5ea2ddeb",
+      "timing_inputs_sha256": "d700bd7823eba6654556c98af0e44bf1541adb877ee4d19bda63fdcb78959dd5"
+    },
+    "b10-intake-crossing": {
+      "kind": "historical"
+    },
+    "b10-intake-p1": {
+      "kind": "historical"
+    },
+    "b10-intake-p2": {
+      "kind": "historical"
+    },
+    "b10-intake-p3": {
+      "kind": "historical"
+    },
+    "b10-judge-crossing": {
+      "kind": "historical"
+    },
+    "b10-judge-p1": {
+      "kind": "historical"
+    },
+    "b10-judge-p2": {
+      "kind": "historical"
+    },
+    "b10-judge-p3": {
+      "kind": "historical"
+    },
+    "b10-late-write-crossing": {
+      "kind": "historical"
+    },
+    "b10-late-write-p1": {
+      "kind": "historical"
+    },
+    "b10-late-write-p2": {
+      "kind": "historical"
+    },
+    "b10-phase-registrations-crossing": {
+      "kind": "historical"
+    },
+    "b10-phase-registrations-p1": {
+      "kind": "historical"
+    },
+    "b10-phase-registrations-p2": {
+      "kind": "historical"
+    },
+    "b10-repeat-crossing": {
+      "kind": "historical"
+    },
+    "b10-repeat-p1": {
+      "kind": "historical"
+    },
+    "b10-repeat-p2": {
+      "kind": "historical"
+    },
+    "b10-repeat-p3": {
+      "kind": "historical"
+    },
+    "b10-repeat-p4": {
+      "kind": "historical"
+    },
+    "b10-repeat-p5": {
+      "kind": "historical"
+    },
+    "b10-restart-manifest-crossing": {
+      "kind": "historical"
+    },
+    "b10-restart-manifest-p1": {
+      "kind": "historical"
+    },
+    "b10-restart-manifest-p2": {
+      "kind": "historical"
+    },
+    "b10-restart-manifest-p3": {
+      "kind": "historical"
+    },
+    "b10-restart-manifest-p4": {
+      "kind": "historical"
+    },
+    "b10-sweep": {
+      "artifact_sha256": "98dccdc8ba45efd9400f0bad8e01243599061914d3fc9d97a8dc769e658f1808",
+      "kind": "measured",
+      "method": "Full receipt monotonic wall; setup is receipt UTC start to first actual logged mutant dispatch. Main work is the remaining full receipt wall including idle and teardown multiplied by peak overlapping actual dispatches, a capacity envelope rather than a per-mutant duration sum. Round setup and capacity upward, then round setup + capacity / parallelism upward. One-second log timestamps limit precision; no unmeasured-ID extrapolation or hardware scaling. No static declarations in these selectors; no isolated work is omitted.",
+      "observed_seconds": 2420.3448782960004,
+      "observed_workers": 2,
+      "source_commit": "6c291d8832d0c722352ff979545a136e5ea2ddeb",
+      "timing_inputs_sha256": "d700bd7823eba6654556c98af0e44bf1541adb877ee4d19bda63fdcb78959dd5"
+    },
+    "b10-sweep-codec-crossing": {
+      "kind": "historical"
+    },
+    "b10-sweep-codec-p1": {
+      "kind": "historical"
+    },
+    "b10-sweep-codec-p2": {
+      "kind": "historical"
+    },
+    "b10-sweep-codec-p3": {
+      "kind": "historical"
+    },
+    "b10-sweep-codec-p4": {
+      "kind": "historical"
+    },
+    "b10-sweep-codec-p5": {
+      "kind": "historical"
+    },
+    "b10-sweep-codec-p6": {
+      "kind": "historical"
+    },
+    "b10-sweep-codec-p7": {
+      "kind": "historical"
+    },
+    "b10-sweep-codec-p8": {
+      "kind": "historical"
+    },
+    "b10-sweep-codec-p9": {
+      "kind": "historical"
+    },
+    "b10-sweep-judge-crossing": {
+      "kind": "historical"
+    },
+    "b10-sweep-judge-p1": {
+      "kind": "historical"
+    },
+    "b10-sweep-judge-p2": {
+      "kind": "historical"
+    },
+    "b10-sweep-judge-p3": {
+      "kind": "historical"
+    },
+    "batching-crossing": {
+      "kind": "historical"
+    },
+    "batching-p1": {
+      "kind": "historical"
+    },
+    "batching-p2": {
+      "kind": "historical"
+    },
+    "idle-observation-crossing": {
+      "kind": "historical"
+    },
+    "idle-observation-p1": {
+      "kind": "historical"
+    },
+    "idle-observation-p10": {
+      "kind": "historical"
+    },
+    "idle-observation-p11": {
+      "kind": "historical"
+    },
+    "idle-observation-p12": {
+      "kind": "historical"
+    },
+    "idle-observation-p2": {
+      "kind": "historical"
+    },
+    "idle-observation-p3": {
+      "kind": "historical"
+    },
+    "idle-observation-p4": {
+      "kind": "historical"
+    },
+    "idle-observation-p5": {
+      "kind": "historical"
+    },
+    "idle-observation-p6": {
+      "kind": "historical"
+    },
+    "idle-observation-p7": {
+      "kind": "historical"
+    },
+    "idle-observation-p8": {
+      "kind": "historical"
+    },
+    "idle-observation-p9": {
+      "kind": "historical"
+    },
+    "phase-crossing": {
+      "kind": "historical"
+    },
+    "phase-p1": {
+      "kind": "historical"
+    },
+    "phase-p2": {
+      "kind": "historical"
+    },
+    "phase-p3": {
+      "kind": "historical"
+    },
+    "phase-p4": {
+      "kind": "historical"
+    },
+    "phase-p5": {
+      "kind": "historical"
+    },
+    "phase-p6": {
+      "kind": "historical"
+    },
+    "publication-crossing": {
+      "kind": "historical"
+    },
+    "publication-p1": {
+      "kind": "historical"
+    },
+    "publication-p2": {
+      "kind": "historical"
+    },
+    "publication-p3": {
+      "kind": "historical"
+    },
+    "publication-p4": {
+      "kind": "historical"
+    },
+    "publication-p5": {
+      "kind": "historical"
+    },
+    "publication-p6": {
+      "kind": "historical"
+    },
+    "publication-p7": {
+      "kind": "historical"
+    },
+    "single-action-configuration-crossing": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p1": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p10": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p11": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p12": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p13": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p14": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p15": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p16": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p17": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p18": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p19": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p2": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p20": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p21": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p22": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p23": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p24": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p25": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p26": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p27": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p28": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p29": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p3": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p30": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p31": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p32": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p33": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p34": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p35": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p36": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p37": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p38": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p39": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p4": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p40": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p41": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p42": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p43": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p44": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p45": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p46": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p47": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p48": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p49": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p5": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p6": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p7": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p8": {
+      "kind": "historical"
+    },
+    "single-action-configuration-p9": {
+      "kind": "historical"
+    },
+    "single-action-repeat-crossing": {
+      "kind": "historical"
+    },
+    "single-action-repeat-p1": {
+      "kind": "historical"
+    },
+    "single-action-repeat-p10": {
+      "kind": "historical"
+    },
+    "single-action-repeat-p11": {
+      "kind": "historical"
+    },
+    "single-action-repeat-p12": {
+      "kind": "historical"
+    },
+    "single-action-repeat-p13": {
+      "kind": "historical"
+    },
+    "single-action-repeat-p14": {
+      "kind": "historical"
+    },
+    "single-action-repeat-p15": {
+      "kind": "historical"
+    },
+    "single-action-repeat-p16": {
+      "kind": "historical"
+    },
+    "single-action-repeat-p17": {
+      "kind": "historical"
+    },
+    "single-action-repeat-p18": {
+      "kind": "historical"
+    },
+    "single-action-repeat-p19": {
+      "kind": "historical"
+    },
+    "single-action-repeat-p2": {
+      "kind": "historical"
+    },
+    "single-action-repeat-p3": {
+      "kind": "historical"
+    },
+    "single-action-repeat-p4": {
+      "kind": "historical"
+    },
+    "single-action-repeat-p5": {
+      "kind": "historical"
+    },
+    "single-action-repeat-p6": {
+      "kind": "historical"
+    },
+    "single-action-repeat-p7": {
+      "kind": "historical"
+    },
+    "single-action-repeat-p8": {
+      "kind": "historical"
+    },
+    "single-action-repeat-p9": {
+      "kind": "historical"
+    },
+    "workload-crossing": {
+      "kind": "historical"
+    },
+    "workload-p1": {
+      "kind": "historical"
+    },
+    "workload-p2": {
+      "kind": "historical"
+    },
+    "workload-p3": {
+      "kind": "historical"
+    }
+  },
+  "timing_inputs": {
+    "d700bd7823eba6654556c98af0e44bf1541adb877ee4d19bda63fdcb78959dd5": {
+      "assessments": {
+        "shared_inputs": {
+          "src/Parchwell.Enrichment/packages.lock.json": {
+            "basis": [
+              "Direct Azure.Core and Azure.Storage.Blobs and their transitive additions; Azure.Core retains its resolved version while its classification changes. See src/Parchwell.Enrichment/packages.lock.json:5 and :70.",
+              "Source 6c291d8832d0c722352ff979545a136e5ea2ddeb SHA-256 94d31a93607e554463345a15dcd869171ca8654d05e47666a019a1daf21a7207; current 65611537a0ac37d1be8aaa363260e8179b05e1ad4dbc4f6eecff193427dd54b3. Consumer worker change 0640fedf0617e11686959332f7c6342027c26cd3, main merge 81d880cb901246b43043253d313a12173cd31316. These locks are selected globally but outside the unchanged Verifier project closure. The closure project files and their lockfiles, Verifier targets, runner and workflow are byte-identical; selected nonrenewable inputs are unchanged. Static assessment only; no new timing measured or new timing-risk acceptance claimed.",
+              "Static closure assessment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908905488"
+            ],
+            "current_sha256": "65611537a0ac37d1be8aaa363260e8179b05e1ad4dbc4f6eecff193427dd54b3"
+          },
+          "tests/Parchwell.ArchitectureTests/packages.lock.json": {
+            "basis": [
+              "Only the Enrichment project dependency list gains the two Azure package references. See tests/Parchwell.ArchitectureTests/packages.lock.json:582.",
+              "Source 6c291d8832d0c722352ff979545a136e5ea2ddeb SHA-256 6721af88dd05b1eea04b5c8727cadd5169be4207bb12b142e4367be1836f882b; current 04c93d3fea203e1ae71afa8666bf6c58c3c84b8f2e72807d39e90b76df2b1023. Consumer worker change 0640fedf0617e11686959332f7c6342027c26cd3, main merge 81d880cb901246b43043253d313a12173cd31316. These locks are selected globally but outside the unchanged Verifier project closure. The closure project files and their lockfiles, Verifier targets, runner and workflow are byte-identical; selected nonrenewable inputs are unchanged. Static assessment only; no new timing measured or new timing-risk acceptance claimed.",
+              "Static closure assessment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908905488"
+            ],
+            "current_sha256": "04c93d3fea203e1ae71afa8666bf6c58c3c84b8f2e72807d39e90b76df2b1023"
+          },
+          "tests/Parchwell.Enrichment.Tests/packages.lock.json": {
+            "basis": [
+              "Testcontainers and Enrichment dependencies add their associated dependency entries; Enrichment project dependency list also adds the Azure references. See tests/Parchwell.Enrichment.Tests/packages.lock.json:5, :29 and :637.",
+              "Source 6c291d8832d0c722352ff979545a136e5ea2ddeb SHA-256 1e46ef67581a676209334db4d561e5037e0475f52d735ffafedac4caab154bb0; current 94fab36e68ded99c90663c4fbab74cf26f76e6bab97a83cba9ac047bc2553c56. Consumer worker change 0640fedf0617e11686959332f7c6342027c26cd3, main merge 81d880cb901246b43043253d313a12173cd31316. These locks are selected globally but outside the unchanged Verifier project closure. The closure project files and their lockfiles, Verifier targets, runner and workflow are byte-identical; selected nonrenewable inputs are unchanged. Static assessment only; no new timing measured or new timing-risk acceptance claimed.",
+              "Static closure assessment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908905488"
+            ],
+            "current_sha256": "94fab36e68ded99c90663c4fbab74cf26f76e6bab97a83cba9ac047bc2553c56"
+          }
+        },
+        "target_sources": {}
+      },
+      "shared_inputs": {
+        ".config/dotnet-tools.json": "50249a8f3a7134b08b4409c485dfe67afb17910e5a2329bf65810c3338231244",
+        ".github/workflows/verifier-c5-mutation.yml": "50e10f7edfeb8128d3bdb2c54c3de25dde473c5dca9ae33a53a925f4209acd8f",
+        "Directory.Build.props": "da23174e8d1ba562fc1e5fe99518e2bc54473c4c48b7744b84da1232588b8cb1",
+        "Directory.Packages.props": "9b61ecb44bf2297db16699cbac097f4576ba34d0ae624edff4d34f1d48caca05",
+        "docs/operations/a01-runtime-limits.json": "246f5b871bbc1a07209998a2e162b2d1593de9146fb3cae5a613ac8709950437",
+        "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/packages.lock.json": "a29c6aa8cfb81874ff8bb78dc369d7416f28c9b8cc47e99592bfc019b20c41eb",
+        "global.json": "ab4eed8da9aaee0671a10b49fe4ff1b27b3341b264f317ee88785607c0711e9a",
+        "scenarios/A01/scenario.yaml": "00b54054031ec6f80e864616852e2a96ef817effeefa17556093bf11a900fcfc",
+        "scenarios/A02/scenario.yaml": "739b96191574afff8edd89edbb9b09452185d636afa6add915888de8c3e70493",
+        "scenarios/A03/scenario.yaml": "083e21240d442078d2c3383249a5539aa8fc309ee5697513656916005eddb7dc",
+        "scenarios/A04/scenario.yaml": "ffc06a71e84d2af3f1b27242643cec5b1e9a953f2b17e54b826d79ca0bdc4abd",
+        "scenarios/B01/scenario.yaml": "878bbbe969dbc9feedf54d4e935c1a5f994cdde28852ae628096a90654b60e64",
+        "scenarios/B03/scenario.yaml": "ccca55e7e270e1b2504e54d0535db4061195da8d1c32e26cd116d634fbc50841",
+        "scenarios/B04/scenario.yaml": "c894fde26a1e201940cdd67e6b299f13c8754a821bed3a1f14006aebbf93689c",
+        "scenarios/B05/scenario.yaml": "2856fcfdfab4e1bee32c407666fc3ebec4eaa3f8e9b73f888fc370add4dee406",
+        "scenarios/B06/scenario.yaml": "20698b93ae365ca2ff688a489c974356a495c6b51f7e03dc73545d0814209400",
+        "scenarios/B07/scenario.yaml": "637f850154562fa85d33b7e8d2d2bc1ec527ecbcf7be0a844f6b090d0de5f53d",
+        "scenarios/B08/scenario.yaml": "e4869d401bd366e8922043baa3bfa0a53a1fe1d406ee40f2077405bdc9b7bef4",
+        "scenarios/B10/scenario.yaml": "762b1a540e8975129652358b0c91bb8a8c867b007dae162b00b78ad2dcc8569c",
+        "scenarios/C08/scenario.yaml": "061416216f9acbac792d61f85df0d5be90043b67e1bb4fdddc055bac5fcfcd47",
+        "scenarios/C12/scenario.yaml": "32dc43a8a5166ad9de7823164d17345b313fe26ff7948ba67e75e1c94013c561",
+        "scenarios/E01/scenario.yaml": "75d3810adbafd61b7cda676842cef70f86532c88e88516a78c1bcb2854533c07",
+        "scenarios/F04/scenario.yaml": "11409c59fd070b08473522d80ccee73a0c76fc9d83e0d4d79d2e2104ac9ceedb",
+        "scenarios/F06/scenario.yaml": "3ca313515ec897c487a71c86e7e6bb2d3dbfdc6c63577726929b3509428133b0",
+        "scenarios/profiles/b10-timeout.yaml": "39daef3f0b5df87fd8de5efc17304d249bc6eb1df281e76686bf0d637d0ee802",
+        "scenarios/profiles/saturation-ramp.yaml": "20627a8282fd81730867fb2d10bca8a6d4198cb59d6dc70aab8eebd22528c215",
+        "src/Parchwell.Enrichment/packages.lock.json": "94d31a93607e554463345a15dcd869171ca8654d05e47666a019a1daf21a7207",
+        "src/Parchwell.Kafka/Authentication/IKafkaTokenProvider.cs": "ac09c1464f9df6c704dd70a9e56ce8a35377abe51c30339dc4568802f6081325",
+        "src/Parchwell.Kafka/Authentication/IObservedKafkaTokenProvider.cs": "7ac8afe8bc16f35d2a8c60e0fc6bdf0758463b9fd9bec58ac0ede4f1350c8862",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationConfiguration.cs": "70a441daf0648bd73b6c632a37396d762808ac9c1346115d3b943386c874ec17",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationFactory.cs": "c723338944cd92593386c869c915dc894c093c097575aeba718105eb556c63c1",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationFailure.cs": "ade2e461ed1abb1533f2853288731011048b8e8080a0e66678823316040883cd",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationIdentity.cs": "8a59b91bf696fe38e5be37322afd3dc05134df049c134193bc93458a9f906773",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationLifecycleObservation.cs": "857f1027a09344c0bfc371c293fcd241dc398c865d4838fac7b4d4540bda8296",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationMetrics.cs": "6b4b6366028f3e0e7982a856384a38c762d887eab166f816f4d1df4390ffe56f",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationServiceCollectionExtensions.cs": "c5c1cbc9bb588d52cf040b86ad9b389fa2cbbadb8246ce8c76834cbe1fb45902",
+        "src/Parchwell.Kafka/Authentication/KafkaOAuthBearerSession.cs": "a2262cb42e459294767ae1ab8915c4a5c5e4c60bf26c7d75de3718f0db846fc9",
+        "src/Parchwell.Kafka/Authentication/KafkaWorkloadIdentityOptions.cs": "4269992f4f9262a00fd77f09daa8d328480bbc7314f0849a21b8366382e848f8",
+        "src/Parchwell.Kafka/Authentication/KafkaWorkloadIdentityOptionsValidator.cs": "715c1cd555c3c63f0523565e5831cfe74912cbb98ff009f932bbdbe2fd7c28ec",
+        "src/Parchwell.Kafka/Authentication/ProjectedTokenFileObserver.cs": "35fc8d2908d4c15cdac6a9a7e6896ba3ee30ae38a8f5c1fdfc65305954686c6c",
+        "src/Parchwell.Kafka/Authentication/ProjectedTokenPathResolver.cs": "83a4ba4f5a090c1e990e5c31ca274cee3d517c01a0d25a63c5f3c2bdfa098574",
+        "src/Parchwell.Kafka/Authentication/WorkloadIdentityTokenProvider.cs": "b5a0897b450a8b91b38a2faaaba9b60b3f84de2aa3b037da183ffac5b84f4655",
+        "src/Parchwell.Kafka/Configuration/BaselineSettingsCatalog.cs": "a1395a1ab548ec97c42a04af73051987da114bc921d08babc2a2d6a91fe51420",
+        "src/Parchwell.Kafka/Configuration/FrozenInventory.cs": "5416a103a29c8f8e65581e734bf499510c543446f7a20575c3763262ea9f5619",
+        "src/Parchwell.Kafka/Configuration/KafkaBaseline.cs": "e8a1de90b0742b2de9ecd15dde1e38337022b0d79cfa9f31a341c19f7c054982",
+        "src/Parchwell.Kafka/Configuration/KafkaBaselineOptions.cs": "17994d170d095cc2f583234189fb58abbe8a87e3d924f2cee84494524c3a64b1",
+        "src/Parchwell.Kafka/Configuration/KafkaBaselineOptionsValidator.cs": "eadbd4b70b42611cebe5daeb36f458f538e504ffeb97b94dc8014b1606a1092d",
+        "src/Parchwell.Kafka/Configuration/KafkaClientRole.cs": "fc8b0772bba663ee627dc9aba0152737b29b1a8633fc2d759e1db9ea90ae8953",
+        "src/Parchwell.Kafka/Configuration/KafkaConfigurationFactory.cs": "3a075caeb23a21cd84cc57632e7dd35ceae9952121f0e5fcd02482040c07a0e3",
+        "src/Parchwell.Kafka/Configuration/KafkaRequiredInput.cs": "0cf52b4ba6e6947583b2f4786b01ce2cd1baaa457210a3f8597d05f964d65ddb",
+        "src/Parchwell.Kafka/Configuration/KafkaRoleRegistration.cs": "0c484f79729d905350feceb54fa5225f7e63b8783d18957d546417fd5a34e846",
+        "src/Parchwell.Kafka/Configuration/KafkaScenarioOverrideSetting.cs": "b85a663b476a3364ec75b2d08291dabcd75967264a0fc40571db4544a2c1b23a",
+        "src/Parchwell.Kafka/Configuration/KafkaScenarioOverrideValueKind.cs": "7a4bc90b98d2a0e7defae8650f3ebe283e4f630d6891346525cc34f5a799df4f",
+        "src/Parchwell.Kafka/Configuration/KafkaServiceCollectionExtensions.cs": "221e5d692b5bf1e0e820b405a797bf1f30337fc8c9465645f6cc27db6bb37072",
+        "src/Parchwell.Kafka/Configuration/KafkaSettingDefinition.cs": "055c11dbab67403e2a06fbeb4f71e8840b8690bf7b5226596a9752a06d78bc6d",
+        "src/Parchwell.Kafka/Configuration/KafkaSettingDisposition.cs": "eba8f58bf6e32353c9ef9ddd694c66b168e298a9a6ea1b72ca90500345c9e043",
+        "src/Parchwell.Kafka/Configuration/KafkaSettingKeys.cs": "abd90edc2d89aea517ea50a1b914a3cf7cb3946c9405ad0f1465536d82c898eb",
+        "src/Parchwell.Kafka/Configuration/KafkaSettingMetadata.cs": "021ec6d57d49d9e2e71729b085c14b6bfa5e53a93293a12f64c6d322205c3fa0",
+        "src/Parchwell.Kafka/Configuration/KafkaSettingSource.cs": "f3cae18c354ff2018614a1f9422bc36bf914cf7d2916c4f7cb478c4bd74d101c",
+        "src/Parchwell.Kafka/Parchwell.Kafka.csproj": "d2e21020adf42f67b06bf5033335afb6233638cab9a6e9445bded30062788484",
+        "src/Parchwell.Kafka/Properties/AssemblyInfo.cs": "4ccad28f774ce15722c8e82708237331c4e2c8820d8768be83375346a297fcae",
+        "src/Parchwell.Kafka/Statistics/IKafkaStatisticsEvidenceSink.cs": "28f2951695f500cdf06bf7e8fc9db484616c4ec451ce65aae7e863f3e6a8ae19",
+        "src/Parchwell.Kafka/Statistics/KafkaBrokerStatistics.cs": "371903009a832a327cb8acdeee5c27b817686182bff6f480381e44b0eef01adf",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsBridgeFactory.cs": "d708a7be90890a2065132693456c3c817f4ef2bbd08aea046e80b7e9bbd50143",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsCompletion.cs": "229ced2c2bc03d275d5fcbb8f4b698abbb20328e45d0f8aea1dc7e08349508fe",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsDiagnostic.cs": "fa6685f3e17c6beca4467dcc2f5622f85937f28a15def0388bd0d98ea86bde3a",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsIdentity.cs": "eac73d15879541de0e0e540aae00823ef7043b9ea4afd8b015affafc4ad7c0e2",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsMetrics.cs": "fe4f6288818deb6da5203f18af89c8c55ea8b24edcf2c8d80a0107a32cbd8f02",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsOptions.cs": "d13b61ef181795e251d6ea4feb7e03db83344d097ad29b5d9c4df5c986d49e75",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsParser.cs": "53f8792b9985397c74091d22c85b1b2da627ec03b0f7c8fb6d97ae88521763af",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsReport.cs": "61a1deafc7cf7992bdc9e871c96a87d033ed3556020b1905bc4b3ad6a95fd38b",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsServiceCollectionExtensions.cs": "12b010c131c3867054127b9b1b1d8945c98d484f134c09b3a98b68e38df81cd6",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsSession.cs": "aa094c79b12939617007d6b842e9098d331f0b3e14df1bbb0fdd8338af40ba0f",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsSnapshot.cs": "70237ee71214b6ba2881081ca750b50a1e033835cc12293f6aad9fa46467c0f2",
+        "src/Parchwell.Kafka/Statistics/KafkaWindowStatistics.cs": "4441980563ca945a5a6a4b39c02afb9adf28ec58a37e789da80c9e01f302b49b",
+        "src/Parchwell.Kafka/Telemetry/ParchwellTelemetryOptions.cs": "bb515629199189d2ea4be682c395fa80ddc42c315f1c5e4bbde4d32dbfa6f576",
+        "src/Parchwell.Kafka/Telemetry/ParchwellTelemetryServiceCollectionExtensions.cs": "0bf0d4104b9d40feaa4397ce59f2041748123a4323a089da6717fb1af6cb5a19",
+        "src/Parchwell.Kafka/Telemetry/ParchwellTelemetrySources.cs": "2fd20d5f737c0d476427535d8a6c90a4aa97c81ab45b267ab882a64341d4fbcc",
+        "src/Parchwell.Kafka/packages.lock.json": "c59708b937db00f9e3aec0ef5a7fde689a6218645a4158fb49d6a5bddc717f98",
+        "src/Parchwell.LoadGen/packages.lock.json": "c9c2f3096cba8a0c3dc705fd2c9c5f0404ebf5a173837b5ffd9c0f73ba7d4e26",
+        "src/Parchwell.Scenarios/Contracts/IScenarioSource.cs": "35fa8562d38f5fce099455619d3df22c361915ad0adba899f558abe484b75098",
+        "src/Parchwell.Scenarios/Contracts/InputNodes.cs": "8ae64bb0353a415e7bf9fc679395b803dc5a8880c0ed584f987ef42898f7146c",
+        "src/Parchwell.Scenarios/Contracts/MeasurementCatalog.cs": "2ff7f3595a5d97d6141c0c8201ca01c147c92688b8aabcf9b040a185d460a4d8",
+        "src/Parchwell.Scenarios/Contracts/ScenarioContracts.cs": "718094a0a40270fb52dccf971c763c99470d4ab175c80f0d8b6dbb26fbd23739",
+        "src/Parchwell.Scenarios/Contracts/ScenarioLoadOptions.cs": "8fbd29e1439f2b7f01fe8cb82e43435bf71bce29dddc690f36050fa70680ab29",
+        "src/Parchwell.Scenarios/Contracts/ScenarioPhases.cs": "60f7da34292fa587bb9ff8b8e44775b59cea04b7fdf33682955357a57aa82adf",
+        "src/Parchwell.Scenarios/Contracts/ScenarioValidationException.cs": "9fef8c2801eb8891732bed8c325308588259c9b122e2f47f6b9e59da3b61d69b",
+        "src/Parchwell.Scenarios/Loading/DefinitionReader.cs": "bfde8d884d7f4d2457134ab869ac5cbf5b96bf79729f18c24f5661c432ba8126",
+        "src/Parchwell.Scenarios/Loading/IdleObservationDefinitionReader.cs": "f287a76f0c2bbc2bd752d789782a472a732bca3f3ba713dbf7a6cff9c88ef22f",
+        "src/Parchwell.Scenarios/Loading/NodeValidation.cs": "15d18dcf5cb50a819af9b2d05abbfb288de44c31dac89c07779a4f00212ee4d4",
+        "src/Parchwell.Scenarios/Loading/ProbeV2DefinitionReader.cs": "1ca197c92283c960c0dc30084caec8cb96d33993468140315028f5ffa9ab2ed6",
+        "src/Parchwell.Scenarios/Loading/ProfileReader.cs": "7255425e7362245d1c479c0ee3a453352cc58e314372a630f9c7b90b793378c3",
+        "src/Parchwell.Scenarios/Loading/ScenarioLoader.cs": "032766f6ed77233ab6771067c65ad6d98a39dc8763a3a26ff7969faa065e100a",
+        "src/Parchwell.Scenarios/Loading/SingleActionDefinitionReader.cs": "6398490b00cb855877de3a53437d348468327e0d66c5a85d6400c492dc8f0958",
+        "src/Parchwell.Scenarios/Loading/YamlInput.cs": "5d71b5c818ded0211f2eb841d65954e970ac6655d8ed9305b1d30d73528be79a",
+        "src/Parchwell.Scenarios/Parchwell.Scenarios.csproj": "2430b704445cd856081232b12b34bdd40edca0c8d4602ba130497a8bcc522f8e",
+        "src/Parchwell.Scenarios/Properties/AssemblyInfo.cs": "7f00132f475aaacbda4e45214cf7b25e577b9b183f61ff9b6c42460beb022f53",
+        "src/Parchwell.Scenarios/Resolution/ScenarioResolver.cs": "bf7a89e93d59e276c0827e9f41ab3f238f8623859182765f7266211169ebb827",
+        "src/Parchwell.Scenarios/ScenarioServiceCollectionExtensions.cs": "549ad00e7882df296c8110016f6b4d4c7a1ffb3e72730362f1d079276f40155b",
+        "src/Parchwell.Scenarios/packages.lock.json": "dfa542e0f44824734c5a13615d1afbdc34a69da040edaeb9d9bec9e7a16533b4",
+        "src/Parchwell.Verifier/AssemblyInfo.cs": "6e4b9fa6a51796a8cfbf259852e73263bf241b124c1cd504344c023f2a392978",
+        "src/Parchwell.Verifier/Common/Contracts/CheckAssessment.cs": "954935825eb8acf1f92c912c19afdbc0e140b272504d63d2c71fcc4b4e193edc",
+        "src/Parchwell.Verifier/Common/Contracts/RunIdentity.cs": "53b552ed4a123fbcb128a20715225a4efc778e464df52e2fb951bd4bf76cd019",
+        "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSession.cs": "61699a578df86cf471981b44eda8d28bd712c21d38dd9b755472176913790354",
+        "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSessionFactory.cs": "003cb3f953f7748c12666a7ca719a6db6763176dbb72255608694c6c3a2c810e",
+        "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaTokenProvider.cs": "ece4f51e384b5e83bc913d3cefe08ac542b5480e0e223e251deec103723f36d2",
+        "src/Parchwell.Verifier/Common/Phase/B10SweepEvidence.cs": "92fd2a1cfb72e9454682a8b6ca39c90f13dd8a87a071f9350cdca76fd748f9a5",
+        "src/Parchwell.Verifier/Common/Phase/PhaseIdentity.cs": "f9a5baf696556088f72d8891a8da83348eb72a4fa944c5d7c61b3c4d6d06941b",
+        "src/Parchwell.Verifier/Common/Phase/PhasePaths.cs": "4d22f738676b82048a4b1b9feccfeceb01427a2802c1e6f147102861551e93c1",
+        "src/Parchwell.Verifier/Common/Phase/PhaseWireCodec.cs": "396f558b1405638fd16b9e07a3c56fd1f0f502020f1114c73825d415bc776640",
+        "src/Parchwell.Verifier/Common/Phase/ProducerRegistration.cs": "2a4dda01365845fd94ae48aa3d77f0561e6aebf81957a5b26c530571855b3068",
+        "src/Parchwell.Verifier/Common/Results/B10ProducerObservationsCodec.cs": "173cec5ddafd634b54270548fd8b7127ff12f6c1d8ae3c6bd1d9831f4dc998ff",
+        "src/Parchwell.Verifier/Common/Results/VerifierResult.cs": "cea4db52bde66bdd3491471bb42e22116a2bdc3b3f61ebbb489bd73cca79fa1f",
+        "src/Parchwell.Verifier/Common/Results/VerifierResultCodec.cs": "e88d9c8a5b7bff1fff36f2c7c36ea4d3cb82ba526a49172c0127c9b03c66088e",
+        "src/Parchwell.Verifier/Common/Scenario/FileSystemScenarioSource.cs": "eba56bc542517e3f609c496dbf8de16b3a873cec79144047afadcc0e4da56373",
+        "src/Parchwell.Verifier/Common/Serialization/DeploymentJson.cs": "a4063de459234656d6d250b1a5e57fca959bb7ae8e52446286dac2f483704dec",
+        "src/Parchwell.Verifier/Common/Serialization/StrictJson.cs": "0db8159e387ecb3466c1cda72dcd129974740f78faa42542b0aff0fb97bfad4d",
+        "src/Parchwell.Verifier/Common/SingleAction/SingleActionLimits.cs": "8bed22307d3b3c144cc93745bb5aa3e9f63b44b1b759250005be01f4dc77b968",
+        "src/Parchwell.Verifier/Common/SingleAction/SingleActionWire.cs": "171c02eb80722e38056c304b1ab149dc6a9431289dc2acdf0e0bad3b4f1b5158",
+        "src/Parchwell.Verifier/Common/Storage/BlobProducerArtifactStore.cs": "e820f20ad43a2d85a5958ff7f01b31a223fdb25b35e5253a828374f2a479d56e",
+        "src/Parchwell.Verifier/Common/Storage/BlobVerifierArtifactStore.cs": "02f27feb7551ebdab83b33e5465af160c90f63cc24a29a24e1e6b79b7ce8494c",
+        "src/Parchwell.Verifier/Common/Storage/ICompletionReceiptPublisher.cs": "5a633d5c492d30139cf2ae2b520f6bb593cd957082f086be1b6866fe5885a662",
+        "src/Parchwell.Verifier/Common/Storage/IProducerArtifactStore.cs": "989abefbbc37d6fc769d8756e88b6a70244b23fa7b8767e4c77a1f321c538452",
+        "src/Parchwell.Verifier/Common/Storage/IVerifierArtifactStore.cs": "260b2f7d7013771a89216e6bed987eab4b5de474b98f2cb82e5b4c6c0fa5fa4f",
+        "src/Parchwell.Verifier/Common/Window/BrokerInventory.cs": "4dd0d92e52227a27a0bee068216ab5780457afd2044aff0193923c563d257964",
+        "src/Parchwell.Verifier/Common/Window/BrokerInventoryReader.cs": "84fad19b214dab36bf40dd9b318f6b9bfb3b8a34aaf1105eeddea41a6b632edf",
+        "src/Parchwell.Verifier/Common/Window/StartLineNote.cs": "249dca8c9c1ce896f9275a7c2766eeb788805a8a5bfa3ec8738baf45cd25a0aa",
+        "src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs": "50183e73c15874dfec6785f00bdfb2852c78a9536583bfdd7b2f4d52ca85118f",
+        "src/Parchwell.Verifier/ImageSmoke.cs": "d70b8871232ece0c670491906054a4937d27f3dcc9267d93b80c6a49e5ac60ac",
+        "src/Parchwell.Verifier/Judge/JudgeHandler.cs": "a2fd7f24e8002dc130ab933635c8ebc73c46999f735e76f2d6739e28c7860e41",
+        "src/Parchwell.Verifier/Judge/PhaseCandidate.cs": "b1f798094395e8e400342468b3e75e143a844573c710227d7a54d3f363a6b06e",
+        "src/Parchwell.Verifier/Judge/PhaseCandidateCodec.cs": "c57f0c8829f7440940df7e54f586a24a3bb5f38cd081725aa09048e624302bff",
+        "src/Parchwell.Verifier/Parchwell.Verifier.csproj": "dd91b050ac75d5fd08be887ef384dada4ce4e98a200185200bf1d2089d95267c",
+        "src/Parchwell.Verifier/ProbeGate/IProbeGateFileStore.cs": "7b0b302f3603dee035bb377eabc59d5a6299d3e96764df7a41b1e154789d3f0b",
+        "src/Parchwell.Verifier/ProbeGate/LocalProbeGateFileStore.cs": "2e24e4d97767d598f227bc71ceb369351535668e9008f0b21dd61b6e45a03e1a",
+        "src/Parchwell.Verifier/ProbeGate/ProbeGateEvaluator.cs": "f86cf11307e7e80c11733b391a764b72b6611a2482bc4db1774a9465ebba2d5e",
+        "src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs": "6a4872672703e12d6368a8e027b7fe8accf38630731da74fa610b21d9b0ae939",
+        "src/Parchwell.Verifier/ProbeGate/ProbeGateRequest.cs": "e3199ed7633543e25d1a4b2c8d4fa839382035eb750f24b57dadb6b4ff2049f2",
+        "src/Parchwell.Verifier/ProbeGate/ProbeGateResult.cs": "26f62dc09a9af721e47df90a353e638cf117aa52cf9e05da726876c4bc310fc6",
+        "src/Parchwell.Verifier/Program.cs": "b187138fb3ab8a46e961d76c0844ff4efa362ea9150185eeafebe89ffde98fa9",
+        "src/Parchwell.Verifier/StartLine/B10SweepLineHandler.cs": "0ec9027a631af6f0646b4fbe5079580f22b71c69f2939a9be1bffd55a0a09caf",
+        "src/Parchwell.Verifier/StartLine/BrokerInventoryCodec.cs": "4d3095eba706234f73739afb2c6b4b5d4b4a67b3a42e619b4f3476c0c1092041",
+        "src/Parchwell.Verifier/StartLine/StartLineHandler.cs": "d433a7ae9726b53e4291eae297bccb6f78271b339e4d08c31237ef5109a4fa75",
+        "src/Parchwell.Verifier/VerifierCompletionState.cs": "87bb1a0cf9c156777c5cab123dd09e8a95b494e9040954797b68ee37010a6ad6",
+        "src/Parchwell.Verifier/VerifierHostOptions.cs": "3575d8df8556a015e84ba7c6999420ce157bca60707fb102d520225f74e022de",
+        "src/Parchwell.Verifier/VerifierHostOptionsValidator.cs": "7ab501b53440974d3f79fd094a559559f5778b6f18611547d31250b050fdebd3",
+        "src/Parchwell.Verifier/VerifierWorker.cs": "1ad54c9ff68f5cc35a28076cfd075098c0521854074db7107bdc282f4e3a47cc",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptClassification.cs": "5a19508461b7a112baed9bc861503eb75376ee110e986ed524b8b44ef0b44378",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptDiagnostics.cs": "a3c787c0101ead81ceef9099d4af2f482a10d9740a818bb5d23ff8e4fa5ab146",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptEvidenceCodec.cs": "0645267ceaffa9a173fdaaf3d29c73ac72e78f856d8e75d45a01b32899a6d9cf",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptEvidenceReader.cs": "bdfddc4c2acf7f1227ba861f75e6361a5350ba3ab74ec5e803cb936ffed643e3",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptGuard.cs": "11a37566cb8f4e7f89b44ca62053aabeca104c3981d0f910119ff03bfd38c125",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptGuardConfiguration.cs": "4d197708fe9ad8f1f71bb9c1b92c0d904cbe3b6a7ffdc3487996bdde73b52df0",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptReconciliation.cs": "d500af3b52e6ca9f056a4ea3a95ad0d629a475124cad2c96f1d48f0828349db8",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/B10AbruptVerifyHandler.cs": "99f6511ba44a5c33346334d613e242473bfd139a6c1146605b7cb8dcc91f4233",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/EarlierRepeatEvidenceReader.cs": "312865b5fb2ec95761dc8fbacc041ebeab94571dd5f18d459e19187123d02c34",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/StartLineEvidenceReader.cs": "04640f3fcbd6352a54a2f01ced057e50eb3ff3ec1c433cfaaf9a34796f68baa9",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/TimeoutEvidenceReader.cs": "de5ed498e05474f3ee5c6352e4f9de332f9b1ed57dc2a5ebda43a4f828537564",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/TimeoutPublicationAcceptance.cs": "4dc3b713a8d890e7bfaece31c693b6722a7362859b8d94c71905af00ebfafabe",
+        "src/Parchwell.Verifier/VerifyRun/B04/B04EvidenceRecorder.cs": "1fd4571c9d4e33df692115e7c36ea5fff253a1aef35dabfec967266ee18bcfa6",
+        "src/Parchwell.Verifier/VerifyRun/B10LateObservationDiagnostics.cs": "79e54486c7f8a9d1983563a7e46caa6f93994a2a67ea3d4c6850733408078210",
+        "src/Parchwell.Verifier/VerifyRun/Configuration/RegisteredProducerConfigurationResolver.cs": "c47970a4cf28d10efecb369dbc3e034c2dc0e90d3dae91de83fd64ec60a22a5a",
+        "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationJudgeHandler.cs": "7d9329fec7609b5238f7f01f65d15948bdb52ad5cca44abb97c80c9e460c529f",
+        "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationJudgeHost.cs": "e36235d5999d47a7966e71f56c61d1505232cb3232b88e0fed2cf9a123466462",
+        "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationJudgeOptions.cs": "30ebf6c5e0f8674d29ba1ecd2c00ef71adbd8528c43db53445ebd1246bc7a11d",
+        "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationWire.cs": "53c9a12513a324c9a28233a0b8e7d067f1ce27da378006dd25ed99a8cb34da0c",
+        "src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs": "47ea5d201901581f238987150704432044096e3bdc4af10c963a1ab60c76985e",
+        "src/Parchwell.Verifier/VerifyRun/Input/CapturedArtifacts.cs": "fd73f098b907f227de04ba43b67cf6842842e7b92d3438558925b6a3968ba1a9",
+        "src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs": "d185b76fd498532fcf33985abf5cb6be972cb8d342d3ed1f1a37b006c4a5393f",
+        "src/Parchwell.Verifier/VerifyRun/Input/ConsumedRecord.cs": "67b6524ddd818d1a5e7f2142313407cc99f6a85977ded99860846478a43464d3",
+        "src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs": "9a0652de60a50e2a33bfa51c121d9be735256d435204742ec10e8399409a8905",
+        "src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs": "de7085d4e73a312ae8e4d75e44d71d91cc8963078794a14493e084b1113df8b5",
+        "src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs": "3b7278ed1d948d269534b63ac1de254ce184d005d958f3939adf6284d1f9abb4",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/B10OneProducerChecks.cs": "0fec291c542db3dc4760f2822e644669831da5e8f054497f513097fae3b46e64",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs": "286e35ff4129f589fd5d97344db34bd49de77774421fc0744a6c4b72996138c4",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/BrokerCountRecorder.cs": "9518932dbfbb1896d76c850fbe60fc161b121037561b2a43fc56c55c20b48108",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs": "b832a639de1e053a5abeefc0c6f48aa27b99dba4420593f1cf542adea72ad2d4",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs": "d40a9a5209ac476798d19f7af8cb33cfcb685a55fc5ec3dc41ae34eaaf6621b9",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/OutcomeClassifier.cs": "6eb32433d785940f434035c2922c7d81616c861888bc86f42fc102cf6b5064f0",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs": "84ceb6c98565384c9e3ece478f5d1f44ca9bb28b746618a44552f84dd68f7860",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs": "e5ada0f0548be096ffe3dccb5a9f84c9597e12a84f007be9fa20658c383756d9",
+        "src/Parchwell.Verifier/VerifyRun/Publication/DiagnosticPublicationReader.cs": "fd8745d244e0e04d4d5ac843163d3334e6d2b99d6a6c60e2581523d8a81260e0",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Candidate.cs": "2fa5346b8ef8800ddc70e447ec3d89554bf2c7d29e6bb1c58a3004855c5d99a8",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Handler.cs": "aee2a473313198d9930a94cb23263558c79c6449d9aa15a293ebe6af08689a37",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Host.cs": "4f8034abe31f52c3e1c8a419e43f074867f54b21ac480b1c202f2ad14d8b743f",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Matrix.cs": "9f56f28aa82981bbfbd1120c0ecd96ace3c8d3b31d6a4d3a6713b23b4cfaca2b",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Options.cs": "d6de5dcd71f09f4f29fcd36caf83f32c80e259d51e0b0433729e3489c2811d58",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Wire.cs": "641817e4563801d95cc6f95ad3f167db27e0331fb7b4b7d3a417957c250f9597",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/SingleActionCandidate.cs": "70d99b2aa0d3a57d6a80a1e79be7d0be20c142e1fadfe26034ae90615e9594c1",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/SingleActionCandidateCodec.cs": "7a32874f9c4bfad3447116158bec46e8225f683eccbc5ebc12deba338ee6b529",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/SingleActionHandler.cs": "5e1169f92d57ff78587f9e20f1b1a2f6750bbae673a1b80721fd77d830a12dda",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/SingleActionScenarioResolver.cs": "3c3ee661f083232f05a4bd4d4dad2eb870c7f1cb6a57b1f9537e6cb022bbb77e",
+        "src/Parchwell.Verifier/VerifyRun/Storage/BlobLedgerArtifactSource.cs": "33a412d197586445cb00f9a9b19e2d3efd91cac8727df96cc313296109402957",
+        "src/Parchwell.Verifier/VerifyRun/Storage/ILedgerArtifactSource.cs": "fe80ebf52231a21f79bfe34530dfd8faa4400e5f4c3108c764c10403c2dd7c78",
+        "src/Parchwell.Verifier/VerifyRun/VerifyRunHandler.cs": "937b839dcb2a86301b575c13423431258cfffc39f554811f9df322f6494616a4",
+        "src/Parchwell.Verifier/VerifyRun/Window/ConsumedMetadataCapture.cs": "361308efb4718c12fca1863d661380c82f2a167fbe1c97f37924957e1bb2d8b5",
+        "src/Parchwell.Verifier/VerifyRun/Window/ConsumedRecordBudget.cs": "7d7376af1ca61985e716fd949159b3218fcee967cfd22c4278104e368747f1b8",
+        "src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs": "b2012594b326ea2afd577d123867af37e0078e0f1da961a9dda5d2555aaefcca",
+        "src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs": "87d5e8057535d0a2895d19c0a45fdc90df491787869ade1dfb08a2c6c0695c98",
+        "src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs": "51482cfcf3e471552d374c2fe237476204ca39f5a3efaa9e9a9cdd52bf14a1a7",
+        "src/Parchwell.Verifier/packages.lock.json": "c9c2f3096cba8a0c3dc705fd2c9c5f0404ebf5a173837b5ffd9c0f73ba7d4e26",
+        "tests/Parchwell.ArchitectureTests/packages.lock.json": "6721af88dd05b1eea04b5c8727cadd5169be4207bb12b142e4367be1836f882b",
+        "tests/Parchwell.Enrichment.Tests/packages.lock.json": "1e46ef67581a676209334db4d561e5037e0475f52d735ffafedac4caab154bb0",
+        "tests/Parchwell.Kafka.Tests/packages.lock.json": "55d6914e6eeaeb987f0db833e3366f57820aa0b8ff3411660828c90131ef0327",
+        "tests/Parchwell.LoadGen.Tests/packages.lock.json": "d15af1ddbb1f8fad55a20f7804e4c849cd03028c2de09df424b3b72e4c5bd26d",
+        "tests/Parchwell.Scenarios.Tests/packages.lock.json": "be591ff559bdfccfb49704ebaa0a726650b5e7ad31346b5d77e88f7d046181f4",
+        "tests/Parchwell.Verifier.Tests/A01/A01C3EvidenceRecorderTests.cs": "cf850b729c3889a7d6e1ddfde08d3ffd2411126973df581f04690d4ecd0d7e15",
+        "tests/Parchwell.Verifier.Tests/A01/A01EvidenceRecorderTests.cs": "87f2be41c3a1b95ad17fb1cbe375d4fc18e4fda8597da07d3a22e9a6a9f60e04",
+        "tests/Parchwell.Verifier.Tests/A01/WorkloadRecorderTests.cs": "e4555eeba7bee230f47f4e1ddb97338d81bf9fee640db453a082db3fac198e43",
+        "tests/Parchwell.Verifier.Tests/Authentication/VerifierKafkaTokenProviderRetryTests.cs": "a0e7bb8f7bab5f2f8324a7dbe266bdd5a28bacfabb3e6233c32fbf93f996a4c3",
+        "tests/Parchwell.Verifier.Tests/B04/B04EvidenceRecorderTests.cs": "a2cca43cd9a7b5a7affde0597fdfa4f3e85e4d8a2a876d132492f47174d3f741",
+        "tests/Parchwell.Verifier.Tests/Host/B10EarlierRepeatExclusionTests.cs": "48c8e18f0b6ca5b0f4d1c50f38e797f85dfff58b6546b261d24b4661ccd448ff",
+        "tests/Parchwell.Verifier.Tests/Host/B10ExpectedProducerJobsTests.cs": "46cdbfea42d395729283a2f9c403269ba10eb0256c350ca73d3d6adcfc5a582a",
+        "tests/Parchwell.Verifier.Tests/Host/B10FinalHostTests.cs": "94c1a570c0d8d5b4124c7119ce5f6e4a9b7ba2bec0a1dbf9efa275de14e68619",
+        "tests/Parchwell.Verifier.Tests/Host/B10FinalSweepUnitTests.cs": "45fd88227d7d1fdc97f4ed6674b7a90bae54bed7352f54dca6a5d3e09c939f6e",
+        "tests/Parchwell.Verifier.Tests/Host/B10LateObservationDiagnosticsTests.cs": "69096977206e0c7a28f4d5becca94e2a7e06061c4608922eab3d96a5dc564ccb",
+        "tests/Parchwell.Verifier.Tests/Host/B10OneJobC0VerifyTests.cs": "517588e82c60148f117391efd629bbf2e218920d8857694601716d968f2b5872",
+        "tests/Parchwell.Verifier.Tests/Host/B10RepeatVerifyTests.cs": "f4f613f02a059203ac4f98bc9c7fd4ce7460788e82a59243cb95c72c2354aa27",
+        "tests/Parchwell.Verifier.Tests/Host/B10ScientificThreeJobLegacyReaderTests.cs": "e5febabc6ff4cff4409b45b7d1eea4140537a8a50ece2513997c6ac5a037b4f8",
+        "tests/Parchwell.Verifier.Tests/Host/B10ScientificThreeJobOptionsTests.cs": "c5902b41f4aa867e92a438330321b4378500a21c72aee768e43a4b89516cf87d",
+        "tests/Parchwell.Verifier.Tests/Host/B10SweepHandlerTests.cs": "a22aac994165638c1825ddff184051fdf25919211e2dac0a058beb9374028e15",
+        "tests/Parchwell.Verifier.Tests/Host/B10SweepLineHandlerTests.cs": "d420f375ad14e970787aef9d8137cd2708435df029787d3aeb4e448f3a01cfbb",
+        "tests/Parchwell.Verifier.Tests/Host/B10SweepLineOptionsTests.cs": "3cc0cf3ea36bcb8fb6c17906c0921c4b513f969d3a47daa556546fc094cc2191",
+        "tests/Parchwell.Verifier.Tests/Host/B10SweepOptionsTests.cs": "8b3992e3630be2f69101e6c3af4aec96e37b47940f12a67ce45ae4d324651932",
+        "tests/Parchwell.Verifier.Tests/Host/B10TrialStartLineOptionsTests.cs": "383a2553cdb4f58b20be06f74572ce8397f7d4c6a07eb099aac1634d4e792d73",
+        "tests/Parchwell.Verifier.Tests/Host/B10TwoInstanceVerifyTests.cs": "ccca452e11a55689a736a1acbb268300381b72ffa277508f613723beee44819d",
+        "tests/Parchwell.Verifier.Tests/Host/BrokerInventoryTests.cs": "e2ec290b2450ec05986765f7995df6703e1ba1aea0d31f72bb9282056099bc92",
+        "tests/Parchwell.Verifier.Tests/Host/C3HandlerTests.cs": "cc7daabb792a37e7da99a05d32768fd83815be2fa227e094fa38c4b3d40f26b8",
+        "tests/Parchwell.Verifier.Tests/Host/ChartEnvironmentVerifierHostTests.cs": "77b34aeb5a421c7286a04e440780737412179a85bfdf84af1e3e2c36ffef766b",
+        "tests/Parchwell.Verifier.Tests/Host/ImageSmokeTests.cs": "be613a4b55103a0538dddee591e47c26b10033fc972c0b56710ca18eb4a101e4",
+        "tests/Parchwell.Verifier.Tests/Host/StartLineHandlerTests.cs": "0255aff534a2ae853ae813dfa1f424d69b6ea82752da1d65bf1b114f3264741a",
+        "tests/Parchwell.Verifier.Tests/Host/TelemetryWiringTests.cs": "ecfc325e82f9b8c787a158eede69ebb44188082d2ddcd29e3d7465568d474262",
+        "tests/Parchwell.Verifier.Tests/Host/VerifierCompletionTests.cs": "09fbab7f9fd35d873bbabf10aabe4651aea1083dc623a3fe0db033bc0ed38a4e",
+        "tests/Parchwell.Verifier.Tests/Host/VerifierKafkaTokenProviderHostTests.cs": "9a301d3232e73ce0b1a634607a12fbee18b5da43b060909717e91147b0cfc061",
+        "tests/Parchwell.Verifier.Tests/Host/VerifyInputCapacityTests.cs": "1a4cfa11b8b6d7f1dcd7dbe494bc683c818dec4e23d94595fff3483823095d97",
+        "tests/Parchwell.Verifier.Tests/Host/VerifyRunDiagnosticTests.cs": "3d98c0a523717ff8fc4f544e6e405a870ad4a9646025f03eff7e2eb04081734e",
+        "tests/Parchwell.Verifier.Tests/IdleObservation/IdleFixture.cs": "94b64bce8181ab4ed28be480db2f4facb217a4142dbe2b03ffece99ef217cdd8",
+        "tests/Parchwell.Verifier.Tests/IdleObservation/IdleObservationJudgeHandlerTests.cs": "07546cd59da494d2684c67d8eb19a7fb64fd1f2250f8e87f7f32824ba2d149d6",
+        "tests/Parchwell.Verifier.Tests/IdleObservation/IdleObservationJudgeOptionsTests.cs": "0cc1959bc4dd8d4be9accc088128d6cda89c5f20243ca4edfa105cca69cd1bb5",
+        "tests/Parchwell.Verifier.Tests/IdleObservation/IdleObservationJudgementTests.cs": "ec3a3a5c5d9e8179c75457ffa30ff7d5725bc75a174290277480af52d1d63dd4",
+        "tests/Parchwell.Verifier.Tests/Input/GoldenArtifactReaderTests.cs": "c5acda17fa39847db871f7d0ae22d209d57ac8fe88e3e3aade561e00ea76f45e",
+        "tests/Parchwell.Verifier.Tests/Input/RestartManifestReaderTests.cs": "37bcd07eb5f3377c97220ce4a7602ca62c28c9b30ce6ab59742ec50fb694db62",
+        "tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs": "02a6958674319949d17d81791cfcc9c561ef52f4d9b249c0d8a499d4e2e91c11",
+        "tests/Parchwell.Verifier.Tests/Judge/B10FinalJudgeTests.cs": "c6f6e80be4b90f4c0c49b5848f3448185e38ff9b6594f3f7f6fc8f6406bf77bf",
+        "tests/Parchwell.Verifier.Tests/Judge/B10FinalProjectionCodecTests.cs": "939714db1761e60ac52e24072b517f20dda8eb18180b5c10db9c779db12b55e4",
+        "tests/Parchwell.Verifier.Tests/Judge/B10JudgeChecksTests.cs": "2d3d34d268659aa4c036127dcdb855a93afdb31093613dc1d8a7617a6c7114e2",
+        "tests/Parchwell.Verifier.Tests/Judge/B10SweepChecksTests.cs": "f642d2dddd63534b318d58f1dad5e8cf5603852282886f9af56e91e71cc729bc",
+        "tests/Parchwell.Verifier.Tests/Judge/JudgeHandlerTests.cs": "b008e9ae2993b2701413e6a363a9f247c81f5456b9cbb38435198af93ebff115",
+        "tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs": "8433b902feb0c34c4108081fe741b9a6d4c48b6a7caba6ba9692ae4f284ace7b",
+        "tests/Parchwell.Verifier.Tests/Judge/PhaseJudgeTests.cs": "cb496a667c4a4faa89a1d578d261e14c816a081f0195bd3569d50b3e55496b43",
+        "tests/Parchwell.Verifier.Tests/Judge/PublicationAcceptanceTests.cs": "49f69c36053b1b4df84ea16c741ea5e0f0333ba5d5c28395495e8f4fbacf992c",
+        "tests/Parchwell.Verifier.Tests/Judgement/B10IntakeChecksTests.cs": "5eef5f215344ae456cfeb0ca7ac606325de059c3b10c95c8d8dc28ad12b9333e",
+        "tests/Parchwell.Verifier.Tests/Judgement/B10LateWriteChecksTests.cs": "f346df4ac7e6a3c1e6dcb4b60334462471cf06f6b9f560aa12ed12e1018b8c60",
+        "tests/Parchwell.Verifier.Tests/Judgement/B10RepeatChecksTests.cs": "eaa5890a747696c464e0f9dc546016210670847552d01f70abb530800a12018c",
+        "tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs": "1fa73d65386b32656a67e8439373b0e5ffe376aa1fec3ef89c1605d2957c422e",
+        "tests/Parchwell.Verifier.Tests/Judgement/BrokerCountTests.cs": "dfc40cbefb86fff388f8e5783b0aad1ba7168515dac23b5a94427457c4784824",
+        "tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs": "3a600de24ed58068c837700c19e382a63dae2179e85b63bc10c04afeca5598d0",
+        "tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs": "9523390ba70369f7473e0ab52373de42d59098655cfa4a791f424d917e08f236",
+        "tests/Parchwell.Verifier.Tests/Judgement/OutcomeClassifierTests.cs": "3c39dfc578eca2566b53589795f2cc05142353e66e9e28f1889d1e08b472dfab",
+        "tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs": "1176af81e3b5156d754b15d873389f77af16cc941776667e4b8f2fb9b9f8665b",
+        "tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs": "b61b9a63f22447c5c2caef0a6778198ed3f2bb493603f315554a9c73f17d2cd7",
+        "tests/Parchwell.Verifier.Tests/LedgerBatch/BatchingEvidenceRecorderTests.cs": "6294256abac200355df5fe228a5fd7578d3fffdcd251f31031228366ea27a244",
+        "tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py": "b1c9a96740111676caa0b9e95db90b4ff93f07ff2317710233558412a88ac1bc",
+        "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": "dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea14629a0af4625",
+        "tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json": "08dc4239d731048aabf4fc7683887121b951d0226a16d1a4293dd57e6de10001",
+        "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj": "a3d7fe4824fb1f4c11d5bdca6438d04c92eec1c3614e9db02df27f232468721a",
+        "tests/Parchwell.Verifier.Tests/Phase/B10IntakeWireTests.cs": "7c4e96508b3d2ad28ca613e8bb33570b41d50082a95855cb7e57fc240743a315",
+        "tests/Parchwell.Verifier.Tests/Phase/B10RegistrationTests.cs": "9027fe0c884e57baf8f46b88427af682621deebf71f34ecc76b34d0f762e6553",
+        "tests/Parchwell.Verifier.Tests/Phase/B10ScientificThreeJobReceiptCodecTests.cs": "d5126ebcb07ccde23365fd8a701cec5567eeeba54b0e5d5aea5500f00bfbcb87",
+        "tests/Parchwell.Verifier.Tests/Phase/B10SweepEvidenceTests.cs": "cbb3b90fce2f3abb7cc90cbc72ad3dcf4f1eaf438b9b41ca352cfb35fbebb5c4",
+        "tests/Parchwell.Verifier.Tests/Phase/PhaseWireCodecTests.cs": "2665e7f8b45a71ce7feb376eab80671f6386d0706033d20b6b4b603dcce7b2c5",
+        "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs": "d4c79c03d019ccf4c66105c19c8fd612ae991ea731682635c9c9638bcae91d11",
+        "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs": "a8c65916866ed4e5aec13753be1df94ff296d3ede9151df67131b5991bf06087",
+        "tests/Parchwell.Verifier.Tests/Results/B10OneJobC0CodecTests.cs": "116ab54d5187bb2032d59ff4aa761d3aa5cce19121b81d0208f90f754b540072",
+        "tests/Parchwell.Verifier.Tests/Results/B10ProducerObservationsCodecTests.cs": "08656a6c728f871d717b66a4c95f66b711a124ac13e318b61ce77b981d3f6a88",
+        "tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs": "d83303dd4a017c4668904575d5b29f6b72fe0c5e13de1e15f2304cbb6ea2541e",
+        "tests/Parchwell.Verifier.Tests/Scenario/FileSystemScenarioSourceTests.cs": "fb5f5f07f47516400233ae22049f4a6164d6572020a650b6631f18314399ab19",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2AccessEvidenceAuditTests.cs": "ed38cd23f589458a6c76312e89ad553ce8a9b6938d030846a013c1f456a149ed",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2AccessEvidenceTests.cs": "57308194a60467a714da8049f403b5576e27cfd804c77ee3b7c0e6218fd3e29b",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2BoundaryTests.cs": "bd6274225f1cf7e16c08a9e58e8b8902336fd5263739dc63cc351c6b5f264eb5",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2CandidateProjectionAuditTests.cs": "43c9f0461e7bdc3ad065f261c07f37daafa83220d683a1c6eb871245c7951118",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2ComparatorAuditTests.cs": "0232751ceac5680f22c8519bc277f5e6dfdc6706b41ed4565116ff94b975b98a",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2EvidenceGapTests.cs": "302ed191893054609c6c16be03464843fc6fec3f34b5a40a8cb8f0b85000eb8c",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2Fixture.cs": "3c42ad118558cb6f73ac226b61425a0e914961f6e4af8c9686e1e96dab8afb03",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2HandlerTests.cs": "f7c8350f55f7fd14d13c3d083ce8cd45bd4dff5572bb9cddd2bb3f93ac56d249",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2InputFileBoundaryTests.cs": "5b7c36ff7bdd65b4b1a06587cfabdc29d540873d88a2fb15ace4cae287b614c3",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2ItemJudgementAuditTests.cs": "5d39d132be8159f6000dea6e1b620a4609ad780ca426dbd95585787000d36740",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2JudgementTests.cs": "4b903dd077e955a16c31b8a3328f526c75d6b57cfa2989d4eda5857460f14e0b",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2MultipartInputTests.cs": "174aae24036d2aff453396fe74077b6515436f69028c47223282c74f44cef706",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2OptionsTests.cs": "a99fd638b5cf4e702f883d69ddc8f012f039627bb8ad93e6055148149d7ccce9",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2ScientificAssessmentTests.cs": "160312786e9d02dc94aef6a18f8a139e97610b33c5b2b9f800bf9e75e7a07441",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2SmokeControlTests.cs": "a1a996a613a89654f1a9cc06e0f428cf09477bfa5fb601f0951155a8fef6dd9c",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2StatisticsBudgetTests.cs": "cd6e70b18d7a322a28b5efff61f89caa17167df13f1f05f5849b4d3ada96d074",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionConfigurationJudgementTests.cs": "188a85e867716b20d510c8f975cebf59788ed24081b70f6146daebbaf124242b",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionFixture.cs": "582489eda6d7141aa704809aa87d6b15f32f5fb8848a54d64e1e2b5161a78819",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionHandlerTests.cs": "d5e22d6e01afe5d84980198371f2190302d15028b73b9adbf628dfcf3060b68f",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionHostOptionsTests.cs": "a9ebce86a294115f9f4b5c84929352a485f2f45e2b5c84e454cf63cf773b4753",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionJudgementBoundaryAuditTests.cs": "a8d185d54289797e8a520ae364cfd7445b15c69b498d438f0b7fb4ad4fb71915",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionRepeatJudgementTests.cs": "a6fef5bf6a8251dacf1316ada0db7defc6d394ccde95502b0350e5b894ec5f29",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionSeedAndItemTests.cs": "6739c564362a7564a34d705643845d9e8deec3d69b6df2979357db3b02aa39af",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionTerminalRuleJudgementTests.cs": "fcc5cec9d559e89b1432b7b42d62e231b8fe3725d100858e1b29fc366cae9ee7",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionWireAndBoundaryTests.cs": "110149cd94b1bb22276638a46924e1de613ee94772a01c2836d41a7f860e833c",
+        "tests/Parchwell.Verifier.Tests/Storage/BlobArtifactStoreTests.cs": "4b081dfc8ebc4eaa52ef9442fda07229fb289bcb90a4fa46f48f86721d2c95a5",
+        "tests/Parchwell.Verifier.Tests/Support/B10AbruptVerifyEvidence.cs": "527c3e9d22c1aec8b72fe0a1175a8b57f1cddda895dc175c337c86c1da49f29d",
+        "tests/Parchwell.Verifier.Tests/Support/B10AbruptVerifyFixtureBuilder.cs": "cfd95435aeebc095073093200360c0ba8efa8740a1e8c067ec1ffcaaf91bfa7b",
+        "tests/Parchwell.Verifier.Tests/Support/B10SweepFixture.cs": "f648d74ab97161049394b6fa6fe3b8a26c4d094df942864d1ab9d10b2ba6fc2a",
+        "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": "d16f72187085d0545f7625a6546c53eaa436249c801f62908ae35e9f8ea2636e",
+        "tests/Parchwell.Verifier.Tests/Support/KafkaSessionTestSupport.cs": "d4b4b06c096c80ad6b4cdbdb5f16df5639ea53912b276f827e80850752e5c7d3",
+        "tests/Parchwell.Verifier.Tests/Support/ProbeGateEvidenceBuilder.cs": "45acec2e62becd32a7b3e4f9349a3d366dc824d216fab847eafb708c92adb278",
+        "tests/Parchwell.Verifier.Tests/Support/RecordedEvidence.cs": "428e8f4dcd5e9b160b1daa60d6ff04e4e292d1b2493f1b9b7fed62b341b4a7b7",
+        "tests/Parchwell.Verifier.Tests/Support/VerifierHostTestOptions.cs": "9824f6035d61539ed4c5122ddf171ba72f618b061517334d1efc35bd3046100c",
+        "tests/Parchwell.Verifier.Tests/Window/B10RunWindowTests.cs": "bcead6b4e5318a2b1b0a28e8aa01d3a94f5cdb9d2068c1da728a0bd6d7df029a",
+        "tests/Parchwell.Verifier.Tests/Window/B10ScientificThreeJobStartLineCodecTests.cs": "91543ad9a424770553838dc4e9ffb91dc68f680ba281e38a4392255473d8e0d2",
+        "tests/Parchwell.Verifier.Tests/Window/B10TrialStartLineCodecTests.cs": "b326978264d5bb953fdfb3f4db32871de86cc98ba7c14d5a04b1fa5d2defec06",
+        "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": "c4ae6838205ff88b2568ced00a3e0b874d24ecb3ead55898b15d44a365dc3b95",
+        "tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs": "b7ea0fe4e83e3da2dc34790fb637cfa04d10fc1dd77cdc9b4dc03719b3ca2d4e",
+        "tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs": "aa7bef8c9e41ac307fc9724e33381d4c33ccc6b7bcae8560429c0202a7d51710",
+        "tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs": "c571be0a01efd0f523a727774ba5a6e517719dfb0d6c42c620cdb2be5a97d508",
+        "tests/Parchwell.Verifier.Tests/Window/TokenPumpTests.cs": "44b672baffc7ee86dd2eefd45d515d3489301fe1e2dd659bf80555a9b5080b2f",
+        "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": "e8e5761f0db2e6426b7a8330453853bd1ff9f0c4a8f0429d2f0d1b79bd92c4ce",
+        "tests/Parchwell.Verifier.Tests/packages.lock.json": "6b08c8d420de3207678ae7338e89831ee55696be7e963c80b76c4e1a538fc335",
+        "tests/fixtures/ProbeV2MockCluster.cs": "9acd4b0f66c3e4fd51f1c8ec4f79c1f5d644fff61512d6f9caadddb975d62c2d",
+        "tests/fixtures/verifier-v1/README.md": "583e9275404bc839a0a27cfaa4545fd1f6db2a3dd68804d10904391e94f43b80",
+        "tests/fixtures/verifier-v1/captured-run/capabilities.json": "38d8a1044a1d5e8042799e138d899f23bea011a8b9e1c37fea69364af1b3319a",
+        "tests/fixtures/verifier-v1/captured-run/index.json": "7f01ddd43037fba50e3004eba401d75e62bd4b2a570c690a295204ed00e5e54f",
+        "tests/fixtures/verifier-v1/captured-run/ledger.jsonl": "bf5fdb1cec62fe6b5976b64a6dbad1eb968201355babb03e8aa76dd7e1fb52b1",
+        "tests/fixtures/verifier-v1/captured-run/manifest.json": "c760166e7b45f5448439c5673dfa601000c64419e8348dfa38f63fe43b519d66",
+        "tests/fixtures/verifier-v1/captured-run/request-lifecycle.jsonl": "d63c6cc78d2b49be59975bd3c61e53bd660c8f5b7c2981a79f5cd2b1c5bf1db2",
+        "tests/fixtures/verifier-v1/captured-run/statistics.jsonl": "b50c6a5688dba643f47e2aff4fb44a2ff4159c2b65d130aa752ba6674ac34988"
+      },
+      "target_sources": {
+        "Common/Phase/B10FinalProjection.cs": "4e9a0d07156e33c5fb20c717107e35e96b732a7b2dcfca3648f1f9fd4b947bce",
+        "Common/Phase/B10FinalProjectionCodec.cs": "c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5",
+        "Common/Phase/B10FinalRegistrationReader.cs": "7a28b10054c4620b8a84f0513244da2b96b89fbe748a157eb491bfcce6d755ba",
+        "Common/Phase/B10SweepEvidenceCodec.cs": "9083ae9eb499d4b22fab69bc9086e465e8e020ce650d23da27cb5dec642caccd",
+        "Judge/B10FinalJudge.cs": "cd88f482f9c93947e613ec4b13a34ff554331dfe8ebd9a3e400ed3bbb360d34a",
+        "Judge/B10JudgeChecks.cs": "b365656c412f8415f760af8256bcb23c755d340cff843e288d730c18f07c44da",
+        "Judge/B10SweepChecks.cs": "9b6d8a178b52b5d23ea877ab46209177159b2f3a30d9734885c8a366e0af71b0",
+        "Judge/PhaseJudge.cs": "22c56f360af0ccab6123c471d7c092d588ca7547323a5415f606bee0368aa2f9",
+        "VerifyRun/A01/A01EvidenceRecorder.cs": "d01f8995692a84cd8bfd908b9874bd72eba08d2f737529c05c1a5d8973780806",
+        "VerifyRun/A01/WorkloadRecorder.cs": "065cde4de7cd27b41946b665121589f9e5b333f0d6c4814346fd4a2cc082f808",
+        "VerifyRun/B10Final/B10FinalClassification.cs": "ad710e8960395058a357a2a7e817cc2bc450524c0a82e3e97f73d9cef0f52957",
+        "VerifyRun/B10Final/B10FinalRepeatEvidence.cs": "4e533dd7aa4205e0a5a121b94b9441af7438e5d878600a3b65dc6ad5f4edab68",
+        "VerifyRun/B10Final/B10FinalSweepHandler.cs": "cb14b6e7c68fe38a9fafa54ce89fae68b35c8f26917b4b49d74a38f3b740e5a3",
+        "VerifyRun/B10SweepHandler.cs": "0d8d8975156db241f59636384139f19e540eec574f80f056eaadbf7f44443d63",
+        "VerifyRun/IdleObservation/IdleObservationJudgement.cs": "53f985dbeb9664775180d8b12bf3b42c6c0895ace9e1990d3b56bf3dc280e475",
+        "VerifyRun/Input/B10PhaseRegistrationReader.cs": "e73faee335b336fb7d06590fa6d0c7f22f0c188dbcce3495b673c839fbe1c5c0",
+        "VerifyRun/Input/RestartManifestReader.cs": "d48a59bcbe7af3a60b00555b2b34f0faf40c671dbbfbce951ad835cc17000598",
+        "VerifyRun/Judgement/B10IntakeChecks.cs": "ade1802b795c9313ded04dbf1332752a0bc8c594473854519aecd54c6145b8ab",
+        "VerifyRun/Judgement/B10LateWriteChecks.cs": "6584efcc6d3c2b7a5c696b9cf23ec22145237e1e635bcdcd79d4044da08501a8",
+        "VerifyRun/Judgement/B10RepeatChecks.cs": "c34be5717c08a3b5757d750eeccaebcf92755870aefa041b08eb85142068089b",
+        "VerifyRun/LedgerBatch/BatchingEvidenceRecorder.cs": "b2e9391b5b0d324b6e65f281bcb356dc0c8d8ae1d06fe039f57ad90d362adf5b",
+        "VerifyRun/Publication/PublicationAcceptance.cs": "780e2109d7b1a0f261d06eb12a8ba856c90f15aaefd189646bb1b96f1c6232e2",
+        "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs": "e266b1d73da52fe84fbb583bac42e8bd5e2118af445d8a2f3c4bf7c4ff67f661",
+        "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs": "5c0788ac841b4397610f602435cd7ef923b1b4caa36d701c454891f79b2706a8"
+      }
+    },
+    "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463": {
+      "assessments": {
+        "shared_inputs": {
+          "src/Parchwell.Enrichment/packages.lock.json": {
+            "basis": [
+              "Direct Azure.Core and Azure.Storage.Blobs and their transitive additions; Azure.Core retains its resolved version while its classification changes. See src/Parchwell.Enrichment/packages.lock.json:5 and :70.",
+              "Source 6c291d8832d0c722352ff979545a136e5ea2ddeb SHA-256 94d31a93607e554463345a15dcd869171ca8654d05e47666a019a1daf21a7207; current 65611537a0ac37d1be8aaa363260e8179b05e1ad4dbc4f6eecff193427dd54b3. Consumer worker change 0640fedf0617e11686959332f7c6342027c26cd3, main merge 81d880cb901246b43043253d313a12173cd31316. These locks are selected globally but outside the unchanged Verifier project closure. The closure project files and their lockfiles, Verifier targets, runner and workflow are byte-identical; selected nonrenewable inputs are unchanged. Static assessment only; no new timing measured or new timing-risk acceptance claimed.",
+              "Static closure assessment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908905488"
+            ],
+            "current_sha256": "65611537a0ac37d1be8aaa363260e8179b05e1ad4dbc4f6eecff193427dd54b3"
+          },
+          "src/Parchwell.Verifier/Common/Phase/PhasePaths.cs": {
+            "basis": [
+              "Change-specific assessment: Adds capture ID and prefix validation/formatting. Existing methods are not changed in the diff, but new capture code and tests call the added methods. Risk: additional invocation/formatting work on unchanged-shard test runs has not been bounded.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "4d22f738676b82048a4b1b9feccfeceb01427a2802c1e6f147102861551e93c1"
+          },
+          "src/Parchwell.Verifier/Common/Storage/BlobVerifierArtifactStore.cs": {
+            "basis": [
+              "Change-specific assessment: Adds stream upload implementation; diff leaves prior methods intact. The new method can be reached by capture with a real store; whether and how it affects each offline test path or its setup has not been established. Risk remains.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "02f27feb7551ebdab83b33e5465af160c90f63cc24a29a24e1e6b79b7ce8494c"
+          },
+          "src/Parchwell.Verifier/Common/Storage/IVerifierArtifactStore.cs": {
+            "basis": [
+              "Change-specific assessment: Adds default streaming method. Existing interface operations are unchanged in the diff, but interface dispatch and changed implementations form part of the new capture path. No evidence proves zero per-shard effect.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "260b2f7d7013771a89216e6bed987eab4b5de474b98f2cb82e5b4c6c0fa5fa4f"
+          },
+          "src/Parchwell.Verifier/VerifierHostOptions.cs": {
+            "basis": [
+              "Change-specific assessment: Adds capture configuration property; binding and fixtures now initialize it. Its isolated declaration is small, but its end-to-end effect is coupled to enabled validation and capture; zero runtime effect is unproven.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "3575d8df8556a015e84ba7c6999420ce157bca60707fb102d520225f74e022de"
+          },
+          "src/Parchwell.Verifier/VerifierHostOptionsValidator.cs": {
+            "basis": [
+              "Change-specific assessment: Adds configuration validation for four modes and modifies abrupt-validation flow. This executes in host setup; risk includes added checks and changed paths, not a proven neutral edit.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "7ab501b53440974d3f79fd094a559559f5778b6f18611547d31250b050fdebd3"
+          },
+          "src/Parchwell.Verifier/VerifyRun/Abrupt/B10AbruptVerifyHandler.cs": {
+            "basis": [
+              "Change-specific assessment: Adds a capture start to an existing drain. When exercised, capture adds work; no per-shard bound or proof that it is never exercised has been provided.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "99f6511ba44a5c33346334d613e242473bfd139a6c1146605b7cb8dcc91f4233"
+          },
+          "src/Parchwell.Verifier/VerifyRun/VerifyRunHandler.cs": {
+            "basis": [
+              "Change-specific assessment: Adds capture start to the ordinary drain. Host capacity tests exercise the associated workflow; limit configuration limits capture data, not wall time. Risk remains.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "937b839dcb2a86301b575c13423431258cfffc39f554811f9df322f6494616a4"
+          },
+          "src/Parchwell.Verifier/VerifyRun/Window/ConsumedMetadataCapture.cs": {
+            "basis": [
+              "Change-specific assessment: New capture implementation serializes metadata, hashes and manages chunks and finalization. Row/chunk/total limits do not establish a runtime limit or unchanged historical estimates; added tests exercise it.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "361308efb4718c12fca1863d661380c82f2a167fbe1c97f37924957e1bb2d8b5"
+          },
+          "src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs": {
+            "basis": [
+              "Change-specific assessment: Adds capture-aware drain, observation and finalization paths. They are in existing consumer execution as well as new tests; per-mutant impact is unmeasured.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "51482cfcf3e471552d374c2fe237476204ca39f5a3efaa9e9a9cdd52bf14a1a7"
+          },
+          "tests/Parchwell.ArchitectureTests/packages.lock.json": {
+            "basis": [
+              "Only the Enrichment project dependency list gains the two Azure package references. See tests/Parchwell.ArchitectureTests/packages.lock.json:582.",
+              "Source 6c291d8832d0c722352ff979545a136e5ea2ddeb SHA-256 6721af88dd05b1eea04b5c8727cadd5169be4207bb12b142e4367be1836f882b; current 04c93d3fea203e1ae71afa8666bf6c58c3c84b8f2e72807d39e90b76df2b1023. Consumer worker change 0640fedf0617e11686959332f7c6342027c26cd3, main merge 81d880cb901246b43043253d313a12173cd31316. These locks are selected globally but outside the unchanged Verifier project closure. The closure project files and their lockfiles, Verifier targets, runner and workflow are byte-identical; selected nonrenewable inputs are unchanged. Static assessment only; no new timing measured or new timing-risk acceptance claimed.",
+              "Static closure assessment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908905488"
+            ],
+            "current_sha256": "04c93d3fea203e1ae71afa8666bf6c58c3c84b8f2e72807d39e90b76df2b1023"
+          },
+          "tests/Parchwell.Enrichment.Tests/packages.lock.json": {
+            "basis": [
+              "Testcontainers and Enrichment dependencies add their associated dependency entries; Enrichment project dependency list also adds the Azure references. See tests/Parchwell.Enrichment.Tests/packages.lock.json:5, :29 and :637.",
+              "Source 6c291d8832d0c722352ff979545a136e5ea2ddeb SHA-256 1e46ef67581a676209334db4d561e5037e0475f52d735ffafedac4caab154bb0; current 94fab36e68ded99c90663c4fbab74cf26f76e6bab97a83cba9ac047bc2553c56. Consumer worker change 0640fedf0617e11686959332f7c6342027c26cd3, main merge 81d880cb901246b43043253d313a12173cd31316. These locks are selected globally but outside the unchanged Verifier project closure. The closure project files and their lockfiles, Verifier targets, runner and workflow are byte-identical; selected nonrenewable inputs are unchanged. Static assessment only; no new timing measured or new timing-risk acceptance claimed.",
+              "Static closure assessment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908905488"
+            ],
+            "current_sha256": "94fab36e68ded99c90663c4fbab74cf26f76e6bab97a83cba9ac047bc2553c56"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/B10FinalHostTests.cs": {
+            "basis": [
+              "Change-specific assessment: Adds reflection-based capture option serialization to host fixture configuration. Small additional setup is visible, but the profile does not prove the old estimate covers it.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "94c1a570c0d8d5b4124c7119ce5f6e4a9b7ba2bec0a1dbf9efa275de14e68619"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/B10FinalSweepUnitTests.cs": {
+            "basis": [
+              "Change-specific assessment: Adds 15 profiled test cases at the final source. Their 0.184-second total xUnit duration is one unmutated local observation, not a bound on all mutated runs. Risk covers the extra tests and changed-target interaction.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "45fd88227d7d1fdc97f4ed6674b7a90bae54bed7352f54dca6a5d3e09c939f6e"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/B10LateObservationDiagnosticsTests.cs": {
+            "basis": [
+              "Change-specific assessment: Adds stream copying and separate metadata-object handling in fixture; paths can be exercised by capture. Per-shard extra fixture work is not established.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "69096977206e0c7a28f4d5becca94e2a7e06061c4608922eab3d96a5dc564ccb"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/B10SweepHandlerTests.cs": {
+            "basis": [
+              "Change-specific assessment: Adds capture validation and a new capture test, fixture handling and bounded row-limit settings. Existing large-record test still reads records; bounds on capture storage do not prove a timing bound.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "a22aac994165638c1825ddff184051fdf25919211e2dac0a058beb9374028e15"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/B10SweepOptionsTests.cs": {
+            "basis": [
+              "Change-specific assessment: Adds reflection to emit capture options during fixture setup. No measurement isolates its effect across historical mutation runs.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "8b3992e3630be2f69101e6c3af4aec96e37b47940f12a67ce45ae4d324651932"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/ChartEnvironmentVerifierHostTests.cs": {
+            "basis": [
+              "Change-specific assessment: Adds four capture configuration values to a host-test environment. They may affect validation or enable work; no zero-effect proof.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "77b34aeb5a421c7286a04e440780737412179a85bfdf84af1e3e2c36ffef766b"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/VerifierKafkaTokenProviderHostTests.cs": {
+            "basis": [
+              "Change-specific assessment: Adds capture configuration and reflection serialization in token-provider host setup. Risk is changed setup and potentially enabled capture, not merely different literals.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "9a301d3232e73ce0b1a634607a12fbee18b5da43b060909717e91147b0cfc061"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/VerifyInputCapacityTests.cs": {
+            "basis": [
+              "Change-specific assessment: Explicitly enables capture with one-byte row/chunk/total settings and checks a `row_limit` gap. This limits retained bytes but still runs capture observation on records; the final local profile is not a historical mutant timing comparison.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "1a4cfa11b8b6d7f1dcd7dbe494bc683c818dec4e23d94595fff3483823095d97"
+          },
+          "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": {
+            "basis": [
+              "Change-specific assessment: Enables capture in a shared fixture and adds streaming and metadata-object storage. Fixture users may incur work; per-shard effects are not isolated.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "d16f72187085d0545f7625a6546c53eaa436249c801f62908ae35e9f8ea2636e"
+          },
+          "tests/Parchwell.Verifier.Tests/Support/VerifierHostTestOptions.cs": {
+            "basis": [
+              "Change-specific assessment: Enables capture and adds command-line options for shared test defaults. It affects dependent tests; do not assert a negligible effect without stronger evidence.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "9824f6035d61539ed4c5122ddf171ba72f618b061517334d1efc35bd3046100c"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": {
+            "basis": [
+              "Change-specific assessment: New tests exercise serialization, bounds, gaps and failures; 18 cases in final profile total 0.359 seconds of xUnit duration in that one unmutated run. Mutant-dependent cost is unmeasured.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "c4ae6838205ff88b2568ced00a3e0b874d24ecb3ead55898b15d44a365dc3b95"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": {
+            "basis": [
+              "Change-specific assessment: Adds capture drain/error/cancellation tests and a fake callback. The current profile includes the class; the added execution has no per-mutant comparison.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "e8e5761f0db2e6426b7a8330453853bd1ff9f0c4a8f0429d2f0d1b79bd92c4ce"
+          }
+        },
+        "target_sources": {
+          "VerifyRun/B10Final/B10FinalSweepHandler.cs": {
+            "basis": [
+              "Change-specific assessment: Adds final-sweep metadata capture to the drain. It may execute during the full test suite for another owner; its effect on those owners' estimates is not independently bounded.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "cb14b6e7c68fe38a9fafa54ce89fae68b35c8f26917b4b49d74a38f3b740e5a3"
+          },
+          "VerifyRun/B10SweepHandler.cs": {
+            "basis": [
+              "Change-specific assessment: Original and late drains now pass distinct window details and start metadata capture. Its code may execute in the full test suite even when another target is selected for mutation. Risk: changed test execution and capture work could invalidate old estimates for any other owner; it is not proven neutral.",
+              "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+            ],
+            "current_sha256": "0d8d8975156db241f59636384139f19e540eec574f80f056eaadbf7f44443d63"
+          }
+        }
+      },
+      "shared_inputs": {
+        ".config/dotnet-tools.json": "50249a8f3a7134b08b4409c485dfe67afb17910e5a2329bf65810c3338231244",
+        ".github/workflows/verifier-c5-mutation.yml": "50e10f7edfeb8128d3bdb2c54c3de25dde473c5dca9ae33a53a925f4209acd8f",
+        "Directory.Build.props": "da23174e8d1ba562fc1e5fe99518e2bc54473c4c48b7744b84da1232588b8cb1",
+        "Directory.Packages.props": "9b61ecb44bf2297db16699cbac097f4576ba34d0ae624edff4d34f1d48caca05",
+        "docs/operations/a01-runtime-limits.json": "246f5b871bbc1a07209998a2e162b2d1593de9146fb3cae5a613ac8709950437",
+        "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/packages.lock.json": "a29c6aa8cfb81874ff8bb78dc369d7416f28c9b8cc47e99592bfc019b20c41eb",
+        "global.json": "ab4eed8da9aaee0671a10b49fe4ff1b27b3341b264f317ee88785607c0711e9a",
+        "scenarios/A01/scenario.yaml": "00b54054031ec6f80e864616852e2a96ef817effeefa17556093bf11a900fcfc",
+        "scenarios/A02/scenario.yaml": "739b96191574afff8edd89edbb9b09452185d636afa6add915888de8c3e70493",
+        "scenarios/A03/scenario.yaml": "083e21240d442078d2c3383249a5539aa8fc309ee5697513656916005eddb7dc",
+        "scenarios/A04/scenario.yaml": "ffc06a71e84d2af3f1b27242643cec5b1e9a953f2b17e54b826d79ca0bdc4abd",
+        "scenarios/B01/scenario.yaml": "878bbbe969dbc9feedf54d4e935c1a5f994cdde28852ae628096a90654b60e64",
+        "scenarios/B03/scenario.yaml": "ccca55e7e270e1b2504e54d0535db4061195da8d1c32e26cd116d634fbc50841",
+        "scenarios/B04/scenario.yaml": "c894fde26a1e201940cdd67e6b299f13c8754a821bed3a1f14006aebbf93689c",
+        "scenarios/B05/scenario.yaml": "2856fcfdfab4e1bee32c407666fc3ebec4eaa3f8e9b73f888fc370add4dee406",
+        "scenarios/B06/scenario.yaml": "20698b93ae365ca2ff688a489c974356a495c6b51f7e03dc73545d0814209400",
+        "scenarios/B07/scenario.yaml": "637f850154562fa85d33b7e8d2d2bc1ec527ecbcf7be0a844f6b090d0de5f53d",
+        "scenarios/B08/scenario.yaml": "e4869d401bd366e8922043baa3bfa0a53a1fe1d406ee40f2077405bdc9b7bef4",
+        "scenarios/B10/scenario.yaml": "762b1a540e8975129652358b0c91bb8a8c867b007dae162b00b78ad2dcc8569c",
+        "scenarios/C08/scenario.yaml": "061416216f9acbac792d61f85df0d5be90043b67e1bb4fdddc055bac5fcfcd47",
+        "scenarios/C12/scenario.yaml": "32dc43a8a5166ad9de7823164d17345b313fe26ff7948ba67e75e1c94013c561",
+        "scenarios/E01/scenario.yaml": "75d3810adbafd61b7cda676842cef70f86532c88e88516a78c1bcb2854533c07",
+        "scenarios/F04/scenario.yaml": "11409c59fd070b08473522d80ccee73a0c76fc9d83e0d4d79d2e2104ac9ceedb",
+        "scenarios/F06/scenario.yaml": "3ca313515ec897c487a71c86e7e6bb2d3dbfdc6c63577726929b3509428133b0",
+        "scenarios/profiles/b10-timeout.yaml": "39daef3f0b5df87fd8de5efc17304d249bc6eb1df281e76686bf0d637d0ee802",
+        "scenarios/profiles/saturation-ramp.yaml": "20627a8282fd81730867fb2d10bca8a6d4198cb59d6dc70aab8eebd22528c215",
+        "src/Parchwell.Enrichment/packages.lock.json": "94d31a93607e554463345a15dcd869171ca8654d05e47666a019a1daf21a7207",
+        "src/Parchwell.Kafka/Authentication/IKafkaTokenProvider.cs": "ac09c1464f9df6c704dd70a9e56ce8a35377abe51c30339dc4568802f6081325",
+        "src/Parchwell.Kafka/Authentication/IObservedKafkaTokenProvider.cs": "7ac8afe8bc16f35d2a8c60e0fc6bdf0758463b9fd9bec58ac0ede4f1350c8862",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationConfiguration.cs": "70a441daf0648bd73b6c632a37396d762808ac9c1346115d3b943386c874ec17",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationFactory.cs": "c723338944cd92593386c869c915dc894c093c097575aeba718105eb556c63c1",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationFailure.cs": "ade2e461ed1abb1533f2853288731011048b8e8080a0e66678823316040883cd",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationIdentity.cs": "8a59b91bf696fe38e5be37322afd3dc05134df049c134193bc93458a9f906773",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationLifecycleObservation.cs": "857f1027a09344c0bfc371c293fcd241dc398c865d4838fac7b4d4540bda8296",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationMetrics.cs": "6b4b6366028f3e0e7982a856384a38c762d887eab166f816f4d1df4390ffe56f",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationServiceCollectionExtensions.cs": "c5c1cbc9bb588d52cf040b86ad9b389fa2cbbadb8246ce8c76834cbe1fb45902",
+        "src/Parchwell.Kafka/Authentication/KafkaOAuthBearerSession.cs": "a2262cb42e459294767ae1ab8915c4a5c5e4c60bf26c7d75de3718f0db846fc9",
+        "src/Parchwell.Kafka/Authentication/KafkaWorkloadIdentityOptions.cs": "4269992f4f9262a00fd77f09daa8d328480bbc7314f0849a21b8366382e848f8",
+        "src/Parchwell.Kafka/Authentication/KafkaWorkloadIdentityOptionsValidator.cs": "715c1cd555c3c63f0523565e5831cfe74912cbb98ff009f932bbdbe2fd7c28ec",
+        "src/Parchwell.Kafka/Authentication/ProjectedTokenFileObserver.cs": "35fc8d2908d4c15cdac6a9a7e6896ba3ee30ae38a8f5c1fdfc65305954686c6c",
+        "src/Parchwell.Kafka/Authentication/ProjectedTokenPathResolver.cs": "83a4ba4f5a090c1e990e5c31ca274cee3d517c01a0d25a63c5f3c2bdfa098574",
+        "src/Parchwell.Kafka/Authentication/WorkloadIdentityTokenProvider.cs": "b5a0897b450a8b91b38a2faaaba9b60b3f84de2aa3b037da183ffac5b84f4655",
+        "src/Parchwell.Kafka/Configuration/BaselineSettingsCatalog.cs": "a1395a1ab548ec97c42a04af73051987da114bc921d08babc2a2d6a91fe51420",
+        "src/Parchwell.Kafka/Configuration/FrozenInventory.cs": "5416a103a29c8f8e65581e734bf499510c543446f7a20575c3763262ea9f5619",
+        "src/Parchwell.Kafka/Configuration/KafkaBaseline.cs": "e8a1de90b0742b2de9ecd15dde1e38337022b0d79cfa9f31a341c19f7c054982",
+        "src/Parchwell.Kafka/Configuration/KafkaBaselineOptions.cs": "17994d170d095cc2f583234189fb58abbe8a87e3d924f2cee84494524c3a64b1",
+        "src/Parchwell.Kafka/Configuration/KafkaBaselineOptionsValidator.cs": "eadbd4b70b42611cebe5daeb36f458f538e504ffeb97b94dc8014b1606a1092d",
+        "src/Parchwell.Kafka/Configuration/KafkaClientRole.cs": "fc8b0772bba663ee627dc9aba0152737b29b1a8633fc2d759e1db9ea90ae8953",
+        "src/Parchwell.Kafka/Configuration/KafkaConfigurationFactory.cs": "3a075caeb23a21cd84cc57632e7dd35ceae9952121f0e5fcd02482040c07a0e3",
+        "src/Parchwell.Kafka/Configuration/KafkaRequiredInput.cs": "0cf52b4ba6e6947583b2f4786b01ce2cd1baaa457210a3f8597d05f964d65ddb",
+        "src/Parchwell.Kafka/Configuration/KafkaRoleRegistration.cs": "0c484f79729d905350feceb54fa5225f7e63b8783d18957d546417fd5a34e846",
+        "src/Parchwell.Kafka/Configuration/KafkaScenarioOverrideSetting.cs": "b85a663b476a3364ec75b2d08291dabcd75967264a0fc40571db4544a2c1b23a",
+        "src/Parchwell.Kafka/Configuration/KafkaScenarioOverrideValueKind.cs": "7a4bc90b98d2a0e7defae8650f3ebe283e4f630d6891346525cc34f5a799df4f",
+        "src/Parchwell.Kafka/Configuration/KafkaServiceCollectionExtensions.cs": "221e5d692b5bf1e0e820b405a797bf1f30337fc8c9465645f6cc27db6bb37072",
+        "src/Parchwell.Kafka/Configuration/KafkaSettingDefinition.cs": "055c11dbab67403e2a06fbeb4f71e8840b8690bf7b5226596a9752a06d78bc6d",
+        "src/Parchwell.Kafka/Configuration/KafkaSettingDisposition.cs": "eba8f58bf6e32353c9ef9ddd694c66b168e298a9a6ea1b72ca90500345c9e043",
+        "src/Parchwell.Kafka/Configuration/KafkaSettingKeys.cs": "abd90edc2d89aea517ea50a1b914a3cf7cb3946c9405ad0f1465536d82c898eb",
+        "src/Parchwell.Kafka/Configuration/KafkaSettingMetadata.cs": "021ec6d57d49d9e2e71729b085c14b6bfa5e53a93293a12f64c6d322205c3fa0",
+        "src/Parchwell.Kafka/Configuration/KafkaSettingSource.cs": "f3cae18c354ff2018614a1f9422bc36bf914cf7d2916c4f7cb478c4bd74d101c",
+        "src/Parchwell.Kafka/Parchwell.Kafka.csproj": "d2e21020adf42f67b06bf5033335afb6233638cab9a6e9445bded30062788484",
+        "src/Parchwell.Kafka/Properties/AssemblyInfo.cs": "4ccad28f774ce15722c8e82708237331c4e2c8820d8768be83375346a297fcae",
+        "src/Parchwell.Kafka/Statistics/IKafkaStatisticsEvidenceSink.cs": "28f2951695f500cdf06bf7e8fc9db484616c4ec451ce65aae7e863f3e6a8ae19",
+        "src/Parchwell.Kafka/Statistics/KafkaBrokerStatistics.cs": "371903009a832a327cb8acdeee5c27b817686182bff6f480381e44b0eef01adf",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsBridgeFactory.cs": "d708a7be90890a2065132693456c3c817f4ef2bbd08aea046e80b7e9bbd50143",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsCompletion.cs": "229ced2c2bc03d275d5fcbb8f4b698abbb20328e45d0f8aea1dc7e08349508fe",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsDiagnostic.cs": "fa6685f3e17c6beca4467dcc2f5622f85937f28a15def0388bd0d98ea86bde3a",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsIdentity.cs": "eac73d15879541de0e0e540aae00823ef7043b9ea4afd8b015affafc4ad7c0e2",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsMetrics.cs": "fe4f6288818deb6da5203f18af89c8c55ea8b24edcf2c8d80a0107a32cbd8f02",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsOptions.cs": "d13b61ef181795e251d6ea4feb7e03db83344d097ad29b5d9c4df5c986d49e75",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsParser.cs": "53f8792b9985397c74091d22c85b1b2da627ec03b0f7c8fb6d97ae88521763af",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsReport.cs": "61a1deafc7cf7992bdc9e871c96a87d033ed3556020b1905bc4b3ad6a95fd38b",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsServiceCollectionExtensions.cs": "12b010c131c3867054127b9b1b1d8945c98d484f134c09b3a98b68e38df81cd6",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsSession.cs": "aa094c79b12939617007d6b842e9098d331f0b3e14df1bbb0fdd8338af40ba0f",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsSnapshot.cs": "70237ee71214b6ba2881081ca750b50a1e033835cc12293f6aad9fa46467c0f2",
+        "src/Parchwell.Kafka/Statistics/KafkaWindowStatistics.cs": "4441980563ca945a5a6a4b39c02afb9adf28ec58a37e789da80c9e01f302b49b",
+        "src/Parchwell.Kafka/Telemetry/ParchwellTelemetryOptions.cs": "bb515629199189d2ea4be682c395fa80ddc42c315f1c5e4bbde4d32dbfa6f576",
+        "src/Parchwell.Kafka/Telemetry/ParchwellTelemetryServiceCollectionExtensions.cs": "0bf0d4104b9d40feaa4397ce59f2041748123a4323a089da6717fb1af6cb5a19",
+        "src/Parchwell.Kafka/Telemetry/ParchwellTelemetrySources.cs": "2fd20d5f737c0d476427535d8a6c90a4aa97c81ab45b267ab882a64341d4fbcc",
+        "src/Parchwell.Kafka/packages.lock.json": "c59708b937db00f9e3aec0ef5a7fde689a6218645a4158fb49d6a5bddc717f98",
+        "src/Parchwell.LoadGen/packages.lock.json": "c9c2f3096cba8a0c3dc705fd2c9c5f0404ebf5a173837b5ffd9c0f73ba7d4e26",
+        "src/Parchwell.Scenarios/Contracts/IScenarioSource.cs": "35fa8562d38f5fce099455619d3df22c361915ad0adba899f558abe484b75098",
+        "src/Parchwell.Scenarios/Contracts/InputNodes.cs": "8ae64bb0353a415e7bf9fc679395b803dc5a8880c0ed584f987ef42898f7146c",
+        "src/Parchwell.Scenarios/Contracts/MeasurementCatalog.cs": "2ff7f3595a5d97d6141c0c8201ca01c147c92688b8aabcf9b040a185d460a4d8",
+        "src/Parchwell.Scenarios/Contracts/ScenarioContracts.cs": "718094a0a40270fb52dccf971c763c99470d4ab175c80f0d8b6dbb26fbd23739",
+        "src/Parchwell.Scenarios/Contracts/ScenarioLoadOptions.cs": "8fbd29e1439f2b7f01fe8cb82e43435bf71bce29dddc690f36050fa70680ab29",
+        "src/Parchwell.Scenarios/Contracts/ScenarioPhases.cs": "60f7da34292fa587bb9ff8b8e44775b59cea04b7fdf33682955357a57aa82adf",
+        "src/Parchwell.Scenarios/Contracts/ScenarioValidationException.cs": "9fef8c2801eb8891732bed8c325308588259c9b122e2f47f6b9e59da3b61d69b",
+        "src/Parchwell.Scenarios/Loading/DefinitionReader.cs": "bfde8d884d7f4d2457134ab869ac5cbf5b96bf79729f18c24f5661c432ba8126",
+        "src/Parchwell.Scenarios/Loading/IdleObservationDefinitionReader.cs": "f287a76f0c2bbc2bd752d789782a472a732bca3f3ba713dbf7a6cff9c88ef22f",
+        "src/Parchwell.Scenarios/Loading/NodeValidation.cs": "15d18dcf5cb50a819af9b2d05abbfb288de44c31dac89c07779a4f00212ee4d4",
+        "src/Parchwell.Scenarios/Loading/ProbeV2DefinitionReader.cs": "1ca197c92283c960c0dc30084caec8cb96d33993468140315028f5ffa9ab2ed6",
+        "src/Parchwell.Scenarios/Loading/ProfileReader.cs": "7255425e7362245d1c479c0ee3a453352cc58e314372a630f9c7b90b793378c3",
+        "src/Parchwell.Scenarios/Loading/ScenarioLoader.cs": "032766f6ed77233ab6771067c65ad6d98a39dc8763a3a26ff7969faa065e100a",
+        "src/Parchwell.Scenarios/Loading/SingleActionDefinitionReader.cs": "6398490b00cb855877de3a53437d348468327e0d66c5a85d6400c492dc8f0958",
+        "src/Parchwell.Scenarios/Loading/YamlInput.cs": "5d71b5c818ded0211f2eb841d65954e970ac6655d8ed9305b1d30d73528be79a",
+        "src/Parchwell.Scenarios/Parchwell.Scenarios.csproj": "2430b704445cd856081232b12b34bdd40edca0c8d4602ba130497a8bcc522f8e",
+        "src/Parchwell.Scenarios/Properties/AssemblyInfo.cs": "7f00132f475aaacbda4e45214cf7b25e577b9b183f61ff9b6c42460beb022f53",
+        "src/Parchwell.Scenarios/Resolution/ScenarioResolver.cs": "bf7a89e93d59e276c0827e9f41ab3f238f8623859182765f7266211169ebb827",
+        "src/Parchwell.Scenarios/ScenarioServiceCollectionExtensions.cs": "549ad00e7882df296c8110016f6b4d4c7a1ffb3e72730362f1d079276f40155b",
+        "src/Parchwell.Scenarios/packages.lock.json": "dfa542e0f44824734c5a13615d1afbdc34a69da040edaeb9d9bec9e7a16533b4",
+        "src/Parchwell.Verifier/AssemblyInfo.cs": "6e4b9fa6a51796a8cfbf259852e73263bf241b124c1cd504344c023f2a392978",
+        "src/Parchwell.Verifier/Common/Contracts/CheckAssessment.cs": "954935825eb8acf1f92c912c19afdbc0e140b272504d63d2c71fcc4b4e193edc",
+        "src/Parchwell.Verifier/Common/Contracts/RunIdentity.cs": "53b552ed4a123fbcb128a20715225a4efc778e464df52e2fb951bd4bf76cd019",
+        "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSession.cs": "61699a578df86cf471981b44eda8d28bd712c21d38dd9b755472176913790354",
+        "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSessionFactory.cs": "003cb3f953f7748c12666a7ca719a6db6763176dbb72255608694c6c3a2c810e",
+        "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaTokenProvider.cs": "ece4f51e384b5e83bc913d3cefe08ac542b5480e0e223e251deec103723f36d2",
+        "src/Parchwell.Verifier/Common/Phase/B10SweepEvidence.cs": "92fd2a1cfb72e9454682a8b6ca39c90f13dd8a87a071f9350cdca76fd748f9a5",
+        "src/Parchwell.Verifier/Common/Phase/PhaseIdentity.cs": "f9a5baf696556088f72d8891a8da83348eb72a4fa944c5d7c61b3c4d6d06941b",
+        "src/Parchwell.Verifier/Common/Phase/PhasePaths.cs": "fbcfeda8b4a94f0b6876702adcfa50a4f09ad9be224c4b2717f5d6a9bfd5b53a",
+        "src/Parchwell.Verifier/Common/Phase/PhaseWireCodec.cs": "396f558b1405638fd16b9e07a3c56fd1f0f502020f1114c73825d415bc776640",
+        "src/Parchwell.Verifier/Common/Phase/ProducerRegistration.cs": "2a4dda01365845fd94ae48aa3d77f0561e6aebf81957a5b26c530571855b3068",
+        "src/Parchwell.Verifier/Common/Results/B10ProducerObservationsCodec.cs": "173cec5ddafd634b54270548fd8b7127ff12f6c1d8ae3c6bd1d9831f4dc998ff",
+        "src/Parchwell.Verifier/Common/Results/VerifierResult.cs": "cea4db52bde66bdd3491471bb42e22116a2bdc3b3f61ebbb489bd73cca79fa1f",
+        "src/Parchwell.Verifier/Common/Results/VerifierResultCodec.cs": "e88d9c8a5b7bff1fff36f2c7c36ea4d3cb82ba526a49172c0127c9b03c66088e",
+        "src/Parchwell.Verifier/Common/Scenario/FileSystemScenarioSource.cs": "eba56bc542517e3f609c496dbf8de16b3a873cec79144047afadcc0e4da56373",
+        "src/Parchwell.Verifier/Common/Serialization/DeploymentJson.cs": "a4063de459234656d6d250b1a5e57fca959bb7ae8e52446286dac2f483704dec",
+        "src/Parchwell.Verifier/Common/Serialization/StrictJson.cs": "0db8159e387ecb3466c1cda72dcd129974740f78faa42542b0aff0fb97bfad4d",
+        "src/Parchwell.Verifier/Common/SingleAction/SingleActionLimits.cs": "8bed22307d3b3c144cc93745bb5aa3e9f63b44b1b759250005be01f4dc77b968",
+        "src/Parchwell.Verifier/Common/SingleAction/SingleActionWire.cs": "171c02eb80722e38056c304b1ab149dc6a9431289dc2acdf0e0bad3b4f1b5158",
+        "src/Parchwell.Verifier/Common/Storage/BlobProducerArtifactStore.cs": "e820f20ad43a2d85a5958ff7f01b31a223fdb25b35e5253a828374f2a479d56e",
+        "src/Parchwell.Verifier/Common/Storage/BlobVerifierArtifactStore.cs": "1cb1c8707c2ab524a8cf8069ad4e8dc2bd2c61c1618ce6b9f4a1a06695813b89",
+        "src/Parchwell.Verifier/Common/Storage/ICompletionReceiptPublisher.cs": "5a633d5c492d30139cf2ae2b520f6bb593cd957082f086be1b6866fe5885a662",
+        "src/Parchwell.Verifier/Common/Storage/IProducerArtifactStore.cs": "989abefbbc37d6fc769d8756e88b6a70244b23fa7b8767e4c77a1f321c538452",
+        "src/Parchwell.Verifier/Common/Storage/IVerifierArtifactStore.cs": "5d479a4642528a0d1525ffd9c70a882beb166ae84a9787a489f2a8da188d553c",
+        "src/Parchwell.Verifier/Common/Window/BrokerInventory.cs": "4dd0d92e52227a27a0bee068216ab5780457afd2044aff0193923c563d257964",
+        "src/Parchwell.Verifier/Common/Window/BrokerInventoryReader.cs": "84fad19b214dab36bf40dd9b318f6b9bfb3b8a34aaf1105eeddea41a6b632edf",
+        "src/Parchwell.Verifier/Common/Window/StartLineNote.cs": "249dca8c9c1ce896f9275a7c2766eeb788805a8a5bfa3ec8738baf45cd25a0aa",
+        "src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs": "50183e73c15874dfec6785f00bdfb2852c78a9536583bfdd7b2f4d52ca85118f",
+        "src/Parchwell.Verifier/ImageSmoke.cs": "d70b8871232ece0c670491906054a4937d27f3dcc9267d93b80c6a49e5ac60ac",
+        "src/Parchwell.Verifier/Judge/JudgeHandler.cs": "a2fd7f24e8002dc130ab933635c8ebc73c46999f735e76f2d6739e28c7860e41",
+        "src/Parchwell.Verifier/Judge/PhaseCandidate.cs": "b1f798094395e8e400342468b3e75e143a844573c710227d7a54d3f363a6b06e",
+        "src/Parchwell.Verifier/Judge/PhaseCandidateCodec.cs": "c57f0c8829f7440940df7e54f586a24a3bb5f38cd081725aa09048e624302bff",
+        "src/Parchwell.Verifier/Parchwell.Verifier.csproj": "dd91b050ac75d5fd08be887ef384dada4ce4e98a200185200bf1d2089d95267c",
+        "src/Parchwell.Verifier/ProbeGate/IProbeGateFileStore.cs": "7b0b302f3603dee035bb377eabc59d5a6299d3e96764df7a41b1e154789d3f0b",
+        "src/Parchwell.Verifier/ProbeGate/LocalProbeGateFileStore.cs": "2e24e4d97767d598f227bc71ceb369351535668e9008f0b21dd61b6e45a03e1a",
+        "src/Parchwell.Verifier/ProbeGate/ProbeGateEvaluator.cs": "f86cf11307e7e80c11733b391a764b72b6611a2482bc4db1774a9465ebba2d5e",
+        "src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs": "6a4872672703e12d6368a8e027b7fe8accf38630731da74fa610b21d9b0ae939",
+        "src/Parchwell.Verifier/ProbeGate/ProbeGateRequest.cs": "e3199ed7633543e25d1a4b2c8d4fa839382035eb750f24b57dadb6b4ff2049f2",
+        "src/Parchwell.Verifier/ProbeGate/ProbeGateResult.cs": "26f62dc09a9af721e47df90a353e638cf117aa52cf9e05da726876c4bc310fc6",
+        "src/Parchwell.Verifier/Program.cs": "b187138fb3ab8a46e961d76c0844ff4efa362ea9150185eeafebe89ffde98fa9",
+        "src/Parchwell.Verifier/StartLine/B10SweepLineHandler.cs": "0ec9027a631af6f0646b4fbe5079580f22b71c69f2939a9be1bffd55a0a09caf",
+        "src/Parchwell.Verifier/StartLine/BrokerInventoryCodec.cs": "4d3095eba706234f73739afb2c6b4b5d4b4a67b3a42e619b4f3476c0c1092041",
+        "src/Parchwell.Verifier/StartLine/StartLineHandler.cs": "d433a7ae9726b53e4291eae297bccb6f78271b339e4d08c31237ef5109a4fa75",
+        "src/Parchwell.Verifier/VerifierCompletionState.cs": "87bb1a0cf9c156777c5cab123dd09e8a95b494e9040954797b68ee37010a6ad6",
+        "src/Parchwell.Verifier/VerifierHostOptions.cs": "5a21e99828a85a2799bd6fae778f3baeb0a733d62c98e8f4be0716f342359b59",
+        "src/Parchwell.Verifier/VerifierHostOptionsValidator.cs": "078e37d9acb3d3c7d6beb95c9587d6032c3c36c7f16114e69d633fc9b5934525",
+        "src/Parchwell.Verifier/VerifierWorker.cs": "1ad54c9ff68f5cc35a28076cfd075098c0521854074db7107bdc282f4e3a47cc",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptClassification.cs": "5a19508461b7a112baed9bc861503eb75376ee110e986ed524b8b44ef0b44378",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptDiagnostics.cs": "a3c787c0101ead81ceef9099d4af2f482a10d9740a818bb5d23ff8e4fa5ab146",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptEvidenceCodec.cs": "0645267ceaffa9a173fdaaf3d29c73ac72e78f856d8e75d45a01b32899a6d9cf",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptEvidenceReader.cs": "bdfddc4c2acf7f1227ba861f75e6361a5350ba3ab74ec5e803cb936ffed643e3",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptGuard.cs": "11a37566cb8f4e7f89b44ca62053aabeca104c3981d0f910119ff03bfd38c125",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptGuardConfiguration.cs": "4d197708fe9ad8f1f71bb9c1b92c0d904cbe3b6a7ffdc3487996bdde73b52df0",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptReconciliation.cs": "d500af3b52e6ca9f056a4ea3a95ad0d629a475124cad2c96f1d48f0828349db8",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/B10AbruptVerifyHandler.cs": "8e14c8d5e0b19b158e57b3e7627bcb465463844358e1f1ed05eb412a84d0d688",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/EarlierRepeatEvidenceReader.cs": "312865b5fb2ec95761dc8fbacc041ebeab94571dd5f18d459e19187123d02c34",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/StartLineEvidenceReader.cs": "04640f3fcbd6352a54a2f01ced057e50eb3ff3ec1c433cfaaf9a34796f68baa9",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/TimeoutEvidenceReader.cs": "de5ed498e05474f3ee5c6352e4f9de332f9b1ed57dc2a5ebda43a4f828537564",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/TimeoutPublicationAcceptance.cs": "4dc3b713a8d890e7bfaece31c693b6722a7362859b8d94c71905af00ebfafabe",
+        "src/Parchwell.Verifier/VerifyRun/B04/B04EvidenceRecorder.cs": "1fd4571c9d4e33df692115e7c36ea5fff253a1aef35dabfec967266ee18bcfa6",
+        "src/Parchwell.Verifier/VerifyRun/B10LateObservationDiagnostics.cs": "79e54486c7f8a9d1983563a7e46caa6f93994a2a67ea3d4c6850733408078210",
+        "src/Parchwell.Verifier/VerifyRun/Configuration/RegisteredProducerConfigurationResolver.cs": "c47970a4cf28d10efecb369dbc3e034c2dc0e90d3dae91de83fd64ec60a22a5a",
+        "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationJudgeHandler.cs": "7d9329fec7609b5238f7f01f65d15948bdb52ad5cca44abb97c80c9e460c529f",
+        "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationJudgeHost.cs": "e36235d5999d47a7966e71f56c61d1505232cb3232b88e0fed2cf9a123466462",
+        "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationJudgeOptions.cs": "30ebf6c5e0f8674d29ba1ecd2c00ef71adbd8528c43db53445ebd1246bc7a11d",
+        "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationWire.cs": "53c9a12513a324c9a28233a0b8e7d067f1ce27da378006dd25ed99a8cb34da0c",
+        "src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs": "47ea5d201901581f238987150704432044096e3bdc4af10c963a1ab60c76985e",
+        "src/Parchwell.Verifier/VerifyRun/Input/CapturedArtifacts.cs": "fd73f098b907f227de04ba43b67cf6842842e7b92d3438558925b6a3968ba1a9",
+        "src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs": "d185b76fd498532fcf33985abf5cb6be972cb8d342d3ed1f1a37b006c4a5393f",
+        "src/Parchwell.Verifier/VerifyRun/Input/ConsumedRecord.cs": "67b6524ddd818d1a5e7f2142313407cc99f6a85977ded99860846478a43464d3",
+        "src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs": "9a0652de60a50e2a33bfa51c121d9be735256d435204742ec10e8399409a8905",
+        "src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs": "de7085d4e73a312ae8e4d75e44d71d91cc8963078794a14493e084b1113df8b5",
+        "src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs": "3b7278ed1d948d269534b63ac1de254ce184d005d958f3939adf6284d1f9abb4",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/B10OneProducerChecks.cs": "0fec291c542db3dc4760f2822e644669831da5e8f054497f513097fae3b46e64",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs": "286e35ff4129f589fd5d97344db34bd49de77774421fc0744a6c4b72996138c4",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/BrokerCountRecorder.cs": "9518932dbfbb1896d76c850fbe60fc161b121037561b2a43fc56c55c20b48108",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs": "b832a639de1e053a5abeefc0c6f48aa27b99dba4420593f1cf542adea72ad2d4",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs": "d40a9a5209ac476798d19f7af8cb33cfcb685a55fc5ec3dc41ae34eaaf6621b9",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/OutcomeClassifier.cs": "6eb32433d785940f434035c2922c7d81616c861888bc86f42fc102cf6b5064f0",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs": "84ceb6c98565384c9e3ece478f5d1f44ca9bb28b746618a44552f84dd68f7860",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs": "e5ada0f0548be096ffe3dccb5a9f84c9597e12a84f007be9fa20658c383756d9",
+        "src/Parchwell.Verifier/VerifyRun/Publication/DiagnosticPublicationReader.cs": "fd8745d244e0e04d4d5ac843163d3334e6d2b99d6a6c60e2581523d8a81260e0",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Candidate.cs": "2fa5346b8ef8800ddc70e447ec3d89554bf2c7d29e6bb1c58a3004855c5d99a8",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Handler.cs": "aee2a473313198d9930a94cb23263558c79c6449d9aa15a293ebe6af08689a37",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Host.cs": "4f8034abe31f52c3e1c8a419e43f074867f54b21ac480b1c202f2ad14d8b743f",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Matrix.cs": "9f56f28aa82981bbfbd1120c0ecd96ace3c8d3b31d6a4d3a6713b23b4cfaca2b",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Options.cs": "d6de5dcd71f09f4f29fcd36caf83f32c80e259d51e0b0433729e3489c2811d58",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Wire.cs": "641817e4563801d95cc6f95ad3f167db27e0331fb7b4b7d3a417957c250f9597",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/SingleActionCandidate.cs": "70d99b2aa0d3a57d6a80a1e79be7d0be20c142e1fadfe26034ae90615e9594c1",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/SingleActionCandidateCodec.cs": "7a32874f9c4bfad3447116158bec46e8225f683eccbc5ebc12deba338ee6b529",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/SingleActionHandler.cs": "5e1169f92d57ff78587f9e20f1b1a2f6750bbae673a1b80721fd77d830a12dda",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/SingleActionScenarioResolver.cs": "3c3ee661f083232f05a4bd4d4dad2eb870c7f1cb6a57b1f9537e6cb022bbb77e",
+        "src/Parchwell.Verifier/VerifyRun/Storage/BlobLedgerArtifactSource.cs": "33a412d197586445cb00f9a9b19e2d3efd91cac8727df96cc313296109402957",
+        "src/Parchwell.Verifier/VerifyRun/Storage/ILedgerArtifactSource.cs": "fe80ebf52231a21f79bfe34530dfd8faa4400e5f4c3108c764c10403c2dd7c78",
+        "src/Parchwell.Verifier/VerifyRun/VerifyRunHandler.cs": "46987685ff2511fba4bfb2efaafa2339b40843b653fb242b9f010292d739aa61",
+        "src/Parchwell.Verifier/VerifyRun/Window/ConsumedRecordBudget.cs": "7d7376af1ca61985e716fd949159b3218fcee967cfd22c4278104e368747f1b8",
+        "src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs": "b2012594b326ea2afd577d123867af37e0078e0f1da961a9dda5d2555aaefcca",
+        "src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs": "87d5e8057535d0a2895d19c0a45fdc90df491787869ade1dfb08a2c6c0695c98",
+        "src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs": "a8bc1a8108372349ad7191975fd97d5646fa9a5f9edcd7d303e0f85d97b10751",
+        "src/Parchwell.Verifier/packages.lock.json": "c9c2f3096cba8a0c3dc705fd2c9c5f0404ebf5a173837b5ffd9c0f73ba7d4e26",
+        "tests/Parchwell.ArchitectureTests/packages.lock.json": "6721af88dd05b1eea04b5c8727cadd5169be4207bb12b142e4367be1836f882b",
+        "tests/Parchwell.Enrichment.Tests/packages.lock.json": "1e46ef67581a676209334db4d561e5037e0475f52d735ffafedac4caab154bb0",
+        "tests/Parchwell.Kafka.Tests/packages.lock.json": "55d6914e6eeaeb987f0db833e3366f57820aa0b8ff3411660828c90131ef0327",
+        "tests/Parchwell.LoadGen.Tests/packages.lock.json": "d15af1ddbb1f8fad55a20f7804e4c849cd03028c2de09df424b3b72e4c5bd26d",
+        "tests/Parchwell.Scenarios.Tests/packages.lock.json": "be591ff559bdfccfb49704ebaa0a726650b5e7ad31346b5d77e88f7d046181f4",
+        "tests/Parchwell.Verifier.Tests/A01/A01C3EvidenceRecorderTests.cs": "cf850b729c3889a7d6e1ddfde08d3ffd2411126973df581f04690d4ecd0d7e15",
+        "tests/Parchwell.Verifier.Tests/A01/A01EvidenceRecorderTests.cs": "87f2be41c3a1b95ad17fb1cbe375d4fc18e4fda8597da07d3a22e9a6a9f60e04",
+        "tests/Parchwell.Verifier.Tests/A01/WorkloadRecorderTests.cs": "e4555eeba7bee230f47f4e1ddb97338d81bf9fee640db453a082db3fac198e43",
+        "tests/Parchwell.Verifier.Tests/Authentication/VerifierKafkaTokenProviderRetryTests.cs": "a0e7bb8f7bab5f2f8324a7dbe266bdd5a28bacfabb3e6233c32fbf93f996a4c3",
+        "tests/Parchwell.Verifier.Tests/B04/B04EvidenceRecorderTests.cs": "a2cca43cd9a7b5a7affde0597fdfa4f3e85e4d8a2a876d132492f47174d3f741",
+        "tests/Parchwell.Verifier.Tests/Host/B10EarlierRepeatExclusionTests.cs": "48c8e18f0b6ca5b0f4d1c50f38e797f85dfff58b6546b261d24b4661ccd448ff",
+        "tests/Parchwell.Verifier.Tests/Host/B10ExpectedProducerJobsTests.cs": "46cdbfea42d395729283a2f9c403269ba10eb0256c350ca73d3d6adcfc5a582a",
+        "tests/Parchwell.Verifier.Tests/Host/B10FinalHostTests.cs": "b23938fcf6d20c323dbc53adae963508544753aedda03ffa1a526365da0ebdda",
+        "tests/Parchwell.Verifier.Tests/Host/B10LateObservationDiagnosticsTests.cs": "da5297a042f412d10e90a79b8f2a019e16bcd15dedb341e02449ce9a3ab077f1",
+        "tests/Parchwell.Verifier.Tests/Host/B10OneJobC0VerifyTests.cs": "517588e82c60148f117391efd629bbf2e218920d8857694601716d968f2b5872",
+        "tests/Parchwell.Verifier.Tests/Host/B10RepeatVerifyTests.cs": "f4f613f02a059203ac4f98bc9c7fd4ce7460788e82a59243cb95c72c2354aa27",
+        "tests/Parchwell.Verifier.Tests/Host/B10ScientificThreeJobLegacyReaderTests.cs": "e5febabc6ff4cff4409b45b7d1eea4140537a8a50ece2513997c6ac5a037b4f8",
+        "tests/Parchwell.Verifier.Tests/Host/B10ScientificThreeJobOptionsTests.cs": "c5902b41f4aa867e92a438330321b4378500a21c72aee768e43a4b89516cf87d",
+        "tests/Parchwell.Verifier.Tests/Host/B10SweepHandlerTests.cs": "24dc8b416ef45b8ceb46f3e519237f98997e352e0af1e6d9e5d03ae8c8a0a926",
+        "tests/Parchwell.Verifier.Tests/Host/B10SweepLineHandlerTests.cs": "d420f375ad14e970787aef9d8137cd2708435df029787d3aeb4e448f3a01cfbb",
+        "tests/Parchwell.Verifier.Tests/Host/B10SweepLineOptionsTests.cs": "3cc0cf3ea36bcb8fb6c17906c0921c4b513f969d3a47daa556546fc094cc2191",
+        "tests/Parchwell.Verifier.Tests/Host/B10SweepOptionsTests.cs": "941e5c2439012490a84f3986a866cdf9eba66f676e2e78ad877f5b143c2bcd2e",
+        "tests/Parchwell.Verifier.Tests/Host/B10TrialStartLineOptionsTests.cs": "383a2553cdb4f58b20be06f74572ce8397f7d4c6a07eb099aac1634d4e792d73",
+        "tests/Parchwell.Verifier.Tests/Host/B10TwoInstanceVerifyTests.cs": "ccca452e11a55689a736a1acbb268300381b72ffa277508f613723beee44819d",
+        "tests/Parchwell.Verifier.Tests/Host/BrokerInventoryTests.cs": "e2ec290b2450ec05986765f7995df6703e1ba1aea0d31f72bb9282056099bc92",
+        "tests/Parchwell.Verifier.Tests/Host/C3HandlerTests.cs": "cc7daabb792a37e7da99a05d32768fd83815be2fa227e094fa38c4b3d40f26b8",
+        "tests/Parchwell.Verifier.Tests/Host/ChartEnvironmentVerifierHostTests.cs": "a450c1a3551d7589019afe9a12dbf0aff1c90bca52a990602547f90c6df2265b",
+        "tests/Parchwell.Verifier.Tests/Host/ImageSmokeTests.cs": "be613a4b55103a0538dddee591e47c26b10033fc972c0b56710ca18eb4a101e4",
+        "tests/Parchwell.Verifier.Tests/Host/StartLineHandlerTests.cs": "0255aff534a2ae853ae813dfa1f424d69b6ea82752da1d65bf1b114f3264741a",
+        "tests/Parchwell.Verifier.Tests/Host/TelemetryWiringTests.cs": "ecfc325e82f9b8c787a158eede69ebb44188082d2ddcd29e3d7465568d474262",
+        "tests/Parchwell.Verifier.Tests/Host/VerifierCompletionTests.cs": "09fbab7f9fd35d873bbabf10aabe4651aea1083dc623a3fe0db033bc0ed38a4e",
+        "tests/Parchwell.Verifier.Tests/Host/VerifierKafkaTokenProviderHostTests.cs": "13a6215e36b6980b6ab3c0ba8559f877640cd479352a893b914014087ede404c",
+        "tests/Parchwell.Verifier.Tests/Host/VerifyInputCapacityTests.cs": "c7127baeab6f6cb7dbb00ee71fc67f108a3cacc925671f7df0bd5c88cd461107",
+        "tests/Parchwell.Verifier.Tests/Host/VerifyRunDiagnosticTests.cs": "3d98c0a523717ff8fc4f544e6e405a870ad4a9646025f03eff7e2eb04081734e",
+        "tests/Parchwell.Verifier.Tests/IdleObservation/IdleFixture.cs": "94b64bce8181ab4ed28be480db2f4facb217a4142dbe2b03ffece99ef217cdd8",
+        "tests/Parchwell.Verifier.Tests/IdleObservation/IdleObservationJudgeHandlerTests.cs": "07546cd59da494d2684c67d8eb19a7fb64fd1f2250f8e87f7f32824ba2d149d6",
+        "tests/Parchwell.Verifier.Tests/IdleObservation/IdleObservationJudgeOptionsTests.cs": "0cc1959bc4dd8d4be9accc088128d6cda89c5f20243ca4edfa105cca69cd1bb5",
+        "tests/Parchwell.Verifier.Tests/IdleObservation/IdleObservationJudgementTests.cs": "ec3a3a5c5d9e8179c75457ffa30ff7d5725bc75a174290277480af52d1d63dd4",
+        "tests/Parchwell.Verifier.Tests/Input/GoldenArtifactReaderTests.cs": "c5acda17fa39847db871f7d0ae22d209d57ac8fe88e3e3aade561e00ea76f45e",
+        "tests/Parchwell.Verifier.Tests/Input/RestartManifestReaderTests.cs": "37bcd07eb5f3377c97220ce4a7602ca62c28c9b30ce6ab59742ec50fb694db62",
+        "tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs": "02a6958674319949d17d81791cfcc9c561ef52f4d9b249c0d8a499d4e2e91c11",
+        "tests/Parchwell.Verifier.Tests/Judge/B10FinalJudgeTests.cs": "c6f6e80be4b90f4c0c49b5848f3448185e38ff9b6594f3f7f6fc8f6406bf77bf",
+        "tests/Parchwell.Verifier.Tests/Judge/B10FinalProjectionCodecTests.cs": "939714db1761e60ac52e24072b517f20dda8eb18180b5c10db9c779db12b55e4",
+        "tests/Parchwell.Verifier.Tests/Judge/B10JudgeChecksTests.cs": "2d3d34d268659aa4c036127dcdb855a93afdb31093613dc1d8a7617a6c7114e2",
+        "tests/Parchwell.Verifier.Tests/Judge/B10SweepChecksTests.cs": "f642d2dddd63534b318d58f1dad5e8cf5603852282886f9af56e91e71cc729bc",
+        "tests/Parchwell.Verifier.Tests/Judge/JudgeHandlerTests.cs": "b008e9ae2993b2701413e6a363a9f247c81f5456b9cbb38435198af93ebff115",
+        "tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs": "8433b902feb0c34c4108081fe741b9a6d4c48b6a7caba6ba9692ae4f284ace7b",
+        "tests/Parchwell.Verifier.Tests/Judge/PhaseJudgeTests.cs": "cb496a667c4a4faa89a1d578d261e14c816a081f0195bd3569d50b3e55496b43",
+        "tests/Parchwell.Verifier.Tests/Judge/PublicationAcceptanceTests.cs": "49f69c36053b1b4df84ea16c741ea5e0f0333ba5d5c28395495e8f4fbacf992c",
+        "tests/Parchwell.Verifier.Tests/Judgement/B10IntakeChecksTests.cs": "5eef5f215344ae456cfeb0ca7ac606325de059c3b10c95c8d8dc28ad12b9333e",
+        "tests/Parchwell.Verifier.Tests/Judgement/B10LateWriteChecksTests.cs": "f346df4ac7e6a3c1e6dcb4b60334462471cf06f6b9f560aa12ed12e1018b8c60",
+        "tests/Parchwell.Verifier.Tests/Judgement/B10RepeatChecksTests.cs": "eaa5890a747696c464e0f9dc546016210670847552d01f70abb530800a12018c",
+        "tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs": "1fa73d65386b32656a67e8439373b0e5ffe376aa1fec3ef89c1605d2957c422e",
+        "tests/Parchwell.Verifier.Tests/Judgement/BrokerCountTests.cs": "dfc40cbefb86fff388f8e5783b0aad1ba7168515dac23b5a94427457c4784824",
+        "tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs": "3a600de24ed58068c837700c19e382a63dae2179e85b63bc10c04afeca5598d0",
+        "tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs": "9523390ba70369f7473e0ab52373de42d59098655cfa4a791f424d917e08f236",
+        "tests/Parchwell.Verifier.Tests/Judgement/OutcomeClassifierTests.cs": "3c39dfc578eca2566b53589795f2cc05142353e66e9e28f1889d1e08b472dfab",
+        "tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs": "1176af81e3b5156d754b15d873389f77af16cc941776667e4b8f2fb9b9f8665b",
+        "tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs": "b61b9a63f22447c5c2caef0a6778198ed3f2bb493603f315554a9c73f17d2cd7",
+        "tests/Parchwell.Verifier.Tests/LedgerBatch/BatchingEvidenceRecorderTests.cs": "6294256abac200355df5fe228a5fd7578d3fffdcd251f31031228366ea27a244",
+        "tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py": "b1c9a96740111676caa0b9e95db90b4ff93f07ff2317710233558412a88ac1bc",
+        "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": "dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea14629a0af4625",
+        "tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json": "08dc4239d731048aabf4fc7683887121b951d0226a16d1a4293dd57e6de10001",
+        "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj": "a3d7fe4824fb1f4c11d5bdca6438d04c92eec1c3614e9db02df27f232468721a",
+        "tests/Parchwell.Verifier.Tests/Phase/B10IntakeWireTests.cs": "7c4e96508b3d2ad28ca613e8bb33570b41d50082a95855cb7e57fc240743a315",
+        "tests/Parchwell.Verifier.Tests/Phase/B10RegistrationTests.cs": "9027fe0c884e57baf8f46b88427af682621deebf71f34ecc76b34d0f762e6553",
+        "tests/Parchwell.Verifier.Tests/Phase/B10ScientificThreeJobReceiptCodecTests.cs": "d5126ebcb07ccde23365fd8a701cec5567eeeba54b0e5d5aea5500f00bfbcb87",
+        "tests/Parchwell.Verifier.Tests/Phase/B10SweepEvidenceTests.cs": "cbb3b90fce2f3abb7cc90cbc72ad3dcf4f1eaf438b9b41ca352cfb35fbebb5c4",
+        "tests/Parchwell.Verifier.Tests/Phase/PhaseWireCodecTests.cs": "2665e7f8b45a71ce7feb376eab80671f6386d0706033d20b6b4b603dcce7b2c5",
+        "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs": "d4c79c03d019ccf4c66105c19c8fd612ae991ea731682635c9c9638bcae91d11",
+        "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs": "a8c65916866ed4e5aec13753be1df94ff296d3ede9151df67131b5991bf06087",
+        "tests/Parchwell.Verifier.Tests/Results/B10OneJobC0CodecTests.cs": "116ab54d5187bb2032d59ff4aa761d3aa5cce19121b81d0208f90f754b540072",
+        "tests/Parchwell.Verifier.Tests/Results/B10ProducerObservationsCodecTests.cs": "08656a6c728f871d717b66a4c95f66b711a124ac13e318b61ce77b981d3f6a88",
+        "tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs": "d83303dd4a017c4668904575d5b29f6b72fe0c5e13de1e15f2304cbb6ea2541e",
+        "tests/Parchwell.Verifier.Tests/Scenario/FileSystemScenarioSourceTests.cs": "fb5f5f07f47516400233ae22049f4a6164d6572020a650b6631f18314399ab19",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2AccessEvidenceAuditTests.cs": "ed38cd23f589458a6c76312e89ad553ce8a9b6938d030846a013c1f456a149ed",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2AccessEvidenceTests.cs": "57308194a60467a714da8049f403b5576e27cfd804c77ee3b7c0e6218fd3e29b",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2BoundaryTests.cs": "bd6274225f1cf7e16c08a9e58e8b8902336fd5263739dc63cc351c6b5f264eb5",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2CandidateProjectionAuditTests.cs": "43c9f0461e7bdc3ad065f261c07f37daafa83220d683a1c6eb871245c7951118",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2ComparatorAuditTests.cs": "0232751ceac5680f22c8519bc277f5e6dfdc6706b41ed4565116ff94b975b98a",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2EvidenceGapTests.cs": "302ed191893054609c6c16be03464843fc6fec3f34b5a40a8cb8f0b85000eb8c",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2Fixture.cs": "3c42ad118558cb6f73ac226b61425a0e914961f6e4af8c9686e1e96dab8afb03",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2HandlerTests.cs": "f7c8350f55f7fd14d13c3d083ce8cd45bd4dff5572bb9cddd2bb3f93ac56d249",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2InputFileBoundaryTests.cs": "5b7c36ff7bdd65b4b1a06587cfabdc29d540873d88a2fb15ace4cae287b614c3",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2ItemJudgementAuditTests.cs": "5d39d132be8159f6000dea6e1b620a4609ad780ca426dbd95585787000d36740",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2JudgementTests.cs": "4b903dd077e955a16c31b8a3328f526c75d6b57cfa2989d4eda5857460f14e0b",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2MultipartInputTests.cs": "174aae24036d2aff453396fe74077b6515436f69028c47223282c74f44cef706",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2OptionsTests.cs": "a99fd638b5cf4e702f883d69ddc8f012f039627bb8ad93e6055148149d7ccce9",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2ScientificAssessmentTests.cs": "160312786e9d02dc94aef6a18f8a139e97610b33c5b2b9f800bf9e75e7a07441",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2SmokeControlTests.cs": "a1a996a613a89654f1a9cc06e0f428cf09477bfa5fb601f0951155a8fef6dd9c",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2StatisticsBudgetTests.cs": "cd6e70b18d7a322a28b5efff61f89caa17167df13f1f05f5849b4d3ada96d074",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionConfigurationJudgementTests.cs": "188a85e867716b20d510c8f975cebf59788ed24081b70f6146daebbaf124242b",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionFixture.cs": "582489eda6d7141aa704809aa87d6b15f32f5fb8848a54d64e1e2b5161a78819",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionHandlerTests.cs": "d5e22d6e01afe5d84980198371f2190302d15028b73b9adbf628dfcf3060b68f",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionHostOptionsTests.cs": "a9ebce86a294115f9f4b5c84929352a485f2f45e2b5c84e454cf63cf773b4753",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionJudgementBoundaryAuditTests.cs": "a8d185d54289797e8a520ae364cfd7445b15c69b498d438f0b7fb4ad4fb71915",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionRepeatJudgementTests.cs": "a6fef5bf6a8251dacf1316ada0db7defc6d394ccde95502b0350e5b894ec5f29",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionSeedAndItemTests.cs": "6739c564362a7564a34d705643845d9e8deec3d69b6df2979357db3b02aa39af",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionTerminalRuleJudgementTests.cs": "fcc5cec9d559e89b1432b7b42d62e231b8fe3725d100858e1b29fc366cae9ee7",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionWireAndBoundaryTests.cs": "110149cd94b1bb22276638a46924e1de613ee94772a01c2836d41a7f860e833c",
+        "tests/Parchwell.Verifier.Tests/Storage/BlobArtifactStoreTests.cs": "4b081dfc8ebc4eaa52ef9442fda07229fb289bcb90a4fa46f48f86721d2c95a5",
+        "tests/Parchwell.Verifier.Tests/Support/B10AbruptVerifyEvidence.cs": "527c3e9d22c1aec8b72fe0a1175a8b57f1cddda895dc175c337c86c1da49f29d",
+        "tests/Parchwell.Verifier.Tests/Support/B10AbruptVerifyFixtureBuilder.cs": "cfd95435aeebc095073093200360c0ba8efa8740a1e8c067ec1ffcaaf91bfa7b",
+        "tests/Parchwell.Verifier.Tests/Support/B10SweepFixture.cs": "f648d74ab97161049394b6fa6fe3b8a26c4d094df942864d1ab9d10b2ba6fc2a",
+        "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": "9a0a4aa34655a85a7bc073233d594f2943704a2a97d13e68fe57405cba1ab459",
+        "tests/Parchwell.Verifier.Tests/Support/KafkaSessionTestSupport.cs": "d4b4b06c096c80ad6b4cdbdb5f16df5639ea53912b276f827e80850752e5c7d3",
+        "tests/Parchwell.Verifier.Tests/Support/ProbeGateEvidenceBuilder.cs": "45acec2e62becd32a7b3e4f9349a3d366dc824d216fab847eafb708c92adb278",
+        "tests/Parchwell.Verifier.Tests/Support/RecordedEvidence.cs": "428e8f4dcd5e9b160b1daa60d6ff04e4e292d1b2493f1b9b7fed62b341b4a7b7",
+        "tests/Parchwell.Verifier.Tests/Support/VerifierHostTestOptions.cs": "4c5e6c31e295c749a9149ae4f2cfbf6a927a3ebb75e2ddf5d7eae0dd4ad1dda1",
+        "tests/Parchwell.Verifier.Tests/Window/B10RunWindowTests.cs": "bcead6b4e5318a2b1b0a28e8aa01d3a94f5cdb9d2068c1da728a0bd6d7df029a",
+        "tests/Parchwell.Verifier.Tests/Window/B10ScientificThreeJobStartLineCodecTests.cs": "91543ad9a424770553838dc4e9ffb91dc68f680ba281e38a4392255473d8e0d2",
+        "tests/Parchwell.Verifier.Tests/Window/B10TrialStartLineCodecTests.cs": "b326978264d5bb953fdfb3f4db32871de86cc98ba7c14d5a04b1fa5d2defec06",
+        "tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs": "b7ea0fe4e83e3da2dc34790fb637cfa04d10fc1dd77cdc9b4dc03719b3ca2d4e",
+        "tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs": "aa7bef8c9e41ac307fc9724e33381d4c33ccc6b7bcae8560429c0202a7d51710",
+        "tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs": "c571be0a01efd0f523a727774ba5a6e517719dfb0d6c42c620cdb2be5a97d508",
+        "tests/Parchwell.Verifier.Tests/Window/TokenPumpTests.cs": "44b672baffc7ee86dd2eefd45d515d3489301fe1e2dd659bf80555a9b5080b2f",
+        "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": "e87ae0e7911d27f615ef7661cf589e3360652cdc3d9fcfc3ae99b33810aa3590",
+        "tests/Parchwell.Verifier.Tests/packages.lock.json": "6b08c8d420de3207678ae7338e89831ee55696be7e963c80b76c4e1a538fc335",
+        "tests/fixtures/ProbeV2MockCluster.cs": "9acd4b0f66c3e4fd51f1c8ec4f79c1f5d644fff61512d6f9caadddb975d62c2d",
+        "tests/fixtures/verifier-v1/README.md": "583e9275404bc839a0a27cfaa4545fd1f6db2a3dd68804d10904391e94f43b80",
+        "tests/fixtures/verifier-v1/captured-run/capabilities.json": "38d8a1044a1d5e8042799e138d899f23bea011a8b9e1c37fea69364af1b3319a",
+        "tests/fixtures/verifier-v1/captured-run/index.json": "7f01ddd43037fba50e3004eba401d75e62bd4b2a570c690a295204ed00e5e54f",
+        "tests/fixtures/verifier-v1/captured-run/ledger.jsonl": "bf5fdb1cec62fe6b5976b64a6dbad1eb968201355babb03e8aa76dd7e1fb52b1",
+        "tests/fixtures/verifier-v1/captured-run/manifest.json": "c760166e7b45f5448439c5673dfa601000c64419e8348dfa38f63fe43b519d66",
+        "tests/fixtures/verifier-v1/captured-run/request-lifecycle.jsonl": "d63c6cc78d2b49be59975bd3c61e53bd660c8f5b7c2981a79f5cd2b1c5bf1db2",
+        "tests/fixtures/verifier-v1/captured-run/statistics.jsonl": "b50c6a5688dba643f47e2aff4fb44a2ff4159c2b65d130aa752ba6674ac34988"
+      },
+      "target_sources": {
+        "Common/Phase/B10FinalProjection.cs": "4e9a0d07156e33c5fb20c717107e35e96b732a7b2dcfca3648f1f9fd4b947bce",
+        "Common/Phase/B10FinalProjectionCodec.cs": "c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5",
+        "Common/Phase/B10FinalRegistrationReader.cs": "7a28b10054c4620b8a84f0513244da2b96b89fbe748a157eb491bfcce6d755ba",
+        "Common/Phase/B10SweepEvidenceCodec.cs": "9083ae9eb499d4b22fab69bc9086e465e8e020ce650d23da27cb5dec642caccd",
+        "Judge/B10FinalJudge.cs": "cd88f482f9c93947e613ec4b13a34ff554331dfe8ebd9a3e400ed3bbb360d34a",
+        "Judge/B10JudgeChecks.cs": "b365656c412f8415f760af8256bcb23c755d340cff843e288d730c18f07c44da",
+        "Judge/B10SweepChecks.cs": "9b6d8a178b52b5d23ea877ab46209177159b2f3a30d9734885c8a366e0af71b0",
+        "Judge/PhaseJudge.cs": "22c56f360af0ccab6123c471d7c092d588ca7547323a5415f606bee0368aa2f9",
+        "VerifyRun/A01/A01EvidenceRecorder.cs": "d01f8995692a84cd8bfd908b9874bd72eba08d2f737529c05c1a5d8973780806",
+        "VerifyRun/A01/WorkloadRecorder.cs": "065cde4de7cd27b41946b665121589f9e5b333f0d6c4814346fd4a2cc082f808",
+        "VerifyRun/B10Final/B10FinalClassification.cs": "ad710e8960395058a357a2a7e817cc2bc450524c0a82e3e97f73d9cef0f52957",
+        "VerifyRun/B10Final/B10FinalRepeatEvidence.cs": "4e533dd7aa4205e0a5a121b94b9441af7438e5d878600a3b65dc6ad5f4edab68",
+        "VerifyRun/B10Final/B10FinalSweepHandler.cs": "5363f75013c9d3477a71167e2e585c87e53afff1aaad18d9aa895567167c33d7",
+        "VerifyRun/B10SweepHandler.cs": "e35d51681b080e2ffde5f49345824b8c786775018874e5cb950df4edbd22c4ce",
+        "VerifyRun/IdleObservation/IdleObservationJudgement.cs": "53f985dbeb9664775180d8b12bf3b42c6c0895ace9e1990d3b56bf3dc280e475",
+        "VerifyRun/Input/B10PhaseRegistrationReader.cs": "e73faee335b336fb7d06590fa6d0c7f22f0c188dbcce3495b673c839fbe1c5c0",
+        "VerifyRun/Input/RestartManifestReader.cs": "d48a59bcbe7af3a60b00555b2b34f0faf40c671dbbfbce951ad835cc17000598",
+        "VerifyRun/Judgement/B10IntakeChecks.cs": "ade1802b795c9313ded04dbf1332752a0bc8c594473854519aecd54c6145b8ab",
+        "VerifyRun/Judgement/B10LateWriteChecks.cs": "6584efcc6d3c2b7a5c696b9cf23ec22145237e1e635bcdcd79d4044da08501a8",
+        "VerifyRun/Judgement/B10RepeatChecks.cs": "c34be5717c08a3b5757d750eeccaebcf92755870aefa041b08eb85142068089b",
+        "VerifyRun/LedgerBatch/BatchingEvidenceRecorder.cs": "b2e9391b5b0d324b6e65f281bcb356dc0c8d8ae1d06fe039f57ad90d362adf5b",
+        "VerifyRun/Publication/PublicationAcceptance.cs": "780e2109d7b1a0f261d06eb12a8ba856c90f15aaefd189646bb1b96f1c6232e2",
+        "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs": "e266b1d73da52fe84fbb583bac42e8bd5e2118af445d8a2f3c4bf7c4ff67f661",
+        "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs": "5c0788ac841b4397610f602435cd7ef923b1b4caa36d701c454891f79b2706a8"
+      }
     }
   }
 }
