@@ -358,8 +358,8 @@ run "foundation" {
           }
         }
         "native_monitoring" = {
-          "name" = "native-monitoring"
-          "public_access" = "None"
+          "name"             = "native-monitoring"
+          "public_access"    = "None"
           "role_assignments" = {}
         }
         "single_action" = {
@@ -405,7 +405,7 @@ run "foundation" {
         "name" = "claim-check"
       }
       "native_monitoring" = {
-        "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring"
+        "id"   = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring"
         "name" = "native-monitoring"
       }
       "single_action" = {
@@ -523,10 +523,10 @@ run "foundation" {
     condition = jsonencode(output.blob) == jsonencode({
       "account_url" = "https://stparchwelloffline1.blob.core.windows.net"
       "containers" = {
-        "ledger"        = "ledger"
-        "verifier"      = "verifier"
-        "claim_check"   = "claim-check"
-        "single_action" = "single-action"
+        "ledger"            = "ledger"
+        "verifier"          = "verifier"
+        "claim_check"       = "claim-check"
+        "single_action"     = "single-action"
         "native_monitoring" = "native-monitoring"
       }
     })
@@ -649,22 +649,22 @@ run "probe_v2_roles_false" {
   }
   assert {
     condition = jsonencode(output.probe_v2_role_scope.assignments) == jsonencode({
-      "loadgen_native_monitoring_contributor" = { service_account = "loadgen", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring", principal_id = "00000000-0000-0000-0000-000000000004" }
+      "loadgen_native_monitoring_contributor"             = { service_account = "loadgen", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring", principal_id = "00000000-0000-0000-0000-000000000004" }
       "enrichment-consumer_native_monitoring_contributor" = { service_account = "enrichment-consumer", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring", principal_id = "00000000-0000-0000-0000-000000000005" }
-      "verifier_native_monitoring_contributor" = { service_account = "verifier", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring", principal_id = "00000000-0000-0000-0000-000000000006" }
-      "probe_native_monitoring_contributor" = { service_account = "probe", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring", principal_id = "00000000-0000-0000-0000-000000000013" }
-      probe_events_receiver              = { service_account = "probe", role_definition_name = "Azure Event Hubs Data Receiver", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events", principal_id = "00000000-0000-0000-0000-000000000013" }
-      probe_single_action_contributor    = { service_account = "probe", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/single-action", principal_id = "00000000-0000-0000-0000-000000000013" }
-      verifier_single_action_reader      = { service_account = "verifier", role_definition_name = "Storage Blob Data Reader", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/single-action", principal_id = "00000000-0000-0000-0000-000000000006" }
-      loadgen_events_sender              = { service_account = "loadgen", role_definition_name = "Azure Event Hubs Data Sender", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events", principal_id = "00000000-0000-0000-0000-000000000004" }
-      loadgen_ledger_contributor         = { service_account = "loadgen", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/ledger", principal_id = "00000000-0000-0000-0000-000000000004" }
-      enrichment_events_receiver         = { service_account = "enrichment-consumer", role_definition_name = "Azure Event Hubs Data Receiver", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events", principal_id = "00000000-0000-0000-0000-000000000005" }
-      enrichment_state_sender            = { service_account = "enrichment-consumer", role_definition_name = "Azure Event Hubs Data Sender", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-state", principal_id = "00000000-0000-0000-0000-000000000005" }
-      enrichment_dlq_sender              = { service_account = "enrichment-consumer", role_definition_name = "Azure Event Hubs Data Sender", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events-dlq", principal_id = "00000000-0000-0000-0000-000000000005" }
-      enrichment_claim_check_contributor = { service_account = "enrichment-consumer", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/claim-check", principal_id = "00000000-0000-0000-0000-000000000005" }
-      verifier_events_receiver           = { service_account = "verifier", role_definition_name = "Azure Event Hubs Data Receiver", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events", principal_id = "00000000-0000-0000-0000-000000000006" }
-      verifier_ledger_reader             = { service_account = "verifier", role_definition_name = "Storage Blob Data Reader", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/ledger", principal_id = "00000000-0000-0000-0000-000000000006" }
-      verifier_results_contributor       = { service_account = "verifier", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/verifier", principal_id = "00000000-0000-0000-0000-000000000006" }
+      "verifier_native_monitoring_contributor"            = { service_account = "verifier", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring", principal_id = "00000000-0000-0000-0000-000000000006" }
+      "probe_native_monitoring_contributor"               = { service_account = "probe", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring", principal_id = "00000000-0000-0000-0000-000000000013" }
+      probe_events_receiver                               = { service_account = "probe", role_definition_name = "Azure Event Hubs Data Receiver", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events", principal_id = "00000000-0000-0000-0000-000000000013" }
+      probe_single_action_contributor                     = { service_account = "probe", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/single-action", principal_id = "00000000-0000-0000-0000-000000000013" }
+      verifier_single_action_reader                       = { service_account = "verifier", role_definition_name = "Storage Blob Data Reader", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/single-action", principal_id = "00000000-0000-0000-0000-000000000006" }
+      loadgen_events_sender                               = { service_account = "loadgen", role_definition_name = "Azure Event Hubs Data Sender", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events", principal_id = "00000000-0000-0000-0000-000000000004" }
+      loadgen_ledger_contributor                          = { service_account = "loadgen", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/ledger", principal_id = "00000000-0000-0000-0000-000000000004" }
+      enrichment_events_receiver                          = { service_account = "enrichment-consumer", role_definition_name = "Azure Event Hubs Data Receiver", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events", principal_id = "00000000-0000-0000-0000-000000000005" }
+      enrichment_state_sender                             = { service_account = "enrichment-consumer", role_definition_name = "Azure Event Hubs Data Sender", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-state", principal_id = "00000000-0000-0000-0000-000000000005" }
+      enrichment_dlq_sender                               = { service_account = "enrichment-consumer", role_definition_name = "Azure Event Hubs Data Sender", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events-dlq", principal_id = "00000000-0000-0000-0000-000000000005" }
+      enrichment_claim_check_contributor                  = { service_account = "enrichment-consumer", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/claim-check", principal_id = "00000000-0000-0000-0000-000000000005" }
+      verifier_events_receiver                            = { service_account = "verifier", role_definition_name = "Azure Event Hubs Data Receiver", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events", principal_id = "00000000-0000-0000-0000-000000000006" }
+      verifier_ledger_reader                              = { service_account = "verifier", role_definition_name = "Storage Blob Data Reader", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/ledger", principal_id = "00000000-0000-0000-0000-000000000006" }
+      verifier_results_contributor                        = { service_account = "verifier", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/verifier", principal_id = "00000000-0000-0000-0000-000000000006" }
     })
     error_message = "Disabled V2 roles must preserve the complete sixteen-entry applied role map."
   }
