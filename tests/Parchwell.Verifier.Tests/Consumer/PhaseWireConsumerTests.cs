@@ -85,13 +85,45 @@ public sealed class PhaseWireConsumerTests
         }
     }
 
-    [Fact]
-    public void Given_ConsumerJudge_U21_When_WrittenOrRead_Then_RemainsRejected()
+    [Theory]
+    [InlineData("C03", "C0")]
+    [InlineData("C01", "C1")]
+    [InlineData("C10", "C0")]
+    public void Given_ConsumerJudgeReceipt_W1_When_WrittenAndRead_Then_RoundTripsEqual(string scenario, string phase)
     {
-        WorkerReceipt value = Receipt("C03", "C0", "C0", "judge");
+        WorkerReceipt value = Receipt(scenario, phase, phase, "judge");
+        AssertReceipt(value, PhaseWireCodec.ReadReceipt(PhaseWireCodec.WriteReceipt(value)));
+    }
+
+    [Theory]
+    [InlineData("b10-sweep-line")]
+    [InlineData("b10-sweep")]
+    [InlineData("b10-final-sweep")]
+    public void Given_B10ModeReceiptNamingAConsumerScenario_W2_When_Written_Then_Rejects(string mode)
+    {
+        string artifact = mode switch
+        {
+            "b10-sweep-line" => PhasePaths.SweepLine(Run, "C0"),
+            "b10-sweep" => PhasePaths.B10Finalization(Run, "C0"),
+            _ => PhasePaths.B10FinalSweep(Run, "C0")
+        };
+        string job = mode switch
+        {
+            "b10-sweep-line" => PhaseIdentity.B10SweepLineJobName(Run, "C0"),
+            "b10-sweep" => PhaseIdentity.B10SweepJobName(Run, "C0"),
+            _ => PhaseIdentity.B10FinalSweepJobName(Run, "C0")
+        };
+        var value = new WorkerReceipt(1, mode, "C03", "C0", Run, "C0", null, job, "worker-pod", null, new string('a', 40), 0, true, Started, Completed,
+            [new ArtifactReference("verifier", artifact, 123, new string('b', 64))], null, null);
         Assert.Throws<FormatException>(() => PhaseWireCodec.WriteReceipt(value));
-        byte[] bytes = SubstituteCoordinates(PhaseWireCodec.WriteReceipt(Receipt("B04", "C0", "C0", "judge")), "C03", "C0", "C0");
-        Assert.Throws<FormatException>(() => PhaseWireCodec.ReadReceipt(bytes));
+    }
+
+    [Fact]
+    public void Given_B04JudgeReceipt_W3_When_Written_Then_BytesEqualTheBaseOutput()
+    {
+        // Captured on main at 911c5a1eaaac55107271755f2aa9697ea7a8acf9, before the judge accepted consumer pairs.
+        const string baseOutput = """{"schema_version":1,"mode":"judge","scenario_id":"B04","configuration_id":"C0","run_id":"synthetic-c506","phase":"C0","repeat":null,"job_name":"synthetic-c506-c0-judge","pod_name":"worker-pod","identity":null,"source_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","handler_exit_code":0,"cleanup_completed":true,"started_utc":"2026-11-15T00:00:00.0000000\u002B00:00","completed_utc":"2026-11-15T00:00:01.0000000\u002B00:00","artifacts":[{"container":"verifier","name":"synthetic-c506/C0/candidate.json","length":123,"sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}],"publication_acceptance":null,"repeat_checks":null}""";
+        Assert.Equal(baseOutput, Encoding.UTF8.GetString(PhaseWireCodec.WriteReceipt(Receipt("B04", "C0", "C0", "judge"))));
     }
 
     [Theory]
