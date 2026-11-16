@@ -1,5 +1,5 @@
 # State: #506 Verifier: consumer-record join and invalid-run conditions
-Covers: comment 6907709590 created 2026-11-16T04:55:43Z; read at 2026-11-16T04:59:23.569512Z
+Covers: comment 6910185218 created 2026-11-16T07:25:57Z; read at 2026-11-16T07:34:40.736246Z
 Parent items: [#499](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499)
 Item plan: [approved split, proposal revision 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894560135)
 Implementing tool: Codex. Source: [parent decision, point 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894614673), before the child ready-for-agent event at 2026-11-15T21:26:57Z.
@@ -17,6 +17,7 @@ Decisions in force:
 - Adds consumer-pair wire acceptance and defers load generator acceptance to #508. Source: [6900831355](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6900831355)
 - Approves revision 5 at a4c5ea1bec8630359a31d9b096416b2204f85dc7, including the U21 exception correction and the verifier codec path correction. Source: [6901013311](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311)
 - Hari approved a guarded public token-installation entry point on the existing authentication session/factory, its Kafka library tests and offset-reader tests, preserving the no-consumption contract. Source: [chat decision recorded on the issue](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590).
+- Hari directed this session to continue diagnosis and necessary verifier fixture/runner fixes for the reported verification failures, preserving assertions and acceptance gates. Source: [chat direction recorded on the issue](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6910185218).
 Open questions:
 - None.
-Next action: Complete the resumed implementation and ordered verification/reviews, then Hari merges the protected verifier/authentication change. The control session starts #521 and #507 under their prerequisites. Production plan sources and load generator acceptance belong to #508/#510; mutation acceptance runs on main after merge and gates consumer evidence packs.
+Next action: Resolve the reported verification failures, reconcile main qualification inputs, and complete the remaining focused review and ordered gates before opening the PR; then Hari merges the protected verifier/authentication change. The control session starts #521 and #507 under their prerequisites. Production plan sources and load generator acceptance belong to #508/#510; mutation acceptance runs on main after merge and gates consumer evidence packs.
