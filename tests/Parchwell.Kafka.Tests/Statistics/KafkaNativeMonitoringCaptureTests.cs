@@ -120,6 +120,32 @@ public sealed class KafkaNativeMonitoringCaptureTests
         Assert.False(options.IsValid(out _));
     }
 
+    [Fact]
+    public async Task Given_DrainedExistingCapture_When_PublishedAsDiagnostics_Then_ReferencesBindActualObject()
+    {
+        const string raw = "{\"name\":\"native\",\"client_id\":\"client\",\"type\":\"producer\",\"ts\":11,\"time\":1,\"age\":1}";
+        var store = new MemoryStore();
+        using var metrics = new KafkaStatisticsMetrics();
+        var coordinator = new KafkaNativeMonitoringCoordinator(store, metrics, new FixedTimeProvider(),
+            new("run", "phase", "scenario", "configuration", "job", "pod", "commit"));
+        var lifetime = coordinator.CreateLifetime(new("scenario", "run", KafkaClientRole.LoadGenProducer, "client"));
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes(raw);
+        string hash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes));
+        lifetime.MarkBuilt();
+        lifetime.CaptureExisting(raw, new("ledger/run/publication/statistics.jsonl", 1, bytes.LongLength, hash));
+        await coordinator.DrainAsync(CancellationToken.None);
+        lifetime.RebindExistingSource("ledger/run/publication/statistics.jsonl", "ledger/run/diagnostics/statistics.jsonl");
+        lifetime.Complete(true, "unknown");
+        await coordinator.CompleteAsync(CancellationToken.None);
+        using var document = JsonDocument.Parse(Assert.Single(store.Objects).Value);
+        var source = document.RootElement.GetProperty("clients")[0].GetProperty("raw_sources")[0];
+        Assert.True(document.RootElement.GetProperty("capture_complete").GetBoolean());
+        Assert.Equal("ledger/run/diagnostics/statistics.jsonl", source.GetProperty("source").GetString());
+        Assert.Equal(hash, source.GetProperty("sha256").GetString());
+        Assert.Equal(bytes.LongLength, source.GetProperty("byte_length").GetInt64());
+        Assert.Equal(1, source.GetProperty("report_ordinal").GetInt64());
+    }
+
     private sealed class FixedTimeProvider : TimeProvider
     {
         public override long GetTimestamp() => 10;

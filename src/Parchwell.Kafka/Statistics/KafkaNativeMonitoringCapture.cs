@@ -239,6 +239,26 @@ public sealed class KafkaNativeMonitoringCoordinator
         await _worker.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    internal void RebindExistingSource(KafkaNativeMonitoringLifetime client, string previousSource, string publishedSource)
+    {
+        lock (_gate)
+        {
+            if (!_closed || !_worker.IsCompletedSuccessfully || _publicationStarted
+                || string.IsNullOrWhiteSpace(previousSource) || string.IsNullOrWhiteSpace(publishedSource)
+                || !publishedSource.Contains('/') || publishedSource.Contains("://", StringComparison.Ordinal))
+            {
+                Gap(client, "source_rebinding_failed");
+                return;
+            }
+            for (int index = 0; index < client.Sources.Count; index++)
+            {
+                Source source = client.Sources[index];
+                if (source.Kind == "existing_capture" && source.SourceName == previousSource)
+                    client.Sources[index] = source with { SourceName = publishedSource };
+            }
+        }
+    }
+
     /// <summary>Publishes the index after capture and existing evidence have drained.</summary>
     /// <param name="cancellationToken">The host cleanup deadline.</param>
     /// <returns>A task completing when the index has been created.</returns>
@@ -341,6 +361,13 @@ public sealed class KafkaNativeMonitoringLifetime
             }
         _owner.Submit(this, report.RawJson, reference ?? throw new ArgumentNullException(nameof(reference)), true);
     }
+
+    /// <summary>Binds drained references to the actual publication or diagnostic object.</summary>
+    /// <remarks>Call after the coordinator drains and before it publishes its index. Hashes and ordinals are retained.</remarks>
+    /// <param name="previousSource">The original container and object name.</param>
+    /// <param name="publishedSource">The actual container and object name.</param>
+    public void RebindExistingSource(string previousSource, string publishedSource) =>
+        _owner.RebindExistingSource(this, previousSource, publishedSource);
     /// <summary>Closes this lifetime after native disposal and existing capture flush.</summary>
     /// <param name="captureComplete">Whether the host observed complete capture and durable flush.</param>
     /// <param name="exportTailStatus">One of unknown, complete, or incomplete.</param>
