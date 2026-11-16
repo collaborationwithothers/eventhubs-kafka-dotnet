@@ -23,6 +23,7 @@ internal static class KafkaNativeMetricReplay
     {
         if (Interlocked.Exchange(ref _started, 1) != 0)
             throw new InvalidOperationException("The approved replay permits one baseline and one expanded pass.");
+        using var environment = new TelemetryEnvironmentFixture();
         string[][] reports = BuildReports();
         var archive = ArchiveSize(reports);
         return new ReplayComparison(Measure(reports, false), Measure(reports, true), archive);

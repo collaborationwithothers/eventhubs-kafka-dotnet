@@ -10,6 +10,7 @@ namespace Parchwell.Kafka.Tests.Statistics;
 
 #pragma warning disable CA1707
 
+[Collection("Parchwell telemetry")]
 [Trait("Category", "Unit")]
 public sealed class KafkaNativeMetricSdkTests
 {
