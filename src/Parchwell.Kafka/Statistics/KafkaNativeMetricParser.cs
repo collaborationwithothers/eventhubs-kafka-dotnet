@@ -312,7 +312,7 @@ internal static class KafkaNativeMetricParser
                     return;
                 }
 
-                string? state = value.GetString();
+                string state = value.GetString()!;
                 ImmutableArray<string> allowed = States(definition.Path);
                 if (!allowed.Contains(state, StringComparer.Ordinal))
                 {
