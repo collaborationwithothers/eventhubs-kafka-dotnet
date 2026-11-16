@@ -489,7 +489,6 @@ mutation_only_test() {
     run_logged "Mutation-only Verifier tests" "$results/test.log" dotnet test \
         --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release \
         -p:RestoreLockedMode=true -p:ParchwellVerifierMutationOnly=true \
-        ${build_cpu_args[@]+"${build_cpu_args[@]}"} \
         --minimum-expected-tests 1 --results-directory "$results" -- \
         ${tier_args[@]+"${tier_args[@]}"} || { cat "$results/test.log" >&2; return 1; }
 }
