@@ -1,11 +1,12 @@
 using System.Text;
 using Confluent.Kafka;
 using Microsoft.Extensions.Options;
+using Parchwell.Enrichment.NativeMonitoring;
 
 namespace Parchwell.Enrichment.SeedF04;
 
 public sealed class SeedF04Worker(IOptions<SeedF04Options> options,
-    Func<IProducer<byte[], byte[]>> producerFactory, TimeProvider clock)
+    Func<IProducer<byte[], byte[]>> producerFactory, TimeProvider clock, NativeClientCapture? monitoring = null)
 {
     public async Task<SeedF04Result> ExecuteAsync(CancellationToken cancellationToken)
     {
@@ -62,6 +63,7 @@ public sealed class SeedF04Worker(IOptions<SeedF04Options> options,
                     await Task.Run(producer.Dispose, CancellationToken.None).WaitAsync(cleanupDeadline.Token).ConfigureAwait(false);
                 }
                 catch (Exception) { cleanupCompleted = false; }
+                monitoring?.Complete(cleanupCompleted);
             }
         }
         return new SeedF04Result(delivered, error, delivered && error is null && cleanupCompleted ? 0 : 1, cleanupCompleted);

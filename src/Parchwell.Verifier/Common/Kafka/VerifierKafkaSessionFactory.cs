@@ -2,6 +2,7 @@ using Confluent.Kafka;
 using Microsoft.Extensions.Options;
 using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Configuration;
+using Parchwell.Kafka.Statistics;
 
 namespace Parchwell.Verifier.Common.Kafka;
 
@@ -11,7 +12,8 @@ internal sealed class VerifierKafkaSessionFactory
     private readonly Func<CancellationToken, VerifierKafkaSession> create;
 
     public VerifierKafkaSessionFactory(KafkaConfigurationFactory configurations,
-        KafkaAuthenticationFactory authentication, IOptions<VerifierHostOptions> options, TimeProvider clock)
+        KafkaAuthenticationFactory authentication, IOptions<VerifierHostOptions> options, TimeProvider clock,
+        KafkaNativeMonitoringCoordinator monitoring)
     {
         ArgumentNullException.ThrowIfNull(configurations);
         ArgumentNullException.ThrowIfNull(authentication);
@@ -22,6 +24,9 @@ internal sealed class VerifierKafkaSessionFactory
             VerifierHostOptions settings = options.Value;
             var acquisition = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             IConsumer<byte[], byte[]>? consumer = null;
+            KafkaNativeMonitoringLifetime lifetime = monitoring.CreateLifetime(new KafkaStatisticsIdentity(settings.ScenarioId!, settings.RunId!,
+                KafkaClientRole.VerifierConsumer, settings.VerifierClientId!));
+            bool built = false;
             try
             {
                 var identity = new KafkaAuthenticationIdentity(settings.ScenarioId!, settings.RunId!,
@@ -31,14 +36,18 @@ internal sealed class VerifierKafkaSessionFactory
                         configurations.CreateVerifierConsumer().Configuration, authenticationSession)
                     .SetKeyDeserializer(Deserializers.ByteArray)
                     .SetValueDeserializer(Deserializers.ByteArray)
+                    .SetStatisticsHandler((_, raw) => lifetime.CaptureNew(raw))
                     .Build();
+                built = true;
+                lifetime.MarkBuilt();
                 IAdminClient admin = new DependentAdminClientBuilder(consumer.Handle).Build();
-                return new VerifierKafkaSession(consumer, admin, authenticationSession, clock, settings, acquisition);
+                return new VerifierKafkaSession(consumer, admin, authenticationSession, clock, settings, acquisition, lifetime);
             }
             catch
             {
+                if (!built) lifetime.MarkBuildFailed();
                 try { consumer?.Dispose(); }
-                finally { acquisition.Dispose(); }
+                finally { lifetime.Complete(false, "unknown"); acquisition.Dispose(); }
                 throw;
             }
         };
