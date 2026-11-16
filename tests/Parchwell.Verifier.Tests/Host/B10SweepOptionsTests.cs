@@ -285,6 +285,9 @@ public sealed class B10SweepOptionsTests
             if (value is string or int or long or TimeSpan)
                 values["Verifier:" + member.Name] = Convert.ToString(value, CultureInfo.InvariantCulture);
         }
+        if (options.ConsumedMetadata is { } capture)
+            foreach (var member in typeof(Parchwell.Verifier.VerifyRun.Window.ConsumedMetadataOptions).GetProperties())
+                values["Verifier:ConsumedMetadata:" + member.Name] = Convert.ToString(member.GetValue(capture), CultureInfo.InvariantCulture);
         if (options.ScenarioLoadOptions is { } limits)
             foreach (var member in typeof(VerifierScenarioLoadOptions).GetProperties())
                 values["Verifier:ScenarioLoadOptions:" + member.Name] = Convert.ToString(member.GetValue(limits), CultureInfo.InvariantCulture);

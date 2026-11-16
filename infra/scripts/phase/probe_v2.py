@@ -123,6 +123,10 @@ def unwrap(value):
     return value["value"] if isinstance(value, dict) and "value" in value else value
 
 
+def actor_log_path(private, job, pod, role):
+    return Path(private) / 'probe-v2' / 'raw' / job / f'{pod}.containers.{role}.log'
+
+
 def public_pod(pod):
     """Redact identity configuration, retaining the observed workload coordinates."""
     hidden = {"AZURE_TENANT_ID", "AZURE_SUBSCRIPTION_ID", "AZURE_CLIENT_ID", "ARM_TENANT_ID", "ARM_SUBSCRIPTION_ID", "ARM_CLIENT_ID", "AZURE_PRINCIPAL_ID", "Telemetry__ConnectionString", "APPLICATIONINSIGHTS_CONNECTION_STRING"}
@@ -358,7 +362,7 @@ class ProbeV2:
         phase = self.p.read("phase.json")
         try:
             pod = self.pod(record)
-            path = self.p.artifacts / record["job"] / f"{pod['pod_name']}.containers.{record['role']}.log"
+            path = actor_log_path(self.p.private, record["job"], pod["pod_name"], record["role"])
             maximum = self.limits["execution"]["max_container_log_bytes"]
             with path.open("rb") as stream:
                 log = stream.read(maximum + 1)
@@ -471,7 +475,9 @@ class ProbeV2:
             terminated = len(statuses) == 1 and isinstance(statuses[0].get("state", {}).get("terminated"), dict)
             public_pod(pod)
             private_json(directory / "pods.json", data)
-            path = directory / f"{name}.containers.{record['role']}.log"
+            path = (actor_log_path(self.p.private, record['job'], name, record['role'])
+                    if record.get('stage') != 'judge' else directory / f"{name}.containers.{record['role']}.log")
+            path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
             maximum = self.limits["execution"]["max_container_log_bytes"]
             code = self.p.run(["kubectl", "logs", "-n", "parchwell", name, "-c", record["role"], "--timestamps=false", f"--limit-bytes={maximum + 1}", "--request-timeout=30s"], 30, output=path, maximum=maximum)
             if code:

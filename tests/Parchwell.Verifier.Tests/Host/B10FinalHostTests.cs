@@ -362,6 +362,9 @@ public sealed class B10FinalHostTests
             if (value is string or int or long or TimeSpan)
                 values["Verifier:" + member.Name] = Convert.ToString(value, CultureInfo.InvariantCulture);
         }
+        if (options.ConsumedMetadata is { } capture)
+            foreach (var member in typeof(Parchwell.Verifier.VerifyRun.Window.ConsumedMetadataOptions).GetProperties())
+                values["Verifier:ConsumedMetadata:" + member.Name] = Convert.ToString(member.GetValue(capture), CultureInfo.InvariantCulture);
         values["PARCHWELL_SOURCE_COMMIT"] = options.SourceCommit;
         values["Telemetry:ConnectionString"] = "InstrumentationKey=synthetic-key";
         values["Telemetry:ServiceName"] = "Parchwell.Verifier";

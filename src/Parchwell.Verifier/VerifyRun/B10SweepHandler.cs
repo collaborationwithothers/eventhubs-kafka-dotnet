@@ -68,8 +68,8 @@ internal sealed class B10SweepHandler(IOptions<VerifierHostOptions> configured, 
                     RepeatInput repeat=repeats[i];
                     B10SweepWindows windows=B10LateWriteChecks.BuildWindows(repeat.Result!.StartLine,repeat.Result.EndLine,
                         repeat.Start!.PartitionHighs,sweep.PartitionHighs,current,options.MaxPartitions.Value);
-                    IReadOnlyList<ConsumedRecord> original=Drain(windows.Original);
-                    IReadOnlyList<ConsumedRecord> late=Drain(windows.Late);
+                    IReadOnlyList<ConsumedRecord> original=Drain(windows.Original, 2L * i, "original", repeat.Number);
+                    IReadOnlyList<ConsumedRecord> late=Drain(windows.Late, 2L * i + 1, "late", repeat.Number);
                     HashSet<string> earlier=registrations.Take(i).SelectMany(pair=>pair).Select(r=>r.Identity.InstanceId).ToHashSet(StringComparer.Ordinal);
                     HashSet<string> own=repeat.Producers.Select(p=>p.Identity.InstanceId).ToHashSet(StringComparer.Ordinal);
                     if(original.Any(record=>record.InstanceId is null||record.Problems.Any(p=>p.Field=="instance-id")||
@@ -93,12 +93,13 @@ internal sealed class B10SweepHandler(IOptions<VerifierHostOptions> configured, 
                 }
                 scanComplete=true;
 
-                IReadOnlyList<ConsumedRecord> Drain(RunWindow window)
+                IReadOnlyList<ConsumedRecord> Drain(RunWindow window, long index, string kind, int repeatNumber)
                 {
                     // Empty windows must not inherit the preceding window's assignment.
                     session.Consumer.Unassign();
                     WindowDrainResult result=WindowConsumer.Drain(session.Consumer,window,clock,origin,options.SafetyStop!.Value,
-                        options.PollSlice!.Value,recordBudget,cancellationToken,kafkaWork.Token);
+                        options.PollSlice!.Value,recordBudget,null,ConsumedMetadataCapture.TryStart(options,verifierStore,window,index,kind,repeatNumber),
+                        cancellationToken,kafkaWork.Token);
                     if(result.Assessments.Any(a=>a.Disposition!=AssessmentDisposition.Pass)||result.DrainDuration is null)
                         throw new InvalidOperationException("b10_sweep_drain_incomplete");
                     session.Consumer.Unassign();

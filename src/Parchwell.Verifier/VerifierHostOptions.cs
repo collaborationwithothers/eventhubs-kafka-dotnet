@@ -23,6 +23,7 @@ internal enum VerifierMode
 internal sealed class VerifierHostOptions
 {
     public Common.SingleAction.SingleActionLimits? SingleActionLimits { get; set; }
+    public VerifyRun.Window.ConsumedMetadataOptions? ConsumedMetadata { get; set; }
     public string? EnrichmentImage { get; set; }
     public string? ConsumerRecordContainer { get; set; }
     public string? CaptureContainer { get; set; }

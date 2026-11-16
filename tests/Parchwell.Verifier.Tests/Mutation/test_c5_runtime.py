@@ -216,6 +216,26 @@ class GeometryTests(unittest.TestCase):
 from unittest import mock
 import c5_runtime as runtime
 
+
+def historical_source(path):
+    # These tests exercise source-bound historical exceptions, not today's target bytes.
+    return runtime.blob(runtime.HISTORICAL_QUALIFICATION_COMMIT, 'src/Parchwell.Verifier/' + path)
+
+
+def historical_layout(test):
+    # Load the runner from the same revision as the pinned qualification; later layouts may differ.
+    from functools import wraps
+    from types import ModuleType
+    @wraps(test)
+    def wrapped(*args, **kwargs):
+        runner = ModuleType('historical_c5_workflow')
+        data = runtime.blob(runtime.HISTORICAL_QUALIFICATION_COMMIT, runtime.RUNNER)
+        exec(compile(data, 'historical_c5_workflow.py', 'exec'), runner.__dict__)
+        with mock.patch.object(runtime, 'workflow', runner):
+            return test(*args, **kwargs)
+    return wrapped
+
+
 class QualificationTests(unittest.TestCase):
     def setUp(self):
         self.original_shards = runtime.workflow.SHARDS
@@ -265,8 +285,11 @@ class QualificationTests(unittest.TestCase):
             'target_sources': measured_targets, 'assessments': {'shared_inputs': {}, 'target_sources': {}}}}
         return binding
 
+    @historical_layout
     def test_v2_migration_preserves_committed_historical_qualification(self):
-        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        self.original_shards = runtime.workflow.SHARDS
+        self.original_shard_config = runtime.workflow.shard_config
+        config = runtime.historical_qualification()
         self.assertEqual(1, config['schema_version'])
         measured_shared = config['shared_inputs'].copy()
         for path, renewal in config.get('renewals', {}).items():
@@ -283,7 +306,7 @@ class QualificationTests(unittest.TestCase):
         config['timing_evidence'] = {shard: {'kind': 'historical'} for shard in self.original_shards}
         config['timing_inputs'] = {binding: {'shared_inputs': measured_shared, 'target_sources': targets,
             'assessments': {'shared_inputs': assessments, 'target_sources': {}}}}
-        source = {path: (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes() for path in targets}
+        source = {path: historical_source(path) for path in targets}
         runtime.shape(config)
         with mock.patch.object(runtime.workflow, 'SHARDS', self.original_shards), \
              mock.patch.object(runtime.workflow, 'shard_config', self.original_shard_config), \
@@ -472,7 +495,7 @@ class QualificationTests(unittest.TestCase):
 
     def test_only_measured_static_owner_has_budget_exception(self):
         path = 'VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs'
-        data = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+        data = historical_source(path)
         shard = 'configuration-static'
         self.shards.clear()
         self.shards[shard] = path
@@ -527,12 +550,13 @@ class QualificationTests(unittest.TestCase):
             item.update(isolated_seconds=1743.157, setup_seconds=209, estimated_seconds=1953)
             self.assertIn('shard_over_budget', self.errors())
 
+    @historical_layout
     def test_codec_cohorts_require_measured_costs_and_stay_under_budget(self):
         import copy
-        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        config = runtime.historical_qualification()
         path = runtime.CODEC_TARGET
         record = config['targets'][path]
-        source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+        source = historical_source(path)
         for shard in runtime.CODEC_PROVISIONAL_SHARDS:
             with self.subTest(shard=shard):
                 item = record['shards'][shard]
@@ -547,12 +571,13 @@ class QualificationTests(unittest.TestCase):
                 with mock.patch.dict(runtime.workflow.COHORTS, {shard: ('wrong', ())}):
                     self.assertFalse(runtime.approved_codec_static_owner(path, record, shard, item, source))
 
+    @historical_layout
     def test_six_tail_estimates_require_source_evidence_and_promoted_charges(self):
         import copy
-        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        config = runtime.historical_qualification()
         for shard, (path, _, _, _) in runtime.SIX_TAIL_BINDINGS.items():
             record = config['targets'][path]
-            source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+            source = historical_source(path)
             item = record['shards'][shard]
             with self.subTest(shard=shard):
                 self.assertTrue(runtime.approved_six_tail(path, record, shard, item, source))
@@ -573,15 +598,16 @@ class QualificationTests(unittest.TestCase):
             changed = copy.deepcopy(item)
             changed['setup_seconds'] -= charge
             changed['estimated_seconds'] -= charge
-            source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+            source = historical_source(path)
             self.assertFalse(runtime.approved_six_tail(path, record, shard, changed, source))
 
+    @historical_layout
     def test_six_tail_rejects_each_evidence_field_and_wrong_inputs(self):
         import copy
-        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        config = runtime.historical_qualification()
         for shard, (path, _, _, required) in runtime.SIX_TAIL_BINDINGS.items():
             record = config['targets'][path]
-            source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+            source = historical_source(path)
             item = record['shards'][shard]
             with self.subTest(shard=shard, case='wrong target'):
                 self.assertFalse(runtime.approved_six_tail('wrong.cs', record, shard, item, source))
@@ -605,18 +631,19 @@ class QualificationTests(unittest.TestCase):
         self.assertFalse(runtime.approved_six_tail('', {}, '', {}, b''))
         shard, (path, _, _, _) = next(iter(runtime.SIX_TAIL_BINDINGS.items()))
         record = config['targets'][path]
-        source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+        source = historical_source(path)
         self.assertFalse(runtime.approved_six_tail(path, {}, shard, record['shards'][shard], source))
         self.assertFalse(runtime.approved_six_tail(path, record, shard, {}, source))
         self.assertFalse(runtime.approved_six_tail(path, record, shard, record['shards'][shard], b''))
 
+    @historical_layout
     def test_six_tail_validation_guard_overrides_other_approval(self):
         import copy
         self.workflow_patcher.stop()
         self.config_patcher.stop()
-        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        config = runtime.historical_qualification()
         targets = {path: record['source_sha256'] for path, record in config['targets'].items()}
-        sources = {path: (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes() for path in targets}
+        sources = {path: historical_source(path) for path in targets}
         shard = 'b10-final-judge-p9'
         path = runtime.SIX_TAIL_BINDINGS[shard][0]
         with mock.patch.object(runtime, 'approved_codec_static_owner', return_value=True) as other_approval:
@@ -629,13 +656,14 @@ class QualificationTests(unittest.TestCase):
             self.assertEqual({'invalid_estimate'}, reasons)
             self.assertTrue(any(call.args[0] == path and call.args[2] == shard for call in other_approval.call_args_list))
 
+    @historical_layout
     def test_tail_splits_require_exact_source_cost_and_evidence(self):
         import copy
-        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        config = runtime.historical_qualification()
         for shard, (path, _, _, artifact, _) in runtime.TAIL_SPLITS.items():
             with self.subTest(shard=shard):
                 record = config['targets'][path]
-                source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+                source = historical_source(path)
                 item = record['shards'][shard]
                 self.assertTrue(runtime.approved_tail_split(path, record, shard, item, source))
                 self.assertFalse(runtime.approved_tail_split(path, record, shard, item, source + b'x'))
@@ -650,12 +678,13 @@ class QualificationTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     runtime.shape(changed_config)
 
+    @historical_layout
     def test_tail_split_checks_span_and_each_evidence_field(self):
         import copy
-        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        config = runtime.historical_qualification()
         for shard, (path, span, _, artifact, _) in runtime.TAIL_SPLITS.items():
             record = config['targets'][path]
-            source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+            source = historical_source(path)
             item = record['shards'][shard]
             evidence = next(e for e in record['evidence'] if artifact in e['locator'])
             with self.subTest(shard=shard, case='span'):
@@ -673,14 +702,15 @@ class QualificationTests(unittest.TestCase):
                 changed['evidence'] = evidence_list
                 self.assertFalse(runtime.approved_tail_split(path, changed, shard, item, source))
 
+    @historical_layout
     def test_native_geometry_requires_exact_ownership_evidence(self):
         self.workflow_patcher.stop()
         self.config_patcher.stop()
         import copy
-        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        config = runtime.historical_qualification()
         for path in (runtime.REPEAT_TARGET, runtime.CODEC_TARGET):
             record = config['targets'][path]
-            source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+            source = historical_source(path)
             artifact = record['native_geometry']['ownership_artifact_id']
             evidence = next(e for e in record['evidence'] if artifact in e['locator'])
             self.assertTrue(runtime.native_geometry_valid(path, record, source))
@@ -697,7 +727,7 @@ class QualificationTests(unittest.TestCase):
 
     def test_codec_over_budget_has_no_exception(self):
         path = runtime.CODEC_TARGET
-        data = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+        data = historical_source(path)
         shard = 'b10-final-projection-codec-p1-a'
         self.shards.clear()
         self.shards[shard] = path
@@ -711,11 +741,12 @@ class QualificationTests(unittest.TestCase):
         self.config['targets'] = {path: {'source_sha256': self.targets[path], 'evidence': [], 'shards': {shard: item}}}
         self.assertIn('shard_over_budget', self.errors())
 
+    @historical_layout
     def test_repeat_bounds_are_pinned_and_required(self):
         import copy
-        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        config = runtime.historical_qualification()
         record = config['targets'][runtime.REPEAT_TARGET]
-        source = (runtime.ROOT / 'src/Parchwell.Verifier' / runtime.REPEAT_TARGET).read_bytes()
+        source = historical_source(runtime.REPEAT_TARGET)
         for shard in runtime.REPEAT_BOUNDS:
             item = record['shards'][shard]
             with self.subTest(shard=shard):
@@ -738,14 +769,15 @@ class QualificationTests(unittest.TestCase):
                 self.assertFalse(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, changed, shard, item, source))
                 self.assertFalse(runtime.approved_repeat_merged_owner(runtime.REPEAT_TARGET, record, shard, item, source + b'changed'))
 
+    @historical_layout
     def test_codec_neighborhood_requires_exact_evidence_and_estimates(self):
         self.workflow_patcher.stop()
         self.config_patcher.stop()
         import copy
-        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        config = runtime.historical_qualification()
         path = runtime.CODEC_TARGET
         record = config['targets'][path]
-        source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+        source = historical_source(path)
         for shard in runtime.CODEC_NEIGHBOR:
             with self.subTest(shard=shard):
                 item = record['shards'][shard]
@@ -770,14 +802,15 @@ class QualificationTests(unittest.TestCase):
             shard = 'b10-final-projection-codec-p8'
             self.assertFalse(runtime.approved_codec_neighbor(path, record, shard, record['shards'][shard], source))
 
+    @historical_layout
     def test_codec_neighborhood_evidence_fields_and_adjacent_spans(self):
         self.workflow_patcher.stop()
         self.config_patcher.stop()
         import copy
-        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        config = runtime.historical_qualification()
         path = runtime.CODEC_TARGET
         record = config['targets'][path]
-        source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+        source = historical_source(path)
         for shard, (span, _) in runtime.CODEC_NEIGHBOR.items():
             item = record['shards'][shard]
             for artifact, sha in runtime.CODEC_NEIGHBOR_EVIDENCE:
@@ -804,13 +837,14 @@ class QualificationTests(unittest.TestCase):
                          mock.patch.object(runtime.workflow, 'shard_span', return_value=adjacent):
                         self.assertFalse(runtime.approved_codec_neighbor(path, record, shard, item, source))
 
+    @historical_layout
     def test_codec_neighborhood_validation_guard_overrides_other_approval(self):
         self.workflow_patcher.stop()
         self.config_patcher.stop()
         import copy
-        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        config = runtime.historical_qualification()
         targets = {path: record['source_sha256'] for path, record in config['targets'].items()}
-        sources = {path: (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes() for path in targets}
+        sources = {path: historical_source(path) for path in targets}
         path = runtime.CODEC_TARGET
         with mock.patch.object(runtime, 'approved_codec_static_owner', return_value=True) as other_approval:
             self.assertEqual(set(), runtime.validate(config, config['shared_inputs'], targets, sources, runtime.workflow.SHARDS))
@@ -825,15 +859,16 @@ class QualificationTests(unittest.TestCase):
                     self.assertTrue(any(call.args[0] == path and call.args[2] == shard
                                         for call in other_approval.call_args_list))
 
+    @historical_layout
     def test_pinned_native_geometry_rejects_tampering(self):
         self.workflow_patcher.stop()
         self.config_patcher.stop()
         import copy
-        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        config = runtime.historical_qualification()
         for path in runtime.NATIVE_GEOMETRY_BINDINGS:
             with self.subTest(path=path):
                 record = copy.deepcopy(config['targets'][path])
-                source = (runtime.ROOT / 'src/Parchwell.Verifier' / path).read_bytes()
+                source = historical_source(path)
                 self.assertTrue(runtime.native_geometry_valid(path, record, source))
                 self.assertFalse(runtime.native_geometry_valid(path, record, source + b'changed'))
                 for field in ('inventory_sha256', 'ownership_proof_sha256', 'layout_sha256', 'source_commit'):
@@ -850,9 +885,10 @@ class QualificationTests(unittest.TestCase):
                 with mock.patch.object(runtime.workflow, 'shard_config', return_value={'changed': True}):
                     self.assertFalse(runtime.native_geometry_valid(path, record, source))
 
+    @historical_layout
     def test_pinned_codec_owners_cannot_be_unknown(self):
         import copy
-        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        config = runtime.historical_qualification()
         for shard in runtime.CODEC_PROVISIONAL_SHARDS:
             candidate = copy.deepcopy(config)
             item = candidate['targets'][runtime.CODEC_TARGET]['shards'][shard]
@@ -1552,6 +1588,7 @@ class RenewalTests(unittest.TestCase):
                           self.simulated_check('global.json', old_shared={'global.json': runtime.digest(b'sdk')}))
                 self.assertEqual(expected, result)
 
+    @historical_layout
     def test_committed_qualification_renews_a_comment_change(self):
         self.workflow_patcher.stop()
         self.config_patcher.stop()
@@ -1560,11 +1597,11 @@ class RenewalTests(unittest.TestCase):
         def blob(ref, name):
             data = actual_blob(ref, name)
             return data + b'// renewal test\n' if name == path else data
-        config = json.loads((runtime.ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        config = runtime.historical_qualification()
         with mock.patch.object(runtime, 'blob', side_effect=blob):
-            shared, targets = runtime.input_maps('HEAD')
-            sources = {p: runtime.blob('HEAD', 'src/Parchwell.Verifier/' + p) for p in targets}
-            matrix = runtime.workflow_matrix(runtime.blob('HEAD', runtime.WORKFLOW))
+            shared, targets = runtime.input_maps(runtime.HISTORICAL_QUALIFICATION_COMMIT)
+            sources = {p: historical_source(p) for p in targets}
+            matrix = runtime.workflow_matrix(runtime.blob(runtime.HISTORICAL_QUALIFICATION_COMMIT, runtime.WORKFLOW))
             self.assertEqual({'stale_inputs'}, runtime.validate(config, shared, targets, sources, matrix))
             renewals = config.setdefault('renewals', {})
             measured = renewals[path]['measured_sha256'] if path in renewals else config['shared_inputs'].get(path)
@@ -1676,3 +1713,153 @@ class RenewalTests(unittest.TestCase):
                 self.assertIn('synthetic replacement failure', stderr)
                 self.assertEqual(before, path.read_bytes())
                 self.assertEqual(entries, set(Path(directory).iterdir()))
+
+
+class LocalShardTests(unittest.TestCase):
+    def setUp(self):
+        from contextlib import ExitStack
+        self.stack = ExitStack()
+        self.addCleanup(self.stack.close)
+        self.tmp = self.stack.enter_context(tempfile.TemporaryDirectory())
+        self.output = Path(self.tmp) / 'receipt'
+        self.workflow = profile_module.workflow
+        self.snapshot = {'src/example.cs': 'a' * 64}
+        self.identity = self.stack.enter_context(mock.patch.object(self.workflow, 'identity', return_value=('commit', 'tree', True)))
+        self.snapshots = self.stack.enter_context(mock.patch.object(self.workflow, 'snapshot', return_value=self.snapshot))
+        self.stack.enter_context(mock.patch.object(self.workflow, 'git', side_effect=lambda root, *args:
+            (root / args[-1].split(':', 1)[1]).read_bytes()))
+        self.stack.enter_context(mock.patch.object(profile_module.shutil, 'which', return_value='/usr/bin/dotnet'))
+        self.stack.enter_context(mock.patch.object(profile_module.subprocess, 'check_output', side_effect=lambda args, **kwargs:
+            '10.0.402' if args[-1] == '--version' else 'dotnet-stryker 5.0.0 stryker'))
+        def prepare(root, staging, target, retained):
+            path = staging / (self.workflow.projection.VERIFIER + target)
+            path.parent.mkdir(parents=True)
+            path.write_bytes((root / (self.workflow.projection.VERIFIER + target)).read_bytes())
+            retained.mkdir()
+            return {}
+        self.stack.enter_context(mock.patch.object(self.workflow.projection, 'prepare', side_effect=prepare))
+        self.stack.enter_context(mock.patch.object(self.workflow.projection, 'finish', side_effect=lambda root, manifest, out: out.write_text('{}')))
+        self.stack.enter_context(mock.patch.object(self.workflow.projection, 'validate', return_value='hash'))
+        self.launch = self.stack.enter_context(mock.patch.object(self.workflow, 'launch', side_effect=self.completed_launch))
+        self.isolate = self.stack.enter_context(mock.patch.object(self.workflow, 'run_isolated', return_value=([], None)))
+
+    def completed_launch(self, argv, cwd, log, timeout):
+        log.write_text('workers observed in this raw log')
+        report = self.output / self.workflow.REPORT_PATH
+        report.parent.mkdir(parents=True)
+        report.write_text('{}')
+        return 0, None
+
+    def receipt(self):
+        return json.loads((self.output / 'local-shard-receipt.json').read_text())
+
+    def test_exact_primary_and_complement_use_production_selector_without_workflow_identity(self):
+        candidates = [name for name, part in self.workflow.PARTS.items()
+                      if part[0] == 'b10-final-sweep-handler']
+        for shard in (candidates[0], candidates[-1]):
+            with self.subTest(shard=shard):
+                self.output = Path(self.tmp) / shard
+                env = dict(os.environ)
+                with mock.patch.dict(os.environ, {'GITHUB_SHA': 'branch', 'GITHUB_REF': 'refs/heads/branch'}):
+                    self.assertEqual(0, profile_module.local_shard(shard, self.output, 100))
+                    self.assertEqual('branch', os.environ['GITHUB_SHA'])
+                    self.assertEqual('refs/heads/branch', os.environ['GITHUB_REF'])
+                self.assertEqual(env, dict(os.environ))
+                target = self.workflow.SHARDS[shard]
+                source = (ROOT / (self.workflow.projection.VERIFIER + target)).read_bytes()
+                self.assertEqual(self.workflow.shard_config(shard, source), json.loads((self.output / 'shard-config.json').read_text()))
+                self.assertEqual('completed_unverified', self.receipt()['status'])
+                self.assertIsNone(self.receipt()['observed_workers'])
+        self.assertFalse((Path(self.launch.call_args.args[1])).exists())
+
+    def test_invalid_preflight_does_not_launch_or_create_output(self):
+        shard = next(iter(self.workflow.SHARDS))
+        for bad_shard, output, timeout in [('unknown', self.output, 1), (shard, self.output, 0),
+                                            (shard, self.output, float('nan')), (shard, self.output, 16201),
+                                            (shard, ROOT / 'out', 1), (shard, Path(self.tmp), 1)]:
+            with self.subTest(shard=bad_shard, output=output, timeout=timeout):
+                with self.assertRaises(ValueError):
+                    profile_module.local_shard(bad_shard, output, timeout)
+        self.identity.return_value = ('commit', 'tree', False)
+        with self.assertRaises(ValueError):
+            profile_module.local_shard(shard, self.output, 1)
+        self.launch.assert_not_called()
+        self.assertFalse(self.output.exists())
+
+    def test_timeout_and_source_drift_are_incomplete_and_retained(self):
+        shard = next(iter(self.workflow.SHARDS))
+        self.launch.side_effect = lambda argv, cwd, log, timeout: (None, 'time_cap_exceeded')
+        self.assertEqual(1, profile_module.local_shard(shard, self.output, 100))
+        self.assertEqual('time_cap_exceeded', self.receipt()['termination_reason'])
+        self.assertEqual('incomplete', self.receipt()['status'])
+        self.output = Path(self.tmp) / 'drift'
+        self.launch.side_effect = self.completed_launch
+        self.snapshots.side_effect = [self.snapshot, {'src/example.cs': 'b' * 64}]
+        self.assertEqual(1, profile_module.local_shard(shard, self.output, 100))
+        self.assertEqual('incomplete', self.receipt()['status'])
+
+    def test_config_change_and_isolation_failure_remain_incomplete(self):
+        shard = next(iter(self.workflow.SHARDS))
+        def change(argv, cwd, log, timeout):
+            result = self.completed_launch(argv, cwd, log, timeout)
+            (self.output / 'shard-config.json').write_text('{}')
+            return result
+        self.launch.side_effect = change
+        self.assertEqual(1, profile_module.local_shard(shard, self.output, 100))
+        self.assertNotEqual(self.receipt()['config_sha256_before'], self.receipt()['config_sha256_after'])
+
+    def test_boundary_error_is_preserved_before_launch(self):
+        shard = next(iter(self.workflow.SHARDS))
+        with mock.patch.object(self.workflow, 'shard_config', side_effect=ValueError('static field declaration crosses a span boundary')):
+            self.assertEqual(1, profile_module.local_shard(shard, self.output, 100))
+        self.assertIn('crosses', self.receipt()['error'])
+        self.launch.assert_not_called()
+
+    def test_isolation_uses_remaining_deadline_and_failure_is_retained(self):
+        shard = next(iter(self.workflow.SHARDS))
+        self.isolate.return_value = ([{'mutant_id': '1'}], 'shard time limit reached')
+        with mock.patch.object(self.workflow, 'shard_static_regions', return_value=[(1, 2)]):
+            before = profile_module.time.monotonic()
+            self.assertEqual(1, profile_module.local_shard(shard, self.output, 100))
+            after = profile_module.time.monotonic()
+        deadline = self.isolate.call_args.args[-1]
+        self.assertGreaterEqual(deadline, before + 100)
+        self.assertLessEqual(deadline, after + 100)
+        self.assertEqual('shard time limit reached', self.receipt()['isolation_error'])
+        self.assertEqual([{'mutant_id': '1'}], self.receipt()['isolated'])
+
+    def test_executing_helper_mismatch_rejected_before_launch(self):
+        self.stack.enter_context(mock.patch.object(self.workflow, 'git', return_value=b'other revision'))
+        with self.assertRaisesRegex(ValueError, 'differs from committed source'):
+            profile_module.local_shard(next(iter(self.workflow.SHARDS)), self.output, 100)
+        self.launch.assert_not_called()
+        self.assertFalse(self.output.exists())
+
+    def test_interruption_during_projection_preserves_receipt(self):
+        with mock.patch.object(self.workflow.projection, 'prepare', side_effect=KeyboardInterrupt):
+            self.assertEqual(1, profile_module.local_shard(next(iter(self.workflow.SHARDS)), self.output, 100))
+        self.assertIn('KeyboardInterrupt', self.receipt()['error'])
+        self.assertEqual('incomplete', self.receipt()['status'])
+        self.launch.assert_not_called()
+
+    def test_runtime_helper_is_not_a_qualification_input(self):
+        # Use the real Git-backed discovery, not a synthetic input map.
+        shared, _ = profile_module.input_maps('HEAD')
+        self.assertNotIn('tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py', shared)
+
+    def test_exit_two_with_unclassified_report_does_not_claim_verified_population(self):
+        shard = next(iter(self.workflow.SHARDS))
+        def launch(argv, cwd, log, timeout):
+            self.completed_launch(argv, cwd, log, timeout)
+            return 2, None
+        self.launch.side_effect = launch
+        self.assertEqual(0, profile_module.local_shard(shard, self.output, 100))
+        self.assertEqual('completed_unverified', self.receipt()['status'])
+        self.assertNotIn('mutant_count', self.receipt())
+
+    def test_wrong_sdk_is_rejected_before_execution(self):
+        with mock.patch.object(profile_module.subprocess, 'check_output', side_effect=['0.0.0', 'dotnet-stryker 5.0.0 stryker']):
+            with self.assertRaisesRegex(ValueError, 'selected SDK'):
+                profile_module.local_shard(next(iter(self.workflow.SHARDS)), self.output, 100)
+        self.assertFalse(self.output.exists())
+        self.launch.assert_not_called()

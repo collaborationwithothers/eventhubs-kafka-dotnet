@@ -31,6 +31,7 @@ internal sealed class B10FinalSweepHarness : IDisposable
     private readonly B10AbruptVerifyHarness host;
     internal string Phase { get; }
     internal Dictionary<string, byte[]> Verifier => host.Verifier;
+    internal Dictionary<string, byte[]> MetadataObjects => host.MetadataObjects;
     internal Dictionary<string, byte[]> Ledger => host.Ledger;
     internal Dictionary<string, string> Configuration => host.Configuration;
     internal JsonObject Result => JsonNode.Parse(Verifier[$"{Run}/{Phase}/b10-final-sweep.json"])!.AsObject();

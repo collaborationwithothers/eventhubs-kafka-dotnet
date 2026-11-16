@@ -81,6 +81,7 @@ public sealed class VerifierKafkaTokenProviderHostTests
         var values = new Dictionary<string, string?>(StringComparer.Ordinal);
         foreach ((string name, string value) in new Dictionary<string, string>
         {
+            ["ConsumedMetadata:Enabled"] = "true", ["ConsumedMetadata:MaxRowBytes"] = "1048576", ["ConsumedMetadata:MaxChunkBytes"] = "134217728", ["ConsumedMetadata:MaxBytes"] = "17179869184",
             ["Mode"] = "b10-abrupt-verify", ["ScenarioId"] = "B10", ["ConfigurationId"] = "C1", ["Phase"] = "C1", ["Repeat"] = "1",
             ["RunId"] = "synthetic", ["VerifierCommit"] = B10AbruptVerifyEvidence.Commit, ["SourceCommit"] = B10AbruptVerifyEvidence.Commit,
             ["RepeatPrefix"] = "synthetic/C1/r1/", ["ExpectedInstanceId"] = "synthetic-c1-r1-loadgen",
@@ -165,6 +166,9 @@ public sealed class VerifierKafkaTokenProviderHostTests
         if (options.ScenarioLoadOptions is { } limits)
             foreach (var member in typeof(VerifierScenarioLoadOptions).GetProperties())
                 values["Verifier:ScenarioLoadOptions:" + member.Name] = Convert.ToString(member.GetValue(limits), CultureInfo.InvariantCulture);
+        if (options.ConsumedMetadata is { } capture)
+            foreach (var member in typeof(Parchwell.Verifier.VerifyRun.Window.ConsumedMetadataOptions).GetProperties())
+                values["Verifier:ConsumedMetadata:" + member.Name] = Convert.ToString(member.GetValue(capture), CultureInfo.InvariantCulture);
         values["PARCHWELL_SOURCE_COMMIT"] = options.SourceCommit;
         values["Telemetry:ConnectionString"] = "InstrumentationKey=synthetic-key";
         values["Telemetry:ServiceName"] = "Parchwell.Verifier";

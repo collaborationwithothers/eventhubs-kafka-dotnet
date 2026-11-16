@@ -129,7 +129,8 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                     :RunWindow.Create(start,registration.Identity,expectedStartIdentity,ends);
                 assessments.AddRange(window.Assessments);
                 WindowDrainResult? drain=null;if(window.CanAssign){drain=WindowConsumer.Drain(session!.Consumer,window,clock,origin,options.SafetyStop!.Value,options.PollSlice!.Value,
-                    new ConsumedRecordBudget(options.MaxConsumedRecords!.Value,options.MaxConsumedBytes!.Value),cancellationToken,kafkaWork.Token);assessments.AddRange(drain.Assessments);}
+                    new ConsumedRecordBudget(options.MaxConsumedRecords!.Value,options.MaxConsumedBytes!.Value),null,ConsumedMetadataCapture.TryStart(options,verifierStore,window,0,"ordinary",options.Repeat),
+                    cancellationToken,kafkaWork.Token);assessments.AddRange(drain.Assessments);}
                 var requests=new List<RunJudgementRequest>();
                 var judgements=new List<RunJudgementResult>();
                 for(int producerIndex=0;producerIndex<inputs.Count;producerIndex++)

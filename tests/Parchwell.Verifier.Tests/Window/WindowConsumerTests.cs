@@ -1,4 +1,6 @@
 using System.Reflection;
+using System.Text.Json;
+using Parchwell.Verifier.Tests.Support;
 using Confluent.Kafka;
 using Parchwell.Verifier.Common.Contracts;
 using Parchwell.Verifier.Common.Serialization;
@@ -268,6 +270,93 @@ public sealed class WindowConsumerTests
     }
 
     [Fact]
+    public void ConsumedMetadata_PartialDrainRetainsSealedChunksOnBudgetAndOffsetFailure()
+    {
+        var (consumer, fake) = Create();
+        var store = new ConsumedMetadataCaptureTests.Store(); var options = VerifierHostTestOptions.ValidOptions("verify");
+        var record = MessageIdentityReaderTests.Record(offset: 5); record.Partition = new Partition(0);
+        fake.Polls.Enqueue(new(record, 5, 1));
+        var capture = ConsumedMetadataCapture.TryStart(options, store, Window(), 0, "ordinary", 1)!;
+        Assert.Throws<InputLimitExceededException>(() => WindowConsumer.Drain(consumer, Window(), fake.Clock, 0,
+            TimeSpan.FromMilliseconds(1000), TimeSpan.FromMilliseconds(1000), new(1, 1), null, capture, CancellationToken.None, default));
+        using (var manifest = JsonDocument.Parse(store.Objects.Single(p => p.Key.EndsWith("capture.json", StringComparison.Ordinal)).Value))
+        {
+            Assert.False(manifest.RootElement.GetProperty("complete").GetBoolean());
+            Assert.Equal(1, manifest.RootElement.GetProperty("observed_rows").GetInt64());
+            Assert.Equal(1, manifest.RootElement.GetProperty("captured_rows").GetInt64());
+            Assert.Single(manifest.RootElement.GetProperty("chunks").EnumerateArray());
+        }
+        var (offsetConsumer, offsetFake) = Create(); offsetFake.PollError = new KafkaException(new Error(ErrorCode.OffsetOutOfRange));
+        var offsetStore = new ConsumedMetadataCaptureTests.Store();
+        var offsetCapture = ConsumedMetadataCapture.TryStart(options, offsetStore, Window(), 1, "ordinary", 1)!;
+        var result = WindowConsumer.Drain(offsetConsumer, Window(), offsetFake.Clock, 0, TimeSpan.FromMilliseconds(1000),
+            TimeSpan.FromMilliseconds(1000), new(10, 1000), null, offsetCapture, CancellationToken.None, default);
+        RunWindowTests.AssertSemanticFailure(Assert.Single(result.Assessments), 9);
+        using var offsetManifest = JsonDocument.Parse(offsetStore.Objects.Single(p => p.Key.EndsWith("capture.json", StringComparison.Ordinal)).Value);
+        Assert.False(offsetManifest.RootElement.GetProperty("complete").GetBoolean());
+    }
+
+    [Fact]
+    public void ConsumedMetadata_LengthFailureDoesNotChangeScientificDrain()
+    {
+        var (consumer, fake) = Create(); var store = new ConsumedMetadataCaptureTests.Store();
+        var first = MessageIdentityReaderTests.Record(offset: 5); first.Partition = new Partition(0);
+        var second = MessageIdentityReaderTests.Record(offset: 6); second.Partition = new Partition(0);
+        fake.Polls.Enqueue(new(first, 5, 1)); fake.Polls.Enqueue(new(second, 7, 1));
+        var budget = new ConsumedRecordBudget(10, 1000);
+        var stream = new LengthFaultStream();
+        fake.BeforeConsume = () => { if (fake.ConsumeCalls == 2) stream.Armed = true; };
+        var capture = ConsumedMetadataCapture.TryStart(VerifierHostTestOptions.ValidOptions("verify"), store, Window(), 0, "ordinary", 1, () => stream)!;
+        WindowDrainResult result = WindowConsumer.Drain(consumer, Window(), fake.Clock, 0, TimeSpan.FromMilliseconds(1000),
+            TimeSpan.FromMilliseconds(1000), budget, null, capture, CancellationToken.None);
+        AssertComplete(result);
+        Assert.Equal(new long[] { 5, 6 }, result.Records.Select(record => record.Offset));
+        var expected = new[] { MessageIdentityReader.Read(first), MessageIdentityReader.Read(second) };
+        for (int i = 0; i < expected.Length; i++)
+        {
+            Assert.Equal(expected[i].Topic, result.Records[i].Topic); Assert.Equal(expected[i].Partition, result.Records[i].Partition);
+            Assert.Equal(expected[i].Key, result.Records[i].Key); Assert.Equal(expected[i].InstanceId, result.Records[i].InstanceId);
+            Assert.Equal(expected[i].AttemptId, result.Records[i].AttemptId); Assert.Equal(expected[i].Sequence, result.Records[i].Sequence);
+            Assert.Equal(expected[i].Problems, result.Records[i].Problems); Assert.Equal(expected[i].ValueSha256, result.Records[i].ValueSha256);
+        }
+        Assert.Equal(2, budget.Records); Assert.Equal(96, budget.Bytes);
+        using var manifest = JsonDocument.Parse(store.Objects.Single(p => p.Key.EndsWith("capture.json", StringComparison.Ordinal)).Value);
+        Assert.False(manifest.RootElement.GetProperty("complete").GetBoolean());
+        Assert.Equal(2, manifest.RootElement.GetProperty("observed_rows").GetInt64());
+        Assert.Equal(1, manifest.RootElement.GetProperty("captured_rows").GetInt64());
+        Assert.Equal(1, manifest.RootElement.GetProperty("first_missing_ordinal").GetInt64());
+        Assert.Equal("write_failed", manifest.RootElement.GetProperty("gaps")[0].GetProperty("code").GetString());
+        Assert.Single(manifest.RootElement.GetProperty("chunks").EnumerateArray());
+    }
+
+    private sealed class LengthFaultStream : MemoryStream
+    {
+        private bool failed;
+        internal bool Armed { get; set; }
+        public override long Length
+        {
+            get
+            {
+                if (Armed && !failed && base.Length > 0) { failed = true; throw new IOException("synthetic length failure"); }
+                return base.Length;
+            }
+        }
+    }
+
+    [Fact]
+    public void ConsumedMetadata_CancellationFinalizesIncompleteCapture()
+    {
+        var (consumer, fake) = Create(); var options = VerifierHostTestOptions.ValidOptions("verify");
+        var store = new ConsumedMetadataCaptureTests.Store();
+        var capture = ConsumedMetadataCapture.TryStart(options, store, Window(), 0, "ordinary", 1)!;
+        Assert.Throws<OperationCanceledException>(() => WindowConsumer.Drain(consumer, Window(), fake.Clock, 0,
+            TimeSpan.FromMilliseconds(1000), TimeSpan.FromMilliseconds(1000), new(10, 1000), null, capture, new CancellationToken(true), default));
+        using var manifest = JsonDocument.Parse(store.Objects.Single(p => p.Key.EndsWith("capture.json", StringComparison.Ordinal)).Value);
+        Assert.False(manifest.RootElement.GetProperty("complete").GetBoolean());
+        Assert.Equal("interrupted", manifest.RootElement.GetProperty("gaps")[0].GetProperty("code").GetString());
+    }
+
+    [Fact]
     public void Given_CancelledWork_When_Draining_Then_CancellationPropagates()
     {
         var (consumer, fake) = Create();
@@ -344,6 +433,7 @@ public sealed class WindowConsumerTests
         internal List<TimeSpan> Timeouts { get; } = [];
         internal Exception? PollError { get; set; }
         internal Action? BeforePollError { get; set; }
+        internal Action? BeforeConsume { get; set; }
         internal Action? AfterAssign { get; set; }
         internal int AssignCalls { get; private set; }
         internal int PositionCalls { get; private set; }
@@ -364,6 +454,7 @@ public sealed class WindowConsumerTests
                     return new Offset(Position);
                 case "Consume":
                     ConsumeCalls++;
+                    BeforeConsume?.Invoke();
                     var timeout = (TimeSpan)args![0]!;
                     Timeouts.Add(timeout);
                     if (PollError is { } exception) { BeforePollError?.Invoke(); throw exception; }

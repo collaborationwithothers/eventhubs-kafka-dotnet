@@ -27,3 +27,12 @@ resource "azurerm_role_assignment" "workload" {
   principal_type                   = "ServicePrincipal"
   skip_service_principal_aad_check = true
 }
+
+resource "azurerm_role_assignment" "workflow_evidence_reader" {
+  for_each                         = toset(["ledger", "verifier", "single_action"])
+  role_definition_name             = "Storage Blob Data Reader"
+  principal_id                     = local.persistent.workflow_principal_id
+  scope                            = module.storage.containers[each.key].id
+  principal_type                   = "ServicePrincipal"
+  skip_service_principal_aad_check = true
+}

@@ -26,7 +26,20 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
             (options.B10LastVerifierCompletedUtc is not null || options.B10LastLoadgenTerminatedUtc is not null))
             return ValidateOptionsResult.Fail("B10 lifecycle timestamps are only accepted by b10-sweep-line mode.");
         if(mode==VerifierMode.SingleActionJudge)return ValidateSingleAction(options);
-        if(mode==VerifierMode.B10AbruptVerify)return ValidateAbrupt(options);
+        if (mode is VerifierMode.Verify or VerifierMode.B10AbruptVerify or VerifierMode.B10Sweep or VerifierMode.B10FinalSweep)
+        {
+            var capture = options.ConsumedMetadata;
+            if (capture?.Enabled != true || capture.MaxRowBytes is not (> 0 and <= 1048576) ||
+                capture.MaxChunkBytes is not (> 0 and <= 134217728) || capture.MaxBytes is not (> 0 and <= 17179869184) ||
+                capture.MaxRowBytes > capture.MaxChunkBytes || capture.MaxChunkBytes > capture.MaxBytes)
+                errors.Add("Verifier:ConsumedMetadata requires enabled capture and valid bounded row, chunk and total limits.");
+        }
+        if(mode==VerifierMode.B10AbruptVerify)
+        {
+            var abrupt = ValidateAbrupt(options);
+            if (abrupt.Failed) errors.AddRange(abrupt.Failures ?? []);
+            return errors.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(errors);
+        }
 
         RequireText(options.ScenarioId, "Verifier:ScenarioId", errors);
         if (mode is VerifierMode.ConsumerVerify or VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.Judge or VerifierMode.B10SweepLine or VerifierMode.B10Sweep or VerifierMode.B10FinalSweep && !(mode is VerifierMode.StartLine or VerifierMode.ConsumerVerify && ConsumerPlanValidation.IsConsumerScenario(options.ScenarioId)) && !ScenarioPhases.IsExecutableScenario(options.ScenarioId))

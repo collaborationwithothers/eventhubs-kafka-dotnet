@@ -14,6 +14,7 @@ FIXTURE=yaml.safe_load((CHART/'tests/fixture.yaml').read_text())
 LIMITS=json.loads((ROOT/'docs/operations/a01-runtime-limits.json').read_text())
 DEFAULTS=yaml.safe_load((CHART/'values.yaml').read_text())['runtime']['bounds']
 BOUNDS={k:LIMITS[k] for k in ('scenario_parsing','loadgen','verifier_shared','verifier_kafka','verifier_start_line','verifier_verify','verifier_gate','b10_sweep')}
+BOUNDS['consumed_metadata']={'Enabled':True,'MaxRowBytes':1048576,'MaxChunkBytes':134217728,'MaxBytes':17179869184}
 BOUNDS['execution']={k:LIMITS['execution'][k] for k in ('loadgen_job_seconds','verify_job_seconds','start_line_job_seconds','gate_job_seconds','termination_grace_seconds')}
 
 OPTION_PROPERTY=re.compile(r'^\s+(?:\[[^\]\n]*\]\s*)*public\s+[^\s{}()=]+\s+(\w+)\s*\{([^}\n]*)\}',re.M)
@@ -28,10 +29,12 @@ def parse_option_properties(text, header):
 def option_properties(relative, header): return parse_option_properties((ROOT/relative).read_text(),header)
 LOADGEN_PROPERTIES=option_properties('src/Parchwell.LoadGen/Run/Input/LoadGenHostOptions.cs','public sealed class LoadGenHostOptions')
 VERIFIER_PROPERTIES=option_properties('src/Parchwell.Verifier/VerifierHostOptions.cs','internal sealed class VerifierHostOptions')
+VERIFIER_CAPTURE_PROPERTIES=option_properties('src/Parchwell.Verifier/VerifyRun/Window/ConsumedMetadataCapture.cs','internal sealed class ConsumedMetadataOptions')
 VERIFIER_SCENARIO_PROPERTIES=option_properties('src/Parchwell.Verifier/VerifierHostOptions.cs','internal sealed class VerifierScenarioLoadOptions')
 # Names VerifierHostOptionsValidator requires per mode with no environment fallback (JobName and PodName fall back to PARCHWELL_*).
 VERIFIER_COMMON=('Mode','ScenarioId','VerifierCommit','MaxOutputBytes','MaxDiagnosticsPerCheck','MaxDiagnosticBytes','CleanupTimeout','ProcessLifetime','RunId','Phase','ConfigurationId','BlobServiceUri','VerifierContainer','LedgerContainer')
 VERIFIER_SCENARIO=tuple('ScenarioLoadOptions__'+k for k in ('MaxDocumentCharacters','MaxNestingDepth','MaxScalarCharacters','MaxParserEvents'))
+VERIFIER_CAPTURE=tuple('ConsumedMetadata__'+k for k in ('Enabled','MaxRowBytes','MaxChunkBytes','MaxBytes'))
 VERIFIER_REPEAT=('Repeat','RepeatPrefix','ExpectedInstanceId','VerifierClientId','NamespaceName','TokenTimeout','MetadataTimeout','WatermarkTimeout','PollSlice','BlobIoTimeout')
 VERIFIER_REQUIRED={
   'start-line':VERIFIER_COMMON+VERIFIER_REPEAT+('StartLineOutputName','BrokerInventoryOutputName','MaxPartitions','MaxInputDepth'),
@@ -42,7 +45,10 @@ VERIFIER_PHASE_KAFKA=('VerifierClientId','NamespaceName','TokenTimeout','Metadat
 VERIFIER_REQUIRED['b10-sweep-line']=VERIFIER_COMMON+VERIFIER_PHASE_KAFKA+('IoTimeout','B10LastVerifierCompletedUtc','B10LastLoadgenTerminatedUtc','B10SettleIntervalMilliseconds')
 VERIFIER_REQUIRED['b10-sweep']=VERIFIER_COMMON+VERIFIER_PHASE_KAFKA+('IoTimeout','B10SettleIntervalMilliseconds','MaxConsumedRecords','MaxConsumedBytes','MaxArtifactBytes','MaxTotalInputBytes','MaxRowBytes','MaxRowsPerArtifact','MaxInputEntries','SafetyStop')
 VERIFIER_REQUIRED['b10-final-sweep']=VERIFIER_REQUIRED['b10-sweep']+('LoadGenImage','VerifierImage')
+for _mode in ('verify','b10-abrupt-verify','b10-sweep','b10-final-sweep'):
+    VERIFIER_REQUIRED[_mode] += VERIFIER_CAPTURE
 def verifier_known(key):
+    if key.startswith('ConsumedMetadata__'): return key[len('ConsumedMetadata__'):] in VERIFIER_CAPTURE_PROPERTIES
     nested='ScenarioLoadOptions__'
     return key[len(nested):] in VERIFIER_SCENARIO_PROPERTIES if key.startswith(nested) else key in VERIFIER_PROPERTIES
 for _mode,_names in VERIFIER_REQUIRED.items():
@@ -124,6 +130,8 @@ def expected_environment(d):
       expected['LoadGen__PodUid']=('field','metadata.uid')
     else:
       expected.update({f'Verifier__{k}':('value',scalar(v)) for k,v in r['bounds']['verifier_shared'].items()})
+      if mode in ('verify','b10-abrupt-verify','b10-sweep','b10-final-sweep'):
+        expected.update({f'Verifier__ConsumedMetadata__{k}':('value',scalar(v)) for k,v in r['bounds']['consumed_metadata'].items()})
       expected.update({f'Verifier__ScenarioLoadOptions__{k}':('value',scalar(v)) for k,v in r['bounds']['scenario_parsing'].items()})
       explicit={'Mode':mode,'ScenarioId':d['scenario_id'],'ConfigurationId':d['configuration_id'],'RunId':r['run_id'],'Phase':phase,'JobName':job,'VerifierCommit':r['source_commit'],'BlobServiceUri':r['blob']['account_url'],'VerifierContainer':'verifier','LedgerContainer':'ledger'}
       expected.update({f'Verifier__{k}':('value',scalar(v)) for k,v in explicit.items()})

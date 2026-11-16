@@ -54,8 +54,10 @@ import math
 import os
 from pathlib import Path
 import platform
+import shutil
 import signal
 import subprocess
+import tempfile
 import time
 import xml.etree.ElementTree as ET
 
@@ -1410,12 +1412,162 @@ def bounded_probe(target, span, output_dir, tally_path, timeout=600, launcher=wo
     os.replace(temporary, tally)
     return launcher(target, span, output, timeout=timeout, repository=ROOT)
 
+
+def local_shard(shard, output_dir, timeout, repository=ROOT):
+    """Measure one exact physical shard locally; the receipt is never hosted acceptance."""
+    repository = Path(repository).resolve()
+    output = Path(output_dir).resolve()
+    if shard not in workflow.SHARDS:
+        raise ValueError('unknown physical shard')
+    if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0 < timeout <= 16200:
+        raise ValueError('timeout must be positive and at most 16200 seconds')
+    if output == repository or repository in output.parents or output.exists():
+        raise ValueError('output must be a nonexistent directory outside the repository')
+    ancestor = output.parent
+    while not ancestor.exists():
+        ancestor = ancestor.parent
+    inside_git = subprocess.run(['git', '-C', str(ancestor), 'rev-parse', '--is-inside-work-tree'],
+                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False)
+    if inside_git.returncode == 0 and inside_git.stdout.strip() == b'true':
+        raise ValueError('output must be outside Git worktrees')
+    commit, tree, clean = workflow.identity(repository)
+    if not clean:
+        raise ValueError('local shard requires a clean tracked checkout')
+    # The executing helpers must be those in the requested committed checkout.
+    for module in (sys.modules[__name__], workflow, workflow.projection):
+        path = Path(module.__file__).resolve()
+        try:
+            relative = path.relative_to(repository).as_posix()
+        except ValueError as error:
+            raise ValueError('helper is outside the requested checkout') from error
+        if path.read_bytes() != workflow.git(repository, 'show', f'{commit}:{relative}'):
+            raise ValueError('executing helper differs from committed source')
+    if json.loads((repository / workflow.CONFIG_PATH).read_text()) != workflow.BASE_CONFIG:
+        raise ValueError('unexpected committed C5 configuration')
+    if not shutil.which('dotnet'):
+        raise ValueError('dotnet is not on PATH')
+    sdk = subprocess.check_output(['dotnet', '--version'], cwd=repository, text=True, timeout=30).strip()
+    tools = subprocess.check_output(['dotnet', 'tool', 'list', '--local'], cwd=repository, text=True, timeout=30)
+    pinned_sdk = json.loads((repository / 'global.json').read_text())['sdk']['version']
+    pinned_tool = json.loads((repository / '.config/dotnet-tools.json').read_text())['tools']['dotnet-stryker']['version']
+    if sdk != pinned_sdk:
+        raise ValueError('selected SDK differs from pinned SDK')
+    if not any(len(line.split()) >= 2 and line.split()[0].lower() == 'dotnet-stryker'
+               and line.split()[1] == pinned_tool for line in tools.splitlines()):
+        raise ValueError('pinned dotnet-stryker tool is not listed locally')
+    before = workflow.snapshot(repository)
+    if not before:
+        raise ValueError('empty source snapshot')
+    output.mkdir(parents=True, exist_ok=False)
+    target = workflow.SHARDS[shard]
+    started = workflow.utc_now()
+    start = time.monotonic()
+    receipt = {'purpose': workflow.LOCAL_PURPOSE, 'shard': shard, 'target': target,
+               'commit': commit, 'tree': tree, 'timeout_seconds': timeout,
+               'started_at_utc': started, 'environment_overrides': dict(workflow.OVERRIDES),
+               'machine': {'platform': platform.platform(), 'machine': platform.machine(),
+                           'processor': platform.processor(), 'logical_cpus': os.cpu_count()},
+               'sdk_version': sdk, 'local_tools': tools, 'source_sha256_before': before,
+               'tracked_clean_before': clean, 'status': 'incomplete', 'error': None,
+               'child_exit_code': None, 'termination_reason': None, 'isolated': [],
+               'isolation_error': None, 'projection_valid': False, 'argv': None,
+               'observed_workers': None}
+    config_path = output / 'shard-config.json'
+    report_path = output / workflow.REPORT_PATH
+    log_path = output / 'command.log'
+    previous_termination_handler = signal.getsignal(signal.SIGTERM)
+    def interrupted(_signum, _frame):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, interrupted)
+    try:
+        with tempfile.TemporaryDirectory(prefix='c5-local-shard-') as temporary:
+            staging = Path(temporary) / 'repository'
+            staging.mkdir()
+            projected = workflow.projection.prepare(repository, staging, target, output / 'projection-src')
+            try:
+                source = (staging / (workflow.projection.VERIFIER + target)).read_bytes()
+                config = workflow.shard_config(shard, source)
+                regions = workflow.shard_static_regions(shard, source)
+                receipt['static_regions'] = [list(region) for region in regions]
+                workflow.write_json(config_path, config)
+                receipt['config_sha256_before'] = workflow.sha256(config_path)
+                private_tmp = staging / '.c5-tmp'
+                private_tmp.mkdir()
+                prefix = ['env', f'TMPDIR={private_tmp}', 'dotnet', 'stryker']
+                cwd = staging / 'tests/Parchwell.Verifier.Tests'
+                argv = [*prefix, '--config-file', str(config_path), '--output', str(output / 'stryker'),
+                        '--log-to-file', '--verbosity', 'debug']
+                receipt['cwd'] = str(cwd)
+                deadline = start + timeout
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    receipt['termination_reason'] = 'time_cap_exceeded'
+                elif shard in workflow.COHORTS:
+                    receipt['isolated'], receipt['isolation_error'] = workflow.run_cohort(
+                        shard, target, source, regions, output, prefix, cwd, deadline)
+                    if receipt['isolated']:
+                        receipt['argv'] = receipt['isolated'][0]['argv']
+                else:
+                    receipt['argv'] = argv
+                    receipt['command_started_at_utc'] = workflow.utc_now()
+                    command_start = time.monotonic()
+                    receipt['child_exit_code'], receipt['termination_reason'] = workflow.launch(
+                        argv, cwd, log_path, remaining)
+                    receipt['command_finished_at_utc'] = workflow.utc_now()
+                    receipt['command_elapsed_seconds'] = time.monotonic() - command_start
+                    if regions:
+                        if receipt['termination_reason'] is None and receipt['child_exit_code'] in (0, 2) and report_path.is_file():
+                            receipt['isolated'], receipt['isolation_error'] = workflow.run_isolated(
+                                target, source, regions, report_path, output, prefix, cwd, deadline)
+                        else:
+                            receipt['isolation_error'] = 'main invocation did not complete'
+            finally:
+                projection_path = output / 'projection.json'
+                workflow.projection.finish(staging, projected, projection_path)
+                try:
+                    workflow.projection.validate(projected, output / 'projection-src', target, before)
+                    receipt['projection_valid'] = True
+                except (OSError, ValueError, TypeError, KeyError):
+                    pass
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError, KeyboardInterrupt) as error:
+        receipt['error'] = f'{type(error).__name__}: {error}'
+    finally:
+        receipt['finished_at_utc'] = workflow.utc_now()
+        receipt['elapsed_seconds'] = time.monotonic() - start
+        try:
+            after_commit, after_tree, clean_after = workflow.identity(repository)
+            after = workflow.snapshot(repository)
+            receipt['tracked_clean_after'] = clean_after and (after_commit, after_tree) == (commit, tree)
+            receipt['source_sha256_after'] = after
+        except (OSError, subprocess.SubprocessError):
+            receipt['tracked_clean_after'] = False
+            receipt['source_sha256_after'] = None
+        for name, path in [('config_sha256_after', config_path), ('report_sha256', report_path),
+                           ('command_log_sha256', log_path), ('projection_manifest_sha256', output / 'projection.json')]:
+            receipt[name] = workflow.sha256(path) if path.is_file() else None
+        completed = (receipt['isolated'] and receipt['isolation_error'] is None if shard in workflow.COHORTS else
+                     receipt['termination_reason'] is None and receipt['child_exit_code'] in (0, 2) and receipt['report_sha256'])
+        if (completed and receipt['error'] is None and receipt['isolation_error'] is None
+                and receipt['projection_valid'] and receipt['tracked_clean_after']
+                and before == receipt['source_sha256_after']
+                and receipt.get('config_sha256_before') == receipt['config_sha256_after']):
+            receipt['status'] = 'completed_unverified'
+        try:
+            workflow.write_json(output / 'local-shard-receipt.json', receipt)
+        finally:
+            signal.signal(signal.SIGTERM, previous_termination_handler)
+    return 0 if receipt['status'] == 'completed_unverified' else 1
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
     p = commands.add_parser('profile')
     p.add_argument('--output-dir', required=True)
     p.add_argument('--timeout', required=True, type=float)
+    local = commands.add_parser('local-shard')
+    local.add_argument('--shard', required=True)
+    local.add_argument('--output-dir', required=True)
+    local.add_argument('--timeout', required=True, type=float)
     c = commands.add_parser('check')
     c.add_argument('--base')
     c.add_argument('--head', required=True)
@@ -1429,6 +1581,12 @@ def main():
     perf.add_argument('--jobs-json', required=True)
     perf.add_argument('--output-dir', required=True)
     args = parser.parse_args()
+    if args.command == 'local-shard':
+        try:
+            return local_shard(args.shard, args.output_dir, args.timeout)
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
+            print(str(error), file=sys.stderr)
+            return 1
     if args.command == 'check':
         result = check(args.base, args.head, args.qualification)
         print(json.dumps(result, sort_keys=True))

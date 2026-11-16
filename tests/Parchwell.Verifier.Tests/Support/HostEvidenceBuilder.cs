@@ -156,6 +156,7 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
     public KafkaSessionTestSupport Kafka { get; } = new();
     public VerifierHostOptions Options { get; } = new()
     {
+        ConsumedMetadata = new() { Enabled = true, MaxRowBytes = 1048576, MaxChunkBytes = 134217728, MaxBytes = 17179869184 },
         Mode = "verify", ScenarioId = "A01", ConfigurationId = "C0", RunId = "synthetic-c5", Phase = "C0", Repeat = 1,
         InstanceId = "pod-c5", ExpectedInstanceId = "synthetic-c5-c0-r1-loadgen", ClientId = "pod-c5", PodName = "pod-c5", PodUid = "pod-c5",
         JobName = "synthetic-c5-c0-r1-verify", RepeatPrefix = "synthetic-c5/C0/r1/", PhasePrefix = "synthetic-c5/C0/",
@@ -327,8 +328,16 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
             .Where(name => name.StartsWith(prefix, StringComparison.Ordinal)).Order(StringComparer.Ordinal).ToArray();
         return Task.FromResult(new BlobListing(names, 1, true));
     }
+    internal Dictionary<string, byte[]> MetadataObjects { get; } = new(StringComparer.Ordinal);
+    public async Task CreateStreamAsync(string name, Stream content, CancellationToken cancellationToken)
+    {
+        using var buffer = new MemoryStream();
+        await content.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+        await CreateAsync(name, buffer.ToArray(), cancellationToken).ConfigureAwait(false);
+    }
     public Task CreateAsync(string name, byte[] content, CancellationToken cancellationToken)
     {
+        if (name.Contains("/consumed-metadata/", StringComparison.Ordinal)) { MetadataObjects.Add(name, content); return Task.CompletedTask; }
         Creates++;
         CreateNames.Add(name);
         CreatedObjects[name] = content;

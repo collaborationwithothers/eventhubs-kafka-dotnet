@@ -181,7 +181,7 @@ internal sealed class B10AbruptVerifyHandler(IOptions<VerifierHostOptions> confi
                         ?? new HashSet<string>(StringComparer.Ordinal);
                     WindowDrainResult drained = WindowConsumer.Drain(session.Consumer, window, clock, origin, options.SafetyStop!.Value,
                         options.PollSlice!.Value, new ConsumedRecordBudget(options.MaxConsumedRecords!.Value, options.MaxConsumedBytes!.Value),
-                        keys, cancellationToken, kafkaWork.Token);
+                        keys, ConsumedMetadataCapture.TryStart(options, verifierStore, window, 0, "ordinary", options.Repeat), cancellationToken, kafkaWork.Token);
                     records = drained.Records;
                     drainedWindow = true;
                     complete = drained.Assessments.All(assessment => assessment.Disposition == AssessmentDisposition.Pass);

@@ -28,6 +28,10 @@ public sealed class VerifyInputCapacityTests
         var configuration = new ConfigurationBuilder().AddJsonFile(Path.Combine(root, "docs/operations/a01-runtime-limits.json")).Build();
         configuration.GetSection("verifier_shared").Bind(fixture.Options);
         configuration.GetSection("verifier_verify").Bind(fixture.Options);
+        fixture.Options.ConsumedMetadata!.Enabled = true;
+        fixture.Options.ConsumedMetadata.MaxRowBytes = 1;
+        fixture.Options.ConsumedMetadata.MaxChunkBytes = 1;
+        fixture.Options.ConsumedMetadata.MaxBytes = 1;
         var scenario = await fixture.Loader.LoadAsync("A01", TestContext.Current.CancellationToken);
         int attempts = checked((int)scenario.Profile.Stages.Sum(stage => (long)stage.DurationSeconds * stage.OfferedAttemptsPerSecond));
         Assert.Equal(186000, attempts);
@@ -61,6 +65,15 @@ public sealed class VerifyInputCapacityTests
         Assert.True(fixture.Inputs.Values.Sum(bytes => (long)bytes!.Length) + fixture.Note!.Length <= fixture.Options.MaxTotalInputBytes);
         Assert.All(fixture.Inputs.Values, bytes => Assert.True(bytes!.LongLength <= fixture.Options.MaxArtifactBytes));
         await AssertCompleteAsync(fixture, attempts);
+        using JsonDocument capture = JsonDocument.Parse(Assert.Single(fixture.MetadataObjects).Value);
+        JsonElement captureRoot = capture.RootElement;
+        Assert.False(captureRoot.GetProperty("complete").GetBoolean());
+        Assert.Equal(attempts, captureRoot.GetProperty("observed_rows").GetInt64());
+        Assert.Equal(0, captureRoot.GetProperty("captured_rows").GetInt64());
+        Assert.Equal(0, captureRoot.GetProperty("first_missing_ordinal").GetInt64());
+        JsonElement gap = Assert.Single(captureRoot.GetProperty("gaps").EnumerateArray());
+        Assert.Equal("row_limit", gap.GetProperty("code").GetString());
+        Assert.Equal(0, gap.GetProperty("ordinal").GetInt64());
         Assert.Equal(deployment.RootElement.GetProperty("verifier_verify").GetProperty("MaxInventoryEntries").GetInt64(), fixture.Options.MaxInventoryEntries);
     }
 

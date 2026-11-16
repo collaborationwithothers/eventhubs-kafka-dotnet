@@ -103,7 +103,7 @@ internal sealed class B10FinalSweepHandler(IOptions<VerifierHostOptions> configu
                 session.Consumer.Unassign();
                 WindowDrainResult drain = WindowConsumer.Drain(session.Consumer, window, clock, origin, options.SafetyStop!.Value,
                     options.PollSlice!.Value, new ConsumedRecordBudget(options.MaxConsumedRecords!.Value, options.MaxConsumedBytes!.Value),
-                    keys, cancellationToken, kafkaWork.Token);
+                    keys, ConsumedMetadataCapture.TryStart(options, verifierStore, window, 0, "final", null), cancellationToken, kafkaWork.Token);
                 if (drain.DrainDuration is null || drain.Assessments.Any(assessment => assessment.Disposition != AssessmentDisposition.Pass))
                     throw new InvalidOperationException("sweep_drain_incomplete");
                 records = drain.Records;
