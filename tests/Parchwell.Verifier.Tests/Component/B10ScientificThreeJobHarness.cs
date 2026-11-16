@@ -144,8 +144,9 @@ internal sealed class B10ScientificThreeJobHarness : IDisposable, IVerifierArtif
             runId +  $"-c1-r{repeat}-start-line", runId + "-start", identity, B10AbruptVerifyEvidence.Commit, 0, true, B10AbruptVerifyEvidence.Utc, B10AbruptVerifyEvidence.Utc,
             [Ref(start), Ref(inventory)], null, null));
     }
-    internal Task<int> RunAsync() => Program.RunAsync(Configuration.Select(pair => "--" + pair.Key + "=" + pair.Value).ToArray(), services =>
+    internal Task<int> RunAsync() => Program.RunAsync(NativeMonitoringTestSupport.Arguments(Configuration.Select(pair => "--" + pair.Key + "=" + pair.Value)), services =>
     {
+        NativeMonitoringTestSupport.RegisterStore(services);
         services.RemoveAll<IHostedService>();
         foreach (ServiceDescriptor item in services.Where(item => item.ServiceType.Name is "IConfigureTracerProviderBuilder" or "IConfigureMeterProviderBuilder" or "IConfigureLoggerProviderBuilder").ToArray()) services.Remove(item);
         services.RemoveAll<IVerifierArtifactStore>(); services.AddSingleton<IVerifierArtifactStore>(this);

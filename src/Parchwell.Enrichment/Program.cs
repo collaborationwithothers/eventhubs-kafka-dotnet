@@ -277,7 +277,7 @@ internal static class Program
                 options.JobName == configuration["PARCHWELL_JOB_NAME"] && options.PodUid == configuration["PARCHWELL_POD_UID"] &&
                 options.SourceCommit == configuration["PARCHWELL_SOURCE_COMMIT"], "Native monitoring identity is invalid.").ValidateOnStart();
         services.AddParchwellNativeMonitoring();
-        services.AddSingleton<IKafkaNativeMonitoringStore>(provider =>
+        services.TryAddSingleton<IKafkaNativeMonitoringStore>(provider =>
         {
             var options = provider.GetRequiredService<IOptions<KafkaNativeMonitoringOptions>>().Value;
             return new BlobNativeMonitoringStore(new BlobContainerClient(new Uri(new Uri(options.BlobEndpoint), options.BlobContainer),

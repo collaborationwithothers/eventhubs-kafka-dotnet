@@ -167,7 +167,7 @@ public sealed class SeedF04HostTests
         builder.Configuration.AddInMemoryCollection(Configuration());
     }
 
-    private static Dictionary<string, string?> Configuration() => new(StringComparer.Ordinal)
+    internal static Dictionary<string, string?> Configuration() => new(StringComparer.Ordinal)
     {
         ["SeedF04:RunId"] = "synthetic-run", ["SeedF04:SourceCommit"] = new string('a', 40),
         ["SeedF04:JobName"] = "synthetic-run-f04-seed", ["SeedF04:PodName"] = "synthetic-run-f04-seed-abcde",
@@ -175,7 +175,14 @@ public sealed class SeedF04HostTests
         ["SeedF04:ActionWindowMs"] = "330000", ["SeedF04:ProcessLifetimeSeconds"] = "390", ["SeedF04:CleanupSeconds"] = "10",
         ["SeedF04:HostCleanupSeconds"] = "10", ["SeedF04:MaxReceiptBytes"] = "65536",
         ["PARCHWELL_SOURCE_COMMIT"] = new string('a', 40), ["PARCHWELL_JOB_NAME"] = "synthetic-run-f04-seed",
-        ["PARCHWELL_POD_NAME"] = "synthetic-run-f04-seed-abcde", ["PARCHWELL_POD_UID"] = "11111111-2222-3333-4444-555555555555"
+        ["PARCHWELL_POD_NAME"] = "synthetic-run-f04-seed-abcde", ["PARCHWELL_POD_UID"] = "11111111-2222-3333-4444-555555555555",
+        ["Telemetry:ConnectionString"] = "InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://localhost/",
+        ["Telemetry:ServiceName"] = "Parchwell.Enrichment", ["Telemetry:ServiceInstanceId"] = "synthetic-run-f04-seed-abcde",
+        ["Telemetry:ScenarioId"] = "F04", ["Telemetry:RunId"] = "synthetic-run",
+        ["NativeMonitoring:BlobEndpoint"] = "https://storage.example/", ["NativeMonitoring:BlobContainer"] = "native-monitoring",
+        ["NativeMonitoring:RunId"] = "synthetic-run", ["NativeMonitoring:Phase"] = "C0", ["NativeMonitoring:ScenarioId"] = "F04",
+        ["NativeMonitoring:ConfigurationId"] = "C0", ["NativeMonitoring:JobName"] = "synthetic-run-f04-seed",
+        ["NativeMonitoring:PodUid"] = "11111111-2222-3333-4444-555555555555", ["NativeMonitoring:SourceCommit"] = new string('a', 40)
     };
 
     private static RecordingHost CreateHost(IProducer<byte[], byte[]> producer, List<string> events, string? failure = null)

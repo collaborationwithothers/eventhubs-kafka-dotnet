@@ -36,7 +36,7 @@ internal sealed class VerifierKafkaSessionFactory
                         configurations.CreateVerifierConsumer().Configuration, authenticationSession)
                     .SetKeyDeserializer(Deserializers.ByteArray)
                     .SetValueDeserializer(Deserializers.ByteArray)
-                    .SetStatisticsHandler((_, raw) => lifetime.CaptureNew(raw))
+                    .SetStatisticsHandler(StatisticsHandler(lifetime))
                     .Build();
                 built = true;
                 lifetime.MarkBuilt();
@@ -56,6 +56,9 @@ internal sealed class VerifierKafkaSessionFactory
     /// <summary>Supplies the native-client construction boundary for isolated handler tests.</summary>
     internal VerifierKafkaSessionFactory(Func<CancellationToken, VerifierKafkaSession> create) =>
         this.create = create ?? throw new ArgumentNullException(nameof(create));
+
+    internal static Action<IConsumer<byte[], byte[]>, string> StatisticsHandler(KafkaNativeMonitoringLifetime lifetime) =>
+        (_, raw) => lifetime.CaptureNew(raw);
 
     public VerifierKafkaSession Create(CancellationToken cancellationToken) => create(cancellationToken);
 }

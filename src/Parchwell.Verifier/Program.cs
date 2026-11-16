@@ -307,8 +307,10 @@ internal static partial class Program
             .Bind(configuration.GetSection(KafkaNativeMonitoringOptions.SectionName), binding => binding.ErrorOnUnknownConfiguration = true)
             .Validate(options => options.IsValid(out _) &&
                 options.RunId == configuration["Verifier:RunId"] && options.ScenarioId == configuration["Verifier:ScenarioId"] &&
-                options.ConfigurationId == configuration["Verifier:ConfigurationId"] && options.JobName == configuration["PARCHWELL_JOB_NAME"] &&
-                options.PodUid == configuration["PARCHWELL_POD_UID"] && options.SourceCommit == configuration["PARCHWELL_SOURCE_COMMIT"],
+                options.ConfigurationId == configuration["Verifier:ConfigurationId"] &&
+                options.JobName == (configuration["Verifier:JobName"] ?? configuration["PARCHWELL_JOB_NAME"]) &&
+                options.PodUid == (configuration["Verifier:PodUid"] ?? configuration["PARCHWELL_POD_UID"]) &&
+                options.SourceCommit == (configuration["PARCHWELL_SOURCE_COMMIT"] ?? configuration["Verifier:SourceCommit"]),
                 "Native monitoring identity is invalid.").ValidateOnStart();
         services.AddParchwellNativeMonitoring();
         services.AddSingleton<IKafkaNativeMonitoringStore>(provider =>

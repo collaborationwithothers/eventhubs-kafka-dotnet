@@ -4,6 +4,7 @@ using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Statistics;
 using Parchwell.Verifier.Common.Consumer;
+using Parchwell.Verifier.Common.Kafka;
 
 namespace Parchwell.Verifier.VerifyRun.Consumer.Offsets;
 
@@ -27,7 +28,7 @@ internal sealed class ConsumerCommittedOffsetReader
         : this(configurations, authentication, configured, plan, clock,
             (config, session, lifetime) => authentication.CreateConsumerBuilder<byte[], byte[]>(config, session)
                 .SetKeyDeserializer(Deserializers.ByteArray).SetValueDeserializer(Deserializers.ByteArray)
-                .SetStatisticsHandler((_, raw) => lifetime!.CaptureNew(raw)).Build(), monitoring)
+                .SetStatisticsHandler(VerifierKafkaSessionFactory.StatisticsHandler(lifetime!)).Build(), monitoring)
     {
     }
 
@@ -38,7 +39,7 @@ internal sealed class ConsumerCommittedOffsetReader
     {
     }
 
-    private ConsumerCommittedOffsetReader(KafkaConfigurationFactory configurations, KafkaAuthenticationFactory authentication,
+    internal ConsumerCommittedOffsetReader(KafkaConfigurationFactory configurations, KafkaAuthenticationFactory authentication,
         IOptions<VerifierHostOptions> configured, ConsumerVerificationPlan plan, TimeProvider clock,
         Func<ConsumerConfig,KafkaOAuthBearerSession,KafkaNativeMonitoringLifetime?,IConsumer<byte[],byte[]>> build,
         KafkaNativeMonitoringCoordinator? monitoring)

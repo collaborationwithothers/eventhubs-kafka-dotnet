@@ -229,6 +229,7 @@ public sealed class B10SweepLineHandlerTests
         string[] args = B10SweepLineOptionsTests.Configuration(fixture.Options).Select(pair => $"--{pair.Key}={pair.Value}").ToArray();
         int exit = await Program.RunAsync(args, services =>
         {
+            NativeMonitoringTestSupport.RegisterStore(services);
             services.RemoveAll<IHostedService>();
             foreach (ServiceDescriptor item in services.Where(item => item.ServiceType.Name is
                 "IConfigureTracerProviderBuilder" or "IConfigureMeterProviderBuilder" or "IConfigureLoggerProviderBuilder").ToArray()) services.Remove(item);

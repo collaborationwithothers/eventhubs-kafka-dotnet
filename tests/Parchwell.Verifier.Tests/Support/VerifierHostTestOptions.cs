@@ -192,7 +192,7 @@ internal static class VerifierHostTestOptions
             }
         }
 
-        return args.ToArray();
+        return NativeMonitoringTestSupport.Arguments(args);
     }
 
     private static void AddScenarioLoadOptions(List<string> args)

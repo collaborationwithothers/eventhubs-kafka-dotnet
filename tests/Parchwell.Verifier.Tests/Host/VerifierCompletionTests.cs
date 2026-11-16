@@ -28,6 +28,7 @@ public sealed class VerifierCompletionTests
         var cleanup = new ObservedCleanup(output);
         int exit = await Program.RunAsync(VerifierHostTestOptions.ArgumentsFor(mode, "unused"), services =>
         {
+            NativeMonitoringTestSupport.RegisterStore(services);
             services.RemoveAll<IVerifierModeHandler>();
             services.AddSingleton<IVerifierModeHandler>(new Handler(Parse(mode), _ => Task.FromResult(code)));
             services.AddSingleton<IHostedService>(_ => cleanup);
@@ -65,6 +66,7 @@ public sealed class VerifierCompletionTests
         using var output = new StringWriter(CultureInfo.InvariantCulture);
         int exit = await Program.RunAsync(VerifierHostTestOptions.ArgumentsFor("probe-gate", "unused"), services =>
         {
+            NativeMonitoringTestSupport.RegisterStore(services);
             services.RemoveAll<IVerifierModeHandler>();
             services.AddSingleton<IVerifierModeHandler>(provider => new Handler(VerifierMode.ProbeGate, _ =>
             {
@@ -86,6 +88,7 @@ public sealed class VerifierCompletionTests
         using var writer = new BrokenWriter(flush);
         int exit = await Program.RunAsync(VerifierHostTestOptions.ArgumentsFor("probe-gate", "unused"), services =>
         {
+            NativeMonitoringTestSupport.RegisterStore(services);
             services.RemoveAll<IVerifierModeHandler>();
             services.AddSingleton<IVerifierModeHandler>(new Handler(VerifierMode.ProbeGate, _ => Task.FromResult(0)));
         }, completionOutputForTests: writer);
