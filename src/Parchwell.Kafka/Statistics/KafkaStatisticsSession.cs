@@ -528,7 +528,7 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
         return valid;
     }
 
-    private static KafkaNativeMetricIdentity? ReadMonitoringIdentity(string json)
+    internal static KafkaNativeMetricIdentity? ReadMonitoringIdentity(string json)
     {
         try
         {
