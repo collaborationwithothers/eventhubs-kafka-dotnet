@@ -1566,7 +1566,10 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
                 self.assertEqual(('C03', selected, selected, 'c03-40121134428-1'), (state['scenario'], state['phase'], state['configuration'], state['run_id']))
         for selected in ('C3', 'probe'):
             with self.subTest(phase=selected):
-                self.assertEqual(2, self.main('prepare', selected))
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(2, phase.main(['prepare', selected]))
+                self.assertEqual('unsupported phase\n', stderr.getvalue())
 
     # Plan consumer-jobs T7
     def test_allow_images_for_consumer_scenarios_needs_three_digests(self):
