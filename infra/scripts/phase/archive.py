@@ -130,11 +130,13 @@ class Transfer:
             props = self.properties(self.source_account, container, name, missing_ok=True)
             if props is None: raise Gap('source_missing', 'source properties')
             size, etag = props
+            if projection_format == 'probe_v2_candidate' and expected_sha256 is None:
+                raise Gap('monitoring_incomplete', 'candidate receipt hash unavailable')
             if projection_format == 'probe_v2_candidate' and size > 16777216:
                 raise Gap('source_too_large', 'candidate size')
             self.download(self.source_account, container, name, etag, source)
             source_hash = _common.digest(source, size, deadline=self.deadline)
-            if projection_format == 'probe_v2_candidate' and (expected_sha256 is None or source_hash != expected_sha256):
+            if projection_format == 'probe_v2_candidate' and source_hash != expected_sha256:
                 raise Gap('source_hash_mismatch', 'candidate receipt hash')
             source_ref = {'container': container, 'name': name, 'etag': etag, 'bytes': size, 'sha256': source_hash}
             spec = importlib.util.spec_from_file_location('parchwell_archive_json', Path(__file__).with_name('archive_json.py'))

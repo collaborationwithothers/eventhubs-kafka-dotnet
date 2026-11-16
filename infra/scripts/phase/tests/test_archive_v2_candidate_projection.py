@@ -107,6 +107,12 @@ class CandidateProjectionTests(unittest.TestCase):
                     code, manifest, result = h.run()
                     self.assertNotEqual(0, code); self.assertFalse(result['archive_complete']); self.assertIsNone(result['completion'])
                     self.assertFalse(any(k[0] == 'archive123' and k[2].endswith('/C6/candidate.json') for k in h.cli.blobs))
+                    if fault == 'receipt_reference':
+                        self.assertTrue(any(g['code'] == 'monitoring_incomplete' and g['boundary'] == 'candidate receipt hash unavailable'
+                                            for g in result['gaps']))
+                        self.assertFalse(any(c[3] == 'download' and c[c.index('--account-name') + 1] == 'source123'
+                                             and c[c.index('--name') + 1] == prefix + 'candidate.json'
+                                             for c in h.cli.calls if '--account-name' in c and '--name' in c))
                 finally:
                     h.close()
 
