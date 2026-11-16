@@ -57,7 +57,7 @@ def window_source(run, phase, scenario, repeat, kind, end=0):
     start = [{'partition':0,'offset':0}]
     finish = [{'partition':0,'offset':end}]
     if kind == 'start':
-        job=f'{run}-{phase.lower()}-r{repeat}-start-line'
+        job=f'{run}-{phase.lower()}-r{repeat}-loadgen'
         identity.update(instance_id=job, expected_instance_id=job, client_id=job)
         return {'identity':identity,'verifier_commit':'a'*40,'topic':'document-events',
                 'partition_highs':[{'partition':0,'high':0}]}

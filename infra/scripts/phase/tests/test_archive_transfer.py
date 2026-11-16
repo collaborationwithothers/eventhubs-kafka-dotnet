@@ -151,7 +151,7 @@ class TransferTests(unittest.TestCase):
         self.blobs[('source', 'verifier', prefix + 'capture.json')] = json.dumps(manifest).encode()
         collector = archive.Collector(self.transfer, 'v1/a/')
         start_name = 'run-1/C0/r1/start-line.json'; result_name = 'run-1/C0/r1/result.json'
-        start_job = 'run-1-c0-r1-start-line'
+        start_job = 'run-1-c0-r1-loadgen'
         window_identity = {'scenario_id': 'A01', 'configuration_id': 'C0', 'run_id': 'run-1',
                            'instance_id': start_job, 'expected_instance_id': start_job, 'client_id': start_job}
         self.blobs[('source', 'verifier', start_name)] = json.dumps({'identity': window_identity, 'topic': 'document-events', 'verifier_commit': 'a' * 40, 'partition_highs': [{'partition': 0, 'high': 0}]}).encode()
@@ -165,6 +165,51 @@ class TransferTests(unittest.TestCase):
         collector.capture('verifier', prefix + 'absent/', identity, 'verify', 1, 'verify-job-pod-w0001')
         self.assertFalse(collector.captures[1]['complete'])
         self.assertEqual('capture_missing', collector.gaps[0]['code'])
+
+    def test_capture_start_line_uses_producer_identity_in_every_window(self):
+        cases = [('A01', 'a01-42-1', 'C0', 'verify', 0),
+                 ('B06', 'ledger-42-1-b06', 'C0', 'verify', 0),
+                 ('B10', 'b10-42-1', 'C1', 'b10-abrupt-verify', 0),
+                 ('B10', 'b10-42-1', 'C1', 'b10-sweep', 0),
+                 ('B10', 'b10-42-1', 'C1', 'b10-sweep', 1),
+                 ('B10', 'b10-42-1', 'C1', 'b10-final-sweep', 0)]
+        for scenario, run, phase, mode, index in cases:
+            for repeat in (1, 5):
+                with self.subTest(scenario=scenario, mode=mode, index=index, repeat=repeat):
+                    root = f'{run}/{phase}/r{repeat}/'
+                    producer = f'{run}-{phase.lower()}-r{repeat}-loadgen'
+                    identity = {'run_id': run, 'phase': phase, 'scenario_id': scenario, 'configuration_id': phase,
+                                'job_name': f'{run}-{phase.lower()}-r{repeat}-{mode}', 'pod_uid': 'uid', 'source_commit': 'a'*40}
+                    note_identity = {'run_id': run, 'scenario_id': scenario, 'configuration_id': phase,
+                                     'instance_id': producer, 'expected_instance_id': producer, 'client_id': producer}
+                    start_name = root + 'start-line.json'
+                    sources = {
+                        start_name: {'identity': note_identity, 'verifier_commit': 'a'*40, 'topic': 'document-events',
+                                     'partition_highs': [{'partition': 0, 'high': 0}]},
+                        root + 'result.json': {'identity': dict(note_identity), 'verifier_commit': 'a'*40,
+                                               'start_line': [{'partition': 0, 'offset': 0}], 'end_line': [{'partition': 0, 'offset': 3}]},
+                        root + 'b10-abrupt/nonfinal-result.json': {'kind': 'nonfinal_result', 'identity': {**identity, 'repeat': repeat},
+                                                                  'data': {'start_line': [{'partition': 0, 'offset': 0}], 'end_line': [{'partition': 0, 'offset': 3}]}},
+                        f'{run}/{phase}/sweep-line.json': {**identity, 'topic': 'document-events',
+                                                          'partition_highs': [{'partition': 0, 'high': 5}]}}
+                    collector = archive.Collector(self.transfer, 'v1/a/')
+                    collector.window_sources.update(sources)
+                    collector.objects.extend({'source': {'container': 'verifier', 'name': name}, 'state': 'verified'} for name in sources)
+                    source_repeat = None if mode == 'b10-final-sweep' else repeat
+                    capture_id = f'{mode}-job-uid-w{index:04d}'
+                    expected_start = 3 if mode == 'b10-sweep' and index == 1 else 0
+                    expected_end = 5 if mode == 'b10-final-sweep' or mode == 'b10-sweep' and index == 1 else 3
+                    self.assertEqual(([{'partition': 0, 'offset': expected_start}], [{'partition': 0, 'offset': expected_end}]),
+                                     collector.expected_capture_window(identity, mode, source_repeat, capture_id))
+                    invalid = (None, '', producer.replace('-loadgen', '-start-line'), producer + '2',
+                               f'{run}-{phase.lower()}-r{6-repeat}-loadgen', 'other-run-c0-r1-loadgen')
+                    for field in ('instance_id', 'expected_instance_id', 'client_id'):
+                        for value in invalid:
+                            with self.subTest(field=field, value=value):
+                                note_identity[field] = value
+                                with self.assertRaises(archive.InvalidArchiveConfig):
+                                    collector.expected_capture_window(identity, mode, source_repeat, capture_id)
+                        note_identity[field] = producer
 
     @patch.object(archive.shutil, 'disk_usage')
     def test_consumed_metadata_chunk_retains_ordered_headers(self, disk):
@@ -197,7 +242,7 @@ class TransferTests(unittest.TestCase):
         self.blobs[('source', 'verifier', name)] = data
         collector = archive.Collector(self.transfer, 'v1/a/')
         start_name = 'run-1/C0/r1/start-line.json'; result_name = 'run-1/C0/r1/result.json'
-        start_job = 'run-1-c0-r1-start-line'
+        start_job = 'run-1-c0-r1-loadgen'
         window_identity = {'scenario_id': 'A01', 'configuration_id': 'C0', 'run_id': 'run-1',
                            'instance_id': start_job, 'expected_instance_id': start_job, 'client_id': start_job}
         self.blobs[('source', 'verifier', start_name)] = json.dumps({'identity': window_identity, 'topic': 'document-events', 'verifier_commit': 'a' * 40, 'partition_highs': [{'partition': 0, 'high': 0}]}).encode()
@@ -266,7 +311,7 @@ class TransferTests(unittest.TestCase):
                     data = b'abc'
                     parts = name.split('/')
                     if name.endswith('/start-line.json') or name.endswith('/result.json'):
-                        start_job = f'a01-42-1-c0-{parts[2]}-start-line'
+                        start_job = f'a01-42-1-c0-{parts[2]}-loadgen'
                         window_identity = {'scenario_id': 'A01', 'configuration_id': 'C0', 'run_id': 'a01-42-1',
                                            'instance_id': start_job, 'expected_instance_id': start_job, 'client_id': start_job}
                         if name.endswith('/start-line.json'):

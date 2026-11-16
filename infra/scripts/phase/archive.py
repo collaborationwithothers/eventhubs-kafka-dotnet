@@ -1376,7 +1376,7 @@ class Collector:
                 if name.endswith('/start-line.json'):
                     match = re.fullmatch(re.escape(f'{run}/{phase}/') + r'r([1-5])/start-line\.json', name)
                     if match is None: raise InvalidArchiveConfig()
-                    job = f'{run}-{phase.lower()}-r{match.group(1)}-start-line'
+                    job = f'{run}-{phase.lower()}-r{match.group(1)}-loadgen'
                     if data.get('topic') != 'document-events' or any(source_identity.get(key) != job for key in ('instance_id', 'expected_instance_id', 'client_id')):
                         raise InvalidArchiveConfig()
             if field not in data and isinstance(data.get('data'), dict): data = data['data']
