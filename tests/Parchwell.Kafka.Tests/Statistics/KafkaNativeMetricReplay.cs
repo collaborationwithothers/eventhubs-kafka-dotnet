@@ -161,6 +161,12 @@ internal static class KafkaNativeMetricReplay
             if (records.Any(record => record.Tags.ContainsKey("otel.metric.overflow"))) throw new InvalidOperationException("SDK metric overflow.");
             int expected = expanded ? (lifetime < 20 ? 3430 : 3421) : 64;
             if (records.Length != expected) throw new InvalidOperationException($"Expected {expected} points, received {records.Length} for provider {lifetime}.");
+            foreach (string name in records.Select(record => record.Name).Distinct(StringComparer.Ordinal))
+            {
+                string encodedName = JsonSerializer.Serialize(name);
+                if (!pipeline.Handler.Requests.Any(request => request.Body.Contains(encodedName, StringComparison.Ordinal)))
+                    throw new InvalidOperationException("The Azure exporter did not serialize an SDK metric: " + name);
+            }
             points += records.Length;
             bytes += pipeline.Handler.Requests.Sum(request => (long)Encoding.UTF8.GetByteCount(request.Body));
             requests += pipeline.Handler.Requests.Count;
