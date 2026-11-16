@@ -2,7 +2,12 @@
 
 Issue: [#509](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/509), child of [#499](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499), split entry 6. Pull request name: `consumer-self-kill`. This is the contract-grade plan for that one pull request under docs/agents/factory.md "Item lifecycle" step 3.
 
-Revision 1. Base: `main` at 81d880cb901246b43043253d313a12173cd31316, the merge of #505's pull request #524. File paths and line numbers below are on that commit unless a line says otherwise.
+Revision 2. Base: `main` at 81d880cb901246b43043253d313a12173cd31316, the merge of #505's pull request #524. File paths and line numbers below are on that commit unless a line says otherwise.
+
+Changes since revision 1, from the [plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/509#issuecomment-6909175276) and [decision 6909196149](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/509#issuecomment-6909196149):
+- Check findings 1 to 3 (`apply in revision`): their exact replacement texts are applied in section 6 row K2, section 3.5 step 4 and section 10 (b).
+- Check finding 4: [decision 6909196149](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/509#issuecomment-6909196149) adopts the recommended answers. Q1: D1 to D3 are accepted by name and stay in section 7 with a link to it. Q2: the mutual exclusion of `KillCount` and `SlowMessage` in section 3.1 is now decided, not open. Section 11 reads `None`.
+- Section 1 lists [decision 6909196149](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/509#issuecomment-6909196149) as authority 5.
 
 This pull request lets the subject member of a C10 or C01 repeat end its own process with SIGKILL when `Consume` returns its Nth message, after it records a kill-intent row. It adds a kill count to the consumer processing plan, a check that the signal call works before the member registers, and the kill itself. It changes nothing for a plan without a kill count, so C03 and every existing test behave as today.
 
@@ -18,6 +23,8 @@ Authorities, in creation order (factory.md "Item lifecycle" step 3, child issues
 2. #509 [decision 6895300516](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/509#issuecomment-6895300516) adopts #499 [decision 6895299617](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6895299617) (grilling round 1). Point 5: "only the subject consumer may end its own process, once per repeat, at a point fixed in the scenario, and it sends no signal to any other process." Point 7: no consumer outcome counts when "the subject ends other than at the fixed point".
 3. #509 [decision 6895344090](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/509#issuecomment-6895344090) adopts #499 [decision 6895343227](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6895343227) (round 3). Point 1: SIGKILL, "so there is no consumer close and no final commit"; the kill point "is a count of processed messages fixed in the scenario"; "The subject writes a kill-intent row to its record immediately before the kill"; #510 chooses the counts.
 4. #509 [decision 6895538069](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/509#issuecomment-6895538069) adopts the standing #499 [decision 6895535291](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6895535291): the #347 control session coordinates; grilling questions are written with recommended answers and adopted in advance; plan approval on a fresh check with `Blocking findings: none` and section 11 reading `None`; point 4 limits.
+
+5. #509 [decision 6909196149](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/509#issuecomment-6909196149) records Hari's adoption, under point 2 of decision 6895535291, of the recommended answers to revision 1's Q1 (deployment assumptions D1, D2 and D3 accepted by name) and Q2 (`KillCount` and `SlowMessage` mutually exclusive in one plan).
 
 Round 2 ([6895328446](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6895328446)) is not adopted on #509; it does not name entry 6. This plan uses its content only through ADR-022's merged text.
 
@@ -93,7 +100,7 @@ With `KillCount` N present, the member runs #505's protocol (#505 plan section 3
 1. After the plan is validated and before the registration marker is written, call the seam with signal 0. If it returns other than 0, or throws, exit 1 with `consumer_self_kill_unavailable`: no blob is written and no Kafka client is constructed. kill(2): "If sig is 0, then no signal is sent, but existence and permission checks are still performed" (S2).
 2. Count every message `Consume` returns, from 1, as #505's step 3 does (`ConsumerProcessingWorker.cs` line 60, `++ordinal`). Messages 1 to N - 1 are processed under #505's step 4, unchanged.
 3. When `Consume` returns message N, before any processing: take the time from `TimeProvider`, then append one `kill_intent` row with that message's `partition` and `offset`, that time as `event_utc`, and the next `row_sequence`. No processing delay is waited, no `processed` row is written and no `StoreOffset` call is made for message N.
-4. Immediately after that append returns, call the seam with signal 9. Between the append and that call the member makes no `Consume`, `StoreOffset`, `Commit`, `Close`, `Dispose`, `Pause` or `Resume` call and appends no row. Confluent.Kafka runs the assigned, revoked, lost and offsets-committed handlers only inside `Consume`, `Close` or `Dispose` (S3), so no handler row can follow the `kill_intent` row.
+4. Immediately after that append returns, call the seam with signal 9. Between the append and that call the member makes no `Consume`, `StoreOffset`, `Commit`, `Close`, `Dispose`, `Pause` or `Resume` call and appends no row. Confluent.Kafka documents the assigned, revoked, lost and offsets-committed handlers as executing as a side-effect of `Consume`, `Close` or `Dispose` (S3). That they run inside no other call, so that no handler row can follow the `kill_intent` row, is inferred from that documentation.
 5. If the seam call returns (with any value), write the 3.3 line with `consumer_self_kill_failed`, invoke the existing exit seam (`Action<int>`, `Program.cs` line 225) with 1, and return 1. On this path the member makes no `Consume`, `StoreOffset`, `Commit`, `Close` or `Dispose` call, appends no row and writes no receipt.
 6. If the `kill_intent` append fails, #505's append-failure path applies unchanged (#505 plan requirement 6): no signal 9, `Close` attempted within 30000 ms, no receipt, exit 1 with `consumer_record_append_failed`.
 7. If the window ends before `Consume` returns message N, close as #505's step 6 does, including the rows of the handlers `Close` invokes, then write no receipt and exit 1 with `consumer_kill_count_not_reached`.
@@ -134,7 +141,7 @@ Unit tests use the existing harness (`tests/Parchwell.Enrichment.Tests/ConsumerP
 | Req | Test | Input | Literal expected values |
 |---|---|---|---|
 | 1 | K1 | `KillCount` 0, 1, 1000000, 1000001 | invalid, valid, valid, invalid; each invalid case: exit 1, standard error line starts `consumer_processing_failed reason=consumer_plan_invalid`, seam calls 0, store calls 0, consumer factory calls 0 |
-| 1 | K2 | `KillCount` 3 with Role `witness`; `KillCount` 3 with `SlowMessage` (Ordinal 1, DurationMs 500, Mode `inline`) | each: exit 1, `reason=consumer_plan_invalid`, seam calls 0, store calls 0, consumer factory calls 0 |
+| 1 | K2 | `KillCount` 3 with Role `witness`, JobName `run1-c1-r2-consumer-witness` and PodName `run1-c1-r2-consumer-witness-abcde`, as the existing `witness-slow` case sets them (`ConsumerProcessingWorkerTests.cs` lines 99 to 104); `KillCount` 3 with `SlowMessage` (Ordinal 1, DurationMs 500, Mode `inline`) | each: exit 1, `reason=consumer_plan_invalid`, seam calls 0, store calls 0, consumer factory calls 0 |
 | 2 | K3 | valid base plan; `Consume` returns nothing until the window ends | the first seam call is signal 0 and precedes the registration write in the call log; then K10's outcome |
 | 3 | K4 | the fake returns `(-1, 1)` for signal 0; separately it throws `EntryPointNotFoundException`; separately `DllNotFoundException` | each: exit 1, `reason=consumer_self_kill_unavailable`, seam calls exactly [0], store calls 0, consumer factory calls 0 |
 | 4, 5, 6 | K5 | `Consume` returns, in order, partition 0 offset 10, partition 1 offset 20, partition 0 offset 11, then partition 1 offset 21 if called again | rows: `assigned` 0; `processed` p0 o10 at 1; `processed` p1 o20 at 2; `kill_intent` `partition` 0, `offset` 11, at `row_sequence` 3; no row after it. `StoreOffset` calls for offsets 10 and 20 only. Seam calls exactly [0, 9]. In the call log, the `kill_intent` append is immediately followed by signal 9, and no `Consume` call follows the call that returned p0 o11. `Close` calls 0, `Dispose` calls 0, `Commit` calls 0, no receipt. Exit seam calls [1]; return 1; standard error line starts `consumer_processing_failed reason=consumer_self_kill_failed` |
@@ -155,7 +162,7 @@ Existing tests: the worker's constructor gains the seam, so `ConsumerTestHarness
 
 ## 7. Deployment assumptions
 
-No test in this pull request sends SIGKILL or runs on AKS. Each item below is listed under section 11 Q1 until Hari, or the control session under decision 6895535291 point 2, accepts it by name.
+No test in this pull request sends SIGKILL or runs on AKS. Each item below is accepted by name by [decision 6909196149](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/509#issuecomment-6909196149) point 1, under point 2 of decision 6895535291.
 
 - D1. The production seam resolves libc `kill` in the enrichment-consumer image and SIGKILL ends that process. Evidence: the enrichment and load generator images use the same base image digest (`src/Parchwell.Enrichment/Parchwell.Enrichment.csproj` line 8 and `src/Parchwell.LoadGen/Parchwell.LoadGen.csproj` line 8). The B10 scientific run 43689822806 recorded `termination` class `intended_self_kill` for its first restart producer (`results/B10/2026-11-15.json` line 792), which uses the same `DllImport` path (`B10AbruptProcess.cs` lines 47 to 56). That evidence was taken in the load generator image, on a fresh pod, under producer load, not in the enrichment image. The preflight (3.5 step 1) turns a missing entry point into a registration-free exit before any consumer is constructed.
 - D2. Kubernetes does not restart the killed subject. ADR-020 sets `backoffLimit: 0` and `restartPolicy: Never` for each Job (`docs/blueprint.md` line 548), which #507 implements. Evidence: none for the consumer Jobs, which do not exist yet. If a second subject pod ran, it would register under a new pod name, and the verifier would reject the repeat for "other than two consumer members registered" (ADR-022 "Invalid run").
@@ -193,14 +200,14 @@ Repository: `src/Parchwell.Enrichment/ConsumerProcessing/*.cs`, `Program.cs` lin
 
 (b) Where this plan is stricter than, or goes beyond, its authorities:
 - The signal 0 preflight before registration. ADR-022 does not require it. It makes a missing entry point fail before the member registers, so the repeat is invalid under "other than two consumer members registered" instead of producing a subject that cannot reach its fixed point.
-- `KillCount` and `SlowMessage` are mutually exclusive. ADR-022 does not forbid both. C10 and C01 need only the kill (blueprint section 12 rows C01 line 1159 and C10 line 1168) and C03 only the slow message, and with both the paused buffer would make "the Nth message `Consume` returns" depend on pause timing. Listed as Q2 because it constrains #510.
+- `KillCount` and `SlowMessage` are mutually exclusive. ADR-022 does not forbid both. C10 and C01 use self-termination as their crash mechanism (#499 [decision 6894534441](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894534441) point 2; blueprint section 12 rows C01 line 1159 and C10 line 1168) and C03 tests a slow message (row C03 line 1161); that none of them needs both is inferred from those sources, and with both the paused buffer would make "the Nth message `Consume` returns" depend on pause timing. It constrains #510; [decision 6909196149](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/509#issuecomment-6909196149) adopts it (revision 1's Q2).
 - `KillCount` on the witness is rejected, matching `SlowMessage` (`ConsumerProcessingPlan.cs` line 25) and ADR-022 "only the subject".
 - `consumer_kill_count_not_reached` and `consumer_self_kill_failed` exits. ADR-022 leaves these paths to the verifier ("the subject ended other than at its kill-intent row"); the names make the cause visible in pod diagnostics without changing the record format.
 
 (c) Tests or checks that depend on code, data or behaviour neither on `main` nor in this pull request:
 - The verifier's rule 8 (#506, approved, not merged): K5's record shape is built to it; no test here runs the verifier.
 - The production plan source with `KillCount` (#510): no test here needs it.
-- D1 to D3 in section 7.
+- D1 to D3 in section 7, accepted by name by decision 6909196149.
 
 ## 10a. Deferred work
 
@@ -209,10 +216,7 @@ Repository: `src/Parchwell.Enrichment/ConsumerProcessing/*.cs`, `Program.cs` lin
 
 ## 11. Open questions for Hari
 
-Each carries a recommended answer, under point 2 of [decision 6895535291](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6895535291).
-
-- Q1. Accept deployment assumptions D1, D2 and D3 (section 7) by name. Recommended: accept. D1 rests on live evidence from the same base image and `DllImport` path, and the preflight catches its failure before registration. D2 is caught by an existing invalid-run condition. D3 has no known trigger after a passing preflight, and its only cost is a pod exit code instead of a signal.
-- Q2. Make `KillCount` and `SlowMessage` mutually exclusive in one plan, so #510's C10 and C01 configurations cannot also carry a slow message. Recommended: yes, for the reason in section 10 (b). The alternative is to define how the kill ordinal counts messages buffered during a pause, which no inventory item needs.
+None. Revision 1's Q1 and Q2 are answered by [decision 6909196149](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/509#issuecomment-6909196149).
 
 ## 12. Stop rule
 
