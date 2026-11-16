@@ -102,17 +102,22 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
     /// closed and is refused because capture has closed records capture loss.
     /// </remarks>
     /// <param name="json">The original librdkafka statistics JSON.</param>
-    public void Capture(string json)
+    public void Capture(string json) => TryCapture(json);
+
+    /// <summary>Attempts existing bridge admission without changing its evidence rules.</summary>
+    /// <param name="json">The original librdkafka statistics JSON.</param>
+    /// <returns>True when the report was queued; false when admission rejected or ignored it.</returns>
+    public bool TryCapture(string json)
     {
         if (Volatile.Read(ref _admissionClosed))
         {
-            return;
+            return false;
         }
 
         if (!_completionState.TryBeginCapture())
         {
             AddDiagnostic("late_capture");
-            return;
+            return false;
         }
 
         bool entered = false;
@@ -125,26 +130,28 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
             {
                 _completionState.TryRecordCaptureLoss();
                 AddDiagnostic("capture_contention");
-                return;
+                return false;
             }
 
             if (!_captureOpen || _disposed)
             {
                 _completionState.TryRecordCaptureLoss();
                 AddDiagnostic("late_capture");
-                return;
+                return false;
             }
 
             if (json is null || json.Length > _options.MaxSnapshotCharacters)
             {
                 AddDiagnostic("oversized_snapshot");
-                return;
+                return false;
             }
 
             if (!_queue.Writer.TryWrite(new CapturedReport(json, receivedAt, receiptTimestamp)))
             {
                 AddDiagnostic("capture_queue_overflow");
+                return false;
             }
+            return true;
         }
         finally
         {
