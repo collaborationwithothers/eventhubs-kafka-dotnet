@@ -1,5 +1,5 @@
 # State: #505 Consumer worker: processing mode in Parchwell.Enrichment (#499 entry 2)
-Covers: comment 6902733333 created 2026-11-15T22:53:25Z; read at 2026-11-15T23:03:36Z
+Covers: comment 6908194622 created 2026-11-16T05:28:17Z; read at 2026-11-16T05:28:46Z
 Parent items: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499
 Item plan: none; the parent holds a proposal, not an item plan.
 Implementing tool: Codex. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894614673 and https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6895573282
@@ -15,6 +15,7 @@ Decisions in force:
 - Adopt the verifier plan as record-format owner and phases C0 and C1 with configuration equal to phase. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/505#issuecomment-6900154637
 - Approve worker revision 4 and its two plan-text corrections; apply the check's four implementation P2s. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/505#issuecomment-6900161937
 - Amend sections 3.5 and 12 to use verifier revision 5 at a4c5ea1bec8630359a31d9b096416b2204f85dc7 for the record format and its stop comparison; all other requirements and implementation corrections remain. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/505#issuecomment-6902733333
+- Amend sections 2 and 12 to permit the qualification JSON solely to renew the three normal package-lock hashes changed by this worker, retaining measured hashes, timings, budgets and all other requirements; apply the prepared patch and rerun CI. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/505#issuecomment-6908194622
 Open questions:
 - None.
-Next action: Complete implementation verification and the required reviews; Hari merges the approved package-reference additions. The production settings source and live smoke remain with issue 508.
+Next action: Review the approved qualification renewal and obtain passing final-head CI and hosted reviews. The control session starts the required fresh Claude review; Hari merges the approved package-reference additions. The production settings source and live smoke remain with issue 508.
