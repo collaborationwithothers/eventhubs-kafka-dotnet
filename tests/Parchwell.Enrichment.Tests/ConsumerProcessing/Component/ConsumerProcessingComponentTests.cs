@@ -210,7 +210,8 @@ public sealed class ConsumerProcessingComponentTests
                 var proxy = DispatchProxy.Create<IConsumer<byte[], byte[]>, CloseObservingConsumer>();
                 ((CloseObservingConsumer)(object)proxy).Initialize(consumer, store.BeginClose);
                 return proxy;
-            }, TimeProvider.System, code => throw new InvalidOperationException($"Unexpected watchdog exit {code}"), errors);
+            }, TimeProvider.System, code => throw new InvalidOperationException($"Unexpected watchdog exit {code}"),
+            signal => throw new InvalidOperationException($"Unexpected signal {signal}"), errors);
         var execution = Task.Run(() => worker.ExecuteAsync(cancellationToken), cancellationToken);
         return new Member(options, store, readiness, execution, errors);
     }

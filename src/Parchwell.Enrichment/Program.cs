@@ -223,11 +223,12 @@ internal static class Program
                 .SetOffsetsCommittedHandler(handlers.OffsetsCommitted).Build();
         });
         builder.Services.TryAddSingleton<Action<int>>(_ => Environment.Exit);
+        builder.Services.TryAddSingleton<ConsumerSignalSender>(_ => ConsumerSelfSignal.Send);
         builder.Services.AddSingleton(services => new ConsumerProcessingWorker(
             services.GetRequiredService<IOptions<ConsumerProcessingOptions>>(), services.GetService<IConsumerProcessingPlanSource>(),
             services.GetRequiredService<Func<ConsumerConfig>>(), services.GetRequiredService<Func<IConsumerRecordStore>>(),
             services.GetRequiredService<ConsumerProcessingConsumerFactory>(), services.GetRequiredService<TimeProvider>(),
-            services.GetRequiredService<Action<int>>()));
+            services.GetRequiredService<Action<int>>(), services.GetRequiredService<ConsumerSignalSender>()));
         return builder.Build();
     }
 

@@ -6,7 +6,7 @@ namespace Parchwell.Enrichment.ConsumerProcessing;
 internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOptions> options,
     IConsumerProcessingPlanSource? planSource, Func<ConsumerConfig> baselineFactory,
     Func<IConsumerRecordStore> storeFactory, ConsumerProcessingConsumerFactory consumerFactory,
-    TimeProvider clock, Action<int> exitProcess, TextWriter? error = null)
+    TimeProvider clock, Action<int> exitProcess, ConsumerSignalSender signal, TextWriter? error = null)
 {
     public async Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
@@ -18,6 +18,7 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
         string? failure = null;
         bool appendFailed = false;
         bool watchdogFired = false;
+        bool killFailed = false;
         bool recordOpen = true;
         long rows = 0;
         long processed = 0;
@@ -34,6 +35,11 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
                 ?? throw new InvalidOperationException("consumer_plan_invalid");
             configuration = baselineFactory();
             plan.ApplyAndValidate(identity, configuration);
+            if (plan.KillCount is not null)
+            {
+                failure = "consumer_self_kill_unavailable";
+                if (signal(0).ReturnValue != 0) throw new InvalidOperationException(failure);
+            }
             failure = "consumer_registration_failed";
             store = storeFactory();
             await store.RegisterAsync(ConsumerRecordCodec.Registration(identity, plan, configuration, clock.GetUtcNow()), cancellationToken).ConfigureAwait(false);
@@ -59,7 +65,7 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
                 if (message is null) continue;
                 await ProcessAsync(message, ++ordinal).ConfigureAwait(false);
             }
-            failure = null;
+            failure = plan.KillCount is null ? null : "consumer_kill_count_not_reached";
         }
         catch (Exception exception)
         {
@@ -69,7 +75,7 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
         }
         finally
         {
-            if (consumer is not null)
+            if (consumer is not null && !killFailed)
             {
                 try
                 {
@@ -97,6 +103,7 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
         if (watchdogFired) return 124;
         if (failure is null) return 0;
         await (error ?? Console.Error).WriteLineAsync($"consumer_processing_failed reason={failure} scenario_id={Display(identity?.ScenarioId)} run_id={Display(identity?.RunId)} role={Display(identity?.Role)}").ConfigureAwait(false);
+        if (killFailed) exitProcess(1);
         return 1;
 
         void ThrowIfAppendFailed()
@@ -140,10 +147,25 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
             catch (ConsumeException exception) when (!exception.Error.IsFatal && !appendFailed) { return null; }
         }
 
+        void SelfKill(ConsumeResult<byte[], byte[]> message)
+        {
+            Append(() => ConsumerRecordCodec.KillIntent(identity!.PodName, rows, message.Partition.Value, message.Offset.Value, clock.GetUtcNow()));
+            ThrowIfAppendFailed();
+            killFailed = true;
+            failure = "consumer_self_kill_failed";
+            signal(9);
+            throw new InvalidOperationException(failure);
+        }
+
         async Task ProcessAsync(ConsumeResult<byte[], byte[]> message, long messageOrdinal)
         {
             ThrowIfAppendFailed();
-            bool slow = plan!.SlowMessage?.Ordinal == messageOrdinal;
+            if (plan!.KillCount == messageOrdinal)
+            {
+                SelfKill(message);
+                return;
+            }
+            bool slow = plan.SlowMessage?.Ordinal == messageOrdinal;
             DateTimeOffset started = clock.GetUtcNow();
             int duration = slow ? plan.SlowMessage!.DurationMs : plan.ProcessingDelayMs;
             TopicPartition[]? paused = null;

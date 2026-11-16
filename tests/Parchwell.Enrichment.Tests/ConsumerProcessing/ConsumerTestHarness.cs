@@ -25,6 +25,8 @@ internal sealed class ConsumerTestHarness : IDisposable
     internal int StoreFactories { get; private set; }
     internal int ConsumerFactories { get; private set; }
     internal List<int> ExitCodes { get; } = [];
+    internal List<int> Signals { get; } = [];
+    internal Func<int, (int ReturnValue, int Errno)>? Signal { get; set; }
     internal bool NoPlanSource { get; set; }
     internal Action? DuringTimerWait { get; set; }
 
@@ -41,7 +43,7 @@ internal sealed class ConsumerTestHarness : IDisposable
             NoPlanSource ? null : new PlanSource(Plan), CreateBaseline,
             () => { StoreFactories++; return Store; },
             CreateConsumer,
-            Clock, code => ExitCodes.Add(code), Error);
+            Clock, code => ExitCodes.Add(code), SendSignal, Error);
         Task<int> execution = Task.Run(() => worker.ExecuteAsync(CancellationToken.None));
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         while (!execution.IsCompleted)
@@ -52,6 +54,12 @@ internal sealed class ConsumerTestHarness : IDisposable
             Clock.AdvanceProcessingTimer();
         }
         return await execution;
+    }
+    internal (int ReturnValue, int Errno) SendSignal(int signal)
+    {
+        Signals.Add(signal);
+        Calls.Add("signal:" + signal.ToString(CultureInfo.InvariantCulture));
+        return Signal?.Invoke(signal) ?? (0, 0);
     }
     internal IConsumer<byte[], byte[]> CreateConsumer(ConsumerConfig configuration, ConsumerProcessingHandlers handlers)
     { Calls.Add("construct"); ConsumerFactories++; Configuration = configuration; Handlers = handlers; return Consumer; }
