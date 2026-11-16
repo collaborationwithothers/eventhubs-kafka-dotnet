@@ -142,15 +142,26 @@ def fixture(wall=20):
 
 class PerformanceTests(unittest.TestCase):
     def test_boundary(self):
-        for wall, status in [(1799, 'met'), (1800, 'met'), (1801, 'missed')]:
+        for wall, status in [(1799, 'met'), (1800, 'met'), (1801, 'met'), (2999, 'met'), (3000, 'met'), (3001, 'missed')]:
             with self.subTest(wall=wall):
-                self.assertEqual(p.performance_report(*fixture(wall))['status'], status)
+                result = p.performance_report(*fixture(wall))
+                self.assertEqual(result['budget_seconds'], 3000)
+                self.assertEqual(result['status'], status)
+
+    def test_incomplete_at_and_over_budget(self):
+        for wall in (3000, 3001):
+            with self.subTest(wall=wall):
+                run, jobs, expected = fixture(wall)
+                jobs['jobs'][0]['conclusion'] = 'failure'
+                result = p.performance_report(run, jobs, expected)
+                self.assertEqual(result['budget_seconds'], 3000)
+                self.assertEqual(result['status'], 'incomplete')
 
     def test_compute_peak_queue_and_aggregation(self):
         run, jobs, expected = fixture(1810)
         jobs['jobs'][1]['completed_at'] = stamp(1790)
         result = p.performance_report(run, jobs, expected)
-        self.assertEqual(result['status'], 'missed')
+        self.assertEqual(result['status'], 'met')
         self.assertEqual(result['workflow_elapsed_seconds'], 1810)
         self.assertEqual(result['mutation_job_seconds'], 1795)
         self.assertEqual(result['peak_mutation_jobs'], 2)
@@ -433,6 +444,31 @@ class QualificationTests(unittest.TestCase):
                 item = self.config['targets']['a.cs']['shards']['a-p1']
                 item.update(main_work_seconds=2 * (seconds - 100), isolated_seconds=0, estimated_seconds=seconds)
                 self.assertEqual(seconds > 1800, 'shard_over_budget' in self.errors())
+
+    def test_supported_budget_shape(self):
+        for version in (1, 2):
+            if version == 2:
+                self.migrate_v2()
+            for budget in (1799, 1800, 1801, 2699, 2700, 2701, True, False, None, '', '1800', 1800.0):
+                with self.subTest(version=version, budget=budget):
+                    self.config['budget_seconds'] = budget
+                    if type(budget) is int and budget in (1800, 2700):
+                        runtime.shape(self.config)
+                    else:
+                        with self.assertRaises(ValueError):
+                            runtime.shape(self.config)
+
+    def test_opt_in_shard_budget_boundary(self):
+        for version in (1, 2):
+            if version == 2:
+                self.migrate_v2()
+            self.config['budget_seconds'] = 2700
+            for seconds in (2699, 2700, 2701):
+                with self.subTest(version=version, seconds=seconds):
+                    item = self.config['targets']['a.cs']['shards']['a-p1']
+                    item.update(main_work_seconds=2 * (seconds - 100), isolated_seconds=0, estimated_seconds=seconds)
+                    expected = {'shard_over_budget'} if seconds > 2700 else set()
+                    self.assertEqual(expected, self.errors())
 
     def test_only_measured_static_owner_has_budget_exception(self):
         path = 'VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs'
