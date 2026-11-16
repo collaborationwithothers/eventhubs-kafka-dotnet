@@ -23,7 +23,7 @@ internal sealed class ProbeV2SessionFactory
         producer = (settings, capture, cancellation) =>
         {
             KafkaNativeMonitoringLifetime? lifetime = monitoring?.Begin(new(options.ScenarioId, options.RunId, stage.Role, settings["client.id"]));
-            Action<string> statistics = NativeMonitoringCallback.Create(capture.TryStatistics, monitoring, lifetime);
+            Action<string> statistics = NativeMonitoringCallback.CreateSelective(capture.TryStatistics, monitoring, lifetime, capture.MaxStatisticsReportBytes);
             try
             {
             if (options.NativeAuthentication.Length != 0)
@@ -52,7 +52,7 @@ internal sealed class ProbeV2SessionFactory
         consumer = (settings, capture, cancellation) =>
         {
             KafkaNativeMonitoringLifetime? lifetime = monitoring?.Begin(new(options.ScenarioId, options.RunId, stage.Role, settings["client.id"]));
-            Action<string> statistics = NativeMonitoringCallback.Create(capture.TryStatistics, monitoring, lifetime);
+            Action<string> statistics = NativeMonitoringCallback.CreateSelective(capture.TryStatistics, monitoring, lifetime, capture.MaxStatisticsReportBytes);
             try
             {
             if (options.NativeAuthentication.Length != 0) throw new InvalidOperationException("v2_native_consumer");

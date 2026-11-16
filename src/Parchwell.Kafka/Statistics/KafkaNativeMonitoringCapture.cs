@@ -204,18 +204,23 @@ public sealed class KafkaNativeMonitoringCoordinator
         {
             if (reference.ReportOrdinal <= 0 || reference.ByteLength != bytes.Length || reference.Sha256 != hash
                 || string.IsNullOrWhiteSpace(reference.Source) || !reference.Source.Contains('/') || reference.Source.Contains("://", StringComparison.Ordinal))
-            { Gap(client, "invalid_reference"); return; }
-            client.Sources.Add(new("existing_capture", reference.Source, reference.ByteLength, reference.Sha256, reference.ReportOrdinal, 1));
+            { Gap(client, "invalid_reference"); }
+            else client.Sources.Add(new("existing_capture", reference.Source, reference.ByteLength, reference.Sha256, reference.ReportOrdinal, 1, work.Ordinal));
         }
         else
         {
             byte[] row = JsonSerializer.SerializeToUtf8Bytes(new RawRow(client.Ordinal, work.Ordinal, work.Raw), JsonOptions);
-            if (_rawBytes + row.Length + 1 > MaxRawBytes) { Gap(client, "raw_limit"); return; }
-            if (client.NewRows == 0) client.FirstNewOrdinal = work.Ordinal;
-            client.Raw.Write(row);
-            client.Raw.WriteByte((byte)'\n');
-            _rawBytes += row.Length + 1;
-            client.NewRows++;
+            if (_rawBytes + row.Length + 1 > MaxRawBytes) Gap(client, "raw_limit");
+            else
+            {
+                if (client.Chunks.Count == 0 || client.Chunks[^1].FirstOrdinal + client.Chunks[^1].RowCount != work.Ordinal)
+                    client.Chunks.Add(new RawChunk(work.Ordinal));
+                RawChunk chunk = client.Chunks[^1];
+                chunk.Raw.Write(row);
+                chunk.Raw.WriteByte((byte)'\n');
+                _rawBytes += row.Length + 1;
+                chunk.RowCount++;
+            }
         }
         var projection = KafkaNativeMetricParser.Parse(work.Raw);
         if (!work.Bridge)
@@ -291,14 +296,16 @@ public sealed class KafkaNativeMonitoringCoordinator
             Gap(client, "build_unresolved");
         }
         string prefix = $"{_identity.RunId}/{_identity.Phase}/{_identity.JobName}/{_identity.PodUid}/native-monitoring";
-        foreach (var client in _clients.Where(c => c.NewRows > 0))
+        foreach (var client in _clients)
+        foreach (RawChunk chunk in client.Chunks)
         {
-            byte[] raw = client.Raw.ToArray();
-            string path = $"{prefix}/raw-{client.Ordinal:D6}.jsonl";
+            byte[] raw = chunk.Raw.ToArray();
+            string path = $"{prefix}/raw-{client.Ordinal:D6}-{chunk.FirstOrdinal:D10}.jsonl";
             await _store.CreateAsync(path, raw, cancellationToken).ConfigureAwait(false);
             string hash = Convert.ToHexStringLower(SHA256.HashData(raw));
-            client.Sources.Add(new("raw_chunk", path, raw.Length, hash, client.FirstNewOrdinal, client.NewRows));
+            client.Sources.Add(new("raw_chunk", path, raw.Length, hash, chunk.FirstOrdinal, chunk.RowCount, chunk.FirstOrdinal));
         }
+        foreach (var client in _clients) client.Sources.Sort((left, right) => left.CaptureOrdinal.CompareTo(right.CaptureOrdinal));
         var clients = _clients.Select(c => new ClientIndex(c.Ordinal, c.Identity.Role.ToString(), c.Identity.ClientId, c.Name,
             c.BuildStatus, c.Count, c.Sources, c.Diagnostics.Order(StringComparer.Ordinal).ToArray(), !c.Gap && c.Closed && c.CompleteFlag, c.ExportTailStatus)).ToArray();
         byte[] index = JsonSerializer.SerializeToUtf8Bytes(new Index(1, _identity, clients, !_gap && !_truncated && clients.Length > 0 && clients.All(c => c.CaptureComplete), _truncated), JsonOptions);
@@ -306,10 +313,16 @@ public sealed class KafkaNativeMonitoringCoordinator
         await _store.CreateAsync($"{prefix}/index.json", index, cancellationToken).ConfigureAwait(false);
     }
 
-    internal sealed record Source(string Kind, string SourceName, long ByteLength, string Sha256, long ReportOrdinal, long RowCount)
+    internal sealed record Source(string Kind, string SourceName, long ByteLength, string Sha256, long ReportOrdinal, long RowCount, long CaptureOrdinal)
     {
         [System.Text.Json.Serialization.JsonPropertyName("source")]
         public string SourceName { get; init; } = SourceName;
+    }
+    internal sealed class RawChunk(long firstOrdinal)
+    {
+        internal long FirstOrdinal { get; } = firstOrdinal;
+        internal long RowCount { get; set; }
+        internal MemoryStream Raw { get; } = new();
     }
     private sealed record Work(KafkaNativeMonitoringLifetime Client, string Raw, KafkaNativeRawReference? Reference, long Ordinal, bool Bridge, long Receipt);
     private sealed record RawRow(int ClientOrdinal, long ReportOrdinal, string Raw);
@@ -328,9 +341,7 @@ public sealed class KafkaNativeMonitoringLifetime
     internal KafkaNativeMetricState State { get; }
     internal long Start { get; }
     internal long Count { get; set; }
-    internal long NewRows { get; set; }
-    internal long FirstNewOrdinal { get; set; }
-    internal MemoryStream Raw { get; } = new();
+    internal List<KafkaNativeMonitoringCoordinator.RawChunk> Chunks { get; } = [];
     internal string? Name { get; set; }
     internal long? LastTimestamp { get; set; }
     internal long? Creation { get; set; }

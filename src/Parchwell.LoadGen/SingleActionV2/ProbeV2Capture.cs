@@ -32,6 +32,7 @@ internal sealed class ProbeV2Capture(ProbeV2Limits limits, TimeProvider clock, l
     internal bool Limit { get { lock (gate) return limit; } }
     internal bool HasErrors { get { lock (gate) return errors.Count != 0; } }
     internal bool CaptureAuthenticationMetadata => captureAuthenticationMetadata;
+    internal int MaxStatisticsReportBytes => limits.MaxStatisticsReportBytes;
     internal KafkaOAuthBearerSession? AuthenticationSession { get { lock (gate) return authenticationSession; } }
 
     internal void AttachAuthentication(KafkaOAuthBearerSession session)

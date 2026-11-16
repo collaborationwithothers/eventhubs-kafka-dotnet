@@ -35,11 +35,11 @@ public sealed class KafkaNativeMonitoringCaptureTests
     {
         var store = new MemoryStore();
         using var metrics = new KafkaStatisticsMetrics();
-        var coordinator = new KafkaNativeMonitoringCoordinator(store, metrics, TimeProvider.System,
+        var coordinator = new KafkaNativeMonitoringCoordinator(store, metrics, new FixedTimeProvider(),
             new("run", "phase", "scenario", "configuration", "job", "pod", "commit"));
         var lifetime = coordinator.CreateLifetime(new("scenario", "run", KafkaClientRole.LoadGenProducer, "client"));
         lifetime.MarkBuilt();
-        lifetime.CaptureExisting("{}", new("evidence/blob", 1, 2, "wrong"));
+        lifetime.CaptureExisting("{\"name\":\"native\",\"client_id\":\"client\",\"type\":\"producer\",\"ts\":11,\"time\":1,\"age\":1}", new("evidence/blob", 1, 2, "wrong"));
         lifetime.Complete(true, "unknown");
         await coordinator.CompleteAsync(CancellationToken.None);
         Assert.Single(store.Objects);
@@ -144,6 +144,58 @@ public sealed class KafkaNativeMonitoringCaptureTests
         Assert.Equal(hash, source.GetProperty("sha256").GetString());
         Assert.Equal(bytes.LongLength, source.GetProperty("byte_length").GetInt64());
         Assert.Equal(1, source.GetProperty("report_ordinal").GetInt64());
+    }
+
+
+    [Fact]
+    public async Task Given_MixedCapture_When_SourceSequenceDiffers_Then_ChunksFollowNativeOrdinals()
+    {
+        static string Raw(int ts) => $$"""{"name":"native","client_id":"client","type":"producer","ts":{{ts}},"time":1,"age":{{ts - 10}}}""";
+        var store = new MemoryStore();
+        using var metrics = new KafkaStatisticsMetrics();
+        var coordinator = new KafkaNativeMonitoringCoordinator(store, metrics, new FixedTimeProvider(),
+            new("run", "phase", "scenario", "configuration", "job", "pod", "commit"));
+        var lifetime = coordinator.CreateLifetime(new("scenario", "run", KafkaClientRole.LoadGenProducer, "client"));
+        lifetime.MarkBuilt();
+        lifetime.CaptureNew(Raw(11));
+        lifetime.CaptureNew(Raw(12));
+        string selected = Raw(13);
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes(selected);
+        lifetime.CaptureExisting(selected, new("ledger/run/capture.json", 7, bytes.Length,
+            Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes))));
+        lifetime.CaptureNew(Raw(14));
+        lifetime.Complete(true, "unknown");
+        await coordinator.CompleteAsync(CancellationToken.None);
+        using var index = JsonDocument.Parse(store.Objects["run/phase/job/pod/native-monitoring/index.json"]);
+        var sources = index.RootElement.GetProperty("clients")[0].GetProperty("raw_sources").EnumerateArray().ToArray();
+        Assert.True(index.RootElement.GetProperty("capture_complete").GetBoolean());
+        Assert.Equal(new long[] { 1, 3, 4 }, sources.Select(source => source.GetProperty("capture_ordinal").GetInt64()));
+        Assert.Equal(new long[] { 1, 7, 4 }, sources.Select(source => source.GetProperty("report_ordinal").GetInt64()));
+        Assert.Equal(new long[] { 2, 1, 1 }, sources.Select(source => source.GetProperty("row_count").GetInt64()));
+        Assert.Equal(2, store.Objects.Keys.Count(key => key.Contains("/raw-", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public async Task Given_InvalidReferenceBetweenPrivateRows_When_Published_Then_IncompleteIndexRetainsBothChunks()
+    {
+        const string raw = "{\"name\":\"native\",\"client_id\":\"client\",\"type\":\"producer\",\"ts\":11,\"time\":1,\"age\":1}";
+        var store = new MemoryStore();
+        using var metrics = new KafkaStatisticsMetrics();
+        var coordinator = new KafkaNativeMonitoringCoordinator(store, metrics, new FixedTimeProvider(),
+            new("run", "phase", "scenario", "configuration", "job", "pod", "commit"));
+        var lifetime = coordinator.CreateLifetime(new("scenario", "run", KafkaClientRole.LoadGenProducer, "client"));
+        lifetime.MarkBuilt();
+        lifetime.CaptureNew(raw);
+        lifetime.CaptureExisting(raw, new("ledger/run/capture.json", 7, 1, "invalid"));
+        lifetime.CaptureNew(raw);
+        lifetime.Complete(true, "unknown");
+        await coordinator.CompleteAsync(CancellationToken.None);
+        using var index = JsonDocument.Parse(store.Objects["run/phase/job/pod/native-monitoring/index.json"]);
+        var client = index.RootElement.GetProperty("clients")[0];
+        Assert.False(client.GetProperty("capture_complete").GetBoolean());
+        Assert.Equal(3, client.GetProperty("report_count").GetInt64());
+        Assert.Equal(new long[] { 1, 3 }, client.GetProperty("raw_sources").EnumerateArray().Select(source => source.GetProperty("capture_ordinal").GetInt64()));
+        Assert.Contains(client.GetProperty("diagnostics").EnumerateArray(), item => item.GetString() == "invalid_reference");
     }
 
     private sealed class FixedTimeProvider : TimeProvider
