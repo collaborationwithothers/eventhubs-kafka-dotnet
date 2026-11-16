@@ -58,6 +58,25 @@ public sealed class NativeMonitoringHostTests
     }
 
     [Fact]
+    public async Task Given_DiagnosticPublication_When_RebindingAfterDrain_Then_IndexReferencesPublishedSource()
+    {
+        var services = new ServiceCollection();
+        NativeMonitoringFixture store = Register(services);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        NativeMonitoringHost host = provider.GetRequiredService<NativeMonitoringHost>();
+        KafkaNativeMonitoringLifetime lifetime = host.Begin(Identity("client-1"))!;
+        lifetime.MarkBuilt();
+        host.Capture(lifetime, "{}", 1);
+        await host.DrainAsync(TestContext.Current.CancellationToken);
+        host.RebindSource("ledger/run/diagnostics/statistics.jsonl");
+        await host.CompleteAsync(true, TestContext.Current.CancellationToken);
+        using JsonDocument index = Index(store);
+        JsonElement source = index.RootElement.GetProperty("clients")[0].GetProperty("raw_sources")[0];
+        Assert.Equal("ledger/run/diagnostics/statistics.jsonl", source.GetProperty("source").GetString());
+        Assert.Equal(1, source.GetProperty("report_ordinal").GetInt32());
+    }
+
+    [Fact]
     public async Task ExpiredCleanupBudget_DoesNotPublishAnIndex()
     {
         var services = new ServiceCollection();

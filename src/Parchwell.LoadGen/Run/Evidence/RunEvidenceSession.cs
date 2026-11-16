@@ -42,6 +42,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
     private readonly Func<Task>? _beforeWriterDrain;
     private readonly ConcurrentQueue<string> _diagnostics = new();
     private readonly Task _writerTask;
+    private Action<KafkaStatisticsReport, long>? _admittedObserver;
     private long _receiptSequence;
     private int _diagnosticCount;
     private int _diagnosticsTruncated;
@@ -95,6 +96,8 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
     }
 
     internal Task WriterTask => _writerTask;
+
+    internal void AttachAdmittedObserver(Action<KafkaStatisticsReport, long> observer) => _admittedObserver = observer;
 
     /// <summary>Gets the artifact names owned by this session.</summary>
     public ImmutableArray<string> ArtifactNames => _artifactNames;
@@ -190,7 +193,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
 
         try
         {
-            await _queue.Writer.WriteAsync(new StatisticsItem(bytes), cancellationToken).ConfigureAwait(false);
+            await _queue.Writer.WriteAsync(new StatisticsItem(bytes, report), cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is ChannelClosedException or OperationCanceledException)
         {
@@ -412,6 +415,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
             await using var statistics = new FileStream(statisticsPath, FileMode.Append, FileAccess.Write, FileShare.Read, 4096, useAsync: true);
             await using var lifecycle = new FileStream(lifecyclePath, FileMode.Append, FileAccess.Write, FileShare.Read, 4096, useAsync: true);
             long statisticsBytes = 0;
+            long statisticsOrdinal = 0;
             long lifecycleBytes = 0;
             if (_beforeWriterDrain is not null)
                 await _beforeWriterDrain().ConfigureAwait(false);
@@ -448,6 +452,12 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
                 }
                 await target.WriteAsync(bytes).ConfigureAwait(false);
                 await target.FlushAsync().ConfigureAwait(false);
+                if (item is StatisticsItem admitted)
+                {
+                    statisticsOrdinal++;
+                    try { _admittedObserver?.Invoke(admitted.Report, statisticsOrdinal); }
+                    catch (Exception) { /* Monitoring must not fault scientific evidence. */ }
+                }
             }
         }
         catch (Exception exception)
@@ -625,7 +635,7 @@ public sealed class RunEvidenceSession : IKafkaStatisticsEvidenceSink, IAsyncDis
     }
 
     private abstract record EvidenceItem;
-    private sealed record StatisticsItem(byte[] Bytes) : EvidenceItem;
+    private sealed record StatisticsItem(byte[] Bytes, KafkaStatisticsReport Report) : EvidenceItem;
     private sealed record LogItem(LogCapture Capture) : EvidenceItem;
     private sealed record ErrorItem(ErrorCapture Capture) : EvidenceItem;
     private sealed record LogCapture(long ReceiptSequence, DateTimeOffset ReceivedAt, RunIdentity Identity,

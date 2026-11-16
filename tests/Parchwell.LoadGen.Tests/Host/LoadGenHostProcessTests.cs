@@ -275,10 +275,21 @@ public sealed class LoadGenHostProcessTests
         };
         Dictionary<string, string> result = values.ToDictionary(pair => "LoadGen__" + pair.Key, pair => pair.Value, StringComparer.Ordinal);
         result["PARCHWELL_SOURCE_COMMIT"] = new string('a', 40);
+        foreach (string key in new[] { "BlobEndpoint", "RunId", "Phase", "ScenarioId", "ConfigurationId", "JobName", "PodUid" })
+            result["NativeMonitoring__" + key] = values[key];
+        result["NativeMonitoring__BlobContainer"] = "native-monitoring";
+        result["NativeMonitoring__SourceCommit"] = result["PARCHWELL_SOURCE_COMMIT"];
         result["AZURE_TENANT_ID"] = "synthetic-tenant";
         result["AZURE_CLIENT_ID"] = "synthetic-credential-app";
         result["AZURE_FEDERATED_TOKEN_FILE"] = Path.Combine(Path.GetTempPath(), "synthetic-projected-token");
         return result;
+    }
+
+    internal static void SyncNativeMonitoring(IDictionary<string, string> values)
+    {
+        foreach (string key in new[] { "BlobEndpoint", "RunId", "Phase", "ScenarioId", "ConfigurationId", "JobName", "PodUid" })
+            values["NativeMonitoring__" + key] = values["LoadGen__" + key];
+        values["NativeMonitoring__SourceCommit"] = values["PARCHWELL_SOURCE_COMMIT"];
     }
 
     private static void ConfigureValidInputs(IDictionary<string, string?> environment, string output)

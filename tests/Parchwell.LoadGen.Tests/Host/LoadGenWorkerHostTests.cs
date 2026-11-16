@@ -397,6 +397,7 @@ public sealed class LoadGenWorkerHostTests
 
         Exception failure = Assert.ThrowsAny<Exception>(() => Program.BuildHostCore(args, services =>
         {
+            services.AddSingleton<IKafkaNativeMonitoringStore>(new NativeMonitoringFixture());
             serviceConfigurationCalls++;
             services.AddSingleton<IProducerRunLifecycle>(lifecycle);
             services.AddSingleton<IRunArtifactPublisher>(publisher);
@@ -452,6 +453,7 @@ public sealed class LoadGenWorkerHostTests
         OptionsValidationException failure = Assert.Throws<OptionsValidationException>(() =>
             Program.BuildHostCore(args, services =>
             {
+                services.AddSingleton<IKafkaNativeMonitoringStore>(new NativeMonitoringFixture());
                 serviceConfigurationCalls++;
                 services.AddSingleton<IProducerRunLifecycle>(lifecycle);
                 services.AddSingleton<IRunArtifactPublisher>(publisher);
@@ -623,11 +625,13 @@ public sealed class LoadGenWorkerHostTests
         values["AZURE_TENANT_ID"] = "synthetic-tenant";
         values["AZURE_CLIENT_ID"] = "synthetic-credential-app";
         values["AZURE_FEDERATED_TOKEN_FILE"] = Path.Combine(Path.GetTempPath(), "synthetic-projected-token");
+        LoadGenHostProcessTests.SyncNativeMonitoring(values);
         string[] args = values.Select(pair => "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal) + "=" + pair.Value).ToArray();
         telemetryRegistration ??= new RecordingTelemetryRegistration();
 
         return Program.BuildHostCore(args, services =>
         {
+            services.AddSingleton<IKafkaNativeMonitoringStore>(new NativeMonitoringFixture());
             if (workerLogger is not null) services.AddSingleton(workerLogger);
             services.RemoveAll<IScenarioSource>();
             services.AddSingleton<IScenarioSource>(new ScenarioMemorySource(

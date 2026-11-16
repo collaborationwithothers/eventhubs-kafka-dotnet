@@ -10,14 +10,14 @@ namespace Parchwell.LoadGen.Run.Monitoring;
 
 internal sealed class NativeMonitoringHost(KafkaNativeMonitoringCoordinator coordinator, string source)
 {
-    private readonly ConcurrentBag<KafkaNativeMonitoringLifetime> _clients = [];
+    private readonly ConcurrentDictionary<KafkaNativeMonitoringLifetime, byte> _clients = [];
 
     internal KafkaNativeMonitoringLifetime? Begin(KafkaStatisticsIdentity identity)
     {
         try
         {
             KafkaNativeMonitoringLifetime lifetime = coordinator.CreateLifetime(identity);
-            _clients.Add(lifetime);
+            _clients.TryAdd(lifetime, 0);
             return lifetime;
         }
         catch (Exception) { return null; }
@@ -43,12 +43,21 @@ internal sealed class NativeMonitoringHost(KafkaNativeMonitoringCoordinator coor
         catch (Exception) { lifetime.MarkIncomplete("host_reference_failed"); }
     }
 
+    internal void RebindSource(string publishedSource)
+    {
+        foreach (KafkaNativeMonitoringLifetime client in _clients.Keys)
+            client.RebindExistingSource(source, publishedSource);
+        source = publishedSource;
+    }
+
+    internal void MarkIncomplete() => coordinator.MarkIncomplete("host_capture_incomplete");
+
     internal Task DrainAsync(CancellationToken cancellationToken) => coordinator.DrainAsync(cancellationToken);
 
     internal async Task CompleteAsync(bool captureComplete, CancellationToken cancellationToken)
     {
         if (!captureComplete) coordinator.MarkIncomplete("host_capture_incomplete");
-        foreach (KafkaNativeMonitoringLifetime client in _clients)
+        foreach (KafkaNativeMonitoringLifetime client in _clients.Keys)
             client.Complete(captureComplete, "unknown");
         await coordinator.CompleteAsync(cancellationToken).ConfigureAwait(false);
     }

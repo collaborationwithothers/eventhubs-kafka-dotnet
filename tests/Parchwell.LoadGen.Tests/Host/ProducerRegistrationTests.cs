@@ -221,9 +221,11 @@ public sealed class ProducerRegistrationTests
         values["LoadGen__MaxScheduleLateness"] = "00:00:05";
         values["LoadGen__CleanupTimeout"] = "00:00:00.100";
         values["LoadGen__UploadTimeout"] = "00:00:01";
+        LoadGenHostProcessTests.SyncNativeMonitoring(values);
         string[] args = values.Select(pair => "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal) + "=" + pair.Value).ToArray();
         return Program.BuildHostCore(args, services =>
         {
+            services.AddSingleton<IKafkaNativeMonitoringStore>(new NativeMonitoringFixture());
             services.RemoveAll<IScenarioSource>();
             services.AddSingleton<IScenarioSource>(new ScenarioMemorySource(
                 ("scenarios/A01/scenario.yaml", ScenarioText),
