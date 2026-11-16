@@ -38,7 +38,7 @@ internal static class KafkaNativeMetricParser
 
             KafkaNativeMetricIdentity identity = new(name, clientId, type, ts, time, age);
             Parser parser = new();
-            parser.Visit(root, "", null, null, null);
+            parser.Visit(root, "", null, null, null, null);
             return parser.Error is null
                 ? new(true, identity, parser.Points.ToImmutable(), parser.Diagnostics.ToImmutable())
                 : new(false, identity, [], parser.Diagnostics.ToImmutable());
@@ -104,7 +104,7 @@ internal static class KafkaNativeMetricParser
         internal ImmutableArray<KafkaNativeMetricDiagnostic>.Builder Diagnostics { get; } = ImmutableArray.CreateBuilder<KafkaNativeMetricDiagnostic>();
         internal string? Error { get; private set; }
 
-        internal void Visit(JsonElement obj, string path, string? broker, string? topic, string? partition)
+        internal void Visit(JsonElement obj, string path, string? broker, string? topic, int? partition, string? brokerAddress)
         {
             if (Error is not null)
             {
@@ -127,15 +127,15 @@ internal static class KafkaNativeMetricParser
                 string next = path.Length == 0 ? property.Name : path + "." + property.Name;
                 if (IsMap(next))
                 {
-                    VisitMap(property.Value, next, broker, topic);
+                    VisitMap(property.Value, next, broker, topic, brokerAddress);
                 }
                 else if (IsObject(next))
                 {
-                    Visit(property.Value, next, broker, topic, partition);
+                    Visit(property.Value, next, broker, topic, partition, brokerAddress);
                 }
                 else if (ByPath.TryGetValue(next, out KafkaNativeMetricDefinition? definition))
                 {
-                    ReadField(obj, property.Value, definition, broker, topic, partition);
+                    ReadField(obj, property.Value, definition, broker, topic, partition, brokerAddress);
                 }
 
                 if (Error is not null)
@@ -145,7 +145,7 @@ internal static class KafkaNativeMetricParser
             }
         }
 
-        private void VisitMap(JsonElement map, string path, string? broker, string? topic)
+        private void VisitMap(JsonElement map, string path, string? broker, string? topic, string? brokerAddress)
         {
             if (map.ValueKind != JsonValueKind.Object)
             {
@@ -173,18 +173,23 @@ internal static class KafkaNativeMetricParser
                         continue;
                     }
 
-                    ReadNumeric(entry.Value, ByPath["brokers.*.req.*"], broker, null, null, entry.Name);
+                    ReadNumeric(entry.Value, ByPath["brokers.*.req.*"], broker, null, null, entry.Name, brokerAddress);
                     continue;
                 }
 
                 string? nextBroker = path == "brokers" ? entry.Name : broker;
                 string? nextTopic = path == "topics" ? entry.Name : topic;
-                string? nextPartition = path == "topics.*.partitions" ? entry.Name : null;
-                if (nextPartition is not null && (!long.TryParse(nextPartition, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out long number)
-                    || number < -1 || number.ToString(CultureInfo.InvariantCulture) != nextPartition))
+                int? nextPartition = null;
+                if (path == "topics.*.partitions" && (!int.TryParse(entry.Name, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out int number)
+                    || number < -1 || number.ToString(CultureInfo.InvariantCulture) != entry.Name))
                 {
                     Reject("identity_mismatch", "topics.*.partitions");
                     return;
+                }
+
+                if (path == "topics.*.partitions")
+                {
+                    nextPartition = int.Parse(entry.Name, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture);
                 }
 
                 if (entry.Value.ValueKind != JsonValueKind.Object || !IdentityMatches(entry.Value, path, entry.Name)
@@ -194,7 +199,19 @@ internal static class KafkaNativeMetricParser
                     return;
                 }
 
-                Visit(entry.Value, path + ".*", nextBroker, nextTopic, nextPartition);
+                string? nextAddress = brokerAddress;
+                if (path == "brokers" && entry.Value.TryGetProperty("nodename", out JsonElement address))
+                {
+                    if (address.ValueKind != JsonValueKind.String)
+                    {
+                        Reject("invalid_identity", "brokers.*.nodename");
+                        return;
+                    }
+
+                    nextAddress = address.GetString();
+                }
+
+                Visit(entry.Value, path + ".*", nextBroker, nextTopic, nextPartition, nextAddress);
                 if (Error is not null)
                 {
                     return;
@@ -258,7 +275,7 @@ internal static class KafkaNativeMetricParser
         }
 
         private void ReadField(JsonElement parent, JsonElement value, KafkaNativeMetricDefinition definition,
-            string? broker, string? topic, string? partition)
+            string? broker, string? topic, int? partition, string? brokerAddress)
         {
             if (definition.Policy == "R")
             {
@@ -305,7 +322,7 @@ internal static class KafkaNativeMetricParser
                 foreach (string candidate in allowed)
                 {
                     Points.Add(new(definition, StringComparer.Ordinal.Equals(candidate, state) ? 1 : 0,
-                        broker, topic, partition, null, candidate));
+                        broker, topic, partition, null, candidate, brokerAddress));
                 }
 
                 return;
@@ -319,7 +336,7 @@ internal static class KafkaNativeMetricParser
                     return;
                 }
 
-                Points.Add(new(definition, value.GetBoolean() ? 1 : 0, broker, topic, partition, null, null));
+                Points.Add(new(definition, value.GetBoolean() ? 1 : 0, broker, topic, partition, null, null, brokerAddress));
                 return;
             }
 
@@ -352,11 +369,11 @@ internal static class KafkaNativeMetricParser
                 }
             }
 
-            ReadNumeric(value, definition, broker, topic, partition, null);
+            ReadNumeric(value, definition, broker, topic, partition, null, brokerAddress);
         }
 
         private void ReadNumeric(JsonElement value, KafkaNativeMetricDefinition definition,
-            string? broker, string? topic, string? partition, string? request)
+            string? broker, string? topic, int? partition, string? request, string? brokerAddress)
         {
             if (value.ValueKind != JsonValueKind.Number)
             {
@@ -377,7 +394,7 @@ internal static class KafkaNativeMetricParser
                 return;
             }
 
-            Points.Add(new(definition, number, broker, topic, partition, request, null));
+            Points.Add(new(definition, number, broker, topic, partition, request, null, brokerAddress));
         }
 
         private void Reject(string code, string? field)

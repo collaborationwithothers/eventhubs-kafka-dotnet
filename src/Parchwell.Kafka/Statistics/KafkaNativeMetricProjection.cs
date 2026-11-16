@@ -6,7 +6,7 @@ internal sealed record KafkaNativeMetricIdentity(string Name, string ClientId, s
 
 internal sealed record KafkaNativeMetricPoint(
     KafkaNativeMetricDefinition Definition, long Value, string? Broker, string? Topic,
-    string? Partition, string? Request, string? State);
+    int? Partition, string? Request, string? State, string? BrokerAddress);
 
 internal sealed record KafkaNativeMetricDiagnostic(string Code, string? Field);
 
