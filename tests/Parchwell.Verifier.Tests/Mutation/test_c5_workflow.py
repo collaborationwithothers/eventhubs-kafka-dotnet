@@ -9,6 +9,7 @@ import io
 import json
 import os
 import re
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -2386,6 +2387,47 @@ class RunnerTests(unittest.TestCase):
                 with self.subTest(setting=setting, adjustment=adjustment), patch.object(projection, setting, cap + adjustment):
                     result, _, _ = self.invoke(output=self.root / (setting + str(adjustment)))
                     self.assertEqual(expected, result)
+
+    def test_real_tracked_verifier_inventory_fits_projection_capacity(self):
+        repository = Path(workflow.__file__).resolve().parents[3]
+        names = subprocess.check_output(["git", "-C", str(repository), "ls-files", "-z"]).decode().split("\0")
+        sources = projection.source_names(names)
+        self.assertIn(projection.VERIFIER + workflow.SHARDS["phase"], sources)
+        self.assertGreater(len(sources), 0)
+        self.assertLessEqual(len(sources), projection.MAX_VERIFIER_FILES)
+
+    def test_verifier_projection_capacity_below_at_and_above_in_prepare_and_validate(self):
+        # Exercise the actual configured capacity, rather than shrinking it around
+        # the two-source fixture and missing growth in the production inventory.
+        self.assertEqual(256, projection.MAX_VERIFIER_FILES)
+        for count in (255, 256, 257):
+            with self.subTest(source_count=count):
+                for index in range(count - 2):
+                    (self.root / projection.VERIFIER / f"Capacity{index:03}.cs").write_text("return false;\n")
+                subprocess.run(["git", "add", "src"], cwd=self.root, check=True)
+                subprocess.run(["git", "-c", "commit.gpgsign=false", "-c", "user.name=Synthetic", "-c",
+                                "user.email=synthetic@example.invalid", "commit", "--quiet", "-m", "Synthetic capacity fixture"],
+                               cwd=self.root, check=True)
+                stage = self.root / f"capacity-stage-{count}"
+                retained = self.root / f"capacity-retained-{count}"
+                self.addCleanup(shutil.rmtree, stage, True)
+                self.addCleanup(shutil.rmtree, retained, True)
+                if count > projection.MAX_VERIFIER_FILES:
+                    with self.assertRaisesRegex(ValueError, "projection target/source inventory invalid"):
+                        projection.prepare(self.root, stage, workflow.SHARDS["phase"], retained)
+                with patch.object(projection, "MAX_VERIFIER_FILES", max(count, projection.MAX_VERIFIER_FILES)):
+                    manifest = projection.prepare(self.root, stage, workflow.SHARDS["phase"], retained)
+                output = self.root / f"capacity-{count}.json"
+                projection.finish(stage, manifest, output)
+                if count > projection.MAX_VERIFIER_FILES:
+                    with self.assertRaisesRegex(ValueError, "projection scope/drift"):
+                        projection.validate(manifest, retained, workflow.SHARDS["phase"], manifest["original_sha256"])
+                    continue
+                self.assertEqual(manifest["original_sha256"][projection.VERIFIER + workflow.SHARDS["phase"]],
+                                 projection.validate(manifest, retained, workflow.SHARDS["phase"], manifest["original_sha256"]))
+                with patch.object(projection, "MAX_VERIFIER_FILES", count - 1):
+                    with self.assertRaisesRegex(ValueError, "projection scope/drift"):
+                        projection.validate(manifest, retained, workflow.SHARDS["phase"], manifest["original_sha256"])
 
     def test_tracked_directory_symlinks_are_preserved(self):
         folder = self.root / ".claude/skills"

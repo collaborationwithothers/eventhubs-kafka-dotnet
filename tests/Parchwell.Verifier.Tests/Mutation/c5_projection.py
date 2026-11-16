@@ -17,7 +17,7 @@ PREFIX = b"/* Stryker disable all : This source is outside the assigned C5 shard
 VERIFIER = "src/Parchwell.Verifier/"
 MAX_FILES = 4096
 MAX_BYTES = 268435456
-MAX_VERIFIER_FILES = 128
+MAX_VERIFIER_FILES = 256
 FIELDS = {"policy", "target", "original_sha256", "before_sha256", "after_sha256", "disabled"}
 
 
