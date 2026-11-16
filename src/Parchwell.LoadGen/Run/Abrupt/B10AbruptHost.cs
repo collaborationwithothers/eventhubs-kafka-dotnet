@@ -90,12 +90,37 @@ internal static class B10AbruptHost
                 await using var journalScope = journal;
                 var runtime = await CreateProducerAsync(host.Services, options, journal, input, lifetime.Token).ConfigureAwait(false);
                 var identity = new RunIdentity(options.ScenarioId, options.ConfigurationId, options.RunId, options.PodName, options.PodName, options.PodName);
-                if (input is null)
+                B10AbruptProducer.SuccessorArtifacts result;
+                try
                 {
-                    return await runtime.Producer.RunFirstAsync(runtime.Profile, identity, runtime.Execution, lifetime.Token).ConfigureAwait(false);
+                    if (input is null)
+                    {
+                        int childExit = await runtime.Producer.RunFirstAsync(runtime.Profile, identity, runtime.Execution, lifetime.Token).ConfigureAwait(false);
+                        if (runtime.BuildFailed()) await CompleteFailedBuildAsync().ConfigureAwait(false);
+                        return childExit;
+                    }
+                    result = await runtime.Producer.RunSuccessorAsync(runtime.Profile, identity, runtime.Execution,
+                        input.Entries, input.ReleaseUtc, lifetime.Token).ConfigureAwait(false);
                 }
-                B10AbruptProducer.SuccessorArtifacts result = await runtime.Producer.RunSuccessorAsync(runtime.Profile, identity, runtime.Execution,
-                    input.Entries, input.ReleaseUtc, lifetime.Token).ConfigureAwait(false);
+                catch
+                {
+                    if (runtime.BuildFailed()) await CompleteFailedBuildAsync().ConfigureAwait(false);
+                    throw;
+                }
+                async Task CompleteFailedBuildAsync()
+                {
+                    try
+                    {
+                        NativeMonitoringHost failedMonitoring = host.Services.GetRequiredService<NativeMonitoringHost>();
+                        await runtime.Statistics.DisposeAsync().AsTask().WaitAsync(lifetime.Token).ConfigureAwait(false);
+                        await runtime.Evidence.DisposeAsync().AsTask().WaitAsync(lifetime.Token).ConfigureAwait(false);
+                        await host.StopAsync(lifetime.Token).WaitAsync(lifetime.Token).ConfigureAwait(false);
+                        await failedMonitoring.DrainAsync(lifetime.Token).WaitAsync(lifetime.Token).ConfigureAwait(false);
+                        await Task.Run(host.Dispose).WaitAsync(lifetime.Token).ConfigureAwait(false);
+                        await failedMonitoring.CompleteAsync(false, lifetime.Token).WaitAsync(lifetime.Token).ConfigureAwait(false);
+                    }
+                    catch (Exception) { Console.Error.WriteLine("native_monitoring_failed_build_completion_failed"); }
+                }
                 NativeMonitoringHost monitoring = host.Services.GetRequiredService<NativeMonitoringHost>();
                 using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10), clock);
                 {
@@ -240,14 +265,18 @@ internal static class B10AbruptHost
         KafkaAuthenticationFactory authFactory = services.GetRequiredService<KafkaAuthenticationFactory>();
         authFactory.ValidateProducerConfiguration(config);
         KafkaOAuthBearerSession authentication = authFactory.CreateSession(new KafkaAuthenticationIdentity("B10", options.RunId, KafkaClientRole.LoadGenProducer, options.PodName), cancellationToken);
-        var statisticsHandler = StatisticsHandler(observations, statistics);
+        NativeMonitoringHost? monitoring = services.GetService<NativeMonitoringHost>();
+        var statisticsHandler = StatisticsHandler(observations, statistics, monitoring);
         var errorHandler = CreateErrorHandler(evidence, journal, clock);
+        bool buildFailed = false;
         IProducer<byte[], byte[]> Factory()
         {
-            NativeMonitoringHost? monitoring = services.GetService<NativeMonitoringHost>();
             KafkaNativeMonitoringLifetime? lifetime = monitoring?.Begin(statisticsIdentity);
             if (lifetime is not null)
-                evidence.AttachAdmittedObserver((report, ordinal) => monitoring!.ObserveExisting(lifetime, report, ordinal));
+            {
+                monitoring!.AttachBridge(statistics, lifetime);
+                evidence.AttachAdmittedObserver((report, ordinal) => monitoring.ObserveExisting(lifetime, report, ordinal));
+            }
             try
             {
                 IProducer<byte[], byte[]> result = ProducerFactoryOverride is { } factory ? factory(config, statisticsHandler, errorHandler) : authFactory.CreateProducerBuilder<byte[], byte[]>(config, authentication)
@@ -255,14 +284,14 @@ internal static class B10AbruptHost
                 lifetime?.MarkBuilt();
                 return result;
             }
-            catch { lifetime?.MarkBuildFailed(); throw; }
+            catch { buildFailed = true; lifetime?.MarkBuildFailed(); throw; }
         }
         var producer = new B10AbruptProducer(Factory, clock, observations, journal, evidence, options.Identity(input?.FirstIdentity.InstanceId),
             SuccessorCompletion(statistics, evidence, brokers, evidencePath), new B10AbruptTimeline(clock, options.Role, Console.Error), selfKill: SelfKillOverride, purpose: options.Purpose);
         var execution = new RunExecutionOptions(186000, 900000, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(300), TimeSpan.FromSeconds(10),
             16384, 67108864, 268435456, options.OutputRoot, "document-events", brokers, false, true,
             TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(20), ApplicationRetryPolicy.ForScenario("B10"));
-        return new(producer, loaded.Profile, execution, authentication, statistics, evidence);
+        return new(producer, loaded.Profile, execution, authentication, statistics, evidence, () => buildFailed);
     }
 
     internal static Action<IProducer<byte[], byte[]>, Error> CreateErrorHandler(RunEvidenceSession evidence, B10AbruptJournal? journal, TimeProvider clock) =>
@@ -274,8 +303,14 @@ internal static class B10AbruptHost
 
     // Native-capture tracking must see a report before the session can reject it, or the B10 adapter
     // could not match a report the session dropped.
-    internal static Action<IProducer<byte[], byte[]>, string> StatisticsHandler(B10AbruptStatistics observations, KafkaStatisticsSession statistics) =>
-        (_, raw) => { observations.CaptureNative(raw); statistics.Capture(raw); };
+    internal static Action<IProducer<byte[], byte[]>, string> StatisticsHandler(B10AbruptStatistics observations, KafkaStatisticsSession statistics,
+        NativeMonitoringHost? monitoring = null) =>
+        (_, raw) =>
+        {
+            observations.CaptureNative(raw);
+            if (monitoring is null) statistics.Capture(raw);
+            else monitoring.CaptureBridge(statistics, raw);
+        };
 
     // The successor completes statistics while its client is live. The producer disposes the client after that,
     // and only then completes evidence, so disposal callbacks reach the evidence session before it is finalized.
@@ -362,5 +397,5 @@ internal static class B10AbruptHost
         return names;
     }
     private sealed record ProducerRuntime(B10AbruptProducer Producer, WorkloadProfile Profile, RunExecutionOptions Execution,
-        KafkaOAuthBearerSession Authentication, KafkaStatisticsSession Statistics, RunEvidenceSession Evidence);
+        KafkaOAuthBearerSession Authentication, KafkaStatisticsSession Statistics, RunEvidenceSession Evidence, Func<bool> BuildFailed);
 }

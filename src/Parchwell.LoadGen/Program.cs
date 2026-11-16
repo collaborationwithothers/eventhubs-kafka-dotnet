@@ -425,13 +425,17 @@ internal static class Program
             return new BlobPredecessorEvidenceSource(client, hostOptions.BlobContainer);
         });
         builder.Services.AddSingleton<Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, KafkaOAuthBearerSession, IProducer<byte[], byte[]>>>(
-            provider => (configuration, statistics, evidence, authentication) => provider
-                .GetRequiredService<KafkaAuthenticationFactory>()
-                .CreateProducerBuilder<byte[], byte[]>(configuration, authentication)
-                .SetStatisticsHandler((_, report) => statistics.Capture(report))
-                .SetLogHandler((_, message) => evidence.CaptureLog(message))
-                .SetErrorHandler((_, error) => evidence.CaptureError(error))
-                .Build());
+            provider =>
+            {
+                KafkaAuthenticationFactory factory = provider.GetRequiredService<KafkaAuthenticationFactory>();
+                NativeMonitoringHost monitoring = provider.GetRequiredService<NativeMonitoringHost>();
+                return (configuration, statistics, evidence, authentication) => factory
+                    .CreateProducerBuilder<byte[], byte[]>(configuration, authentication)
+                    .SetStatisticsHandler((_, report) => monitoring.CaptureBridge(statistics, report))
+                    .SetLogHandler((_, message) => evidence.CaptureLog(message))
+                    .SetErrorHandler((_, error) => evidence.CaptureError(error))
+                    .Build();
+            });
         var nativeOptions = new KafkaNativeMonitoringOptions();
         builder.Configuration.GetSection(KafkaNativeMonitoringOptions.SectionName).Bind(nativeOptions, value => value.ErrorOnUnknownConfiguration = true);
         if (nativeOptions.RunId != bootstrapOptions.RunId || nativeOptions.Phase != bootstrapOptions.Phase ||

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
+using System.Runtime.CompilerServices;
 using System.Text;
 using Azure.Identity;
 using Azure.Storage.Blobs;
@@ -11,6 +12,7 @@ namespace Parchwell.LoadGen.Run.Monitoring;
 internal sealed class NativeMonitoringHost(KafkaNativeMonitoringCoordinator coordinator, string source)
 {
     private readonly ConcurrentDictionary<KafkaNativeMonitoringLifetime, byte> _clients = [];
+    private readonly ConditionalWeakTable<KafkaStatisticsSession, KafkaNativeMonitoringLifetime> _bridgeClients = new();
 
     internal KafkaNativeMonitoringLifetime? Begin(KafkaStatisticsIdentity identity)
     {
@@ -20,7 +22,22 @@ internal sealed class NativeMonitoringHost(KafkaNativeMonitoringCoordinator coor
             _clients.TryAdd(lifetime, 0);
             return lifetime;
         }
-        catch (Exception) { return null; }
+        catch (Exception) { coordinator.MarkIncomplete("host_begin_failed"); return null; }
+    }
+
+    internal void AttachBridge(KafkaStatisticsSession session, KafkaNativeMonitoringLifetime lifetime)
+    {
+        try { _bridgeClients.Add(session, lifetime); }
+        catch (Exception) { lifetime.MarkIncomplete("bridge_attachment_failed"); }
+    }
+
+    internal void CaptureBridge(KafkaStatisticsSession session, string raw)
+    {
+        if (!session.TryCapture(raw) && _bridgeClients.TryGetValue(session, out KafkaNativeMonitoringLifetime? lifetime))
+        {
+            try { lifetime.MarkIncomplete("bridge_capture_rejected"); }
+            catch (Exception) { Console.Error.WriteLine("native_monitoring_admission_failed"); }
+        }
     }
 
     internal void Capture(KafkaNativeMonitoringLifetime lifetime, string raw, long sequence)

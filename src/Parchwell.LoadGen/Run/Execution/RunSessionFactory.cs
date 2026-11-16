@@ -100,7 +100,10 @@ public sealed class RunSessionFactory
                 KafkaNativeMonitoringLifetime? lifetime = _monitoring?.Begin(new KafkaStatisticsIdentity(
                     identity.ScenarioId, identity.RunId, KafkaClientRole.LoadGenProducer, identity.ClientId));
                 if (lifetime is not null)
-                    evidence.AttachAdmittedObserver((report, ordinal) => _monitoring!.ObserveExisting(lifetime, report, ordinal));
+                {
+                    _monitoring!.AttachBridge(statistics, lifetime);
+                    evidence.AttachAdmittedObserver((report, ordinal) => _monitoring.ObserveExisting(lifetime, report, ordinal));
+                }
                 try
                 {
                     IProducer<byte[], byte[]> producer = _producerFactory(producerConfig, statistics, evidence, authentication);

@@ -1,11 +1,17 @@
 using System.Collections.Immutable;
 using System.Reflection;
+using System.Diagnostics.Metrics;
+using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
 using Confluent.Kafka;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Statistics;
 using Parchwell.LoadGen.Run.Abrupt;
 using Parchwell.LoadGen.Run.Execution;
+using Parchwell.LoadGen.Run.Contracts;
+using Parchwell.LoadGen.Run.Evidence;
+using Parchwell.LoadGen.Run.Monitoring;
+using Parchwell.LoadGen.Tests.Host;
 using Xunit;
 
 namespace Parchwell.LoadGen.Tests.Abrupt;
@@ -14,6 +20,57 @@ namespace Parchwell.LoadGen.Tests.Abrupt;
 public sealed class B10AbruptStatisticsContentionTests
 {
     private static readonly KafkaStatisticsIdentity Identity = new("B10", "run-1", KafkaClientRole.LoadGenProducer, "client");
+
+    [Fact]
+    public async Task Given_BridgeCallback_When_AdmittedThenClosed_Then_TracksOrderOnceAndRecordsGap()
+    {
+        var measurements = new System.Collections.Concurrent.ConcurrentQueue<long>();
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, meterListener) =>
+        {
+            if (instrument.Meter.Name == KafkaStatisticsMetrics.MeterName && instrument.Name == "kafka.librdkafka.client.ts")
+                meterListener.EnableMeasurementEvents(instrument);
+        };
+        listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
+        {
+            foreach (var tag in tags)
+                if (tag.Key == "run" && Equals(tag.Value, Identity.RunId)) measurements.Enqueue(value);
+        });
+        listener.Start();
+        var services = new ServiceCollection();
+        NativeMonitoringFixture store = NativeMonitoringFixture.Register(services, "run-1", "B10", "C1", "job", "uid",
+            new string('a', 40), "ledger/run/statistics.jsonl");
+        using ServiceProvider provider = services.BuildServiceProvider();
+        NativeMonitoringHost monitoring = provider.GetRequiredService<NativeMonitoringHost>();
+        KafkaNativeMonitoringLifetime lifetime = monitoring.Begin(Identity)!;
+        string path = Path.Combine(Path.GetTempPath(), "b10-monitor-" + Guid.NewGuid().ToString("N"));
+        var evidence = new RunEvidenceSession(new RunIdentity("B10", "C1", "run-1", "client", "client", "client"),
+            new RunEvidenceOptions(path, 16, 1048576, 2097152, 16, TimeSpan.FromSeconds(5)), TimeProvider.System);
+        evidence.AttachAdmittedObserver((report, ordinal) => monitoring.ObserveExisting(lifetime, report, ordinal));
+        var observations = new B10AbruptStatistics(Identity, ["broker"], new Dictionary<string, string>(), new Dictionary<string, string>(), evidence);
+        observations.ActivateNativeCaptureTracking();
+        var options = new KafkaStatisticsOptions { MaxSnapshotCharacters = 1048576, QueueCapacity = 16, MaxBrokerSeries = 64, CompletionTimeout = TimeSpan.FromSeconds(5) };
+        KafkaStatisticsSession session = new KafkaStatisticsBridgeFactory(options, TimeProvider.System, observations,
+            provider.GetRequiredService<KafkaStatisticsMetrics>(), nativeClockCompatible: false).Create(Identity);
+        monitoring.AttachBridge(session, lifetime);
+        var handler = B10AbruptHost.StatisticsHandler(observations, session, monitoring);
+        handler(null!, Report(1000).RawJson);
+        lifetime.MarkBuilt();
+        await session.DisposeAsync();
+        observations.AssertAvailableGuards();
+        Assert.Equal(1, observations.ReportCount);
+        handler(null!, Report(2000).RawJson);
+        await evidence.CompleteAsync(null, TestContext.Current.CancellationToken);
+        await evidence.DisposeAsync();
+        await monitoring.DrainAsync(TestContext.Current.CancellationToken);
+        await monitoring.CompleteAsync(true, TestContext.Current.CancellationToken);
+        using JsonDocument index = JsonDocument.Parse(Assert.Single(store.Objects).Value);
+        JsonElement client = index.RootElement.GetProperty("clients")[0];
+        Assert.Equal(1, client.GetProperty("report_count").GetInt32());
+        Assert.Contains(client.GetProperty("diagnostics").EnumerateArray(), item => item.GetString() == "bridge_capture_rejected");
+        Assert.False(client.GetProperty("capture_complete").GetBoolean());
+        Assert.Equal(new long[] { 1000 }, measurements.ToArray());
+    }
 
     [Fact]
     public void Given_GateHeldByAnotherThread_When_NativeReportCaptured_Then_CaptureReturnsAndReportStillMatches()
