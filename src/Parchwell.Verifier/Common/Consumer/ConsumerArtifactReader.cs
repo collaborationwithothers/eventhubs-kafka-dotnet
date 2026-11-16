@@ -18,7 +18,7 @@ internal sealed class ConsumerArtifactReader(IProducerArtifactStore store, Input
             {
                 artifact=marker;byte[]? registrationBytes=await Read(marker).ConfigureAwait(false);ConsumerRegistration? registration=null;bool registrationInvalid=false,recordInvalid=false;
                 string prefix=marker[..^"registration.json".Length];
-                try { registration=ConsumerArtifactCodec.ReadRegistration(registrationBytes??[]);string escaped=prefix[root.Length..^1];if(escaped!=Uri.EscapeDataString(registration.PodName)||registration.InstanceId!=registration.PodName)registrationInvalid=true; }
+                try { registration=ConsumerArtifactCodec.ReadRegistration(registrationBytes??[]);if(prefix.Length<=root.Length+1||prefix[root.Length..^1]!=Uri.EscapeDataString(registration.PodName)||registration.InstanceId!=registration.PodName)registrationInvalid=true; }
                 catch(Exception e) when(e is FormatException or KeyNotFoundException or InvalidOperationException){registrationInvalid=true;}
                 var rows=new List<ConsumerRow>();string[] blobs=listing.Names.Where(n=>n.StartsWith(prefix+"record/",StringComparison.Ordinal)).Order(StringComparer.Ordinal).ToArray();
                 for(int index=0;index<blobs.Length;index++)

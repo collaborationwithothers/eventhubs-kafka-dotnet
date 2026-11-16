@@ -31,6 +31,9 @@ internal static class ConsumerJudgement
             if(!registrationShape||!registrationIdentity)skip=true;
             if(!skip)
             {
+                var ledgerByIdentity=new Dictionary<(string?,string?),LedgerRow>();
+                foreach(LedgerRow row in request.LedgerRows)ledgerByIdentity.TryAdd((row.Identity.InstanceId,row.Attempt.AttemptId),row);
+                var consumedIdentities=request.ConsumedRecords.Select(c=>((int?)c.Partition,(long?)c.Offset,c.InstanceId,c.AttemptId)).ToHashSet();
                 foreach(ConsumerMember member in members)
                 {
                     if(member.RecordInvalid)invalid.Add("consumer_record_invalid");
@@ -39,8 +42,8 @@ internal static class ConsumerJudgement
                     {
                         PartitionWindow? window=request.Window.Partitions.FirstOrDefault(p=>p.Partition==row.Partition);
                         if(window is null||row.Offset<window.Start||row.Offset>=window.End){Add("consumer_processed_outside_window",member,row);continue;}
-                        LedgerRow? ledger=row.ProducerInstanceId is null||row.AttemptId is null?null:request.LedgerRows.FirstOrDefault(l=>l.Identity.InstanceId==row.ProducerInstanceId&&l.Attempt.AttemptId==row.AttemptId);
-                        if(row.Key is null||row.Sequence is null||ledger is null||ledger.Attempt.Key!=row.Key||ledger.Attempt.Sequence!=row.Sequence||!request.ConsumedRecords.Any(c=>c.Partition==row.Partition&&c.Offset==row.Offset&&c.InstanceId==row.ProducerInstanceId&&c.AttemptId==row.AttemptId))Add("consumer_processed_unjoined",member,row);
+                        LedgerRow? ledger=row.ProducerInstanceId is null||row.AttemptId is null?null:ledgerByIdentity.GetValueOrDefault((row.ProducerInstanceId,row.AttemptId));
+                        if(row.Key is null||row.Sequence is null||ledger is null||ledger.Attempt.Key!=row.Key||ledger.Attempt.Sequence!=row.Sequence||!consumedIdentities.Contains((row.Partition,row.Offset,row.ProducerInstanceId,row.AttemptId)))Add("consumer_processed_unjoined",member,row);
                     }
                     bool subject=member.Registration!.Role=="subject";int kills=member.Rows.Count(r=>r.Kind=="kill_intent");
                     bool stopped=subject&&request.Plan.KillCount is int n?member.Rows.Count>0&&member.Rows[^1].Kind=="kill_intent"&&kills==1&&member.Completion is null&&member.Rows.Count(r=>r.Kind=="processed")==n-1:kills==0&&member.Completion is not null;
@@ -77,10 +80,14 @@ internal static class ConsumerJudgement
         if(status==VerifierResultStatus.CompleteValid&&final)
         {
             long once=0,again=0,extra=0,never=0;
+            var deliveredIdentities=request.LedgerRows.Where(l=>l.Delivered).Select(l=>((string?)l.Identity.InstanceId,(string?)l.Attempt.AttemptId)).ToHashSet();
+            var processedCounts=new Dictionary<(int?,long?),int>();
+            foreach(ConsumerRow row in members.SelectMany(m=>m.Rows).Where(r=>r.Kind=="processed"))
+                processedCounts[(row.Partition,row.Offset)]=checked(processedCounts.GetValueOrDefault((row.Partition,row.Offset))+1);
             foreach(ConsumedRecord consumed in request.ConsumedRecords.DistinctBy(c=>(c.Partition,c.Offset)))
             {
-                if(!request.Window.Partitions.Any(p=>p.Partition==consumed.Partition&&consumed.Offset>=p.Start&&consumed.Offset<p.End)||!request.LedgerRows.Any(l=>l.Delivered&&l.Identity.InstanceId==consumed.InstanceId&&l.Attempt.AttemptId==consumed.AttemptId))continue;
-                int count=members.Sum(m=>m.Rows.Count(r=>r.Kind=="processed"&&r.Partition==consumed.Partition&&r.Offset==consumed.Offset));
+                if(!request.Window.Partitions.Any(p=>p.Partition==consumed.Partition&&consumed.Offset>=p.Start&&consumed.Offset<p.End)||!deliveredIdentities.Contains((consumed.InstanceId,consumed.AttemptId)))continue;
+                int count=processedCounts.GetValueOrDefault(((int?)consumed.Partition,(long?)consumed.Offset));
                 if(count==0)never++;else if(count==1)once++;else{again++;extra+=count-1;}
             }
             block["counts"]=new {ProcessedOnce=once,ProcessedAgain=again,ProcessedAgainExtraRows=extra,CommittedNeverProcessed=never};
