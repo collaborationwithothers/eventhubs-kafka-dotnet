@@ -237,7 +237,7 @@ def publish_v2_actor(h, job, pod, config, stage, native_report=None):
         locator = f'runner/probe-v2/raw/{job}/{pod}.containers.{role}.log'
         index['clients'][0].update(client_id=pod + '-r1', report_count=1, raw_sources=[{
             'kind':'existing_capture', 'source':locator, 'byte_length':len(native_report),
-            'sha256':sha(native_report), 'report_ordinal':3, 'row_count':1}])
+            'sha256':sha(native_report), 'report_ordinal':3, 'capture_ordinal':1, 'row_count':1}])
         h.cli.blobs[index_key] = encoded(index)
     capture = {**identity, 'managed_version':'2.16.0', 'native_version':'2.16.0', 'repeats':repeats,
                'handler_exit_code':0, 'cleanup_completed':True, 'host_cleanup_completed':True}
@@ -298,8 +298,8 @@ def complete_family(h, scenario):
                         leaves=('ledger.jsonl','manifest.json','statistics.jsonl','request-lifecycle.jsonl','capabilities.json')
                         h.cli.put('ledger',proot+'publication/index.json',{'schema_version':1,'identity':ident,'worker_status':'complete',
                             'bookkeeping_complete':True,'worker_complete':True,'publication_complete':True,
-                            'artifacts':[{'name':leaf,'length':3,'sha256':sha(b'abc')} for leaf in leaves]})
-                        for leaf in leaves: h.cli.put('ledger',proot+'publication/'+leaf,b'abc')
+                            'artifacts':[{'name':leaf,'length':len(b'' if leaf == 'statistics.jsonl' else b'abc'), 'sha256':sha(b'' if leaf == 'statistics.jsonl' else b'abc')} for leaf in leaves]})
+                        for leaf in leaves: h.cli.put('ledger',proot+'publication/'+leaf,b'' if leaf == 'statistics.jsonl' else b'abc')
                     else:
                         for leaf in ('result.json','verify-completion.json'):
                             h.cli.put('verifier',root+leaf,window_source(child,config,item,repeat,'result') if leaf=='result.json' else b'published verification')
@@ -339,7 +339,7 @@ def abrupt_fixture(h, repeat=1):
     for name,data in [('registration.json',firstreg),('journal.jsonl',journal),('abrupt-manifest.json',manifest),('termination.json',termination)]:
         h.cli.put('ledger',firstroot+name,data)
     leaves=('ledger.jsonl','manifest.json','statistics.jsonl','request-lifecycle.jsonl','capabilities.json')
-    bodies={name:('body-'+name).encode() for name in leaves}
+    bodies={name:(b'' if name == 'statistics.jsonl' else ('body-'+name).encode()) for name in leaves}
     for name,data in bodies.items(): h.cli.put('ledger',nextroot+name,data)
     h.cli.put('ledger',nextroot+'registration.json',registration)
     completion=envelope('successor_receipt',nextident,{'first_termination':descriptor('termination.json',termination),
@@ -370,8 +370,8 @@ def complete_b10(h):
         leaves=('ledger.jsonl','manifest.json','statistics.jsonl','request-lifecycle.jsonl','capabilities.json')
         h.cli.put('ledger',proot+'publication/index.json',{'schema_version':1,'identity':ident,'worker_status':'complete',
             'bookkeeping_complete':True,'worker_complete':True,'publication_complete':True,
-            'artifacts':[{'name':leaf,'length':3,'sha256':sha(b'abc')} for leaf in leaves]})
-        for leaf in leaves: h.cli.put('ledger',proot+'publication/'+leaf,b'abc')
+            'artifacts':[{'name':leaf,'length':len(b'' if leaf == 'statistics.jsonl' else b'abc'), 'sha256':sha(b'' if leaf == 'statistics.jsonl' else b'abc')} for leaf in leaves]})
+        for leaf in leaves: h.cli.put('ledger',proot+'publication/'+leaf,b'' if leaf == 'statistics.jsonl' else b'abc')
         verify=f'{run}-c1-r{repeat}-b10-abrupt-verify'; h.job('b10-abrupt-verify',verify,repeat=repeat)
         for leaf in ('b10-abrupt/nonfinal-result.json','b10-abrupt/verify-completion.json'):
             h.cli.put('verifier',root+leaf,window_source(run,'C1','B10',repeat,'abrupt') if leaf.endswith('nonfinal-result.json') else b'fixed output')
@@ -856,6 +856,54 @@ class InventoryIntegrationTests(unittest.TestCase):
                     self.assertTrue(any(g['code'] == 'monitoring_incomplete' and g['expected_unit'] == native_job
                                         for g in manifest['gaps']))
 
+    def test_v2_mixed_private_and_existing_callbacks(self):
+        for complete in (True, False):
+            with self.subTest(complete=complete):
+                h = self.harness('probe-batch-2', 'single-action', 'probe-42-1', 'smoke', items=['F06'],
+                                 probe_v2_selection='authentication-controls', capture_authentication_metadata=True)
+                for config, stages in [('C6', ('seed', 'action', 'judge')), ('C9', ('action', 'judge'))]:
+                    for stage in stages:
+                        job = f'probe-42-1-f06-{config.lower()}-{stage}'
+                        mode = 'single-action-v2-judge' if stage == 'judge' else 'single-action-v2'
+                        pod = h.job(mode, job, 'F06', config, stage=stage)
+                        if stage != 'judge':
+                            publish_v2_actor(h, job, pod, config, stage,
+                                             b'{"selected":true}' if config == 'C6' and stage == 'seed' else None)
+                            continue
+                        prefix = f'probe-42-1/single-action-v2/F06/{config}/'
+                        body = encoded(candidate_fixture('probe-42-1', config))
+                        h.cli.put('verifier', prefix + 'candidate.json', body)
+                        h.cli.put('verifier', prefix + 'judge-completion.json', {
+                            'schema_version':2, 'mode':mode, 'run_id':'probe-42-1', 'scenario_id':'F06',
+                            'configuration_id':config, 'source_commit':'a'*40, 'job_name':job, 'pod_name':pod,
+                            'pod_uid':'uid', 'candidate_name':prefix+'candidate.json', 'candidate_sha256':sha(body),
+                            'handler_exit_code':1, 'cleanup_completed':True})
+                prefix = 'probe-42-1/C6/probe-42-1-f06-c6-seed/uid/native-monitoring/'
+                key = ('source123', 'native-monitoring', prefix + 'index.json')
+                index = json.loads(h.cli.blobs[key]); client = index['clients'][0]
+                selected = client['raw_sources'][0]; selected['capture_ordinal'] = 2
+                chunks = []
+                for ordinal in (1, 3):
+                    name = prefix + f'raw-000001-{ordinal:010d}.jsonl'
+                    raw = encoded({'client_ordinal':1, 'report_ordinal':ordinal, 'raw':f'private-{ordinal}'}) + b'\n'
+                    h.cli.put('native-monitoring', name, raw)
+                    chunks.append({'kind':'raw_chunk', 'source':name, 'byte_length':len(raw), 'sha256':sha(raw),
+                                   'report_ordinal':ordinal, 'capture_ordinal':ordinal, 'row_count':1})
+                client.update(report_count=3 if complete else 4, raw_sources=[chunks[0], selected, chunks[1]],
+                              capture_complete=complete)
+                index['capture_complete'] = complete
+                h.cli.blobs[key] = encoded(index)
+                code, manifest, receipt = h.run()
+                self.assertEqual(0 if complete else 1, code)
+                self.assertEqual(complete, receipt['archive_complete'])
+                objects = [o for o in manifest['objects'] if o['kind'] == 'native_monitoring_raw']
+                self.assertEqual(2, len(objects))
+                self.assertTrue(all(o['state'] == 'verified' for o in objects))
+                self.assertEqual(2, len({o['destination_name'] for o in objects}))
+                if not complete:
+                    self.assertIsNone(receipt['completion'])
+                    self.assertTrue(any(g['code'] == 'monitoring_incomplete' for g in manifest['gaps']))
+
     def test_native_existing_legacy_reference_binds_raw_bytes(self):
         for changed in (False, True):
             with self.subTest(changed=changed):
@@ -873,7 +921,7 @@ class InventoryIntegrationTests(unittest.TestCase):
                 index = json.loads(h.cli.blobs[index_key])
                 index['clients'][0].update(client_id=f'{pod}-r1', report_count=1, raw_sources=[{
                     'kind':'existing_capture', 'source':'single-action/' + source, 'byte_length':len(raw),
-                    'sha256':('f'*64 if changed else sha(raw)), 'report_ordinal':1, 'row_count':1}])
+                    'sha256':('f'*64 if changed else sha(raw)), 'report_ordinal':1, 'capture_ordinal':1, 'row_count':1}])
                 h.cli.blobs[index_key] = encoded(index)
                 code, manifest, receipt = h.run()
                 self.assertEqual(1 if changed else 0, code)
@@ -902,14 +950,14 @@ class InventoryIntegrationTests(unittest.TestCase):
                 h.cli.blobs[key] = original
                 index_key = ('source123', 'native-monitoring', f'probe-42-1/C0/{job}/uid/native-monitoring/index.json')
                 index = json.loads(h.cli.blobs[index_key])
-                def descriptor(sequence, raw):
+                def descriptor(sequence, raw, capture_ordinal):
                     return {'kind':'existing_capture', 'source':'single-action/' + source,
-                            'byte_length':len(raw), 'sha256':sha(raw), 'report_ordinal':sequence, 'row_count':1}
+                            'byte_length':len(raw), 'sha256':sha(raw), 'report_ordinal':sequence, 'capture_ordinal':capture_ordinal, 'row_count':1}
                 first = index['clients'][0]
                 first.update(client_id=f'{pod}-r1', report_count=2,
-                             raw_sources=[descriptor(1, raws[0]), descriptor(3, raws[1])])
+                             raw_sources=[descriptor(1, raws[0], 1), descriptor(3, raws[1], 2)])
                 second = dict(first, ordinal=2, client_id=f'{pod}-r2', report_count=1,
-                              raw_sources=[descriptor(1, raws[2])])
+                              raw_sources=[descriptor(1, raws[2], 1)])
                 index['clients'] = [first, second]
                 if fault == 'zero':
                     first.update(report_count=0, raw_sources=[])
@@ -957,10 +1005,10 @@ class InventoryIntegrationTests(unittest.TestCase):
                     h.cli.blobs[key] = encoded(document)
                 else:
                     raw = b'{"client_ordinal":1,"report_ordinal":1,"raw":"PRIVATE_NATIVE_SENTINEL"}\n'
-                    chunk = prefix + 'raw-000001.jsonl'
+                    chunk = prefix + 'raw-000001-0000000001.jsonl'
                     document['clients'][0].update(report_count=1, raw_sources=[{
                         'kind':'raw_chunk', 'source':chunk, 'byte_length':len(raw), 'sha256':'f'*64,
-                        'report_ordinal':1, 'row_count':1}])
+                        'report_ordinal':1, 'capture_ordinal':1, 'row_count':1}])
                     h.cli.put('native-monitoring', chunk, raw)
                     h.cli.blobs[key] = encoded(document)
                 code, manifest, receipt = h.run()

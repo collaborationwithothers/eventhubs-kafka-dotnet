@@ -981,16 +981,20 @@ class Collector:
                             line = stream.readline(MetadataChunkMaxBytes + 1)
                             if not line: break
                             if ordinal > 4096 or not line.endswith(b'\n') or len(line) > MetadataChunkMaxBytes:
-                                return
+                                raise ValueError('statistics scan bounds')
                             row = strict_control(line, MetadataChunkMaxBytes)
                             raw = row['raw_json'].encode('utf-8')
                             client_id = row['identity']['client_id']
                             if len(raw) > MetadataRowMaxBytes or not isinstance(client_id, str):
-                                return
+                                raise ValueError('statistics row bounds')
                             refs[(client_id, ordinal)] = (len(raw), hashlib.sha256(raw).hexdigest())
-                except (OSError, ValueError, KeyError, TypeError, UnicodeError):
-                    return
-                self.native_existing[(container, name)] = refs
+                except (OSError, ValueError, KeyError, TypeError, UnicodeError, AttributeError):
+                    self.gap('monitoring_incomplete', 'statistics source scan', name)
+                except BaseException:
+                    self.gap('monitoring_incomplete', 'statistics source scan', name)
+                    raise
+                finally:
+                    self.native_existing[(container, name)] = refs
             inspect_source = inspect_statistics
         destination = f'{self.prefix}objects/{container}/{name}'
         if destination in self.names: raise InvalidArchiveConfig()

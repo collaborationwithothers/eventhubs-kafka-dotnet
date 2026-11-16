@@ -35,7 +35,7 @@ def index(data, identity, prefix):
             or type(document['diagnostics_truncated']) is not bool or not isinstance(document['clients'], list)
             or len(document['clients']) > MAX_CLIENTS):
         raise ValueError('index shape or identity')
-    refs = diagnostics = raw_bytes = 0
+    refs = diagnostics = raw_bytes = reports = raw_rows = 0
     seen = set()
     for ordinal, client in enumerate(document['clients'], 1):
         if (not isinstance(client, dict) or set(client) != {'ordinal', 'role', 'client_id', 'native_identity', 'build_status', 'report_count', 'raw_sources', 'diagnostics', 'capture_complete', 'export_tail_status'}
@@ -51,31 +51,42 @@ def index(data, identity, prefix):
         if any(not isinstance(code, str) or not re.fullmatch(r'[a-z][a-z0-9_]{0,127}', code) for code in client['diagnostics']) or len(set(client['diagnostics'])) != len(client['diagnostics']):
             raise ValueError('diagnostics')
         diagnostics += len(client['diagnostics'])
+        reports += client['report_count']
         rows = 0
+        ranges = []
         existing_seen = set()
         for source in client['raw_sources']:
             refs += 1
-            if (not isinstance(source, dict) or set(source) != {'kind', 'source', 'byte_length', 'sha256', 'report_ordinal', 'row_count'}
+            if (not isinstance(source, dict) or set(source) != {'kind', 'source', 'byte_length', 'sha256', 'report_ordinal', 'row_count', 'capture_ordinal'}
                     or source['kind'] not in ('existing_capture', 'raw_chunk') or not isinstance(source['source'], str)
                     or len(source['source']) > 1024 or any(not re.fullmatch(r'[A-Za-z0-9_.-]+', part) or part in ('.', '..') for part in source['source'].split('/'))
                     or type(source['byte_length']) is not int or source['byte_length'] < 0
                     or not isinstance(source['sha256'], str) or not re.fullmatch(r'[0-9a-f]{64}', source['sha256'])
                     or type(source['report_ordinal']) is not int or source['report_ordinal'] < 1
-                    or type(source['row_count']) is not int or source['row_count'] < 1):
+                    or type(source['row_count']) is not int or source['row_count'] < 1
+                    or type(source['capture_ordinal']) is not int or source['capture_ordinal'] < 1
+                    or source['capture_ordinal'] + source['row_count'] - 1 > client['report_count']):
                 raise ValueError('source shape')
             if source['kind'] == 'raw_chunk':
-                if (source['source'] != f'{prefix}raw-{ordinal:06d}.jsonl' or source['source'] in seen
-                        or source['report_ordinal'] + source['row_count'] - 1 > client['report_count']):
+                if (source['source'] != f"{prefix}raw-{ordinal:06d}-{source['capture_ordinal']:010d}.jsonl"
+                        or source['source'] in seen or source['report_ordinal'] != source['capture_ordinal']):
                     raise ValueError('chunk identity')
-                seen.add(source['source']); raw_bytes += source['byte_length']
+                seen.add(source['source']); raw_bytes += source['byte_length']; raw_rows += source['row_count']
             elif source['row_count'] != 1 or source['byte_length'] > MAX_REPORT or (source['source'], source['report_ordinal']) in existing_seen:
                 raise ValueError('existing source bounds')
             else:
                 existing_seen.add((source['source'], source['report_ordinal']))
             rows += source['row_count']
+            ranges.append((source['capture_ordinal'], source['capture_ordinal'] + source['row_count']))
+        ranges.sort()
+        end = 1
+        for start, next_end in ranges:
+            if start < end or client['capture_complete'] and start != end:
+                raise ValueError('capture ordinal coverage')
+            end = next_end
         if client['capture_complete'] and (client['build_status'] != 'built' or client['diagnostics'] or rows != client['report_count']):
             raise ValueError('complete client')
-    if refs > MAX_REFS or diagnostics > MAX_DIAGNOSTICS or raw_bytes > MAX_RAW:
+    if refs > MAX_REFS or reports > MAX_REFS or raw_rows > MAX_REFS or diagnostics > MAX_DIAGNOSTICS or raw_bytes > MAX_RAW:
         raise ValueError('index bounds')
     if document['capture_complete'] and (not document['clients'] or document['diagnostics_truncated'] or any(not c['capture_complete'] for c in document['clients'])):
         raise ValueError('complete index')
