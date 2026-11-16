@@ -15,9 +15,10 @@ public sealed class KafkaNativeMonitoringBoundsTests
     private const string Raw = "{\"name\":\"native\",\"client_id\":\"client\",\"type\":\"producer\",\"ts\":11,\"time\":1,\"age\":1}";
     private static readonly KafkaNativeMonitoringIdentity Identity = new("run", "phase", "scenario", "configuration", "job", "pod", "commit");
     private static readonly KafkaStatisticsIdentity ClientIdentity = new("scenario", "run", KafkaClientRole.LoadGenProducer, "client");
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
 
     [Fact]
-    public async Task EmptyCoordinatorIsIncomplete()
+    public async Task Given_NoLifetimes_When_Publishing_Then_CaptureIsIncomplete()
     {
         var store = new Store();
         using var metrics = new KafkaStatisticsMetrics();
@@ -29,7 +30,7 @@ public sealed class KafkaNativeMonitoringBoundsTests
     }
 
     [Fact]
-    public void ProductionBoundsAreFixed()
+    public void Given_ProductionCapture_When_ReadingBounds_Then_ApprovedLimitsAreFixed()
     {
         Assert.Equal(4096, KafkaNativeMonitoringCoordinator.MaxReferences);
         Assert.Equal(128, KafkaNativeMonitoringCoordinator.MaxDiagnostics);
@@ -42,7 +43,7 @@ public sealed class KafkaNativeMonitoringBoundsTests
     [InlineData(-1, true)]
     [InlineData(0, true)]
     [InlineData(1, false)]
-    public async Task ReportByteBoundary(int offset, bool accepted)
+    public async Task Given_ReportByteBoundary_When_Capturing_Then_OnlyWholeReportsWithinLimitAreAdmitted(int offset, bool accepted)
     {
         string raw = Raw + new string(' ', KafkaNativeMonitoringCoordinator.MaxReportBytes + offset - Encoding.UTF8.GetByteCount(Raw));
         var store = new Store();
@@ -62,7 +63,7 @@ public sealed class KafkaNativeMonitoringBoundsTests
     [InlineData(4094, 2)]
     [InlineData(4095, 1)]
     [InlineData(4096, 0)]
-    public async Task ReferenceBoundary(int retained, int accepted)
+    public async Task Given_ReferenceBoundary_When_Capturing_Then_ExhaustionRecordsAStickyGap(int retained, int accepted)
     {
         var store = new Store();
         using var metrics = new KafkaStatisticsMetrics();
@@ -84,9 +85,9 @@ public sealed class KafkaNativeMonitoringBoundsTests
     [InlineData(-1, true)]
     [InlineData(0, true)]
     [InlineData(1, false)]
-    public async Task RawAggregateBoundary(int offset, bool accepted)
+    public async Task Given_RawAggregateBoundary_When_Capturing_Then_ExhaustionRecordsAStickyGap(int offset, bool accepted)
     {
-        byte[] row = JsonSerializer.SerializeToUtf8Bytes(new { ClientOrdinal = 1, ReportOrdinal = 1L, Raw }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower });
+        byte[] row = JsonSerializer.SerializeToUtf8Bytes(new { ClientOrdinal = 1, ReportOrdinal = 1L, Raw }, JsonOptions);
         var store = new Store();
         using var metrics = new KafkaStatisticsMetrics();
         var coordinator = new KafkaNativeMonitoringCoordinator(store, metrics, new Clock(), Identity);
@@ -103,7 +104,7 @@ public sealed class KafkaNativeMonitoringBoundsTests
     }
 
     [Fact]
-    public async Task QueueHoldsExactly128WaitingCallbacksAndOverflowIsSticky()
+    public async Task Given_BlockedWorker_When_QueueOverflows_Then_TheGapIsSticky()
     {
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -135,7 +136,7 @@ public sealed class KafkaNativeMonitoringBoundsTests
     [InlineData(127, false)]
     [InlineData(128, false)]
     [InlineData(129, true)]
-    public async Task DiagnosticLimitIsStickyAndRetains128DistinctRecords(int count, bool truncated)
+    public async Task Given_DiagnosticBoundary_When_Recording_Then_TruncationIsBoundedAndSticky(int count, bool truncated)
     {
         var store = new Store();
         using var metrics = new KafkaStatisticsMetrics();
@@ -156,7 +157,7 @@ public sealed class KafkaNativeMonitoringBoundsTests
     [InlineData(-1, true)]
     [InlineData(0, true)]
     [InlineData(1, false)]
-    public async Task IndexByteBoundary(int offset, bool accepted)
+    public async Task Given_IndexByteBoundary_When_Publishing_Then_ExcessIsNotWritten(int offset, bool accepted)
     {
         var baseline = new Store();
         using var metrics = new KafkaStatisticsMetrics();

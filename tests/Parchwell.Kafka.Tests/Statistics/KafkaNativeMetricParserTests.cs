@@ -10,6 +10,7 @@ namespace Parchwell.Kafka.Tests.Statistics;
 public sealed class KafkaNativeMetricParserTests
 {
     private const string Identity = "\"name\":\"native\",\"client_id\":\"client\",\"type\":\"producer\",\"ts\":1,\"time\":1,\"age\":1";
+    private static readonly string[] EmptyWindowFields = ["cnt", "hdrsize", "outofrange"];
 
     [Fact]
     public void Given_AllScalarKinds_When_Projected_Then_LiteralCatalogueTargetsMatch()
@@ -57,7 +58,7 @@ public sealed class KafkaNativeMetricParserTests
         var empty = Parse("\"brokers\":{\"b\":{\"rtt\":{\"cnt\":0,\"min\":999,\"max\":999,\"sum\":999,\"p99\":999,\"outofrange\":0,\"hdrsize\":128}}}");
         Assert.True(empty.IsValid);
         var points = empty.Points.Where(p => p.Definition.Name.StartsWith("kafka.librdkafka.broker.rtt.", StringComparison.Ordinal)).ToDictionary(p => p.Definition.Name, p => p.Value);
-        Assert.Equal(new[] { "cnt", "hdrsize", "outofrange" }, points.Keys.Select(k => k.Split('.')[^1]).Order());
+        Assert.Equal(EmptyWindowFields, points.Keys.Select(k => k.Split('.')[^1]).Order());
         Assert.Equal(128, points["kafka.librdkafka.broker.rtt.hdrsize"]);
         var filled = Parse("\"brokers\":{\"b\":{\"rtt\":{\"cnt\":2,\"min\":0,\"max\":12,\"avg\":6,\"sum\":12,\"p99\":12}}}");
         Assert.True(filled.IsValid);
