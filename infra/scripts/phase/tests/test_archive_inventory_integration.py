@@ -785,7 +785,7 @@ class InventoryIntegrationTests(unittest.TestCase):
                 if fault=='journal_hash':
                     key=('source123','ledger',first+'journal.jsonl'); h.cli.blobs[key]=b'x'*len(h.cli.blobs[key])
                 elif fault=='successor_hash':
-                    key=('source123','ledger',successor+'statistics.jsonl'); h.cli.blobs[key]=b'x'*len(h.cli.blobs[key])
+                    key=('source123','ledger',successor+'ledger.jsonl'); h.cli.blobs[key]=b'x'*len(h.cli.blobs[key])
                 elif fault=='successor_missing': del h.cli.blobs[('source123','ledger',successor+'statistics.jsonl')]
                 code,m,r=h.run(); self.assertEqual(1,code)
                 self.assertFalse(r['archive_complete'])
@@ -795,7 +795,7 @@ class InventoryIntegrationTests(unittest.TestCase):
                 self.assertEqual(161 if fault=='none' else 160,m['totals']['verified_objects'] - 2 * 28 - sum(o['kind']=='native_monitoring_index' and o['state']=='verified' for o in m['objects']))
                 self.assertEqual(6,len(m['captures']))
                 objects={o['source']['name']:o for o in m['objects']}
-                journal=objects[first+'journal.jsonl']; artifact=objects[successor+'statistics.jsonl']
+                journal=objects[first+'journal.jsonl']; artifact=objects[successor+('ledger.jsonl' if fault == 'successor_hash' else 'statistics.jsonl')]
                 self.assertEqual('failed' if fault=='journal_hash' else 'verified',journal['state'])
                 self.assertEqual('failed' if fault=='successor_hash' else 'missing' if fault=='successor_missing' else 'verified',artifact['state'])
                 self.assertEqual('source_hash_mismatch' if fault in ('journal_hash','successor_hash') else
@@ -804,7 +804,7 @@ class InventoryIntegrationTests(unittest.TestCase):
                 for name in ('registration.json','abrupt-manifest.json','termination.json'):
                     self.assertEqual('verified',objects[first+name]['state'])
                 for name in ('registration.json','completion.json',*leaves):
-                    if name!='statistics.jsonl': self.assertEqual('verified',objects[successor+name]['state'])
+                    if name != ('ledger.jsonl' if fault == 'successor_hash' else 'statistics.jsonl'): self.assertEqual('verified',objects[successor+name]['state'])
                 self.assertIsNone(r['completion'])
                 self.assertIn('monitoring_incomplete', [g['code'] for g in r['gaps']])
                 if fault != 'none':
