@@ -313,7 +313,7 @@ class TransferTests(unittest.TestCase):
                     return len(data), hashlib.sha256(data).hexdigest(), 'etag'
                 def properties(self, *args, **kwargs): return None
                 def copy(self, container, name, destination, remaining, **kwargs):
-                    data = b'abc'
+                    data = b'' if name.endswith('/statistics.jsonl') else b'abc'
                     parts = name.split('/')
                     if name.endswith('/start-line.json') or name.endswith('/result.json'):
                         start_job = f'a01-42-1-c0-{parts[2]}-loadgen'
@@ -336,8 +336,21 @@ class TransferTests(unittest.TestCase):
                                     'instance_id': pod, 'expected_instance_id': pod, 'client_id': pod}
                         data = json.dumps({'schema_version': 1, 'identity': identity, 'worker_status': 'complete',
                                            'bookkeeping_complete': True, 'worker_complete': True, 'publication_complete': True,
-                                           'artifacts': [{'name': leaf, 'length': 3, 'sha256': hashlib.sha256(b'abc').hexdigest()}
+                                           'artifacts': [{'name': leaf,
+                                                          'length': 0 if leaf == 'statistics.jsonl' else 3,
+                                                          'sha256': hashlib.sha256(b'' if leaf == 'statistics.jsonl' else b'abc').hexdigest()}
                                                          for leaf in ('ledger.jsonl','manifest.json','statistics.jsonl','request-lifecycle.jsonl','capabilities.json')]}).encode()
+                    elif name.endswith('/native-monitoring/index.json'):
+                        job = parts[2]
+                        data = json.dumps({'schema_version': 1,
+                            'identity': {'run_id': 'a01-42-1', 'phase': 'C0', 'scenario_id': 'A01',
+                                         'configuration_id': 'C0', 'job_name': job, 'pod_uid': 'uid',
+                                         'source_commit': 'a' * 40},
+                            'clients': [{'ordinal': 1, 'role': 'LoadGenProducer' if job.endswith('-loadgen') else 'VerifierConsumer',
+                                         'client_id': job + '-pod', 'native_identity': None, 'build_status': 'built',
+                                         'report_count': 0, 'raw_sources': [], 'diagnostics': [],
+                                         'capture_complete': True, 'export_tail_status': 'unknown'}],
+                            'capture_complete': True, 'diagnostics_truncated': False}).encode()
                     elif name.endswith('/capture.json'):
                         capture_id, repeat = parts[-2], int(parts[2][1:])
                         job = capture_id[len('verify-'):-len('-uid-w0000')]
