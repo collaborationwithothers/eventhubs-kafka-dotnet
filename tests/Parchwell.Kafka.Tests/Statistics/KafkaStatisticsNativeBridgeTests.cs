@@ -57,6 +57,41 @@ public sealed class KafkaStatisticsNativeBridgeTests
         Assert.False(captured[2].Monitoring!.IsComplete);
     }
 
+    [Fact]
+    public async Task Given_LegacySelectedFieldMissing_When_NativeIdentityIsValid_Then_OrdinaryProjectionStillEmits()
+    {
+        const string run = "native-bridge-independent";
+        var values = new ConcurrentQueue<long>();
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, current) =>
+        {
+            if (instrument.Meter.Name == "Parchwell.Kafka.Statistics"
+                && instrument.Name == "kafka.librdkafka.client.tx") current.EnableMeasurementEvents(instrument);
+        };
+        listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
+        {
+            if (tags.ToArray().Any(tag => tag.Key == "run" && Equals(tag.Value, run))) values.Enqueue(value);
+        });
+        listener.Start();
+        using var metrics = new KafkaStatisticsMetrics();
+        var clock = new ManualTimeProvider();
+        var sink = new RecordingStatisticsSink();
+        await using var session = new KafkaStatisticsSession(
+            new KafkaStatisticsIdentity("A01", run, KafkaClientRole.LoadGenProducer, "bridge-client"),
+            StatisticsTestSupport.Options(), clock, sink, metrics, nativeClockCompatible: true);
+        clock.Advance(TimeSpan.FromSeconds(2));
+        string raw = MakeReport(11_000_000, 1_000_000, 2, false)
+            .Replace("\"nodeid\": 1, ", "", StringComparison.Ordinal);
+        session.Capture(raw);
+        await sink.WaitForReportsAsync(1);
+
+        Assert.Equal([2L], values.ToArray());
+        KafkaStatisticsReport report = Assert.Single(sink.Reports);
+        Assert.Null(report.Snapshot);
+        Assert.Equal(raw, report.RawJson);
+        Assert.True(report.Monitoring!.IsComplete);
+    }
+
     private static string MakeReport(long ts, long age, long value, bool malformed) =>
         StatisticsTestSupport.Report("bridge-client", ts, age, value, value)
             .Replace("\"brokers\": {", $"\"tx\": {value}, \"topics\": {{ \"topic\": {{ \"age\": {(malformed ? "\"bad\"" : "1")} }} }}, \"brokers\": {{", StringComparison.Ordinal);
