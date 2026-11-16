@@ -312,7 +312,8 @@ run_case cpu PARCHWELL_BUILD_MAX_CPU=3 DOTNET_PROCESSOR_COUNT=2 --
 [[ $status -eq 0 ]] || fail "cpu-capped run exited $status"
 grep -q '^restore Parchwell.slnx .*-maxcpucount:3' "$STUB_LOG" || fail "restore must receive -maxcpucount:3"
 grep -q '^build Parchwell.slnx .*-maxcpucount:3' "$STUB_LOG" || fail "build must receive -maxcpucount:3"
-if grep '^TEST ' "$STUB_LOG" | grep -q maxcpucount; then fail "test runs must not receive -maxcpucount"; fi
+grep -q '^MUTATION .*-maxcpucount:3' "$STUB_LOG" || fail "mutation-only build must receive -maxcpucount:3"
+if grep -E '^(TEST|MUTATION_TEST) ' "$STUB_LOG" | grep -q maxcpucount; then fail "test runs must not receive -maxcpucount"; fi
 check_summary "environment values" '.parchwell_build_max_cpu == "3" and .dotnet_processor_count == "2"'
 [[ "$(sort -u "$STUB_LOG.env")" == 2 ]] || fail "every dotnet call must see DOTNET_PROCESSOR_COUNT as the caller set it"
 if grep -q DOTNET_PROCESSOR_COUNT "$STUB_LOG"; then fail "the script must not pass DOTNET_PROCESSOR_COUNT to dotnet"; fi

@@ -1,3 +1,4 @@
+using Parchwell.Verifier.VerifyRun.Consumer;
 using System.Security.Cryptography;
 using System.Text;
 using Confluent.Kafka;
@@ -27,11 +28,11 @@ namespace Parchwell.Verifier.VerifyRun;
 internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured, TimeProvider clock,
     VerifierKafkaSessionFactory sessions, IVerifierArtifactStore verifierStore, IProducerArtifactStore producerStore,
     ScenarioLoader scenarioLoader, RegisteredProducerConfigurationResolver configurationResolver,
-    VerifierCompletionState? completion = null) : IVerifierModeHandler
+    VerifierCompletionState? completion = null, IRepeatResultExtension? extension = null) : IVerifierModeHandler
 {
     private static readonly string[] ProducerRuntimeVersionKeys = ["confluent_kafka", "librdkafka", "dotnet"];
 
-    public VerifierMode Mode => VerifierMode.Verify;
+    public VerifierMode Mode => extension is null ? VerifierMode.Verify : VerifierMode.ConsumerVerify;
 
     public async Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
@@ -113,14 +114,14 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
             IReadOnlyList<string> expectedBrokers=inventory.Value?.Brokers.Select(b=>b.Name).Order(StringComparer.Ordinal).ToArray()??[];
 
             VerifierKafkaSession? session=null;ITimer? safetyTimer=null;using var kafkaWork=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            byte[]? resultBytes=null;VerifierResultStatus status=VerifierResultStatus.Incomplete;string coverage="unavailable";
+            byte[]? resultBytes=null;VerifierResultStatus status=VerifierResultStatus.Incomplete;string coverage="unavailable";bool consumerComplete=true;DateTimeOffset consumerDeadline=default;
             try
             {
                 var assessments=new List<CheckAssessment>();IReadOnlyDictionary<int,long>? ends=null;long origin=0;
                 try
                 {
                     session=sessions.Create(kafkaWork.Token);session.InstallToken(cancellationToken);
-                    ends=session.ReadHighWatermarks(()=>{origin=clock.GetTimestamp();safetyTimer=clock.CreateTimer(_=>kafkaWork.Cancel(),null,options.SafetyStop!.Value,Timeout.InfiniteTimeSpan);},()=>options.SafetyStop!.Value-clock.GetElapsedTime(origin),kafkaWork.Token);
+                    ends=session.ReadHighWatermarks(()=>{origin=clock.GetTimestamp();if(extension is not null)consumerDeadline=clock.GetUtcNow().AddMilliseconds(extension.CompletionDeadlineMs);safetyTimer=clock.CreateTimer(_=>kafkaWork.Cancel(),null,options.SafetyStop!.Value,Timeout.InfiniteTimeSpan);},()=>options.SafetyStop!.Value-clock.GetElapsedTime(origin),kafkaWork.Token);
                     assessments.Add(RunWindow.Pass(11));
                 }
                 catch(VerifierKafkaOperationException){cancellationToken.ThrowIfCancellationRequested();assessments.Add(RunWindow.Failure(11));}
@@ -180,6 +181,13 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                     judgement.Diagnostics.Concat(a01.Diagnostics).Concat(b04.Diagnostics).Concat(batching.Diagnostics).ToArray(),
                     a01.WorkloadObservation??b04.WorkloadObservation??batching.WorkloadObservation,
                     b04.Evidence,batching.Evidence,b10Intake,b10?false:null,b10?oneProducer?oneProducerComplete:b10Evaluation!.InWindowCounts is not null:null,observations);
+                if(extension is not null)
+                {
+                    RepeatResultExtension extended=await extension.EvaluateAsync(new RepeatResultContext(status,window,
+                        inputs.SelectMany(input=>input.Ledger.Value??[]).ToArray(),drain?.Records??[],consumerDeadline,budget),cancellationToken).ConfigureAwait(false);
+                    result=result with { Consumer=extended.Consumer };
+                    consumerComplete=extended.Status==VerifierResultStatus.CompleteValid;
+                }
                 resultBytes=VerifierResultCodec.Write(result,outputLimits);
                 coverage=b10&&!oneProducer?B10IntakeChecks.BrokerInventoryCoverage(judgements[0],judgements[1]):judgement.Assessments.FirstOrDefault(a=>a.CheckNumber==24) is { Evaluation:AssessmentEvaluation.Evaluated,Disposition:AssessmentDisposition.Pass }?"pass":
                     judgement.Assessments.FirstOrDefault(a=>a.CheckNumber==24)?.Disposition==AssessmentDisposition.Fail?"fail":"unavailable";
@@ -196,11 +204,11 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
             await verifierStore.CreateAsync(resultName,resultBytes,write.Token).ConfigureAwait(false);CheckDeadline(resultOrigin,options.BlobIoTimeout.Value,write.Token);
             var resultReference=new ArtifactReference("verifier",resultName,resultBytes.LongLength,Convert.ToHexStringLower(SHA256.HashData(resultBytes)));
             var verifyReceipt=new WorkerReceipt(1,"verify",options.ScenarioId!,options.ConfigurationId!,options.RunId!,options.Phase!,options.Repeat,
-                options.JobName!,options.PodName!,registration.Identity,options.SourceCommit!,status==VerifierResultStatus.CompleteValid?0:1,true,
+                options.JobName!,options.PodName!,registration.Identity,options.SourceCommit!,status==VerifierResultStatus.CompleteValid&&consumerComplete?0:1,true,
                 started.ToString("O",System.Globalization.CultureInfo.InvariantCulture),clock.GetUtcNow().ToString("O",System.Globalization.CultureInfo.InvariantCulture),
                 [resultReference],b10?null:firstInput.Acceptance.AcceptedSnapshot,new RepeatChecks("pass","pass",inventory.Value is null?"unavailable":coverage),b10Intake);
             completion?.SetPendingBlobReceipt(options.VerifierContainer!,PhasePaths.VerifyCompletion(options.RunId!,options.Phase!,options.Repeat.Value),PhaseWireCodec.WriteReceipt(verifyReceipt));
-            return status==VerifierResultStatus.CompleteValid?0:1;
+            return status==VerifierResultStatus.CompleteValid&&consumerComplete?0:1;
         }
 
         async Task<ProducerInputs> ReadProducer(ProducerRegistration producerRegistration,bool first)
