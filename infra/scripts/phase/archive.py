@@ -1113,7 +1113,10 @@ class Collector:
                     refs = {}
                     for repeat in doc['repeats']:
                         for row in repeat['statistics']:
-                            refs[(repeat['client_id'], row['sequence'])] = (row['raw_base64'][1], row['raw_base64'][2])
+                            key = (repeat['client_id'], row['sequence'])
+                            if key in refs:
+                                self.gap('monitoring_incomplete', 'duplicate native source row', name)
+                            refs[key] = (row['raw_base64'][1], row['raw_base64'][2])
                     self.native_existing[(container, name)] = refs
                 return valid
             size, sha, etag, dest_etag, _, valid = self.transfer.project_source(
@@ -1734,7 +1737,10 @@ def check_v2_actor_logs(collector, phase, status, units, artifacts, private):
             for slot in documents[1]['repeats']:
                 for row in slot['statistics']:
                     raw = base64.b64decode(row['raw_base64'], validate=True)
-                    refs[(slot['client_id'], row['sequence'])] = (len(raw), hashlib.sha256(raw).hexdigest())
+                    key = (slot['client_id'], row['sequence'])
+                    if key in refs:
+                        collector.gap('monitoring_incomplete', 'duplicate native source row', name)
+                    refs[key] = (len(raw), hashlib.sha256(raw).hexdigest())
             collector.native_existing[('runner', name)] = refs
             source = {'container': 'runner', 'name': name, 'etag': None, 'bytes': len(log), 'sha256': hashlib.sha256(log).hexdigest()}
             projection = {'schema_version': 1, 'kind': 'source_metadata_projection', 'source': source,
@@ -1903,6 +1909,17 @@ def collect_native_monitoring(collector, phase, status, units):
             collector.gap('diagnostics_truncated', 'native index diagnostics', unit=job)
         if not document['capture_complete']:
             collector.gap('monitoring_incomplete', 'native capture incomplete', unit=job)
+        pod = unit['pod_name']
+        def same_pod(container, name):
+            return bool(pod) and (
+                container == 'runner' and name.startswith(f'probe-v2/raw/{job}/{pod}.containers.')
+                or container in ('ledger', 'single-action') and (
+                    f'/producer/{pod}/' in '/' + name
+                    or f'/b10-abrupt/{pod}/' in '/' + name
+                    or f'/b10-abrupt-diagnostic/{pod}/' in '/' + name
+                    or name.endswith(f'/instances/{pod}/capture.json')))
+
+        covered = set()
         for client in document['clients']:
             for descriptor in client['raw_sources']:
                 if descriptor['kind'] == 'existing_capture':
@@ -1912,16 +1929,12 @@ def collect_native_monitoring(collector, phase, status, units):
                                      and item['source']['name'] == parts[1] and item['state'] == 'verified'), None)
                     refs = collector.native_existing.get(tuple(parts), {})
                     actual = refs.get((client['client_id'], descriptor['report_ordinal']))
-                    pod = unit['pod_name']
-                    same_pod = len(parts) == 2 and bool(pod) and (
-                        parts[0] == 'runner' and parts[1].startswith(f'probe-v2/raw/{job}/{pod}.containers.')
-                        or parts[0] in ('ledger', 'single-action') and (
-                            f'/producer/{pod}/' in '/' + parts[1]
-                            or f'/b10-abrupt/{pod}/' in '/' + parts[1]
-                            or f'/b10-abrupt-diagnostic/{pod}/' in '/' + parts[1]
-                            or parts[1].endswith(f'/instances/{pod}/capture.json')))
-                    if existing is None or not same_pod or actual != (descriptor['byte_length'], descriptor['sha256']):
+                    key = (*parts, client['client_id'], descriptor['report_ordinal'])
+                    if (existing is None or len(parts) != 2 or not same_pod(*parts)
+                            or actual != (descriptor['byte_length'], descriptor['sha256']) or key in covered):
                         collector.gap('monitoring_incomplete', 'native existing capture binding', unit=job)
+                    else:
+                        covered.add(key)
                     continue
                 def inspect_chunk(path, size, descriptor=descriptor, ordinal=client['ordinal']):
                     try:
@@ -1936,6 +1949,14 @@ def collect_native_monitoring(collector, phase, status, units):
                                           inspect_source=inspect_chunk)
                 if result is None:
                     collector.gap('monitoring_incomplete', 'native raw unavailable', unit=job)
+        for (container, name), refs in collector.native_existing.items():
+            if not same_pod(container, name):
+                continue
+            verified = any(item['source']['container'] == container and item['source']['name'] == name
+                           and item['state'] == 'verified' for item in collector.objects)
+            if verified and any((container, name, client_id, sequence) not in covered
+                                for client_id, sequence in refs):
+                collector.gap('monitoring_incomplete', 'native existing capture coverage', unit=job)
 
 
 def manifest_run(phase, identity):

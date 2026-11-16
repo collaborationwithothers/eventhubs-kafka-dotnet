@@ -24,6 +24,12 @@ class NativeMonitoringTests(unittest.TestCase):
         self.document['identity'] = dict(self.identity, pod_uid='other')
         with self.assertRaises(ValueError): native.index(self.encode(), self.identity, self.prefix)
 
+    def test_empty_clients_cannot_claim_complete(self):
+        self.document['clients'] = []
+        with self.assertRaises(ValueError): native.index(self.encode(), self.identity, self.prefix)
+        self.document['capture_complete'] = False
+        self.assertFalse(native.index(self.encode(), self.identity, self.prefix)['capture_complete'])
+
     def test_limits_and_incomplete_precedence(self):
         self.document['clients'] = [dict(self.client, ordinal=i + 1) for i in range(33)]
         with self.assertRaises(ValueError): native.index(self.encode(), self.identity, self.prefix)

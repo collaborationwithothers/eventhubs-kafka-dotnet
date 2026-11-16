@@ -878,6 +878,57 @@ class InventoryIntegrationTests(unittest.TestCase):
                 else:
                     self.assertFalse(any(o['kind']=='native_monitoring_raw' for o in manifest['objects']))
 
+    def test_native_existing_source_requires_exact_coverage(self):
+        for fault in ('none', 'zero', 'partial', 'omitted_client', 'duplicate', 'empty_clients'):
+            with self.subTest(fault=fault):
+                h = self.harness('probe-batch', 'single-action', 'probe-42-1', 'batch', items=['B01'])
+                complete_family(h, 'probe-batch')
+                job = 'probe-42-1-b01-c0-single'; pod = job + '-pod'
+                source = f'probe-42-1/single-action/B01/C0/instances/{pod}/capture.json'
+                key = ('source123', 'single-action', source)
+                capture = json.loads(h.cli.blobs[key])
+                raws = [b'{"name":"first"}', b'{"name":"second"}', b'{"name":"third"}']
+                for repeat, rows in ((0, [(1, raws[0]), (3, raws[1])]), (1, [(1, raws[2])])):
+                    capture['repeats'][repeat]['statistics'] = [
+                        {'sequence': sequence, 'observed_elapsed_ms': sequence,
+                         'raw_base64': base64.b64encode(raw).decode()} for sequence, raw in rows]
+                original = encoded(capture)
+                h.cli.blobs[key] = original
+                index_key = ('source123', 'native-monitoring', f'probe-42-1/C0/{job}/uid/native-monitoring/index.json')
+                index = json.loads(h.cli.blobs[index_key])
+                def descriptor(sequence, raw):
+                    return {'kind':'existing_capture', 'source':'single-action/' + source,
+                            'byte_length':len(raw), 'sha256':sha(raw), 'report_ordinal':sequence, 'row_count':1}
+                first = index['clients'][0]
+                first.update(client_id=f'{pod}-r1', report_count=2,
+                             raw_sources=[descriptor(1, raws[0]), descriptor(3, raws[1])])
+                second = dict(first, ordinal=2, client_id=f'{pod}-r2', report_count=1,
+                              raw_sources=[descriptor(1, raws[2])])
+                index['clients'] = [first, second]
+                if fault == 'zero':
+                    first.update(report_count=0, raw_sources=[])
+                elif fault == 'partial':
+                    first.update(report_count=1, raw_sources=first['raw_sources'][:1])
+                elif fault == 'omitted_client':
+                    index['clients'] = [first]
+                elif fault == 'duplicate':
+                    index['clients'].append(dict(first, ordinal=3))
+                elif fault == 'empty_clients':
+                    index['clients'] = []
+                h.cli.blobs[index_key] = encoded(index)
+                code, manifest, receipt = h.run()
+                self.assertEqual(0 if fault == 'none' else 1, code)
+                self.assertEqual(fault == 'none', receipt['archive_complete'])
+                if fault != 'none':
+                    self.assertIsNone(receipt['completion'])
+                    self.assertTrue(any(g['code'] == 'monitoring_incomplete' for g in manifest['gaps']))
+                self.assertFalse(any(o['kind'] == 'native_monitoring_raw' for o in manifest['objects']))
+                obj = next(o for o in manifest['objects'] if o['source']['name'] == source)
+                projected = json.loads(h.cli.blobs[('archive123', 'run-evidence', obj['destination_name'])])
+                self.assertEqual(sha(original), projected['source']['sha256'])
+                self.assertEqual('success', projected['metadata']['repeats'][0]['result'])
+                self.assertNotIn(b'BODY_SECRET', b''.join(v for (account, _, _), v in h.cli.blobs.items() if account == 'archive123'))
+
     def test_native_index_and_chunk_fail_closed(self):
         for fault in ('missing', 'malformed', 'identity', 'hash', 'truncated'):
             with self.subTest(fault=fault):

@@ -77,7 +77,7 @@ def index(data, identity, prefix):
             raise ValueError('complete client')
     if refs > MAX_REFS or diagnostics > MAX_DIAGNOSTICS or raw_bytes > MAX_RAW:
         raise ValueError('index bounds')
-    if document['capture_complete'] and (document['diagnostics_truncated'] or any(not c['capture_complete'] for c in document['clients'])):
+    if document['capture_complete'] and (not document['clients'] or document['diagnostics_truncated'] or any(not c['capture_complete'] for c in document['clients'])):
         raise ValueError('complete index')
     return document
 
