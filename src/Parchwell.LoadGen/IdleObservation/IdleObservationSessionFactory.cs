@@ -13,7 +13,7 @@ internal sealed class IdleObservationSessionFactory
     {
         _producer = (settings, capture, cancellation) =>
         {
-            KafkaNativeMonitoringLifetime? lifetime = monitoring?.Begin(capture, new(options.ScenarioId, options.RunId, KafkaClientRole.LoadGenProducer, settings["client.id"]));
+            KafkaNativeMonitoringLifetime? lifetime = monitoring?.Begin(new(options.ScenarioId, options.RunId, KafkaClientRole.LoadGenProducer, settings["client.id"]));
             try
             {
             KafkaOAuthBearerSession session = authentication.CreateSession(new(options.ScenarioId, options.RunId, KafkaClientRole.LoadGenProducer, settings["client.id"]), cancellation);

@@ -12,8 +12,6 @@ internal sealed class NativeMonitoringHost(KafkaNativeMonitoringCoordinator coor
 {
     private readonly ConcurrentBag<KafkaNativeMonitoringLifetime> _clients = [];
 
-    internal KafkaNativeMonitoringLifetime? Begin(object capture, KafkaStatisticsIdentity identity) => Begin(identity);
-
     internal KafkaNativeMonitoringLifetime? Begin(KafkaStatisticsIdentity identity)
     {
         try
