@@ -46,6 +46,9 @@ internal static class Program
         SeedF04Result? result = null;
         TimeProvider clock = TimeProvider.System;
         bool hostCleaned = true;
+        KafkaNativeMonitoringCoordinator? seedMonitoring = null;
+        Task? seedDrain = null;
+        CancellationTokenSource? seedCleanup = null;
         int exitCode = 1;
         try
         {
@@ -72,17 +75,15 @@ internal static class Program
         {
             if (host is not null)
             {
-                using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(options?.HostCleanupSeconds ?? 10), clock);
+                seedCleanup = new CancellationTokenSource(TimeSpan.FromSeconds(options?.HostCleanupSeconds ?? 10), clock);
+                CancellationTokenSource cleanup = seedCleanup;
                 try { await host.StopAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false); }
                 catch (Exception) { hostCleaned = false; }
-                try
-                {
-                    KafkaNativeMonitoringCoordinator? monitoring = host.Services.GetService<KafkaNativeMonitoringCoordinator>();
-                    if (monitoring is not null) await monitoring.CompleteAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false);
-                }
-                catch (Exception) { }
+                try { seedMonitoring = host.Services.GetService<KafkaNativeMonitoringCoordinator>(); } catch (Exception) { }
+                seedDrain = seedMonitoring?.DrainAsync(cleanup.Token);
                 try { await Task.Run(host.Dispose, CancellationToken.None).WaitAsync(cleanup.Token).ConfigureAwait(false); }
                 catch (Exception) { hostCleaned = false; }
+
             }
         }
         try { watchdog?.Dispose(); }
@@ -99,6 +100,14 @@ internal static class Program
             }
         }
         catch (Exception) { exitCode = 1; }
+        try
+        {
+            if (seedMonitoring is not null && seedDrain?.IsCompletedSuccessfully == true)
+                await seedMonitoring.CompleteAsync(seedCleanup!.Token).WaitAsync(seedCleanup.Token).ConfigureAwait(false);
+            else seedMonitoring?.MarkIncomplete("host_drain_incomplete");
+        }
+        catch (Exception) { }
+        seedCleanup?.Dispose();
         return exitCode;
     }
 
@@ -190,13 +199,17 @@ internal static class Program
                 using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10), clock);
                 try { await host.StopAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false); }
                 catch (Exception) { }
+                KafkaNativeMonitoringCoordinator? monitoring = null;
+                try { monitoring = host.Services.GetService<KafkaNativeMonitoringCoordinator>(); } catch (Exception) { }
+                Task? drain = monitoring?.DrainAsync(cleanup.Token);
+                try { await Task.Run(host.Dispose, CancellationToken.None).WaitAsync(cleanup.Token).ConfigureAwait(false); }
+                catch (Exception) { }
                 try
                 {
-                    KafkaNativeMonitoringCoordinator? monitoring = host.Services.GetService<KafkaNativeMonitoringCoordinator>();
-                    if (monitoring is not null) await monitoring.CompleteAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false);
+                    if (monitoring is not null && drain?.IsCompletedSuccessfully == true)
+                        await monitoring.CompleteAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false);
+                    else monitoring?.MarkIncomplete("host_drain_incomplete");
                 }
-                catch (Exception) { }
-                try { await Task.Run(host.Dispose, CancellationToken.None).WaitAsync(cleanup.Token).ConfigureAwait(false); }
                 catch (Exception) { }
             }
         }
@@ -274,6 +287,9 @@ internal static class Program
         services.AddOptions<KafkaNativeMonitoringOptions>()
             .Bind(configuration.GetSection(KafkaNativeMonitoringOptions.SectionName), binding => binding.ErrorOnUnknownConfiguration = true)
             .Validate(options => options.IsValid(out _) && options.RunId == runId && options.ScenarioId == scenarioId &&
+                options.BlobEndpoint == (configuration["ConsumerProcessing:BlobEndpoint"] ?? configuration["SeedF04:BlobEndpoint"]) &&
+                options.Phase == (configuration["ConsumerProcessing:Phase"] ?? "C2") &&
+                options.ConfigurationId == (configuration["ConsumerProcessing:Phase"] ?? "C2") &&
                 options.JobName == configuration["PARCHWELL_JOB_NAME"] && options.PodUid == configuration["PARCHWELL_POD_UID"] &&
                 options.SourceCommit == configuration["PARCHWELL_SOURCE_COMMIT"], "Native monitoring identity is invalid.").ValidateOnStart();
         services.AddParchwellNativeMonitoring();

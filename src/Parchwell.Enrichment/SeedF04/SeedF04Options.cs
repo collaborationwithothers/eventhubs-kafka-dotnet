@@ -9,6 +9,7 @@ public sealed class SeedF04Options
     public string PodName { get; set; } = string.Empty;
     public string PodUid { get; set; } = string.Empty;
     public string NamespaceName { get; set; } = string.Empty;
+    public string BlobEndpoint { get; set; } = string.Empty;
     public int ActionWindowMs { get; set; }
     public int ProcessLifetimeSeconds { get; set; }
     public int CleanupSeconds { get; set; }
@@ -25,6 +26,9 @@ public sealed class SeedF04Options
             throw new InvalidOperationException("seed_source_commit_invalid");
         if (!DnsLabel(NamespaceName, 63) || NamespaceName.Contains("azure", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("seed_namespace_invalid");
+        if (!Uri.TryCreate(BlobEndpoint, UriKind.Absolute, out Uri? endpoint) || endpoint.Scheme != Uri.UriSchemeHttps ||
+            !string.IsNullOrEmpty(endpoint.UserInfo) || !string.IsNullOrEmpty(endpoint.Query) || !string.IsNullOrEmpty(endpoint.Fragment))
+            throw new InvalidOperationException("seed_blob_endpoint_invalid");
         if (ActionWindowMs != 330000 || ProcessLifetimeSeconds != 390 || CleanupSeconds != 10 ||
             HostCleanupSeconds != 10 || MaxReceiptBytes != 65536)
             throw new InvalidOperationException("seed_bounds_invalid");

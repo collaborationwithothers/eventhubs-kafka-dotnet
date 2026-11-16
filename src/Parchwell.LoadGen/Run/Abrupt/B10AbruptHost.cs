@@ -115,20 +115,21 @@ internal static class B10AbruptHost
                         await runtime.Statistics.DisposeAsync().AsTask().WaitAsync(lifetime.Token).ConfigureAwait(false);
                         await runtime.Evidence.DisposeAsync().AsTask().WaitAsync(lifetime.Token).ConfigureAwait(false);
                         await host.StopAsync(lifetime.Token).WaitAsync(lifetime.Token).ConfigureAwait(false);
-                        await failedMonitoring.DrainAsync(lifetime.Token).WaitAsync(lifetime.Token).ConfigureAwait(false);
+                        Task failedDrain = failedMonitoring.DrainAsync(lifetime.Token);
                         await Task.Run(host.Dispose).WaitAsync(lifetime.Token).ConfigureAwait(false);
-                        await failedMonitoring.CompleteAsync(false, lifetime.Token).WaitAsync(lifetime.Token).ConfigureAwait(false);
+                        if (failedDrain.IsCompletedSuccessfully) await failedMonitoring.CompleteAsync(false, lifetime.Token).WaitAsync(lifetime.Token).ConfigureAwait(false);
+                        else failedMonitoring.MarkIncomplete();
                     }
                     catch (Exception) { Console.Error.WriteLine("native_monitoring_failed_build_completion_failed"); }
                 }
                 NativeMonitoringHost monitoring = host.Services.GetRequiredService<NativeMonitoringHost>();
                 using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10), clock);
+                Task? monitorDrain = null;
                 {
                     await runtime.Statistics.DisposeAsync().AsTask().WaitAsync(cleanup.Token).ConfigureAwait(false);
                     await runtime.Evidence.DisposeAsync().AsTask().WaitAsync(cleanup.Token).ConfigureAwait(false);
                     await host.StopAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false);
-                    try { await monitoring.DrainAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false); }
-                    catch (Exception) { monitoring.MarkIncomplete(); Console.Error.WriteLine("native_monitoring_drain_failed"); }
+                    monitorDrain = monitoring.DrainAsync(cleanup.Token);
                     await Task.Run(host.Dispose, cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false);
                 }
                 var payloads = new Dictionary<string, byte[]>(StringComparer.Ordinal);
@@ -136,7 +137,8 @@ internal static class B10AbruptHost
                     payloads.Add(pair.Key, await B10AbruptPublisher.ReadFileAsync(pair.Value, 268435456, lifetime.Token).ConfigureAwait(false));
                 await publisher.PublishSuccessorAsync(options.Identity(input.FirstIdentity.InstanceId), payloads, input.FirstTermination, input.Journal, input.KillUnconfirmedAttemptIds,
                     result.ReadyUtc, result.ReleaseUtc, result.Invocations, cleanupCompleted: true, lifetime.Token).ConfigureAwait(false);
-                try { await monitoring.CompleteAsync(true, cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false); }
+                if (monitorDrain?.IsCompletedSuccessfully != true) monitoring.MarkIncomplete();
+                try { if (monitorDrain?.IsCompletedSuccessfully == true) await monitoring.CompleteAsync(true, cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false); }
                 catch (Exception) { Console.Error.WriteLine("native_monitoring_completion_failed"); }
                 return 0;
             }

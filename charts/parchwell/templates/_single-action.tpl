@@ -134,7 +134,7 @@ spec:
             {{- range $key, $value := $r.bounds.single_action_capture -}}{{- $_ := set $fields $key $value -}}{{- end -}}
             {{- else if eq $mode "single-action-seed" -}}
             {{- $prefix = "SeedF04" -}}
-            {{- $fields = dict "RunId" $r.run_id "SourceCommit" $r.source_commit "JobName" $job "NamespaceName" $r.eventhubs.namespace_name "ActionWindowMs" 330000 "ProcessLifetimeSeconds" 390 "CleanupSeconds" 10 "HostCleanupSeconds" 10 "MaxReceiptBytes" 65536 -}}
+            {{- $fields = dict "RunId" $r.run_id "SourceCommit" $r.source_commit "JobName" $job "NamespaceName" $r.eventhubs.namespace_name "BlobEndpoint" $r.blob.account_url "ActionWindowMs" 330000 "ProcessLifetimeSeconds" 390 "CleanupSeconds" 10 "HostCleanupSeconds" 10 "MaxReceiptBytes" 65536 -}}
             {{- else -}}
             {{- $_ := set $fields "CaptureContainer" $captureContainer -}}
             {{- $_ := set $fields "CapturePrefix" (printf "%s/single-action/%s/%s/" $r.run_id $.Values.scenario_id $.Values.configuration_id) -}}

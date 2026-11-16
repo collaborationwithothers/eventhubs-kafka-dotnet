@@ -95,6 +95,9 @@ internal static class SingleActionHost
         ISingleActionPublication? publication = null;
         ITimer? watchdog = null;
         bool captureComplete = false;
+        NativeMonitoringHost? monitoring = null;
+        Task? drain = null;
+        CancellationTokenSource? cleanup = null;
         int exit = 1;
         try
         {
@@ -119,17 +122,15 @@ internal static class SingleActionHost
         {
             if (host is not null)
             {
-                using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(options?.HostCleanupSeconds ?? 10), clock);
-                try
-                {
-                    NativeMonitoringHost? monitoring = host.Services.GetService<NativeMonitoringHost>();
-                    if (monitoring is not null) await monitoring.CompleteAsync(captureComplete, cleanup.Token).ConfigureAwait(false);
-                }
-                catch (Exception exception) { ReportFailure("native_monitoring_completion_failed", exception, options); }
+                cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(options?.HostCleanupSeconds ?? 10), clock);
+                try { monitoring = host.Services.GetService<NativeMonitoringHost>(); }
+                catch (Exception exception) { ReportFailure("native_monitoring_initialization_failed", exception, options); }
                 try { await host.StopAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false); }
                 catch (Exception exception) { ReportFailure("single_action_host_stop_failed", exception, options); exit = 1; }
+                drain = monitoring?.DrainAsync(cleanup.Token);
                 try { await Task.Run(host.Dispose).WaitAsync(cleanup.Token).ConfigureAwait(false); }
                 catch (Exception exception) { ReportFailure("single_action_host_dispose_failed", exception, options); exit = 1; }
+
             }
         }
         try { watchdog?.Dispose(); }
@@ -145,6 +146,17 @@ internal static class SingleActionHost
             }
             catch (Exception exception) { ReportFailure("single_action_completion_failed", exception, options); exit = 1; }
         }
+        if (monitoring is not null)
+        {
+            try
+            {
+                if (drain?.IsCompletedSuccessfully == true)
+                    await monitoring.CompleteAsync(captureComplete, cleanup!.Token).WaitAsync(cleanup!.Token).ConfigureAwait(false);
+                else monitoring.MarkIncomplete();
+            }
+            catch (Exception exception) { ReportFailure("native_monitoring_completion_failed", exception, options); }
+        }
+        cleanup?.Dispose();
         return exit;
     }
     private static void ReportFailure(string operation, Exception exception, SingleActionHostOptions? options) =>

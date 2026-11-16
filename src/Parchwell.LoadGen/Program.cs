@@ -74,6 +74,8 @@ internal static class Program
         NativeMonitoringHost? monitoring = null;
         LoadGenWorker? worker = null;
         bool monitorDrained = false;
+        Task? monitorDrain = null;
+        CancellationTokenSource? hostCleanupDeadline = null;
         bool readyForCompletion = false;
         int exitCode = 1;
         try
@@ -125,7 +127,7 @@ internal static class Program
                 if (host is not null)
                 {
                     TimeSpan cleanupTimeout = runOptions?.CleanupTimeout ?? TimeSpan.FromSeconds(10);
-                    using var hostCleanupDeadline = new CancellationTokenSource(cleanupTimeout, clock ?? TimeProvider.System);
+                    hostCleanupDeadline = new CancellationTokenSource(cleanupTimeout, clock ?? TimeProvider.System);
                     try
                     {
                         await host.StopAsync(hostCleanupDeadline.Token).WaitAsync(hostCleanupDeadline.Token).ConfigureAwait(false);
@@ -140,11 +142,7 @@ internal static class Program
                         ReportHostFailure(exception, runOptions, logger, alwaysWriteIdentityFallback: true);
                         exitCode = 1;
                     }
-                    if (monitoring is not null)
-                    {
-                        try { await monitoring.DrainAsync(hostCleanupDeadline.Token).WaitAsync(hostCleanupDeadline.Token).ConfigureAwait(false); monitorDrained = true; }
-                        catch (Exception) { Console.Error.WriteLine("native_monitoring_drain_failed"); }
-                    }
+                    monitorDrain = monitoring?.DrainAsync(hostCleanupDeadline.Token);
                     try
                     {
                         await Task.Run(host.Dispose).WaitAsync(hostCleanupDeadline.Token).ConfigureAwait(false);
@@ -159,16 +157,7 @@ internal static class Program
                         ReportHostFailure(exception, runOptions, logger, alwaysWriteIdentityFallback: true);
                         exitCode = 1;
                     }
-                    if (monitoring is not null)
-                    {
-                        try
-                        {
-                            if (monitorDrained && runContext is not null && !readyForCompletion && worker?.DiagnosticPublicationSucceeded == true)
-                                monitoring.RebindSource("ledger/" + runContext.DiagnosticsPrefix + "statistics.jsonl");
-                            await monitoring.CompleteAsync(monitorDrained && (readyForCompletion || worker?.DiagnosticPublicationSucceeded == true), hostCleanupDeadline.Token).WaitAsync(hostCleanupDeadline.Token).ConfigureAwait(false);
-                        }
-                        catch (Exception) { Console.Error.WriteLine("native_monitoring_completion_failed"); }
-                    }
+
                 }
             }
             catch (Exception exception)
@@ -199,6 +188,19 @@ internal static class Program
                 exitCode = 1;
             }
         }
+        if (monitoring is not null)
+        {
+            monitorDrained = monitorDrain?.IsCompletedSuccessfully == true;
+            if (!monitorDrained) monitoring.MarkIncomplete();
+            try
+            {
+                if (monitorDrained && runContext is not null && !readyForCompletion && worker?.DiagnosticPublicationSucceeded == true)
+                    monitoring.RebindSource("ledger/" + runContext.DiagnosticsPrefix + "statistics.jsonl");
+                if (monitorDrained) await monitoring.CompleteAsync(readyForCompletion || worker?.DiagnosticPublicationSucceeded == true, hostCleanupDeadline!.Token).WaitAsync(hostCleanupDeadline!.Token).ConfigureAwait(false);
+            }
+            catch (Exception) { Console.Error.WriteLine("native_monitoring_completion_failed"); }
+        }
+        hostCleanupDeadline?.Dispose();
         return exitCode;
     }
 

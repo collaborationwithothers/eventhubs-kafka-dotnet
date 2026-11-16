@@ -308,6 +308,8 @@ internal static partial class Program
             .Validate(options => options.IsValid(out _) &&
                 options.RunId == configuration["Verifier:RunId"] && options.ScenarioId == configuration["Verifier:ScenarioId"] &&
                 options.ConfigurationId == configuration["Verifier:ConfigurationId"] &&
+                options.Phase == configuration["Verifier:Phase"] &&
+                options.BlobEndpoint == configuration["Verifier:BlobServiceUri"] &&
                 options.JobName == (configuration["Verifier:JobName"] ?? configuration["PARCHWELL_JOB_NAME"]) &&
                 options.PodUid == (configuration["Verifier:PodUid"] ?? configuration["PARCHWELL_POD_UID"]) &&
                 options.SourceCommit == (configuration["PARCHWELL_SOURCE_COMMIT"] ?? configuration["Verifier:SourceCommit"]),
@@ -425,10 +427,13 @@ internal static partial class Program
             }
         }
 
+        KafkaNativeMonitoringCoordinator? monitoring = null;
+        Task? monitorDrain = null;
+        CancellationTokenSource? monitoringCleanup = null;
         if (host is not null)
         {
             using var singleActionCleanup=hostOptions?.Mode=="single-action-judge"?new CancellationTokenSource(TimeSpan.FromSeconds(10),timeProvider??TimeProvider.System):null;
-            using var monitoringCleanup = new CancellationTokenSource(hostOptions?.CleanupTimeout ?? TimeSpan.FromSeconds(10), timeProvider ?? TimeProvider.System);
+            monitoringCleanup = new CancellationTokenSource(hostOptions?.CleanupTimeout ?? TimeSpan.FromSeconds(10), timeProvider ?? TimeProvider.System);
             try
             {
                 await host.StopAsync(singleActionCleanup?.Token??CancellationToken.None).ConfigureAwait(false);
@@ -448,15 +453,8 @@ internal static partial class Program
                 state?.MarkFailed();
             }
 
-            try
-            {
-                KafkaNativeMonitoringCoordinator? monitoring = host.Services.GetService<KafkaNativeMonitoringCoordinator>();
-                if (monitoring is not null)
-                {
-                    await monitoring.CompleteAsync(monitoringCleanup.Token).WaitAsync(monitoringCleanup.Token).ConfigureAwait(false);
-                }
-            }
-            catch (Exception) { }
+            try { monitoring = host.Services.GetService<KafkaNativeMonitoringCoordinator>(); } catch (Exception) { }
+            monitorDrain = monitoring?.DrainAsync(monitoringCleanup.Token);
 
             try
             {
@@ -484,6 +482,8 @@ internal static partial class Program
                 cleanupCompleted = false;
                 state?.MarkFailed();
             }
+
+
         }
 
         try
@@ -511,6 +511,14 @@ internal static partial class Program
         }
         finally
         {
+            try
+            {
+                if (monitoring is not null && monitorDrain?.IsCompletedSuccessfully == true)
+                    await monitoring.CompleteAsync(monitoringCleanup!.Token).WaitAsync(monitoringCleanup!.Token).ConfigureAwait(false);
+                else monitoring?.MarkIncomplete("host_drain_incomplete");
+            }
+            catch (Exception) { }
+            monitoringCleanup?.Dispose();
             watchdog?.Dispose();
         }
     }

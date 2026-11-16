@@ -16,7 +16,7 @@ internal static class NativeMonitoringTestSupport
         string job = Value("Verifier:JobName") ?? Value("PARCHWELL_JOB_NAME") ?? "job";
         string pod = Value("Verifier:PodUid") ?? Value("PARCHWELL_POD_UID") ?? "pod";
         string commit = Value("PARCHWELL_SOURCE_COMMIT") ?? Value("Verifier:SourceCommit") ?? "commit";
-        return [.. args, "--NativeMonitoring:BlobEndpoint=https://storage.example/", "--NativeMonitoring:BlobContainer=native-monitoring",
+        return [.. args, "--NativeMonitoring:BlobEndpoint=" + (Value("Verifier:BlobServiceUri") ?? "https://storage.example/"), "--NativeMonitoring:BlobContainer=native-monitoring",
             "--NativeMonitoring:RunId=" + run, "--NativeMonitoring:Phase=" + phase, "--NativeMonitoring:ScenarioId=" + scenario,
             "--NativeMonitoring:ConfigurationId=" + configuration, "--NativeMonitoring:JobName=" + job,
             "--NativeMonitoring:PodUid=" + pod, "--NativeMonitoring:SourceCommit=" + commit];

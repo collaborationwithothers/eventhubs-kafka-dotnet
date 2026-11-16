@@ -166,7 +166,7 @@ public sealed class SeedF04Tests
     {
         RunId = "synthetic-run", SourceCommit = new string('a', 40), JobName = "synthetic-run-f04-seed",
         PodName = "synthetic-run-f04-seed-abcde", PodUid = "11111111-2222-3333-4444-555555555555",
-        NamespaceName = "synthetic-eh", ActionWindowMs = 330000, ProcessLifetimeSeconds = 390,
+        NamespaceName = "synthetic-eh", BlobEndpoint = "https://storage.example/", ActionWindowMs = 330000, ProcessLifetimeSeconds = 390,
         CleanupSeconds = 10, HostCleanupSeconds = 10, MaxReceiptBytes = 65536
     };
 

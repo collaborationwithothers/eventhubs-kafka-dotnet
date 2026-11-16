@@ -181,7 +181,7 @@ PARSING = dict(MaxDocumentCharacters=1048576, MaxNestingDepth=32, MaxScalarChara
 ACTION_INPUTS = {'ScenarioId', 'ConfigurationId', 'RunId', 'SourceCommit', 'JobName', 'PodName', 'PodUid',
     'NamespaceName', 'BlobEndpoint', 'BlobContainer', 'ScenarioRoot', 'ScenarioLoadOptions', *CAPTURE}
 SEED_INPUTS = {'RunId', 'SourceCommit', 'JobName', 'PodName', 'PodUid', 'NamespaceName', 'ActionWindowMs',
-    'ProcessLifetimeSeconds', 'CleanupSeconds', 'HostCleanupSeconds', 'MaxReceiptBytes'}
+    'ProcessLifetimeSeconds', 'CleanupSeconds', 'HostCleanupSeconds', 'MaxReceiptBytes', 'BlobEndpoint'}
 JUDGE_INPUTS = {'Mode', 'ScenarioId', 'ConfigurationId', 'RunId', 'VerifierCommit', 'JobName', 'PodName',
     'PodUid', 'BlobServiceUri', 'VerifierContainer', 'NamespaceName', 'ScenarioRoot', 'LoadGenImage',
     'VerifierImage', 'EnrichmentImage', 'CaptureContainer', 'CapturePrefix', 'SingleActionLimits', 'ScenarioLoadOptions'}
@@ -211,7 +211,7 @@ def expected_live_environment(values):
     elif mode == 'single-action-seed':
         prefix = 'SeedF04'
         fields = dict(RunId=r['run_id'], SourceCommit=r['source_commit'], JobName=job_name(values),
-            NamespaceName=r['eventhubs']['namespace_name'], ActionWindowMs=330000, ProcessLifetimeSeconds=390,
+            NamespaceName=r['eventhubs']['namespace_name'], BlobEndpoint=r['blob']['account_url'], ActionWindowMs=330000, ProcessLifetimeSeconds=390,
             CleanupSeconds=10, HostCleanupSeconds=10, MaxReceiptBytes=65536)
     else:
         prefix = 'Verifier'

@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Parchwell.Enrichment.SeedF04;
+using Parchwell.Kafka.Statistics;
 using Xunit;
 
 namespace Parchwell.Enrichment.Tests.SeedF04;
@@ -167,21 +168,34 @@ public sealed class SeedF04HostTests
         builder.Configuration.AddInMemoryCollection(Configuration());
     }
 
+    [Fact]
+    public void Given_seed_monitoring_account_differs_When_options_are_resolved_Then_validation_fails()
+    {
+        Dictionary<string, string?> values = Configuration();
+        values["NativeMonitoring:BlobEndpoint"] = "https://other.example/";
+        using IHost host = Program.BuildHost(builder =>
+        {
+            builder.Configuration.Sources.Clear();
+            builder.Configuration.AddInMemoryCollection(values);
+        });
+        Assert.Throws<OptionsValidationException>(() => host.Services.GetRequiredService<IOptions<KafkaNativeMonitoringOptions>>().Value);
+    }
+
     internal static Dictionary<string, string?> Configuration() => new(StringComparer.Ordinal)
     {
         ["SeedF04:RunId"] = "synthetic-run", ["SeedF04:SourceCommit"] = new string('a', 40),
         ["SeedF04:JobName"] = "synthetic-run-f04-seed", ["SeedF04:PodName"] = "synthetic-run-f04-seed-abcde",
         ["SeedF04:PodUid"] = "11111111-2222-3333-4444-555555555555", ["SeedF04:NamespaceName"] = "synthetic-eh",
         ["SeedF04:ActionWindowMs"] = "330000", ["SeedF04:ProcessLifetimeSeconds"] = "390", ["SeedF04:CleanupSeconds"] = "10",
-        ["SeedF04:HostCleanupSeconds"] = "10", ["SeedF04:MaxReceiptBytes"] = "65536",
+        ["SeedF04:BlobEndpoint"] = "https://storage.example/", ["SeedF04:HostCleanupSeconds"] = "10", ["SeedF04:MaxReceiptBytes"] = "65536",
         ["PARCHWELL_SOURCE_COMMIT"] = new string('a', 40), ["PARCHWELL_JOB_NAME"] = "synthetic-run-f04-seed",
         ["PARCHWELL_POD_NAME"] = "synthetic-run-f04-seed-abcde", ["PARCHWELL_POD_UID"] = "11111111-2222-3333-4444-555555555555",
         ["Telemetry:ConnectionString"] = "InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://localhost/",
         ["Telemetry:ServiceName"] = "Parchwell.Enrichment", ["Telemetry:ServiceInstanceId"] = "synthetic-run-f04-seed-abcde",
         ["Telemetry:ScenarioId"] = "F04", ["Telemetry:RunId"] = "synthetic-run",
         ["NativeMonitoring:BlobEndpoint"] = "https://storage.example/", ["NativeMonitoring:BlobContainer"] = "native-monitoring",
-        ["NativeMonitoring:RunId"] = "synthetic-run", ["NativeMonitoring:Phase"] = "C0", ["NativeMonitoring:ScenarioId"] = "F04",
-        ["NativeMonitoring:ConfigurationId"] = "C0", ["NativeMonitoring:JobName"] = "synthetic-run-f04-seed",
+        ["NativeMonitoring:RunId"] = "synthetic-run", ["NativeMonitoring:Phase"] = "C2", ["NativeMonitoring:ScenarioId"] = "F04",
+        ["NativeMonitoring:ConfigurationId"] = "C2", ["NativeMonitoring:JobName"] = "synthetic-run-f04-seed",
         ["NativeMonitoring:PodUid"] = "11111111-2222-3333-4444-555555555555", ["NativeMonitoring:SourceCommit"] = new string('a', 40)
     };
 
