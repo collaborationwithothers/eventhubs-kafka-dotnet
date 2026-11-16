@@ -93,12 +93,18 @@ class Harness:
                     'GITHUB_RUN_ID': '42', 'GITHUB_RUN_ATTEMPT': '1', 'GITHUB_SHA': 'a'*40}
 
     def job(self, mode, job, item=None, config=None, repeat=None, stage=None):
-        r = {'mode': mode, 'job': job, 'item': item, 'configuration': config, 'repeat': repeat, 'apply': 0, 'outcome': 'failed'}
+        r = {'mode': mode, 'job': job, 'item': item, 'configuration': config, 'repeat': repeat, 'apply': 0, 'collect': 0, 'outcome': 'failed'}
         if stage: r['stage'] = stage
         self.status['modes'].append(r)
         d = self.artifacts/job; d.mkdir()
+        v2 = mode in ('single-action-v2', 'single-action-v2-judge')
+        role = ('verifier' if stage == 'judge' else 'loadgen' if stage == 'seed' else
+                'probe' if config == 'C6' else 'enrichment-consumer') if v2 else 'worker'
+        if v2: r['role'] = role
         (d/'pods.json').write_bytes(encoded({'items': [{'metadata': {'name': job+'-pod', 'uid': 'uid', 'annotations': {'secret': 'POD_SECRET'}},
-            'spec': {'containers': [{'env': [{'value': 'POD_SECRET'}]}]}, 'status': {'phase': 'Failed', 'containerStatuses': []}}]}))
+            'spec': {'containers': [{'name': role, 'env': [{'value': 'POD_SECRET'}]}]}, 'status': {'phase': 'Failed', 'containerStatuses': []}}]}))
+        (d/'collection-status.json').write_bytes(encoded({'complete': True, 'gaps': [], **({} if v2 else {'smoke_marker_valid': False})}))
+        if not v2 or stage == 'judge': (d/f'{job}-pod.containers.{role}.log').write_bytes(b'')
         return job+'-pod'
 
     def run(self):
@@ -331,6 +337,99 @@ class InventoryIntegrationTests(unittest.TestCase):
     def harness(self, *args, **kwargs):
         h = Harness(*args, **kwargs); self.addCleanup(h.close); return h
 
+    def assert_fixture_diagnostics(self, h, manifest, v2=False):
+        # Fixture declarations independently name each new status and log.
+        records = [r for r in h.status['modes'] if not v2 or r.get('stage') == 'judge']
+        expected = {}
+        for record in records:
+            job = record['job']
+            role = record['role'] if v2 else 'worker'
+            status = {'complete': True, 'gaps': []}
+            if not v2: status['smoke_marker_valid'] = False
+            expected[job + '/collection-status.json'] = len(encoded(status)) + 1
+            expected[f'{job}/{job}-pod.containers.{role}.log'] = 0
+        observed = {o['source']['name']: o for o in manifest['objects'] if o['source']['name'] in expected}
+        self.assertEqual(set(expected), set(observed))
+        self.assertEqual(len(records) * 2, len(observed))
+        for name, length in expected.items():
+            self.assertEqual('verified', observed[name]['state'])
+            self.assertEqual(length, observed[name]['bytes'])
+
+    def test_required_collection_failures_block_complete_nonledger_receipt(self):
+        cases = ('missing_status', 'false_complete', 'gaps', 'collect_gap', 'collect_error', 'missing_log',
+                 'truncated_status', 'truncated_log_status', 'wrong_types', 'duplicate_member', 'unknown_member', 'unknown_gap_member',
+                 'missing_init_log')
+        for scenario, phase, run, items in [('probe-batch', 'single-action', 'probe-42-1', ['B01']),
+                                             ('idle-observation', 'idle-observation', 'idle-42-1', ['A02'])]:
+            for case in cases:
+                with self.subTest(scenario=scenario, case=case):
+                    h = self.harness(scenario, phase, run, 'batch', items=items)
+                    complete_family(h, scenario)
+                    record = h.status['modes'][0]
+                    folder = h.artifacts / record['job']
+                    status = folder / 'collection-status.json'
+                    if case == 'missing_status': status.unlink()
+                    elif case == 'false_complete': status.write_bytes(encoded({'complete': False, 'smoke_marker_valid': False, 'gaps': []}))
+                    elif case == 'gaps': status.write_bytes(encoded({'complete': True, 'smoke_marker_valid': False, 'gaps': [{'kind':'no_pods'}]}))
+                    elif case == 'collect_gap': record['collect_gap'] = True
+                    elif case == 'collect_error': record.update(collect=2, outcome='collect_error')
+                    elif case == 'missing_log': (folder / (record['job'] + '-pod.containers.worker.log')).unlink()
+                    elif case == 'truncated_status': status.write_bytes(b'{"complete":true')
+                    elif case == 'truncated_log_status': status.write_bytes(encoded({'complete': False, 'smoke_marker_valid': False, 'gaps': [{'kind':'truncated_log', 'pod':record['job'] + '-pod', 'container':'worker', 'status':125}]}))
+                    elif case == 'wrong_types': status.write_bytes(encoded({'complete': 1, 'smoke_marker_valid': False, 'gaps': []}))
+                    elif case == 'duplicate_member': status.write_bytes(b'{"complete":true,"complete":true,"smoke_marker_valid":false,"gaps":[]}')
+                    elif case == 'unknown_member': status.write_bytes(encoded({'complete': True, 'smoke_marker_valid': False, 'gaps': [], 'secret':'DO_NOT_ARCHIVE'}))
+                    elif case == 'unknown_gap_member': status.write_bytes(encoded({'complete': False, 'smoke_marker_valid': False, 'gaps': [{'kind':'no_pods', 'secret':'DO_NOT_ARCHIVE'}]}))
+                    else:
+                        path = folder / 'pods.json'
+                        pods = json.loads(path.read_bytes())
+                        pods['items'][0]['spec']['initContainers'] = [{'name':'setup'}]
+                        path.write_bytes(encoded(pods))
+                    code, manifest, receipt = h.run()
+                    self.assertEqual(1, code)
+                    self.assertFalse(receipt['archive_complete'])
+                    self.assertIsNone(receipt['completion'])
+                    self.assertTrue(receipt['gaps'])
+                    self.assertNotIn(b'DO_NOT_ARCHIVE', b''.join(h.cli.blobs.values()))
+                    self.assertTrue(any(o['kind'] == 'verifier_output' and o['state'] == 'verified' for o in manifest['objects']))
+
+    def test_ordinary_and_nonledger_judges_require_successful_collection(self):
+        for family in ('ordinary', 'legacy', 'idle'):
+            with self.subTest(family=family):
+                if family == 'ordinary':
+                    h = self.harness('B10', 'C1', 'b10-42-1', 'scientific')
+                    complete_b10(h)
+                else:
+                    scenario, phase, run, item = (('probe-batch', 'single-action', 'probe-42-1', 'B01') if family == 'legacy'
+                                                  else ('idle-observation', 'idle-observation', 'idle-42-1', 'A02'))
+                    h = self.harness(scenario, phase, run, 'batch', items=[item])
+                    complete_family(h, scenario)
+                judge = next(r for r in h.status['modes'] if r['mode'].endswith('judge'))
+                judge['collect_gap'] = True
+                code, manifest, receipt = h.run()
+                self.assertEqual(1, code)
+                self.assertFalse(receipt['archive_complete'])
+                self.assertTrue(any(g['boundary'] == 'job collection failed' and g['expected_unit'] == judge['job']
+                                    for g in manifest['gaps']))
+                self.assertTrue(any(o['kind'] == 'collection_status' and o['state'] == 'verified'
+                                    and o['source']['name'].startswith(judge['job'] + '/') for o in manifest['objects']))
+
+    def test_collection_inventory_uses_init_declarations_and_accepts_empty_logs(self):
+        h = self.harness('probe-batch', 'single-action', 'probe-42-1', 'batch', items=['B01'])
+        complete_family(h, 'probe-batch')
+        record = h.status['modes'][0]
+        folder = h.artifacts / record['job']
+        path = folder / 'pods.json'
+        pods = json.loads(path.read_bytes())
+        pods['items'][0]['spec']['initContainers'] = [{'name':'setup'}]
+        path.write_bytes(encoded(pods))
+        (folder / (record['job'] + '-pod.initContainers.setup.log')).write_bytes(b'')
+        code, manifest, receipt = h.run()
+        self.assertEqual(0, code)
+        self.assertTrue(receipt['archive_complete'])
+        self.assertTrue(any(o['source']['name'].endswith('.initContainers.setup.log') and o['bytes'] == 0
+                            for o in manifest['objects']))
+
     def test_v2_complete_and_control_readback_and_bad_hash(self):
         for bad in (False, True):
             with self.subTest(bad=bad):
@@ -357,8 +456,9 @@ class InventoryIntegrationTests(unittest.TestCase):
                 self.assertEqual(1 if bad else 0, code)
                 self.assertEqual(not bad, receipt['archive_complete'])
                 self.assertEqual(5, len(manifest['expected_units']))
-                self.assertEqual(16, manifest['totals']['expected_objects']) # 4 publications, 5 pods, phase status, 3 collection statuses and 3 stdout projections
-                self.assertEqual(15 if bad else 16, manifest['totals']['verified_objects'])
+                self.assert_fixture_diagnostics(h, manifest, v2=True)
+                self.assertEqual(16, manifest['totals']['expected_objects'] - 4) # 4 publications, 5 pods, phase status, 3 collection statuses and 3 stdout projections
+                self.assertEqual(15 if bad else 16, manifest['totals']['verified_objects'] - 4)
                 if bad:
                     self.assertIsNone(receipt['completion'])
                     self.assertTrue(any(g['code'] == 'source_hash_mismatch' for g in receipt['gaps']))
@@ -562,7 +662,7 @@ class InventoryIntegrationTests(unittest.TestCase):
                 job='b10-42-1-c1-r1-loadgen-restart'; pod=h.job('loadgen-restart',job,repeat=1)
                 h.status['modes'][0]['outcome']='complete'
                 (h.artifacts/job/'pods.json').write_bytes(encoded({'items':[{'metadata':{'name':pod,'uid':'uid'},
-                    'status':{'phase':'Succeeded','containerStatuses':[{'name':'loadgen','state':{'terminated':{'exitCode':0}}}]}}]}))
+                    'spec':{'containers':[{'name':'worker'}]}, 'status':{'phase':'Succeeded','containerStatuses':[{'name':'loadgen','state':{'terminated':{'exitCode':0}}}]}}]}))
                 prefix=f'b10-42-1/C1/r1/b10-abrupt/{pod}/'
                 identity={'run_id':'b10-42-1','scenario_id':'B10','configuration_id':'C1','phase':'C1','repeat':1,
                     'source_commit':'a'*40,'image_reference':h.phase['images']['loadgen']['reference'],
@@ -609,8 +709,9 @@ class InventoryIntegrationTests(unittest.TestCase):
                 code,m,r=h.run(); self.assertEqual(0 if fault=='none' else 1,code)
                 self.assertEqual(fault=='none',r['archive_complete'])
                 self.assertEqual(28,len(m['expected_units']))
-                self.assertEqual(161,m['totals']['expected_objects'])
-                self.assertEqual(161 if fault=='none' else 160,m['totals']['verified_objects'])
+                self.assert_fixture_diagnostics(h, m)
+                self.assertEqual(161,m['totals']['expected_objects'] - 2 * 28)
+                self.assertEqual(161 if fault=='none' else 160,m['totals']['verified_objects'] - 2 * 28)
                 self.assertEqual(6,len(m['captures']))
                 objects={o['source']['name']:o for o in m['objects']}
                 journal=objects[first+'journal.jsonl']; artifact=objects[successor+'statistics.jsonl']
@@ -648,7 +749,8 @@ class InventoryIntegrationTests(unittest.TestCase):
         h.cli.corrupt_marker=True
         code,m,r=h.run(); self.assertEqual(1,code); self.assertFalse(r['archive_complete'])
         self.assertIsNone(r['completion']); self.assertIsNotNone(r['manifest'])
-        self.assertEqual(16,m['totals']['verified_objects'])
+        self.assert_fixture_diagnostics(h, m, v2=True)
+        self.assertEqual(16,m['totals']['verified_objects'] - 4)
         self.assertTrue(any(g['code']=='destination_hash_mismatch' for g in r['gaps']))
         self.assertTrue(any(key[0]=='archive123' and key[2].endswith('/candidate.json') for key in h.cli.blobs))
 
@@ -666,9 +768,10 @@ class InventoryIntegrationTests(unittest.TestCase):
                     self.assertEqual(1 if missing else 0,code)
                     self.assertEqual(not missing,r['archive_complete'])
                     self.assertEqual(units,len(m['expected_units']))
+                    self.assert_fixture_diagnostics(h, m)
                     self.assertTrue(all(u['state']=='started' for u in m['expected_units']))
-                    self.assertEqual(count,m['totals']['expected_objects'])
-                    self.assertEqual(count-int(missing),m['totals']['verified_objects'])
+                    self.assertEqual(count,m['totals']['expected_objects'] - 2 * units)
+                    self.assertEqual(count-int(missing),m['totals']['verified_objects'] - 2 * units)
                     self.assertEqual(captures,len(m['captures']))
                     self.assertTrue(all(c['complete'] and c['rows']==0 for c in m['captures']))
                     byname={o['source']['name']:o for o in m['objects']}

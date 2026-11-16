@@ -1452,35 +1452,105 @@ def verify_controls(manifest_bytes, marker_bytes, receipt_bytes):
     return manifest
 
 
-def read_job_pods(collector, artifacts, job, skip_logs=False):
-    """Collect a minimal, safe pod projection and return observed pod identities."""
-    path = Path(artifacts) / job / 'pods.json'
+def read_job_pods(collector, artifacts, job, record, skip_logs=False, v2=False):
+    """Archive bounded diagnostics and require the collector's declared inventory."""
+    folder = Path(artifacts) / job
     projected = collector.transfer.spool / 'pod-projection.json'
+    status_projection = collector.transfer.spool / 'collection-status-projection.json'
+    if (record.get('collect') != 0 or type(record.get('collect')) is not int
+            or record.get('collect_gap', False) is not False or record.get('outcome') == 'collect_error'):
+        collector.gap('monitoring_incomplete', 'job collection failed', unit=job)
     try:
-        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        fd = os.open(folder / 'collection-status.json', os.O_RDONLY | os.O_NOFOLLOW)
+        with os.fdopen(fd, 'rb') as stream:
+            status = strict_control(stream.read(1048577), 1048576)
+        fields = {'complete', 'gaps'} if v2 else {'complete', 'smoke_marker_valid', 'gaps'}
+        if (not isinstance(status, dict) or set(status) != fields or type(status['complete']) is not bool
+                or not isinstance(status['gaps'], list) or len(status['gaps']) > 100
+                or (not v2 and type(status['smoke_marker_valid']) is not bool)):
+            raise InvalidArchiveConfig()
+        # Only fixed vocabulary is retained; collector error records may contain
+        # identifiers and must never be copied as an unvalidated document.
+        allowed = {'pod_read_failed', 'invalid_pod_json', 'omitted_pod', 'no_pods', 'invalid_containers',
+                   'omitted_container', 'total_byte_limit', 'truncated_log', 'log_read_failed',
+                   'smoke_pod_or_container_missing_or_extra', 'smoke_marker_mismatch', 'pod_collection'}
+        kinds = []
+        for gap in status['gaps']:
+            if not isinstance(gap, dict) or gap.get('kind') not in allowed: raise InvalidArchiveConfig()
+            kind = gap['kind']
+            if v2:
+                fields_by_kind = {'pod_collection': {'kind'}, 'log_read_failed': {'kind', 'status'},
+                                  'truncated_log': {'kind', 'status', 'limit', 'observed', 'observed_at_least', 'allowed'}}
+            else:
+                fields_by_kind = {'pod_read_failed': {'kind', 'status'}, 'invalid_pod_json': {'kind'},
+                    'omitted_pod': {'kind', 'pod'}, 'no_pods': {'kind'}, 'invalid_containers': {'kind', 'pod'},
+                    'omitted_container': {'kind', 'pod', 'container'}, 'total_byte_limit': {'kind', 'pod', 'container'},
+                    'truncated_log': {'kind', 'pod', 'container', 'status'},
+                    'log_read_failed': {'kind', 'pod', 'container', 'status'},
+                    'smoke_pod_or_container_missing_or_extra': {'kind'}, 'smoke_marker_mismatch': {'kind'}}
+            if set(gap) != fields_by_kind.get(kind): raise InvalidArchiveConfig()
+            if any(type(gap[k]) is not int for k in ('status', 'observed', 'allowed') if k in gap): raise InvalidArchiveConfig()
+            if any(not isinstance(gap[k], str) or not re.fullmatch(r'[a-z0-9](?:[a-z0-9-]*[a-z0-9])?', gap[k])
+                   for k in ('pod', 'container') if k in gap): raise InvalidArchiveConfig()
+            if kind == 'truncated_log' and v2 and (gap['limit'] != 'container_log_bytes' or gap['observed_at_least'] is not True):
+                raise InvalidArchiveConfig()
+            kinds.append(dict(gap))
+        safe_status = {'complete': status['complete'], 'gaps': kinds}
+        if not v2: safe_status['smoke_marker_valid'] = status['smoke_marker_valid']
+        _common.safe_write(status_projection, _common.encoded(safe_status))
+        collector.runner(f'{job}/collection-status.json', status_projection, 'collection_status')
+        if status['complete'] is not True or status['gaps']:
+            collector.gap('monitoring_incomplete', 'job collection incomplete', unit=job)
+    except (OSError, InvalidArchiveConfig):
+        collector.gap('monitoring_incomplete', 'job collection status unavailable', unit=job)
+    try:
+        fd = os.open(folder / 'pods.json', os.O_RDONLY | os.O_NOFOLLOW)
         with os.fdopen(fd, 'rb') as stream:
             data = stream.read(4 * 1048576 + 1)
-        if len(data) > 4 * 1048576: raise InvalidArchiveConfig()
+        raw = strict_control(data, 4 * 1048576)
         projection = project_pods(data)
+        value = strict_control(projection, 4 * 1048576)
+        if not value['items'] or any(not pod['name'].startswith(job + '-') for pod in value['items']):
+            raise InvalidArchiveConfig()
+        if len({pod['name'] for pod in value['items']}) != len(value['items']): raise InvalidArchiveConfig()
+        expected = []
+        for pod in raw['items']:
+            name = pod['metadata']['name']
+            if v2:
+                role = record.get('role')
+                if not isinstance(role, str) or not re.fullmatch(r'[a-z0-9](?:[a-z0-9-]*[a-z0-9])?', role):
+                    raise InvalidArchiveConfig()
+                expected.append((name, 'containers', role))
+            else:
+                spec = pod.get('spec')
+                if not isinstance(spec, dict): raise InvalidArchiveConfig()
+                declared = []
+                for kind in ('initContainers', 'containers'):
+                    entries = spec.get(kind, [])
+                    if not isinstance(entries, list): raise InvalidArchiveConfig()
+                    for entry in entries:
+                        container = entry.get('name') if isinstance(entry, dict) else None
+                        if not isinstance(container, str) or not re.fullmatch(r'[a-z0-9](?:[a-z0-9-]*[a-z0-9])?', container):
+                            raise InvalidArchiveConfig()
+                        declared.append((name, kind, container))
+                if not declared or len(declared) > 4 or len({c[2] for c in declared}) != len(declared):
+                    raise InvalidArchiveConfig()
+                expected.extend(declared)
         _common.safe_write(projected, projection)
         collector.runner(f'{job}/pods.json', projected, 'pod_diagnostics')
-        value = strict_control(projection, 4 * 1048576)
-        if any(not pod['name'].startswith(job + '-') for pod in value['items']): raise InvalidArchiveConfig()
-        collection_status = Path(artifacts) / job / 'collection-status.json'
-        if collection_status.is_file():
-            collector.runner(f'{job}/collection-status.json', collection_status, 'collection_status')
-        for pod in value['items']:
-            for container in pod['containers']:
-                kind = 'initContainers' if container['kind'] == 'initContainerStatuses' else 'containers'
-                leaf = f"{pod['name']}.{kind}.{container['name']}.log"
-                path = Path(artifacts) / job / leaf
-                if not skip_logs and path.is_file(): collector.runner(f'{job}/{leaf}', path, 'pod_log')
+        if not skip_logs:
+            for name, kind, container in expected:
+                leaf = f'{name}.{kind}.{container}.log'
+                # runner records a missing source as a transfer gap; an empty file
+                # remains valid because the collector permits successful empty logs.
+                collector.runner(f'{job}/{leaf}', folder / leaf, 'pod_log')
         return value['items']
-    except (OSError, InvalidArchiveConfig):
-        collector.gap('monitoring_incomplete', 'pod identities unavailable', unit=job)
+    except (OSError, InvalidArchiveConfig, KeyError, TypeError):
+        collector.gap('monitoring_incomplete', 'pod identities or declarations unavailable', unit=job)
         return []
     finally:
         projected.unlink(missing_ok=True)
+        status_projection.unlink(missing_ok=True)
 
 
 def project_phase_status(status):
@@ -1502,6 +1572,9 @@ def project_phase_status(status):
             value = record.get(key)
             if value is not None and type(value) is not int: raise InvalidArchiveConfig()
             row[key] = value
+        if 'collect_gap' in record:
+            if type(record['collect_gap']) is not bool: raise InvalidArchiveConfig()
+            row['collect_gap'] = record['collect_gap']
         modes.append(row)
     return _common.encoded({'schema_version': 1, 'kind': 'phase_status_diagnostics', 'run_id': status['run_id'],
                             'phase': status['phase'], 'modes': modes})
@@ -1631,7 +1704,7 @@ def collect_ordinary(collector, phase, status, containers, artifacts, job_name):
         if record is None and not optional_no_kill: collector.gap('monitoring_incomplete', 'missing job status', unit=job)
         elif record is not None and not started and not optional_no_kill and not diagnostic and mode in ('start-line', 'verify', 'b10-abrupt-verify', 'b10-final-sweep', 'judge'):
             collector.gap('monitoring_incomplete', 'required job not started', unit=job)
-        pods = read_job_pods(collector, artifacts, job) if started else []
+        pods = read_job_pods(collector, artifacts, job, record) if started else []
         if started and not pods: collector.gap('monitoring_incomplete', 'missing job pod', unit=job)
         unit = {'repeat': repeat, 'item': None, 'mode': mode, 'job_name': job,
                 'pod_name': None, 'pod_uid': None, 'instance_id': None,
@@ -1827,7 +1900,9 @@ def execute(phase_instance, environ, deadline=None):
                 if phase['scenario'] == 'probe-batch-2':
                     check_v2_actor_logs(collector, phase, status, units, artifacts, private)
                 for job in sorted({unit['job_name'] for unit in units if unit['state'] == 'started'}):
-                    read_job_pods(collector, artifacts, job, skip_logs=(phase['scenario'] == 'probe-batch-2' and any(unit['job_name'] == job and unit['mode'] == 'single-action-v2' for unit in units)))
+                    read_job_pods(collector, artifacts, job, next(record for record in status['modes'] if record.get('job') == job),
+                                  skip_logs=any(unit['job_name'] == job and unit['mode'] == 'single-action-v2' for unit in units),
+                                  v2=phase['scenario'] == 'probe-batch-2')
             else:
                 units = collect_ordinary(collector, phase, status, containers, artifacts, phase_instance.mode_job)
             # Cross-check the adapters against the independently derived fixed paths;
@@ -1887,6 +1962,62 @@ def execute(phase_instance, environ, deadline=None):
         return 1
 
 
+def legacy_integer(value, bits=64, nonnegative=False):
+    return (type(value) is int and -(1 << (bits - 1)) <= value < (1 << (bits - 1))
+            and (not nonnegative or value >= 0))
+
+
+def legacy_error(value, callback=False):
+    fields = {'code', 'is_fatal', 'origin', 'reason'} | ({'observed_elapsed_ms'} if callback else set())
+    return (isinstance(value, dict) and set(value) == fields
+            and legacy_integer(value['code'], 32) and type(value['is_fatal']) is bool
+            and value['origin'] in ('construction', 'local', 'broker')
+            and isinstance(value['reason'], str) and len(value['reason'].encode('utf-8')) <= 4096
+            and (not callback or legacy_integer(value['observed_elapsed_ms'], nonnegative=True)))
+
+
+def legacy_produce(value):
+    if value is None: return True
+    fields = {'attempt', 'key', 'started_elapsed_ms', 'terminal', 'result', 'error', 'terminal_elapsed_ms', 'terminal_unix_ms'}
+    return (isinstance(value, dict) and set(value) == fields
+            and legacy_integer(value['attempt'], 32) and isinstance(value['key'], str)
+            and legacy_integer(value['started_elapsed_ms'], nonnegative=True) and type(value['terminal']) is bool
+            and (value['result'] is None or value['result'] in ('success', 'error', 'no_outcome'))
+            and (value['error'] is None or legacy_error(value['error']))
+            and all(value[key] is None or legacy_integer(value[key]) for key in ('terminal_elapsed_ms', 'terminal_unix_ms')))
+
+
+def legacy_repeat_shape(repeat, mode):
+    settings = repeat['settings']; omitted = repeat['omitted_keys']
+    errors = repeat['client_errors']; statistics = repeat['statistics']; diagnostics = repeat['diagnostics']
+    if (not isinstance(settings, dict) or len(settings) > 128
+            or any(not isinstance(k, str) or not isinstance(v, str) for k, v in settings.items())
+            or sum(len(k.encode('utf-8')) + len(v.encode('utf-8')) for k, v in settings.items()) > 16384
+            or omitted != ('omitted_keys',)
+            or not isinstance(errors, list) or len(errors) > 64 or any(not legacy_error(v, True) for v in errors)
+            or not legacy_integer(repeat['client_errors_dropped'], nonnegative=True)
+            or not isinstance(statistics, list) or len(statistics) > (80 if mode == 'idle-observation' else 64)
+            or not isinstance(diagnostics, list) or len(diagnostics) > (20 if mode == 'idle-observation' else 100)
+            or any(not isinstance(v, str) or len(v.encode('utf-8')) > 2048 for v in diagnostics)):
+        return False
+    for row in statistics:
+        if (not isinstance(row, dict) or set(row) != {'sequence', 'observed_elapsed_ms', 'raw_base64'}
+                or not legacy_integer(row['sequence'], 32) or row['sequence'] < 1
+                or not legacy_integer(row['observed_elapsed_ms'], nonnegative=True)
+                or not isinstance(row['raw_base64'], tuple) or len(row['raw_base64']) != 2
+                or row['raw_base64'][0] != 'statistics_base64'):
+            return False
+    if mode == 'idle-observation':
+        return (legacy_integer(repeat['client_started_unix_ms'])
+                and all(repeat[key] is None or legacy_integer(repeat[key]) for key in ('idle_started_elapsed_ms', 'idle_ended_elapsed_ms'))
+                and legacy_produce(repeat['first']) and legacy_produce(repeat['second']))
+    return (isinstance(repeat['action'], str) and type(repeat['terminal']) is bool
+            and legacy_integer(repeat['elapsed_ms'], nonnegative=True)
+            and (repeat['terminal_unix_ms'] is None or legacy_integer(repeat['terminal_unix_ms']))
+            and (repeat['result'] is None or repeat['result'] in ('success', 'error', 'no_outcome'))
+            and (repeat['error'] is None or legacy_error(repeat['error'])))
+
+
 def legacy_closed(document, kind, mode):
     common = {'schema_version', 'mode', 'identity', 'job_name', 'pod_name', 'pod_uid', 'source_commit'}
     fields = common | ({'repeats_attempted', 'handler_exit_code', 'cleanup_completed'} if kind == 'completion' else set())
@@ -1896,21 +2027,21 @@ def legacy_closed(document, kind, mode):
             fields |= {'run_kind', 'topic', 'partition', 'payload_bytes', 'idle_seconds', 'statistics_interval_ms', 'max_statistics_reports'}
     if (kind not in ('registration', 'completion', 'capture') or mode not in ('single-action', 'idle-observation')
             or not isinstance(document, dict) or set(document) != fields
-            or type(document['schema_version']) is not int or not isinstance(document['mode'], str)
+            or not legacy_integer(document['schema_version'], 32) or not isinstance(document['mode'], str)
             or not isinstance(document['identity'], dict)
             or set(document['identity']) != {'scenario_id', 'configuration_id', 'run_id', 'instance_id'}
             or any(not isinstance(value, str) for value in document['identity'].values())
             or any(not isinstance(document[key], str) for key in ('job_name', 'pod_name', 'pod_uid', 'source_commit'))):
         return False
     if kind == 'completion':
-        return (type(document['repeats_attempted']) is int and type(document['handler_exit_code']) is int
+        return (legacy_integer(document['repeats_attempted'], 32) and legacy_integer(document['handler_exit_code'], 32)
                 and type(document['cleanup_completed']) is bool)
     if kind == 'capture':
         if (type(document['synthetic']) is not bool or not isinstance(document['managed_version'], str)
                 or not isinstance(document['native_version'], str) or not isinstance(document['repeats'], list)):
             return False
         if mode == 'idle-observation':
-            if not isinstance(document['run_kind'], str) or not isinstance(document['topic'], str) or any(type(document[key]) is not int for key in ('partition', 'payload_bytes', 'idle_seconds', 'statistics_interval_ms', 'max_statistics_reports')):
+            if not isinstance(document['run_kind'], str) or not isinstance(document['topic'], str) or any(not legacy_integer(document[key], 32) for key in ('partition', 'payload_bytes', 'idle_seconds', 'statistics_interval_ms', 'max_statistics_reports')):
                 return False
             repeat_fields = {'repeat', 'client_id', 'settings', 'omitted_keys', 'client_started_unix_ms', 'first',
                              'idle_started_elapsed_ms', 'idle_ended_elapsed_ms', 'second', 'client_errors',
@@ -1921,12 +2052,13 @@ def legacy_closed(document, kind, mode):
                              'statistics', 'diagnostics'}
         for repeat in document['repeats']:
             if (not isinstance(repeat, dict) or set(repeat) != repeat_fields
-                    or type(repeat['repeat']) is not int or not isinstance(repeat['client_id'], str)):
+                    or not legacy_integer(repeat['repeat'], 32) or not isinstance(repeat['client_id'], str)
+                    or not legacy_repeat_shape(repeat, mode)):
                 return False
             if mode == 'single-action' and repeat['matched'] is not None:
                 matched = repeat['matched']
                 if (not isinstance(matched, dict) or set(matched) != {'topic', 'partition', 'key_base64', 'value_base64'}
-                        or not isinstance(matched['topic'], str) or type(matched['partition']) is not int
+                        or not isinstance(matched['topic'], str) or not legacy_integer(matched['partition'], 32)
                         or matched['partition'] < 0 or not isinstance(matched['key_base64'], str)
                         or not isinstance(matched['value_base64'], dict)):
                     return False
@@ -1935,7 +2067,7 @@ def legacy_closed(document, kind, mode):
                     base64.b64decode(matched['key_base64'], validate=True)
                 except (ValueError, TypeError):
                     return False
-        return True
+        return mode != 'single-action' or sum(len(r['diagnostics']) for r in document['repeats']) <= 100
     return True
 
 
