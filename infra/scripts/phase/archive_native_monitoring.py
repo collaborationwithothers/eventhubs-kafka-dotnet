@@ -63,7 +63,8 @@ def index(data, identity, prefix):
                     or type(source['row_count']) is not int or source['row_count'] < 1):
                 raise ValueError('source shape')
             if source['kind'] == 'raw_chunk':
-                if source['source'] != f'{prefix}raw-{ordinal:06d}.jsonl' or source['source'] in seen:
+                if (source['source'] != f'{prefix}raw-{ordinal:06d}.jsonl' or source['source'] in seen
+                        or source['report_ordinal'] + source['row_count'] - 1 > client['report_count']):
                     raise ValueError('chunk identity')
                 seen.add(source['source']); raw_bytes += source['byte_length']
             elif source['row_count'] != 1 or source['byte_length'] > MAX_REPORT or (source['source'], source['report_ordinal']) in existing_seen:

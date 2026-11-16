@@ -35,6 +35,32 @@ class NativeMonitoringTests(unittest.TestCase):
         with self.assertRaises(ValueError): native.index(b' ' * (native.MAX_INDEX + 1), self.identity, self.prefix)
         with self.assertRaises(ValueError): native.index(b'{"schema_version":1,"schema_version":1}', self.identity, self.prefix)
 
+    def test_index_policy_boundaries(self):
+        clients = [dict(self.client, ordinal=i + 1) for i in range(native.MAX_CLIENTS)]
+        self.document['clients'] = clients
+        native.index(self.encode(), self.identity, self.prefix)
+        self.document['clients'] = clients + [dict(self.client, ordinal=33)]
+        with self.assertRaises(ValueError): native.index(self.encode(), self.identity, self.prefix)
+        self.document['clients'] = [self.client]
+        descriptors = [dict(kind='existing_capture', source='ledger/run/source', byte_length=1,
+                            sha256='a' * 64, report_ordinal=i + 1, row_count=1) for i in range(native.MAX_REFS)]
+        self.client.update(report_count=native.MAX_REFS, raw_sources=descriptors)
+        native.index(self.encode(), self.identity, self.prefix)
+        self.client.update(report_count=native.MAX_REFS + 1, raw_sources=descriptors + [dict(descriptors[0], report_ordinal=native.MAX_REFS + 1)])
+        with self.assertRaises(ValueError): native.index(self.encode(), self.identity, self.prefix)
+        self.client.update(report_count=0, raw_sources=[], diagnostics=[f'diagnostic_{i}' for i in range(native.MAX_DIAGNOSTICS)], capture_complete=False)
+        self.document['capture_complete'] = False
+        native.index(self.encode(), self.identity, self.prefix)
+        self.client['diagnostics'].append('diagnostic_over')
+        with self.assertRaises(ValueError): native.index(self.encode(), self.identity, self.prefix)
+        self.client.update(report_count=1, diagnostics=[], capture_complete=True, raw_sources=[dict(
+            kind='raw_chunk', source=self.prefix + 'raw-000001.jsonl', byte_length=native.MAX_RAW,
+            sha256='a'*64, report_ordinal=1, row_count=1)])
+        self.document['capture_complete'] = True
+        native.index(self.encode(), self.identity, self.prefix)
+        self.client['raw_sources'][0]['byte_length'] += 1
+        with self.assertRaises(ValueError): native.index(self.encode(), self.identity, self.prefix)
+
     def test_chunk_sequence_and_exact_raw_bound(self):
         descriptor = dict(report_ordinal=1, row_count=1)
         with tempfile.TemporaryDirectory() as directory:

@@ -812,6 +812,34 @@ class InventoryIntegrationTests(unittest.TestCase):
         self.assertTrue(any(key[0]=='archive123' and key[2].endswith('/candidate.json.metadata.json') for key in h.cli.blobs))
         self.assertFalse(any(key[0]=='archive123' and key[2].endswith('/candidate.json') for key in h.cli.blobs))
 
+    def test_native_existing_legacy_reference_binds_raw_bytes(self):
+        for changed in (False, True):
+            with self.subTest(changed=changed):
+                h = self.harness('probe-batch', 'single-action', 'probe-42-1', 'batch', items=['B01'])
+                complete_family(h, 'probe-batch')
+                job = 'probe-42-1-b01-c0-single'; pod = job + '-pod'
+                source = f'probe-42-1/single-action/B01/C0/instances/{pod}/capture.json'
+                key = ('source123', 'single-action', source)
+                capture = json.loads(h.cli.blobs[key])
+                raw = b'{"name":"native"}'
+                capture['repeats'][0]['statistics'] = [{'sequence':1, 'observed_elapsed_ms':0,
+                                                         'raw_base64':base64.b64encode(raw).decode()}]
+                h.cli.blobs[key] = encoded(capture)
+                index_key = ('source123', 'native-monitoring', f'probe-42-1/C0/{job}/uid/native-monitoring/index.json')
+                index = json.loads(h.cli.blobs[index_key])
+                index['clients'][0].update(client_id=f'{pod}-r1', report_count=1, raw_sources=[{
+                    'kind':'existing_capture', 'source':'single-action/' + source, 'byte_length':len(raw),
+                    'sha256':('f'*64 if changed else sha(raw)), 'report_ordinal':1, 'row_count':1}])
+                h.cli.blobs[index_key] = encoded(index)
+                code, manifest, receipt = h.run()
+                self.assertEqual(1 if changed else 0, code)
+                self.assertEqual(not changed, receipt['archive_complete'])
+                if changed:
+                    self.assertIsNone(receipt['completion'])
+                    self.assertTrue(any(g['code']=='monitoring_incomplete' for g in manifest['gaps']))
+                else:
+                    self.assertFalse(any(o['kind']=='native_monitoring_raw' for o in manifest['objects']))
+
     def test_native_index_and_chunk_fail_closed(self):
         for fault in ('missing', 'malformed', 'identity', 'hash', 'truncated'):
             with self.subTest(fault=fault):
