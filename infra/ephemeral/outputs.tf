@@ -10,7 +10,7 @@ output "blob" {
   description = "Blob account URL and workload container names."
   value = {
     account_url = "https://${module.storage.fqdn.blob}"
-    containers  = merge({ ledger = module.storage.containers.ledger.name, verifier = module.storage.containers.verifier.name, claim_check = module.storage.containers.claim_check.name, single_action = module.storage.containers.single_action.name }, var.archive_smoke_enabled ? { archive_smoke_source = module.storage.containers.archive_smoke_source.name } : {})
+    containers  = merge({ ledger = module.storage.containers.ledger.name, verifier = module.storage.containers.verifier.name, claim_check = module.storage.containers.claim_check.name, single_action = module.storage.containers.single_action.name, native_monitoring = module.storage.containers.native_monitoring.name }, var.archive_smoke_enabled ? { archive_smoke_source = module.storage.containers.archive_smoke_source.name } : {})
   }
 }
 output "private_endpoint_ips" {

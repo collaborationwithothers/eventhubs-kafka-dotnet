@@ -13,7 +13,15 @@ locals {
     verifier_ledger_reader             = { workload = "verifier", role_definition_name = "Storage Blob Data Reader", scope = module.storage.containers.ledger.id }
     verifier_results_contributor       = { workload = "verifier", role_definition_name = "Storage Blob Data Contributor", scope = module.storage.containers.verifier.id }
   }
-  workload_roles = merge(local.baseline_workload_roles, var.probe_namespace_data_roles ? {
+  native_monitoring_roles = {
+    for workload in ["loadgen", "probe", "verifier", "enrichment-consumer"] :
+    "${workload}_native_monitoring_contributor" => {
+      workload             = workload
+      role_definition_name = "Storage Blob Data Contributor"
+      scope                = module.storage.containers.native_monitoring.id
+    }
+  }
+  workload_roles = merge(local.baseline_workload_roles, local.native_monitoring_roles, var.probe_namespace_data_roles ? {
     probe_namespace_sender   = { workload = "probe", role_definition_name = "Azure Event Hubs Data Sender", scope = module.eventhubs.resource_id }
     probe_namespace_receiver = { workload = "probe", role_definition_name = "Azure Event Hubs Data Receiver", scope = module.eventhubs.resource_id }
   } : {})
@@ -29,7 +37,7 @@ resource "azurerm_role_assignment" "workload" {
 }
 
 resource "azurerm_role_assignment" "workflow_evidence_reader" {
-  for_each                         = toset(["ledger", "verifier", "single_action"])
+  for_each                         = toset(["ledger", "verifier", "single_action", "native_monitoring"])
   role_definition_name             = "Storage Blob Data Reader"
   principal_id                     = local.persistent.workflow_principal_id
   scope                            = module.storage.containers[each.key].id

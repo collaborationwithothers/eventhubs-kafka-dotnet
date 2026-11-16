@@ -175,6 +175,24 @@ spec:
               cpu: "3"
               memory: 12Gi
           env:
+            - name: NativeMonitoring__BlobEndpoint
+              value: {{ $r.blob.account_url | quote }}
+            - name: NativeMonitoring__BlobContainer
+              value: "native-monitoring"
+            - name: NativeMonitoring__RunId
+              value: {{ $r.run_id | quote }}
+            - name: NativeMonitoring__ScenarioId
+              value: {{ $.Values.scenario_id | quote }}
+            - name: NativeMonitoring__JobName
+              value: {{ $job | quote }}
+            - name: NativeMonitoring__PodUid
+              valueFrom: {fieldRef: {fieldPath: metadata.uid}}
+            - name: NativeMonitoring__SourceCommit
+              value: {{ $r.source_commit | quote }}
+            - name: NativeMonitoring__Phase
+              value: {{ $r.phase | quote }}
+            - name: NativeMonitoring__ConfigurationId
+              value: {{ $.Values.configuration_id | quote }}
             - name: PARCHWELL_SOURCE_COMMIT
               value: {{ $r.source_commit | quote }}
             - name: PARCHWELL_JOB_NAME
