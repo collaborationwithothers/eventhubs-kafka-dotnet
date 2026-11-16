@@ -88,6 +88,7 @@ public sealed class KafkaNativeMonitoringCoordinator
     private bool _closed;
     private bool _publicationStarted;
     private bool _gap;
+    private KafkaNativeMonitoringLifetime? _refusedLifetime;
 
     internal KafkaNativeMonitoringCoordinator(IKafkaNativeMonitoringStore store, KafkaStatisticsMetrics metrics, TimeProvider time, KafkaNativeMonitoringIdentity identity)
     {
@@ -112,12 +113,21 @@ public sealed class KafkaNativeMonitoringCoordinator
             if (_closed || _clients.Count >= 32)
             {
                 _gap = true;
-                return new KafkaNativeMonitoringLifetime(this, identity, 0, _metrics.CreateNativeState(identity, false), _time.GetTimestamp()) { Closed = true, Gap = true };
+                return _refusedLifetime ??= new KafkaNativeMonitoringLifetime(this, identity, 0, _metrics.CreateNativeState(identity, false), _time.GetTimestamp()) { Closed = true, Gap = true };
             }
             var client = new KafkaNativeMonitoringLifetime(this, identity, _clients.Count + 1, _metrics.CreateNativeState(identity, false), _time.GetTimestamp());
             _clients.Add(client);
             return client;
         }
+    }
+
+    /// <summary>Records an incomplete pod capture, including when no client was built.</summary>
+    /// <param name="code">A static diagnostic identifier for the host failure.</param>
+    public void MarkIncomplete(string code)
+    {
+        if (string.IsNullOrEmpty(code) || code.Length > 80 || code.Any(c => !(char.IsAsciiLetterOrDigit(c) || c == '_')))
+            throw new ArgumentException("Diagnostic must be a static identifier.", nameof(code));
+        lock (_gate) { _gap = true; }
     }
 
     internal void Submit(KafkaNativeMonitoringLifetime client, string raw, KafkaNativeRawReference? reference, bool bridge)

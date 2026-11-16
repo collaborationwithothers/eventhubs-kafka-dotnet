@@ -32,6 +32,7 @@ public sealed class KafkaNativeMonitoringOptions
         if (!Uri.TryCreate(BlobEndpoint, UriKind.Absolute, out Uri? endpoint) || endpoint.Scheme != Uri.UriSchemeHttps
             || !string.IsNullOrEmpty(endpoint.UserInfo) || !string.IsNullOrEmpty(endpoint.Query) || !string.IsNullOrEmpty(endpoint.Fragment)
             || string.IsNullOrWhiteSpace(BlobContainer) || BlobContainer.Any(c => !(char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c == '-'))
+            || SourceCommit is null || SourceCommit.Length != 40 || SourceCommit.Any(c => !(c is >= '0' and <= '9' or >= 'a' and <= 'f'))
             || new[] { RunId, Phase, ScenarioId, ConfigurationId, JobName, PodUid, SourceCommit }
                 .Any(value => string.IsNullOrWhiteSpace(value) || value is "." or ".." || value.Any(c => char.IsControl(c) || char.IsWhiteSpace(c) || c is '/' or '\\')))
         {

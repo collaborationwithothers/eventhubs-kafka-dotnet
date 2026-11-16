@@ -65,6 +65,7 @@ public sealed class KafkaNativeMonitoringCaptureTests
         var refused = coordinator.CreateLifetime(identity);
         refused.MarkBuilt();
         refused.CaptureNew("{}");
+        Assert.Same(refused, coordinator.CreateLifetime(identity));
         await coordinator.CompleteAsync(CancellationToken.None);
         using var document = JsonDocument.Parse(store.Objects["run/phase/job/pod/native-monitoring/index.json"]);
         Assert.Equal(32, document.RootElement.GetProperty("clients").GetArrayLength());
@@ -87,6 +88,36 @@ public sealed class KafkaNativeMonitoringCaptureTests
         using var document = JsonDocument.Parse(store.Objects["run/phase/job/pod/native-monitoring/index.json"]);
         var diagnostics = document.RootElement.GetProperty("clients")[0].GetProperty("diagnostics").EnumerateArray().Select(x => x.GetString()).ToArray();
         Assert.Contains("invalid_native_identity", diagnostics);
+    }
+
+    [Fact]
+    public async Task Given_HostGapWithoutClients_When_Published_Then_IndexIsIncomplete()
+    {
+        var store = new MemoryStore();
+        using var metrics = new KafkaStatisticsMetrics();
+        var coordinator = new KafkaNativeMonitoringCoordinator(store, metrics, TimeProvider.System,
+            new("run", "phase", "scenario", "configuration", "job", "pod", "commit"));
+        coordinator.MarkIncomplete("host_capture_failed");
+        await coordinator.CompleteAsync(CancellationToken.None);
+        using var document = JsonDocument.Parse(store.Objects["run/phase/job/pod/native-monitoring/index.json"]);
+        Assert.Empty(document.RootElement.GetProperty("clients").EnumerateArray());
+        Assert.False(document.RootElement.GetProperty("capture_complete").GetBoolean());
+    }
+
+    [Fact]
+    public void Given_SourceCommit_When_Validating_Then_OnlyLowercaseFortyCharacterHexIsAccepted()
+    {
+        var options = new KafkaNativeMonitoringOptions
+        {
+            BlobEndpoint = "https://example.blob.core.windows.net", BlobContainer = "native-monitoring",
+            RunId = "run", Phase = "phase", ScenarioId = "scenario", ConfigurationId = "configuration",
+            JobName = "job", PodUid = "pod", SourceCommit = new string('a', 40)
+        };
+        Assert.True(options.IsValid(out _));
+        options.SourceCommit = new string('A', 40);
+        Assert.False(options.IsValid(out _));
+        options.SourceCommit = "abc";
+        Assert.False(options.IsValid(out _));
     }
 
     private sealed class FixedTimeProvider : TimeProvider
