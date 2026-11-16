@@ -10,14 +10,16 @@ namespace Parchwell.LoadGen.Run.Monitoring;
 
 internal sealed class NativeMonitoringHost(KafkaNativeMonitoringCoordinator coordinator, string source)
 {
-    private readonly ConcurrentDictionary<object, KafkaNativeMonitoringLifetime> _clients = new();
+    private readonly ConcurrentBag<KafkaNativeMonitoringLifetime> _clients = [];
 
-    internal KafkaNativeMonitoringLifetime? Begin(object capture, KafkaStatisticsIdentity identity)
+    internal KafkaNativeMonitoringLifetime? Begin(object capture, KafkaStatisticsIdentity identity) => Begin(identity);
+
+    internal KafkaNativeMonitoringLifetime? Begin(KafkaStatisticsIdentity identity)
     {
         try
         {
             KafkaNativeMonitoringLifetime lifetime = coordinator.CreateLifetime(identity);
-            if (!_clients.TryAdd(capture, lifetime)) { lifetime.MarkIncomplete("duplicate_capture"); return null; }
+            _clients.Add(lifetime);
             return lifetime;
         }
         catch (Exception) { return null; }
@@ -33,11 +35,21 @@ internal sealed class NativeMonitoringHost(KafkaNativeMonitoringCoordinator coor
         catch (Exception) { lifetime.MarkIncomplete("host_reference_failed"); }
     }
 
+    internal void ObserveExisting(KafkaNativeMonitoringLifetime lifetime, KafkaStatisticsReport report, long sequence)
+    {
+        try
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(report.RawJson);
+            lifetime.ObserveExisting(report, new(source, sequence, bytes.LongLength, Convert.ToHexStringLower(SHA256.HashData(bytes))));
+        }
+        catch (Exception) { lifetime.MarkIncomplete("host_reference_failed"); }
+    }
+
     internal Task DrainAsync(CancellationToken cancellationToken) => coordinator.DrainAsync(cancellationToken);
 
     internal async Task CompleteAsync(bool captureComplete, CancellationToken cancellationToken)
     {
-        foreach (KafkaNativeMonitoringLifetime client in _clients.Values)
+        foreach (KafkaNativeMonitoringLifetime client in _clients)
             client.Complete(captureComplete, "unknown");
         await coordinator.CompleteAsync(cancellationToken).ConfigureAwait(false);
     }
