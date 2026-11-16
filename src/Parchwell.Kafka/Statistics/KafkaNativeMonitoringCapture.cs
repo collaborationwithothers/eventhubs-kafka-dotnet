@@ -204,13 +204,13 @@ public sealed class KafkaNativeMonitoringCoordinator
         {
             if (reference.ReportOrdinal <= 0 || reference.ByteLength != bytes.Length || reference.Sha256 != hash
                 || string.IsNullOrWhiteSpace(reference.Source) || !reference.Source.Contains('/') || reference.Source.Contains("://", StringComparison.Ordinal))
-            { Gap(client, "invalid_reference"); }
+            { Gap(client, "invalid_reference"); return; }
             else client.Sources.Add(new("existing_capture", reference.Source, reference.ByteLength, reference.Sha256, reference.ReportOrdinal, 1, work.Ordinal));
         }
         else
         {
             byte[] row = JsonSerializer.SerializeToUtf8Bytes(new RawRow(client.Ordinal, work.Ordinal, work.Raw), JsonOptions);
-            if (_rawBytes + row.Length + 1 > MaxRawBytes) Gap(client, "raw_limit");
+            if (_rawBytes + row.Length + 1 > MaxRawBytes) { Gap(client, "raw_limit"); return; }
             else
             {
                 if (client.Chunks.Count == 0 || client.Chunks[^1].FirstOrdinal + client.Chunks[^1].RowCount != work.Ordinal)

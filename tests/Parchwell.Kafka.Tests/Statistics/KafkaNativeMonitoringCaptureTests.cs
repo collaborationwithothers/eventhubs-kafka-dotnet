@@ -1,3 +1,7 @@
+using System.Collections.Concurrent;
+using System.Diagnostics.Metrics;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Statistics;
@@ -10,6 +14,70 @@ namespace Parchwell.Kafka.Tests.Statistics;
 [Trait("Category", "Unit")]
 public sealed class KafkaNativeMonitoringCaptureTests
 {
+    private static readonly JsonSerializerOptions NativeRowOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Given_RejectedMiddleRawReport_When_LaterReportIsRetained_Then_CounterBaselineIgnoresRejectedReport(bool rawLimit)
+    {
+        string run = rawLimit ? "raw-admission-boundary" : "raw-admission-reference";
+        var values = new ConcurrentQueue<long>();
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, current) =>
+        {
+            if (instrument.Meter.Name == "Parchwell.Kafka.Statistics" && instrument.Name == "kafka.librdkafka.client.tx")
+                current.EnableMeasurementEvents(instrument);
+        };
+        listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
+        {
+            if (tags.ToArray().Any(tag => tag.Key == "run" && Equals(tag.Value, run))) values.Enqueue(value);
+        });
+        listener.Start();
+        var store = new MemoryStore();
+        using var metrics = new KafkaStatisticsMetrics();
+        var coordinator = new KafkaNativeMonitoringCoordinator(store, metrics, new FixedTimeProvider(),
+            new(run, "phase", "scenario", "configuration", "job", "pod", "commit"));
+        var lifetime = coordinator.CreateLifetime(new("scenario", run, KafkaClientRole.LoadGenProducer, "client"));
+        lifetime.MarkBuilt();
+        string first = CounterReport(1, 2);
+        string middle = CounterReport(2, 5);
+        string last = CounterReport(3, 7);
+        if (rawLimit)
+        {
+            int rowBytes = JsonSerializer.SerializeToUtf8Bytes(new { ClientOrdinal = 1, ReportOrdinal = 1L, Raw = first }, NativeRowOptions).Length + 1;
+            coordinator.SetRetainedCountsForTest(0, KafkaNativeMonitoringCoordinator.MaxRawBytes - 2L * rowBytes);
+            lifetime.CaptureNew(first);
+            lifetime.CaptureNew(middle + new string(' ', 1024));
+            lifetime.CaptureNew(last);
+        }
+        else
+        {
+            lifetime.CaptureExisting(first, ValidReference(first, 1));
+            lifetime.CaptureExisting(middle, ValidReference(middle, 2) with { Sha256 = new string('0', 64) });
+            lifetime.CaptureExisting(last, ValidReference(last, 3));
+        }
+        lifetime.Complete(true, "unknown");
+        await coordinator.CompleteAsync(CancellationToken.None);
+
+        Assert.Equal(new long[] { 2, 5 }, values.ToArray());
+        using var index = JsonDocument.Parse(store.Objects[$"{run}/phase/job/pod/native-monitoring/index.json"]);
+        JsonElement client = index.RootElement.GetProperty("clients")[0];
+        Assert.False(client.GetProperty("capture_complete").GetBoolean());
+        Assert.Equal(3, client.GetProperty("report_count").GetInt64());
+        Assert.Equal(new long[] { 1, 3 }, client.GetProperty("raw_sources").EnumerateArray().Select(source => source.GetProperty("capture_ordinal").GetInt64()));
+        Assert.Contains(client.GetProperty("diagnostics").EnumerateArray(), item => item.GetString() == (rawLimit ? "raw_limit" : "invalid_reference"));
+    }
+
+    private static string CounterReport(int timestamp, int value) =>
+        $"{{\"name\":\"native\",\"client_id\":\"client\",\"type\":\"producer\",\"ts\":{timestamp},\"time\":1,\"age\":{timestamp},\"tx\":{value}}}";
+
+    private static KafkaNativeRawReference ValidReference(string raw, long ordinal)
+    {
+        byte[] bytes = Encoding.UTF8.GetBytes(raw);
+        return new("ledger/run/statistics.jsonl", ordinal, bytes.LongLength, Convert.ToHexStringLower(SHA256.HashData(bytes)));
+    }
+
     [Fact]
     public async Task Given_ZeroReports_When_Completed_Then_IndexRecordsBuiltLifetime()
     {
