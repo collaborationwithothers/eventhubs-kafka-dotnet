@@ -155,6 +155,28 @@ public sealed class KafkaOAuthBearerSession
         }
     }
 
+    /// <summary>Installs a token on this session's attached client without polling or consuming.</summary>
+    /// <remarks>
+    /// Supply the client built with this session by <see cref="KafkaAuthenticationFactory"/>.
+    /// Acquisition uses the provider and cancellation token supplied when this session was created.
+    /// The caller owns the operation deadline. Acquisition, validation and native installation failures
+    /// retain the callback path's sanitized failure state; inspect <see cref="InitialFailure"/> and
+    /// <see cref="InstalledTokenExpiresOn"/> after this method returns. This does not assert broker acceptance.
+    /// </remarks>
+    /// <param name="client">The native client built with this session.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="client"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The session has no builder attachment or already belongs to another client.</exception>
+    public void InstallToken(Confluent.Kafka.IClient client)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        lock (_attachmentGate)
+        {
+            if (!_attached)
+                throw new InvalidOperationException("OAuth bearer session is not attached to a native client.");
+        }
+        Refresh(client);
+    }
+
     /// <summary>Refreshes and installs a token through the native Kafka client.</summary>
     /// <param name="client">The native client receiving the token.</param>
     internal void Refresh(Confluent.Kafka.IClient client)

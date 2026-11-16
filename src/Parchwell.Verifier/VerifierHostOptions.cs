@@ -8,6 +8,7 @@ internal enum VerifierMode
 {
     StartLine,
     Verify,
+    ConsumerVerify,
     Judge,
     ProbeGate,
     SingleActionJudge,
@@ -24,6 +25,7 @@ internal sealed class VerifierHostOptions
     public Common.SingleAction.SingleActionLimits? SingleActionLimits { get; set; }
     public VerifyRun.Window.ConsumedMetadataOptions? ConsumedMetadata { get; set; }
     public string? EnrichmentImage { get; set; }
+    public string? ConsumerRecordContainer { get; set; }
     public string? CaptureContainer { get; set; }
     public string? CapturePrefix { get; set; }
     public string? SeedReceiptPath { get; set; }
@@ -163,6 +165,7 @@ internal static class VerifierModeParser
         {
             "start-line" => VerifierMode.StartLine,
             "verify" => VerifierMode.Verify,
+            "consumer-verify" => VerifierMode.ConsumerVerify,
             "judge" => VerifierMode.Judge,
             "single-action-judge" => VerifierMode.SingleActionJudge,
             "probe-gate" => VerifierMode.ProbeGate,
@@ -173,6 +176,6 @@ internal static class VerifierModeParser
             _ => default
         };
 
-        return value is "start-line" or "verify" or "judge" or "probe-gate" or "single-action-judge" or "b10-sweep" or "b10-final-sweep" or "b10-sweep-line" or "b10-abrupt-verify";
+        return value is "start-line" or "verify" or "consumer-verify" or "judge" or "probe-gate" or "single-action-judge" or "b10-sweep" or "b10-final-sweep" or "b10-sweep-line" or "b10-abrupt-verify";
     }
 }

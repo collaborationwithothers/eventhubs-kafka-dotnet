@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.Extensions.Options;
 using Parchwell.Scenarios;
+using Parchwell.Verifier.Common.Consumer;
 
 namespace Parchwell.Verifier;
 
@@ -41,8 +42,9 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         }
 
         RequireText(options.ScenarioId, "Verifier:ScenarioId", errors);
-        if (mode is VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.Judge or VerifierMode.B10SweepLine or VerifierMode.B10Sweep or VerifierMode.B10FinalSweep && !ScenarioPhases.IsExecutableScenario(options.ScenarioId))
+        if (mode is VerifierMode.ConsumerVerify or VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.Judge or VerifierMode.B10SweepLine or VerifierMode.B10Sweep or VerifierMode.B10FinalSweep && !(mode is VerifierMode.StartLine or VerifierMode.ConsumerVerify && ConsumerPlanValidation.IsConsumerScenario(options.ScenarioId)) && !ScenarioPhases.IsExecutableScenario(options.ScenarioId))
             errors.Add("Verifier:ScenarioId must be A01 or B04 for C5 modes.");
+        if (mode == VerifierMode.ConsumerVerify && !ConsumerPlanValidation.IsConsumerScenario(options.ScenarioId)) errors.Add("Consumer verify requires C01, C03 or C10.");
         if (mode is VerifierMode.B10SweepLine or VerifierMode.B10Sweep or VerifierMode.B10FinalSweep && options.ScenarioId != "B10")
             errors.Add("Verifier:b10-sweep mode requires ScenarioId B10.");
         if ((mode is VerifierMode.B10Sweep or VerifierMode.B10FinalSweep || mode == VerifierMode.Judge && options.ScenarioId == "B10") &&
@@ -70,16 +72,18 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         AddPositive(options.CleanupTimeout, "Verifier:CleanupTimeout", errors, requiredBudgets);
         AddPositive(options.ProcessLifetime, "Verifier:ProcessLifetime", errors, null);
 
-        if (mode is VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.Judge or VerifierMode.B10SweepLine or VerifierMode.B10Sweep or VerifierMode.B10FinalSweep)
+        if (mode is VerifierMode.ConsumerVerify or VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.Judge or VerifierMode.B10SweepLine or VerifierMode.B10Sweep or VerifierMode.B10FinalSweep)
         {
             if (options.SourceCommit is not null && (options.SourceCommit.Length != 40 ||
                 options.SourceCommit.Any(character => !(character is >= '0' and <= '9' or >= 'a' and <= 'f'))))
                 errors.Add("PARCHWELL_SOURCE_COMMIT must be 40 lowercase hexadecimal characters.");
             ValidateC5Identity(options, mode, errors);
-            if(mode is VerifierMode.Verify or VerifierMode.Judge or VerifierMode.B10SweepLine or VerifierMode.B10Sweep or VerifierMode.B10FinalSweep)
+            if (mode == VerifierMode.ConsumerVerify || mode == VerifierMode.StartLine && ConsumerPlanValidation.IsConsumerScenario(options.ScenarioId))
+                if (options.ConsumerRecordContainer != "consumer-record") errors.Add("Verifier:ConsumerRecordContainer must equal consumer-record.");
+            if(mode is VerifierMode.ConsumerVerify or VerifierMode.Verify or VerifierMode.Judge or VerifierMode.B10SweepLine or VerifierMode.B10Sweep or VerifierMode.B10FinalSweep)
                 AddPositive(options.IoTimeout, "Verifier:IoTimeout", errors, requiredBudgets);
             ValidateContainerName(options.LedgerContainer, "Verifier:LedgerContainer", errors);
-            if(mode is VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.B10SweepLine or VerifierMode.B10Sweep or VerifierMode.B10FinalSweep)
+            if(mode is VerifierMode.ConsumerVerify or VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.B10SweepLine or VerifierMode.B10Sweep or VerifierMode.B10FinalSweep)
             {
                 ValidatePodName(options.PodName, errors);
                 RequireText(options.VerifierClientId, "Verifier:VerifierClientId", errors);
@@ -87,7 +91,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
             }
             if (StringComparer.Ordinal.Equals(options.VerifierContainer, options.LedgerContainer))
                 errors.Add("Verifier:VerifierContainer must be separate from Verifier:LedgerContainer.");
-            if (mode is VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.B10SweepLine or VerifierMode.B10Sweep or VerifierMode.B10FinalSweep)
+            if (mode is VerifierMode.ConsumerVerify or VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.B10SweepLine or VerifierMode.B10Sweep or VerifierMode.B10FinalSweep)
             {
                 AddPositive(options.TokenTimeout, "Verifier:TokenTimeout", errors, requiredBudgets);
                 AddPositive(options.MetadataTimeout, "Verifier:MetadataTimeout", errors, requiredBudgets);
@@ -371,7 +375,9 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         RequireText(options.Phase, "Verifier:Phase", errors);
         if (!Common.Phase.PhaseIdentity.IsPhase(options.Phase)) errors.Add("Verifier:Phase must be exactly probe, C0, C1, or C3.");
         RequireText(options.ConfigurationId, "Verifier:ConfigurationId", errors);
-        if (!ScenarioPhases.TryGetConfiguration(options.ScenarioId, options.Phase, out string? expected) || options.ConfigurationId != expected)
+        if (ConsumerPlanValidation.IsConsumerScenario(options.ScenarioId) && mode is VerifierMode.StartLine or VerifierMode.ConsumerVerify
+            ? options.Phase is not ("C0" or "C1") || options.ConfigurationId != options.Phase
+            : !ScenarioPhases.TryGetConfiguration(options.ScenarioId, options.Phase, out string? expected) || options.ConfigurationId != expected)
             errors.Add("Verifier:ConfigurationId does not match Verifier:Phase.");
         RequireText(options.VerifierCommit, "Verifier:VerifierCommit", errors);
         RequireText(options.TenantId ?? Environment.GetEnvironmentVariable("AZURE_TENANT_ID"), "Verifier:TenantId/AZURE_TENANT_ID", errors);
