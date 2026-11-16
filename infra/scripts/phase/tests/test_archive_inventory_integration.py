@@ -498,7 +498,7 @@ class InventoryIntegrationTests(unittest.TestCase):
                             for o in manifest['objects']))
 
     def test_v2_complete_and_control_readback_and_bad_hash(self):
-        for fault in ('none', 'candidate_hash', 'native_hash'):
+        for fault in ('none', 'candidate_hash', 'native_hash', 'native_zero', 'native_omitted'):
             with self.subTest(fault=fault):
                 bad = fault != 'none'
                 h = self.harness('probe-batch-2', 'single-action', 'probe-42-1', 'smoke', items=['F06'],
@@ -521,10 +521,16 @@ class InventoryIntegrationTests(unittest.TestCase):
                                    'candidate_sha256': ('0'*64 if fault == 'candidate_hash' and config == 'C6' else sha(candidate)),
                                    'handler_exit_code': 1, 'cleanup_completed': True}
                         h.cli.put('verifier', prefix+'judge-completion.json', receipt)
-                if fault == 'native_hash':
+                if fault in ('native_hash', 'native_zero', 'native_omitted'):
                     key = ('source123', 'native-monitoring', 'probe-42-1/C6/probe-42-1-f06-c6-seed/uid/native-monitoring/index.json')
                     index = json.loads(h.cli.blobs[key])
-                    index['clients'][0]['raw_sources'][0]['sha256'] = 'f'*64
+                    if fault == 'native_hash':
+                        index['clients'][0]['raw_sources'][0]['sha256'] = 'f'*64
+                    elif fault == 'native_zero':
+                        index['clients'][0].update(report_count=0, raw_sources=[])
+                    else:
+                        index['clients'][0]['client_id'] = 'another-client'
+                        index['clients'][0].update(report_count=0, raw_sources=[])
                     h.cli.blobs[key] = encoded(index)
                 code, manifest, receipt = h.run()
                 self.assertEqual(1 if bad else 0, code)
