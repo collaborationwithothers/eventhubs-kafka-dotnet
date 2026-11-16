@@ -646,7 +646,7 @@ def validate_manifest(value):
                 or not safe_name(obj['destination_name']) or not obj['destination_name'].startswith(prefix)
                 or obj['destination_name'] in names or not isinstance(obj['source'], dict)
                 or set(obj['source']) != {'container', 'name', 'etag'} or not safe_name(obj['source']['container'])
-                or not safe_name(obj['source']['name']) or obj['source']['container'] not in ('ledger', 'verifier', 'single-action', 'runner')
+                or not safe_name(obj['source']['name']) or obj['source']['container'] not in ('ledger', 'verifier', 'single-action', 'native-monitoring', 'runner')
                 or obj['destination_name'] != ((prefix + 'runner/' + obj['source']['name'] if obj['source']['container'] == 'runner' else prefix + 'objects/' + obj['source']['container'] + '/' + obj['source']['name'])
                                                 + ('.metadata.json' if obj['kind'] == 'source_metadata_projection' else ''))
                 or (obj['repeat'] is not None and (type(obj['repeat']) is not int or obj['repeat'] < 1))
@@ -934,6 +934,7 @@ class Collector:
         self.transfer, self.prefix = transfer, prefix
         self.objects, self.captures, self.gaps = [], [], []
         self.window_sources = {}
+        self.native_existing = {}
         self.names = set()
         self.verified_bytes = 0
         self.logical_bytes = 0
@@ -965,6 +966,28 @@ class Collector:
                 except Exception:
                     self.window_sources[name] = None
             inspect_source = inspect_window
+        if name.endswith('/statistics.jsonl'):
+            previous_inspect = inspect_source
+            def inspect_statistics(path, size):
+                if previous_inspect is not None:
+                    previous_inspect(path, size)
+                import hashlib
+                refs = {}
+                with open(path, 'rb') as stream:
+                    for ordinal in range(1, 4098):
+                        _common.check_deadline(self.transfer.deadline, time.monotonic)
+                        line = stream.readline(MetadataChunkMaxBytes + 1)
+                        if not line: break
+                        if ordinal > 4096 or not line.endswith(b'\n') or len(line) > MetadataChunkMaxBytes:
+                            raise Gap('monitoring_incomplete', 'native statistics bounds')
+                        row = strict_control(line, MetadataChunkMaxBytes)
+                        raw = row['raw_json'].encode('utf-8')
+                        client_id = row['identity']['client_id']
+                        if len(raw) > MetadataRowMaxBytes or not isinstance(client_id, str):
+                            raise Gap('monitoring_incomplete', 'native statistics shape')
+                        refs[(client_id, ordinal)] = (len(raw), hashlib.sha256(raw).hexdigest())
+                self.native_existing[(container, name)] = refs
+            inspect_source = inspect_statistics
         destination = f'{self.prefix}objects/{container}/{name}'
         if destination in self.names: raise InvalidArchiveConfig()
         self.names.add(destination)
@@ -1080,9 +1103,18 @@ class Collector:
         self.objects.append(obj)
         try:
             remaining = ArchiveMaxBytes - 1048576 - 65536 - self.logical_bytes
+            def validate(doc):
+                valid = validate_capture_projection(doc, mode, identity, run_kind)
+                if valid:
+                    refs = {}
+                    for repeat in doc['repeats']:
+                        for row in repeat['statistics']:
+                            refs[(repeat['client_id'], row['sequence'])] = (row['raw_base64'][1], row['raw_base64'][2])
+                    self.native_existing[(container, name)] = refs
+                return valid
             size, sha, etag, dest_etag, _, valid = self.transfer.project_source(
                 container, name, destination, remaining,
-                lambda doc: validate_capture_projection(doc, mode, identity, run_kind),
+                validate,
                 reserve=lambda count: setattr(self, 'logical_bytes', self.logical_bytes + count))
             obj.update(bytes=size, sha256=sha, destination_etag=dest_etag, state='verified')
             obj['source']['etag'] = etag; self.verified_bytes += size
@@ -1694,6 +1726,12 @@ def check_v2_actor_logs(collector, phase, status, units, artifacts, private):
                     raise InvalidArchiveConfig()
                 diagnostic_lines.append({'text': text})
             name = f'probe-v2/raw/{job}/{pod}.containers.{role}.log'
+            refs = {}
+            for slot in documents[1]['repeats']:
+                for row in slot['statistics']:
+                    raw = base64.b64decode(row['raw_base64'], validate=True)
+                    refs[(slot['client_id'], row['sequence'])] = (len(raw), hashlib.sha256(raw).hexdigest())
+            collector.native_existing[('runner', name)] = refs
             source = {'container': 'runner', 'name': name, 'etag': None, 'bytes': len(log), 'sha256': hashlib.sha256(log).hexdigest()}
             projection = {'schema_version': 1, 'kind': 'source_metadata_projection', 'source': source,
                           'format': 'probe_v2_stdout', 'metadata': {'registration': documents[0], 'capture': documents[1], 'lines': diagnostic_lines}}
@@ -1809,6 +1847,81 @@ def collect_ordinary(collector, phase, status, containers, artifacts, job_name):
                                 'pod_uid': uid, 'source_commit': phase['source_commit']}
                     collector.capture(containers['verifier'], capture_prefix, identity, mode, owning_repeat, capture_id)
     return units
+
+
+def collect_native_monitoring(collector, phase, status, units):
+    """Read pod indexes from recorded starts; never discover objects by listing."""
+    spec = importlib.util.spec_from_file_location('parchwell_archive_native', Path(__file__).with_name('archive_native_monitoring.py'))
+    native = importlib.util.module_from_spec(spec); spec.loader.exec_module(native)
+    by_job = {r['job']: r for r in status['modes'] if isinstance(r, dict) and isinstance(r.get('job'), str)}
+    for unit in units:
+        if unit['state'] != 'started' or not unit['pod_uid']:
+            continue
+        job = unit['job_name']
+        record = by_job.get(job, {})
+        scenario = unit['item'] or phase['scenario']
+        configuration = record.get('configuration') or phase.get('configuration') or phase['phase']
+        if phase['scenario'] == 'idle-observation' and unit['mode'] == 'idle-observation-judge':
+            scenario, configuration = 'A04', 'C1'
+        run = phase['run_id']
+        selected = phase['phase']
+        if phase['scenario'] in ('probe-batch', 'probe-batch-2', 'idle-observation', 'ledger-batch'):
+            selected = configuration
+        if phase['scenario'] == 'ledger-batch' and unit['item']:
+            run = f"{run}-{unit['item'].lower()}"
+        identity = {'run_id': run, 'phase': selected, 'scenario_id': scenario,
+                    'configuration_id': configuration, 'job_name': job, 'pod_uid': unit['pod_uid'],
+                    'source_commit': phase['source_commit']}
+        prefix = f"{run}/{selected}/{job}/{unit['pod_uid']}/native-monitoring/"
+        documents = []
+        def inspect(path, size):
+            try:
+                with open(path, 'rb') as stream:
+                    data = stream.read(native.MAX_INDEX + 1)
+                documents.append(native.index(data, identity, prefix))
+            except (OSError, ValueError, TypeError, UnicodeError, RecursionError):
+                raise Gap('monitoring_incomplete', 'native index contract') from None
+        obj = collector.source('native-monitoring', prefix + 'index.json', 'native_monitoring_index',
+                               repeat=unit['repeat'], inspect_source=inspect, max_object=native.MAX_INDEX)
+        if obj is None or not documents:
+            collector.gap('monitoring_incomplete', 'native index unavailable', unit=job)
+            continue
+        document = documents[0]
+        if document['diagnostics_truncated']:
+            collector.gap('diagnostics_truncated', 'native index diagnostics', unit=job)
+        if not document['capture_complete']:
+            collector.gap('monitoring_incomplete', 'native capture incomplete', unit=job)
+        for client in document['clients']:
+            for descriptor in client['raw_sources']:
+                if descriptor['kind'] == 'existing_capture':
+                    parts = descriptor['source'].split('/', 1)
+                    existing = next((item for item in collector.objects
+                                     if len(parts) == 2 and item['source']['container'] == parts[0]
+                                     and item['source']['name'] == parts[1] and item['state'] == 'verified'), None)
+                    refs = collector.native_existing.get(tuple(parts), {})
+                    actual = refs.get((client['client_id'], descriptor['report_ordinal']))
+                    pod = unit['pod_name']
+                    same_pod = len(parts) == 2 and bool(pod) and (
+                        parts[0] == 'runner' and parts[1].startswith(f'probe-v2/raw/{job}/{pod}.containers.')
+                        or parts[0] in ('ledger', 'single-action') and (
+                            f'/producer/{pod}/' in '/' + parts[1]
+                            or f'/b10-abrupt/{pod}/' in '/' + parts[1]
+                            or f'/b10-abrupt-diagnostic/{pod}/' in '/' + parts[1]
+                            or parts[1].endswith(f'/instances/{pod}/capture.json')))
+                    if existing is None or not same_pod or actual != (descriptor['byte_length'], descriptor['sha256']):
+                        collector.gap('monitoring_incomplete', 'native existing capture binding', unit=job)
+                    continue
+                def inspect_chunk(path, size, descriptor=descriptor, ordinal=client['ordinal']):
+                    try:
+                        native.chunk(path, descriptor, ordinal)
+                    except (OSError, ValueError, TypeError, UnicodeError, RecursionError):
+                        raise Gap('monitoring_incomplete', 'native chunk contract') from None
+                result = collector.source('native-monitoring', descriptor['source'], 'native_monitoring_raw',
+                                          repeat=unit['repeat'], expected_length=descriptor['byte_length'],
+                                          expected_sha256=descriptor['sha256'], max_object=native.MAX_RAW,
+                                          inspect_source=inspect_chunk)
+                if result is None:
+                    collector.gap('monitoring_incomplete', 'native raw unavailable', unit=job)
 
 
 def manifest_run(phase, identity):
@@ -1947,6 +2060,7 @@ def execute(phase_instance, environ, deadline=None):
                                   v2=phase['scenario'] == 'probe-batch-2')
             else:
                 units = collect_ordinary(collector, phase, status, containers, artifacts, phase_instance.mode_job)
+            collect_native_monitoring(collector, phase, status, units)
             # Cross-check the adapters against the independently derived fixed paths;
             # this never discovers objects by listing or starts a second transfer.
             if phase['scenario'] in ('probe-batch', 'probe-batch-2', 'idle-observation', 'ledger-batch'):
@@ -2043,7 +2157,7 @@ def legacy_repeat_shape(repeat, mode):
         if (not isinstance(row, dict) or set(row) != {'sequence', 'observed_elapsed_ms', 'raw_base64'}
                 or not legacy_integer(row['sequence'], 32) or row['sequence'] < 1
                 or not legacy_integer(row['observed_elapsed_ms'], nonnegative=True)
-                or not isinstance(row['raw_base64'], tuple) or len(row['raw_base64']) != 2
+                or not isinstance(row['raw_base64'], tuple) or len(row['raw_base64']) != 3
                 or row['raw_base64'][0] != 'statistics_base64'):
             return False
     if mode == 'idle-observation':

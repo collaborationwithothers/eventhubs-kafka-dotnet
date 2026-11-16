@@ -116,7 +116,7 @@ class Reader:
     def raw_statistics(self):
         # Copy the original JSON string while validating its base64 in constant space.
         if self.take() != '"': raise Invalid()
-        quartet = ''; length = 0; padded = False
+        quartet = ''; length = 0; padded = False; digest = hashlib.sha256()
         while True:
             ch = self.take()
             if ch == '"': break
@@ -133,10 +133,10 @@ class Reader:
             if len(quartet) == 4:
                 try: decoded = base64.b64decode(quartet, validate=True)
                 except ValueError: raise Invalid() from None
-                length += len(decoded); padded = '=' in quartet; quartet = ''
+                length += len(decoded); digest.update(decoded); padded = '=' in quartet; quartet = ''
                 if length > 262144: raise Invalid()
         if quartet: raise Invalid()
-        return ('statistics_base64', length)
+        return ('statistics_base64', length, digest.hexdigest())
 
     def value(self, depth=1, mode='skip', path=()):
         if depth > 32: raise Invalid()
