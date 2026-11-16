@@ -120,6 +120,14 @@ def expected_env(values):
         fields['ProcessLifetimeSeconds'] = 1920 if producer else 840
     result = {prefix + key: {'value': str(value)} for key, value in fields.items()}
     result.update({
+        'NativeMonitoring__BlobEndpoint': {'value': runtime['blob']['account_url']},
+        'NativeMonitoring__BlobContainer': {'value': 'native-monitoring'},
+        'NativeMonitoring__RunId': {'value': runtime['run_id']},
+        'NativeMonitoring__Phase': {'value': runtime['phase']},
+        'NativeMonitoring__ScenarioId': {'value': values['scenario_id']},
+        'NativeMonitoring__ConfigurationId': {'value': values['configuration_id']},
+        'NativeMonitoring__JobName': {'value': job_name(values)},
+        'NativeMonitoring__SourceCommit': {'value': runtime['source_commit']},
         'PARCHWELL_SOURCE_COMMIT': {'value': runtime['source_commit']},
         'PARCHWELL_JOB_NAME': {'value': job_name(values)},
         'Telemetry__ConnectionString': {'value': runtime['application_insights_connection_string']},
@@ -129,7 +137,7 @@ def expected_env(values):
     })
     for key in ('PARCHWELL_POD_NAME', 'Telemetry__ServiceInstanceId', prefix + 'PodName'):
         result[key] = {'valueFrom': {'fieldRef': {'fieldPath': 'metadata.name'}}}
-    for key in ('PARCHWELL_POD_UID', prefix + 'PodUid'):
+    for key in ('PARCHWELL_POD_UID', 'NativeMonitoring__PodUid', prefix + 'PodUid'):
         result[key] = {'valueFrom': {'fieldRef': {'fieldPath': 'metadata.uid'}}}
     return result
 

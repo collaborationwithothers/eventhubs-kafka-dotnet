@@ -776,7 +776,8 @@ def load_context(environ):
                 or containers.get('verifier') != 'verifier'
                 or ('claim_check' in containers and containers['claim_check'] != 'claim-check')
                 or (phase.get('scenario') == 'probe-batch' and containers.get('single_action') != 'single-action')
-                or ('single_action' in containers and containers['single_action'] != 'single-action')):
+                or ('single_action' in containers and containers['single_action'] != 'single-action')
+                or ('native_monitoring' in containers and containers['native_monitoring'] != 'native-monitoring')):
             raise InvalidArchiveConfig()
         return private, artifacts, phase, identity, config, source_host, containers
     except (KeyError, TypeError, ValueError, OSError, _common.Invalid):
@@ -973,19 +974,22 @@ class Collector:
                     previous_inspect(path, size)
                 import hashlib
                 refs = {}
-                with open(path, 'rb') as stream:
-                    for ordinal in range(1, 4098):
-                        _common.check_deadline(self.transfer.deadline, time.monotonic)
-                        line = stream.readline(MetadataChunkMaxBytes + 1)
-                        if not line: break
-                        if ordinal > 4096 or not line.endswith(b'\n') or len(line) > MetadataChunkMaxBytes:
-                            raise Gap('monitoring_incomplete', 'native statistics bounds')
-                        row = strict_control(line, MetadataChunkMaxBytes)
-                        raw = row['raw_json'].encode('utf-8')
-                        client_id = row['identity']['client_id']
-                        if len(raw) > MetadataRowMaxBytes or not isinstance(client_id, str):
-                            raise Gap('monitoring_incomplete', 'native statistics shape')
-                        refs[(client_id, ordinal)] = (len(raw), hashlib.sha256(raw).hexdigest())
+                try:
+                    with open(path, 'rb') as stream:
+                        for ordinal in range(1, 4098):
+                            _common.check_deadline(self.transfer.deadline, time.monotonic)
+                            line = stream.readline(MetadataChunkMaxBytes + 1)
+                            if not line: break
+                            if ordinal > 4096 or not line.endswith(b'\n') or len(line) > MetadataChunkMaxBytes:
+                                return
+                            row = strict_control(line, MetadataChunkMaxBytes)
+                            raw = row['raw_json'].encode('utf-8')
+                            client_id = row['identity']['client_id']
+                            if len(raw) > MetadataRowMaxBytes or not isinstance(client_id, str):
+                                return
+                            refs[(client_id, ordinal)] = (len(raw), hashlib.sha256(raw).hexdigest())
+                except (OSError, ValueError, KeyError, TypeError, UnicodeError):
+                    return
                 self.native_existing[(container, name)] = refs
             inspect_source = inspect_statistics
         destination = f'{self.prefix}objects/{container}/{name}'

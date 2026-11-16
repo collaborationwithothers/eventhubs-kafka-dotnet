@@ -136,18 +136,25 @@ def verify(document, values):
         {'name': 'work', 'mountPath': '/work'},
         {'name': 'tmp', 'mountPath': '/tmp'}] + ([{'name': 'seed-receipt', 'mountPath': '/run/seed', 'readOnly': True}] if mounted else [])
     expected = {
+        'NativeMonitoring__BlobEndpoint': {'value': runtime['blob']['account_url']},
+        'NativeMonitoring__BlobContainer': {'value': 'native-monitoring'},
+        'NativeMonitoring__RunId': {'value': runtime['run_id']},
+        'NativeMonitoring__Phase': {'value': runtime['phase']},
+        'NativeMonitoring__ScenarioId': {'value': values['scenario_id']},
+        'NativeMonitoring__ConfigurationId': {'value': values['configuration_id']},
+        'NativeMonitoring__JobName': {'value': job_name(values)},
+        'NativeMonitoring__PodUid': {'valueFrom': {'fieldRef': {'fieldPath': 'metadata.uid'}}},
+        'NativeMonitoring__SourceCommit': {'value': runtime['source_commit']},
         'PARCHWELL_SOURCE_COMMIT': {'value': runtime['source_commit']},
         'PARCHWELL_JOB_NAME': {'value': job_name(values)},
         'PARCHWELL_POD_NAME': {'valueFrom': {'fieldRef': {'fieldPath': 'metadata.name'}}},
         'PARCHWELL_POD_UID': {'valueFrom': {'fieldRef': {'fieldPath': 'metadata.uid'}}},
         'Telemetry__ConnectionString': {'value': runtime['application_insights_connection_string']},
-        'Telemetry__ServiceName': {'value': 'Parchwell.Verifier' if judge else 'Parchwell.LoadGen'},
+        'Telemetry__ServiceName': {'value': 'Parchwell.Enrichment' if seed else 'Parchwell.Verifier' if judge else 'Parchwell.LoadGen'},
         'Telemetry__ServiceInstanceId': {'valueFrom': {'fieldRef': {'fieldPath': 'metadata.name'}}},
         'Telemetry__ScenarioId': {'value': values['scenario_id']},
         'Telemetry__RunId': {'value': runtime['run_id']},
     }
-    if seed:
-        expected = {key: value for key, value in expected.items() if not key.startswith('Telemetry__')}
     if not runtime['image_smoke']:
         expected.update(expected_live_environment(values))
     environment = container['env']

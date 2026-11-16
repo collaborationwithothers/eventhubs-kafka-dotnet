@@ -110,11 +110,11 @@ spec:
               valueFrom: {fieldRef: {fieldPath: metadata.name}}
             - name: PARCHWELL_POD_UID
               valueFrom: {fieldRef: {fieldPath: metadata.uid}}
-            {{- if ne $worker "enrichment" }}
+            {{- if or (ne $worker "enrichment") (eq $mode "single-action-seed") }}
             - name: Telemetry__ConnectionString
               value: {{ $r.application_insights_connection_string | quote }}
             - name: Telemetry__ServiceName
-              value: {{ ternary "Parchwell.LoadGen" "Parchwell.Verifier" (eq $worker "loadgen") | quote }}
+              value: {{ ternary "Parchwell.Enrichment" (ternary "Parchwell.LoadGen" "Parchwell.Verifier" (eq $worker "loadgen")) (eq $mode "single-action-seed") | quote }}
             - name: Telemetry__ServiceInstanceId
               valueFrom: {fieldRef: {fieldPath: metadata.name}}
             - name: Telemetry__ScenarioId

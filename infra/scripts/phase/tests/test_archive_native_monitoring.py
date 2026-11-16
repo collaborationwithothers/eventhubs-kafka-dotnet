@@ -47,5 +47,65 @@ class NativeMonitoringTests(unittest.TestCase):
             with self.assertRaises(ValueError): native.chunk(path, descriptor, 1)
 
 
+class AdapterTests(unittest.TestCase):
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location('archive_native_adapter', Path(__file__).resolve().parents[1] / 'archive.py')
+        self.archive = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.archive)
+        self.identity = dict(run_id='run', phase='C0', scenario_id='A01', configuration_id='C0', job_name='job', pod_uid='uid', source_commit='a' * 40)
+        self.prefix = 'run/C0/job/uid/native-monitoring/'
+        self.phase = dict(run_id='run', phase='C0', configuration='C0', scenario='A01', source_commit='a' * 40)
+        self.units = [dict(state='started', pod_uid='uid', pod_name='job-pod', job_name='job', item=None, mode='loadgen', repeat=1)]
+        self.status = {'modes': [{'job': 'job'}]}
+
+    def make_collector(self, documents):
+        archive = self.archive
+        class Collector:
+            def __init__(self):
+                self.objects, self.gaps, self.native_existing = [], [], {}
+            def gap(self, code, boundary, name=None, unit=None):
+                self.gaps.append((code, boundary, name, unit))
+            def source(self, container, name, kind, **kwargs):
+                data = documents.get(name)
+                if data is None:
+                    return None
+                with tempfile.NamedTemporaryFile() as stream:
+                    stream.write(data); stream.flush()
+                    try:
+                        kwargs['inspect_source'](stream.name, len(data))
+                    except archive.Gap:
+                        return None
+                obj = {'source': {'container': container, 'name': name}, 'state': 'verified'}
+                self.objects.append(obj)
+                return obj
+        return Collector()
+
+    def encode(self, client=None, complete=True, truncated=False):
+        return json.dumps(dict(schema_version=1, identity=self.identity, clients=[] if client is None else [client],
+                               capture_complete=complete, diagnostics_truncated=truncated)).encode()
+
+    def test_missing_index_and_diagnostic_truncation_are_gaps(self):
+        collector = self.make_collector({})
+        self.archive.collect_native_monitoring(collector, self.phase, self.status, self.units)
+        self.assertTrue(any(g[0] == 'monitoring_incomplete' for g in collector.gaps))
+        collector = self.make_collector({self.prefix + 'index.json': self.encode(complete=False, truncated=True)})
+        self.archive.collect_native_monitoring(collector, self.phase, self.status, self.units)
+        self.assertEqual({'monitoring_incomplete', 'diagnostics_truncated'}, {g[0] for g in collector.gaps})
+
+    def test_existing_reference_requires_same_pod_and_matching_hash(self):
+        source = 'run/C0/r1/producer/job-pod/publication/statistics.jsonl'
+        descriptor = dict(kind='existing_capture', source='ledger/' + source, byte_length=2, sha256='b' * 64, report_ordinal=1, row_count=1)
+        client = dict(ordinal=1, role='LoadGenProducer', client_id='client', native_identity=None, build_status='built', report_count=1,
+                      raw_sources=[descriptor], diagnostics=[], capture_complete=True, export_tail_status='unknown')
+        collector = self.make_collector({self.prefix + 'index.json': self.encode(client)})
+        collector.objects.append({'source': {'container': 'ledger', 'name': source}, 'state': 'verified'})
+        collector.native_existing[('ledger', source)] = {('client', 1): (2, 'b' * 64)}
+        self.archive.collect_native_monitoring(collector, self.phase, self.status, self.units)
+        self.assertEqual([], collector.gaps)
+        collector.native_existing[('ledger', source)][('client', 1)] = (2, 'c' * 64)
+        self.archive.collect_native_monitoring(collector, self.phase, self.status, self.units)
+        self.assertTrue(any(g[0] == 'monitoring_incomplete' for g in collector.gaps))
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -88,6 +88,7 @@ def verify(document, values):
     ordinary_values['runtime']['mode'] = 'loadgen'
     ordinary = expected_environment(ordinary_values)
     ordinary['PARCHWELL_JOB_NAME'] = ('value', name)
+    ordinary['NativeMonitoring__JobName'] = ('value', name)
     expected = {key: value for key, value in ordinary.items() if not key.startswith('LoadGen__')}
     identity = {'Enabled': 'true', 'Purpose': 'diagnostic_trial', 'Role': 'parent' if first else 'successor',
                 'RunId': runtime['run_id'], 'ScenarioId': 'B10', 'ConfigurationId': 'C1', 'Phase': 'C1',

@@ -55,6 +55,7 @@ def judge_expected_names():
     names = {'PARCHWELL_SOURCE_COMMIT', 'PARCHWELL_JOB_NAME', 'PARCHWELL_POD_NAME', 'PARCHWELL_POD_UID',
              'Telemetry__ConnectionString', 'Telemetry__ServiceName', 'Telemetry__ServiceInstanceId',
              'Telemetry__ScenarioId', 'Telemetry__RunId'}
+    names.update('NativeMonitoring__' + key for key in ('BlobEndpoint', 'BlobContainer', 'RunId', 'Phase', 'ScenarioId', 'ConfigurationId', 'JobName', 'PodUid', 'SourceCommit'))
     names.update('IdleObservationJudge__' + key for key in JUDGE_FIELDS)
     names.update('IdleObservationJudge__Limits__' + key for key in LIMITS['judge'])
     names.update('IdleObservationJudge__ScenarioLoadOptions__' + key for key in PARSING)
@@ -65,6 +66,7 @@ def expected_names():
     names = {'PARCHWELL_SOURCE_COMMIT', 'PARCHWELL_JOB_NAME', 'PARCHWELL_POD_NAME', 'PARCHWELL_POD_UID',
              'Telemetry__ConnectionString', 'Telemetry__ServiceName', 'Telemetry__ServiceInstanceId',
              'Telemetry__ScenarioId', 'Telemetry__RunId'}
+    names.update('NativeMonitoring__' + key for key in ('BlobEndpoint', 'BlobContainer', 'RunId', 'Phase', 'ScenarioId', 'ConfigurationId', 'JobName', 'PodUid', 'SourceCommit'))
     names.update('IdleObservation__' + key for key in FIELDS)
     names.update('IdleObservation__' + key for key in LIMITS['capture'])
     names.update('IdleObservation__ScenarioLoadOptions__' + key for key in PARSING)
@@ -90,7 +92,7 @@ def verify(document, values):
     assert container['image'] == runtime['loadgen_image']
     env = {entry['name']: entry for entry in container['env']}
     assert len(env) == len(container['env'])
-    assert set(env) == expected_names() and len(env) == 45, set(env) ^ expected_names()
+    assert set(env) == expected_names() and len(env) == 54, set(env) ^ expected_names()
     assert env['IdleObservation__BlobContainer']['value'] == 'ledger'
     assert env['IdleObservation__RunKind']['value'] == runtime['run_kind']
     for key, value in LIMITS['capture'].items():
@@ -117,7 +119,7 @@ def verify_judge(document, values):
     assert container['image'] == runtime['verifier_image']
     env = {entry['name']: entry for entry in container['env']}
     assert len(env) == len(container['env'])
-    assert set(env) == judge_expected_names() and len(env) == 41, set(env) ^ judge_expected_names()
+    assert set(env) == judge_expected_names() and len(env) == 50, set(env) ^ judge_expected_names()
     assert env['Telemetry__ServiceName']['value'] == 'Parchwell.Verifier'
     assert env['Telemetry__ScenarioId']['value'] == 'idle-observation'
     assert env['IdleObservationJudge__LedgerContainer']['value'] == 'ledger'

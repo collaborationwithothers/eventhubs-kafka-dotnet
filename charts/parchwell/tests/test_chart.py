@@ -115,6 +115,12 @@ def expected_environment(d):
     r=d['runtime']; mode=role_mode(r['mode']); repeat=r.get('repeat'); phase=r['phase']; job=jobname(d)
     prefix=f"{r['run_id']}/{phase}/r{repeat}/" if repeat else None
     expected={
+      'NativeMonitoring__BlobEndpoint':('value',r['blob']['account_url']),
+      'NativeMonitoring__BlobContainer':('value','native-monitoring'),
+      'NativeMonitoring__RunId':('value',r['run_id']), 'NativeMonitoring__Phase':('value',phase),
+      'NativeMonitoring__ScenarioId':('value',d['scenario_id']), 'NativeMonitoring__ConfigurationId':('value',d['configuration_id']),
+      'NativeMonitoring__JobName':('value',job), 'NativeMonitoring__PodUid':('field','metadata.uid'),
+      'NativeMonitoring__SourceCommit':('value',r['source_commit']),
       'PARCHWELL_SOURCE_COMMIT':('value',r['source_commit']),'PARCHWELL_JOB_NAME':('value',job),
       'PARCHWELL_POD_NAME':('field','metadata.name'),'PARCHWELL_POD_UID':('field','metadata.uid'),
       'Telemetry__ConnectionString':('value',r['application_insights_connection_string']),
