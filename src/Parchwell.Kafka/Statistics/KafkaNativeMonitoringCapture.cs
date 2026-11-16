@@ -86,6 +86,7 @@ public sealed class KafkaNativeMonitoringCoordinator
     private int _diagnostics;
     private bool _truncated;
     private bool _closed;
+    private bool _publicationStarted;
     private bool _gap;
 
     internal KafkaNativeMonitoringCoordinator(IKafkaNativeMonitoringStore store, KafkaStatisticsMetrics metrics, TimeProvider time, KafkaNativeMonitoringIdentity identity)
@@ -151,6 +152,7 @@ public sealed class KafkaNativeMonitoringCoordinator
         {
             _gap = true;
             client.Gap = true;
+            if (code == "diagnostics_truncated") _truncated = true;
             if (!client.Diagnostics.Contains(code))
             {
                 if (_diagnostics >= MaxDiagnostics) _truncated = true;
@@ -193,13 +195,13 @@ public sealed class KafkaNativeMonitoringCoordinator
         var projection = KafkaNativeMetricParser.Parse(work.Raw);
         if (!work.Bridge)
         {
-            var native = projection.Identity;
+            var native = KafkaStatisticsSession.ReadMonitoringIdentity(work.Raw);
             string type = client.Identity.Role is KafkaClientRole.EnrichmentConsumer or KafkaClientRole.VerifierConsumer ? "consumer" : "producer";
             long receipt = (long)((Int128)work.Receipt * 1_000_000 / _time.TimestampFrequency);
             Int128 startNumerator = (Int128)client.Start * 1_000_000;
             long start = (long)((startNumerator + _time.TimestampFrequency - 1) / _time.TimestampFrequency);
             bool valid = native is not null && native.ClientId == client.Identity.ClientId && native.Type == type
-                && native.Age <= native.Ts && (client.Name is null || client.Name == native.Name)
+                && (client.Name is null || client.Name == native.Name)
                 && (client.LastTimestamp is null || native.Ts > client.LastTimestamp)
                 && (client.Creation is null || native.Ts - native.Age == client.Creation)
                 && (!ReferenceEquals(_time, TimeProvider.System) || !OperatingSystem.IsLinux() || (native.Ts <= receipt && native.Ts - native.Age >= start));
@@ -215,13 +217,34 @@ public sealed class KafkaNativeMonitoringCoordinator
         foreach (var diagnostic in projection.Diagnostics) Gap(client, diagnostic.Code);
     }
 
-    /// <summary>Drains admitted callbacks and writes the private objects within the caller's budget.</summary>
+    /// <summary>Closes admission and drains callbacks within the caller's budget.</summary>
+    /// <param name="cancellationToken">The host cleanup deadline.</param>
+    /// <returns>A task completing when the callback worker has drained.</returns>
+    public async Task DrainAsync(CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            if (!_closed) { _closed = true; _queue.Writer.TryComplete(); }
+        }
+        await _worker.WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Publishes the index after capture and existing evidence have drained.</summary>
     /// <param name="cancellationToken">The host cleanup deadline.</param>
     /// <returns>A task completing when the index has been created.</returns>
     public async Task CompleteAsync(CancellationToken cancellationToken)
     {
-        lock (_gate) { if (_closed) throw new InvalidOperationException("Capture is already closed."); _closed = true; _queue.Writer.TryComplete(); }
-        await _worker.WaitAsync(cancellationToken).ConfigureAwait(false);
+        lock (_gate)
+        {
+            if (_publicationStarted) throw new InvalidOperationException("Publication is already started.");
+            _publicationStarted = true;
+        }
+        await DrainAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var client in _clients.Where(c => c.BuildStatus == "pending"))
+        {
+            client.BuildStatus = "failed";
+            Gap(client, "build_unresolved");
+        }
         string prefix = $"{_identity.RunId}/{_identity.Phase}/{_identity.JobName}/{_identity.PodUid}/native-monitoring";
         foreach (var client in _clients.Where(c => c.NewRows > 0))
         {
@@ -299,6 +322,13 @@ public sealed class KafkaNativeMonitoringLifetime
     {
         ArgumentNullException.ThrowIfNull(report);
         if (report.Identity != Identity || report.Monitoring is null || !report.Monitoring.IsComplete) _owner.Gap(this, "bridge_monitoring_incomplete");
+        if (report.Monitoring is { } monitoring)
+            foreach (var diagnostic in monitoring.Diagnostics)
+            {
+                string code = diagnostic.Code;
+                _owner.Gap(this, !string.IsNullOrEmpty(code) && code.Length <= 80 && code.All(c => char.IsAsciiLetterOrDigit(c) || c == '_')
+                    ? code : "invalid_diagnostic_code");
+            }
         _owner.Submit(this, report.RawJson, reference ?? throw new ArgumentNullException(nameof(reference)), true);
     }
     /// <summary>Closes this lifetime after native disposal and existing capture flush.</summary>
