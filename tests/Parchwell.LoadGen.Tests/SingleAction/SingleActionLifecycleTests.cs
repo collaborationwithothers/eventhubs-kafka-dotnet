@@ -6,6 +6,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Parchwell.Kafka.Configuration;
+using Parchwell.Kafka.Statistics;
+using Parchwell.LoadGen.Run.Monitoring;
 using Parchwell.LoadGen.SingleAction;
 using Parchwell.Scenarios;
 using Xunit;
@@ -34,6 +36,22 @@ public sealed class SingleActionLifecycleTests
         Assert.Equal(5, completion.RootElement.GetProperty("repeats_attempted").GetInt32());
         Assert.Equal(0, completion.RootElement.GetProperty("handler_exit_code").GetInt32());
         Assert.True(completion.RootElement.GetProperty("cleanup_completed").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Given_stalled_monitoring_drain_When_host_finishes_Then_scientific_cleanup_and_receipt_succeed()
+    {
+        using var fixture = new Fixture(holdMonitoring: true);
+        await fixture.MonitorStarted.Task;
+        try
+        {
+            int exit = await SingleActionHost.RunAsync(hostFactory: () => fixture.Host);
+            Assert.Equal(0, exit);
+            Assert.Equal(["registration", "client-1", "client-2", "client-3", "client-4", "client-5", "capture", "stop", "dispose", "completion"], fixture.Events);
+            Assert.NotNull(fixture.Publication.Completion);
+            Assert.Empty(fixture.MonitorStore!.Objects);
+        }
+        finally { fixture.ReleaseMonitor.TrySetResult(); }
     }
 
     [Theory]
@@ -190,7 +208,10 @@ public sealed class SingleActionLifecycleTests
         internal RecordingPublication Publication { get; }
         internal TestHost Host { get; }
         internal StringWriter Logs { get; } = new();
-        internal Fixture(string? failure = null, bool firstRule = false)
+        internal TaskCompletionSource MonitorStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal TaskCompletionSource ReleaseMonitor { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal NativeMonitoringFixture? MonitorStore { get; private set; }
+        internal Fixture(string? failure = null, bool firstRule = false, bool holdMonitoring = false)
         {
             var clock = new SingleActionCaptureTests.AdvancingClock();
             var options = SingleActionCaptureTests.Options();
@@ -206,8 +227,21 @@ public sealed class SingleActionLifecycleTests
             services.AddSingleton<IOptions<SingleActionHostOptions>>(Microsoft.Extensions.Options.Options.Create(options));
             services.AddSingleton(options);
             services.AddSingleton<TimeProvider>(clock);
-            _ = NativeMonitoringFixture.Register(services, options.RunId, options.ScenarioId, options.ConfigurationId,
+            MonitorStore = NativeMonitoringFixture.Register(services, options.RunId, options.ScenarioId, options.ConfigurationId,
                 options.JobName, options.PodUid, options.SourceCommit, "ledger/synthetic/capture.json");
+            if (holdMonitoring)
+            {
+                var identity = new KafkaNativeMonitoringIdentity(options.RunId, options.ConfigurationId, options.ScenarioId,
+                    options.ConfigurationId, options.JobName, options.PodUid, options.SourceCommit);
+                var coordinator = new KafkaNativeMonitoringCoordinator(MonitorStore!, new KafkaStatisticsMetrics(), clock, identity,
+                    () => { MonitorStarted.TrySetResult(); return ReleaseMonitor.Task; });
+                var monitoring = new NativeMonitoringHost(coordinator, "ledger/synthetic/capture.json");
+                KafkaNativeMonitoringLifetime lifetime = monitoring.Begin(new KafkaStatisticsIdentity(options.ScenarioId, options.RunId,
+                    KafkaClientRole.LoadGenProducer, "synthetic-client"))!;
+                lifetime.MarkBuilt();
+                monitoring.Capture(lifetime, "{}", 1);
+                services.AddSingleton(monitoring);
+            }
             services.AddSingleton<ISingleActionPublication>(Publication);
             services.AddSingleton<IHostApplicationLifetime, Lifetime>();
             services.AddParchwellScenarios(value =>

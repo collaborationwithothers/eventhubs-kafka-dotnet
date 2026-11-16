@@ -377,6 +377,7 @@ internal static partial class Program
         ICompletionReceiptPublisher? receiptPublisher=null;
         VerifierHostOptions? hostOptions=null;
         bool cleanupCompleted = true;
+        bool hostFailed = false;
         try
         {
             host = BuildHostCore(args, configureForTests, timeProvider);
@@ -398,6 +399,7 @@ internal static partial class Program
             catch (Exception exception)
             {
                 cleanupCompleted = false;
+                hostFailed = true;
                 state!.MarkFailed();
                 LogHostFailed(
                     logger!,
@@ -409,6 +411,7 @@ internal static partial class Program
         catch (Exception exception)
         {
             cleanupCompleted = false;
+            hostFailed = true;
             if (host is not null)
             {
                 logger ??= host.Services.GetService<ILoggerFactory>()?.CreateLogger(nameof(Program));
@@ -453,7 +456,12 @@ internal static partial class Program
                 state?.MarkFailed();
             }
 
-            try { monitoring = host.Services.GetService<KafkaNativeMonitoringCoordinator>(); } catch (Exception) { }
+            try
+            {
+                monitoring = host.Services.GetService<KafkaNativeMonitoringCoordinator>();
+                if (hostFailed && hostOptions is not null) monitoring?.MarkIncomplete("host_startup_failed");
+            }
+            catch (Exception) { }
             monitorDrain = monitoring?.DrainAsync(monitoringCleanup.Token);
 
             try
@@ -511,6 +519,7 @@ internal static partial class Program
         }
         finally
         {
+            watchdog?.Dispose();
             try
             {
                 if (monitoring is not null && monitorDrain?.IsCompletedSuccessfully == true)
@@ -519,7 +528,6 @@ internal static partial class Program
             }
             catch (Exception) { }
             monitoringCleanup?.Dispose();
-            watchdog?.Dispose();
         }
     }
 

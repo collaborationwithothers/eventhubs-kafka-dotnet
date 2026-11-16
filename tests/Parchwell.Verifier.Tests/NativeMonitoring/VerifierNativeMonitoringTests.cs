@@ -18,6 +18,29 @@ namespace Parchwell.Verifier.Tests.NativeMonitoring;
 public sealed class VerifierNativeMonitoringTests
 {
     [Fact]
+    public void Given_matching_verifier_destination_and_phase_When_options_resolve_Then_identity_is_accepted()
+    {
+        using var host = Program.BuildHost(VerifierHostTestOptions.ArgumentsFor("verify", VerifierHostTestOptions.TempPath()));
+        KafkaNativeMonitoringOptions options = host.Services.GetRequiredService<IOptions<KafkaNativeMonitoringOptions>>().Value;
+        Assert.Equal("https://storage.example/", options.BlobEndpoint);
+        Assert.Equal("C0", options.Phase);
+    }
+
+    [Theory]
+    [InlineData("BlobEndpoint", "https://other.example/")]
+    [InlineData("Phase", "C1")]
+    [InlineData("ConfigurationId", "C1")]
+    [InlineData("JobName", "other-job")]
+    [InlineData("PodUid", "other-pod")]
+    [InlineData("SourceCommit", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")]
+    public void Given_mismatched_verifier_monitoring_identity_When_options_resolve_Then_validation_fails(string field, string value)
+    {
+        string[] args = VerifierHostTestOptions.ArgumentsFor("verify", VerifierHostTestOptions.TempPath());
+        using var host = Program.BuildHost([.. args, "--NativeMonitoring:" + field + "=" + value]);
+        Assert.Throws<OptionsValidationException>(() => host.Services.GetRequiredService<IOptions<KafkaNativeMonitoringOptions>>().Value);
+    }
+
+    [Fact]
     public async Task Given_callback_during_consumer_disposal_When_session_cleans_up_Then_original_raw_is_drained_after_disposal()
     {
         using var fixture = new KafkaSessionTestSupport();

@@ -46,6 +46,7 @@ internal static class Program
         SeedF04Result? result = null;
         TimeProvider clock = TimeProvider.System;
         bool hostCleaned = true;
+        bool seedFailed = false;
         KafkaNativeMonitoringCoordinator? seedMonitoring = null;
         Task? seedDrain = null;
         CancellationTokenSource? seedCleanup = null;
@@ -69,6 +70,7 @@ internal static class Program
         }
         catch (Exception)
         {
+            seedFailed = true;
             await Console.Error.WriteLineAsync($"seed_startup_or_execution_failed scenario_id=F04 run_id={options?.RunId ?? "unknown"}").ConfigureAwait(false);
         }
         finally
@@ -79,7 +81,12 @@ internal static class Program
                 CancellationTokenSource cleanup = seedCleanup;
                 try { await host.StopAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false); }
                 catch (Exception) { hostCleaned = false; }
-                try { seedMonitoring = host.Services.GetService<KafkaNativeMonitoringCoordinator>(); } catch (Exception) { }
+                try
+                {
+                    seedMonitoring = host.Services.GetService<KafkaNativeMonitoringCoordinator>();
+                    if (seedFailed && options is not null) seedMonitoring?.MarkIncomplete("host_startup_failed");
+                }
+                catch (Exception) { }
                 seedDrain = seedMonitoring?.DrainAsync(cleanup.Token);
                 try { await Task.Run(host.Dispose, CancellationToken.None).WaitAsync(cleanup.Token).ConfigureAwait(false); }
                 catch (Exception) { hostCleaned = false; }
@@ -174,11 +181,14 @@ internal static class Program
         IHost? host = null;
         ConsumerProcessingOptions? options = null;
         string reason = "consumer_identity_invalid";
+        bool identityValidated = false;
+        bool hostFailed = false;
         try
         {
             host = hostFactory?.Invoke() ?? BuildConsumerProcessingHost(configure);
             options = host.Services.GetRequiredService<IOptions<ConsumerProcessingOptions>>().Value;
             options.ValidateDeploymentIdentity(host.Services.GetRequiredService<IConfiguration>());
+            identityValidated = true;
             reason = "consumer_plan_invalid";
             if (host.Services.GetService<IConsumerProcessingPlanSource>() is null)
                 throw new InvalidOperationException(reason);
@@ -188,6 +198,7 @@ internal static class Program
         }
         catch (Exception)
         {
+            hostFailed = true;
             await Console.Error.WriteLineAsync($"consumer_processing_failed reason={reason} scenario_id={ConsumerIdentity(options?.ScenarioId)} run_id={ConsumerIdentity(options?.RunId)} role={ConsumerIdentity(options?.Role)}").ConfigureAwait(false);
             return 1;
         }
@@ -200,7 +211,12 @@ internal static class Program
                 try { await host.StopAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false); }
                 catch (Exception) { }
                 KafkaNativeMonitoringCoordinator? monitoring = null;
-                try { monitoring = host.Services.GetService<KafkaNativeMonitoringCoordinator>(); } catch (Exception) { }
+                try
+                {
+                    monitoring = host.Services.GetService<KafkaNativeMonitoringCoordinator>();
+                    if (hostFailed && identityValidated) monitoring?.MarkIncomplete("host_startup_failed");
+                }
+                catch (Exception) { }
                 Task? drain = monitoring?.DrainAsync(cleanup.Token);
                 try { await Task.Run(host.Dispose, CancellationToken.None).WaitAsync(cleanup.Token).ConfigureAwait(false); }
                 catch (Exception) { }

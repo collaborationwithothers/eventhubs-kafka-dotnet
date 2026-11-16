@@ -28,6 +28,7 @@ public sealed class SeedF04HostTests
     [InlineData("PodName")]
     [InlineData("PodUid")]
     [InlineData("NamespaceName")]
+    [InlineData("BlobEndpoint")]
     [InlineData("ActionWindowMs")]
     [InlineData("ProcessLifetimeSeconds")]
     [InlineData("CleanupSeconds")]
@@ -61,6 +62,7 @@ public sealed class SeedF04HostTests
     [InlineData("RunId", "wrong-run")]
     [InlineData("PodUid", "invalid")]
     [InlineData("NamespaceName", "https://invalid.example")]
+    [InlineData("BlobEndpoint", "http://storage.example/")]
     public async Task Given_invalid_option_When_validation_mode_runs_Then_configuration_fails(string option, string value)
     {
         Assert.Equal(1, await Program.RunAsync(["--validate-seed-configuration"], builder =>
@@ -131,6 +133,27 @@ public sealed class SeedF04HostTests
         Assert.Single(output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries));
     }
 
+    [Fact]
+    public async Task Given_blocked_monitoring_index_When_seed_finishes_Then_receipt_and_cleanup_precede_the_failure()
+    {
+        var producer = DispatchProxy.Create<IProducer<byte[], byte[]>, SeedF04Tests.RecordingProducer>();
+        var recorded = (SeedF04Tests.RecordingProducer)(object)producer;
+        var store = new BlockingStore();
+        var host = CreateHost(producer, recorded.Events, store: store);
+        KafkaNativeMonitoringCoordinator monitoring = host.Services.GetRequiredService<KafkaNativeMonitoringCoordinator>();
+        await monitoring.DrainAsync(TestContext.Current.CancellationToken);
+        using var output = new RecordingWriter(recorded.Events);
+        Task<int> run = Program.RunAsync(["--single-action-seed"], output: output, hostFactory: () => host);
+        await store.Started.Task;
+        Assert.Equal(CompleteLifecycleOrder, recorded.Events);
+        Assert.Single(output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries));
+        Assert.False(run.IsCompleted);
+        Assert.False(store.CaptureComplete);
+        store.Fail.TrySetException(new IOException("synthetic_storage_failure"));
+        Assert.Equal(0, await run);
+        Assert.False(store.IndexStored);
+    }
+
     [Theory]
     [InlineData("stop")]
     [InlineData("dispose")]
@@ -199,14 +222,38 @@ public sealed class SeedF04HostTests
         ["NativeMonitoring:PodUid"] = "11111111-2222-3333-4444-555555555555", ["NativeMonitoring:SourceCommit"] = new string('a', 40)
     };
 
-    private static RecordingHost CreateHost(IProducer<byte[], byte[]> producer, List<string> events, string? failure = null)
+    private static RecordingHost CreateHost(IProducer<byte[], byte[]> producer, List<string> events, string? failure = null, BlockingStore? store = null)
     {
         HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton<IOptions<SeedF04Options>>(Options.Create(SeedF04Tests.ValidOptions()));
         builder.Services.AddSingleton<Func<IProducer<byte[], byte[]>>>(() => producer);
         builder.Services.AddSingleton<SeedF04Worker>();
+        if (store is not null)
+        {
+            builder.Services.AddSingleton<IKafkaNativeMonitoringStore>(store);
+            builder.Services.AddParchwellNativeMonitoring();
+            builder.Services.AddSingleton(provider => provider.GetRequiredService<KafkaNativeMonitoringFactory>().Create(
+                new KafkaNativeMonitoringIdentity("synthetic-run", "C2", "F04", "C2", "synthetic-run-f04-seed",
+                    "11111111-2222-3333-4444-555555555555", new string('a', 40))));
+        }
         return new RecordingHost(builder.Build(), events, failure);
+    }
+
+    private sealed class BlockingStore : IKafkaNativeMonitoringStore
+    {
+        internal TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal TaskCompletionSource Fail { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal bool IndexStored { get; private set; }
+        internal bool CaptureComplete { get; private set; }
+        public async Task CreateAsync(string path, ReadOnlyMemory<byte> content, CancellationToken cancellationToken)
+        {
+            using JsonDocument index = JsonDocument.Parse(content);
+            CaptureComplete = index.RootElement.GetProperty("capture_complete").GetBoolean();
+            Started.TrySetResult();
+            await Fail.Task.WaitAsync(cancellationToken);
+            IndexStored = true;
+        }
     }
 
     private sealed class RecordingWriter(List<string> events) : StringWriter
