@@ -276,6 +276,7 @@ public sealed class ConsumerProcessingWorkerTests
     {
         using var harness = ThreeMessages();
         harness.Plan = harness.Plan with { WindowMs = 12000, SlowMessage = new ConsumerSlowMessage(2, 10000, "inline") };
+        harness.Clock.ExpectProcessingTimers(2); // Watchdog is timer 1; the inline delay is timer 2.
         Assert.Equal(0, await harness.RunAsync());
         JsonElement[] rows = harness.Store.Processed.ToArray();
         Assert.False(rows[0].GetProperty("slow").GetBoolean());
@@ -284,6 +285,45 @@ public sealed class ConsumerProcessingWorkerTests
         long ended = Milliseconds(rows[1], "processing_ended_utc");
         Assert.Equal(10000, ended - started);
         Assert.DoesNotContain(harness.Recorded.PollTimes, time => time >= started && time < ended);
+    }
+
+    [Theory]
+    [InlineData(30000)]
+    [InlineData(60000)]
+    public async Task Given_processing_delay_outlasting_window_When_clock_drives_declared_timer_Then_processing_finishes_before_close(int delay)
+    {
+        using var harness = new ConsumerTestHarness();
+        harness.Plan = harness.Plan with { ProcessingDelayMs = delay };
+        harness.Recorded.Polls.Enqueue(() => ConsumerTestHarness.Message(0));
+        harness.Clock.ExpectProcessingTimers(2); // Watchdog, then one processing delay, then close timeout.
+        Assert.Equal(0, await harness.RunAsync());
+        JsonElement row = Assert.Single(harness.Store.Processed);
+        Assert.Equal(delay, Milliseconds(row, "processing_ended_utc") - Milliseconds(row, "processing_started_utc"));
+        Assert.Equal(100 + delay, harness.Clock.GetTimestamp());
+        Assert.Equal(1, harness.Recorded.CloseCalls);
+        Assert.Empty(harness.ExitCodes);
+        Assert.NotNull(harness.Store.Completion);
+    }
+
+    [Fact]
+    public async Task Given_buffered_processing_delays_equal_to_close_timeout_When_clock_drives_declared_timers_Then_buffer_finishes_and_close_succeeds()
+    {
+        using var harness = ThreeMessages();
+        harness.Plan = harness.Plan with
+        {
+            WindowMs = 70000, ProcessingDelayMs = 30000, SlowMessage = new ConsumerSlowMessage(1, 1000, "pause")
+        };
+        harness.Clock.ExpectProcessingTimers(2, 3); // Watchdog, then the two buffered processing delays, then close timeout.
+        Assert.Equal(0, await harness.RunAsync());
+        JsonElement[] rows = harness.Store.Processed.ToArray();
+        Assert.Equal(new long[] { 0, 1, 2 }, rows.Select(row => row.GetProperty("offset").GetInt64()));
+        Assert.Equal(1000, Milliseconds(rows[0], "processing_ended_utc") - Milliseconds(rows[0], "processing_started_utc"));
+        Assert.Equal(30000, Milliseconds(rows[1], "processing_ended_utc") - Milliseconds(rows[1], "processing_started_utc"));
+        Assert.Equal(30000, Milliseconds(rows[2], "processing_ended_utc") - Milliseconds(rows[2], "processing_started_utc"));
+        Assert.Equal(70000, harness.Clock.GetTimestamp());
+        Assert.Equal(1, harness.Recorded.CloseCalls);
+        Assert.Empty(harness.ExitCodes);
+        Assert.NotNull(harness.Store.Completion);
     }
 
     [Fact]
@@ -337,6 +377,34 @@ public sealed class ConsumerProcessingWorkerTests
         Assert.Equal(2, receipt.GetProperty("messages_processed").GetInt64());
         Assert.True(harness.Calls.IndexOf("close-returned") < harness.Calls.IndexOf("completion"));
         Assert.Equal(0, harness.Recorded.CommitCalls);
+    }
+
+    [Fact]
+    public async Task Given_close_task_waiting_before_entry_When_clock_driver_runs_Then_shutdown_deadlines_are_not_advanced()
+    {
+        using var harness = new ConsumerTestHarness();
+        using var closeScheduled = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        harness.Recorded.BeforeClose = () => { closeScheduled.Set(); release.Wait(); };
+        int shutdownWaits = 0;
+        harness.DuringTimerWait = () =>
+        {
+            if (!release.IsSet && closeScheduled.IsSet && !harness.Recorded.InClose &&
+                harness.Clock.NextTimer is { } due && due - harness.Clock.GetTimestamp() == 30000)
+            {
+                shutdownWaits++;
+                if (shutdownWaits == 2) release.Set();
+            }
+        };
+        try
+        {
+            Assert.Equal(0, await harness.RunAsync());
+            Assert.Equal(2, shutdownWaits);
+            Assert.Equal(1000, harness.Clock.GetTimestamp());
+            Assert.Empty(harness.ExitCodes);
+            Assert.NotNull(harness.Store.Completion);
+        }
+        finally { release.Set(); }
     }
 
     [Theory]

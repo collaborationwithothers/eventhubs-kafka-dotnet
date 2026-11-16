@@ -49,9 +49,7 @@ internal sealed class ConsumerTestHarness : IDisposable
             await Task.Delay(1, deadline.Token);
             if (execution.IsCompleted) break;
             DuringTimerWait?.Invoke();
-            long? next = Clock.NextTimer;
-            if (!Recorded.InClose && next is { } due && due - Clock.GetTimestamp() < 120000)
-                Clock.Advance(Math.Max(0, due - Clock.GetTimestamp()));
+            Clock.AdvanceProcessingTimer();
         }
         return await execution;
     }
@@ -159,6 +157,7 @@ public class RecordingConsumer : DispatchProxy
     internal List<long> PollTimes { get; } = [];
     internal List<List<TopicPartition>> Pauses { get; } = [];
     internal List<List<TopicPartition>> Resumes { get; } = [];
+    internal Action? BeforeClose { get; set; }
     internal Action? OnClose { get; set; }
     internal Action<ConsumeResult<byte[], byte[]>>? OnStore { get; set; }
     internal int CloseCalls { get; private set; }
@@ -189,6 +188,7 @@ public class RecordingConsumer : DispatchProxy
             case "Pause": Pauses.Add(((IEnumerable<TopicPartition>)args![0]!).ToList()); Harness.Calls.Add("pause"); return null;
             case "Resume": Resumes.Add(((IEnumerable<TopicPartition>)args![0]!).ToList()); Harness.Calls.Add("resume"); return null;
             case "Close":
+                BeforeClose?.Invoke();
                 CloseCalls++;
                 InClose = true;
                 Harness.Calls.Add("close");

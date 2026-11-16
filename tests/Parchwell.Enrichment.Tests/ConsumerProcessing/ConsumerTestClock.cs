@@ -6,6 +6,7 @@ internal sealed class ConsumerTestClock : TimeProvider
 {
     private readonly object gate = new();
     private readonly List<ClockTimer> timers = [];
+    private readonly HashSet<int> processingTimerRegistrations = [];
     private long milliseconds;
     public override long TimestampFrequency => 1000;
     public override long GetTimestamp() { lock (gate) return milliseconds; }
@@ -13,6 +14,25 @@ internal sealed class ConsumerTestClock : TimeProvider
     internal long? NextTimer
     {
         get { lock (gate) return timers.Where(timer => !timer.Disposed && timer.Due >= 0).Select(timer => (long?)timer.Due).Min(); }
+    }
+    // Timer registrations are numbered from one. Each delayed-processing fixture
+    // declares its processing timers explicitly; shutdown timers are never driven.
+    internal void ExpectProcessingTimers(params int[] registrations)
+    {
+        lock (gate) processingTimerRegistrations.UnionWith(registrations);
+    }
+    internal void AdvanceProcessingTimer()
+    {
+        long amount;
+        lock (gate)
+        {
+            ClockTimer? timer = timers.FirstOrDefault(timer => processingTimerRegistrations.Contains(timer.Registration) &&
+                !timer.Disposed && timer.Due >= 0);
+            if (timer is null) return;
+            processingTimerRegistrations.Remove(timer.Registration);
+            amount = Math.Max(0, timer.Due - milliseconds);
+        }
+        Advance(amount);
     }
     internal void Advance(long amount)
     {
@@ -27,13 +47,17 @@ internal sealed class ConsumerTestClock : TimeProvider
     }
     public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
     {
-        var timer = new ClockTimer(this, callback, state);
-        lock (gate) timers.Add(timer);
-        timer.Change(dueTime, period);
-        return timer;
+        lock (gate)
+        {
+            var timer = new ClockTimer(this, callback, state, timers.Count + 1);
+            timers.Add(timer);
+            timer.Change(dueTime, period);
+            return timer;
+        }
     }
-    private sealed class ClockTimer(ConsumerTestClock clock, TimerCallback callback, object? state) : ITimer
+    private sealed class ClockTimer(ConsumerTestClock clock, TimerCallback callback, object? state, int registration) : ITimer
     {
+        internal int Registration => registration;
         internal long Due = -1;
         internal long Period = -1;
         internal bool Disposed;
