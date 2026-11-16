@@ -17,9 +17,10 @@
     },
     "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifactReader.cs": {
       "basis": [
-        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes.",
+        "No C5 target source changed. Cold-review corrections preserve malformed-record diagnostics and add boundary tests to each mutant full test population. Shared-input runtime risk remains accepted pending post-merge mutation acceptance; consumer evidence publication remains blocked until that run passes."
       ],
-      "current_sha256": "9f894b2dd8178af0cdbb965c27c1d4edcb62d356163ab61ac8d48ad82adc5840",
+      "current_sha256": "ec663adf8723e42ffdaffa6499c251d10925d905730c58d70c7214b8ec06c099",
       "measured_sha256": null
     },
     "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifacts.cs": {
@@ -136,16 +137,32 @@
     },
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerArtifactTests.cs": {
       "basis": [
-        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes.",
+        "No C5 target source changed. Cold-review corrections preserve malformed-record diagnostics and add boundary tests to each mutant full test population. Shared-input runtime risk remains accepted pending post-merge mutation acceptance; consumer evidence publication remains blocked until that run passes."
       ],
-      "current_sha256": "d132b70d93c40210bb082f591edca3696865f02a625f012a486aa4d91615f4b6",
+      "current_sha256": "28cf665ef89eb08ac3f3e06cac26893e330a5077a26112d8a1e640f8bcf0665d",
       "measured_sha256": null
     },
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerExtensionTests.cs": {
       "basis": [
-        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes.",
+        "No C5 target source changed. Cold-review corrections preserve malformed-record diagnostics and add boundary tests to each mutant full test population. Shared-input runtime risk remains accepted pending post-merge mutation acceptance; consumer evidence publication remains blocked until that run passes."
       ],
-      "current_sha256": "2e7515888feeb9567df7f3aaf010c5e965ebd25f914248ba8cc83a8a624de887",
+      "current_sha256": "c2aecccb15fc0132729bc6ad118dbba1bf55e7120603faac254fd4aff2de79fb",
+      "measured_sha256": null
+    },
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerHeldSetBoundaryTests.cs": {
+      "basis": [
+        "No C5 target source changed. Cold-review corrections preserve malformed-record diagnostics and add boundary tests to each mutant full test population. Shared-input runtime risk remains accepted pending post-merge mutation acceptance; consumer evidence publication remains blocked until that run passes."
+      ],
+      "current_sha256": "14cf1137a57b7133348d8b70deab5bb94ef2d9fc6bcc3fa032c97f2d073cd27a",
+      "measured_sha256": null
+    },
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerIoBoundaryTests.cs": {
+      "basis": [
+        "No C5 target source changed. Cold-review corrections preserve malformed-record diagnostics and add boundary tests to each mutant full test population. Shared-input runtime risk remains accepted pending post-merge mutation acceptance; consumer evidence publication remains blocked until that run passes."
+      ],
+      "current_sha256": "f6398f1657e628057c9d27182cb4575158299e67d99110ffe036fa261c518e3f",
       "measured_sha256": null
     },
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementFixture.cs": {
@@ -157,9 +174,31 @@
     },
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": {
       "basis": [
-        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes.",
+        "No C5 target source changed. Cold-review corrections preserve malformed-record diagnostics and add boundary tests to each mutant full test population. Shared-input runtime risk remains accepted pending post-merge mutation acceptance; consumer evidence publication remains blocked until that run passes."
       ],
-      "current_sha256": "a6e438bb37f3eb00955e87330bdbd033b1f3317916fcd26a7c82d67b2e6eca0d",
+      "current_sha256": "e9afd69a5e20cd35d3b028fdbf8a08f49495eabbb1a8885a7052c1e2901df7bc",
+      "measured_sha256": null
+    },
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerNumericBoundaryTests.cs": {
+      "basis": [
+        "No C5 target source changed. Cold-review corrections preserve malformed-record diagnostics and add boundary tests to each mutant full test population. Shared-input runtime risk remains accepted pending post-merge mutation acceptance; consumer evidence publication remains blocked until that run passes."
+      ],
+      "current_sha256": "e2947d57cea08d8cf59a1c3274869673dbbf2506436e45e8f858ab16dca9132e",
+      "measured_sha256": null
+    },
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRecordNameTests.cs": {
+      "basis": [
+        "No C5 target source changed. Cold-review corrections preserve malformed-record diagnostics and add boundary tests to each mutant full test population. Shared-input runtime risk remains accepted pending post-merge mutation acceptance; consumer evidence publication remains blocked until that run passes."
+      ],
+      "current_sha256": "1cbfadee609abe30add6ced5b5c27a989f6fc157da6f09055457edab3124dbcd",
+      "measured_sha256": null
+    },
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotBoundaryTests.cs": {
+      "basis": [
+        "No C5 target source changed. Cold-review corrections preserve malformed-record diagnostics and add boundary tests to each mutant full test population. Shared-input runtime risk remains accepted pending post-merge mutation acceptance; consumer evidence publication remains blocked until that run passes."
+      ],
+      "current_sha256": "0ce940f1d58a7069cfa48b2cf251b4c3f3bd4ebd912c282a5d23e7cbd6c06a43",
       "measured_sha256": null
     },
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerWireFixture.cs": {
@@ -171,9 +210,10 @@
     },
     "tests/Parchwell.Verifier.Tests/Consumer/HostOptionsTests.cs": {
       "basis": [
-        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
+        "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes.",
+        "No C5 target source changed. Cold-review corrections preserve malformed-record diagnostics and add boundary tests to each mutant full test population. Shared-input runtime risk remains accepted pending post-merge mutation acceptance; consumer evidence publication remains blocked until that run passes."
       ],
-      "current_sha256": "e81fc1b25198c2ab80b07a81fd03645add29bd52e199b16fc172898042dc7062",
+      "current_sha256": "0ba0ee2928ff8b5dca8dc7e95e63067d514f5b1f1c69c48b6605ed58be5d7b90",
       "measured_sha256": null
     },
     "tests/Parchwell.Verifier.Tests/Consumer/IntegrationB04BaseFixtures.cs": {
@@ -188,6 +228,13 @@
         "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes."
       ],
       "current_sha256": "da52e7806fa3042eb5609ccad16cc225a55bbf26538ed300a3dc925d760f05ec",
+      "measured_sha256": null
+    },
+    "tests/Parchwell.Verifier.Tests/Consumer/MalformedRecordPublicationTests.cs": {
+      "basis": [
+        "No C5 target source changed. Cold-review corrections preserve malformed-record diagnostics and add boundary tests to each mutant full test population. Shared-input runtime risk remains accepted pending post-merge mutation acceptance; consumer evidence publication remains blocked until that run passes."
+      ],
+      "current_sha256": "5c95e78eeac9cffbc91c6c9ebc6c25ad69724b0e2161c697f3286431aa1e21eb",
       "measured_sha256": null
     },
     "tests/Parchwell.Verifier.Tests/Consumer/OffsetAuthenticationTests.cs": {
@@ -330,7 +377,7 @@
     "src/Parchwell.Scenarios/packages.lock.json": "dfa542e0f44824734c5a13615d1afbdc34a69da040edaeb9d9bec9e7a16533b4",
     "src/Parchwell.Verifier/AssemblyInfo.cs": "6e4b9fa6a51796a8cfbf259852e73263bf241b124c1cd504344c023f2a392978",
     "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifactCodec.cs": "0b61f41ad55754a1342ce837aae7e8e7296dfce4181a163395b2a7e27d0b0f68",
-    "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifactReader.cs": "9f894b2dd8178af0cdbb965c27c1d4edcb62d356163ab61ac8d48ad82adc5840",
+    "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifactReader.cs": "ec663adf8723e42ffdaffa6499c251d10925d905730c58d70c7214b8ec06c099",
     "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifacts.cs": "ab9e5c90b886c8fd07bda7fa85956f5d0b235a38c285a3f1f304ace6879a13dc",
     "src/Parchwell.Verifier/Common/Consumer/ConsumerRecordLimits.cs": "7e772a07fcc98dc19a3524d82f7e3bd37467009d7f46fa9b05b503311d78a16c",
     "src/Parchwell.Verifier/Common/Consumer/ConsumerVerificationPlan.cs": "39fea56cdc8688df7d6c47412ec80f9ebeb8e3cf63fcd36a92475d7c9abd4860",
@@ -448,14 +495,20 @@
     "tests/Parchwell.Verifier.Tests/A01/WorkloadRecorderTests.cs": "e4555eeba7bee230f47f4e1ddb97338d81bf9fee640db453a082db3fac198e43",
     "tests/Parchwell.Verifier.Tests/Authentication/VerifierKafkaTokenProviderRetryTests.cs": "a0e7bb8f7bab5f2f8324a7dbe266bdd5a28bacfabb3e6233c32fbf93f996a4c3",
     "tests/Parchwell.Verifier.Tests/B04/B04EvidenceRecorderTests.cs": "a2cca43cd9a7b5a7affde0597fdfa4f3e85e4d8a2a876d132492f47174d3f741",
-    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerArtifactTests.cs": "d132b70d93c40210bb082f591edca3696865f02a625f012a486aa4d91615f4b6",
-    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerExtensionTests.cs": "2e7515888feeb9567df7f3aaf010c5e965ebd25f914248ba8cc83a8a624de887",
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerArtifactTests.cs": "28cf665ef89eb08ac3f3e06cac26893e330a5077a26112d8a1e640f8bcf0665d",
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerExtensionTests.cs": "c2aecccb15fc0132729bc6ad118dbba1bf55e7120603faac254fd4aff2de79fb",
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerHeldSetBoundaryTests.cs": "14cf1137a57b7133348d8b70deab5bb94ef2d9fc6bcc3fa032c97f2d073cd27a",
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerIoBoundaryTests.cs": "f6398f1657e628057c9d27182cb4575158299e67d99110ffe036fa261c518e3f",
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementFixture.cs": "6f508fa7a0ca17e66d10f32ae15cefb2ed19a67162c4dcfc9847509b1f2294db",
-    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": "a6e438bb37f3eb00955e87330bdbd033b1f3317916fcd26a7c82d67b2e6eca0d",
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": "e9afd69a5e20cd35d3b028fdbf8a08f49495eabbb1a8885a7052c1e2901df7bc",
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerNumericBoundaryTests.cs": "e2947d57cea08d8cf59a1c3274869673dbbf2506436e45e8f858ab16dca9132e",
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRecordNameTests.cs": "1cbfadee609abe30add6ced5b5c27a989f6fc157da6f09055457edab3124dbcd",
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotBoundaryTests.cs": "0ce940f1d58a7069cfa48b2cf251b4c3f3bd4ebd912c282a5d23e7cbd6c06a43",
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerWireFixture.cs": "3eb6be4374b4b9b7a4f724cd95d8a5d09a3bf3c885f1478c1879cbe0b71fe1a9",
-    "tests/Parchwell.Verifier.Tests/Consumer/HostOptionsTests.cs": "e81fc1b25198c2ab80b07a81fd03645add29bd52e199b16fc172898042dc7062",
+    "tests/Parchwell.Verifier.Tests/Consumer/HostOptionsTests.cs": "0ba0ee2928ff8b5dca8dc7e95e63067d514f5b1f1c69c48b6605ed58be5d7b90",
     "tests/Parchwell.Verifier.Tests/Consumer/IntegrationB04BaseFixtures.cs": "18155738be160a48c88d36aa00c24fd765c71f8667b079a7d70f7b8c74d06311",
     "tests/Parchwell.Verifier.Tests/Consumer/IntegrationConsumerHostTests.cs": "da52e7806fa3042eb5609ccad16cc225a55bbf26538ed300a3dc925d760f05ec",
+    "tests/Parchwell.Verifier.Tests/Consumer/MalformedRecordPublicationTests.cs": "5c95e78eeac9cffbc91c6c9ebc6c25ad69724b0e2161c697f3286431aa1e21eb",
     "tests/Parchwell.Verifier.Tests/Consumer/OffsetAuthenticationTests.cs": "34702028d2dc8ebcf0100ddec740670c60c0f57b01f558b1f09e7215d12da570",
     "tests/Parchwell.Verifier.Tests/Consumer/OffsetReaderTests.cs": "c0fa74c0345d036f3f2be9bec030929f0aa729a6204d21e43944372d9c147fba",
     "tests/Parchwell.Verifier.Tests/Consumer/PhaseWireBaseFixtures.cs": "f98cd76eb2b6fbb4c54db0e8977265d2fb7a4f1acfc9725333d70fb611c13b6e",
