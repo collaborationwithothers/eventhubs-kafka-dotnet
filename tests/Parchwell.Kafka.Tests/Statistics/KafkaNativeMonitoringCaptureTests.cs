@@ -1,0 +1,108 @@
+using System.Text.Json;
+using Parchwell.Kafka.Configuration;
+using Parchwell.Kafka.Statistics;
+using Xunit;
+
+namespace Parchwell.Kafka.Tests.Statistics;
+
+#pragma warning disable CA1707
+
+[Trait("Category", "Unit")]
+public sealed class KafkaNativeMonitoringCaptureTests
+{
+    [Fact]
+    public async Task Given_ZeroReports_When_Completed_Then_IndexRecordsBuiltLifetime()
+    {
+        var store = new MemoryStore();
+        using var metrics = new KafkaStatisticsMetrics();
+        var coordinator = new KafkaNativeMonitoringCoordinator(store, metrics, TimeProvider.System,
+            new("run", "phase", "scenario", "configuration", "job", "pod", "commit"));
+        var lifetime = coordinator.CreateLifetime(new("scenario", "run", KafkaClientRole.LoadGenProducer, "client"));
+        lifetime.MarkBuilt();
+        lifetime.Complete(true, "unknown");
+        await coordinator.CompleteAsync(CancellationToken.None);
+        using var document = JsonDocument.Parse(store.Objects["run/phase/job/pod/native-monitoring/index.json"]);
+        var client = document.RootElement.GetProperty("clients")[0];
+        Assert.Equal(0, client.GetProperty("report_count").GetInt64());
+        Assert.Equal(JsonValueKind.Null, client.GetProperty("native_identity").ValueKind);
+        Assert.Equal("built", client.GetProperty("build_status").GetString());
+        Assert.Equal("unknown", client.GetProperty("export_tail_status").GetString());
+        Assert.True(document.RootElement.GetProperty("capture_complete").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Given_InvalidExistingDigest_When_Completed_Then_GapIsStickyAndNoCopyIsWritten()
+    {
+        var store = new MemoryStore();
+        using var metrics = new KafkaStatisticsMetrics();
+        var coordinator = new KafkaNativeMonitoringCoordinator(store, metrics, TimeProvider.System,
+            new("run", "phase", "scenario", "configuration", "job", "pod", "commit"));
+        var lifetime = coordinator.CreateLifetime(new("scenario", "run", KafkaClientRole.LoadGenProducer, "client"));
+        lifetime.MarkBuilt();
+        lifetime.CaptureExisting("{}", new("evidence/blob", 1, 2, "wrong"));
+        lifetime.Complete(true, "unknown");
+        await coordinator.CompleteAsync(CancellationToken.None);
+        Assert.Single(store.Objects);
+        using var document = JsonDocument.Parse(store.Objects["run/phase/job/pod/native-monitoring/index.json"]);
+        Assert.False(document.RootElement.GetProperty("capture_complete").GetBoolean());
+        Assert.Equal("invalid_reference", document.RootElement.GetProperty("clients")[0].GetProperty("diagnostics")[0].GetString());
+    }
+
+    [Fact]
+    public async Task Given_LifetimeLimit_When_AnotherBuildStarts_Then_AdmissionDoesNotThrowAndIndexIsIncomplete()
+    {
+        var store = new MemoryStore();
+        using var metrics = new KafkaStatisticsMetrics();
+        var coordinator = new KafkaNativeMonitoringCoordinator(store, metrics, TimeProvider.System,
+            new("run", "phase", "scenario", "configuration", "job", "pod", "commit"));
+        var identity = new KafkaStatisticsIdentity("scenario", "run", KafkaClientRole.LoadGenProducer, "client");
+        for (int i = 0; i < 32; i++)
+        {
+            var lifetime = coordinator.CreateLifetime(identity);
+            lifetime.MarkBuilt();
+            lifetime.Complete(true, "unknown");
+        }
+        var refused = coordinator.CreateLifetime(identity);
+        refused.MarkBuilt();
+        refused.CaptureNew("{}");
+        await coordinator.CompleteAsync(CancellationToken.None);
+        using var document = JsonDocument.Parse(store.Objects["run/phase/job/pod/native-monitoring/index.json"]);
+        Assert.Equal(32, document.RootElement.GetProperty("clients").GetArrayLength());
+        Assert.False(document.RootElement.GetProperty("capture_complete").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Given_InvalidFieldsWithValidHeader_When_TimestampRegresses_Then_IdentityGapIsRecorded()
+    {
+        var store = new MemoryStore();
+        using var metrics = new KafkaStatisticsMetrics();
+        var coordinator = new KafkaNativeMonitoringCoordinator(store, metrics, new FixedTimeProvider(),
+            new("run", "phase", "scenario", "configuration", "job", "pod", "commit"));
+        var lifetime = coordinator.CreateLifetime(new("scenario", "run", KafkaClientRole.LoadGenProducer, "client"));
+        lifetime.MarkBuilt();
+        lifetime.CaptureNew("{\"name\":\"native\",\"client_id\":\"client\",\"type\":\"producer\",\"ts\":5,\"time\":1,\"age\":5,\"topics\":[]}");
+        lifetime.CaptureNew("{\"name\":\"native\",\"client_id\":\"client\",\"type\":\"producer\",\"ts\":4,\"time\":1,\"age\":4}");
+        lifetime.Complete(true, "unknown");
+        await coordinator.CompleteAsync(CancellationToken.None);
+        using var document = JsonDocument.Parse(store.Objects["run/phase/job/pod/native-monitoring/index.json"]);
+        var diagnostics = document.RootElement.GetProperty("clients")[0].GetProperty("diagnostics").EnumerateArray().Select(x => x.GetString()).ToArray();
+        Assert.Contains("invalid_native_identity", diagnostics);
+    }
+
+    private sealed class FixedTimeProvider : TimeProvider
+    {
+        public override long GetTimestamp() => 10;
+        public override long TimestampFrequency => 1_000_000;
+    }
+
+    private sealed class MemoryStore : IKafkaNativeMonitoringStore
+    {
+        internal Dictionary<string, byte[]> Objects { get; } = new(StringComparer.Ordinal);
+        public Task CreateAsync(string path, ReadOnlyMemory<byte> content, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Objects.Add(path, content.ToArray());
+            return Task.CompletedTask;
+        }
+    }
+}
