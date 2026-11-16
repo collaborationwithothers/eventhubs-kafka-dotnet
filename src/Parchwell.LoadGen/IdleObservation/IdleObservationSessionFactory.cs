@@ -9,8 +9,10 @@ namespace Parchwell.LoadGen.IdleObservation;
 internal sealed class IdleObservationSessionFactory
 {
     private readonly Func<IReadOnlyDictionary<string, string>, IdleObservationCapture, CancellationToken, IProducer<byte[], byte[]>> _producer;
-    internal IdleObservationSessionFactory(KafkaAuthenticationFactory authentication, IdleObservationOptions options, NativeMonitoringHost? monitoring = null)
+    internal IdleObservationSessionFactory(KafkaAuthenticationFactory authentication, IdleObservationOptions options, NativeMonitoringHost? monitoring = null,
+        Func<ProducerBuilder<byte[], byte[]>, IProducer<byte[], byte[]>>? buildProducer = null)
     {
+        buildProducer ??= builder => builder.Build();
         _producer = (settings, capture, cancellation) =>
         {
             KafkaNativeMonitoringLifetime? lifetime = monitoring?.Begin(new(options.ScenarioId, options.RunId, KafkaClientRole.LoadGenProducer, settings["client.id"]));
@@ -18,10 +20,10 @@ internal sealed class IdleObservationSessionFactory
             try
             {
             KafkaOAuthBearerSession session = authentication.CreateSession(new(options.ScenarioId, options.RunId, KafkaClientRole.LoadGenProducer, settings["client.id"]), cancellation);
-            IProducer<byte[], byte[]> client = authentication.CreateProducerBuilder<byte[], byte[]>(new ProducerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)), session)
+            IProducer<byte[], byte[]> client = buildProducer(authentication.CreateProducerBuilder<byte[], byte[]>(new ProducerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)), session)
                 .SetLogHandler((_, message) => capture.Log(message))
                 .SetErrorHandler((_, error) => capture.Error(error))
-                .SetStatisticsHandler((_, report) => statistics(report)).Build();
+                .SetStatisticsHandler((_, report) => statistics(report)));
             lifetime?.MarkBuilt();
             return client;
             }

@@ -12,8 +12,12 @@ internal sealed class ProbeV2SessionFactory
     private readonly Func<IClient, string, TimeSpan, int[]> metadata;
     private readonly Func<Func<ProjectedTokenFileObservation>> createProjectedFileSampler;
     private readonly bool testHandlerRefreshPath;
-    internal ProbeV2SessionFactory(KafkaAuthenticationFactory authentication, ProbeV2Options options, NativeMonitoringHost? monitoring = null)
+    internal ProbeV2SessionFactory(KafkaAuthenticationFactory authentication, ProbeV2Options options, NativeMonitoringHost? monitoring = null,
+        Func<ProducerBuilder<byte[], byte[]>, IProducer<byte[], byte[]>>? buildProducer = null,
+        Func<ConsumerBuilder<byte[], byte[]>, IConsumer<byte[], byte[]>>? buildConsumer = null)
     {
+        buildProducer ??= builder => builder.Build();
+        buildConsumer ??= builder => builder.Build();
         testHandlerRefreshPath = options.TestHandlerRefreshPath;
         ProbeV2Stage stage = ProbeV2Stage.For(options.ScenarioId, options.ConfigurationId, options.Stage);
         producer = (settings, capture, cancellation) =>
@@ -24,9 +28,9 @@ internal sealed class ProbeV2SessionFactory
             {
             if (options.NativeAuthentication.Length != 0)
             {
-                IProducer<byte[], byte[]> native = new ProducerBuilder<byte[], byte[]>(new ProducerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)))
+                IProducer<byte[], byte[]> native = buildProducer(new ProducerBuilder<byte[], byte[]>(new ProducerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)))
                     .SetLogHandler((_, value) => capture.Log(value)).SetErrorHandler((_, value) => capture.Error(value))
-                    .SetStatisticsHandler((_, value) => statistics(value)).Build();
+                    .SetStatisticsHandler((_, value) => statistics(value)));
                 lifetime?.MarkBuilt();
                 return native;
             }
@@ -37,9 +41,9 @@ internal sealed class ProbeV2SessionFactory
                     ? authentication.CreateObservedSession(identity, cancellation)
                     : authentication.CreateSession(identity, cancellation);
             capture.AttachAuthentication(session);
-            IProducer<byte[], byte[]> client = authentication.CreateProducerBuilder<byte[], byte[]>(new ProducerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)), session)
+            IProducer<byte[], byte[]> client = buildProducer(authentication.CreateProducerBuilder<byte[], byte[]>(new ProducerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)), session)
                 .SetLogHandler((_, value) => capture.Log(value)).SetErrorHandler((_, value) => capture.Error(value))
-                .SetStatisticsHandler((_, value) => statistics(value)).Build();
+                .SetStatisticsHandler((_, value) => statistics(value)));
             lifetime?.MarkBuilt();
             return client;
             }
@@ -59,9 +63,9 @@ internal sealed class ProbeV2SessionFactory
                     ? authentication.CreateObservedSession(identity, cancellation)
                     : authentication.CreateSession(identity, cancellation);
             capture.AttachAuthentication(session);
-            IConsumer<byte[], byte[]> client = authentication.CreateConsumerBuilder<byte[], byte[]>(new ConsumerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)), session)
+            IConsumer<byte[], byte[]> client = buildConsumer(authentication.CreateConsumerBuilder<byte[], byte[]>(new ConsumerConfig(settings.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)), session)
                 .SetLogHandler((_, value) => capture.Log(value)).SetErrorHandler((_, value) => capture.Error(value))
-                .SetStatisticsHandler((_, value) => statistics(value)).Build();
+                .SetStatisticsHandler((_, value) => statistics(value)));
             lifetime?.MarkBuilt();
             return (client, session);
             }
