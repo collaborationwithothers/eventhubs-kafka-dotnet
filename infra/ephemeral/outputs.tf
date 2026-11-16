@@ -22,7 +22,7 @@ output "private_endpoint_ips" {
 }
 
 output "probe_v2_role_scope" {
-  description = "Private applied identity and role-scope evidence for probe V2; not proof of absent inherited access."
+  description = "Private applied scientific workload role-scope evidence for probe V2; excludes feature-specific grants and is not proof of absent inherited access."
   sensitive   = true
   value = {
     namespace_id = module.eventhubs.resource_id

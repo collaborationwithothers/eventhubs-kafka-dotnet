@@ -21,7 +21,7 @@ locals {
       scope                = module.storage.containers.native_monitoring.id
     }
   }
-  workload_roles = merge(local.baseline_workload_roles, local.native_monitoring_roles, var.probe_namespace_data_roles ? {
+  workload_roles = merge(local.baseline_workload_roles, var.probe_namespace_data_roles ? {
     probe_namespace_sender   = { workload = "probe", role_definition_name = "Azure Event Hubs Data Sender", scope = module.eventhubs.resource_id }
     probe_namespace_receiver = { workload = "probe", role_definition_name = "Azure Event Hubs Data Receiver", scope = module.eventhubs.resource_id }
   } : {})
@@ -29,6 +29,15 @@ locals {
 
 resource "azurerm_role_assignment" "workload" {
   for_each                         = local.workload_roles
+  role_definition_name             = each.value.role_definition_name
+  principal_id                     = local.persistent.workload_identities[each.value.workload].principal_id
+  scope                            = each.value.scope
+  principal_type                   = "ServicePrincipal"
+  skip_service_principal_aad_check = true
+}
+
+resource "azurerm_role_assignment" "native_monitoring" {
+  for_each                         = local.native_monitoring_roles
   role_definition_name             = each.value.role_definition_name
   principal_id                     = local.persistent.workload_identities[each.value.workload].principal_id
   scope                            = each.value.scope
