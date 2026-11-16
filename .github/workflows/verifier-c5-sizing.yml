@@ -1,0 +1,97 @@
+name: C5 hosted timing diagnostic
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Full lowercase commit SHA containing the diagnostic helpers
+        required: true
+        type: string
+        default: 6c291d8832d0c722352ff979545a136e5ea2ddeb
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - b10-sweep
+          - b10-final-sweep-handler-p1
+          - b10-final-sweep-handler-p2
+          - b10-final-sweep-handler-p3
+          - b10-final-sweep-handler-p4
+          - b10-final-sweep-handler-crossing
+    env:
+      SOURCE_SHA: ${{ inputs.source_sha }}
+      SHARD: ${{ matrix.shard }}
+    steps:
+      - name: Initialize evidence and validate dispatch
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIAGNOSTIC_DIR="$RUNNER_TEMP/c5-sizing"
+          printf 'DIAGNOSTIC_DIR=%s\n' "$DIAGNOSTIC_DIR" >> "$GITHUB_ENV"
+          mkdir -p "$DIAGNOSTIC_DIR"
+          printf 'incomplete\n' > "$DIAGNOSTIC_DIR/status.txt"
+          {
+            printf 'purpose=diagnostic; not acceptance or qualification\n'
+            printf 'workflow_sha=%s\nworkflow_ref=%s\nsource_sha=%s\n' "$GITHUB_SHA" "$GITHUB_REF" "$SOURCE_SHA"
+            printf 'run_id=%s\nrun_attempt=%s\nshard=%s\n' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$SHARD"
+            printf 'runner_os=%s\nrunner_arch=%s\nimage_os=%s\nimage_version=%s\n' "$RUNNER_OS" "$RUNNER_ARCH" "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
+            uname -a
+            lscpu
+            for file in /sys/fs/cgroup/cpu.max /sys/fs/cgroup/cpu/cpu.cfs_quota_us /sys/fs/cgroup/cpu/cpu.cfs_period_us; do
+              if [[ -r "$file" ]]; then printf '%s: ' "$file"; cat "$file"; fi
+            done
+          } > "$DIAGNOSTIC_DIR/metadata.txt"
+          [[ "$GITHUB_REF" == refs/heads/main ]]
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+      - name: Check out diagnostic source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: false
+      - name: Verify source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]
+          printf '%s  %s\n' \
+            0d8d8975156db241f59636384139f19e540eec574f80f056eaadbf7f44443d63 src/Parchwell.Verifier/VerifyRun/B10SweepHandler.cs \
+            cb14b6e7c68fe38a9fafa54ce89fae68b35c8f26917b4b49d74a38f3b740e5a3 src/Parchwell.Verifier/VerifyRun/B10Final/B10FinalSweepHandler.cs | sha256sum --check
+      - name: Set up pinned .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          global-json-file: global.json
+      - name: Restore and preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet --info > "$DIAGNOSTIC_DIR/dotnet-info.txt" 2>&1
+          dotnet tool restore 2>&1 | tee "$DIAGNOSTIC_DIR/tool-restore.log"
+          dotnet restore Parchwell.slnx --locked-mode -m:1 2>&1 | tee "$DIAGNOSTIC_DIR/restore.log"
+          dotnet stryker --help 2>&1 | tee "$DIAGNOSTIC_DIR/stryker-help.log"
+          git diff --quiet && git diff --cached --quiet
+      - name: Measure physical shard
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py local-shard \
+            --shard "$SHARD" --output-dir "$DIAGNOSTIC_DIR/shard" --timeout 1800 \
+            2>&1 | tee "$DIAGNOSTIC_DIR/launcher.log"
+          printf 'completed_unverified\n' > "$DIAGNOSTIC_DIR/status.txt"
+      - name: Retain diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: c5-sizing-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}
+          path: ${{ env.DIAGNOSTIC_DIR }}
+          if-no-files-found: error
+          retention-days: 1
+          include-hidden-files: true
