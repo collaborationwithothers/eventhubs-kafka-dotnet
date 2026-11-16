@@ -65,6 +65,51 @@ public sealed class OffsetAuthenticationTests
         fixture.AssertCalls(committed:0);
     }
 
+    [Theory]
+    [InlineData(999,true)]
+    [InlineData(1000,false)]
+    [InlineData(1001,false)]
+    public async Task Given_GlobalDeadlineShorterThanTokenBudget_When_AcquisitionFinishesAtBoundary_Then_ExhaustionIsNotAttempted(int acquisitionMs,bool valid)
+    {
+        using var fixture=new AuthenticationFixture(tokenTimeoutMs:2000);
+        fixture.Provider.ElapsedMilliseconds=acquisitionMs;
+        ConsumerOffsetRead read=await fixture.Reader.ReadAsync([0],fixture.Clock.GetUtcNow().AddMilliseconds(1000),TestContext.Current.CancellationToken);
+        Assert.Equal(valid?"success":"not_attempted",read.Outcome);
+        Assert.Equal([0],read.RequestedPartitions);
+        Assert.Equal(TimeSpan.FromMilliseconds(1000),Assert.Single(fixture.Clock.DueTimes));
+        Assert.Equal(!valid,fixture.Provider.ObservedCancellation.IsCancellationRequested);
+        Assert.Equal(1,fixture.Provider.Calls);
+        fixture.AssertCalls(valid?1:0);
+        if(valid)Assert.Equal(TimeSpan.FromMilliseconds(1),fixture.CommittedTimeout);
+        else {Assert.Null(read.StartedUtc);Assert.Null(read.EndedUtc);Assert.Null(read.ErrorCode);Assert.Empty(read.Offsets);}
+    }
+
+    [Fact]
+    public async Task Given_GlobalDeadlineReachedBeforeProductionConstruction_When_Reading_Then_DoesNotConstructOrAcquire()
+    {
+        using var fixture=new AuthenticationFixture(tokenTimeoutMs:2000);
+        DateTimeOffset deadline=fixture.Clock.GetUtcNow().AddMilliseconds(1000);
+        int reads=0;
+        fixture.Clock.BeforeUtcRead=()=>{if(++reads==3)fixture.Clock.Advance(1000);};
+        ConsumerOffsetRead read=await fixture.Reader.ReadAsync([0],deadline,TestContext.Current.CancellationToken);
+        Assert.Equal("not_attempted",read.Outcome);Assert.Equal([0],read.RequestedPartitions);
+        Assert.Null(read.StartedUtc);Assert.Null(read.EndedUtc);Assert.Null(read.ErrorCode);Assert.Empty(read.Offsets);
+        Assert.Null(fixture.Configuration);Assert.Equal(0,fixture.Provider.Calls);fixture.AssertNoClientCalls();
+    }
+
+    [Fact]
+    public async Task Given_AuthenticationFailsWithTimeStillRemaining_When_Reading_Then_PreservesKafkaFailure()
+    {
+        using var fixture=new AuthenticationFixture(tokenTimeoutMs:2000);
+        fixture.Provider.ElapsedMilliseconds=999;fixture.Provider.Failure="acquisition";
+        DateTimeOffset deadline=fixture.Clock.GetUtcNow().AddMilliseconds(1000);
+        ConsumerOffsetRead read=await fixture.Reader.ReadAsync([0],deadline,TestContext.Current.CancellationToken);
+        Assert.Equal("kafka_exception",read.Outcome);
+        Assert.NotNull(read.StartedUtc);Assert.NotNull(read.EndedUtc);Assert.NotNull(read.ErrorCode);
+        Assert.True(read.EndedUtc<deadline);Assert.Empty(read.Offsets);
+        fixture.AssertCalls(committed:0);
+    }
+
     private sealed class AuthenticationFixture:IDisposable
     {
         private static readonly string[] ForbiddenCalls=["Consume","Subscribe","Assign","Commit","StoreOffset","StoreOffsets","Close"];
@@ -75,7 +120,7 @@ public sealed class OffsetAuthenticationTests
         internal ConsumerCommittedOffsetReader Reader {get;}
         internal ConsumerConfig? Configuration {get;private set;}
         internal TimeSpan? CommittedTimeout {get;private set;}
-        internal AuthenticationFixture()
+        internal AuthenticationFixture(int tokenTimeoutMs=1000)
         {
             Provider=new SyntheticProvider(Clock);
             var registrations=new ServiceCollection();registrations.AddSingleton<TimeProvider>(Clock);
@@ -84,7 +129,7 @@ public sealed class OffsetAuthenticationTests
             registrations.AddParchwellKafkaAuthentication(options=>{options.TenantId="synthetic-tenant";options.ClientId="synthetic-identity";options.TokenFilePath="synthetic-file";});
             services=registrations.BuildServiceProvider();
             KafkaAuthenticationFactory authentication=services.GetRequiredService<KafkaAuthenticationFactory>();
-            var options=new VerifierHostOptions{ScenarioId="C03",RunId="run1",Phase="C1",Repeat=1,VerifierClientId="synthetic-reader",TokenTimeout=TimeSpan.FromMilliseconds(1000)};
+            var options=new VerifierHostOptions{ScenarioId="C03",RunId="run1",Phase="C1",Repeat=1,VerifierClientId="synthetic-reader",TokenTimeout=TimeSpan.FromMilliseconds(tokenTimeoutMs)};
             var settings=new Dictionary<string,string>{{"isolation.level","read_committed"}};
             Reader=new ConsumerCommittedOffsetReader(services.GetRequiredService<KafkaConfigurationFactory>(),authentication,Options.Create(options),
                 new ConsumerVerificationPlan(null,1000,settings,settings),Clock,(config,session)=>
@@ -111,6 +156,7 @@ public sealed class OffsetAuthenticationTests
             Assert.Contains("get_Handle",calls);
             Assert.DoesNotContain(calls,call=>ForbiddenCalls.Contains(call,StringComparer.Ordinal));
         }
+        internal void AssertNoClientCalls()=>Assert.Empty(calls);
         public void Dispose()=>services.Dispose();
     }
 
@@ -134,9 +180,10 @@ public sealed class OffsetAuthenticationTests
     {
         private readonly ManualKafkaTimeProvider inner=new();
         internal List<TimeSpan> DueTimes {get;}=[];
+        internal Action? BeforeUtcRead {get;set;}
         public override long TimestampFrequency=>inner.TimestampFrequency;
         public override long GetTimestamp()=>inner.GetTimestamp();
-        public override DateTimeOffset GetUtcNow()=>inner.GetUtcNow();
+        public override DateTimeOffset GetUtcNow(){BeforeUtcRead?.Invoke();return inner.GetUtcNow();}
         public override ITimer CreateTimer(TimerCallback callback,object? state,TimeSpan dueTime,TimeSpan period)
         {DueTimes.Add(dueTime);return inner.CreateTimer(callback,state,dueTime,period);}
         internal void Advance(int milliseconds)=>inner.Advance(milliseconds);

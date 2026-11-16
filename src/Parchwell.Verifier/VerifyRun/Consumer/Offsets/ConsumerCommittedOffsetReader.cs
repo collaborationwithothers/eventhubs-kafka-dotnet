@@ -82,13 +82,14 @@ internal sealed class ConsumerCommittedOffsetReader
         int[] requested=partitions.Order().ToArray();
         if(deadline<=clock.GetUtcNow())return Task.FromResult(new ConsumerOffsetRead("not_attempted",requested,null,null,null,[]));
         DateTimeOffset started=clock.GetUtcNow();
-        string outcome="success";int? error=0;IReadOnlyList<ConsumerObservedOffset> offsets=[];
+        string outcome="success";int? error=0;IReadOnlyList<ConsumerObservedOffset> offsets=[];bool committedCalled=false;
         try
         {
             token.ThrowIfCancellationRequested();
             using ConsumerLease lease=create(deadline,token);
             TimeSpan remaining=deadline-clock.GetUtcNow();
             if(remaining<=TimeSpan.Zero)throw new KafkaException(new Error(ErrorCode.Local_TimedOut));
+            committedCalled=true;
             List<TopicPartitionOffset> returned=lease.Consumer.Committed(requested.Select(partition=>new TopicPartition("document-events",partition)),remaining);
             offsets=returned.Select(value=>new ConsumerObservedOffset(value.Partition.Value,value.Offset.Value,0)).ToArray();
             if(returned.Count!=requested.Length||returned.Any(value=>value.Topic!="document-events")||
@@ -101,7 +102,11 @@ internal sealed class ConsumerCommittedOffsetReader
         }
         catch(KafkaException exception){outcome="kafka_exception";error=(int)exception.Error.Code;}
         catch(OperationCanceledException)when(!token.IsCancellationRequested){outcome="kafka_exception";error=(int)ErrorCode.Local_TimedOut;}
-        return Task.FromResult(new ConsumerOffsetRead(outcome,requested,started,clock.GetUtcNow(),error,offsets));
+        DateTimeOffset ended=clock.GetUtcNow();
+        // Setup may exhaust the global budget before any native offset read starts.
+        if(!committedCalled&&ended>=deadline)
+            return Task.FromResult(new ConsumerOffsetRead("not_attempted",requested,null,null,null,[]));
+        return Task.FromResult(new ConsumerOffsetRead(outcome,requested,started,ended,error,offsets));
     }
 
     private sealed class ConsumerLease(IConsumer<byte[],byte[]> consumer,CancellationTokenSource? acquisition):IDisposable
