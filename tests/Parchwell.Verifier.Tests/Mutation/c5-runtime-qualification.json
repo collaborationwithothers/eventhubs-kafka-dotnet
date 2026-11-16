@@ -28,7 +28,7 @@
     "scenarios/F06/scenario.yaml": "3ca313515ec897c487a71c86e7e6bb2d3dbfdc6c63577726929b3509428133b0",
     "scenarios/profiles/b10-timeout.yaml": "39daef3f0b5df87fd8de5efc17304d249bc6eb1df281e76686bf0d637d0ee802",
     "scenarios/profiles/saturation-ramp.yaml": "20627a8282fd81730867fb2d10bca8a6d4198cb59d6dc70aab8eebd22528c215",
-    "src/Parchwell.Enrichment/packages.lock.json": "94d31a93607e554463345a15dcd869171ca8654d05e47666a019a1daf21a7207",
+    "src/Parchwell.Enrichment/packages.lock.json": "65611537a0ac37d1be8aaa363260e8179b05e1ad4dbc4f6eecff193427dd54b3",
     "src/Parchwell.Kafka/Authentication/IKafkaTokenProvider.cs": "ac09c1464f9df6c704dd70a9e56ce8a35377abe51c30339dc4568802f6081325",
     "src/Parchwell.Kafka/Authentication/IObservedKafkaTokenProvider.cs": "7ac8afe8bc16f35d2a8c60e0fc6bdf0758463b9fd9bec58ac0ede4f1350c8862",
     "src/Parchwell.Kafka/Authentication/KafkaAuthenticationConfiguration.cs": "70a441daf0648bd73b6c632a37396d762808ac9c1346115d3b943386c874ec17",
@@ -202,8 +202,8 @@
     "src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs": "87d5e8057535d0a2895d19c0a45fdc90df491787869ade1dfb08a2c6c0695c98",
     "src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs": "a8bc1a8108372349ad7191975fd97d5646fa9a5f9edcd7d303e0f85d97b10751",
     "src/Parchwell.Verifier/packages.lock.json": "c9c2f3096cba8a0c3dc705fd2c9c5f0404ebf5a173837b5ffd9c0f73ba7d4e26",
-    "tests/Parchwell.ArchitectureTests/packages.lock.json": "6721af88dd05b1eea04b5c8727cadd5169be4207bb12b142e4367be1836f882b",
-    "tests/Parchwell.Enrichment.Tests/packages.lock.json": "1e46ef67581a676209334db4d561e5037e0475f52d735ffafedac4caab154bb0",
+    "tests/Parchwell.ArchitectureTests/packages.lock.json": "04c93d3fea203e1ae71afa8666bf6c58c3c84b8f2e72807d39e90b76df2b1023",
+    "tests/Parchwell.Enrichment.Tests/packages.lock.json": "94fab36e68ded99c90663c4fbab74cf26f76e6bab97a83cba9ac047bc2553c56",
     "tests/Parchwell.Kafka.Tests/packages.lock.json": "55d6914e6eeaeb987f0db833e3366f57820aa0b8ff3411660828c90131ef0327",
     "tests/Parchwell.LoadGen.Tests/packages.lock.json": "d15af1ddbb1f8fad55a20f7804e4c849cd03028c2de09df424b3b72e4c5bd26d",
     "tests/Parchwell.Scenarios.Tests/packages.lock.json": "be591ff559bdfccfb49704ebaa0a726650b5e7ad31346b5d77e88f7d046181f4",
@@ -4349,6 +4349,29 @@
         }
       },
       "source_sha256": "5c0788ac841b4397610f602435cd7ef923b1b4caa36d701c454891f79b2706a8"
+    }
+  },
+  "renewals": {
+    "src/Parchwell.Enrichment/packages.lock.json": {
+      "basis": [
+        "Approved consumer-worker package references regenerate only Enrichment, Enrichment.Tests and ArchitectureTests locks. Verifier project closure and resolved Verifier package versions, target sources, runner, shard layout and runtime settings are unchanged. Renew input hashes while retaining original measured timing and budgets; no new measurement is claimed."
+      ],
+      "current_sha256": "65611537a0ac37d1be8aaa363260e8179b05e1ad4dbc4f6eecff193427dd54b3",
+      "measured_sha256": "94d31a93607e554463345a15dcd869171ca8654d05e47666a019a1daf21a7207"
+    },
+    "tests/Parchwell.ArchitectureTests/packages.lock.json": {
+      "basis": [
+        "Approved consumer-worker package references regenerate only Enrichment, Enrichment.Tests and ArchitectureTests locks. Verifier project closure and resolved Verifier package versions, target sources, runner, shard layout and runtime settings are unchanged. Renew input hashes while retaining original measured timing and budgets; no new measurement is claimed."
+      ],
+      "current_sha256": "04c93d3fea203e1ae71afa8666bf6c58c3c84b8f2e72807d39e90b76df2b1023",
+      "measured_sha256": "6721af88dd05b1eea04b5c8727cadd5169be4207bb12b142e4367be1836f882b"
+    },
+    "tests/Parchwell.Enrichment.Tests/packages.lock.json": {
+      "basis": [
+        "Approved consumer-worker package references regenerate only Enrichment, Enrichment.Tests and ArchitectureTests locks. Verifier project closure and resolved Verifier package versions, target sources, runner, shard layout and runtime settings are unchanged. Renew input hashes while retaining original measured timing and budgets; no new measurement is claimed."
+      ],
+      "current_sha256": "94fab36e68ded99c90663c4fbab74cf26f76e6bab97a83cba9ac047bc2553c56",
+      "measured_sha256": "1e46ef67581a676209334db4d561e5037e0475f52d735ffafedac4caab154bb0"
     }
   }
 }
