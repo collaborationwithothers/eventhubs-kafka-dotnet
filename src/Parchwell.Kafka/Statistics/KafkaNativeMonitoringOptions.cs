@@ -7,7 +7,7 @@ public sealed class KafkaNativeMonitoringOptions
     public const string SectionName = "NativeMonitoring";
     /// <summary>Blob service endpoint.</summary>
     public string BlobEndpoint { get; set; } = string.Empty;
-    /// <summary>Private container name.</summary>
+    /// <summary>The required private native-monitoring container name.</summary>
     public string BlobContainer { get; set; } = string.Empty;
     /// <summary>Run identifier.</summary>
     public string RunId { get; set; } = string.Empty;
@@ -31,7 +31,7 @@ public sealed class KafkaNativeMonitoringOptions
     {
         if (!Uri.TryCreate(BlobEndpoint, UriKind.Absolute, out Uri? endpoint) || endpoint.Scheme != Uri.UriSchemeHttps
             || !string.IsNullOrEmpty(endpoint.UserInfo) || !string.IsNullOrEmpty(endpoint.Query) || !string.IsNullOrEmpty(endpoint.Fragment)
-            || string.IsNullOrWhiteSpace(BlobContainer) || BlobContainer.Any(c => !(char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c == '-'))
+            || !StringComparer.Ordinal.Equals(BlobContainer, "native-monitoring")
             || SourceCommit is null || SourceCommit.Length != 40 || SourceCommit.Any(c => !(c is >= '0' and <= '9' or >= 'a' and <= 'f'))
             || new[] { RunId, Phase, ScenarioId, ConfigurationId, JobName, PodUid, SourceCommit }
                 .Any(value => string.IsNullOrWhiteSpace(value) || value is "." or ".." || value.Any(c => char.IsControl(c) || char.IsWhiteSpace(c) || c is '/' or '\\')))
