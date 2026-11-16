@@ -1641,7 +1641,7 @@ def check_v2_actor_logs(collector, phase, status, units, artifacts, private):
                 if record_value is not None:
                     record_value['value_base64'] = metadata(record_value['value_base64'])
             # Preserve diagnostic lines and their ordering around the two structured
-            # records. Unknown body-bearing or credential assignments fail closed.
+            # records. Recognized body-bearing or credential assignments fail closed.
             diagnostic_lines = []
             for index, line in enumerate(lines):
                 if index in indices:
