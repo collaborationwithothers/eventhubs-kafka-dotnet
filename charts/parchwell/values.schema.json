@@ -26,7 +26,10 @@
         "A03",
         "A04",
         "B06",
-        "B07"
+        "B07",
+        "C01",
+        "C03",
+        "C10"
       ]
     },
     "configuration_id": {
@@ -109,7 +112,9 @@
             "single-action-v2",
             "single-action-v2-judge",
             "idle-observation",
-            "idle-observation-judge"
+            "idle-observation-judge",
+            "consumer-subject",
+            "consumer-witness"
           ]
         },
         "repeat": {
@@ -450,7 +455,8 @@
                 "verify_job_seconds": 750,
                 "start_line_job_seconds": 150,
                 "gate_job_seconds": 90,
-                "termination_grace_seconds": 30
+                "termination_grace_seconds": 30,
+                "consumer_job_seconds": 1800
               }
             },
             "single_action_execution": {
@@ -820,6 +826,10 @@
                 }
               },
               {
+                "if": { "properties": { "mode": { "enum": ["consumer-subject", "consumer-witness"] } }, "required": ["mode"] },
+                "then": { "required": ["repeat"] }
+              },
+              {
                 "if": {
                   "properties": {
                     "mode": {
@@ -896,11 +906,6 @@
                           {
                             "required": [
                               "probe"
-                            ]
-                          },
-                          {
-                            "required": [
-                              "enrichment-consumer"
                             ]
                           }
                         ]
@@ -1170,7 +1175,10 @@
                       "B04",
                       "B06",
                       "B07",
-                      "B10"
+                      "B10",
+                      "C01",
+                      "C03",
+                      "C10"
                     ]
                   },
                   "configuration_id": {
@@ -1198,6 +1206,29 @@
             }
           }
         ]
+      }
+    },
+    {
+      "if": { "properties": { "scenario_id": { "enum": ["C01", "C03", "C10"] } }, "required": ["scenario_id"] },
+      "then": {
+        "properties": {
+          "runtime": {
+            "required": ["enrichment_image", "service_accounts"],
+            "properties": {
+              "mode": { "enum": ["start-line", "loadgen", "verify", "judge", "consumer-subject", "consumer-witness"] },
+              "service_accounts": { "required": ["loadgen", "verifier", "enrichment-consumer"], "not": { "required": ["probe"] } }
+            }
+          }
+        },
+        "oneOf": [
+          { "properties": { "configuration_id": { "const": "C0" }, "runtime": { "properties": { "phase": { "const": "C0" } } } } },
+          { "properties": { "configuration_id": { "const": "C1" }, "runtime": { "properties": { "phase": { "const": "C1" } } } } }
+        ]
+      },
+      "else": {
+        "properties": { "runtime": { "properties": { "mode": { "not": { "enum": ["consumer-subject", "consumer-witness"] } } } } },
+        "if": { "properties": { "runtime": { "properties": { "mode": { "enum": ["single-action", "single-action-judge", "single-action-seed", "single-action-v2", "single-action-v2-judge"] } }, "required": ["mode"] } }, "required": ["runtime"] },
+        "else": { "properties": { "runtime": { "properties": { "service_accounts": { "not": { "required": ["enrichment-consumer"] } } } } } }
       }
     }
   ]

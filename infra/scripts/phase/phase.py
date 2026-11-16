@@ -21,7 +21,12 @@ MIB = 1024 * 1024
 STORAGE_READINESS_WAIT_SECONDS = 120
 SCENARIOS = {"A01": {"probe": "C0", "C0": "C0", "C3": "C3"},
              "B04": {"C0": "C0", "C1": "C1"},
-             "B10": {"C0": "C0", "C1": "C1"}}
+             "B10": {"C0": "C0", "C1": "C1"},
+             "C03": {"C0": "C0", "C1": "C1"},
+             "C10": {"C0": "C0", "C1": "C1"},
+             "C01": {"C0": "C0", "C1": "C1"}}
+# Scenarios that run a subject and a witness consumer member Job per repeat (consumer_repeat.py).
+CONSUMER_SCENARIOS = ("C01", "C03", "C10")
 MODES = ("start-line", "loadgen", "verify")
 B10_SCIENTIFIC_RUN = r"b10-[0-9]+-[0-9]+"
 B10_MODES = ("start-line", "loadgen", "loadgen2", "verify")
@@ -414,8 +419,10 @@ class Phase:
         return 0
 
     def allow_images(self):
-        allowed = all(re.fullmatch(DIGEST, os.environ.get(name, "")) is not None
-                      for name in ("LOADGEN_DIGEST", "VERIFIER_DIGEST"))
+        names = ("LOADGEN_DIGEST", "VERIFIER_DIGEST")
+        if scenario() in CONSUMER_SCENARIOS:
+            names += ("ENRICHMENT_DIGEST",)
+        allowed = all(re.fullmatch(DIGEST, os.environ.get(name, "")) is not None for name in names)
         decision = "workload=" + str(allowed).lower()
         append_lines(require("GITHUB_OUTPUT"), [decision])
         print(decision)
@@ -573,7 +580,7 @@ class Phase:
                 raise Failure("registry login failed", 1)
         images = {}
         workers = [("loadgen", "LoadGen"), ("verifier", "Verifier")]
-        if phase["scenario"] == "probe-batch":
+        if phase["scenario"] == "probe-batch" or phase["scenario"] in CONSUMER_SCENARIOS:
             workers.append(("enrichment", "Enrichment"))
         if digests is not None and len(digests) != len(workers):
             raise Failure("image digest count mismatch")
@@ -611,9 +618,12 @@ class Phase:
         return self.images()
 
     def use_images(self, loadgen, verifier):
-        if any(not re.fullmatch(DIGEST, value) for value in (loadgen, verifier)):
+        digests = (loadgen, verifier)
+        if scenario() in CONSUMER_SCENARIOS:
+            digests += (os.environ.get("ENRICHMENT_DIGEST", ""),)
+        if any(not re.fullmatch(DIGEST, value) for value in digests):
             raise Failure("invalid image digest")
-        return self.images((loadgen, verifier))
+        return self.images(digests)
 
     def blob_host(self):
         blob = unwrap(self.read("ephemeral-output.json")["blob"])
@@ -651,6 +661,7 @@ class Phase:
         persistent = self.read("persistent-output.json")
         accounts = unwrap(self.read("cluster-output.json")["workload_identity"])["service_accounts"]
         single = mode in SINGLE_ACTION_MODES
+        consumer = phase["scenario"] in CONSUMER_SCENARIOS
         ledger = (mode in MODES or mode == "judge") and item is not None
         run_id = self.ledger_batch().worker_run(item) if ledger else phase["run_id"]
         runtime = {"run_id": run_id, "phase": configuration if single or ledger else phase["phase"], "mode": mode,
@@ -658,11 +669,14 @@ class Phase:
                    "loadgen_image": phase["images"]["loadgen"]["reference"],
                    "verifier_image": phase["images"]["verifier"]["reference"],
                    "service_accounts": {role: {key: accounts[role][key] for key in ("name", "client_id", "subject")}
-                                        for role in (("loadgen", "verifier", "probe", "enrichment-consumer") if single else ("loadgen", "verifier"))},
+                                        for role in (("loadgen", "verifier", "probe", "enrichment-consumer") if single
+                                                     else ("loadgen", "verifier", "enrichment-consumer") if consumer else ("loadgen", "verifier"))},
                    "eventhubs": unwrap(ephemeral["eventhubs"]), "blob": unwrap(ephemeral["blob"]),
                    "eventhubs_ip": unwrap(ephemeral["private_endpoint_ips"])["eventhubs"],
                    "blob_ip": unwrap(ephemeral["private_endpoint_ips"])["blob"],
                    "application_insights_connection_string": unwrap(persistent["application_insights_connection_string"])}
+        if consumer:
+            runtime["enrichment_image"] = phase["images"]["enrichment"]["reference"]
         if single:
             runtime.update(action_role=action_role, image_smoke=phase["run_kind"] == "smoke",
                            enrichment_image=phase["images"]["enrichment"]["reference"])
@@ -729,7 +743,7 @@ class Phase:
         save()
         try:
             if state.get("safety_stop", False):
-                if phase["scenario"] == "B10" or mode in SINGLE_ACTION_MODES or mode in (IDLE_MODE, IDLE_JUDGE_MODE):
+                if phase["scenario"] == "B10" or phase["scenario"] in CONSUMER_SCENARIOS or mode in SINGLE_ACTION_MODES or mode in (IDLE_MODE, IDLE_JUDGE_MODE):
                     record["reason"] = "safety_stop"
                     save()
                 return record
@@ -797,10 +811,19 @@ class Phase:
             self.command_deadline = previous_deadline
             print("::endgroup::", flush=True)
 
+    def consumer_repeats(self):
+        source = Path(__file__).with_name("consumer_repeat.py")
+        spec = importlib.util.spec_from_file_location("parchwell_consumer_repeat", source)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.ConsumerRepeats(self, strict_json)
+
     def run_repeats(self):
         self.reject_b10_abrupt_science()
         if self.read("phase.json")["scenario"] == "B10":
             return self.run_b10_repeats()
+        if self.read("phase.json")["scenario"] in CONSUMER_SCENARIOS:
+            return self.consumer_repeats().run()
         records = [self.run_mode(mode, repeat) for repeat in SLOTS for mode in MODES]
         return int(any(record["outcome"] in BAD_OUTCOMES for record in records))
 
