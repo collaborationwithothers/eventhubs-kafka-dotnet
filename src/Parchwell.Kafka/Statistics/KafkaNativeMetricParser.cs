@@ -326,7 +326,20 @@ internal static class KafkaNativeMetricParser
             if (definition.Policy == "W+")
             {
                 // Validate even suppressed values; absence of count cannot authorize a summary.
-                if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt64(out long summary) || summary < 0)
+                if (value.ValueKind != JsonValueKind.Number)
+                {
+                    Reject("invalid_numeric", definition.Path);
+                    return;
+                }
+
+                if (!value.TryGetInt64(out long summary))
+                {
+                    string raw = value.GetRawText();
+                    Reject(raw.IndexOfAny(['.', 'e', 'E']) >= 0 ? "invalid_numeric" : "numeric_overflow", definition.Path);
+                    return;
+                }
+
+                if (summary < 0)
                 {
                     Reject("invalid_numeric", definition.Path);
                     return;
