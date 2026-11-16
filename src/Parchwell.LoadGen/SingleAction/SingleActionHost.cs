@@ -72,11 +72,7 @@ internal static class SingleActionHost
         {
             var nativeOptions = new KafkaNativeMonitoringOptions();
             builder.Configuration.GetSection(KafkaNativeMonitoringOptions.SectionName).Bind(nativeOptions, value => value.ErrorOnUnknownConfiguration = true);
-            if (nativeOptions.RunId != options.RunId || nativeOptions.ScenarioId != options.ScenarioId ||
-                nativeOptions.ConfigurationId != options.ConfigurationId || nativeOptions.JobName != options.JobName ||
-                nativeOptions.PodUid != options.PodUid || nativeOptions.SourceCommit != options.SourceCommit ||
-                nativeOptions.BlobEndpoint != options.BlobEndpoint)
-                throw new InvalidOperationException("native_monitoring_identity_mismatch");
+            ValidateNativeIdentity(nativeOptions, options);
             NativeMonitoringHost.Register(builder.Services, nativeOptions,
                 options.BlobContainer + "/" + SingleActionPublication.Prefix(options) + $"instances/{options.PodName}/capture.json");
         }
@@ -85,6 +81,15 @@ internal static class SingleActionHost
         builder.Services.AddSingleton<SingleActionWorker>();
         configureServices?.Invoke(builder.Services);
         return builder.Build();
+    }
+
+    internal static void ValidateNativeIdentity(KafkaNativeMonitoringOptions nativeOptions, SingleActionHostOptions options)
+    {
+        if (nativeOptions.RunId != options.RunId || nativeOptions.Phase != options.ConfigurationId || nativeOptions.ScenarioId != options.ScenarioId ||
+            nativeOptions.ConfigurationId != options.ConfigurationId || nativeOptions.JobName != options.JobName ||
+            nativeOptions.PodUid != options.PodUid || nativeOptions.SourceCommit != options.SourceCommit ||
+            nativeOptions.BlobEndpoint != options.BlobEndpoint)
+            throw new InvalidOperationException("native_monitoring_identity_mismatch");
     }
 
     internal static async Task<int> RunAsync(Action<IServiceCollection>? configureServices = null, Func<IHost>? hostFactory = null)

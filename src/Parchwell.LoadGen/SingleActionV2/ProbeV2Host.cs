@@ -71,10 +71,7 @@ internal static class ProbeV2Host
                 PodUid = environment.GetValueOrDefault("NativeMonitoring__PodUid") ?? "",
                 SourceCommit = environment.GetValueOrDefault("NativeMonitoring__SourceCommit") ?? ""
             };
-            if (nativeOptions.RunId != options.RunId || nativeOptions.ScenarioId != options.ScenarioId ||
-                nativeOptions.ConfigurationId != options.ConfigurationId || nativeOptions.JobName != options.JobName ||
-                nativeOptions.PodUid != options.PodUid || nativeOptions.SourceCommit != options.SourceCommit)
-                throw new InvalidOperationException("native_monitoring_identity_mismatch");
+            ValidateNativeIdentity(nativeOptions, options);
             NativeMonitoringHost.Register(builder.Services, nativeOptions,
                 $"runner/probe-v2/raw/{options.JobName}/{options.PodName}.containers.{options.ServiceAccount}.log");
         }
@@ -85,6 +82,14 @@ internal static class ProbeV2Host
         configureServices?.Invoke(builder.Services);
         return builder.Build();
     }
+    internal static void ValidateNativeIdentity(KafkaNativeMonitoringOptions nativeOptions, ProbeV2Options options)
+    {
+        if (nativeOptions.RunId != options.RunId || nativeOptions.Phase != options.ConfigurationId || nativeOptions.ScenarioId != options.ScenarioId ||
+            nativeOptions.ConfigurationId != options.ConfigurationId || nativeOptions.JobName != options.JobName ||
+            nativeOptions.PodUid != options.PodUid || nativeOptions.SourceCommit != options.SourceCommit)
+            throw new InvalidOperationException("native_monitoring_identity_mismatch");
+    }
+
     internal static async Task<int> RunAsync(Action<IServiceCollection>? configureServices = null, Func<IHost>? hostFactory = null,
         TextWriter? output = null, TextWriter? logs = null)
     {
