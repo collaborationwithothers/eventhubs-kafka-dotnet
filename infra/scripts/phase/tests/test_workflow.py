@@ -1,7 +1,7 @@
 """Offline contract tests for the shared scenario workflow and batch smoke."""
 from pathlib import Path
-import importlib.util
 import copy
+import importlib.util
 import hashlib
 import json
 import os
@@ -31,6 +31,72 @@ def unique_mapping(loader, node):
 
 
 UniqueLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, unique_mapping)
+
+
+def assert_archive_suppression_only(test, workflow):
+    checked = copy.deepcopy(workflow)
+    for name, job in checked['jobs'].items():
+        if name not in ('probe', 'full-C0', 'full-C3', 'batch'):
+            continue
+        steps = job.get('steps', [])
+        reports = [step for step in steps if step.get('id') == 'science_report']
+        for step in steps:
+            if (step.get('id') in ('archive', 'upload_archive_manifest', 'report')
+                    and step.get('continue-on-error') == 'true'
+                    and len(reports) == 1 and 'continue-on-error' not in reports[0]):
+                del step['continue-on-error']
+    test.assertNotIn('continue-on-error', yaml.safe_dump(checked))
+
+
+class ArchiveSuppressionPolicyTests(unittest.TestCase):
+    def test_allowed_steps_require_independent_science_report(self):
+        for job in ('probe', 'full-C0', 'full-C3', 'batch'):
+            for step in ('archive', 'upload_archive_manifest', 'report'):
+                with self.subTest(job=job, step=step):
+                    workflow = yaml.load(f'''jobs:
+  {job}:
+    steps:
+      - id: {step}
+        continue-on-error: true
+      - id: science_report
+''', Loader=UniqueLoader)
+                    original = copy.deepcopy(workflow)
+                    assert_archive_suppression_only(self, workflow)
+                    self.assertEqual(original, workflow)
+        assert_archive_suppression_only(self, {'jobs': {'probe': {'steps': [{'id': 'report'}]}}})
+
+    def test_other_suppression_is_rejected(self):
+        cases = [
+            ('probe', 'archive', 'true', False),
+            *[('probe', step, 'true', True) for step in
+              ('science_report', 'science', 'workload', 'delete', 'delete_workload', 'destroy', 'otherstep')],
+            ('unapprovedjob', 'archive', 'true', True),
+            ('probe', 'archive', 'false', True),
+            ('probe', 'archive', True, True),
+            ('probe', 'archive', '${{ always() }}', True),
+        ]
+        for job, step, value, include_report in cases:
+            with self.subTest(job=job, step=step, value=value, report=include_report):
+                steps = [{'id': step, 'continue-on-error': value}]
+                if include_report and step != 'science_report':
+                    steps.append({'id': 'science_report'})
+                workflow = {'jobs': {job: {'steps': steps}}}
+                with self.assertRaises(AssertionError):
+                    assert_archive_suppression_only(self, workflow)
+        workflow = {'jobs': {'probe': {'continue-on-error': 'true', 'steps': [
+            {'id': 'archive', 'continue-on-error': 'true'}, {'id': 'science_report'}]}}}
+        with self.assertRaises(AssertionError):
+            assert_archive_suppression_only(self, workflow)
+        workflow = {'jobs': {'probe': {'steps': [
+            {'id': 'archive', 'continue-on-error': 'true'},
+            {'id': 'science_report', 'continue-on-error': 'true'}]}}}
+        with self.assertRaises(AssertionError):
+            assert_archive_suppression_only(self, workflow)
+        workflow = {'jobs': {'probe': {'steps': [
+            {'id': 'archive', 'continue-on-error': 'true'},
+            {'id': 'science_report'}, {'id': 'science_report'}]}}}
+        with self.assertRaises(AssertionError):
+            assert_archive_suppression_only(self, workflow)
 
 
 class WorkflowTests(unittest.TestCase):
@@ -345,23 +411,10 @@ esac
                         self.assertEqual(0 if failed is None else 1, results[1])
 
     def test_no_obsolete_text(self):
-        # Only the newly separated archive observations may suppress a step failure.
-        # Preserve the original prohibition for every scientific, cleanup and other step/job.
-        checked = copy.deepcopy(self.workflow)
-        allowed = {(job, step) for job in ('probe', 'full-C0', 'full-C3', 'batch')
-                   for step in ('archive', 'upload_archive_manifest', 'report')}
-        found = set()
-        for job_name, job in checked['jobs'].items():
-            for step in job.get('steps', []):
-                pair = (job_name, step.get('id'))
-                if pair in allowed:
-                    self.assertEqual('true', step.pop('continue-on-error'))
-                    found.add(pair)
-        self.assertEqual(allowed, found)
         for forbidden in ('Parchwell.Runner', 'A01_OUTPUT', 'PARCHWELL_COST', 'READINESS',
-                          'PARCHWELL_DEBUG_FAILURES', 'continue-on-error', '|| true'):
-            subject = yaml.dump(checked) if forbidden == 'continue-on-error' else self.text
-            self.assertNotIn(forbidden, subject)
+                          'PARCHWELL_DEBUG_FAILURES', '|| true'):
+            self.assertNotIn(forbidden, self.text)
+        assert_archive_suppression_only(self, self.workflow)
 
     def test_selector_shell_paths_with_stubbed_commands(self):
         allowed = self.steps(self.jobs['full-C3'])['allowed']['run']
