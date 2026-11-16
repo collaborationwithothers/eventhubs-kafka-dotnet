@@ -1917,7 +1917,9 @@ def collect_native_monitoring(collector, phase, status, units):
                     continue
                 def inspect_chunk(path, size, descriptor=descriptor, ordinal=client['ordinal']):
                     try:
-                        native.chunk(path, descriptor, ordinal)
+                        native.chunk(path, descriptor, ordinal, collector.transfer.deadline)
+                    except TimeoutError:
+                        raise Gap('deadline', 'native chunk validation') from None
                     except (OSError, ValueError, TypeError, UnicodeError, RecursionError):
                         raise Gap('monitoring_incomplete', 'native chunk contract') from None
                 result = collector.source('native-monitoring', descriptor['source'], 'native_monitoring_raw',

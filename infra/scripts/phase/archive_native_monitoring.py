@@ -1,6 +1,7 @@
 """Strict private native-monitoring index and JSONL validation."""
 import json
 import re
+import time
 
 MAX_INDEX = 1048576
 MAX_REPORT = 1048576
@@ -81,10 +82,12 @@ def index(data, identity, prefix):
     return document
 
 
-def chunk(path, descriptor, client_ordinal):
+def chunk(path, descriptor, client_ordinal, deadline=None):
     count = 0
     with open(path, 'rb') as stream:
         while True:
+            if deadline is not None and time.monotonic() >= deadline:
+                raise TimeoutError('archive deadline')
             line = stream.readline(6 * MAX_REPORT + 65537)
             if not line:
                 break
