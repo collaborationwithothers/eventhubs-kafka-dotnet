@@ -149,7 +149,7 @@ internal static class Program
                 try
                 {
                     IProducer<byte[], byte[]> result = authentication.CreateProducerBuilder<byte[], byte[]>(producer, session)
-                        .SetStatisticsHandler((_, raw) => lifetime.CaptureNew(raw)).Build();
+                        .SetStatisticsHandler(NativeClientCapture.ProducerHandler(lifetime)).Build();
                     lifetime.MarkBuilt();
                     return result;
                 }
@@ -249,7 +249,7 @@ internal static class Program
             try
             {
             IConsumer<byte[], byte[]> result = authentication.CreateConsumerBuilder<byte[], byte[]>(consumerConfiguration, session)
-                .SetStatisticsHandler((_, raw) => lifetime.CaptureNew(raw))
+                .SetStatisticsHandler(NativeClientCapture.ConsumerHandler(lifetime))
                 .SetPartitionsAssignedHandler(handlers.Assigned)
                 .SetPartitionsRevokedHandler((consumer, partitions) => handlers.Revoked(consumer, partitions.Select(partition => partition.TopicPartition).ToList()))
                 .SetPartitionsLostHandler((consumer, partitions) => handlers.Lost(consumer, partitions.Select(partition => partition.TopicPartition).ToList()))

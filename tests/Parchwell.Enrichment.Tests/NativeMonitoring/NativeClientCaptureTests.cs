@@ -41,6 +41,33 @@ public sealed class NativeClientCaptureTests
         Assert.False(document.RootElement.GetProperty("capture_complete").GetBoolean());
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Given_native_callback_When_host_handler_runs_Then_exact_raw_is_retained_once(bool producer)
+    {
+        var store = new MemoryStore();
+        var services = new ServiceCollection();
+        services.AddSingleton<IKafkaNativeMonitoringStore>(store);
+        services.AddParchwellNativeMonitoring();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        var coordinator = provider.GetRequiredService<KafkaNativeMonitoringFactory>().Create(
+            new KafkaNativeMonitoringIdentity("run", "C0", "F04", "C0", "job", "pod", "commit"));
+        var capture = new NativeClientCapture(coordinator);
+        KafkaClientRole role = producer ? KafkaClientRole.EnrichmentProducer : KafkaClientRole.EnrichmentConsumer;
+        var lifetime = capture.Begin(new KafkaStatisticsIdentity("F04", "run", role, "client"));
+        lifetime.MarkBuilt();
+        const string raw = "{\"synthetic\": \"raw bytes preserved\"}";
+        if (producer) NativeClientCapture.ProducerHandler(lifetime)(null!, raw);
+        else NativeClientCapture.ConsumerHandler(lifetime)(null!, raw);
+        capture.Complete(true);
+        await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
+        using JsonDocument row = JsonDocument.Parse(store.Objects.Single(pair => pair.Key.EndsWith(".jsonl", StringComparison.Ordinal)).Value);
+        Assert.Equal(raw, row.RootElement.GetProperty("raw").GetString());
+        using JsonDocument index = JsonDocument.Parse(store.Objects.Single(pair => pair.Key.EndsWith("index.json", StringComparison.Ordinal)).Value);
+        Assert.Equal(1, index.RootElement.GetProperty("clients")[0].GetProperty("report_count").GetInt32());
+    }
+
     private sealed class MemoryStore : IKafkaNativeMonitoringStore
     {
         internal Dictionary<string, byte[]> Objects { get; } = [];
