@@ -20,6 +20,7 @@ CONSUMER_PHASE_SECONDS = 7200
 CONSUMER_REPEAT_RESERVE_SECONDS = 5100
 READINESS_CAP_SECONDS = 300
 READINESS_INTERVAL_SECONDS = 5
+TERMINATION_RESERVE = 5  # equals phase.py TERMINATION_RESERVE: Phase.run refuses a command with this many seconds or fewer left
 PARTITIONS = 32  # infra/ephemeral/eventhubs.tf, document-events partition_count
 RECORD_BLOB_MAXIMUM = 65536 * 40000  # the worker's row cap times rows per blob (ConsumerRecordLimits.cs)
 LIST_LIMIT = 1000
@@ -221,6 +222,8 @@ class ConsumerRepeats:
                 condition = self.poll(prefix, job)
                 if condition == "ready":
                     break
+                if applied + READINESS_CAP_SECONDS - time.monotonic() <= TERMINATION_RESERVE:
+                    break  # Phase.run would refuse every further command, so stop instead of spinning until the cap
                 self.p.sleep(READINESS_INTERVAL_SECONDS)
         finally:
             self.p.command_deadline = previous

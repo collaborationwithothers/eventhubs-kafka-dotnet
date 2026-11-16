@@ -250,7 +250,7 @@ class ConsumerRepeatTests(unittest.TestCase):
         self.assertEqual(295.0, max(polls) - polls[0])
         self.assertEqual(polls[0] + 295, polls[-1])
         readiness = next(r for r in self.records(1) if r['mode'] == 'consumer-readiness')
-        self.assertEqual(('not_observed', 60, 300, 'member_count'), (readiness['outcome'], readiness['polls'], readiness['elapsed_seconds'], readiness['last_condition']))
+        self.assertEqual(('not_observed', 60, 295, 'member_count'), (readiness['outcome'], readiness['polls'], readiness['elapsed_seconds'], readiness['last_condition']))
         labels = self.labels(1)
         after = labels[labels.index(('list',)) + 60:]
         self.assertEqual([('collect', 'consumer-subject'), ('delete', 'consumer-subject'), ('confirm', 'consumer-subject'),
