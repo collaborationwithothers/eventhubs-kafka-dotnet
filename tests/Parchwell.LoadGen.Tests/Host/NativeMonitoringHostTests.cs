@@ -22,6 +22,18 @@ public sealed class NativeMonitoringHostTests
     }
 
     [Fact]
+    public async Task FailedHostCapture_ProducesIncompleteIndexEvenWithoutClients()
+    {
+        var services = new ServiceCollection();
+        NativeMonitoringFixture store = Register(services);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        await provider.GetRequiredService<NativeMonitoringHost>().CompleteAsync(false, TestContext.Current.CancellationToken);
+        using JsonDocument index = Index(store);
+        Assert.False(index.RootElement.GetProperty("capture_complete").GetBoolean());
+        Assert.Empty(index.RootElement.GetProperty("clients").EnumerateArray());
+    }
+
+    [Fact]
     public async Task BeforeBuildReturn_AdmittedReportAndFailedBuildRemainDistinct()
     {
         var services = new ServiceCollection();

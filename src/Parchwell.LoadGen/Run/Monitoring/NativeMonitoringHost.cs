@@ -47,6 +47,7 @@ internal sealed class NativeMonitoringHost(KafkaNativeMonitoringCoordinator coor
 
     internal async Task CompleteAsync(bool captureComplete, CancellationToken cancellationToken)
     {
+        if (!captureComplete) coordinator.MarkIncomplete("host_capture_incomplete");
         foreach (KafkaNativeMonitoringLifetime client in _clients)
             client.Complete(captureComplete, "unknown");
         await coordinator.CompleteAsync(cancellationToken).ConfigureAwait(false);
