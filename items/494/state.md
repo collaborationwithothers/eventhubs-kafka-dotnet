@@ -1,6 +1,6 @@
 # State: #494 Native Kafka telemetry and retained diagnostic evidence
 
-Covers: comment 6915011927; read at 2026-11-16T10:58:41.426541+00:00
+Covers: comment 6915011927 created 2026-11-16T11:21:57Z; read at 2026-11-16T11:30:13Z
 Parent items: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/347
 Item plan: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/f96eab914d00c06484431ff67a1808fb331c7e13/items/494/plan-observability-evidence.md
 Implementing tool: Codex. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6892754688
