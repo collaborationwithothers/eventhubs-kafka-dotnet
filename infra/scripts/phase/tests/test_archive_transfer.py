@@ -204,6 +204,11 @@ class TransferTests(unittest.TestCase):
                     invalid = (None, '', producer.replace('-loadgen', '-start-line'), producer + '2',
                                f'{run}-{phase.lower()}-r{6-repeat}-loadgen', 'other-run-c0-r1-loadgen')
                     for field in ('instance_id', 'expected_instance_id', 'client_id'):
+                        with self.subTest(field=field, missing=True):
+                            del note_identity[field]
+                            with self.assertRaises(archive.InvalidArchiveConfig):
+                                collector.expected_capture_window(identity, mode, source_repeat, capture_id)
+                        note_identity[field] = producer
                         for value in invalid:
                             with self.subTest(field=field, value=value):
                                 note_identity[field] = value
