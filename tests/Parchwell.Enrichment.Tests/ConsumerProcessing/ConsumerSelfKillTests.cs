@@ -101,7 +101,7 @@ public sealed partial class ConsumerSelfKillTests
         harness.Recorded.Polls.Enqueue(() => ConsumerTestHarness.Message(11, 0));
         harness.Recorded.Polls.Enqueue(() => ConsumerTestHarness.Message(21, 1));
         Assert.Equal(1, await harness.RunAsync());
-        Assert.Equal(["assigned", "processed", "processed", "kill_intent"], harness.Store.Rows.Select(Kind));
+        Assert.Equal(["partition_event", "processed", "processed", "kill_intent"], harness.Store.Rows.Select(Kind));
         Assert.Equal([0L, 1, 2, 3], harness.Store.Rows.Select(row => row.GetProperty("row_sequence").GetInt64()));
         Assert.Equal([(0, 10L), (1, 20L)], harness.Store.Processed.Select(row => (row.GetProperty("partition").GetInt32(), row.GetProperty("offset").GetInt64())));
         JsonElement intent = harness.Store.Rows[3];
@@ -127,7 +127,7 @@ public sealed partial class ConsumerSelfKillTests
         DateTimeOffset consumedAt = default;
         harness.Recorded.Polls.Enqueue(() => { consumedAt = harness.Clock.GetUtcNow(); return ConsumerTestHarness.Message(7, 1); });
         Assert.Equal(1, await harness.RunAsync());
-        Assert.Equal(["assigned", "kill_intent"], harness.Store.Rows.Select(Kind));
+        Assert.Equal(["partition_event", "kill_intent"], harness.Store.Rows.Select(Kind));
         JsonElement intent = harness.Store.Rows[1];
         Assert.Equal(1, intent.GetProperty("row_sequence").GetInt64());
         Assert.Equal(1, intent.GetProperty("partition").GetInt32());
