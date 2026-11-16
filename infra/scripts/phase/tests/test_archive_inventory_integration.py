@@ -789,7 +789,8 @@ class InventoryIntegrationTests(unittest.TestCase):
         self.assert_fixture_diagnostics(h, m, v2=True)
         self.assertEqual(16,m['totals']['verified_objects'] - 4)
         self.assertTrue(any(g['code']=='destination_hash_mismatch' for g in r['gaps']))
-        self.assertTrue(any(key[0]=='archive123' and key[2].endswith('/candidate.json') for key in h.cli.blobs))
+        self.assertTrue(any(key[0]=='archive123' and key[2].endswith('/candidate.json.metadata.json') for key in h.cli.blobs))
+        self.assertFalse(any(key[0]=='archive123' and key[2].endswith('/candidate.json') for key in h.cli.blobs))
 
     def test_complete_nonledger_families_and_missing_immutable_reference(self):
         cases=[('probe-batch','single-action','probe-42-1',['B01']),
