@@ -17,9 +17,13 @@ public sealed class HostOptionsTests
 {
     public static TheoryData<string, bool> PlanCases => new()
     {
-        { "kill-zero", false }, { "kill-one", true }, { "kill-million", true }, { "kill-above-million", false },
-        { "deadline-below", false }, { "deadline-minimum", true }, { "deadline-maximum", true }, { "deadline-above", false },
-        { "reserved-subject-setting", false }, { "witness-missing-isolation", false }, { "different-isolation", false },
+        { "kill-zero", false }, { "kill-one", true }, { "kill-two", true }, { "kill-below-million", true }, { "kill-million", true }, { "kill-above-million", false },
+        { "deadline-below", false }, { "deadline-minimum", true }, { "deadline-above-minimum", true }, { "deadline-below-maximum", true }, { "deadline-maximum", true }, { "deadline-above", false },
+        { "reserved-subject-setting", false }, { "reserved-witness-group", false },
+        { "reserved-subject-bootstrap", false }, { "reserved-witness-bootstrap", false },
+        { "reserved-subject-client", false }, { "reserved-witness-client", false },
+        { "subject-missing-isolation", false }, { "witness-missing-isolation", false },
+        { "subject-null-settings", false }, { "witness-null-settings", false }, { "different-isolation", false },
         { "no-plan", false }, { "no-source", false },
         { "lifetime-below", false }, { "lifetime-equal", false }, { "lifetime-above", true }
     };
@@ -34,14 +38,26 @@ public sealed class HostOptionsTests
         {
             case "kill-zero": plan = plan with { KillCount = 0 }; break;
             case "kill-one": plan = plan with { KillCount = 1 }; break;
+            case "kill-two": plan = plan with { KillCount = 2 }; break;
+            case "kill-below-million": plan = plan with { KillCount = 999999 }; break;
             case "kill-million": plan = plan with { KillCount = 1000000 }; break;
             case "kill-above-million": plan = plan with { KillCount = 1000001 }; break;
             case "deadline-below": plan = plan with { CompletionDeadlineMs = 999 }; break;
             case "deadline-minimum": plan = plan with { CompletionDeadlineMs = 1000 }; break;
+            case "deadline-above-minimum": plan = plan with { CompletionDeadlineMs = 1001 }; break;
+            case "deadline-below-maximum": plan = plan with { CompletionDeadlineMs = 3599999 }; break;
             case "deadline-maximum": plan = plan with { CompletionDeadlineMs = 3600000 }; break;
             case "deadline-above": plan = plan with { CompletionDeadlineMs = 3600001 }; break;
             case "reserved-subject-setting": plan = plan with { SubjectSettings = new Dictionary<string, string> { ["group.id"] = "synthetic-group", ["isolation.level"] = "read_committed" } }; break;
+            case "reserved-witness-group": plan = plan with { WitnessSettings = new Dictionary<string, string> { ["group.id"] = "synthetic-group", ["isolation.level"] = "read_committed" } }; break;
+            case "reserved-subject-bootstrap": plan = plan with { SubjectSettings = new Dictionary<string, string> { ["bootstrap.servers"] = "synthetic:9092", ["isolation.level"] = "read_committed" } }; break;
+            case "reserved-witness-bootstrap": plan = plan with { WitnessSettings = new Dictionary<string, string> { ["bootstrap.servers"] = "synthetic:9092", ["isolation.level"] = "read_committed" } }; break;
+            case "reserved-subject-client": plan = plan with { SubjectSettings = new Dictionary<string, string> { ["client.id"] = "synthetic-member", ["isolation.level"] = "read_committed" } }; break;
+            case "reserved-witness-client": plan = plan with { WitnessSettings = new Dictionary<string, string> { ["client.id"] = "synthetic-member", ["isolation.level"] = "read_committed" } }; break;
+            case "subject-missing-isolation": plan = plan with { SubjectSettings = new Dictionary<string, string>() }; break;
             case "witness-missing-isolation": plan = plan with { WitnessSettings = new Dictionary<string, string>() }; break;
+            case "subject-null-settings": plan = plan with { SubjectSettings = null! }; break;
+            case "witness-null-settings": plan = plan with { WitnessSettings = null! }; break;
             case "different-isolation": plan = plan with { WitnessSettings = new Dictionary<string, string> { ["isolation.level"] = "read_uncommitted" } }; break;
             case "lifetime-below": options.ProcessLifetime = RequiredBudget(options) + TimeSpan.FromMilliseconds(600000) - TimeSpan.FromTicks(1); break;
             case "lifetime-equal": options.ProcessLifetime = RequiredBudget(options) + TimeSpan.FromMilliseconds(600000); break;
@@ -88,7 +104,12 @@ public sealed class HostOptionsTests
         { "consumer-verify", "C03", "C1", "C0", "consumer-record", false },
         { "consumer-verify", "C03", "C0", "C0", "ledger", false },
         { "verify", "C03", "C0", "C0", "consumer-record", false },
-        { "consumer-verify", "C03", "C0", "C0", "consumer-record", true }
+        { "consumer-verify", "C03", "C0", "C0", "consumer-record", true },
+        { "consumer-verify", "C03", "C1", "C1", "consumer-record", true },
+        { "consumer-verify", "C01", "C0", "C0", "consumer-record", true },
+        { "consumer-verify", "C01", "C1", "C1", "consumer-record", true },
+        { "consumer-verify", "C10", "C0", "C0", "consumer-record", true },
+        { "consumer-verify", "C10", "C1", "C1", "consumer-record", true }
     };
 
     [Theory]
@@ -171,7 +192,7 @@ public sealed class HostOptionsTests
     private sealed class TestPlanSource(ConsumerVerificationPlan? plan) : IConsumerVerificationPlanSource
     {
         public bool TryGetPlan(string scenarioId, string configurationId, out ConsumerVerificationPlan? found)
-        { found = scenarioId == "C03" && configurationId == "C0" ? plan : null; return found is not null; }
+        { found = scenarioId is "C01" or "C03" or "C10" && configurationId is "C0" or "C1" ? plan : null; return found is not null; }
     }
 }
 #pragma warning restore CA1707

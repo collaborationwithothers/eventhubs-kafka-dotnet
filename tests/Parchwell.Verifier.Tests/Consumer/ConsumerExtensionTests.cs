@@ -165,6 +165,7 @@ public sealed class ConsumerExtensionTests
     }
 
     [Theory]
+    [InlineData(-1, false)]
     [InlineData(0, false)]
     [InlineData(1, true)]
     public async Task Given_ArtifactByteBoundary_U20_When_Evaluated_Then_ExactLimitPasses(int excess, bool unavailable)
@@ -182,6 +183,7 @@ public sealed class ConsumerExtensionTests
     }
 
     [Theory]
+    [InlineData(-1, false)]
     [InlineData(0, false)]
     [InlineData(1, true)]
     public async Task Given_TotalInputByteBoundary_U20_When_Evaluated_Then_IncludesPreviouslyCountedProducerBytes(int excess, bool unavailable)

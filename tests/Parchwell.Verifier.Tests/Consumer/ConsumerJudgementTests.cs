@@ -61,6 +61,32 @@ public sealed class ConsumerJudgementTests
         if (valid) Complete(result); else Invalid(result, "consumer_commit_record_disagreement");
     }
 
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(0, -1)]
+    public void Given_NegativeCallbackError_D4_When_Judged_Then_NonzeroErrorsNeverCorroborate(int rowError, int entryError)
+    {
+        ConsumerJudgementRequest request = F.SetReports(F.Create(), 109);
+        request = F.SetMember(request, "subject", member => F.WithRows(member,
+            member.Rows.Append(F.Commit("subject", 110, rowError: rowError, entryError: entryError))));
+
+        Invalid(ConsumerJudgement.Evaluate(request, F.Read()), "consumer_commit_record_disagreement");
+    }
+
+    [Theory]
+    [InlineData(-1, -1001)]
+    [InlineData(0, 0)]
+    [InlineData(1, 1)]
+    public void Given_SuccessfulEntryOffsetBoundary_D7_When_Judged_Then_OnlyNonnegativeEntriesCorroborate(long reported, long observed)
+    {
+        ConsumerJudgementRequest request = F.SetReports(F.Empty(), reported);
+
+        ConsumerJudgementResult result = ConsumerJudgement.Evaluate(request, F.Read(observed));
+
+        Complete(result);
+        Assert.Equal(observed, result.Consumer.GetProperty("partitions")[0].GetProperty("observed").GetInt64());
+    }
+
     [Fact]
     public void Given_UnsetCommitForNonemptyWindow_D5_When_Judged_Then_FrontierIsIncomplete() => Incomplete(ConsumerJudgement.Evaluate(F.SetReports(F.Create()), F.Read(-1001)), "consumer_commit_frontier_short");
 

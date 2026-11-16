@@ -61,6 +61,7 @@ public sealed class ConsumerArtifactTests
     }
 
     [Theory]
+    [InlineData(65535, false)]
     [InlineData(65536, false)]
     [InlineData(65537, true)]
     public async Task Given_RegistrationByteBoundary_U3_When_Loaded_Then_EnforcesWireLimit(int size, bool invalid)
@@ -156,6 +157,7 @@ public sealed class ConsumerArtifactTests
     }
 
     [Theory]
+    [InlineData(65535, false)]
     [InlineData(65536, false)]
     [InlineData(65537, true)]
     public async Task Given_RowByteBoundary_U4_When_Loaded_Then_LimitIncludesLineFeed(int size, bool invalid)
@@ -206,6 +208,7 @@ public sealed class ConsumerArtifactTests
 
     [Theory]
     [InlineData("unknown", true)]
+    [InlineData("65535", false)]
     [InlineData("65536", false)]
     [InlineData("65537", true)]
     public async Task Given_CompletionShape_U4_When_Loaded_Then_EnforcesReceiptWireContract(string mutation, bool invalid)

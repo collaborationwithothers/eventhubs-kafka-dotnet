@@ -23,7 +23,11 @@ internal sealed class ConsumerArtifactReader(IProducerArtifactStore store, Input
                 var rows=new List<ConsumerRow>();string[] blobs=listing.Names.Where(n=>n.StartsWith(prefix+"record/",StringComparison.Ordinal)).Order(StringComparer.Ordinal).ToArray();
                 for(int index=0;index<blobs.Length;index++)
                 {
-                    artifact=blobs[index];if(artifact!=$"{prefix}record/{index:D6}.jsonl")recordInvalid=true;
+                    artifact=blobs[index];
+                    string recordName=artifact[(prefix.Length+"record/".Length)..];
+                    if(recordName.Length!=12||!recordName.EndsWith(".jsonl",StringComparison.Ordinal)||recordName.AsSpan(0,6).ContainsAnyExceptInRange('0','9'))
+                    { recordInvalid=true;continue; }
+                    if(artifact!=$"{prefix}record/{index:D6}.jsonl")recordInvalid=true;
                     byte[]? bytes=await Read(artifact).ConfigureAwait(false);if(bytes is null){recordInvalid=true;continue;}
                     if(bytes.Length==0||bytes[^1]!=(byte)'\n'){recordInvalid=true;continue;}
                     int start=0,lineCount=0;
@@ -52,7 +56,14 @@ internal sealed class ConsumerArtifactReader(IProducerArtifactStore store, Input
         }
         catch(Exception e) when(!token.IsCancellationRequested && e is RequestFailedException or OperationCanceledException or InputLimitExceededException or IOException or TimeoutException)
         { diagnostics.Add(new("consumer_record_unavailable",Artifact:artifact,Detail:e.GetType().Name));return new(members,count,true,diagnostics); }
-        async Task<byte[]?> Read(string name){byte[]? bytes=await Bounded(t=>store.ReadBoundedAsync(name,limits.MaxArtifactBytes,t),token).ConfigureAwait(false);if(bytes is not null){if(bytes.LongLength>limits.MaxArtifactBytes)throw new InputLimitExceededException("consumer_artifact_bytes");budget.ConsumeBytes(bytes.LongLength);}return bytes;}
+        async Task<byte[]?> Read(string name)
+        {
+            byte[]? bytes;
+            try { bytes=await Bounded(t=>store.ReadBoundedAsync(name,limits.MaxArtifactBytes,t),token).ConfigureAwait(false); }
+            catch(ArgumentException exception) { throw new IOException("consumer_artifact_store_rejected_name",exception); }
+            if(bytes is not null){if(bytes.LongLength>limits.MaxArtifactBytes)throw new InputLimitExceededException("consumer_artifact_bytes");budget.ConsumeBytes(bytes.LongLength);}
+            return bytes;
+        }
     }
     private async Task<T> Bounded<T>(Func<CancellationToken,Task<T>> action,CancellationToken token)
     {
