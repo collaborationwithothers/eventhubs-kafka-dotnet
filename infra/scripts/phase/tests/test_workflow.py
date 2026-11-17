@@ -792,12 +792,12 @@ esac
 
 class B10AbruptWorkflowTests(unittest.TestCase):
     # SHA-256 of exact workflow bytes at merged PR1 74be825cb6ac71c2c70a6612f3fa0910dcdc52ef,
-    # except the .NET verification logging update authorized in the PR407 receipt, the job split of issue #441, the test shards of issue #452, and the mutation runtime changes of issue #474.
+    # except the .NET verification logging update authorized in the PR407 receipt, the job split of issue #441, the test shards of issue #452, the mutation runtime changes of issue #474, and the cohort test discovery of issue #535.
     # Actions checks out one commit; preservation must not require Git history.
     BASE_WORKFLOWS = {
         '.github/workflows/cluster-smoke.yml': 'e9266d30ff356782918f5fc5b048963265c58a48a3ea6c4733496374f30e3196',
         '.github/workflows/docs-advisory.yml': '39bea63dea8fb37d330e2be1b74782bdc33b3d2655e804ee6b78a231263475ec',
-        '.github/workflows/dotnet-verification.yml': '8b61d6c8a51c097efec6d344fb86d9e6d942d5bd2eed72ca5b2d52043c167d65',
+        '.github/workflows/dotnet-verification.yml': '894bd2a0506a6f8f42e3fbf4fa336713a63fb12c1f85cdc9f9973da694da0bfa',
         '.github/workflows/scenario.yml': '9074eaa66c904a21c49aa8a9b08752de37de126edcd055836aaed3804eb15ba8',
         '.github/workflows/sweeper.yml': 'fdff4a41ab1df0ade1c8e6d216adaeba6aba13dc6415b0b184de1101d7dc2234',
         '.github/workflows/verifier-c5-mutation.yml': '727bd42cb29f1a8cb67ac43ebbbc9db34c190887889b9971e12fee80442ca6fb',
