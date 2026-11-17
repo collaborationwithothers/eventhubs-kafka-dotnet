@@ -311,7 +311,7 @@
     "tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py": "3771b676b8d5856eb34705dcaa3e9c34ffd8184dd514179a1bf85ee7535fb16f",
     "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": "c147bb8000ef1273609052660e80b20c8da8bf33a77a0df65a94d32a5f7a1c40",
     "tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json": "08dc4239d731048aabf4fc7683887121b951d0226a16d1a4293dd57e6de10001",
-    "tests/Parchwell.Verifier.Tests/NativeMonitoring/VerifierNativeMonitoringTests.cs": "4307cbf3c91e3512180463f29103b03b0b8467fe956f4af81a37d77cfdc2dfe9",
+    "tests/Parchwell.Verifier.Tests/NativeMonitoring/VerifierNativeMonitoringTests.cs": "4d907495debffed9b44a282f817286b63bf0a8882330f3453717a11679e30221",
     "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj": "a3d7fe4824fb1f4c11d5bdca6438d04c92eec1c3614e9db02df27f232468721a",
     "tests/Parchwell.Verifier.Tests/Phase/B10IntakeWireTests.cs": "7c4e96508b3d2ad28ca613e8bb33570b41d50082a95855cb7e57fc240743a315",
     "tests/Parchwell.Verifier.Tests/Phase/B10RegistrationTests.cs": "9027fe0c884e57baf8f46b88427af682621deebf71f34ecc76b34d0f762e6553",
@@ -5807,9 +5807,10 @@
           "tests/Parchwell.Verifier.Tests/NativeMonitoring/VerifierNativeMonitoringTests.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
-              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/NativeMonitoring/VerifierNativeMonitoringTests.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 4307cbf3c91e3512180463f29103b03b0b8467fe956f4af81a37d77cfdc2dfe9."
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/NativeMonitoring/VerifierNativeMonitoringTests.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 4307cbf3c91e3512180463f29103b03b0b8467fe956f4af81a37d77cfdc2dfe9.",
+              "Hari explicitly accepted the same retained-estimate runtime uncertainty for the exact corrected verifier-test SHA-256 4d907495debffed9b44a282f817286b63bf0a8882330f3453717a11679e30221 in https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6947446988, adopting https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943603607. Source correction 1e159253a92bd53cb8efe8d9466297ddaf9c48aa passes the xUnit test cancellation token instead of the default token; preserve preceding assessment history. No timing-neutrality or new measurement is claimed. Original measured maps, estimates, evidence, provisional status, exact tool exceptions and mandatory later full main-only mutation acceptance remain unchanged."
             ],
-            "current_sha256": "4307cbf3c91e3512180463f29103b03b0b8467fe956f4af81a37d77cfdc2dfe9"
+            "current_sha256": "4d907495debffed9b44a282f817286b63bf0a8882330f3453717a11679e30221"
           },
           "tests/Parchwell.Verifier.Tests/Support/NativeMonitoringTestSupport.cs": {
             "basis": [
@@ -6898,9 +6899,10 @@
           "tests/Parchwell.Verifier.Tests/NativeMonitoring/VerifierNativeMonitoringTests.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
-              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/NativeMonitoring/VerifierNativeMonitoringTests.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 4307cbf3c91e3512180463f29103b03b0b8467fe956f4af81a37d77cfdc2dfe9."
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/NativeMonitoring/VerifierNativeMonitoringTests.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 4307cbf3c91e3512180463f29103b03b0b8467fe956f4af81a37d77cfdc2dfe9.",
+              "Hari explicitly accepted the same retained-estimate runtime uncertainty for the exact corrected verifier-test SHA-256 4d907495debffed9b44a282f817286b63bf0a8882330f3453717a11679e30221 in https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6947446988, adopting https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943603607. Source correction 1e159253a92bd53cb8efe8d9466297ddaf9c48aa passes the xUnit test cancellation token instead of the default token; preserve preceding assessment history. No timing-neutrality or new measurement is claimed. Original measured maps, estimates, evidence, provisional status, exact tool exceptions and mandatory later full main-only mutation acceptance remain unchanged."
             ],
-            "current_sha256": "4307cbf3c91e3512180463f29103b03b0b8467fe956f4af81a37d77cfdc2dfe9"
+            "current_sha256": "4d907495debffed9b44a282f817286b63bf0a8882330f3453717a11679e30221"
           },
           "tests/Parchwell.Verifier.Tests/Support/NativeMonitoringTestSupport.cs": {
             "basis": [
