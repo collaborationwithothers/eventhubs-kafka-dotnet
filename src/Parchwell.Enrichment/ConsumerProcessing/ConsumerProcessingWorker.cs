@@ -1,6 +1,6 @@
 using Confluent.Kafka;
 using Microsoft.Extensions.Options;
-using Parchwell.Enrichment.NativeMonitoring;
+using Parchwell.Enrichment.Common.NativeMonitoring;
 
 namespace Parchwell.Enrichment.ConsumerProcessing;
 

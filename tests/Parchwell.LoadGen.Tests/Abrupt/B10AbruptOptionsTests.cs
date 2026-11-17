@@ -253,6 +253,9 @@ public sealed class B10AbruptOptionsTests
     public async Task Given_ValidConfigurationWithUnmountedBindings_When_ValidatorEntryRuns_Then_ValidatesWithoutOpeningThem(string role)
     {
         var values = Valid(role);
+        foreach (string key in new[] { "BlobEndpoint", "RunId", "Phase", "ScenarioId", "ConfigurationId", "JobName", "PodUid", "SourceCommit" })
+            values["NativeMonitoring__" + key] = values[B10AbruptOptions.Prefix + key];
+        values["NativeMonitoring__BlobContainer"] = "native-monitoring";
         string path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture), "not-mounted.json");
         values[B10AbruptOptions.Prefix + (role == "successor" ? "PredecessorBindingPath" : "StartLineBindingPath")] = path;
         using var environment = new EnvironmentScope(values);
@@ -418,7 +421,7 @@ public sealed class B10AbruptOptionsTests
         private readonly Dictionary<string, string?> _original = new(StringComparer.Ordinal);
         internal EnvironmentScope(IEnumerable<KeyValuePair<string, string>> values)
         {
-            string[] prefixes = [B10AbruptOptions.Prefix, "LoadGen__", "Verifier__", "SingleAction__", "ProbeV2__", "IdleObservation__", "SeedF04__"];
+            string[] prefixes = [B10AbruptOptions.Prefix, "LoadGen__", "NativeMonitoring__", "Verifier__", "SingleAction__", "ProbeV2__", "IdleObservation__", "SeedF04__"];
             foreach (string name in Environment.GetEnvironmentVariables().Keys.Cast<string>().Where(name => prefixes.Any(prefix => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))))
             {
                 _original[name] = Environment.GetEnvironmentVariable(name);

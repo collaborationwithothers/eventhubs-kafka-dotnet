@@ -1,7 +1,7 @@
 #pragma warning disable CA1707
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
-using Parchwell.Enrichment.NativeMonitoring;
+using Parchwell.Enrichment.Common.NativeMonitoring;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Statistics;
 using Xunit;

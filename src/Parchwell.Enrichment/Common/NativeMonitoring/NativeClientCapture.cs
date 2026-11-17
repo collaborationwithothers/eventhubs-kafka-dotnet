@@ -1,7 +1,7 @@
 using Confluent.Kafka;
 using Parchwell.Kafka.Statistics;
 
-namespace Parchwell.Enrichment.NativeMonitoring;
+namespace Parchwell.Enrichment.Common.NativeMonitoring;
 
 public sealed class NativeClientCapture(KafkaNativeMonitoringCoordinator coordinator)
 {

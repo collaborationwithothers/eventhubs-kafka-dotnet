@@ -37,11 +37,13 @@ public sealed class LoadGenNativeAuthenticationIntegrationTests
         Dictionary<string, string> values = LoadGenHostProcessTests.CreateInputs(output);
         values["LoadGen__RunId"] = runId;
         values["LoadGen__JobName"] = $"{runId}-c0-r1-loadgen";
+        LoadGenHostProcessTests.SyncNativeMonitoring(values);
         string[] args = values.Select(pair => "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal) + "=" + pair.Value).ToArray();
         var tokenProvider = new FailingTokenProvider();
         var telemetry = new RecordingTelemetryRegistration();
         using IHost host = Program.BuildHostCore(args, services =>
         {
+            services.AddSingleton<IKafkaNativeMonitoringStore>(new NativeMonitoringFixture());
             services.RemoveAll<IKafkaTokenProvider>();
             services.AddSingleton<IKafkaTokenProvider>(tokenProvider);
         }, telemetry.Register);
@@ -157,11 +159,13 @@ public sealed class LoadGenNativeAuthenticationIntegrationTests
         Dictionary<string, string> values = LoadGenHostProcessTests.CreateInputs(output);
         values["LoadGen__RunId"] = runId;
         values["LoadGen__JobName"] = $"{runId}-c0-r1-loadgen";
+        LoadGenHostProcessTests.SyncNativeMonitoring(values);
         string[] args = values.Select(pair => "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal) + "=" + pair.Value).ToArray();
         var tokenProvider = new RefreshFailingTokenProvider(failure);
         var telemetry = new RecordingTelemetryRegistration();
         using IHost host = Program.BuildHostCore(args, services =>
         {
+            services.AddSingleton<IKafkaNativeMonitoringStore>(new NativeMonitoringFixture());
             services.RemoveAll<IKafkaTokenProvider>();
             services.AddSingleton<IKafkaTokenProvider>(tokenProvider);
         }, telemetry.Register);

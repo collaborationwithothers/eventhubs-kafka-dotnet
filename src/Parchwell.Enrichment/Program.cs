@@ -13,7 +13,7 @@ using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Telemetry;
 using Parchwell.Kafka.Statistics;
-using Parchwell.Enrichment.NativeMonitoring;
+using Parchwell.Enrichment.Common.NativeMonitoring;
 
 namespace Parchwell.Enrichment;
 

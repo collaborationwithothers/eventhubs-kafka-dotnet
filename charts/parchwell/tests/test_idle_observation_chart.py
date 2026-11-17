@@ -169,7 +169,7 @@ def main():
     schema = json.loads((CHART / 'values.schema.json').read_text())
     const = schema['properties']['runtime']['properties']['bounds']['properties']['idle_observation']['const']
     assert DEFAULTS['idle_observation'] == LIMITS == const
-    assert len(expected_names()) == 45 and len(judge_expected_names()) == 41
+    assert len(expected_names()) == 54 and len(judge_expected_names()) == 50
     assert len(LIMITS['judge']) == 11 and LIMITS['execution']['judge_job_seconds'] == 720
     cases = list(positive_cases())
     assert len(cases) == 8
