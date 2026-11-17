@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Parchwell.Kafka.Statistics;
-using Parchwell.LoadGen.Run.Monitoring;
+using Parchwell.LoadGen.Common.Monitoring;
 
 namespace Parchwell.LoadGen.Tests.Host;
 

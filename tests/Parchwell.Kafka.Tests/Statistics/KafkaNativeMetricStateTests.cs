@@ -26,11 +26,11 @@ public sealed class KafkaNativeMetricStateTests
             string json = $$$$$$"""
                 {"name":"native","client_id":"client","type":"producer","ts":{{{{{{timestamp}}}}}} ,"time":{{{{{{timestamp}}}}}} ,"age":{{{{{{timestamp}}}}}} ,
                  "tx":{{{{{{count}}}}}} ,"brokers":{"broker":{"name":"broker","nodename":"host:9092","tx":{{{{{{count}}}}}} ,"state":"{{{{{{brokerState}}}}}}","req":{"Produce":{{{{{{count}}}}}} }}},
-                 "topics":{"topic":{"topic":"topic","partitions":{"0":{"partition":0,"txmsgs":{{{{{{count}}}}}} ,"next_ack_seq":{{{{{{sequence}}}}}} }}},
+                 "topics":{"topic":{"topic":"topic","partitions":{"0":{"partition":0,"txmsgs":{{{{{{count}}}}}} ,"next_ack_seq":{{{{{{sequence}}}}}} }}}},
                  "cgrp":{"rebalance_cnt":{{{{{{count}}}}}} },"eos":{"epoch_cnt":{{{{{{count}}}}}} },"fatal":{"cnt":{{{{{{count}}}}}} }}
                 """;
             var projection = KafkaNativeMetricParser.Parse(json);
-            Assert.True(projection.IsValid);
+            Assert.True(projection.IsValid, $"Invalid projection: {string.Join(", ", projection.Diagnostics)}");
             state.Record(projection);
         }
 

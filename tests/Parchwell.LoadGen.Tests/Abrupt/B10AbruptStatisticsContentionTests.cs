@@ -10,7 +10,7 @@ using Parchwell.LoadGen.Run.Abrupt;
 using Parchwell.LoadGen.Run.Execution;
 using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.LoadGen.Run.Evidence;
-using Parchwell.LoadGen.Run.Monitoring;
+using Parchwell.LoadGen.Common.Monitoring;
 using Parchwell.LoadGen.Tests.Host;
 using Xunit;
 

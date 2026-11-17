@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Configuration;
 using Parchwell.LoadGen.IdleObservation;
-using Parchwell.LoadGen.Run.Monitoring;
+using Parchwell.LoadGen.Common.Monitoring;
 using Parchwell.LoadGen.SingleAction;
 using Parchwell.LoadGen.SingleActionV2;
 using Parchwell.LoadGen.Tests.IdleObservation;

@@ -1,7 +1,7 @@
 using System.Text;
 using Parchwell.Kafka.Statistics;
 
-namespace Parchwell.LoadGen.Run.Monitoring;
+namespace Parchwell.LoadGen.Common.Monitoring;
 
 internal delegate bool NativeSourceCapture(string raw, out long sequence);
 

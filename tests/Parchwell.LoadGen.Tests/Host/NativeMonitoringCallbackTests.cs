@@ -3,7 +3,7 @@ using System.Diagnostics.Metrics;
 using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Parchwell.Kafka.Configuration;
-using Parchwell.LoadGen.Run.Monitoring;
+using Parchwell.LoadGen.Common.Monitoring;
 using Parchwell.LoadGen.SingleAction;
 using Parchwell.LoadGen.SingleActionV2;
 using Parchwell.LoadGen.Tests.SingleAction;

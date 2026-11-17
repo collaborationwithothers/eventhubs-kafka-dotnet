@@ -22,6 +22,9 @@ public sealed class KafkaStatisticsMetricsTests
     public void Given_BrokerWindowsAndValidatedDeltas_When_Recording_Then_EmitsStableMetricsAndTags()
     {
         using var listener = new MetricsListener(RunWithMeasurements);
+        using var foreignMeter = new Meter(MeterName);
+        var foreignCounter = foreignMeter.CreateCounter<long>("kafka.librdkafka.client.tx", "count");
+        foreignCounter.Add(1, new KeyValuePair<string, object?>("run", "foreign-run"));
         using var metrics = new KafkaStatisticsMetrics();
         var identity = new KafkaStatisticsIdentity(Scenario, RunWithMeasurements, KafkaClientRole.LoadGenProducer, ClientId);
 
@@ -30,7 +33,9 @@ public sealed class KafkaStatisticsMetricsTests
         metrics.Record(identity, Broker(25, 700, 2, 13), 3, 0);
         metrics.Record(identity, Broker(0, 0, 1, 1), 0, 0);
 
+        Assert.True(listener.HasPublished(foreignMeter));
         AssertMetricContract(listener.PublishedInstruments);
+        Assert.DoesNotContain(listener.PublishedInstruments, instrument => ReferenceEquals(instrument.Meter, foreignMeter));
         AssertMeasurements(listener.Measurements, "kafka.broker.throttle.max_ms", [12, 870, 25, 0], "ms", "LoadGenProducer", RunWithMeasurements);
         AssertMeasurements(listener.Measurements, "kafka.broker.rtt.p99_us", [600, 900, 700, 0], "us", "LoadGenProducer", RunWithMeasurements);
         AssertMeasurements(listener.Measurements, "kafka.broker.req_timeouts", [1, 2, 3, 0], "count", "LoadGenProducer", RunWithMeasurements);
@@ -126,7 +131,10 @@ public sealed class KafkaStatisticsMetricsTests
         Assert.DoesNotContain("partition", tags.Keys);
     }
 
-    private sealed record PublishedInstrument(string MeterName, string Name, string Unit, string Kind);
+    private sealed record PublishedInstrument(Meter Meter, string Name, string Unit, string Kind)
+    {
+        internal string MeterName => Meter.Name;
+    }
 
     private sealed record Measurement(string Name, long Value, string Unit, IReadOnlyDictionary<string, object?> Tags);
 
@@ -136,6 +144,7 @@ public sealed class KafkaStatisticsMetricsTests
         private readonly MeterListener _listener = new();
         private readonly ConcurrentBag<PublishedInstrument> _published = [];
         private readonly ConcurrentBag<Measurement> _measurements = [];
+        private Meter? _ownedMeter;
 
         internal MetricsListener(string runId)
         {
@@ -145,7 +154,7 @@ public sealed class KafkaStatisticsMetricsTests
                 if (instrument.Meter.Name == MeterName)
                 {
                     _published.Add(new PublishedInstrument(
-                        instrument.Meter.Name,
+                        instrument.Meter,
                         instrument.Name,
                         instrument.Unit ?? string.Empty,
                         instrument.GetType().Name));
@@ -157,13 +166,17 @@ public sealed class KafkaStatisticsMetricsTests
                 var copiedTags = tags.ToArray().ToDictionary(tag => tag.Key, tag => tag.Value);
                 if (copiedTags.TryGetValue("run", out var run) && Equals(run, _runId))
                 {
+                    Interlocked.CompareExchange(ref _ownedMeter, instrument.Meter, null);
                     _measurements.Add(new Measurement(instrument.Name, value, instrument.Unit ?? string.Empty, copiedTags));
                 }
             });
             _listener.Start();
         }
 
-        internal IReadOnlyCollection<PublishedInstrument> PublishedInstruments => _published.ToArray();
+        internal IReadOnlyCollection<PublishedInstrument> PublishedInstruments =>
+            _published.Where(instrument => ReferenceEquals(instrument.Meter, Volatile.Read(ref _ownedMeter))).ToArray();
+
+        internal bool HasPublished(Meter meter) => _published.Any(instrument => ReferenceEquals(instrument.Meter, meter));
 
         internal IReadOnlyCollection<Measurement> Measurements => _measurements.ToArray();
 

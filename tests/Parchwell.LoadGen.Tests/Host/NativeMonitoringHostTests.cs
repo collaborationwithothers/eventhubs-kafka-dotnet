@@ -2,7 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Statistics;
-using Parchwell.LoadGen.Run.Monitoring;
+using Parchwell.LoadGen.Common.Monitoring;
 using Xunit;
 
 namespace Parchwell.LoadGen.Tests.Host;

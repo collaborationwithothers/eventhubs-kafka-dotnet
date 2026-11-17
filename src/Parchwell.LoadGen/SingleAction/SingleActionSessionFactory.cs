@@ -2,7 +2,7 @@ using Confluent.Kafka;
 using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Statistics;
-using Parchwell.LoadGen.Run.Monitoring;
+using Parchwell.LoadGen.Common.Monitoring;
 
 namespace Parchwell.LoadGen.SingleAction;
 

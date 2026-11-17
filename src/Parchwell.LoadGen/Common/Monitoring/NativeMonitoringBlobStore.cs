@@ -3,7 +3,7 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Parchwell.Kafka.Statistics;
 
-namespace Parchwell.LoadGen.Run.Monitoring;
+namespace Parchwell.LoadGen.Common.Monitoring;
 
 internal sealed class NativeMonitoringBlobStore(BlobServiceClient client) : IKafkaNativeMonitoringStore
 {

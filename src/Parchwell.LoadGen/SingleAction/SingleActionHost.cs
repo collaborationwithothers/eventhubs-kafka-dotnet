@@ -8,7 +8,7 @@ using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Telemetry;
 using Parchwell.Kafka.Statistics;
-using Parchwell.LoadGen.Run.Monitoring;
+using Parchwell.LoadGen.Common.Monitoring;
 using Parchwell.LoadGen.Common.SingleAction;
 using Parchwell.Scenarios;
 

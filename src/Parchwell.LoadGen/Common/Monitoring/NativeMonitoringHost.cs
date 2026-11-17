@@ -7,7 +7,7 @@ using Azure.Storage.Blobs;
 using Microsoft.Extensions.DependencyInjection;
 using Parchwell.Kafka.Statistics;
 
-namespace Parchwell.LoadGen.Run.Monitoring;
+namespace Parchwell.LoadGen.Common.Monitoring;
 
 internal sealed class NativeMonitoringHost(KafkaNativeMonitoringCoordinator coordinator, string source)
 {

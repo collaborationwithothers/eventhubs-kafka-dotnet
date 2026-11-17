@@ -14,7 +14,7 @@ using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Execution;
 using Parchwell.LoadGen.Run.Input;
 using Parchwell.LoadGen.Run.Ledger;
-using Parchwell.LoadGen.Run.Monitoring;
+using Parchwell.LoadGen.Common.Monitoring;
 using Parchwell.Scenarios;
 using System.Globalization;
 using System.Text;

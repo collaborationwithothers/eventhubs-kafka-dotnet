@@ -17,7 +17,7 @@ using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.LoadGen.Run.Execution;
 using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Input;
-using Parchwell.LoadGen.Run.Monitoring;
+using Parchwell.LoadGen.Common.Monitoring;
 using Parchwell.LoadGen.Run.Publication;
 using Parchwell.LoadGen.Run.Restart;
 using Parchwell.Scenarios;

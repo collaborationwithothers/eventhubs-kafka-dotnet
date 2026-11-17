@@ -7,7 +7,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Statistics;
-using Parchwell.LoadGen.Run.Monitoring;
+using Parchwell.LoadGen.Common.Monitoring;
 using Parchwell.LoadGen.SingleAction;
 using Parchwell.Scenarios;
 using Xunit;
