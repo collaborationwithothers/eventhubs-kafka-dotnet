@@ -24,8 +24,8 @@ public sealed class IntegrationConsumerHostTests
     [Fact]
     public async Task Given_C03Fixture_U1_When_ConsumerExtensionRuns_Then_EveryRootFieldIsByteIdentical()
     {
-        using var plain = new HostEvidenceBuilder(scenarioId: "C03", phase: "C0", scenarioSourceId: "A01");
-        using var extended = new HostEvidenceBuilder(scenarioId: "C03", phase: "C0", scenarioSourceId: "A01");
+        using var plain = new HostEvidenceBuilder(scenarioId: "C03", phase: "C0");
+        using var extended = new HostEvidenceBuilder(scenarioId: "C03", phase: "C0");
         Assert.Equal(0, await plain.Verify().ExecuteAsync(TestContext.Current.CancellationToken));
         var options = extended.Options;
         var limits = new InputLimits(options.MaxInputDepth!.Value, options.MaxArtifactBytes!.Value,
@@ -75,7 +75,7 @@ public sealed class IntegrationConsumerHostTests
     [InlineData("aggregate-limit")]
     public async Task Given_UnavailableConsumerEvidence_U20_When_Verified_Then_WritesResultAndFailureReceipt(string failure)
     {
-        using var fixture=new HostEvidenceBuilder(scenarioId:"C03",phase:"C0",scenarioSourceId:"A01");
+        using var fixture=new HostEvidenceBuilder(scenarioId:"C03",phase:"C0");
         var store=new ConsumerWireFixture();
         string prefix=PhaseIdentity.RepeatPrefix(fixture.Options.RunId!,fixture.Options.Phase!,1);
         var renamed=store.Blobs.ToDictionary(pair=>pair.Key.Replace(ConsumerWireFixture.Prefix,prefix,StringComparison.Ordinal),pair=>pair.Value,StringComparer.Ordinal);
@@ -137,7 +137,7 @@ public sealed class IntegrationConsumerHostTests
         string rootName, string consumerName)
     {
         VerifierResultStatus rootStatus = ParseStatus(rootName), consumerStatus = ParseStatus(consumerName);
-        using var fixture = new HostEvidenceBuilder(scenarioId: "C03", phase: "C0", scenarioSourceId: "A01");
+        using var fixture = new HostEvidenceBuilder(scenarioId: "C03", phase: "C0");
         if (rootStatus == VerifierResultStatus.Invalid) fixture.Inputs["manifest.json"] = null;
         if (rootStatus == VerifierResultStatus.Incomplete) fixture.Kafka.ReadMetadata = () => KafkaSessionTestSupport.Metadata();
         var completion = new VerifierCompletionState();

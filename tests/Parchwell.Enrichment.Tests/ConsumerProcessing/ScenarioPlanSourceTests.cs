@@ -89,6 +89,31 @@ public sealed class ScenarioPlanSourceTests
         Assert.StartsWith("consumer_processing_failed reason=consumer_plan_invalid ", harness.Error.ToString(), StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("C10")]
+    [InlineData("C01")]
+    public async Task Given_C10_or_C01_with_phase_C0_When_the_host_runs_without_a_configured_source_Then_it_exits_1_and_writes_consumer_plan_invalid(string scenario)
+    {
+        ConsumerProcessingOptions options = Options(scenario, "C0", "subject");
+        Dictionary<string, string?> values = ConsumerProcessingHostTests.HostConfiguration(options);
+        using var error = new StringWriter(System.Globalization.CultureInfo.InvariantCulture);
+        TextWriter previous = Console.Error;
+        try
+        {
+            // The host writes to Console.Error; the redirect is restored below.
+            Console.SetError(error);
+            int result = await Program.RunAsync(["--consumer-processing"], builder =>
+            {
+                builder.Configuration.Sources.Clear();
+                builder.Configuration.AddInMemoryCollection(values);
+                builder.Services.AddSingleton<Func<IConsumerRecordStore>>(_ => () => throw new InvalidOperationException("store_not_expected"));
+            });
+            Assert.Equal(1, result);
+        }
+        finally { Console.SetError(previous); }
+        Assert.Contains("consumer_processing_failed reason=consumer_plan_invalid ", error.ToString(), StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Given_a_host_without_a_configure_registration_When_resolving_the_plan_source_Then_it_is_the_production_source_and_a_configured_one_wins()
     {

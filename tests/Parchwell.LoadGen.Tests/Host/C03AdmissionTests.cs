@@ -68,19 +68,17 @@ public sealed class C03AdmissionTests
     [Theory]
     [InlineData("C0")]
     [InlineData("C1")]
-    public async Task Given_the_committed_C03_files_When_loading_and_resolving_as_the_worker_does_Then_the_producer_settings_equal_the_baseline(string configuration)
+    public async Task Given_the_LoadGen_host_registrations_When_loading_and_resolving_C03_as_the_worker_does_Then_the_producer_settings_equal_the_baseline(string configuration)
     {
-        var source = new FileSystemScenarioSource(Root());
-        var limits = Options.Create(new ScenarioLoadOptions { MaxDocumentCharacters = 100000, MaxNestingDepth = 32, MaxScalarCharacters = 10000, MaxParserEvents = 10000 });
-        LoadedScenario loaded = await new ScenarioLoader(source, limits).LoadAsync("C03", TestContext.Current.CancellationToken);
-        var services = new ServiceCollection();
-        foreach (KafkaClientRole kafkaRole in Enum.GetValues<KafkaClientRole>())
-            services.AddParchwellKafka(kafkaRole, value => { value.NamespaceName = "unit-test"; value.ClientId = "worker-pod"; value.EnrichmentGroupId = "worker-group"; });
-        using ServiceProvider provider = services.BuildServiceProvider();
-        KafkaConfigurationFactory factory = provider.GetRequiredService<KafkaConfigurationFactory>();
-        ResolvedScenario resolved = new ScenarioResolver(factory).Resolve(loaded);
+        // The host is the real one: its scenario source, loader, resolver and role registrations are what a live C03 load generator uses.
+        string[] args = LoadGenHostProcessTests.CreateInputs(Path.Combine(Path.GetTempPath(), "c03-" + Guid.NewGuid().ToString("N")))
+            .Select(pair => "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal) + "=" + pair.Value).ToArray();
+        using IHost host = Program.BuildHostCore(args, _ => { }, (_, configure) => configure(new ParchwellTelemetryOptions()));
+        LoadedScenario loaded = await host.Services.GetRequiredService<ScenarioLoader>().LoadAsync("C03", TestContext.Current.CancellationToken);
+        ResolvedScenario resolved = host.Services.GetRequiredService<ScenarioResolver>().Resolve(loaded);
         // The two checks LoadGenWorker makes after resolving: the configuration is declared and has a LoadGenProducer role.
         ResolvedRoleConfiguration producer = resolved.Configurations[configuration].Roles[KafkaClientRole.LoadGenProducer];
+        KafkaConfigurationFactory factory = host.Services.GetRequiredService<KafkaConfigurationFactory>();
         Assert.Equal(factory.CreateLoadGenProducer().Configuration.OrderBy(pair => pair.Key, StringComparer.Ordinal),
             producer.Settings.Select(pair => KeyValuePair.Create(pair.Key, pair.Value.Value)).OrderBy(pair => pair.Key, StringComparer.Ordinal));
         Assert.DoesNotContain(producer.Settings, pair => pair.Value.Override is not null);

@@ -64,6 +64,7 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
         Resolver = new ScenarioResolver(services.GetRequiredService<KafkaConfigurationFactory>());
         string root = RepositoryRoot();
         string scenarioPath = "scenarios/" + scenarioId + "/scenario.yaml";
+        // C03 always reads the committed C03 definition: its declaration checks reject another item's text relabelled C03, so scenarioSourceId does not apply to it.
         scenarioDocuments = new(StringComparer.Ordinal)
         {
             [scenarioPath] = File.ReadAllText(Path.Combine(root, "scenarios", scenarioId == "C03" ? "C03" : scenarioSourceId ?? scenarioId, "scenario.yaml"))

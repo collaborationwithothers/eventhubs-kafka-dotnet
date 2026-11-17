@@ -21,7 +21,7 @@ public sealed class StartSnapshotTests
     [Fact]
     public async Task Given_TwoConsumerMembers_U17_When_Starting_Then_SnapshotsBothReadsAndKeepsTwoArtifactReceipt()
     {
-        using var fixture=new HostEvidenceBuilder(scenarioId:"C03",scenarioSourceId:"A01");
+        using var fixture=new HostEvidenceBuilder(scenarioId:"C03");
         var order=new List<string>();var store=new SnapshotStore(fixture,order);var completion=new VerifierCompletionState();
         fixture.Kafka.Query=_=>{order.Add("watermarks");fixture.Kafka.Clock.Advance(20);return new WatermarkOffsets(0,0);};
         StartLineHandler handler=Handler(fixture,store,completion);
@@ -45,7 +45,7 @@ public sealed class StartSnapshotTests
     [Fact]
     public async Task Given_MembersWithoutRows_U17_When_Starting_Then_RecordsMinusOneForBothReads()
     {
-        using var fixture=new HostEvidenceBuilder(scenarioId:"C03",scenarioSourceId:"A01");
+        using var fixture=new HostEvidenceBuilder(scenarioId:"C03");
         var store=new SnapshotStore(fixture,[]){EmptyRecords=true};var completion=new VerifierCompletionState();
         Assert.Equal(0,await Handler(fixture,store,completion).ExecuteAsync(TestContext.Current.CancellationToken));
         ConsumerStartSnapshot snapshot=ConsumerArtifactCodec.ReadSnapshot(store.Snapshot!);
@@ -55,7 +55,7 @@ public sealed class StartSnapshotTests
     [Fact]
     public async Task Given_AbsentOptionalInputBudgets_U17_When_RecordExceedsOutputBudget_Then_ReadsFullRecordAndWritesBoundedSnapshot()
     {
-        using var fixture=new HostEvidenceBuilder(scenarioId:"C03",scenarioSourceId:"A01");
+        using var fixture=new HostEvidenceBuilder(scenarioId:"C03");
         fixture.Options.MaxArtifactBytes=null;fixture.Options.MaxTotalInputBytes=null;
         fixture.Options.MaxRowBytes=null;fixture.Options.MaxRowsPerArtifact=null;fixture.Options.MaxInputEntries=null;
         fixture.Options.MaxOutputBytes=2048;
@@ -74,8 +74,8 @@ public sealed class StartSnapshotTests
     [Fact]
     public async Task Given_B10_U17_When_StartingWithConsumerReaderAvailable_Then_PerformsNoConsumerReadAndKeepsBytes()
     {
-        using var baseline=new HostEvidenceBuilder(scenarioId:"B10",scenarioSourceId:"A01");
-        using var current=new HostEvidenceBuilder(scenarioId:"B10",scenarioSourceId:"A01");
+        using var baseline=new HostEvidenceBuilder(scenarioId:"B10");
+        using var current=new HostEvidenceBuilder(scenarioId:"B10");
         var order=new List<string>();var store=new SnapshotStore(current,order);var oldCompletion=new VerifierCompletionState();var completion=new VerifierCompletionState();
         ConfigureStartLine(baseline);
         var old=new StartLineHandler(Options.Create(baseline.Options),baseline.Kafka.Clock,new VerifierKafkaSessionFactory(_=>baseline.Kafka.Session),baseline,oldCompletion);
@@ -98,7 +98,7 @@ public sealed class StartSnapshotTests
     [InlineData("snapshot")]
     public async Task Given_ConsumerReadOrSnapshotFailure_U17_When_WorkerRuns_Then_ExitsOneAndPublishesNoCompletion(string failure)
     {
-        using var fixture=new HostEvidenceBuilder(scenarioId:"C03",scenarioSourceId:"A01");
+        using var fixture=new HostEvidenceBuilder(scenarioId:"C03");
         var order=new List<string>();var store=new SnapshotStore(fixture,order){Failure=failure};var completion=new VerifierCompletionState();
         var state=new VerifierExecutionState();
         using IHost host=new HostBuilder().ConfigureServices(services=>
