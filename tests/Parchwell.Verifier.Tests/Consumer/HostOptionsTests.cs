@@ -33,6 +33,8 @@ public sealed class HostOptionsTests
     public async Task Given_ConsumerPlanBoundary_U15_When_Starting_Then_RejectsInvalidPlanBeforeClients(string input, bool valid)
     {
         VerifierHostOptions options = ConsumerOptions();
+        // The production source now serves C03, so the case with no usable source uses C10, which it rejects (standing fixture rule (a)).
+        if (input == "no-source") options.ScenarioId = "C10";
         ConsumerVerificationPlan plan = Plan();
         switch (input)
         {

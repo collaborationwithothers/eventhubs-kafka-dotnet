@@ -53,13 +53,20 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
             baseline.NamespaceName = Options.NamespaceName;
             baseline.ClientId = Options.VerifierClientId;
         });
+        // The committed C03 definition declares EnrichmentConsumer too, so the resolver needs it registered (standing fixture rule (a)).
+        registrations.AddParchwellKafka(KafkaClientRole.EnrichmentConsumer, baseline =>
+        {
+            baseline.NamespaceName = Options.NamespaceName;
+            baseline.ClientId = Options.VerifierClientId;
+            baseline.EnrichmentGroupId = "synthetic-enrichment-group";
+        });
         services = registrations.BuildServiceProvider();
         Resolver = new ScenarioResolver(services.GetRequiredService<KafkaConfigurationFactory>());
         string root = RepositoryRoot();
         string scenarioPath = "scenarios/" + scenarioId + "/scenario.yaml";
         scenarioDocuments = new(StringComparer.Ordinal)
         {
-            [scenarioPath] = File.ReadAllText(Path.Combine(root, "scenarios", scenarioSourceId ?? scenarioId, "scenario.yaml"))
+            [scenarioPath] = File.ReadAllText(Path.Combine(root, "scenarios", scenarioId == "C03" ? "C03" : scenarioSourceId ?? scenarioId, "scenario.yaml"))
                 .Replace("id: " + (scenarioSourceId ?? scenarioId) + "\n", "id: " + scenarioId + "\n", StringComparison.Ordinal),
             ["scenarios/profiles/lifecycle-1k.yaml"] = ""
         };
