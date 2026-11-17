@@ -142,8 +142,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m unittest discover -s tests/Parchwell.Verifier.Tests/Mutation -p test_c5_runtime.py -v
-          python3 -m unittest discover -s tests/Parchwell.Verifier.Tests/Mutation -p test_c5_workflow.py -v
+          python3 -m unittest discover -s tests/Parchwell.Verifier.Tests/Mutation -p 'test_c5_*.py' -v
           args=(check --head "$PARCHWELL_HEAD_SHA" --qualification tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json)
           if [ "$PARCHWELL_EVENT" = pull_request ]; then
             args+=(--base "$PARCHWELL_BASE_SHA")
