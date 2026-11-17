@@ -39,4 +39,4 @@ A consumer window must not exceed 1620000 ms: the 1800 s member Job deadline, mi
 
 ## Not yet in place
 
-The `judge` step accepts these scenarios since the consumer phase judge merged. The evidence archive does not yet admit C01, C03 or C10, so a consumer dispatch records an archive failure in its report summary until archive support merges.
+The `judge` step accepts these scenarios since the consumer phase judge merged. The evidence archive admits C01, C03 and C10 with their consumer records, as the [phase evidence retention](archive-smoke.md#phase-evidence-retention) section describes. A repeat whose subject kills itself writes no native-monitoring index, so its archive records a native-monitoring gap until Hari decides how to treat it (item D2 of the issue 531 plan).

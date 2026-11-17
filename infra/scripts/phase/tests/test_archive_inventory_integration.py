@@ -868,7 +868,8 @@ class InventoryIntegrationTests(unittest.TestCase):
                     for mode in ('consumer-subject', 'consumer-witness', 'start-line', 'loadgen', 'verify'):
                         h.job(mode, f'c03-42-1-c0-r{repeat}-{mode}', repeat=repeat)
                     h.status['modes'].append({'mode':'consumer-readiness', 'repeat':repeat,
-                                              'job':f'c03-42-1-c0-r{repeat}-consumer-readiness', 'outcome':'complete'})
+                                              'job':f'c03-42-1-c0-r{repeat}-consumer-readiness', 'outcome':'ready',
+                                              'polls':1, 'elapsed_seconds':5, 'last_condition':'ready'})
                 h.job('judge', 'c03-42-1-c0-judge')
                 job = 'c03-42-1-c0-r1-consumer-subject'
                 index = f'c03-42-1/C0/{job}/uid/native-monitoring/index.json'

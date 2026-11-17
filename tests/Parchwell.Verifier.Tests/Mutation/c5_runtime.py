@@ -303,6 +303,7 @@ def write_performance(run_file, jobs_file, output_dir, expected_shards):
 """Offline runtime qualification checks for the verifier mutation layout."""
 
 import ast
+import functools
 import hashlib
 import json
 import math
@@ -436,10 +437,11 @@ def project_closure(ref, names):
     return projects, extra
 
 
-def input_maps(ref):
+def input_maps(ref, declared_targets=None):
     names = files(ref)
     projects, extra = project_closure(ref, names)
-    target_paths = {f'src/Parchwell.Verifier/{path}' for path in workflow.TARGETS.values() for path in [path[0]]}
+    declared_targets = workflow.TARGETS if declared_targets is None else declared_targets
+    target_paths = {f'src/Parchwell.Verifier/{value[0]}' for value in declared_targets.values()}
     selected = set(projects) | extra | {'global.json', 'Directory.Build.props', 'Directory.Packages.props',
         '.config/dotnet-tools.json', 'docs/operations/a01-runtime-limits.json', RUNNER, WORKFLOW,
         'tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py',
@@ -474,7 +476,7 @@ def input_maps(ref):
         elif p == WORKFLOW:
             data = execution_workflow(data)
         result[p] = digest(data)
-    targets = {p: digest(blob(ref, 'src/Parchwell.Verifier/' + p)) for p, _ in workflow.TARGETS.values()}
+    targets = {p: digest(blob(ref, 'src/Parchwell.Verifier/' + p)) for p, _ in declared_targets.values()}
     return result, targets
 
 
@@ -785,8 +787,10 @@ def provenance_shape(contexts):
     if not isinstance(contexts, dict) or not contexts:
         raise ValueError('missing timing provenance')
     for binding, context in contexts.items():
-        if not isinstance(binding, str) or not HEX.fullmatch(binding) or not isinstance(context, dict) or set(context) != {'shared_inputs', 'target_sources', 'assessments'}:
+        if not isinstance(binding, str) or not HEX.fullmatch(binding) or not isinstance(context, dict) or set(context) not in ({'shared_inputs', 'target_sources', 'assessments'}, {'shared_inputs', 'target_sources', 'assessments', 'source_commit'}):
             raise ValueError('invalid timing provenance')
+        if 'source_commit' in context and (not isinstance(context['source_commit'], str) or not re.fullmatch(r'[0-9a-f]{40}', context['source_commit'])):
+            raise ValueError('invalid provenance commit')
         for key in ('shared_inputs', 'target_sources'):
             mapping = context[key]
             if not isinstance(mapping, dict) or any(not isinstance(p, str) or not p or not isinstance(h, str) or not HEX.fullmatch(h) for p, h in mapping.items()):
@@ -824,10 +828,199 @@ def evidence_matches_target(path, record):
     return False
 
 
-def provenance_errors(context, shared, targets, owner):
+COHORT_LITERAL_NAMES = {'COHORT_BOOTSTRAP_SPANS', 'COHORT_SOURCE_SHA256',
+                        'COHORT_INVENTORY_SHA256', 'COHORT_COORDINATES'}
+CONFIG_PATH = 'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json'
+RUNNER_REFERENCE_COMMIT = '1e38605cceaf14c92ec9157e8eead43eedbf3a8d'
+
+
+def runner_literals(data, legacy=False):
+    """Extract only reviewed literal declarations, retaining every other byte of runner code."""
+    tree = ast.parse(data.decode('utf-8'))
+    names = ({'COHORT_BOOTSTRAP_SPANS'} if legacy else COHORT_LITERAL_NAMES) | {'TARGETS', 'PRIMARY_CUTS'}
+    assignments = {}
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) and node.targets[0].id in names:
+            name = node.targets[0].id
+            if name in assignments:
+                raise ValueError('duplicate runner declaration')
+            assignments[name] = node
+    if set(assignments) != names:
+        raise ValueError('missing runner declaration')
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)) and node.id in names:
+            if not any(node is assignment.targets[0] for assignment in assignments.values()):
+                raise ValueError('runner declaration rebound')
+    values = {name: ast.literal_eval(node.value) for name, node in assignments.items()}
+    targets, cuts = values['TARGETS'], values['PRIMARY_CUTS']
+    if (not isinstance(targets, dict) or not targets or any(
+            not isinstance(k, str) or not k or not isinstance(v, tuple) or len(v) != 2
+            or not isinstance(v[0], str) or not v[0] or type(v[1]) is not int or v[1] < 1
+            for k, v in targets.items()) or len({v[0] for v in targets.values()}) != len(targets)):
+        raise ValueError('invalid target table')
+    if (not isinstance(cuts, dict) or any(k not in targets or not isinstance(v, tuple)
+            or any(type(n) is not int or n <= 0 for n in v) for k, v in cuts.items())):
+        raise ValueError('invalid cuts table')
+    spans = values['COHORT_BOOTSTRAP_SPANS']
+    if (not isinstance(spans, dict) or not spans or any(
+            not isinstance(k, str) or not k.isdigit() or not isinstance(v, tuple) or len(v) != 2
+            or any(type(n) is not int or n < 0 for n in v) or v[0] >= v[1] for k, v in spans.items())):
+        raise ValueError('invalid cohort declarations')
+    coordinates = values.get('COHORT_COORDINATES')
+    if not legacy and (not isinstance(coordinates, tuple) or not coordinates or any(
+                not isinstance(v, tuple) or len(v) != 4 or any(type(n) is not int or n < 0 for n in v)
+                for v in coordinates)
+            or any(not isinstance(values[k], str) or not HEX.fullmatch(values[k])
+                   for k in ('COHORT_SOURCE_SHA256', 'COHORT_INVENTORY_SHA256'))):
+        raise ValueError('invalid cohort declarations')
+    # literal_eval normally accepts duplicate dict keys; reject them before masking.
+    for name in ('TARGETS', 'PRIMARY_CUTS', 'COHORT_BOOTSTRAP_SPANS'):
+        node = assignments[name].value
+        if not isinstance(node, ast.Dict) or len(node.keys) != len(values[name]):
+            raise ValueError('duplicate literal key')
+    lines = data.splitlines(keepends=True)
+    offsets = [0]
+    for line in lines:
+        offsets.append(offsets[-1] + len(line))
+    masked = data
+    edits = []
+    for node in assignments.values():
+        value = node.value
+        edits.append((offsets[value.lineno - 1] + value.col_offset,
+                      offsets[value.end_lineno - 1] + value.end_col_offset))
+    for start, end in sorted(edits, reverse=True):
+        masked = masked[:start] + b'None' + masked[end:]
+    return values, masked
+
+
+def strict_json(data):
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError('duplicate JSON key')
+            result[key] = value
+        return result
+    return json.loads(data, object_pairs_hook=unique,
+                      parse_constant=lambda value: (_ for _ in ()).throw(ValueError('nonfinite JSON')))
+
+
+@functools.lru_cache(maxsize=8)
+def proof_tree(ref):
+    if not re.fullmatch(r'[0-9a-f]{40}', ref) or git('cat-file', '-t', ref).strip() != b'commit':
+        raise ValueError('proof source is not a commit')
+    data = blob(ref, RUNNER)
+    legacy = digest(execution_runner(data)) == RUNNER_TIMING_PAIR[0]
+    declarations, code = runner_literals(data, legacy=legacy)
+    return (declarations, code, input_maps(ref, declarations['TARGETS']),
+            strict_json(blob(ref, CONFIG_PATH)), workflow_matrix(blob(ref, WORKFLOW)))
+
+
+def selector_ast(data):
+    """Selector and ownership construction, including their module-level constants."""
+    body = ast.parse(data.decode('utf-8')).body
+    def position(name, kind):
+        matches = [i for i, node in enumerate(body) if
+                   (isinstance(node, ast.FunctionDef) and kind == 'function' and node.name == name)
+                   or (isinstance(node, ast.Assign) and kind == 'assignment' and len(node.targets) == 1
+                       and isinstance(node.targets[0], ast.Name) and node.targets[0].id == name)]
+        if len(matches) != 1:
+            raise ValueError('unsupported selector declarations')
+        return matches[0]
+    start = position('build_parts', 'function')
+    end = position('BASE_CONFIG', 'assignment')
+    first = position('target_text', 'function')
+    last = position('isolated_config', 'function')
+    if not start <= end < first <= last:
+        raise ValueError('unsupported selector order')
+    return ast.dump(ast.Module(body=body[start:end + 1] + body[first:last + 1], type_ignores=[]),
+                    include_attributes=False)
+
+
+def legacy_runner_bridge(commit, old, new_code):
+    """Compose the separately approved exact runner transition with the data comparison."""
+    old_data = blob(commit, RUNNER)
+    reference_data = blob(RUNNER_REFERENCE_COMMIT, RUNNER)
+    if (digest(execution_runner(old_data)) != RUNNER_TIMING_PAIR[0]
+            or digest(execution_runner(reference_data)) != RUNNER_TIMING_PAIR[1]
+            or selector_ast(old_data) != selector_ast(reference_data)):
+        return None
+    reference, reference_code = runner_literals(reference_data)
+    if (reference_code != new_code
+            or old['COHORT_BOOTSTRAP_SPANS'] != reference['COHORT_BOOTSTRAP_SPANS']):
+        return None
+    return reference
+
+
+def committed_effective_config(context, owner, shard, head):
+    """Derive an unchanged shard invocation family from two committed trees."""
+    try:
+        commit = context['source_commit']
+        if not head or not shard or not re.fullmatch(r'[0-9a-f]{40}', commit):
+            return False
+        old, old_code, old_maps, old_config, old_matrix = proof_tree(commit)
+        new, new_code, _, new_config, new_matrix = proof_tree(head)
+        legacy = old_maps[0].get(RUNNER) == RUNNER_TIMING_PAIR[0]
+        reference = legacy_runner_bridge(commit, old, new_code) if legacy else None
+        if ((legacy and reference is None) or (not legacy and old_code != new_code)
+                or new['TARGETS'] != workflow.TARGETS or new['PRIMARY_CUTS'] != workflow.PRIMARY_CUTS):
+            return False
+        if old_maps != (context['shared_inputs'], context['target_sources']):
+            return False
+        if context['target_sources'].get(owner) != digest(blob(head, 'src/Parchwell.Verifier/' + owner)):
+            return False
+        for config, declared in ((old_config, old['TARGETS']), (new_config, new['TARGETS'])):
+            if not isinstance(config, dict) or set(config) != {'stryker-config'} or not isinstance(config['stryker-config'], dict):
+                return False
+            entries = config['stryker-config'].get('mutate')
+            if entries != [v[0] for v in declared.values()] or len(entries) != len(set(entries)):
+                return False
+        old_settings = dict(old_config['stryker-config'])
+        new_settings = dict(new_config['stryker-config'])
+        old_targets = old_settings.pop('mutate')
+        new_targets = new_settings.pop('mutate')
+        if old_settings != new_settings or new_config != workflow.BASE_CONFIG:
+            return False
+        if [item for item in new_targets if item in old_targets] != old_targets:
+            return False
+        old_parts = workflow.build_parts(old['TARGETS'], old['PRIMARY_CUTS'])
+        def physical(parts, declared):
+            result = {}
+            for name, part in parts.items():
+                members = [physical for physical, (logical, _) in workflow.COHORTS.items() if logical == name]
+                for member in members or [name]:
+                    result[member] = (declared[part[0]][0], part)
+            return result
+        old_physical = physical(old_parts, old['TARGETS'])
+        new_physical = physical(workflow.build_parts(new['TARGETS'], new['PRIMARY_CUTS']), new['TARGETS'])
+        if (old_matrix != {k: v[0] for k, v in old_physical.items()}
+                or new_matrix != {k: v[0] for k, v in new_physical.items()}
+                or old_physical.get(shard) != new_physical.get(shard)
+                or new_physical.get(shard, (None,))[0] != owner):
+            return False
+        key = new_physical[shard][1][0]
+        if old['TARGETS'].get(key) != new['TARGETS'].get(key) or old['PRIMARY_CUTS'].get(key) != new['PRIMARY_CUTS'].get(key):
+            return False
+        if shard in workflow.COHORTS:
+            cohort_data = reference if legacy else old
+            if (any(cohort_data[k] != new[k] for k in COHORT_LITERAL_NAMES)
+                    or (legacy and cohort_data['COHORT_SOURCE_SHA256'] != context['target_sources'].get(owner))):
+                return False
+        # Same source, cuts, ownership, runner code and settings imply identical
+        # shard_config and every isolated_config for the same measured node plan.
+        source = blob(head, 'src/Parchwell.Verifier/' + owner)
+        workflow.shard_config(shard, source)
+        workflow.shard_static_regions(shard, source)
+        return True
+    except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
+        return False
+
+
+def provenance_errors(context, shared, targets, owner, shard=None, head=None):
     """Account for every difference without renewing the estimate's own target."""
     errors = set()
     current_maps = {'shared_inputs': shared, 'target_sources': targets}
+    equivalent = None
     if context['target_sources'].get(owner) != targets.get(owner):
         errors.add('stale_inputs')
     for key, current in current_maps.items():
@@ -839,6 +1032,11 @@ def provenance_errors(context, shared, targets, owner):
         for path, item in changes.items():
             if path not in expected or item['current_sha256'] != current.get(path):
                 errors.add('unaccounted_inputs')
+            if key == 'shared_inputs' and path in {RUNNER, 'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json'} and measured.get(path) != current.get(path):
+                if equivalent is None:
+                    equivalent = committed_effective_config(context, owner, shard, head)
+                if equivalent:
+                    continue
             if (key == 'shared_inputs' and path in NON_RENEWABLE
                     and not (path == PROJECTION and (measured.get(path), current.get(path)) == PROJECTION_TIMING_PAIR)
                     and not (path == RUNNER and (measured.get(path), current.get(path)) == RUNNER_TIMING_PAIR)):
@@ -1155,7 +1353,44 @@ def native_geometry_valid(path, record, source):
         return False
 
 
-def validate(config, shared, targets, source, matrix):
+def fresh_pinned_timing(config, path, record, shard, item, source, head):
+    """Use generic measured qualification only after the pinned source changes."""
+    if config['schema_version'] != 2 or 'geometry_status' in record:
+        return False
+    if shard in CODEC_NEIGHBOR:
+        pinned_path, pinned_source = CODEC_TARGET, PROVISIONAL_TARGETS[CODEC_TARGET][0]
+    elif shard in SIX_TAIL_BINDINGS:
+        pinned_path, pinned_source = SIX_TAIL_BINDINGS[shard][:2]
+    else:
+        return False
+    proof = config['timing_evidence'].get(shard, {})
+    context = config['timing_inputs'].get(item['timing_inputs_sha256'], {})
+    return (path == pinned_path and digest(source) != pinned_source
+            and proof.get('kind') == 'measured'
+            and proof.get('source_commit') == context.get('source_commit')
+            and has_shard_timing(shard, path, record, item, proof, {})
+            and committed_effective_config(context, path, shard, head))
+
+
+def committed_context_matches(context):
+    """A claimed measurement commit must reconstruct both complete measured maps."""
+    try:
+        return proof_tree(context['source_commit'])[2] == (context['shared_inputs'], context['target_sources'])
+    except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
+        return False
+
+
+def timing_context_linked(context, shard, path, record, item, timing, baseline):
+    commit = context.get('source_commit')
+    if timing.get('kind') == 'measured':
+        return timing.get('source_commit') == commit and has_shard_timing(shard, path, record, item, timing, baseline)
+    if timing == {'kind': 'historical'}:
+        return (commit == HISTORICAL_QUALIFICATION_COMMIT
+                and has_shard_timing(shard, path, record, item, timing, baseline))
+    return False
+
+
+def validate(config, shared, targets, source, matrix, head=None):
     reasons = set()
     if set(config['targets']) != set(targets):
         reasons.add('missing_qualification')
@@ -1233,7 +1468,13 @@ def validate(config, shared, targets, source, matrix):
                     reasons.add('missing_measurement')
                 else:
                     used_contexts.add(binding)
-                    reasons.update(provenance_errors(context, shared, targets, path))
+                    reasons.update(provenance_errors(context, shared, targets, path, shard, head))
+                    if 'source_commit' in context:
+                        if not committed_context_matches(context):
+                            reasons.add('stale_inputs')
+                        timing = config['timing_evidence'].get(shard, {})
+                        if not timing_context_linked(context, shard, path, record, item, timing, baseline):
+                            reasons.add('missing_measurement')
                 if provisional and binding != PROVISIONAL_TIMING_INPUTS_HASH:
                     reasons.add('stale_inputs')
                 if not has_shard_timing(shard, path, record, item, config['timing_evidence'].get(shard), baseline):
@@ -1254,9 +1495,11 @@ def validate(config, shared, targets, source, matrix):
                                     or approved_codec_neighbor(path, record, shard, item, source[path])
                                     or approved_six_tail(path, record, shard, item, source[path])):
                 reasons.add('invalid_estimate')
-            if shard in CODEC_NEIGHBOR and not approved_codec_neighbor(path, record, shard, item, source[path]):
+            if (shard in CODEC_NEIGHBOR and not approved_codec_neighbor(path, record, shard, item, source[path])
+                    and not fresh_pinned_timing(config, path, record, shard, item, source[path], head)):
                 reasons.add('invalid_estimate')
-            if shard in SIX_TAIL_BINDINGS and not approved_six_tail(path, record, shard, item, source[path]):
+            if (shard in SIX_TAIL_BINDINGS and not approved_six_tail(path, record, shard, item, source[path])
+                    and not fresh_pinned_timing(config, path, record, shard, item, source[path], head)):
                 reasons.add('invalid_estimate')
             numeric = ('main_work_seconds', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')
             valid = (type(item['main_mutants']) is int and item['main_mutants'] >= 0
@@ -1329,7 +1572,7 @@ def check(base, head, qualification):
         if config is None:
             return {'status': 'rejected', 'reasons': ['missing_qualification']}
         source = {p: blob(head, 'src/Parchwell.Verifier/' + p) for p in targets}
-        reasons = sorted(validate(config, shared, targets, source, matrix))
+        reasons = sorted(validate(config, shared, targets, source, matrix, head))
         if reasons:
             return {'status': 'rejected', 'reasons': reasons}
         pending = sorted(path for path, record in config['targets'].items()
