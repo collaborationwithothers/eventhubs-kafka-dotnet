@@ -38,7 +38,14 @@
       "Common/Phase/B10FinalProjection.cs",
       "Common/Phase/B10FinalProjectionCodec.cs",
       "Common/Phase/B10FinalRegistrationReader.cs",
-      "Judge/B10FinalJudge.cs"
+      "Judge/B10FinalJudge.cs",
+      "Common/Results/DuplicateBreakdown.cs",
+      "VerifyRun/Judgement/DuplicateClassifier.cs",
+      "VerifyRun/Judgement/OutcomeClassifier.cs",
+      "VerifyRun/Abrupt/AbruptClassification.cs",
+      "Common/Results/VerifierResultCodec.cs",
+      "Judge/PhaseCandidateCodec.cs",
+      "VerifyRun/VerifyRunHandler.cs"
     ],
     "coverage-analysis": "off"
   }
