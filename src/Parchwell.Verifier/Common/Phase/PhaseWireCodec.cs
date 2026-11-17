@@ -161,7 +161,7 @@ internal static partial class PhaseWireCodec
             throw new PhaseWireIdentityException("Start-line receipt identity does not bind to its phase.");
         if (r.SchemaVersion != 1 || r.Mode is not ("start-line" or "verify" or "judge" or "b10-sweep-line" or "b10-sweep" or "b10-abrupt-verify" or "b10-final-sweep") || !PhaseIdentity.IsRunId(r.RunId) || r.SourceCommit.Length != 40 || !CommitRegex().IsMatch(r.SourceCommit)) throw new FormatException("Receipt has invalid fixed identity fields.");
         PhaseIdentity.ValidatePhase(r.Phase);
-        if (!(r.Mode is "start-line" or "verify" ? MatchesPhaseConfiguration(r.ScenarioId, r.Phase, r.ConfigurationId) :
+        if (!(r.Mode is "start-line" or "verify" or "judge" ? MatchesPhaseConfiguration(r.ScenarioId, r.Phase, r.ConfigurationId) :
             ScenarioPhases.TryGetConfiguration(r.ScenarioId, r.Phase, out string? expectedConfiguration) && r.ConfigurationId == expectedConfiguration)) throw new FormatException("Receipt scenario or configuration does not match its phase.");
         if (r.Mode == "b10-abrupt-verify" ? r.Repeat is null || r.Identity is not null :
             r.Mode is "judge" or "b10-sweep-line" or "b10-sweep" or "b10-final-sweep" ? r.Repeat is not null || r.Identity is not null : r.Repeat is null || r.Identity is null) throw new FormatException("Receipt nullable identity fields do not match its mode.");

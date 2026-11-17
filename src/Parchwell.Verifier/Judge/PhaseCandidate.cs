@@ -7,4 +7,5 @@ internal sealed record PhaseCandidate(int SchemaVersion, bool Synthetic, string 
     string RunId, string Phase, string SourceCommit, string Status, string? Gate,
     IReadOnlyDictionary<string,string?> Versions, IReadOnlyDictionary<string,string?> ImageDigests,
     IReadOnlyDictionary<string,object?> Timings, IReadOnlyDictionary<string,object?> Diagnostics,
-    IReadOnlyList<PhaseRepeatResult> Repeats, OutcomeCounts? Counts, IReadOnlyList<string> Reasons, B10SweepProjection? B10Sweep = null, B10FinalCandidate? B10Final = null);
+    IReadOnlyList<PhaseRepeatResult> Repeats, OutcomeCounts? Counts, IReadOnlyList<string> Reasons, B10SweepProjection? B10Sweep = null, B10FinalCandidate? B10Final = null,
+    ConsumerPhaseResult? Consumer = null, IReadOnlyList<ConsumerProjection?>? ConsumerRepeats = null);
