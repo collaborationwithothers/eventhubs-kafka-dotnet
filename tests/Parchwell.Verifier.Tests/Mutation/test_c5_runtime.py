@@ -263,6 +263,186 @@ def historical_layout(test):
     return wrapped
 
 
+class CommittedProvenanceTests(unittest.TestCase):
+    def setUp(self):
+        import ast
+        self.old, self.head = 'a' * 40, 'b' * 40
+        self.owner, self.shard = 'Judge/PhaseJudge.cs', 'phase-p1'
+        self.source = (ROOT / 'src/Parchwell.Verifier' / self.owner).read_bytes()
+        runner = (ROOT / runtime.RUNNER).read_bytes()
+        tree = ast.parse(runner)
+        lines = runner.splitlines(keepends=True)
+        offsets = [0]
+        for line in lines:
+            offsets.append(offsets[-1] + len(line))
+        tables = {'TARGETS': dict(runtime.workflow.TARGETS), 'PRIMARY_CUTS': dict(runtime.workflow.PRIMARY_CUTS)}
+        tables['TARGETS'].pop('b10-final-judge')
+        tables['PRIMARY_CUTS'].pop('b10-final-judge')
+        edits = []
+        for node in tree.body:
+            if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) and node.targets[0].id in tables:
+                v = node.value
+                edits.append((offsets[v.lineno - 1] + v.col_offset, offsets[v.end_lineno - 1] + v.end_col_offset,
+                              repr(tables[node.targets[0].id]).encode()))
+        old_runner = runner
+        for start, end, value in sorted(edits, reverse=True):
+            old_runner = old_runner[:start] + value + old_runner[end:]
+        config = copy.deepcopy(runtime.workflow.BASE_CONFIG)
+        old_config = copy.deepcopy(config)
+        old_config['stryker-config']['mutate'].remove('Judge/B10FinalJudge.cs')
+        matrix = runtime.workflow.SHARDS
+        def matrix_blob(entries):
+            return ('        include:\n' + ''.join('          - shard: ' + s + '\n            target: ' + p + '\n'
+                    for s, p in entries.items()) + '    env:\n').encode()
+        self.blobs = {
+            (self.old, runtime.RUNNER): old_runner, (self.head, runtime.RUNNER): runner,
+            (self.old, runtime.CONFIG_PATH): json.dumps(old_config).encode(),
+            (self.head, runtime.CONFIG_PATH): json.dumps(config).encode(),
+            (self.old, runtime.WORKFLOW): matrix_blob({s: p for s, p in matrix.items() if p != 'Judge/B10FinalJudge.cs'}),
+            (self.head, runtime.WORKFLOW): matrix_blob(matrix),
+            (self.head, 'src/Parchwell.Verifier/' + self.owner): self.source,
+        }
+        self.context = {'source_commit': self.old, 'shared_inputs': {'fixture': runtime.digest(b'fixture')},
+                        'target_sources': {self.owner: runtime.digest(self.source)},
+                        'assessments': {'shared_inputs': {}, 'target_sources': {}}}
+        self.blob_patch = mock.patch.object(runtime, 'blob', side_effect=lambda ref, path: self.blobs[(ref, path)])
+        self.maps_patch = mock.patch.object(runtime, 'input_maps', side_effect=lambda ref, declared: (
+            self.context['shared_inputs'], self.context['target_sources']))
+        real_git = runtime.git
+        self.git_patch = mock.patch.object(runtime, 'git', side_effect=lambda *args:
+            b'commit\n' if args[:2] == ('cat-file', '-t') else real_git(*args))
+        self.blob_patch.start()
+        self.maps_patch.start()
+        self.git_patch.start()
+        runtime.proof_tree.cache_clear()
+        self.addCleanup(self.blob_patch.stop)
+        self.addCleanup(self.maps_patch.stop)
+        self.addCleanup(self.git_patch.stop)
+        self.addCleanup(runtime.proof_tree.cache_clear)
+
+    def equivalent(self):
+        runtime.proof_tree.cache_clear()
+        return runtime.committed_effective_config(self.context, self.owner, self.shard, self.head)
+
+    def test_additive_target_preserves_committed_invocation(self):
+        self.assertTrue(self.equivalent())
+
+    def test_config_and_matrix_tampering_rejects(self):
+        key = (self.old, runtime.CONFIG_PATH)
+        original = self.blobs[key]
+        for change in ('setting', 'duplicate', 'removal', 'unknown'):
+            with self.subTest(change=change):
+                config = json.loads(original)
+                settings = config['stryker-config']
+                if change == 'setting':
+                    settings['coverage-analysis'] = 'all'
+                elif change == 'duplicate':
+                    settings['mutate'].append(settings['mutate'][0])
+                elif change == 'removal':
+                    settings['mutate'].pop()
+                else:
+                    settings['unknown'] = True
+                self.blobs[key] = json.dumps(config).encode()
+                self.assertFalse(self.equivalent())
+        self.blobs[key] = original
+        self.blobs[key] = original.replace(b'"stryker-config":', b'"stryker-config": {}, "stryker-config":', 1)
+        self.assertFalse(self.equivalent())
+        self.blobs[key] = original
+        self.blobs[(self.old, runtime.WORKFLOW)] = b'        include:\n    env:\n'
+        self.assertFalse(self.equivalent())
+
+    def test_source_ref_hash_and_executable_changes_reject(self):
+        source_key = (self.head, 'src/Parchwell.Verifier/' + self.owner)
+        self.blobs[source_key] += b' changed'
+        self.assertFalse(self.equivalent())
+        self.blobs[source_key] = self.source
+        self.context['target_sources'][self.owner] = '0' * 64
+        self.assertFalse(self.equivalent())
+        self.context['target_sources'][self.owner] = runtime.digest(self.source)
+        with mock.patch.object(runtime, 'input_maps', return_value=({}, {})):
+            self.assertFalse(self.equivalent())
+        self.assertFalse(runtime.committed_effective_config(self.context, self.owner, 'unknown', self.head))
+        self.assertFalse(runtime.committed_effective_config(self.context, self.owner, self.shard, None))
+        runner_key = (self.old, runtime.RUNNER)
+        original_runner = self.blobs[runner_key]
+        self.blobs[runner_key] = original_runner.replace(b'3600', b'3601', 1)
+        self.assertFalse(self.equivalent())
+        self.blobs[runner_key] = original_runner
+        self.blobs[runner_key] += b'\nsynthetic_executable = 1\n'
+        self.assertFalse(self.equivalent())
+
+    def test_typed_cohort_change_does_not_rebind_its_owner(self):
+        runner_key = (self.old, runtime.RUNNER)
+        values, _ = runtime.runner_literals(self.blobs[runner_key])
+        old_hash = values['COHORT_INVENTORY_SHA256'].encode()
+        self.blobs[runner_key] = self.blobs[runner_key].replace(old_hash, b'0' * 64, 1)
+        self.assertTrue(self.equivalent())
+        self.owner = runtime.CODEC_TARGET
+        self.shard = 'b10-final-projection-codec-p1-a'
+        self.source = (ROOT / 'src/Parchwell.Verifier' / self.owner).read_bytes()
+        self.context['target_sources'][self.owner] = runtime.digest(self.source)
+        self.blobs[(self.head, 'src/Parchwell.Verifier/' + self.owner)] = self.source
+        self.assertFalse(self.equivalent())
+
+    def test_runner_literal_parser_rejects_rebinding_and_executable_normalization(self):
+        runner = self.blobs[(self.head, runtime.RUNNER)]
+        _, original_code = runtime.runner_literals(runner)
+        for suffix in (b'\nTARGETS = {}\n', b'\nCOHORT_COORDINATES = ()\n'):
+            with self.subTest(suffix=suffix), self.assertRaises(ValueError):
+                runtime.runner_literals(runner + suffix)
+        changed = runner.replace(b'range(116, 122)', b'range(116, 123)', 1)
+        self.assertNotEqual(original_code, runtime.runner_literals(changed)[1])
+
+    def test_fresh_pinned_shard_requires_current_source_and_linked_measurement(self):
+        path = runtime.CODEC_TARGET
+        shard = next(iter(runtime.CODEC_NEIGHBOR))
+        original = runtime.git('show', runtime.HISTORICAL_QUALIFICATION_COMMIT + ':src/Parchwell.Verifier/' + path)
+        source = original + b'\n// changed source\n'
+        self.blobs[(self.old, 'src/Parchwell.Verifier/' + path)] = source
+        evidence = {'source_commit': self.old, 'locator': 'synthetic', 'sha256': 'c' * 64,
+                    'kind': 'local_probe', 'note': 'hardware=synthetic calibration=uncertain'}
+        record = {'source_sha256': runtime.digest(source), 'evidence': [evidence]}
+        item = {'timing_inputs_sha256': 'd' * 64, 'basis': 'observed_workers=2'}
+        proof = {'kind': 'measured', 'source_commit': self.old, 'artifact_sha256': evidence['sha256'],
+                 'timing_inputs_sha256': item['timing_inputs_sha256'], 'observed_workers': 2,
+                 'observed_seconds': 10, 'method': 'synthetic timing'}
+        context = {'source_commit': self.old}
+        config = {'schema_version': 2, 'timing_evidence': {shard: proof},
+                  'timing_inputs': {item['timing_inputs_sha256']: context}}
+        with mock.patch.object(runtime, 'committed_effective_config', return_value=True):
+            def fresh():
+                return runtime.fresh_pinned_timing(config, path, record, shard, item, source, self.head)
+            self.assertTrue(fresh())
+            proof['artifact_sha256'] = '0' * 64
+            self.assertFalse(fresh())
+            proof['artifact_sha256'] = evidence['sha256']
+            proof['source_commit'] = 'e' * 40
+            self.assertFalse(fresh())
+            proof['source_commit'] = self.old
+            context.pop('source_commit')
+            self.assertFalse(fresh())
+            context['source_commit'] = self.old
+            record['geometry_status'] = 'provisional'
+            self.assertFalse(fresh())
+            del record['geometry_status']
+            self.assertFalse(runtime.fresh_pinned_timing(config, path, record, shard, item,
+                                                         original, self.head))
+
+
+class CommittedInputClassificationTests(unittest.TestCase):
+    def test_target_classification_uses_each_tree_declaration(self):
+        ref = runtime.git('rev-parse', 'HEAD').decode().strip()
+        declared = dict(runtime.workflow.TARGETS)
+        path = declared.pop('b10-final-judge')[0]
+        source_path = 'src/Parchwell.Verifier/' + path
+        old_shared, old_targets = runtime.input_maps(ref, declared)
+        current_shared, current_targets = runtime.input_maps(ref, runtime.workflow.TARGETS)
+        self.assertEqual(runtime.digest(runtime.blob(ref, source_path)), old_shared[source_path])
+        self.assertNotIn(path, old_targets)
+        self.assertNotIn(source_path, current_shared)
+        self.assertEqual(old_shared[source_path], current_targets[path])
+
+
 class QualificationTests(unittest.TestCase):
     def setUp(self):
         self.original_shards = runtime.workflow.SHARDS
@@ -311,6 +491,49 @@ class QualificationTests(unittest.TestCase):
         self.config['timing_inputs'] = {binding: {'shared_inputs': measured_shared,
             'target_sources': measured_targets, 'assessments': {'shared_inputs': {}, 'target_sources': {}}}}
         return binding
+
+    def test_timing_context_commit_is_optional_and_strictly_formed(self):
+        binding = self.migrate_v2()
+        context = self.config['timing_inputs'][binding]
+        runtime.shape(self.config)
+        context['source_commit'] = 'a' * 40
+        runtime.shape(self.config)
+        for invalid in ('', 'a' * 39, 'A' * 40, None, 1):
+            with self.subTest(commit=invalid):
+                context['source_commit'] = invalid
+                with self.assertRaises(ValueError):
+                    runtime.shape(self.config)
+
+    def test_config_exception_requires_linked_timing_and_does_not_renew_tooling(self):
+        self.shared[runtime.CONFIG_PATH] = runtime.digest(b'old config')
+        self.config['shared_inputs'] = self.shared.copy()
+        binding = self.migrate_v2()
+        context = self.config['timing_inputs'][binding]
+        context['source_commit'] = 'a' * 40
+        for record in self.config['targets'].values():
+            for item in record['shards'].values():
+                item['timing_inputs_sha256'] = binding
+        self.shared[runtime.CONFIG_PATH] = runtime.digest(b'additive config')
+        self.config['shared_inputs'] = self.shared.copy()
+        changes = context['assessments']['shared_inputs']
+        changes[runtime.CONFIG_PATH] = {'current_sha256': self.shared[runtime.CONFIG_PATH], 'basis': ['Synthetic risk.']}
+        def validate():
+            runtime.shape(self.config)
+            return runtime.validate(self.config, self.shared, self.targets, self.source, self.shards, head='b' * 40)
+        with mock.patch.object(runtime, 'committed_effective_config',
+                               side_effect=lambda context, owner, shard, head: 'source_commit' in context):
+            self.assertEqual(set(), validate())
+            self.config['timing_evidence']['a-p1']['source_commit'] = 'c' * 40
+            self.assertIn('missing_measurement', validate())
+            self.config['timing_evidence']['a-p1']['source_commit'] = 'a' * 40
+            del context['source_commit']
+            self.assertIn('invalid_renewal', validate())
+            context['source_commit'] = 'a' * 40
+            tool = '.config/dotnet-tools.json'
+            self.shared[tool] = runtime.digest(b'new tool')
+            self.config['shared_inputs'] = self.shared.copy()
+            changes[tool] = {'current_sha256': self.shared[tool], 'basis': ['Synthetic risk.']}
+            self.assertIn('invalid_renewal', validate())
 
     @historical_layout
     def test_v2_migration_preserves_committed_historical_qualification(self):
