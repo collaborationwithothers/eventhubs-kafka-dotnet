@@ -1,5 +1,5 @@
 # State: #507 Chart and workflow: consumer Jobs and admission of C03, C10, C01 (#499 entry 4)
-Covers: comment 6928719509 created 2026-11-16T20:42:02Z; read at 2026-11-16T20:53:29Z
+Covers: comment 6939648300 created 2026-11-17T05:35:05Z; read at 2026-11-17T06:00:42Z
 Parent items: #499
 Item plan: [proposal revision 2 of #499](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894560135), split row 4
 Implementing tool: Claude Code. Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6928719509](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6928719509)
@@ -15,6 +15,7 @@ Decisions in force:
 - Separate azurerm_role_assignment.consumer_record, collect before delete, two contract updates. Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6926743261](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6926743261)
 - Approval of plan revision 5 at the commit above, with the apply-in-implementation fixes of the revision 5 check. Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6928714258](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6928714258)
 - Implementing tool is Claude Code, replacing Codex for this issue. Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6928719509](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6928719509)
+- Hari allowed one test change: C01, C03 and C10 added to the scenario_id assertion in ChartContractTests.cs, and no other test file under tests/Parchwell.*. Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6939648300](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6939648300)
 Open questions:
 - None
 Next action: Cold review, then open the pull request; Hari merges (protected paths).
