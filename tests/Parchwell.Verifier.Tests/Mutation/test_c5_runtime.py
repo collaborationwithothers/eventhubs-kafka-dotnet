@@ -1,6 +1,8 @@
 import importlib.util
+import fnmatch
 import json
 from pathlib import Path
+import shlex
 import tempfile
 import unittest
 import os
@@ -11,10 +13,13 @@ ROOT = Path(__file__).resolve().parents[3]
 APPROVED_PROJECTION_PAIR = ('b1c9a96740111676caa0b9e95db90b4ff93f07ff2317710233558412a88ac1bc',
                             '3771b676b8d5856eb34705dcaa3e9c34ffd8184dd514179a1bf85ee7535fb16f')
 PROJECTION_PATH = 'tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py'
+APPROVED_RUNNER_PAIR = ('dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea14629a0af4625',
+                        'c147bb8000ef1273609052660e80b20c8da8bf33a77a0df65a94d32a5f7a1c40')
+RUNNER_PATH = 'tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py'
 
 
 class RequiredCheckIntegrationTests(unittest.TestCase):
-    def invoke_step(self, event, fail_check):
+    def invoke_step(self, event, fail_check, fail_discovery=False):
         import yaml
         workflow = yaml.safe_load((ROOT / '.github/workflows/dotnet-verification.yml').read_text())
         job = workflow['jobs']['dotnet-verification']
@@ -27,31 +32,50 @@ class RequiredCheckIntegrationTests(unittest.TestCase):
             log = directory / 'calls'
             stub = directory / 'python3'
             stub.write_text('#!/bin/bash\nprintf "%s\\n" "$*" >> "$CALL_LOG"\n'
+                            'if [[ "$1" = -m && "$FAIL_DISCOVERY" = yes ]]; then exit 1; fi\n'
                             'if [[ "$1" == *c5_runtime.py && "$FAIL_CHECK" = yes ]]; then exit 1; fi\n')
             stub.chmod(0o755)
             env = {**os.environ, 'PATH': str(directory) + os.pathsep + os.environ['PATH'],
                    'CALL_LOG': str(log), 'FAIL_CHECK': 'yes' if fail_check else 'no',
+                   'FAIL_DISCOVERY': 'yes' if fail_discovery else 'no',
                    'PARCHWELL_EVENT': event, 'PARCHWELL_BASE_SHA': 'base-sha',
                    'PARCHWELL_HEAD_SHA': 'head-sha'}
             result = subprocess.run(['bash', '-c', step['run']], cwd=ROOT, env=env, check=False)
             return result.returncode, log.read_text().splitlines()
 
+    def assert_c5_discovery(self, invocation):
+        arguments = shlex.split(invocation)
+        self.assertEqual(['-m', 'unittest', 'discover'], arguments[:3])
+        self.assertEqual('tests/Parchwell.Verifier.Tests/Mutation', arguments[arguments.index('-s') + 1])
+        pattern = arguments[arguments.index('-p') + 1]
+        for module in ('test_c5_runtime.py', 'test_c5_workflow.py',
+                       'test_c5_cohort_runner.py', 'test_c5_cohort_aggregate.py'):
+            with self.subTest(module=module):
+                self.assertTrue(fnmatch.fnmatchcase(module, pattern), invocation)
+
     def test_required_check_propagates_rejection(self):
         status, calls = self.invoke_step('pull_request', True)
         self.assertNotEqual(0, status)
-        self.assertEqual(3, len(calls))
-        self.assertIn('test_c5_runtime.py', calls[0])
-        self.assertIn('test_c5_workflow.py', calls[1])
-        self.assertIn('--head head-sha', calls[2])
-        self.assertIn('--base base-sha', calls[2])
+        self.assertEqual(2, len(calls))
+        self.assert_c5_discovery(calls[0])
+        self.assertIn('--head head-sha', calls[1])
+        self.assertIn('--base base-sha', calls[1])
+
+    def test_discovery_failure_stops_before_qualification(self):
+        status, calls = self.invoke_step('pull_request', False, fail_discovery=True)
+        self.assertNotEqual(0, status)
+        self.assertEqual(1, len(calls))
+        self.assert_c5_discovery(calls[0])
 
     def test_main_validates_without_diff(self):
         for event in ('push', 'workflow_dispatch'):
             with self.subTest(event=event):
                 status, calls = self.invoke_step(event, True)
                 self.assertNotEqual(0, status)
-                self.assertIn('--head head-sha', calls[2])
-                self.assertNotIn('--base', calls[2])
+                self.assertEqual(2, len(calls))
+                self.assert_c5_discovery(calls[0])
+                self.assertIn('--head head-sha', calls[1])
+                self.assertNotIn('--base', calls[1])
 
 
 def xml(*results):
@@ -397,6 +421,52 @@ class QualificationTests(unittest.TestCase):
         cases += [(path, old, new) for path in (
             'tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py',
             '.github/workflows/verifier-c5-mutation.yml',
+            'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json',
+            '.config/dotnet-tools.json')]
+        for path, measured_hash, current_hash in cases:
+            with self.subTest(path=path, measured=measured_hash, current=current_hash):
+                measured = {} if measured_hash is None else {path: measured_hash}
+                current = {} if current_hash is None else {path: current_hash}
+                context = {'shared_inputs': measured, 'target_sources': self.targets.copy(),
+                           'assessments': {'shared_inputs': {path: {'current_sha256': current_hash,
+                                                                    'basis': ['Synthetic risk.']}},
+                                           'target_sources': {}}}
+                binding = runtime.digest(runtime.canonical({'shared_inputs': measured, 'target_sources': self.targets}))
+                runtime.provenance_shape({binding: context})
+                self.assertEqual({'invalid_renewal'}, runtime.provenance_errors(context, current, self.targets, 'a.cs'))
+
+    def test_v2_runner_exact_pair_requires_complete_current_assessment(self):
+        old, new = APPROVED_RUNNER_PAIR
+        self.shared[RUNNER_PATH] = old
+        self.config['shared_inputs'] = self.shared.copy()
+        binding = self.migrate_v2()
+        for record in self.config['targets'].values():
+            for item in record['shards'].values():
+                item['timing_inputs_sha256'] = binding
+        self.shared[RUNNER_PATH] = new
+        self.config['shared_inputs'] = self.shared.copy()
+        changes = self.config['timing_inputs'][binding]['assessments']['shared_inputs']
+        self.assertIn('unaccounted_inputs', self.errors())
+        changes[RUNNER_PATH] = {'current_sha256': new, 'basis': ['Synthetic accepted timing risk.']}
+        self.assertEqual(set(), self.errors())
+        changes[RUNNER_PATH]['current_sha256'] = old
+        self.assertIn('unaccounted_inputs', self.errors())
+        changes[RUNNER_PATH]['current_sha256'] = new
+        changes['extra'] = {'current_sha256': None, 'basis': ['Synthetic extra assessment.']}
+        self.assertIn('unaccounted_inputs', self.errors())
+        del changes['extra']
+        changes[RUNNER_PATH]['basis'] = []
+        with self.assertRaises(ValueError):
+            self.errors()
+
+    def test_v2_runner_exception_rejects_other_pairs_and_nonrenewable_paths(self):
+        old, new = APPROVED_RUNNER_PAIR
+        other = runtime.digest(b'other')
+        cases = [(RUNNER_PATH, other, new), (RUNNER_PATH, old, other),
+                 (RUNNER_PATH, new, old), (RUNNER_PATH, None, new),
+                 (RUNNER_PATH, old, None)]
+        cases += [(path, old, new) for path in (
+            PROJECTION_PATH, '.github/workflows/verifier-c5-mutation.yml',
             'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json',
             '.config/dotnet-tools.json')]
         for path, measured_hash, current_hash in cases:
@@ -1577,6 +1647,18 @@ class RenewalTests(unittest.TestCase):
                 item['timing_inputs_sha256'] = timing
         self.assertEqual(set(), self.errors())
         self.renew_fixture(PROJECTION_PATH, old, new)
+        self.assertEqual({'invalid_renewal'}, self.errors())
+
+    def test_v1_rejects_even_the_runner_timing_pair(self):
+        old, new = APPROVED_RUNNER_PAIR
+        self.shared[RUNNER_PATH] = old
+        self.config['shared_inputs'] = self.shared.copy()
+        timing = runtime.digest(runtime.canonical({'shared_inputs': self.shared, 'target_sources': self.targets}))
+        for record in self.config['targets'].values():
+            for item in record['shards'].values():
+                item['timing_inputs_sha256'] = timing
+        self.assertEqual(set(), self.errors())
+        self.renew_fixture(RUNNER_PATH, old, new)
         self.assertEqual({'invalid_renewal'}, self.errors())
 
     def test_renewal_must_change_the_hash(self):

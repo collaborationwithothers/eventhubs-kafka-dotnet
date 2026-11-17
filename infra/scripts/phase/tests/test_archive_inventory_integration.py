@@ -835,6 +835,32 @@ class InventoryIntegrationTests(unittest.TestCase):
         self.assertTrue(any(key[0]=='archive123' and key[2].endswith('/candidate.json.metadata.json') for key in h.cli.blobs))
         self.assertFalse(any(key[0]=='archive123' and key[2].endswith('/candidate.json') for key in h.cli.blobs))
 
+    def test_consumer_members_require_native_indexes_and_readiness_is_not_a_job(self):
+        for missing in (False, True):
+            with self.subTest(missing=missing):
+                h = self.harness('C03', 'C0', 'c03-42-1', 'scientific')
+                for repeat in range(1, 6):
+                    for mode in ('consumer-subject', 'consumer-witness', 'start-line', 'loadgen', 'verify'):
+                        h.job(mode, f'c03-42-1-c0-r{repeat}-{mode}', repeat=repeat)
+                    h.status['modes'].append({'mode':'consumer-readiness', 'repeat':repeat,
+                                              'job':f'c03-42-1-c0-r{repeat}-consumer-readiness'})
+                h.job('judge', 'c03-42-1-c0-judge')
+                job = 'c03-42-1-c0-r1-consumer-subject'
+                index = f'c03-42-1/C0/{job}/uid/native-monitoring/index.json'
+                if missing:
+                    del h.cli.blobs[('source123', 'native-monitoring', index)]
+                _, manifest, receipt = h.run()
+                members = [u for u in manifest['expected_units'] if u['mode'] in ('consumer-subject', 'consumer-witness')]
+                self.assertEqual(10, len(members))
+                self.assertTrue(all(u['state'] == 'started' and u['pod_uid'] == 'uid' for u in members))
+                self.assertFalse(any(u['mode'] == 'consumer-readiness' for u in manifest['expected_units']))
+                self.assertFalse(any(g['boundary'] in ('inventory construction', 'expected unit inventory') for g in manifest['gaps']))
+                obj = next(o for o in manifest['objects'] if o['source']['name'] == index)
+                self.assertEqual('missing' if missing else 'verified', obj['state'])
+                if missing:
+                    self.assertIsNone(receipt['completion'])
+                    self.assertTrue(any(g['code'] == 'monitoring_incomplete' and g['expected_unit'] == job for g in manifest['gaps']))
+
     def test_judge_has_no_monitoring_index_but_native_host_requires_one(self):
         for missing_native in (False, True):
             with self.subTest(missing_native=missing_native):

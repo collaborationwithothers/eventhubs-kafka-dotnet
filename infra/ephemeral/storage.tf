@@ -21,6 +21,7 @@ locals {
       claim_check       = { name = "claim-check", public_access = "None", role_assignments = {} }
       single_action     = { name = "single-action", public_access = "None", role_assignments = {} }
       native_monitoring = { name = "native-monitoring", public_access = "None", role_assignments = {} }
+      consumer_record   = { name = "consumer-record", public_access = "None", role_assignments = {} }
       }, var.archive_smoke_enabled ? {
       archive_smoke_source = {
         name          = "archive-smoke-source"

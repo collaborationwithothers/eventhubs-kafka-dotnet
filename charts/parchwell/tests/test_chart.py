@@ -16,6 +16,7 @@ DEFAULTS=yaml.safe_load((CHART/'values.yaml').read_text())['runtime']['bounds']
 BOUNDS={k:LIMITS[k] for k in ('scenario_parsing','loadgen','verifier_shared','verifier_kafka','verifier_start_line','verifier_verify','verifier_gate','b10_sweep')}
 BOUNDS['consumed_metadata']={'Enabled':True,'MaxRowBytes':1048576,'MaxChunkBytes':134217728,'MaxBytes':17179869184}
 BOUNDS['execution']={k:LIMITS['execution'][k] for k in ('loadgen_job_seconds','verify_job_seconds','start_line_job_seconds','gate_job_seconds','termination_grace_seconds')}
+BOUNDS['execution']['consumer_job_seconds']=1800  # chart-only member Job deadline (consumer-jobs plan section 3.5 rule 4); not in a01-runtime-limits.json
 
 OPTION_PROPERTY=re.compile(r'^\s+(?:\[[^\]\n]*\]\s*)*public\s+[^\s{}()=]+\s+(\w+)\s*\{([^}\n]*)\}',re.M)
 def parse_option_properties(text, header):
@@ -197,6 +198,8 @@ def verify(doc,d):
     env=c['env']; names=[e['name'] for e in env]; assert len(names)==len(set(names))
     setting_errors=worker_setting_errors(mode,names); assert setting_errors==[], setting_errors
     expected=expected_environment(d); assert set(names)==set(expected)
+    assert 'Verifier__ConsumerRecordContainer' not in names  # consumer-only name (A01, B04, B06, B07, B10 never carry it)
+    assert not any(e['name']=='Verifier__Mode' and e.get('value')=='consumer-verify' for e in env)
     for entry in env:
       kind,value=expected[entry['name']]
       if kind=='field': assert entry['valueFrom']['fieldRef']['fieldPath']==value

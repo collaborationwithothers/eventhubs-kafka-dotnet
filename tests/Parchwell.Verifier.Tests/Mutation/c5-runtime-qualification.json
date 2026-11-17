@@ -300,7 +300,7 @@
     "tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs": "b61b9a63f22447c5c2caef0a6778198ed3f2bb493603f315554a9c73f17d2cd7",
     "tests/Parchwell.Verifier.Tests/LedgerBatch/BatchingEvidenceRecorderTests.cs": "6294256abac200355df5fe228a5fd7578d3fffdcd251f31031228366ea27a244",
     "tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py": "3771b676b8d5856eb34705dcaa3e9c34ffd8184dd514179a1bf85ee7535fb16f",
-    "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": "dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea14629a0af4625",
+    "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": "c147bb8000ef1273609052660e80b20c8da8bf33a77a0df65a94d32a5f7a1c40",
     "tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json": "08dc4239d731048aabf4fc7683887121b951d0226a16d1a4293dd57e6de10001",
     "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj": "a3d7fe4824fb1f4c11d5bdca6438d04c92eec1c3614e9db02df27f232468721a",
     "tests/Parchwell.Verifier.Tests/Phase/B10IntakeWireTests.cs": "7c4e96508b3d2ad28ca613e8bb33570b41d50082a95855cb7e57fc240743a315",
@@ -5635,6 +5635,12 @@
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/532#issuecomment-6939888191 approves the exact forward projection script hash pair: capacity 128 to 256 plus rejected-setup count/limit/target diagnostic. Successful source transformation, Stryker arguments and scoring are unchanged. Original measured inputs and timing records remain; runtime uncertainty is accepted, not newly measured. Full main-only mutation acceptance is still required."
             ],
             "current_sha256": "3771b676b8d5856eb34705dcaa3e9c34ffd8184dd514179a1bf85ee7535fb16f"
+          },
+          "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/535#issuecomment-6941063514 accepts existing runtime estimates only for the exact forward executable runner hash pair in proposal6940747444. Codec cohort source identities, complete pinned inventory and fresh-process mutation population are unchanged; native IDs are resolved from each retained report, with strict bootstrap directory and aggregate evidence validation. Original measured maps and timing records remain. Additional validation runtime is unmeasured and may exceed estimates; full main-only mutation acceptance remains required."
+            ],
+            "current_sha256": "c147bb8000ef1273609052660e80b20c8da8bf33a77a0df65a94d32a5f7a1c40"
           }
         },
         "target_sources": {}
@@ -6529,6 +6535,12 @@
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/532#issuecomment-6939888191 approves the exact forward projection script hash pair: capacity 128 to 256 plus rejected-setup count/limit/target diagnostic. Successful source transformation, Stryker arguments and scoring are unchanged. Original measured inputs and timing records remain; runtime uncertainty is accepted, not newly measured. Full main-only mutation acceptance is still required."
             ],
             "current_sha256": "3771b676b8d5856eb34705dcaa3e9c34ffd8184dd514179a1bf85ee7535fb16f"
+          },
+          "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/535#issuecomment-6941063514 accepts existing runtime estimates only for the exact forward executable runner hash pair in proposal6940747444. Codec cohort source identities, complete pinned inventory and fresh-process mutation population are unchanged; native IDs are resolved from each retained report, with strict bootstrap directory and aggregate evidence validation. Original measured maps and timing records remain. Additional validation runtime is unmeasured and may exceed estimates; full main-only mutation acceptance remains required."
+            ],
+            "current_sha256": "c147bb8000ef1273609052660e80b20c8da8bf33a77a0df65a94d32a5f7a1c40"
           },
           "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": {
             "basis": [

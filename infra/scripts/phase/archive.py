@@ -705,18 +705,22 @@ def validate_manifest(value):
     return identity
 
 
-def ordinary_units(run, phase, records):
+def ordinary_units(run, phase, records, consumer=False):
     """Derive all ordinary scheduled units, including jobs never reached."""
     if not safe_name(run) or '/' in run or not safe_name(phase) or '/' in phase or not isinstance(records, list):
         raise InvalidArchiveConfig()
-    planned = [(repeat, mode) for repeat in range(1, 6) for mode in ('start-line', 'loadgen', 'verify')]
+    modes = ('consumer-subject', 'consumer-witness', 'start-line', 'loadgen', 'verify') if consumer else ('start-line', 'loadgen', 'verify')
+    planned = [(repeat, mode) for repeat in range(1, 6) for mode in modes]
     planned.append((None, 'judge'))
+    readiness = {(repeat, 'consumer-readiness') for repeat in range(1, 6)} if consumer else set()
     indexed = {}
     for record in records:
         if not isinstance(record, dict):
             raise InvalidArchiveConfig()
         key = (record.get('repeat'), record.get('mode'))
-        if key not in planned or key in indexed:
+        if key not in planned and key not in readiness or key in indexed:
+            raise InvalidArchiveConfig()
+        if key in readiness and record.get('job') != f'{run}-{phase.lower()}-r{key[0]}-consumer-readiness':
             raise InvalidArchiveConfig()
         indexed[key] = record
     result = []
@@ -1774,17 +1778,22 @@ def collect_ordinary(collector, phase, status, containers, artifacts, job_name):
     elif scenario == 'B10':
         repeat_modes = ('start-line', 'loadgen', 'loadgen2', 'verify')
         phase_modes = ('b10-sweep-line', 'b10-sweep', 'judge')
+    elif scenario in ('C01', 'C03', 'C10'):
+        repeat_modes = ('consumer-subject', 'consumer-witness', 'start-line', 'loadgen', 'verify')
+        phase_modes = ('judge',)
     else:
         repeat_modes = ('start-line', 'loadgen', 'verify')
         phase_modes = ('judge',)
     planned = [(repeat, mode) for repeat in slots for mode in repeat_modes] + [(None, mode) for mode in phase_modes]
     records = status.get('modes')
     if not isinstance(records, list): raise InvalidArchiveConfig()
+    readiness = {(repeat, 'consumer-readiness') for repeat in slots} if scenario in ('C01', 'C03', 'C10') else set()
     index = {}
     for record in records:
         if not isinstance(record, dict): raise InvalidArchiveConfig()
         key = (record.get('repeat'), record.get('mode'))
-        if key not in planned or key in index: raise InvalidArchiveConfig()
+        if key not in planned and key not in readiness or key in index: raise InvalidArchiveConfig()
+        if key in readiness and record.get('job') != job_name(phase, 'consumer-readiness', key[0]): raise InvalidArchiveConfig()
         index[key] = record
     units = []
     no_kill_repeats = set()
@@ -1866,6 +1875,7 @@ def collect_ordinary(collector, phase, status, containers, artifacts, job_name):
 NATIVE_MONITORING_MODES = frozenset((
     'loadgen', 'loadgen2', 'loadgen-restart', 'loadgen-successor',
     'single-action', 'single-action-seed', 'single-action-v2', 'idle-observation',
+    'consumer-subject', 'consumer-witness',
     'consumer-verify', 'start-line', 'verify', 'b10-sweep-line', 'b10-sweep',
     'b10-final-sweep', 'b10-abrupt-verify',
 ))
@@ -2106,7 +2116,8 @@ def execute(phase_instance, environ, deadline=None):
                 fixed, _ = fixed_nonledger_objects(phase, status['modes'])
             elif phase['scenario'] != 'B10':
                 fixed = ordinary_fixed_inventory(phase['run_id'], phase['phase'], status['modes'])
-                expected_units, _ = ordinary_units(phase['run_id'], phase['phase'], status['modes'])
+                expected_units, _ = ordinary_units(phase['run_id'], phase['phase'], status['modes'],
+                                                   consumer=phase['scenario'] in ('C01', 'C03', 'C10'))
                 if {(u['job_name'], u['state']) for u in expected_units} != {(u['job_name'], u['state']) for u in units}:
                     collector.gap('monitoring_incomplete', 'expected unit inventory')
             else:

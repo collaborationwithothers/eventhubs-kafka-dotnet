@@ -45,8 +45,20 @@ resource "azurerm_role_assignment" "native_monitoring" {
   skip_service_principal_aad_check = true
 }
 
+resource "azurerm_role_assignment" "consumer_record" {
+  for_each = {
+    enrichment_consumer_record_contributor = { workload = "enrichment-consumer", role_definition_name = "Storage Blob Data Contributor" }
+    verifier_consumer_record_reader        = { workload = "verifier", role_definition_name = "Storage Blob Data Reader" }
+  }
+  role_definition_name             = each.value.role_definition_name
+  principal_id                     = local.persistent.workload_identities[each.value.workload].principal_id
+  scope                            = module.storage.containers.consumer_record.id
+  principal_type                   = "ServicePrincipal"
+  skip_service_principal_aad_check = true
+}
+
 resource "azurerm_role_assignment" "workflow_evidence_reader" {
-  for_each                         = toset(["ledger", "verifier", "single_action", "native_monitoring"])
+  for_each                         = toset(["ledger", "verifier", "single_action", "native_monitoring", "consumer_record"])
   role_definition_name             = "Storage Blob Data Reader"
   principal_id                     = local.persistent.workflow_principal_id
   scope                            = module.storage.containers[each.key].id
