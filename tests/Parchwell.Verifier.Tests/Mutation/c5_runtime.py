@@ -831,12 +831,13 @@ def evidence_matches_target(path, record):
 COHORT_LITERAL_NAMES = {'COHORT_BOOTSTRAP_SPANS', 'COHORT_SOURCE_SHA256',
                         'COHORT_INVENTORY_SHA256', 'COHORT_COORDINATES'}
 CONFIG_PATH = 'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json'
+RUNNER_REFERENCE_COMMIT = '1e38605cceaf14c92ec9157e8eead43eedbf3a8d'
 
 
-def runner_literals(data):
+def runner_literals(data, legacy=False):
     """Extract only reviewed literal declarations, retaining every other byte of runner code."""
     tree = ast.parse(data.decode('utf-8'))
-    names = COHORT_LITERAL_NAMES | {'TARGETS', 'PRIMARY_CUTS'}
+    names = ({'COHORT_BOOTSTRAP_SPANS'} if legacy else COHORT_LITERAL_NAMES) | {'TARGETS', 'PRIMARY_CUTS'}
     assignments = {}
     for node in tree.body:
         if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) and node.targets[0].id in names:
@@ -861,11 +862,12 @@ def runner_literals(data):
             or any(type(n) is not int or n <= 0 for n in v) for k, v in cuts.items())):
         raise ValueError('invalid cuts table')
     spans = values['COHORT_BOOTSTRAP_SPANS']
-    coordinates = values['COHORT_COORDINATES']
     if (not isinstance(spans, dict) or not spans or any(
             not isinstance(k, str) or not k.isdigit() or not isinstance(v, tuple) or len(v) != 2
-            or any(type(n) is not int or n < 0 for n in v) or v[0] >= v[1] for k, v in spans.items())
-            or not isinstance(coordinates, tuple) or not coordinates or any(
+            or any(type(n) is not int or n < 0 for n in v) or v[0] >= v[1] for k, v in spans.items())):
+        raise ValueError('invalid cohort declarations')
+    coordinates = values.get('COHORT_COORDINATES')
+    if not legacy and (not isinstance(coordinates, tuple) or not coordinates or any(
                 not isinstance(v, tuple) or len(v) != 4 or any(type(n) is not int or n < 0 for n in v)
                 for v in coordinates)
             or any(not isinstance(values[k], str) or not HEX.fullmatch(values[k])
@@ -907,9 +909,47 @@ def strict_json(data):
 def proof_tree(ref):
     if not re.fullmatch(r'[0-9a-f]{40}', ref) or git('cat-file', '-t', ref).strip() != b'commit':
         raise ValueError('proof source is not a commit')
-    declarations, code = runner_literals(blob(ref, RUNNER))
+    data = blob(ref, RUNNER)
+    legacy = digest(execution_runner(data)) == RUNNER_TIMING_PAIR[0]
+    declarations, code = runner_literals(data, legacy=legacy)
     return (declarations, code, input_maps(ref, declarations['TARGETS']),
             strict_json(blob(ref, CONFIG_PATH)), workflow_matrix(blob(ref, WORKFLOW)))
+
+
+def selector_ast(data):
+    """Selector and ownership construction, including their module-level constants."""
+    body = ast.parse(data.decode('utf-8')).body
+    def position(name, kind):
+        matches = [i for i, node in enumerate(body) if
+                   (isinstance(node, ast.FunctionDef) and kind == 'function' and node.name == name)
+                   or (isinstance(node, ast.Assign) and kind == 'assignment' and len(node.targets) == 1
+                       and isinstance(node.targets[0], ast.Name) and node.targets[0].id == name)]
+        if len(matches) != 1:
+            raise ValueError('unsupported selector declarations')
+        return matches[0]
+    start = position('build_parts', 'function')
+    end = position('BASE_CONFIG', 'assignment')
+    first = position('target_text', 'function')
+    last = position('isolated_config', 'function')
+    if not start <= end < first <= last:
+        raise ValueError('unsupported selector order')
+    return ast.dump(ast.Module(body=body[start:end + 1] + body[first:last + 1], type_ignores=[]),
+                    include_attributes=False)
+
+
+def legacy_runner_bridge(commit, old, new_code):
+    """Compose the separately approved exact runner transition with the data comparison."""
+    old_data = blob(commit, RUNNER)
+    reference_data = blob(RUNNER_REFERENCE_COMMIT, RUNNER)
+    if (digest(execution_runner(old_data)) != RUNNER_TIMING_PAIR[0]
+            or digest(execution_runner(reference_data)) != RUNNER_TIMING_PAIR[1]
+            or selector_ast(old_data) != selector_ast(reference_data)):
+        return None
+    reference, reference_code = runner_literals(reference_data)
+    if (reference_code != new_code
+            or old['COHORT_BOOTSTRAP_SPANS'] != reference['COHORT_BOOTSTRAP_SPANS']):
+        return None
+    return reference
 
 
 def committed_effective_config(context, owner, shard, head):
@@ -920,7 +960,10 @@ def committed_effective_config(context, owner, shard, head):
             return False
         old, old_code, old_maps, old_config, old_matrix = proof_tree(commit)
         new, new_code, _, new_config, new_matrix = proof_tree(head)
-        if old_code != new_code or new['TARGETS'] != workflow.TARGETS or new['PRIMARY_CUTS'] != workflow.PRIMARY_CUTS:
+        legacy = old_maps[0].get(RUNNER) == RUNNER_TIMING_PAIR[0]
+        reference = legacy_runner_bridge(commit, old, new_code) if legacy else None
+        if ((legacy and reference is None) or (not legacy and old_code != new_code)
+                or new['TARGETS'] != workflow.TARGETS or new['PRIMARY_CUTS'] != workflow.PRIMARY_CUTS):
             return False
         if old_maps != (context['shared_inputs'], context['target_sources']):
             return False
@@ -958,8 +1001,11 @@ def committed_effective_config(context, owner, shard, head):
         key = new_physical[shard][1][0]
         if old['TARGETS'].get(key) != new['TARGETS'].get(key) or old['PRIMARY_CUTS'].get(key) != new['PRIMARY_CUTS'].get(key):
             return False
-        if shard in workflow.COHORTS and any(old[k] != new[k] for k in COHORT_LITERAL_NAMES):
-            return False
+        if shard in workflow.COHORTS:
+            cohort_data = reference if legacy else old
+            if (any(cohort_data[k] != new[k] for k in COHORT_LITERAL_NAMES)
+                    or (legacy and cohort_data['COHORT_SOURCE_SHA256'] != context['target_sources'].get(owner))):
+                return False
         # Same source, cuts, ownership, runner code and settings imply identical
         # shard_config and every isolated_config for the same measured node plan.
         source = blob(head, 'src/Parchwell.Verifier/' + owner)
@@ -1326,6 +1372,24 @@ def fresh_pinned_timing(config, path, record, shard, item, source, head):
             and committed_effective_config(context, path, shard, head))
 
 
+def committed_context_matches(context):
+    """A claimed measurement commit must reconstruct both complete measured maps."""
+    try:
+        return proof_tree(context['source_commit'])[2] == (context['shared_inputs'], context['target_sources'])
+    except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
+        return False
+
+
+def timing_context_linked(context, shard, path, record, item, timing, baseline):
+    commit = context.get('source_commit')
+    if timing.get('kind') == 'measured':
+        return timing.get('source_commit') == commit and has_shard_timing(shard, path, record, item, timing, baseline)
+    if timing == {'kind': 'historical'}:
+        return (commit == HISTORICAL_QUALIFICATION_COMMIT
+                and has_shard_timing(shard, path, record, item, timing, baseline))
+    return False
+
+
 def validate(config, shared, targets, source, matrix, head=None):
     reasons = set()
     if set(config['targets']) != set(targets):
@@ -1405,16 +1469,11 @@ def validate(config, shared, targets, source, matrix, head=None):
                 else:
                     used_contexts.add(binding)
                     reasons.update(provenance_errors(context, shared, targets, path, shard, head))
-                    exceptional = any(context['shared_inputs'].get(p) != shared.get(p)
-                                      for p in (RUNNER, CONFIG_PATH))
-                    timing = config['timing_evidence'].get(shard, {})
-                    commit = context.get('source_commit')
-                    if exceptional and committed_effective_config(context, path, shard, head):
-                        linked = (timing.get('source_commit') == commit if timing.get('kind') == 'measured'
-                                  else any(e['source_commit'] == commit and e['kind'] in
-                                           {'hosted_complete', 'local_probe', 'partial_timing'}
-                                           for e in record['evidence']))
-                        if not linked:
+                    if 'source_commit' in context:
+                        if not committed_context_matches(context):
+                            reasons.add('stale_inputs')
+                        timing = config['timing_evidence'].get(shard, {})
+                        if not timing_context_linked(context, shard, path, record, item, timing, baseline):
                             reasons.add('missing_measurement')
                 if provisional and binding != PROVISIONAL_TIMING_INPUTS_HASH:
                     reasons.add('stale_inputs')

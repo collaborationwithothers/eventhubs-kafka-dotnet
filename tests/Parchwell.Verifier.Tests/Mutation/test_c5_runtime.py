@@ -630,6 +630,155 @@ class CommittedInputClassificationTests(unittest.TestCase):
         self.assertEqual(old_shared[source_path], current_targets[path])
 
 
+class HistoricalRunnerBridgeTests(unittest.TestCase):
+    OLD_CONTEXTS = (
+        ('6c291d8832d0c722352ff979545a136e5ea2ddeb',
+         'd700bd7823eba6654556c98af0e44bf1541adb877ee4d19bda63fdcb78959dd5'),
+        ('6c6ed9208b005df0ac51033f4cf2be687b0983b9',
+         'e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463'),
+    )
+    MODERN = '1e38605cceaf14c92ec9157e8eead43eedbf3a8d'
+    OWNER = 'Judge/PhaseJudge.cs'
+    SHARD = 'phase-p1'
+
+    def setUp(self):
+        runtime.proof_tree.cache_clear()
+        self.addCleanup(runtime.proof_tree.cache_clear)
+
+    def context(self, commit):
+        shared, targets = runtime.input_maps(commit)
+        return {'source_commit': commit, 'shared_inputs': shared, 'target_sources': targets,
+                'assessments': {'shared_inputs': {}, 'target_sources': {}}}
+
+    def proof(self, context, head=MODERN):
+        runtime.proof_tree.cache_clear()
+        return runtime.committed_effective_config(context, self.OWNER, self.SHARD, head)
+
+    def test_actual_legacy_contexts_bridge_only_the_approved_runner_pair(self):
+        actual_blob = runtime.blob
+        for commit, expected_binding in self.OLD_CONTEXTS:
+            with self.subTest(commit=commit):
+                context = self.context(commit)
+                maps = {key: context[key] for key in ('shared_inputs', 'target_sources')}
+                self.assertEqual(expected_binding, runtime.digest(runtime.canonical(maps)))
+                self.assertEqual(runtime.RUNNER_TIMING_PAIR[0], context['shared_inputs'][runtime.RUNNER])
+                modern_shared, _ = runtime.input_maps(self.MODERN)
+                self.assertEqual(runtime.RUNNER_TIMING_PAIR[1], modern_shared[runtime.RUNNER])
+                self.assertTrue(self.proof(context))
+                runtime.proof_tree.cache_clear()
+                self.assertTrue(runtime.committed_effective_config(context, runtime.CODEC_TARGET,
+                                'b10-final-projection-codec-p1-a', self.MODERN))
+                altered = copy.deepcopy(context)
+                altered['target_sources'][self.OWNER] = '0' * 64
+                self.assertFalse(self.proof(altered))
+                altered = copy.deepcopy(context)
+                altered['source_commit'] = self.MODERN
+                self.assertFalse(self.proof(altered))
+                with mock.patch.object(runtime, 'blob', side_effect=lambda ref, path:
+                        actual_blob(ref, path) + b'\n# unknown runner\n'
+                        if ref == commit and path == runtime.RUNNER else actual_blob(ref, path)):
+                    self.assertFalse(self.proof(context))
+                with mock.patch.object(runtime, 'blob', side_effect=lambda ref, path:
+                        actual_blob(ref, path) + b'\n# unknown bridge\n'
+                        if ref == self.MODERN and path == runtime.RUNNER else actual_blob(ref, path)):
+                    self.assertFalse(self.proof(context))
+                self.assertTrue(self.proof(context))
+                self.assertFalse(self.proof(self.context(self.MODERN), commit))
+
+    def test_bridge_selector_comparison_includes_isolated_invocation(self):
+        old = runtime.blob(self.OLD_CONTEXTS[0][0], runtime.RUNNER)
+        modern = runtime.blob(self.MODERN, runtime.RUNNER)
+        self.assertEqual(runtime.selector_ast(old), runtime.selector_ast(modern))
+        changed = old.replace(b'def isolated_config(target: str, item: dict)',
+                              b'def isolated_config(target: str, item: tuple)', 1)
+        self.assertNotEqual(old, changed)
+        self.assertNotEqual(runtime.selector_ast(changed), runtime.selector_ast(modern))
+
+    def test_historical_link_uses_pinned_record_instead_of_an_evidence_commit(self):
+        baseline = runtime.historical_qualification()
+        record = baseline['targets'][self.OWNER]
+        item = record['shards'][self.SHARD]
+        context = self.context(runtime.HISTORICAL_QUALIFICATION_COMMIT)
+        timing = {'kind': 'historical'}
+        self.assertNotIn(context['source_commit'], {entry['source_commit'] for entry in record['evidence']})
+        self.assertTrue(self.proof(context))
+        self.assertTrue(runtime.timing_context_linked(context, self.SHARD, self.OWNER, record, item, timing, baseline))
+        changed = copy.deepcopy(record)
+        changed['evidence'][0]['sha256'] = '0' * 64
+        self.assertFalse(runtime.timing_context_linked(context, self.SHARD, self.OWNER, changed, item, timing, baseline))
+        changed = copy.deepcopy(item)
+        changed['selection_sha256'] = '0' * 64
+        self.assertFalse(runtime.timing_context_linked(context, self.SHARD, self.OWNER, record, changed, timing, baseline))
+        changed = copy.deepcopy(record)
+        changed['source_sha256'] = '0' * 64
+        self.assertFalse(runtime.timing_context_linked(context, self.SHARD, self.OWNER, changed, item, timing, baseline))
+        context['source_commit'] = self.OLD_CONTEXTS[0][0]
+        self.assertFalse(runtime.timing_context_linked(context, self.SHARD, self.OWNER, record, item, timing, baseline))
+        context.pop('source_commit')
+        self.assertFalse(runtime.timing_context_linked(context, self.SHARD, self.OWNER, record, item, timing, baseline))
+
+    def test_measured_link_requires_source_commit_and_matching_artifact(self):
+        commit = self.OLD_CONTEXTS[0][0]
+        context = self.context(commit)
+        source = runtime.blob(commit, 'src/Parchwell.Verifier/' + self.OWNER)
+        evidence = {'source_commit': commit, 'locator': 'synthetic', 'sha256': 'c' * 64,
+                    'kind': 'local_probe', 'note': 'hardware=synthetic calibration=uncertain'}
+        record = {'source_sha256': runtime.digest(source), 'evidence': [evidence]}
+        item = {'timing_inputs_sha256': 'd' * 64, 'basis': 'observed_workers=2'}
+        timing = {'kind': 'measured', 'source_commit': commit, 'artifact_sha256': evidence['sha256'],
+                  'timing_inputs_sha256': item['timing_inputs_sha256'], 'observed_workers': 2,
+                  'observed_seconds': 10, 'method': 'synthetic timing'}
+        self.assertTrue(self.proof(context))
+        self.assertTrue(runtime.timing_context_linked(context, self.SHARD, self.OWNER, record, item, timing, {}))
+        for field, invalid in [('artifact_sha256', '0' * 64), ('source_commit', self.MODERN),
+                               ('timing_inputs_sha256', '0' * 64), ('observed_workers', 1)]:
+            with self.subTest(field=field):
+                changed = dict(timing, **{field: invalid})
+                self.assertFalse(runtime.timing_context_linked(context, self.SHARD, self.OWNER, record, item, changed, {}))
+
+    def test_historical_baseline_validates_through_real_legacy_bridge(self):
+        baseline = runtime.historical_qualification()
+        context = self.context(runtime.HISTORICAL_QUALIFICATION_COMMIT)
+        binding = runtime.digest(runtime.canonical({k: context[k] for k in ('shared_inputs', 'target_sources')}))
+        self.assertEqual(runtime.PROVISIONAL_TIMING_INPUTS_HASH, binding)
+        record = copy.deepcopy(baseline['targets'][self.OWNER])
+        record['shards'] = {self.SHARD: record['shards'][self.SHARD]}
+        item = record['shards'][self.SHARD]
+        shared = context['shared_inputs'].copy()
+        shared[runtime.RUNNER] = runtime.RUNNER_TIMING_PAIR[1]
+        context['assessments']['shared_inputs'][runtime.RUNNER] = {
+            'current_sha256': shared[runtime.RUNNER], 'basis': ['Synthetic risk acceptance.']}
+        target_hash = context['target_sources'][self.OWNER]
+        targets = {self.OWNER: target_hash}
+        context['assessments']['target_sources'] = {
+            path: {'current_sha256': None, 'basis': ['Synthetic removed target.']}
+            for path in context['target_sources'] if path != self.OWNER}
+        source = runtime.blob(self.MODERN, 'src/Parchwell.Verifier/' + self.OWNER)
+        config = {'schema_version': 2, 'budget_seconds': 1800, 'shared_inputs': shared,
+                  'targets': {self.OWNER: record}, 'timing_inputs': {binding: context},
+                  'timing_evidence': {self.SHARD: {'kind': 'historical'}}}
+        matrix = {self.SHARD: self.OWNER}
+        def validate():
+            runtime.proof_tree.cache_clear()
+            runtime.shape(config)
+            return runtime.validate(config, shared, targets, {self.OWNER: source}, matrix, self.MODERN)
+        with mock.patch.object(runtime.workflow, 'SHARDS', matrix):
+            self.assertTrue(self.proof(context))
+            self.assertEqual(set(), validate())
+            record['evidence'][0]['sha256'] = '0' * 64
+            self.assertIn('missing_measurement', validate())
+            record['evidence'][0]['sha256'] = baseline['targets'][self.OWNER]['evidence'][0]['sha256']
+            original_selection = item['selection_sha256']
+            item['selection_sha256'] = '0' * 64
+            self.assertIn('missing_measurement', validate())
+            self.assertIn('layout_mismatch', validate())
+            item['selection_sha256'] = original_selection
+            context['source_commit'] = self.OLD_CONTEXTS[0][0]
+            self.assertIn('missing_measurement', validate())
+            context['source_commit'] = runtime.HISTORICAL_QUALIFICATION_COMMIT
+            self.assertEqual(set(), validate())
+
+
 class QualificationTests(unittest.TestCase):
     def setUp(self):
         self.original_shards = runtime.workflow.SHARDS
@@ -708,7 +857,9 @@ class QualificationTests(unittest.TestCase):
             runtime.shape(self.config)
             return runtime.validate(self.config, self.shared, self.targets, self.source, self.shards, head='b' * 40)
         with mock.patch.object(runtime, 'committed_effective_config',
-                               side_effect=lambda context, owner, shard, head: 'source_commit' in context):
+                               side_effect=lambda context, owner, shard, head: 'source_commit' in context), \
+             mock.patch.object(runtime, 'proof_tree', return_value=(None, None,
+                               (context['shared_inputs'], context['target_sources']), None, None)):
             self.assertEqual(set(), validate())
             self.config['timing_evidence']['a-p1']['source_commit'] = 'c' * 40
             self.assertIn('missing_measurement', validate())
