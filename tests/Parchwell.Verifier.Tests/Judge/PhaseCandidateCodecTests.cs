@@ -913,7 +913,7 @@ public sealed class PhaseCandidateCodecTests
         PhaseCandidate source = Candidate();
         PhaseRepeatResult[] repeats = Enumerable.Range(1, 5).Select(i => source.Repeats[0] with { Repeat = i, DuplicateBreakdown = new(0, 0) }).ToArray();
         byte[] compact = PhaseCandidateCodec.Write(source with { Repeats = repeats, DuplicateBreakdown = new(0, 0) });
-        int length = checked((int)PhaseCandidateCodec.MaximumBytes + delta);
+        int length = checked((int)PhaseCandidateCodec.MaximumBytes - delta);
         byte[] padded = [.. compact, .. System.Text.Encoding.UTF8.GetBytes(new string(' ', length - compact.Length))];
         if (accepted) using (PhaseCandidateCodec.Read(padded)) { }
         else Assert.Throws<InputLimitExceededException>(() => PhaseCandidateCodec.Read(padded));
