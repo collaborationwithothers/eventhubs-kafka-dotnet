@@ -352,11 +352,22 @@ def abrupt_fixture(h, repeat=1):
 
 
 def complete_b10(h):
-    """All scheduled scientific C1 jobs with complete archive publications."""
+    """Synthetic full evidence for testing archive completion, including killed children."""
     run='b10-42-1'; target=None
     for repeat in range(1,6):
         pair=abrupt_fixture(h,repeat)
         if repeat==1: target=pair
+        # Supply synthetic complete input to exercise the collector's success path;
+        # an actual killed child may leave its monitoring index unavailable.
+        firstjob=f'{run}-c1-r{repeat}-loadgen-restart'
+        identity={'run_id':run,'phase':'C1','scenario_id':'B10','configuration_id':'C1',
+                  'job_name':firstjob,'pod_uid':'uid','source_commit':'a'*40}
+        client={'ordinal':1,'role':'LoadGenProducer','client_id':firstjob,'native_identity':None,
+                'build_status':'built','report_count':0,'raw_sources':[],'diagnostics':[],
+                'capture_complete':True,'export_tail_status':'unknown'}
+        h.cli.put('native-monitoring',f'{run}/C1/{firstjob}/uid/native-monitoring/index.json',
+                  {'schema_version':1,'identity':identity,'clients':[client],
+                   'capture_complete':True,'diagnostics_truncated':False})
         root=f'{run}/C1/r{repeat}/'
         start=f'{run}-c1-r{repeat}-start-line'; h.job('start-line',start,repeat=repeat)
         for leaf in ('start-line.json','broker-inventory.json','start-line-completion.json'):
@@ -787,8 +798,8 @@ class InventoryIntegrationTests(unittest.TestCase):
                 elif fault=='successor_hash':
                     key=('source123','ledger',successor+'ledger.jsonl'); h.cli.blobs[key]=b'x'*len(h.cli.blobs[key])
                 elif fault=='successor_missing': del h.cli.blobs[('source123','ledger',successor+'statistics.jsonl')]
-                code,m,r=h.run(); self.assertEqual(1,code)
-                self.assertFalse(r['archive_complete'])
+                code,m,r=h.run(); self.assertEqual(0 if fault=='none' else 1,code)
+                self.assertEqual(fault=='none',r['archive_complete'])
                 self.assertEqual(28,len(m['expected_units']))
                 self.assert_fixture_diagnostics(h, m)
                 self.assertEqual(161,m['totals']['expected_objects'] - 2 * 28 - sum(o['kind']=='native_monitoring_index' for o in m['objects']))
@@ -805,10 +816,24 @@ class InventoryIntegrationTests(unittest.TestCase):
                     self.assertEqual('verified',objects[first+name]['state'])
                 for name in ('registration.json','completion.json',*leaves):
                     if name != ('ledger.jsonl' if fault == 'successor_hash' else 'statistics.jsonl'): self.assertEqual('verified',objects[successor+name]['state'])
-                self.assertIsNone(r['completion'])
-                self.assertIn('monitoring_incomplete', [g['code'] for g in r['gaps']])
-                if fault != 'none':
+                if fault=='none':
+                    self.assertIsNotNone(r['completion']); self.assertEqual([],r['gaps'])
+                else:
+                    self.assertIsNone(r['completion'])
                     self.assertIn('source_hash_mismatch' if fault.endswith('hash') else 'source_missing', [g['code'] for g in r['gaps']])
+
+    def test_b10_missing_first_child_native_index_prevents_completion(self):
+        h=self.harness('B10','C1','b10-42-1','scientific')
+        complete_b10(h)
+        job='b10-42-1-c1-r1-loadgen-restart'
+        index=f'b10-42-1/C1/{job}/uid/native-monitoring/index.json'
+        del h.cli.blobs[('source123','native-monitoring',index)]
+        code,m,r=h.run()
+        self.assertEqual(1,code)
+        self.assertFalse(r['archive_complete'])
+        self.assertIsNone(r['completion'])
+        self.assertTrue(any(g['code']=='monitoring_incomplete' and g['boundary']=='native index unavailable'
+                            and g['expected_unit']==job for g in m['gaps']))
 
     def test_marker_readback_failure_leaves_data_and_false_receipt(self):
         h=self.harness('probe-batch-2','single-action','probe-42-1','smoke',items=['F06'],
