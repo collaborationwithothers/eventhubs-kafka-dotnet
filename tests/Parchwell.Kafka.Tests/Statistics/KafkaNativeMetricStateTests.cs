@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Diagnostics.Metrics;
 using Parchwell.Kafka.Configuration;
@@ -13,12 +14,16 @@ public sealed class KafkaNativeMetricStateTests
     private static readonly KafkaNativeMetricIdentity Native = new("native", "client", "producer", 1, 1, 1);
     private static readonly KafkaNativeMetricDefinition Tx = Definition("kafka.librdkafka.client.tx");
     private static readonly KafkaNativeMetricDefinition Timeout = Definition("kafka.librdkafka.broker.req_timeouts");
-    private static KafkaStatisticsIdentity Identity(string run) => new("scenario", run, KafkaClientRole.LoadGenProducer, "client");
+    // xUnit creates a new instance of the test class for every test, so each test gets its own scenario value.
+    // Source: xUnit "Shared context between tests" (https://xunit.net/docs/shared-context), section "Constructor and Dispose".
+    // The capture accepts only this value, so measurements from other tests that share the meter name are ignored.
+    private readonly string _scenario = "scenario-" + Guid.NewGuid().ToString("N");
+    private KafkaStatisticsIdentity Identity(string run) => new(_scenario, run, KafkaClientRole.LoadGenProducer, "client");
 
     [Fact]
     public void Given_LiteralNativeReports_When_CountersAndGaugesTransition_Then_ValuesAndDimensionsMatch()
     {
-        using var listener = new Capture();
+        using var listener = new Capture(_scenario);
         using var metrics = new KafkaStatisticsMetrics();
         var state = metrics.CreateNativeState(Identity("transitions"), false);
         foreach (var (timestamp, count, sequence, brokerState) in new[] { (2, 2, 5, "UP"), (5, 5, 1, "DOWN") })
@@ -36,7 +41,7 @@ public sealed class KafkaNativeMetricStateTests
 
         var common = new Dictionary<string, object?>
         {
-            ["scenario"] = "scenario", ["run"] = "transitions", ["role"] = "LoadGenProducer",
+            ["scenario"] = _scenario, ["run"] = "transitions", ["role"] = "LoadGenProducer",
             ["client_id"] = "client", ["native_client_name"] = "native", ["client_type"] = "producer",
         };
         AssertMeasurements("kafka.librdkafka.client.tx", [2, 3]);
@@ -71,7 +76,7 @@ public sealed class KafkaNativeMetricStateTests
     [Fact]
     public void Given_CounterReset_When_LaterValueRises_Then_QuarantineRemains()
     {
-        using var listener = new Capture();
+        using var listener = new Capture(_scenario);
         using var metrics = new KafkaStatisticsMetrics();
         var state = metrics.CreateNativeState(Identity("reset"), false);
         state.Record(Projection(Point(Tx, 5)));
@@ -87,7 +92,7 @@ public sealed class KafkaNativeMetricStateTests
     [Fact]
     public void Given_MalformedProjection_When_NextReportArrives_Then_StateWasNotPartlyAdvanced()
     {
-        using var listener = new Capture();
+        using var listener = new Capture(_scenario);
         using var metrics = new KafkaStatisticsMetrics();
         var state = metrics.CreateNativeState(Identity("malformed"), true);
         state.Record(Projection(Point(Tx, 2), Point(Timeout, 2, "broker")));
@@ -104,7 +109,7 @@ public sealed class KafkaNativeMetricStateTests
     [Fact]
     public void Given_AbsentCounter_When_ItReturns_Then_PreviousBaselineIsRetained()
     {
-        using var listener = new Capture();
+        using var listener = new Capture(_scenario);
         using var metrics = new KafkaStatisticsMetrics();
         var state = metrics.CreateNativeState(Identity("absence"), false);
         state.Record(Projection(Point(Tx, 2)));
@@ -112,6 +117,19 @@ public sealed class KafkaNativeMetricStateTests
         state.Record(Projection(Point(Tx, 5)));
         state.Record(Projection(Point(Tx, 5)));
         Assert.Equal(new long[] { 2, 3, 0 }, listener.Values(Tx.Name));
+    }
+
+    [Fact]
+    public void Given_ForeignMeasurementWithSharedScenario_When_Captured_Then_ItIsExcluded()
+    {
+        using var listener = new Capture(_scenario);
+        using var metrics = new KafkaStatisticsMetrics();
+        using var foreignMetrics = new KafkaStatisticsMetrics();
+        var foreign = foreignMetrics.CreateNativeState(new KafkaStatisticsIdentity("scenario", "foreign", KafkaClientRole.LoadGenProducer, "client"), false);
+        foreign.Record(Projection(Point(Tx, 4)));
+        var own = metrics.CreateNativeState(Identity("own"), false);
+        own.Record(Projection(Point(Tx, 2)));
+        Assert.Equal(new long[] { 2 }, listener.Values(Tx.Name));
     }
 
     [Fact]
@@ -133,7 +151,7 @@ public sealed class KafkaNativeMetricStateTests
     [Fact]
     public void Given_TupleLimit_When_AReportOverflows_Then_NoCounterBaselineIsAdvanced()
     {
-        using var listener = new Capture();
+        using var listener = new Capture(_scenario);
         using var metrics = new KafkaStatisticsMetrics();
         var state = metrics.CreateNativeState(Identity("tuples"), false);
         for (var i = 0; i < 2000; i++)
@@ -182,8 +200,8 @@ public sealed class KafkaNativeMetricStateTests
     private sealed class Capture : IDisposable
     {
         private readonly MeterListener _listener = new();
-        private readonly List<(string Name, long Value, Dictionary<string, object?> Tags, string Kind)> _values = [];
-        internal Capture()
+        private readonly ConcurrentQueue<(string Name, long Value, Dictionary<string, object?> Tags, string Kind)> _values = [];
+        internal Capture(string scenario)
         {
             _listener.InstrumentPublished = (instrument, listener) =>
             {
@@ -192,8 +210,8 @@ public sealed class KafkaNativeMetricStateTests
             _listener.SetMeasurementEventCallback<long>((instrument, value, tags, _) =>
             {
                 foreach (var tag in tags)
-                    if (tag.Key == "scenario" && Equals(tag.Value, "scenario"))
-                        _values.Add((instrument.Name, value, tags.ToArray().ToDictionary(tag => tag.Key, tag => tag.Value), instrument is Counter<long> ? "counter" : "gauge"));
+                    if (tag.Key == "scenario" && Equals(tag.Value, scenario))
+                        _values.Enqueue((instrument.Name, value, tags.ToArray().ToDictionary(tag => tag.Key, tag => tag.Value), instrument is Counter<long> ? "counter" : "gauge"));
             });
             _listener.Start();
         }
