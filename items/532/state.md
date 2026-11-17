@@ -1,0 +1,12 @@
+# State: #532 Repair verifier mutation projection capacity after source inventory growth
+Covers: comment 6939888191 created 2026-11-17T05:47:58Z; read at 2026-11-17T05:51:22Z
+Parent items: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494
+Item plan: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/f96eab914d00c06484431ff67a1808fb331c7e13/items/494/plan-observability-evidence.md (parent context; this prerequisite uses its directly authorized issue brief)
+Implementing tool: Codex. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6892754688
+Approved plan: none; this prerequisite is directly authorized by its issue brief and the exact timing amendment below.
+Decisions in force:
+- The issue body requires a finite source-capacity increase, preserved integrity checks, real-inventory and boundary regressions, actual count/limit setup diagnostics, hosted CI and code/security review, and later full main-only mutation acceptance. It authorizes no automatic rerun. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/532
+- Accept reuse of existing runtime estimates only for the exact forward projection script SHA-256 pair, comprising capacity 128 to 256 and rejected-setup count/limit/target diagnostics. Preserve original measured maps, timing records and all other nonrenewable-tool checks; add honest version 2 assessments. This excludes native telemetry source changes and authorizes no dispatch, Azure action or benchmark repeat. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/532#issuecomment-6939888191
+Open questions:
+- None
+Next action: finish focused correction review after two comprehensive rounds (first: one P1 diagnostic omission, corrected at 99e1bb18; second: two P1 state-index/protection explanations, corrected here), then publish for hosted CI and code/security review. No focused round has completed at this checkpoint. Main 859eb3d2 is integrated; the exact exception and current-hash assessments are authored without replacing measurements. No duplicated local checks or final hosted validation are claimed. The affected verifier test directory is protected, so Hari merges after the gates pass; docs/operations itself is exempt. The later full main-only acceptance remains required, without an automatic rerun.

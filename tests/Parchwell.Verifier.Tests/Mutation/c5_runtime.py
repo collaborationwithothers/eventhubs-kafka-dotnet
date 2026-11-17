@@ -319,7 +319,10 @@ WORKFLOW = '.github/workflows/verifier-c5-mutation.yml'
 RUNNER = 'tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py'
 TEST_PROJECT = 'tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj'
 HEX = re.compile(r'^[0-9a-f]{64}$')
-NON_RENEWABLE = {RUNNER, WORKFLOW, 'tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py',
+PROJECTION = 'tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py'
+PROJECTION_TIMING_PAIR = ('b1c9a96740111676caa0b9e95db90b4ff93f07ff2317710233558412a88ac1bc',
+                          '3771b676b8d5856eb34705dcaa3e9c34ffd8184dd514179a1bf85ee7535fb16f')
+NON_RENEWABLE = {RUNNER, WORKFLOW, PROJECTION,
                  'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json', '.config/dotnet-tools.json'}
 EXCLUDED = ('Component/', 'Support/ComponentEvidenceBuilder.cs', 'Host/VerifyRunHandlerTests.cs',
             'Host/VerifierHostTests.cs', 'Host/B10AbruptRejectionTests.cs')
@@ -834,7 +837,8 @@ def provenance_errors(context, shared, targets, owner):
         for path, item in changes.items():
             if path not in expected or item['current_sha256'] != current.get(path):
                 errors.add('unaccounted_inputs')
-            if key == 'shared_inputs' and path in NON_RENEWABLE:
+            if (key == 'shared_inputs' and path in NON_RENEWABLE
+                    and not (path == PROJECTION and (measured.get(path), current.get(path)) == PROJECTION_TIMING_PAIR)):
                 errors.add('invalid_renewal')
             if key == 'target_sources' and path == owner:
                 errors.add('invalid_renewal')
