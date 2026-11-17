@@ -1,6 +1,15 @@
 # Plan: capture isolation for the native metric state tests
 
-Issue: [#540](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/540). Pull request short name: `capture-isolation`. Revision 1.
+Issue: [#540](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/540). Pull request short name: `capture-isolation`. Revision 2.
+
+Changes since Revision 1, from [plan check 6958860463](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/540#issuecomment-6958860463):
+- Finding 1: the per-test scenario alone was measured (new row in 2.2), and the "What this shows" bullet now states what was measured. The finding's replacement text called the result inferred; the measurement replaces the inference.
+- Finding 2: section 9 item 3 now rebuilds the branch before its 10 runs (the check's literal text, with `--filter-trait`).
+- Finding 3: the section 12 evidence sentence is replaced with the check's literal text.
+- Finding 4: new deterministic test `Given_ForeignMeasurementWithSharedScenario_When_Captured_Then_ItIsExcluded` (8.2, requirement 7), prototyped red on `main` and green with the change.
+- P2 `apply in implementation`: requirement 2 and 8.1 now pin `ConcurrentQueue<T>` and `Enqueue`.
+- Observation on `--filter`: commands now use `--filter-trait`; both forms selected the same 486 tests (2.2).
+- Section 10 size estimate updated; section 13 sources updated.
 
 The absent-counter test fails intermittently because its test-only metric capture is not isolated from other tests. It stores measurements in a plain `List<T>`, and it accepts any measurement tagged `scenario=scenario`, a value other test classes also use. When another test class records on the same meter name on another thread, the two writes race inside `List<T>.Add` and the first value can be lost, which is the CI symptom `Actual: [3, 0]`. This plan changes only the test file: a thread-safe collection and a per-test scenario value. Production code under `src/Parchwell.Kafka/` is not the cause and does not change.
 
@@ -51,14 +60,21 @@ A throwaway xUnit test, not committed, called the real `Given_AbsentCounter_When
 | `main` | noisetx | `scenario` | 0 / 1982 |
 | `ConcurrentQueue` only | noise | `scenario` | 0 / 0 |
 | `ConcurrentQueue` only | noisetx | `scenario` | 0 / 1994 |
+| Per-test scenario only (plain `List` kept) | none, noise, noisetx | `scenario` | 0 / 0 each |
 | This plan (queue and per-test scenario) | none, noise, noisetx | `scenario` | 0 / 0 each |
 
 What this shows:
 - With no concurrent writer the test never failed, so `KafkaNativeMetricState` produced `[2, 3, 0]` every time. This falsifies a cause in the production state code.
 - A concurrent writer whose tag the capture rejects causes no failure. A writer whose tag it accepts causes the exact CI symptom. This locates the cause in the capture's filter and collection.
-- A thread-safe collection alone removes the lost values but still admits foreign `client.tx` values. Both changes are needed.
+- A thread-safe collection alone removes the lost values but still admits foreign `client.tx` values, so the per-test scenario is required.
+- The per-test scenario alone removed both failure modes in the harness: the capture then stores only measurements the test records on its own thread. The plan keeps the thread-safe collection as well, because `MeterListener` callbacks can arrive on different threads (2.1) and the other listeners in the project already use one. That part is a defensive choice, not a measured need.
 
 With this plan's change applied, `dotnet test tests/Parchwell.Kafka.Tests -c Release --no-build --filter "Category=Unit"` passed 10 runs of 10, 485 tests each. Before the change, 20 runs of the same command all passed too: the full suite reproduces the failure too rarely to show a fix, which is why section 9 uses the harness.
+
+Revision 2 measurements, same machine, a scratch worktree of `main` at `35f0fd5f`, 2026-11-17:
+- The per-test-scenario-only row of the table above.
+- The test of 8.2, added to the unchanged `main` file (with `new Capture()`): fails with `Expected: [2]`, `Actual: [4, 2]`. Added to the file with this plan's change: passes. Build: 0 warnings, 0 errors.
+- With the change and that test, `--filter "Category=Unit"` and `--filter-trait "Category=Unit"` both reported 486 tests, 486 succeeded. The documented xUnit option is `--filter-trait` ([Microsoft Testing Platform](https://xunit.net/docs/getting-started/v3/microsoft-testing-platform), as cited by the plan check), so section 9 uses it.
 
 ## 3. Scope
 
@@ -76,11 +92,13 @@ None. The change is inside a test class. No wire format, configuration key, CLI 
 ## 5. Requirements
 
 1. WHEN a `KafkaNativeMetricStateTests` test creates a `Capture`, THEN the capture accepts only measurements whose `scenario` tag equals a value unique to that test instance, and no other test in the process uses that value.
-2. WHEN measurements reach a `Capture` on more than one thread at once, THEN none is lost: the capture stores them in a collection that is safe for concurrent adds (`System.Collections.Concurrent.ConcurrentQueue<T>` or another type from `System.Collections.Concurrent`).
+2. WHEN measurements reach a `Capture` on more than one thread at once, THEN none is lost and their order of arrival is kept: the capture stores them in a `System.Collections.Concurrent.ConcurrentQueue<T>` and adds with `Enqueue`. Not `ConcurrentBag<T>` or `ConcurrentStack<T>`, which do not keep arrival order.
 3. WHEN a test builds a `KafkaStatisticsIdentity` through `Identity(run)`, THEN its scenario is that test instance's unique value, and the `run`, role and client id are unchanged.
 4. WHEN `Given_LiteralNativeReports_When_CountersAndGaugesTransition_Then_ValuesAndDimensionsMatch` checks the full tag set, THEN the expected `scenario` tag is the test instance's unique value; every other expected tag is unchanged.
 5. WHEN another test class records on a meter named `Parchwell.Kafka.Statistics` with `scenario=scenario`, THEN no `KafkaNativeMetricStateTests` assertion sees that measurement.
 6. The unique value is the prefix `scenario-` followed by `Guid.NewGuid().ToString("N")`, held in a readonly instance field. xUnit creates a new instance of the test class for each test, so each test gets its own value.
+
+7. WHEN a second `KafkaStatisticsMetrics` records `kafka.librdkafka.client.tx` tagged `scenario=scenario` while a test's `Capture` listens, THEN that test's `Values` does not contain the foreign value. This is the deterministic form of requirement 5.
 
 No requirement changes production code. If the implementer finds that a requirement cannot be met without a change under `src/`, the stop rule applies.
 
@@ -113,21 +131,28 @@ All tests are in `tests/Parchwell.Kafka.Tests/Statistics/KafkaNativeMetricStateT
 | 4 | `common` dictionary in the transitions test (39) | `["scenario"]` becomes that field. |
 | 1 | Each `new Capture()` (21, 74, 90, 107, 136) | Passes that field. |
 | 1 | `Capture` constructor (186) and filter (195) | Takes the scenario value and compares the `scenario` tag with it, not with the literal `"scenario"`. |
-| 2 | `Capture._values` (185) and its add (196) | A `System.Collections.Concurrent` collection; the add becomes that collection's add. `Values` and `Measurements` keep their signatures and their order of results. |
+| 2 | `Capture._values` (185) and its add (196) | `ConcurrentQueue<(string Name, long Value, Dictionary<string, object?> Tags, string Kind)>`; the add becomes `_values.Enqueue(...)`. `Values` and `Measurements` keep their signatures and their current LINQ bodies over `_values`. |
 
 Literal expected values stay as on `main`, including `[2, 3, 0]` (line 114), `[5]` and `[5, 2]` (lines 80 and 84), `[2, 5]` and `[2, 3, 2]` (lines 99 and 100), `[7]` (line 143), the transitions values `[2, 3]` and `[5, 1]` (lines 42 to 49), and the counts 22 and 2 (lines 55 and 65).
 
 `Given_CounterReset_When_LaterValueRises_Then_QuarantineRemains` creates a second state with `Identity("next")` (line 82) and expects its value in the same capture (line 84). Requirement 3 gives both states the same per-test scenario, so this boundary is kept.
 
-### 8.2 New tests
+### 8.2 New test
 
-None. Requirement 5 depends on concurrent writes from other test classes, and no deterministic test in the suite can force the race. The regression evidence is the repeated-run procedure of section 9, item 2, which goes red on `main` and green with the change. This is the finding the diagnosis skill asks to record: no seam in the committed suite reproduces the race on demand.
+`Given_ForeignMeasurementWithSharedScenario_When_Captured_Then_ItIsExcluded`, `[Fact]`, in the same class, covers requirements 1, 5 and 7. Inputs, all on the test thread, inside `using var listener = new Capture(<the test's scenario field>)`:
+- the test's own `KafkaStatisticsMetrics` and a second, foreign `KafkaStatisticsMetrics`, both disposed by `using`;
+- the foreign state, from the foreign metrics, with identity `new KafkaStatisticsIdentity("scenario", "foreign", KafkaClientRole.LoadGenProducer, "client")` and `compatibilityBacked: false`, records `Projection(Point(Tx, 4))` first;
+- the test's own state, `Identity("own")` and `compatibilityBacked: false`, then records `Projection(Point(Tx, 2))`.
+
+Expected: `listener.Values(Tx.Name)` equals `[2]`. Boundary: the foreign value carries the literal scenario the old filter accepted, so on `main` the same test gives `[4, 2]` (2.2). The foreign record runs first so that a filter that admits it changes position 0, not only the length.
+
+Requirement 2, the lost-value race, has no deterministic test: it needs two threads to add at the same moment, and nothing in the suite can force that. Its regression evidence is the harness of section 9 item 2, red on `main` and green with the change. This is the finding the diagnosis skill asks to record.
 
 ## 9. Acceptance commands
 
-1. `./scripts/verify-dotnet.sh --project Parchwell.Kafka.Tests`: exits 0. Evidence: the summary line in the PR implementation notes, cited as a partial run.
+1. `./scripts/verify-dotnet.sh --project Parchwell.Kafka.Tests`: exits 0, and the new test of 8.2 passes. Before the change, the new test added to the `main` file fails with `Actual: [4, 2]`; the implementer runs it once that way, then applies the change. Evidence: both outcomes and the summary line in the PR implementation notes, cited as a partial run.
 2. Before-and-after harness, run twice, on `main` and on the branch. Add the throwaway file of section 9.1 to the test project, build Release, and run it once for each `A4F2_MODE` of `none`, `noise` and `noisetx`, each with 2000 iterations. Expected on `main`: `noise` shows `lost` above 0, and `noisetx` shows `extra` above 0. Expected on the branch: 0 failures in all three modes. Then delete the file and check with `git status --short` that it is gone and nothing else changed. Evidence: the six result lines in the PR implementation notes, with the SDK version and CPU count. If the `main` run shows no failure, the harness did not reproduce the cause on that machine, and the stop rule of section 16 applies.
-3. `dotnet test tests/Parchwell.Kafka.Tests -c Release --no-build --filter "Category=Unit"` 10 times on the branch: 10 passes. Evidence: the pass count in the notes.
+3. On the branch, after the harness file of item 2 is deleted, run `dotnet build tests/Parchwell.Kafka.Tests -c Release`, then run `dotnet test tests/Parchwell.Kafka.Tests -c Release --no-build --filter-trait "Category=Unit"` 10 times: 10 passes. The build makes the 10 runs use the branch source without the harness, whatever order items 1 and 2 ran in. Evidence: the pass count and the test count each run reports, in the notes.
 4. The verification gates of docs/agents/pull-requests.md "Verification gates", in its order, including `./scripts/verify-dotnet.sh --tier sandbox` once on the source the cold review cleared, and the hosted `.NET verification` check on the final head.
 5. `npm run check:docs`: no warning in a changed file. The PR changes no documentation file.
 
@@ -137,7 +162,7 @@ The implementer writes the harness to these requirements; its exact code is not 
 
 ## 10. Size estimate
 
-Estimate, 2026-11-17, from the prototype diff of section 2.2: 1 file, about 25 changed lines (the prototype was 12 added and 11 removed, counted by `git diff --stat`). Size is reported, not enforced.
+Estimate, 2026-11-17, from the Revision 2 prototype: 1 file, about 36 changed lines (the prototype with the new test was 25 added and 11 removed, counted by `git diff --stat`). Size is reported, not enforced.
 
 ## 11. Deployment assumptions
 
@@ -145,7 +170,7 @@ None. The change is test code that runs in the test process only. It makes no ne
 
 ## 12. Deferred work
 
-- Other test classes that filter measurements on shared tag values. Evidence: every other `MeterListener` in the test projects uses a concurrent collection or `Interlocked` (for example `KafkaNativeMonitoringCaptureTests.cs` line 32 and `KafkaStatisticsNativeBridgeTests.cs` line 24), surveyed 2026-11-17. Whether their run-tag filters can collide across classes was not assessed. Not on the verdict path: these are tests, and no failure of them is reported. Responsible: a new issue, if Hari wants the audit. Gate blocked: none.
+- Other test classes that filter measurements on shared tag values. Evidence: of the other `MeterListener` uses in the test projects at the base, most store measurements in a concurrent collection or with `Interlocked` (for example `KafkaNativeMonitoringCaptureTests.cs` line 25 and `KafkaStatisticsNativeBridgeTests.cs` line 18). `ConcreteNativeFactoryCallbackTests.cs` adds to a `List` under a `lock` (lines 41 and 44). `TelemetryWiringTests.cs` assigns two local variables from its callback without synchronization (lines 36 and 37); it listens to the worker meter, not to `Parchwell.Kafka.Statistics`. Surveyed 2026-11-17. Whether their run-tag filters can collide across classes was not assessed. Not on the verdict path: these are tests, and no failure of them is reported. Responsible: a new issue, if Hari wants the audit. Gate blocked: none.
 
 ## 13. Sources
 
@@ -153,6 +178,7 @@ None. The change is test code that runs in the test process only. It makes no ne
 - `main` at `35f0fd5f223e32942db4bfd599a69cfd9e7bacac`: `tests/Parchwell.Kafka.Tests/Statistics/KafkaNativeMetricStateTests.cs` lines 1 to 204; `src/Parchwell.Kafka/Statistics/KafkaNativeMetricState.cs` lines 1 to 171; `src/Parchwell.Kafka/Statistics/KafkaStatisticsMetrics.cs` lines 1 to 114; `KafkaNativeMonitoringBoundsTests.cs` line 17; `KafkaNativeMonitoringCaptureTests.cs` lines 26 to 41, 94 and 126; `.github/CODEOWNERS`; `scripts/verify-dotnet.sh` lines 9 to 23 and 74 to 79; `docs/engineering/dotnet.md` line 62.
 - Microsoft Learn: [Collect metrics](https://learn.microsoft.com/dotnet/core/diagnostics/metrics-collection#create-a-custom-collection-tool-using-the-net-meterlistener-api) and [Thread-safe collections](https://learn.microsoft.com/dotnet/standard/collections/thread-safe/), through the Microsoft Learn MCP tool, 2026-11-17.
 - xUnit: [Running tests in parallel](https://xunit.net/docs/running-tests-in-parallel), section "Parallel mode: `collections`", 2026-11-17.
+- [Plan check 6958860463](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/540#issuecomment-6958860463) on Revision 1, and the xUnit [Microsoft Testing Platform](https://xunit.net/docs/getting-started/v3/microsoft-testing-platform) page it cites for `--filter-trait` (not read by this session).
 - The reproduction runs of section 2.2, in this planning session's sandbox on 2026-11-17. The harness and the prototype change were removed afterwards; `git status` showed a clean tree.
 - No Kafka, librdkafka, Confluent.Kafka or Azure Event Hubs behaviour is relied on (plan rule 1 has no case here).
 
@@ -160,7 +186,7 @@ None. The change is test code that runs in the test process only. It makes no ne
 
 (a) Effort that scales with a number unknown at planning time: none. The harness runs a fixed 2000 iterations per mode, three modes, twice; the repeated suite run is a fixed 10 runs.
 
-(b) Stricter than a parent plan: there is no parent plan. Against the issue body, the plan adds the second failure mode (foreign values admitted) and fixes it too, because 2.2 shows the queue alone leaves it. It also requires the before-and-after harness, because 2.2 shows the full suite does not reproduce the failure often enough to show a fix.
+(b) Stricter than a parent plan: there is no parent plan. Against the issue body, the plan adds the second failure mode (foreign values admitted) and fixes it too, because 2.2 shows the queue alone leaves it, with a deterministic test (8.2). It also requires the before-and-after harness, because 2.2 shows the full suite does not reproduce the failure often enough to show a fix.
 
 (c) Checks that depend on code, data or behaviour that is neither on `main` nor in the pull request: none. The tests use only the test file and `src/Parchwell.Kafka` on `main`. The harness is run in the session and not committed; its results are evidence, not a check.
 
@@ -170,4 +196,4 @@ None.
 
 ## 16. Stop rule
 
-The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it needs to change a contract in section 4, a requirement in section 5, the scope in section 3, or a literal expected value in section 8.1. It also stops if the `main` run of section 9 item 2 does not reproduce the failure, or if the branch run of that item shows any failure.
+The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it needs to change a contract in section 4, a requirement in section 5, the scope in section 3, or a literal expected value in section 8.1 or 8.2. It also stops if the `main` run of section 9 item 2 does not reproduce the failure, or if the branch run of that item shows any failure.
