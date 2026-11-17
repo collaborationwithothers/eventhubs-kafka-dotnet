@@ -74,8 +74,8 @@ public sealed class StartSnapshotTests
     [Fact]
     public async Task Given_B10_U17_When_StartingWithConsumerReaderAvailable_Then_PerformsNoConsumerReadAndKeepsBytes()
     {
-        using var baseline=new HostEvidenceBuilder(scenarioId:"B10");
-        using var current=new HostEvidenceBuilder(scenarioId:"B10");
+        using var baseline=new HostEvidenceBuilder(scenarioId:"B10",scenarioSourceId:"A01");
+        using var current=new HostEvidenceBuilder(scenarioId:"B10",scenarioSourceId:"A01");
         var order=new List<string>();var store=new SnapshotStore(current,order);var oldCompletion=new VerifierCompletionState();var completion=new VerifierCompletionState();
         ConfigureStartLine(baseline);
         var old=new StartLineHandler(Options.Create(baseline.Options),baseline.Kafka.Clock,new VerifierKafkaSessionFactory(_=>baseline.Kafka.Session),baseline,oldCompletion);
