@@ -233,9 +233,10 @@ class ConsumerArchiveTests(unittest.TestCase):
         self.assertEqual(1, code)
         self.assertFalse(manifest['archive_complete'])
         self.assertEqual([], [g for g in manifest['gaps'] if g['boundary'].startswith('consumer ')])
-        subjects = [o for o in manifest['objects'] if '/consumer/c03-42-1-c0-r' in o['source']['name'] and '-consumer-subject-pod/' in o['source']['name']]
-        self.assertEqual(5, sum(o['kind'] == 'consumer_record' for o in subjects))
-        self.assertEqual(0, sum(o['kind'] == 'consumer_completion' for o in subjects))
+        for repeat in range(1, 6):
+            subject = [o for o in manifest['objects'] if o['source']['name'].startswith(fixture.root(repeat, 'consumer-subject'))]
+            self.assertEqual(1, sum(o['kind'] == 'consumer_record' for o in subject))
+            self.assertEqual(0, sum(o['kind'] == 'consumer_completion' for o in subject))
         expected = set()
         for repeat in range(1, 6):
             job = fixture.job(repeat, 'consumer-subject')
@@ -338,6 +339,25 @@ class ConsumerArchiveTests(unittest.TestCase):
         fixture = self.phase()
         _, manifest, _ = fixture.run_archive()
         self.assertEqual([], manifest['gaps'])
+
+    def test_record_blob_count_boundaries(self):
+        # 8.2: record_blobs is (rows + 39999) // 40000, tested below, at and above each blob boundary and for no rows.
+        cases = [(0, 0, True), (0, 1, False), (1, 1, True), (1, 0, False), (39999, 1, True), (40000, 1, True), (40000, 2, False),
+                 (40001, 2, True), (40001, 1, False), (80000, 2, True), (80000, 3, False), (80001, 3, True)]
+        for rows, blobs, accepted in cases:
+            with self.subTest(rows=rows, record_blobs=blobs):
+                fixture = self.phase()
+                fixture.member(1, 'consumer-witness', rows=rows, blobs=blobs)
+                root = fixture.root(1, 'consumer-witness')
+                for key in [key for key in fixture.h.cli.blobs if key[1] == 'consumer-record' and key[2].startswith(root + 'record/')]:
+                    del fixture.h.cli.blobs[key]
+                for index in range(min(blobs, 3) if accepted else 1):
+                    fixture.h.cli.put('consumer-record', f'{root}record/{index:06d}.jsonl', b'{}\n')
+                _, manifest, _ = fixture.run_archive()
+                contract = gaps(manifest, 'consumer completion contract')
+                self.assertEqual(0 if accepted else 1, len(contract))
+                if accepted:
+                    self.assertEqual([], manifest['gaps'])
 
     def test_invalid_completion_falls_back_to_probe(self):
         # T10

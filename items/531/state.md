@@ -1,7 +1,7 @@
 # State: #531 Consumer evidence archive: archive support for C01, C03 and C10 (#499 entry 12)
 Covers: comment 6956497218 created 2026-11-17T18:01:42Z; read at 2026-11-17T18:11:25Z
 Parent items: [#499](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499) (split entry 12), [#507](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507) (predecessor pull request, merged)
-Item plan: [consumer-archive plan comment](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/531#issuecomment-6943199291), `items/531/plan-consumer-archive.md` at `d1ab65dae03d89ef78357503ebe3a5caaa346f70`
+Item plan: [proposal revision 2 of #499](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894560135), split entry 12 added by [decision 6926376436](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6926376436); this issue's own plan is under Approved plan
 Implementing tool: Claude Code. Source: [decision 6955981131](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/531#issuecomment-6955981131)
 Approved plan: [plan comment](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/531#issuecomment-6943199291), revision 3, approved by [approval 6956497218](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/531#issuecomment-6956497218)
 Decisions in force:
