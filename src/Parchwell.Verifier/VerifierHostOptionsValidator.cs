@@ -42,7 +42,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         }
 
         RequireText(options.ScenarioId, "Verifier:ScenarioId", errors);
-        if (mode is VerifierMode.ConsumerVerify or VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.Judge or VerifierMode.B10SweepLine or VerifierMode.B10Sweep or VerifierMode.B10FinalSweep && !(mode is VerifierMode.StartLine or VerifierMode.ConsumerVerify && ConsumerPlanValidation.IsConsumerScenario(options.ScenarioId)) && !ScenarioPhases.IsExecutableScenario(options.ScenarioId))
+        if (mode is VerifierMode.ConsumerVerify or VerifierMode.StartLine or VerifierMode.Verify or VerifierMode.Judge or VerifierMode.B10SweepLine or VerifierMode.B10Sweep or VerifierMode.B10FinalSweep && !(mode is VerifierMode.StartLine or VerifierMode.ConsumerVerify or VerifierMode.Judge && ConsumerPlanValidation.IsConsumerScenario(options.ScenarioId)) && !ScenarioPhases.IsExecutableScenario(options.ScenarioId))
             errors.Add("Verifier:ScenarioId must be A01 or B04 for C5 modes.");
         if (mode == VerifierMode.ConsumerVerify && !ConsumerPlanValidation.IsConsumerScenario(options.ScenarioId)) errors.Add("Consumer verify requires C01, C03 or C10.");
         if (mode is VerifierMode.B10SweepLine or VerifierMode.B10Sweep or VerifierMode.B10FinalSweep && options.ScenarioId != "B10")
@@ -375,7 +375,7 @@ internal sealed class VerifierHostOptionsValidator : IValidateOptions<VerifierHo
         RequireText(options.Phase, "Verifier:Phase", errors);
         if (!Common.Phase.PhaseIdentity.IsPhase(options.Phase)) errors.Add("Verifier:Phase must be exactly probe, C0, C1, or C3.");
         RequireText(options.ConfigurationId, "Verifier:ConfigurationId", errors);
-        if (ConsumerPlanValidation.IsConsumerScenario(options.ScenarioId) && mode is VerifierMode.StartLine or VerifierMode.ConsumerVerify
+        if (ConsumerPlanValidation.IsConsumerScenario(options.ScenarioId) && mode is VerifierMode.StartLine or VerifierMode.ConsumerVerify or VerifierMode.Judge
             ? options.Phase is not ("C0" or "C1") || options.ConfigurationId != options.Phase
             : !ScenarioPhases.TryGetConfiguration(options.ScenarioId, options.Phase, out string? expected) || options.ConfigurationId != expected)
             errors.Add("Verifier:ConfigurationId does not match Verifier:Phase.");

@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
+using System.Text.Json;
 using Microsoft.Extensions.Options;
+using Parchwell.Verifier.Common.Consumer;
 using Parchwell.Verifier.Common.Contracts;
 using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Results;
@@ -42,6 +44,8 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
         var originals=new List<B10OriginalEvidence>(5);
         var acceptedVersions=new List<(string? Generator,string? Kafka,string? Native,string? Dotnet)>();
         var acceptedA01=new List<Parchwell.Verifier.Common.Results.A01RecordedEvidence>();
+        bool consumerScenario=ConsumerPlanValidation.IsConsumerScenario(options.ScenarioId);
+        var consumerBlocks=new ConsumerProjection?[5];
         for(int i=1;i<=5;i++)
         {
             string repeat=PhaseIdentity.RepeatPrefix(options.RunId!,options.Phase!,i);
@@ -251,12 +255,17 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                         var parsed=VerifierResultCodec.Read(resultBytes,resultName,limits,options.MaxDiagnosticsPerCheck!.Value);
                         if(parsed.IsSuccess&&parsed.Value is VerifierResult result)
                         {
-                            bool semanticReceipt = result.VerifierCommit==r.SourceCommit &&
-                                (r.HandlerExitCode==0 ? result.Status==VerifierResultStatus.CompleteValid : result.Status!=VerifierResultStatus.CompleteValid);
+                            ConsumerProjection? consumerBlock=null;
+                            bool consumerEvidenceValid=!consumerScenario ? result.Consumer is null : result.Consumer is JsonElement rawBlock &&
+                                (consumerBlock=ConsumerEvidenceRules.ReadBlock(rawBlock,ConsumerEvidenceRules.GroupId(options.RunId!,options.Phase!,i))) is not null;
+                            bool fullyComplete=result.Status==VerifierResultStatus.CompleteValid&&(!consumerScenario||consumerBlock?.Status=="complete_valid");
+                            bool semanticReceipt = result.VerifierCommit==r.SourceCommit && consumerEvidenceValid &&
+                                (r.HandlerExitCode==0 ? fullyComplete : !fullyComplete);
                             receiptValid &= semanticReceipt;
                             bool same=result.Identity.ScenarioId==options.ScenarioId&&result.Identity.ConfigurationId==options.ConfigurationId&&
                                 registration is not null&&result.Identity==registration.Identity&&r.Identity==result.Identity;
                             receiptValid&=same;
+                            if(receiptValid)consumerBlocks[i-1]=consumerBlock;
                             if(b10)
                             {
                                 receiptValid &= registration is not null && restartRegistration is not null &&
@@ -388,6 +397,12 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
             }).ToList();
         }
         PhaseJudgement judgement=PhaseJudge.Evaluate(options.Phase!,slots,options.ScenarioId);
+        // A projection is published only for a slot that passed J2 to J6, the gate the producer
+        // side applies to its recorded evidence. The root status combines both judgements.
+        ConsumerProjection?[]? consumerRepeats=consumerScenario
+            ? judgement.Repeats.Select((r,index)=>r.Checks is {J2:true,J3:true,J4:true,J5:true,J6:true}?consumerBlocks[index]:null).ToArray() : null;
+        ConsumerPhaseResult? consumerResult=consumerRepeats is null?null:ConsumerPhaseJudge.Evaluate(judgement,consumerRepeats);
+        string rootStatus=consumerResult?.RootStatus??judgement.Status;
         string? CommonVersion(Func<(string? Generator,string? Kafka,string? Native,string? Dotnet),string?> select)
         {
             if(acceptedVersions.Count==0 || b10 && acceptedVersions.Count!=5*2)return null;
@@ -403,17 +418,18 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
         Parchwell.Verifier.Common.Results.A01WindowEvidence[] a01Windows=acceptedA01.SelectMany(e=>e.Windows??Array.Empty<Parchwell.Verifier.Common.Results.A01WindowEvidence>()).ToArray();
         string[] versionReasons=new Func<(string? Generator,string? Kafka,string? Native,string? Dotnet),string?>[]{v=>v.Generator,v=>v.Kafka,v=>v.Native,v=>v.Dotnet}.Any(selector=>CommonVersion(selector) is null)?["version_unavailable"]:[];
         string[] timingReasons=phaseStarted is null?["timing_unavailable"]:[];
-        var candidate=new PhaseCandidate(1,true,options.ScenarioId!,options.ConfigurationId!,options.RunId!,options.Phase!,options.SourceCommit!,judgement.Status,judgement.Gate,
+        var candidate=new PhaseCandidate(1,true,options.ScenarioId!,options.ConfigurationId!,options.RunId!,options.Phase!,options.SourceCommit!,rootStatus,judgement.Gate,
             new Dictionary<string,string?>(StringComparer.Ordinal){["verifier"]=typeof(JudgeHandler).Assembly.GetName().Version?.ToString(),["workload_generator"]=CommonVersion(v=>v.Generator),["confluent_kafka"]=CommonVersion(v=>v.Kafka),["librdkafka"]=CommonVersion(v=>v.Native),["dotnet"]=CommonVersion(v=>v.Dotnet)},
             new Dictionary<string,string?>(StringComparer.Ordinal){["loadgen"]=Digest(options.LoadGenImage),["verifier"]=Digest(options.VerifierImage)},
             new Dictionary<string,object?>(StringComparer.Ordinal){["worker_started_utc"]=phaseStarted?.ToString("O",System.Globalization.CultureInfo.InvariantCulture),["judge_completed_utc"]=phaseStarted is null?null:clock.GetUtcNow().ToString("O",System.Globalization.CultureInfo.InvariantCulture),["duration_seconds"]=phaseStarted is null?null:(decimal?)(clock.GetUtcNow()-phaseStarted.Value).TotalSeconds},
             new Dictionary<string,object?>(StringComparer.Ordinal){["error_codes"]=acceptedA01.SelectMany(e=>e.DeliveryErrorCodes??Array.Empty<int>()).Select(x=>x.ToString(System.Globalization.CultureInfo.InvariantCulture)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Concat(listing.IsComplete?Array.Empty<string>():new[]{listing.FailureCode??"listing_incomplete"}).ToArray(),["max_throttle_ms"]=a01Windows.Where(w=>w.ThrottleMaximumMilliseconds.HasValue).Select(w=>(long?)w.ThrottleMaximumMilliseconds!.Value).Max(),["request_timeout_increment"]=Sum(w=>w.RequestTimeoutsIncrement),["disconnect_increment"]=Sum(w=>w.DisconnectsIncrement),["rtt_p99_ms"]=a01Windows.Where(w=>w.RoundTripP99Microseconds.HasValue).Select(w=>(decimal?)w.RoundTripP99Microseconds!.Value/1000m).Max()},
-            judgement.Repeats,judgement.Counts,judgement.Reasons.Concat(versionReasons).Concat(timingReasons).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Take(100).ToArray(),sweepProjection);
+            judgement.Repeats,judgement.Counts,(consumerResult?.RootReasons??judgement.Reasons).Concat(versionReasons).Concat(timingReasons).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Take(100).ToArray(),sweepProjection,
+            Consumer:consumerResult,ConsumerRepeats:consumerRepeats);
         byte[] bytes=PhaseCandidateCodec.Write(candidate);
         string name=PhasePaths.Candidate(options.RunId!,options.Phase!);
         if(options.CandidateOutputName!=name)throw new InvalidOperationException("Candidate path is not the derived phase path.");
         await Bounded(ct=>verifier.CreateAsync(name,bytes,ct),options,clock,cancellationToken).ConfigureAwait(false);
-        int exit=judgement.Status=="complete_valid"?0:1;
+        int exit=rootStatus=="complete_valid"?0:1;
         var candidateReference=new ArtifactReference("verifier",name,bytes.LongLength,Convert.ToHexStringLower(SHA256.HashData(bytes)));
         var receipt=new WorkerReceipt(1,"judge",options.ScenarioId!,options.ConfigurationId!,options.RunId!,options.Phase!,null,
             PhaseIdentity.JudgeJobName(options.RunId!,options.Phase!),options.PodName!,null,options.SourceCommit!,exit,true,

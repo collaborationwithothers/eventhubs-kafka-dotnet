@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Parchwell.Verifier.Common.Results;
 using Parchwell.Scenarios;
+using Parchwell.Verifier.Common.Consumer;
 using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Serialization;
 
@@ -25,7 +26,7 @@ internal static class PhaseCandidateCodec
             if(candidate.Gate is null)w.WriteNull("gate");else w.WriteString("gate",candidate.Gate);
             WriteStringMap(w,"versions",candidate.Versions); WriteStringMap(w,"image_digests",candidate.ImageDigests);
             WriteObjectMap(w,"timings",candidate.Timings); WriteObjectMap(w,"diagnostics",candidate.Diagnostics);
-            w.WritePropertyName("repeats");w.WriteStartArray();foreach(var r in candidate.Repeats)WriteRepeat(w,r);w.WriteEndArray();
+            w.WritePropertyName("repeats");w.WriteStartArray();for(int index=0;index<candidate.Repeats.Count;index++)WriteRepeat(w,candidate.Repeats[index],candidate.ConsumerRepeats is {} consumerRepeats&&index<consumerRepeats.Count,candidate.ConsumerRepeats is {} written&&index<written.Count?written[index]:null);w.WriteEndArray();
             if(candidate.Counts is not null)WriteCounts(w,candidate.Counts);
             if(candidate.B10Sweep is not null)WriteSweep(w,candidate.B10Sweep);
             if (scientificFinal)
@@ -33,6 +34,7 @@ internal static class PhaseCandidateCodec
                 w.WritePropertyName("b10_final");
                 JsonSerializer.Serialize(w, candidate.B10Final, B10FinalProjectionCodec.JsonOptions);
             }
+            if(candidate.Consumer is not null)WriteConsumerPhase(w,candidate.Consumer);
             w.WritePropertyName("reasons");w.WriteStartArray();foreach(string reason in candidate.Reasons)w.WriteStringValue(reason);w.WriteEndArray();w.WriteEndObject();
         });
         using JsonDocument validated=Read(bytes);
@@ -43,10 +45,10 @@ internal static class PhaseCandidateCodec
     {
         if(bytes.Length>MaximumBytes)throw new InputLimitExceededException("Candidate exceeds its output byte limit.");
         var d=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=32});
-        string[] allowed=["schema_version","synthetic","scenario_id","configuration_id","run_id","phase","source_commit","status","gate","versions","image_digests","timings","diagnostics","repeats","counts","reasons","b10_sweep","b10_final"];
+        string[] allowed=["schema_version","synthetic","scenario_id","configuration_id","run_id","phase","source_commit","status","gate","versions","image_digests","timings","diagnostics","repeats","counts","reasons","b10_sweep","b10_final","consumer"];
         try
         {
-            if(d.RootElement.ValueKind!=JsonValueKind.Object||d.RootElement.EnumerateObject().Any(p=>!allowed.Contains(p.Name,StringComparer.Ordinal))||allowed.Where(n=>n is not ("counts" or "b10_sweep" or "b10_final")).Any(n=>!d.RootElement.TryGetProperty(n,out _)))throw new FormatException("Candidate has missing or unknown fields.");
+            if(d.RootElement.ValueKind!=JsonValueKind.Object||d.RootElement.EnumerateObject().Any(p=>!allowed.Contains(p.Name,StringComparer.Ordinal))||allowed.Where(n=>n is not ("counts" or "b10_sweep" or "b10_final" or "consumer")).Any(n=>!d.RootElement.TryGetProperty(n,out _)))throw new FormatException("Candidate has missing or unknown fields.");
             CheckDuplicates(d.RootElement);
             CheckNoPrivateKeys(d.RootElement);
             ValidateNested(d.RootElement);
@@ -63,8 +65,9 @@ internal static class PhaseCandidateCodec
             if(root.GetProperty(name).ValueKind!=JsonValueKind.String||root.GetProperty(name).GetString()!.Length>256)throw new FormatException("Candidate text scalar is invalid.");
         if(root.GetProperty("schema_version").ValueKind!=JsonValueKind.Number||root.GetProperty("synthetic").ValueKind!=JsonValueKind.True||
             !root.GetProperty("schema_version").TryGetInt32(out int schema)||schema!=1)throw new FormatException("Candidate header is invalid.");
-        if(!ScenarioPhases.TryGetConfiguration(root.GetProperty("scenario_id").GetString(),root.GetProperty("phase").GetString(),out string? expectedConfiguration)||
-            root.GetProperty("configuration_id").GetString()!=expectedConfiguration||
+        string? scenarioName=root.GetProperty("scenario_id").GetString(),phaseName=root.GetProperty("phase").GetString(),configurationName=root.GetProperty("configuration_id").GetString();
+        bool consumerPair=ConsumerPlanValidation.IsConsumerScenario(scenarioName)&&phaseName is "C0" or "C1"&&configurationName==phaseName;
+        if(!(consumerPair||ScenarioPhases.TryGetConfiguration(scenarioName,phaseName,out string? expectedConfiguration)&&configurationName==expectedConfiguration)||
             root.GetProperty("source_commit").GetString()!.Length!=40||root.GetProperty("source_commit").GetString()!.Any(c=>!(c is >= '0' and <= '9' or >= 'a' and <= 'f'))||
             root.GetProperty("status").GetString() is not ("complete_valid" or "invalid" or "incomplete"))throw new FormatException("Candidate identity or status is invalid.");
         bool b10 = root.GetProperty("scenario_id").GetString() == "B10";
@@ -94,6 +97,8 @@ internal static class PhaseCandidateCodec
                 !root.TryGetProperty("counts", out _) || !HasFiveFinalRepeats(repeats))
                 throw new FormatException("B10 phase finality requires five final repeats and a complete sweep.");
         }
+        if(root.TryGetProperty("consumer",out JsonElement rootConsumer)!=consumerPair)throw new FormatException("A consumer object is required for consumer pairs and rejected for every other scenario.");
+        if(consumerPair)ValidateRootConsumer(rootConsumer);
         if(root.GetProperty("gate").ValueKind is not (JsonValueKind.Null or JsonValueKind.String))throw new FormatException("Candidate gate has the wrong kind.");
         if(root.GetProperty("gate").ValueKind==JsonValueKind.String&&root.GetProperty("gate").GetString() is not ("pass" or "untestable_at_build_scale" or "inconclusive"))throw new FormatException("Candidate gate is invalid.");
         Exact(root.GetProperty("versions"),["verifier","workload_generator","confluent_kafka","librdkafka","dotnet"]);
@@ -118,7 +123,7 @@ internal static class PhaseCandidateCodec
         foreach(var repeat in root.GetProperty("repeats").EnumerateArray())
         {
             string[] repeatFields=["repeat","status","reasons","checks","identity","probe_observation","workload_observation"];
-            if(repeat.ValueKind!=JsonValueKind.Object||repeat.EnumerateObject().Any(p=>!repeatFields.Contains(p.Name,StringComparer.Ordinal)&&p.Name is not ("counts" or "broker_count" or "b04_recorded_evidence" or "batching_recorded_evidence" or "b10_intake" or "classification_final" or "b10_producer_observations"))||repeatFields.Any(n=>!repeat.TryGetProperty(n,out _)))throw new FormatException("Candidate repeat has missing or unknown fields.");
+            if(repeat.ValueKind!=JsonValueKind.Object||repeat.EnumerateObject().Any(p=>!repeatFields.Contains(p.Name,StringComparer.Ordinal)&&p.Name is not ("counts" or "broker_count" or "b04_recorded_evidence" or "batching_recorded_evidence" or "b10_intake" or "classification_final" or "b10_producer_observations" or "consumer"))||repeatFields.Any(n=>!repeat.TryGetProperty(n,out _)))throw new FormatException("Candidate repeat has missing or unknown fields.");
             Exact(repeat.GetProperty("checks"),["j1_repeat_slots","j2_publication_unaccepted","j3_verifier_receipt","j4_producer_job_binding","j5_registered_producer_count","j6_broker_inventory_coverage","j8_probe_inconclusive"]);
             if(repeat.GetProperty("probe_observation").ValueKind!=JsonValueKind.Null)
                 Exact(repeat.GetProperty("probe_observation"),["usable","qualifying","broker","report_index","window_count","window_maximum"]);
@@ -180,6 +185,9 @@ internal static class PhaseCandidateCodec
                 if (!b10 || boundIntake is null) throw new FormatException("B10 observations require bound intake.");
                 _ = B10ProducerObservationsCodec.Read(observations, boundIntake);
             }
+            if(repeat.TryGetProperty("consumer",out JsonElement repeatConsumer)!=consumerPair)throw new FormatException("A repeat consumer projection is required for consumer pairs and rejected for every other scenario.");
+            if(consumerPair&&repeatConsumer.ValueKind!=JsonValueKind.Null&&ConsumerEvidenceRules.ReadProjection(repeatConsumer,ConsumerEvidenceRules.GroupId(root.GetProperty("run_id").GetString()!,phaseName!,ordinal)) is null)
+                throw new FormatException("Candidate repeat consumer projection is invalid.");
             if(repeat.GetProperty("checks").EnumerateObject().Any(p=>p.Value.ValueKind is not (JsonValueKind.True or JsonValueKind.False)))throw new FormatException("Candidate repeat checks must be booleans.");
             if(repeat.GetProperty("identity").ValueKind is not (JsonValueKind.Null or JsonValueKind.String))throw new FormatException("Candidate identity has the wrong kind.");
             if(repeat.TryGetProperty("counts",out repeatCounts)&&repeatCounts.EnumerateObject().Any(p=>p.Value.ValueKind!=JsonValueKind.Number||!p.Value.TryGetInt64(out long n)||n<0))throw new FormatException("Candidate repeat counts are invalid.");
@@ -190,6 +198,18 @@ internal static class PhaseCandidateCodec
                 foreach(string key in new[]{"report_index","window_count","window_maximum"})if(observation.GetProperty(key).ValueKind is not (JsonValueKind.Null or JsonValueKind.Number)||observation.GetProperty(key).ValueKind==JsonValueKind.Number&&(!observation.GetProperty(key).TryGetInt64(out long n)||n<0))throw new FormatException("Candidate probe observation has invalid numeric values.");
             }
         }
+    }
+    private static void ValidateRootConsumer(JsonElement consumer)
+    {
+        if(consumer.ValueKind!=JsonValueKind.Object||!consumer.TryGetProperty("status",out JsonElement status)||status.ValueKind!=JsonValueKind.String||
+            status.GetString() is not ("complete_valid" or "invalid" or "incomplete"))throw new FormatException("Candidate consumer status is invalid.");
+        bool complete=status.GetString()=="complete_valid";
+        if(!ConsumerEvidenceRules.HasExactly(consumer,complete?["status","reasons","counts"]:["status","reasons"]))throw new FormatException("Candidate consumer object has missing or unknown fields.");
+        JsonElement reasons=consumer.GetProperty("reasons");
+        if(reasons.ValueKind!=JsonValueKind.Array||reasons.GetArrayLength()>100||reasons.EnumerateArray().Any(x=>x.ValueKind!=JsonValueKind.String))throw new FormatException("Candidate consumer reasons are invalid.");
+        string?[] names=reasons.EnumerateArray().Select(x=>x.GetString()).ToArray();
+        for(int index=1;index<names.Length;index++)if(string.CompareOrdinal(names[index-1],names[index])>=0)throw new FormatException("Candidate consumer reasons must be distinct and in ordinal order.");
+        if(complete&&ConsumerEvidenceRules.ReadCounts(consumer.GetProperty("counts")) is null)throw new FormatException("Candidate consumer counts are invalid.");
     }
     private static bool ValidateFinal(JsonElement root, JsonElement final)
     {
@@ -418,9 +438,20 @@ internal static class PhaseCandidateCodec
     }
     private static void WriteStringMap(Utf8JsonWriter w,string name,IReadOnlyDictionary<string,string?> values){w.WritePropertyName(name);w.WriteStartObject();foreach(var p in values.OrderBy(x=>x.Key,StringComparer.Ordinal)){if(p.Value is null)w.WriteNull(p.Key);else w.WriteString(p.Key,p.Value);}w.WriteEndObject();}
     private static void WriteObjectMap(Utf8JsonWriter w,string name,IReadOnlyDictionary<string,object?> values){w.WritePropertyName(name);w.WriteStartObject();foreach(var p in values.OrderBy(x=>x.Key,StringComparer.Ordinal)){w.WritePropertyName(p.Key);JsonSerializer.Serialize(w,p.Value);}w.WriteEndObject();}
-    private static void WriteRepeat(Utf8JsonWriter w,PhaseRepeatResult r){w.WriteStartObject();w.WriteNumber("repeat",r.Repeat);w.WriteString("status",r.Status);w.WritePropertyName("reasons");w.WriteStartArray();foreach(var x in r.Reasons)w.WriteStringValue(x);w.WriteEndArray();w.WritePropertyName("checks");w.WriteStartObject();w.WriteBoolean("j1_repeat_slots",r.Checks.J1);w.WriteBoolean("j2_publication_unaccepted",r.Checks.J2);w.WriteBoolean("j3_verifier_receipt",r.Checks.J3);w.WriteBoolean("j4_producer_job_binding",r.Checks.J4);w.WriteBoolean("j5_registered_producer_count",r.Checks.J5);w.WriteBoolean("j6_broker_inventory_coverage",r.Checks.J6);w.WriteBoolean("j8_probe_inconclusive",r.Checks.J8);w.WriteEndObject();if(r.Identity is null)w.WriteNull("identity");else w.WriteString("identity",r.Identity);if(r.ProbeObservation is null)w.WriteNull("probe_observation");else{w.WritePropertyName("probe_observation");w.WriteStartObject();w.WriteBoolean("usable",r.ProbeObservation.Usable);w.WriteBoolean("qualifying",r.ProbeObservation.Qualifying);WriteNullable(w,"broker",ProjectBroker(r.ProbeObservation.Broker));WriteNullable(w,"report_index",r.ProbeObservation.ReportIndex);WriteNullable(w,"window_count",r.ProbeObservation.WindowCount);WriteNullable(w,"window_maximum",r.ProbeObservation.WindowMaximum);w.WriteEndObject();}if(r.WorkloadObservation is null)w.WriteNull("workload_observation");else WriteWorkload(w,r.WorkloadObservation);if(r.BrokerCount is not null)WriteBrokerCount(w,r.BrokerCount);if(r.B04Evidence is not null)WriteB04Evidence(w,r.B04Evidence);if(r.BatchingEvidence is not null)WriteBatchingEvidence(w,r.BatchingEvidence);if(r.Counts is not null)WriteCounts(w,r.Counts);if(r.B10Intake is not null)PhaseWireCodec.WriteB10Intake(w,r.B10Intake);if(r.ClassificationFinal is bool final)w.WriteBoolean("classification_final",final);if(r.B10ProducerObservations is not null){if(r.B10Intake is null)throw new FormatException("B10 observations require intake.");B10ProducerObservationsCodec.Write(w,r.B10ProducerObservations,r.B10Intake);}w.WriteEndObject();}
+    private static void WriteRepeat(Utf8JsonWriter w,PhaseRepeatResult r,bool writeConsumer=false,ConsumerProjection? consumer=null){w.WriteStartObject();w.WriteNumber("repeat",r.Repeat);w.WriteString("status",r.Status);w.WritePropertyName("reasons");w.WriteStartArray();foreach(var x in r.Reasons)w.WriteStringValue(x);w.WriteEndArray();w.WritePropertyName("checks");w.WriteStartObject();w.WriteBoolean("j1_repeat_slots",r.Checks.J1);w.WriteBoolean("j2_publication_unaccepted",r.Checks.J2);w.WriteBoolean("j3_verifier_receipt",r.Checks.J3);w.WriteBoolean("j4_producer_job_binding",r.Checks.J4);w.WriteBoolean("j5_registered_producer_count",r.Checks.J5);w.WriteBoolean("j6_broker_inventory_coverage",r.Checks.J6);w.WriteBoolean("j8_probe_inconclusive",r.Checks.J8);w.WriteEndObject();if(r.Identity is null)w.WriteNull("identity");else w.WriteString("identity",r.Identity);if(r.ProbeObservation is null)w.WriteNull("probe_observation");else{w.WritePropertyName("probe_observation");w.WriteStartObject();w.WriteBoolean("usable",r.ProbeObservation.Usable);w.WriteBoolean("qualifying",r.ProbeObservation.Qualifying);WriteNullable(w,"broker",ProjectBroker(r.ProbeObservation.Broker));WriteNullable(w,"report_index",r.ProbeObservation.ReportIndex);WriteNullable(w,"window_count",r.ProbeObservation.WindowCount);WriteNullable(w,"window_maximum",r.ProbeObservation.WindowMaximum);w.WriteEndObject();}if(r.WorkloadObservation is null)w.WriteNull("workload_observation");else WriteWorkload(w,r.WorkloadObservation);if(r.BrokerCount is not null)WriteBrokerCount(w,r.BrokerCount);if(r.B04Evidence is not null)WriteB04Evidence(w,r.B04Evidence);if(r.BatchingEvidence is not null)WriteBatchingEvidence(w,r.BatchingEvidence);if(r.Counts is not null)WriteCounts(w,r.Counts);if(r.B10Intake is not null)PhaseWireCodec.WriteB10Intake(w,r.B10Intake);if(r.ClassificationFinal is bool final)w.WriteBoolean("classification_final",final);if(r.B10ProducerObservations is not null){if(r.B10Intake is null)throw new FormatException("B10 observations require intake.");B10ProducerObservationsCodec.Write(w,r.B10ProducerObservations,r.B10Intake);}if(writeConsumer){w.WritePropertyName("consumer");if(consumer is null)w.WriteNullValue();else consumer.Json.WriteTo(w);}w.WriteEndObject();}
     private static void WriteWorkload(Utf8JsonWriter w,WorkloadObservation value){w.WritePropertyName("workload_observation");w.WriteStartObject();w.WriteBoolean("synthetic",value.Synthetic);WriteNullable(w,"planned_attempts",value.PlannedAttempts);WriteNullable(w,"invoked_attempts",value.InvokedAttempts);WriteNullable(w,"terminal_observations",value.TerminalObservations);if(value.FixedProfileComplete is bool complete)w.WriteBoolean("fixed_profile_complete",complete);else w.WriteNull("fixed_profile_complete");WriteNullable(w,"first_unexecuted_ordinal",value.FirstUnexecutedOrdinal);if(value.Stages is null)w.WriteNull("stages");else{w.WritePropertyName("stages");w.WriteStartArray();foreach(var stage in value.Stages){w.WriteStartObject();w.WriteString("id",stage.Id);w.WriteNumber("offered_attempts_per_second",stage.OfferedAttemptsPerSecond);w.WriteNumber("duration_seconds",stage.DurationSeconds);WriteNullable(w,"invoked_attempts",stage.InvokedAttempts);WriteNullable(w,"delivered_observations",stage.DeliveredObservations);WriteNullable(w,"failed_observations",stage.FailedObservations);w.WriteEndObject();}w.WriteEndArray();}w.WriteEndObject();}
     private static string? ProjectBroker(string? broker)=>broker is null?null:"broker-"+Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(broker)))[..16];
+    private static void WriteConsumerPhase(Utf8JsonWriter w,ConsumerPhaseResult consumer)
+    {
+        w.WritePropertyName("consumer");w.WriteStartObject();w.WriteString("status",consumer.Status);
+        w.WritePropertyName("reasons");w.WriteStartArray();foreach(string reason in consumer.Reasons)w.WriteStringValue(reason);w.WriteEndArray();
+        if(consumer.Counts is not null)
+        {
+            w.WritePropertyName("counts");w.WriteStartObject();w.WriteNumber("processed_once",consumer.Counts.ProcessedOnce);w.WriteNumber("processed_again",consumer.Counts.ProcessedAgain);
+            w.WriteNumber("processed_again_extra_rows",consumer.Counts.ProcessedAgainExtraRows);w.WriteNumber("committed_never_processed",consumer.Counts.CommittedNeverProcessed);w.WriteEndObject();
+        }
+        w.WriteEndObject();
+    }
     private static void WriteCounts(Utf8JsonWriter w,OutcomeCounts c){w.WritePropertyName("counts");w.WriteStartObject();w.WriteNumber("ok",c.Ok);w.WriteNumber("loss",c.Loss);w.WriteNumber("phantom",c.Phantom);w.WriteNumber("reported_failure",c.ReportedFailure);w.WriteNumber("duplicate",c.Duplicate);w.WriteNumber("reorder",c.Reorder);w.WriteEndObject();}
     private static void WriteNullable(Utf8JsonWriter w,string name,string? x){if(x is null)w.WriteNull(name);else w.WriteString(name,x);}
     private static void WriteNullable(Utf8JsonWriter w,string name,long? x){if(x is null)w.WriteNull(name);else w.WriteNumber(name,x.Value);}
