@@ -299,7 +299,7 @@
     "tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs": "1176af81e3b5156d754b15d873389f77af16cc941776667e4b8f2fb9b9f8665b",
     "tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs": "b61b9a63f22447c5c2caef0a6778198ed3f2bb493603f315554a9c73f17d2cd7",
     "tests/Parchwell.Verifier.Tests/LedgerBatch/BatchingEvidenceRecorderTests.cs": "6294256abac200355df5fe228a5fd7578d3fffdcd251f31031228366ea27a244",
-    "tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py": "b1c9a96740111676caa0b9e95db90b4ff93f07ff2317710233558412a88ac1bc",
+    "tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py": "3771b676b8d5856eb34705dcaa3e9c34ffd8184dd514179a1bf85ee7535fb16f",
     "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": "dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea14629a0af4625",
     "tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json": "08dc4239d731048aabf4fc7683887121b951d0226a16d1a4293dd57e6de10001",
     "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj": "a3d7fe4824fb1f4c11d5bdca6438d04c92eec1c3614e9db02df27f232468721a",
@@ -5629,6 +5629,12 @@
               "#521 consumer phase judge (items/521/plan-consumer-phase-judge.md, revision 3): changes shared inputs only; every C5 target source, Judge/PhaseJudge.cs included, is unchanged. Added judge and consumer tests may raise per-mutant runtime. That risk is accepted by the approval of that plan revision, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/521#issuecomment-6926201546, pending the required post-merge mutation acceptance run on main."
             ],
             "current_sha256": "4afef2316aa0621312e0a2efbd9ed498b4322d2ab411325e7d4f6c907f0cd811"
+          },
+          "tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/532#issuecomment-6939888191 approves the exact forward projection script hash pair: capacity 128 to 256 plus rejected-setup count/limit/target diagnostic. Successful source transformation, Stryker arguments and scoring are unchanged. Original measured inputs and timing records remain; runtime uncertainty is accepted, not newly measured. Full main-only mutation acceptance is still required."
+            ],
+            "current_sha256": "3771b676b8d5856eb34705dcaa3e9c34ffd8184dd514179a1bf85ee7535fb16f"
           }
         },
         "target_sources": {}
@@ -6517,6 +6523,12 @@
               "#521 consumer phase judge (items/521/plan-consumer-phase-judge.md, revision 3): changes shared inputs only; every C5 target source, Judge/PhaseJudge.cs included, is unchanged. Added judge and consumer tests may raise per-mutant runtime. That risk is accepted by the approval of that plan revision, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/521#issuecomment-6926201546, pending the required post-merge mutation acceptance run on main."
             ],
             "current_sha256": "4afef2316aa0621312e0a2efbd9ed498b4322d2ab411325e7d4f6c907f0cd811"
+          },
+          "tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/532#issuecomment-6939888191 approves the exact forward projection script hash pair: capacity 128 to 256 plus rejected-setup count/limit/target diagnostic. Successful source transformation, Stryker arguments and scoring are unchanged. Original measured inputs and timing records remain; runtime uncertainty is accepted, not newly measured. Full main-only mutation acceptance is still required."
+            ],
+            "current_sha256": "3771b676b8d5856eb34705dcaa3e9c34ffd8184dd514179a1bf85ee7535fb16f"
           },
           "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": {
             "basis": [
