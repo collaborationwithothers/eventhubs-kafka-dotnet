@@ -1,0 +1,12 @@
+# State: #535 Repair C5 codec cohort selection when native mutant IDs change
+Covers: comment 6940567191 created 2026-11-17T06:25:11Z; read at 2026-11-17T06:32:12Z
+Parent items: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494
+Item plan: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/f96eab914d00c06484431ff67a1808fb331c7e13/items/494/plan-observability-evidence.md (parent context; this repair uses the directly authorized issue brief)
+Implementing tool: Codex. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/535#issuecomment-6940567191
+Approved plan: none; directly authorized repair described by the issue and decision below.
+Decisions in force:
+- Repair the observed codec cohort native-ID lookup failure while preserving source identities, native geometry, untouched reports, receipt/path/digest checks, isolation, complete disjoint ownership, scoring and later main acceptance. Preserve the original failed run. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/535
+- Hari asked to fix the observed mutation failures, continuing Codex's parent assignment and adopting hosted CI for covered verification. Existing historical and projection-only timing decisions do not cover this runner change. No acceptance, threshold, merge or dispatch gate is waived. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/535#issuecomment-6940567191
+Open questions:
+- Timing qualification for the changed nonrenewable runner still needs supported measurements or an exact authorized disposition. No existing decision is broadened. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/535#issuecomment-6940567191
+Next action: complete source review and the first comprehensive cold review, then prepare the exact timing disposition before final qualification and hosted PR verification. No cold round has completed at this checkpoint. The actual old/current codec reports have equal complete source identity inventories excluding numeric IDs and outcomes; the authored repair resolves those identities and keeps actual IDs in receipts and summaries. Hosted CI is being extended to discover the existing cohort test modules alongside runtime/workflow tests; no duplicate local verification is run. No passing full C5 acceptance or automatic rerun is claimed. The separate native telemetry branch and its profile/review bounds remain independent.

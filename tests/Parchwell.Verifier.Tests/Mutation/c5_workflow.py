@@ -821,7 +821,7 @@ def run_shard(shard: str, output_dir: Path, *, repository: Path | None = None,
                 first = isolated[0]
                 argv = first["argv"]
                 child_exit, reason = first["child_exit_code"], first["termination_reason"]
-                first_dir = output_dir / "isolated" / first["mutant_id"]
+                first_dir = isolated_directory(output_dir, first, shard)
                 if (first_dir / REPORT_PATH).is_file():
                     report_path.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copyfile(first_dir / REPORT_PATH, report_path)
@@ -953,13 +953,20 @@ def run_isolated(target: str, source: bytes, regions: list[tuple[int, int]], mai
 
 
 def run_isolation_plan(target: str, plan: list[dict], output_dir: Path, prefix: list[str],
-                       cwd: Path, deadline: float) -> tuple[list[dict], str | None]:
+                       cwd: Path, deadline: float, *, bootstrap_shard: str | None = None) -> tuple[list[dict], str | None]:
+    if bootstrap_shard is not None:
+        require(bootstrap_shard in COHORTS and len(plan) == 1
+                and plan[0].get("mutant_id") == COHORTS[bootstrap_shard][1][0],
+                "invalid bootstrap plan")
     entries = []
     for item in plan:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             return entries, f"shard time limit reached before mutant {item['mutant_id']}"
-        directory = output_dir / "isolated" / item["mutant_id"]
+        entry = dict(item)
+        if bootstrap_shard is not None:
+            entry["directory_id"] = "bootstrap-" + COHORTS[bootstrap_shard][1][0]
+        directory = isolated_directory(output_dir, entry, bootstrap_shard)
         directory.mkdir(parents=True)
         config_path = directory / "config.json"
         log_path = directory / "command.log"
@@ -976,10 +983,10 @@ def run_isolation_plan(target: str, plan: list[dict], output_dir: Path, prefix: 
         if logs.is_dir():
             try:
                 (output_dir / "stryker/logs").mkdir(parents=True, exist_ok=True)
-                shutil.move(logs, output_dir / "stryker/logs" / f"isolated-{item['mutant_id']}")
+                shutil.move(logs, output_dir / "stryker/logs" / f"isolated-{directory.name}")
             except OSError:
                 pass  # Logs are not evidence: aggregation never reads them. If the move fails they stay in isolated/ID/stryker/logs/, which the evidence upload carries.
-        entry = {**item, "argv": argv, "started_at_utc": started, "finished_at_utc": utc_now(),
+        entry = {**entry, "argv": argv, "started_at_utc": started, "finished_at_utc": utc_now(),
                  "elapsed_seconds": time.monotonic() - start, "child_exit_code": child_exit,
                  "termination_reason": reason, "command_completed": child_exit is not None and reason is None,
                  "config_sha256_before": config_before,
@@ -1001,28 +1008,120 @@ COHORT_BOOTSTRAP_SPANS = {"116": (668, 698), "122": (866, 898),
                           "143": (1755, 1789), "149": (1934, 1960)}
 
 
+# Identities from the verified historical report, bound to this exact target source.
+COHORT_SOURCE_SHA256 = "c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5"
+COHORT_INVENTORY_SHA256 = "e2a7e4cad2a119bcd37e51eb602e950433be3dfe9d5c365042ffabab1914f0ee"
+COHORT_COORDINATES = ((17, 55, 17, 85),
+ (17, 87, 17, 119),
+ (18, 9, 18, 38),
+ (18, 40, 18, 66),
+ (18, 68, 18, 96),
+ (18, 98, 18, 123),
+ (19, 9, 19, 41),
+ (19, 43, 19, 70),
+ (19, 72, 19, 108),
+ (20, 9, 20, 35),
+ (20, 37, 20, 67),
+ (20, 69, 20, 99),
+ (22, 60, 22, 95),
+ (22, 97, 22, 137),
+ (23, 9, 23, 47),
+ (23, 49, 23, 85),
+ (23, 87, 23, 122),
+ (24, 9, 24, 37),
+ (24, 39, 24, 84),
+ (24, 86, 24, 117),
+ (25, 9, 25, 53),
+ (25, 55, 25, 89),
+ (25, 91, 25, 118),
+ (26, 9, 26, 40),
+ (26, 42, 26, 68),
+ (26, 70, 26, 101),
+ (26, 103, 26, 137),
+ (27, 50, 27, 84),
+ (27, 86, 27, 117),
+ (27, 119, 27, 135),
+ (28, 9, 28, 34),
+ (28, 36, 28, 63),
+ (28, 65, 28, 91),
+ (28, 93, 28, 119),
+ (29, 9, 29, 44),
+ (29, 46, 29, 71),
+ (29, 73, 29, 109),
+ (30, 9, 30, 40),
+ (30, 42, 30, 66),
+ (30, 68, 30, 83))
+COHORT_IDENTITIES = {str(116 + index): {
+    "mutatorName": "String mutation", "replacement": '""',
+    "location": {"start": {"line": a, "column": b}, "end": {"line": c, "column": d}},
+    "static": True,
+} for index, (a, b, c, d) in enumerate(COHORT_COORDINATES)}
+
+
+def identity_json(row: dict) -> str:
+    return json.dumps({field: row.get(field) for field in (*IDENTITY, "static")},
+                      sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+
+
+def resolve_cohort(rows: list[dict], source: bytes) -> dict[str, str]:
+    require(hashlib.sha256(source).hexdigest() == COHORT_SOURCE_SHA256, "cohort source mismatch")
+    identities = sorted(identity_json(row) for row in rows)
+    digest = hashlib.sha256(("[" + ",".join(identities) + "]").encode()).hexdigest()
+    require(digest == COHORT_INVENTORY_SHA256, "cohort native geometry mismatch")
+    require(len(identities) == len(set(identities)), "duplicate cohort identity")
+    by_identity = {identity_json(row): row["id"] for row in rows}
+    resolved = {}
+    for reference, identity in COHORT_IDENTITIES.items():
+        key = identity_json(identity)
+        require(key in by_identity, "cohort identity missing")
+        resolved[reference] = by_identity[key]
+    require(len(resolved) == len(set(resolved.values())), "ambiguous cohort identities")
+    return resolved
+
+
+def isolated_directory(output: Path, entry: dict, shard: str | None = None) -> Path:
+    identifier = entry.get("mutant_id")
+    require(isinstance(identifier, str) and re.fullmatch(r"[0-9]+", identifier) is not None,
+            "invalid isolated ID")
+    token = entry.get("directory_id", identifier)
+    if "directory_id" in entry:
+        require(shard in COHORTS and token == "bootstrap-" + COHORTS[shard][1][0],
+                "invalid bootstrap directory")
+    return output / "isolated" / token
+
+
 def run_cohort(shard: str, target: str, source: bytes, regions: list[tuple[int, int]],
                output_dir: Path, prefix: list[str], cwd: Path, deadline: float) -> tuple[list[dict], str | None]:
     owner, ids = COHORTS[shard]
     first = {"mutant_id": ids[0], "span": list(COHORT_BOOTSTRAP_SPANS[ids[0]]), "exclusions": []}
-    entries, error = run_isolation_plan(target, [first], output_dir, prefix, cwd, deadline)
+    entries, error = run_isolation_plan(target, [first], output_dir, prefix, cwd, deadline,
+                                        bootstrap_shard=shard)
     if error:
         return entries, error
     try:
-        report = output_dir / "isolated" / ids[0] / REPORT_PATH
-        rows = report_records(json.loads(report.read_bytes()), target, allow_empty=True)
+        report = isolated_directory(output_dir, entries[0], shard) / REPORT_PATH
+        rows = report_records(json.loads(report.read_bytes()), target,
+                              source_sha256=hashlib.sha256(source).hexdigest(), allow_empty=True)
+        resolved = resolve_cohort(rows, source)
+        actual_first = resolved[ids[0]]
         baseline = copy.deepcopy(rows)
-        selected = [row for row in baseline if row["id"] == ids[0]]
+        selected = [row for row in baseline if row["id"] == actual_first]
         require(len(selected) == 1 and selected[0]["status"] in TESTED,
                 "bootstrap mutant was not tested")
         selected[0]["status"], selected[0]["statusReason"] = FILTERED
         plan = isolation_plan(baseline, source, regions)
-        expected = {identifier for logical, group in COHORTS.values() if logical == owner for identifier in group}
+        references = [identifier for logical, group in COHORTS.values()
+                      if logical == owner for identifier in group]
+        require(len(references) == len(set(references)), "cohort inventory changed")
+        expected = {resolved[identifier] for identifier in references}
         require({item["mutant_id"] for item in plan} == expected, "cohort inventory changed")
         by_id = {item["mutant_id"]: item for item in plan}
-        require(by_id[ids[0]] == first, "bootstrap geometry changed")
-        merge_isolated(baseline, first, rows)
-        rest = [by_id[identifier] for identifier in ids[1:]]
+        actual_first_item = {**first, "mutant_id": actual_first}
+        require(by_id[actual_first] == actual_first_item, "bootstrap geometry changed")
+        merge_isolated(baseline, actual_first_item, rows)
+        entries[0]["mutant_id"] = actual_first
+        rest = [by_id[identifier] for identifier in sorted(
+            (resolved[reference] for reference in ids[1:]), key=int)]
     except (OSError, ValueError, TypeError, KeyError) as error:
         return entries, f"cohort selection failed: {error}"
     remaining, error = run_isolation_plan(target, rest, output_dir, prefix, cwd, deadline)
@@ -1135,7 +1234,7 @@ def merge_isolated(rows: list[dict], item: dict, isolated_rows: list[dict]) -> l
     require(set(main) == set(isolated), "isolated inventory differs")
     identifier = item["mutant_id"]
     for key, row in isolated.items():
-        require([row.get(field) for field in IDENTITY] == [main[key].get(field) for field in IDENTITY],
+        require([row.get(field) for field in (*IDENTITY, "static")] == [main[key].get(field) for field in (*IDENTITY, "static")],
                 f"mutant {key} identity differs in isolation")
         disposition = (row["status"], row.get("statusReason"))
         if key == identifier:
@@ -1149,15 +1248,16 @@ def merge_isolated(rows: list[dict], item: dict, isolated_rows: list[dict]) -> l
 
 
 def isolated_rows(directory: Path, target: str, target_hash: str, item: dict, entry: object,
-                  rows: list[dict], *, cohort: bool = False) -> list[dict]:
+                  rows: list[dict], *, cohort: bool = False, shard: str | None = None) -> list[dict]:
     """Check one isolated invocation's retained evidence and merge its one tested mutant into the shard's rows."""
-    require(isinstance(entry, dict) and set(entry) == ISOLATED_FIELDS, "malformed isolated receipt")
+    require(isinstance(entry, dict) and (set(entry) == ISOLATED_FIELDS
+            or (cohort and set(entry) == ISOLATED_FIELDS | {"directory_id"})), "malformed isolated receipt")
     require(all(entry[key] == item[key] for key in ("mutant_id", "span", "exclusions")),
             "isolated invocation differs from plan")
     require(entry["command_completed"] is True and entry["termination_reason"] is None
             and type(entry["child_exit_code"]) is int and entry["child_exit_code"] in (0, 2),
             "isolated child execution error")
-    folder = directory / "isolated" / item["mutant_id"]
+    folder = isolated_directory(directory, entry, shard)
     if cohort:
         argv = entry["argv"]
         require(isinstance(argv, list) and len(argv) == 9 and argv[:2] == ["dotnet", "stryker"]
@@ -1173,7 +1273,7 @@ def isolated_rows(directory: Path, target: str, target_hash: str, item: dict, en
                 and config_arg.name == "config.json" and output_arg.name == "stryker"
                 and config_arg.parent == output_arg.parent
                 and config_arg.parent.parts[-5:] == (".artifacts", "c5-mutation",
-                                                     directory.name.split("-", 4)[-1], "isolated", item["mutant_id"]),
+                                                     directory.name.split("-", 4)[-1], "isolated", folder.name),
                 "cohort argv paths mismatch")
     config_path = folder / "config.json"
     require(json.loads(config_path.read_text()) == isolated_config(target, item),
@@ -1333,7 +1433,10 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
             require(receipt["static_regions"] == [list(region) for region in regions], "static region mismatch")
             require(receipt["isolation_error"] is None, "static isolation incomplete")
             if shard in COHORTS:
-                assigned = COHORTS[shard][1]
+                references = COHORTS[shard][1]
+                resolved = resolve_cohort(rows, source)
+                assigned = (resolved[references[0]], *sorted(
+                    (resolved[reference] for reference in references[1:]), key=int))
                 require(assigned and isinstance(receipt["isolated"], list)
                         and len(receipt["isolated"]) == len(assigned), "isolated invocation list mismatch")
                 require([entry.get("mutant_id") if isinstance(entry, dict) else None
@@ -1356,14 +1459,20 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
                 by_id = {item["mutant_id"]: item for item in full_plan}
                 require(all(identifier in by_id for identifier in assigned), "cohort ID outside isolation plan")
                 plan = [by_id[identifier] for identifier in assigned]
-                require(plan[0] == {"mutant_id": first, "span": list(COHORT_BOOTSTRAP_SPANS[first]),
+                require(plan[0] == {"mutant_id": first, "span": list(COHORT_BOOTSTRAP_SPANS[references[0]]),
                                     "exclusions": []}, "bootstrap geometry mismatch")
                 outcomes = baseline
-                for item, entry in zip(plan, receipt["isolated"], strict=True):
-                    outcomes = isolated_rows(directory, target, target_hash, item, entry, outcomes, cohort=True)
+                for index_in_cohort, (item, entry) in enumerate(zip(plan, receipt["isolated"], strict=True)):
+                    require(index_in_cohort == 0 or "directory_id" not in entry,
+                            "invalid bootstrap directory")
+                    require(index_in_cohort != 0 or
+                            (entry.get("directory_id") == "bootstrap-" + references[0]
+                             if "directory_id" in entry else item["mutant_id"] == references[0]),
+                            "invalid bootstrap directory")
+                    outcomes = isolated_rows(directory, target, target_hash, item, entry, outcomes, cohort=True, shard=shard)
                     outcome = next(row for row in outcomes if row["id"] == item["mutant_id"])
                     require(outcome["status"] in TESTED, "cohort mutant was not tested")
-                cohort_records[shard] = (baseline, full_plan, outcomes)
+                cohort_records[shard] = (baseline, full_plan, outcomes, assigned)
             else:
                 for row in rows:
                     require(not (row.get("static") is True and row["status"] in TESTED),
@@ -1388,7 +1497,7 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
         try:
             require(len(physical) == 2 and all(name in cohort_records for name in physical),
                     "physical cohorts incomplete")
-            first_baseline, first_plan, _ = cohort_records[physical[0]]
+            first_baseline, first_plan, _, _ = cohort_records[physical[0]]
             def native_identity(rows):
                 return {row["id"]: tuple(row.get(field) for field in
                         (*IDENTITY, "static", "status", "statusReason", "file")) for row in rows}
@@ -1396,12 +1505,12 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
             require(all(native_identity(cohort_records[name][0]) == native
                         and cohort_records[name][1] == first_plan for name in physical[1:]),
                     "cohort native geometry mismatch")
-            identifiers = [identifier for name in physical for identifier in COHORTS[name][1]]
+            identifiers = [identifier for name in physical for identifier in cohort_records[name][3]]
             require(len(identifiers) == len(set(identifiers))
                     and set(identifiers) == {item["mutant_id"] for item in first_plan},
                     "cohort ID coverage mismatch")
             outcomes = {row["id"]: row for name in physical for row in cohort_records[name][2]
-                        if row["id"] in COHORTS[name][1]}
+                        if row["id"] in cohort_records[name][3]}
             part_records[logical] = [outcomes.get(row["id"], row) for row in first_baseline]
             shards[logical] = dict(shards[physical[0]])
             shards[logical]["isolated_mutants"] = identifiers
