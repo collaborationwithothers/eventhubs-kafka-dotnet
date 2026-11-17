@@ -5,6 +5,7 @@ namespace Parchwell.LoadGen.Tests.Execution;
 
 internal sealed class RetryMetricCapture : IDisposable
 {
+    private static readonly string[] ExpectedTagNames = ["client_id", "event", "retry_kind", "role", "run", "scenario"];
     private readonly MeterListener listener = new();
     private readonly ConcurrentQueue<(string Kind, string Event)> events = new();
 
@@ -26,7 +27,7 @@ internal sealed class RetryMetricCapture : IDisposable
             if (values.GetValueOrDefault("run") != run || values.GetValueOrDefault("scenario") != scenario ||
                 values.GetValueOrDefault("client_id") != clientId) return;
             Xunit.Assert.Equal(1, value);
-            Xunit.Assert.Equal(new[] { "client_id", "event", "retry_kind", "role", "run", "scenario" }, values.Keys.Order(StringComparer.Ordinal));
+            Xunit.Assert.Equal(ExpectedTagNames, values.Keys.Order(StringComparer.Ordinal));
             Xunit.Assert.Equal("LoadGenProducer", values["role"]);
             events.Enqueue((values["retry_kind"], values["event"]));
         });

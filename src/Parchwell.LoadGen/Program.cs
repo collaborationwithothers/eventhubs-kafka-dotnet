@@ -190,15 +190,14 @@ internal static class Program
         }
         if (monitoring is not null)
         {
-            monitorDrained = monitorDrain?.IsCompletedSuccessfully == true;
-            if (!monitorDrained) monitoring.MarkIncomplete();
+            monitorDrained = await monitoring.WaitForDrainAsync(monitorDrain, hostCleanupDeadline?.Token ?? new CancellationToken(canceled: true)).ConfigureAwait(false);
             try
             {
                 if (monitorDrained && runContext is not null && !readyForCompletion && worker?.DiagnosticPublicationSucceeded == true)
                     monitoring.RebindSource("ledger/" + runContext.DiagnosticsPrefix + "statistics.jsonl");
                 if (monitorDrained) await monitoring.CompleteAsync(readyForCompletion || worker?.DiagnosticPublicationSucceeded == true, hostCleanupDeadline!.Token).WaitAsync(hostCleanupDeadline!.Token).ConfigureAwait(false);
             }
-            catch (Exception) { Console.Error.WriteLine("native_monitoring_completion_failed"); }
+            catch (Exception) { monitoring.MarkIncomplete(); Console.Error.WriteLine("native_monitoring_completion_failed"); }
         }
         hostCleanupDeadline?.Dispose();
         return exitCode;

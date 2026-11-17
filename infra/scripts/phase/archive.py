@@ -1977,6 +1977,7 @@ def manifest_run(phase, identity):
     """Use the frozen phase identifier for batch-wide configuration identity."""
     scenario = phase.get('scenario')
     allowed = {'A01': ('probe', 'C0', 'C3'), 'B04': ('C0', 'C1'), 'B10': ('C0', 'C1'),
+               'C01': ('C0', 'C1'), 'C03': ('C0', 'C1'), 'C10': ('C0', 'C1'),
                'probe-batch': ('single-action',), 'probe-batch-2': ('single-action',),
                'idle-observation': ('idle-observation',), 'ledger-batch': ('ledger-batch',)}
     if scenario not in allowed or phase.get('phase') not in allowed[scenario] or phase['phase'] != identity['phase']:
@@ -1984,7 +1985,8 @@ def manifest_run(phase, identity):
     diagnostic = phase.get('b10_abrupt_diagnostic') is True
     if diagnostic and (scenario != 'B10' or phase['phase'] != 'C1' or phase.get('purpose') != 'diagnostic_trial' or phase.get('run_kind') != 'smoke'):
         raise InvalidArchiveConfig()
-    prefix = ('b10d' if diagnostic else {'A01': 'a01', 'B04': 'b04', 'B10': 'b10', 'probe-batch': 'probe',
+    prefix = ('b10d' if diagnostic else {'A01': 'a01', 'B04': 'b04', 'B10': 'b10',
+              'C01': 'c01', 'C03': 'c03', 'C10': 'c10', 'probe-batch': 'probe',
               'probe-batch-2': 'probe', 'idle-observation': 'idle', 'ledger-batch': 'ledger'}[scenario])
     if identity['run_id'] != f"{prefix}-{identity['github_run_id']}-{identity['github_run_attempt']}":
         raise InvalidArchiveConfig()

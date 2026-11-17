@@ -71,6 +71,8 @@ internal sealed class NativeMonitoringHost(KafkaNativeMonitoringCoordinator coor
 
     internal Task DrainAsync(CancellationToken cancellationToken) => coordinator.DrainAsync(cancellationToken);
 
+    internal Task<bool> WaitForDrainAsync(Task? drain, CancellationToken cancellationToken) => coordinator.WaitForDrainAsync(drain, cancellationToken);
+
     internal async Task CompleteAsync(bool captureComplete, CancellationToken cancellationToken)
     {
         if (!captureComplete) coordinator.MarkIncomplete("host_capture_incomplete");

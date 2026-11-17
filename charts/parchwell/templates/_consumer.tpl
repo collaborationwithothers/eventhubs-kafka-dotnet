@@ -90,6 +90,16 @@ spec:
               value: {{ $r.phase | quote }}
             - name: NativeMonitoring__ConfigurationId
               value: {{ $.Values.configuration_id | quote }}
+            - name: Telemetry__ConnectionString
+              value: {{ $r.application_insights_connection_string | quote }}
+            - name: Telemetry__ServiceName
+              value: "Parchwell.Enrichment"
+            - name: Telemetry__ServiceInstanceId
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+            - name: Telemetry__ScenarioId
+              value: {{ $.Values.scenario_id | quote }}
+            - name: Telemetry__RunId
+              value: {{ $r.run_id | quote }}
             - name: PARCHWELL_SOURCE_COMMIT
               value: {{ $r.source_commit | quote }}
             - name: PARCHWELL_JOB_NAME

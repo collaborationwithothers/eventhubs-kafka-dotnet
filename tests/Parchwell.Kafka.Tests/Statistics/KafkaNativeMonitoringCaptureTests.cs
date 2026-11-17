@@ -79,6 +79,105 @@ public sealed class KafkaNativeMonitoringCaptureTests
     }
 
     [Fact]
+    public async Task Given_PendingHostDrain_When_ItFinishesWithinCleanupBudget_Then_IndexIsPublishedComplete()
+    {
+        var store = new MemoryStore();
+        using var metrics = new KafkaStatisticsMetrics();
+        var processing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var coordinator = new KafkaNativeMonitoringCoordinator(store, metrics, new FixedTimeProvider(),
+            new("run", "phase", "scenario", "configuration", "job", "pod", "commit"), () =>
+            {
+                processing.TrySetResult();
+                return release.Task;
+            });
+        var lifetime = coordinator.CreateLifetime(new("scenario", "run", KafkaClientRole.LoadGenProducer, "client"));
+        lifetime.MarkBuilt();
+        string raw = CounterReport(1, 2);
+        lifetime.CaptureNew(raw);
+        lifetime.Complete(true, "unknown");
+        await processing.Task.WaitAsync(TestContext.Current.CancellationToken);
+        Task drain = coordinator.DrainAsync(TestContext.Current.CancellationToken);
+        Task<bool> wait = coordinator.WaitForDrainAsync(drain, TestContext.Current.CancellationToken);
+        Assert.False(wait.IsCompleted);
+        Assert.Empty(store.Objects);
+        release.SetResult();
+        Assert.True(await wait);
+        await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
+        using var document = JsonDocument.Parse(store.Objects["run/phase/job/pod/native-monitoring/index.json"]);
+        JsonElement client = document.RootElement.GetProperty("clients")[0];
+        Assert.True(document.RootElement.GetProperty("capture_complete").GetBoolean());
+        Assert.Equal("unknown", client.GetProperty("export_tail_status").GetString());
+        Assert.Equal(1, client.GetProperty("report_count").GetInt64());
+        string rawPath = client.GetProperty("raw_sources")[0].GetProperty("source").GetString()!;
+        using var row = JsonDocument.Parse(store.Objects[rawPath]);
+        Assert.Equal(raw, row.RootElement.GetProperty("raw").GetString());
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Given_HostDrainCannotFinish_When_CleanupBudgetExpiresOrDrainFails_Then_GapIsSticky(bool expired)
+    {
+        var store = new MemoryStore();
+        using var metrics = new KafkaStatisticsMetrics();
+        var coordinator = new KafkaNativeMonitoringCoordinator(store, metrics, TimeProvider.System,
+            new("run", "phase", "scenario", "configuration", "job", "pod", "commit"));
+        var lifetime = coordinator.CreateLifetime(new("scenario", "run", KafkaClientRole.LoadGenProducer, "client"));
+        lifetime.MarkBuilt();
+        lifetime.Complete(true, "unknown");
+        var pending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var cleanup = new CancellationTokenSource();
+        Task<bool> wait = coordinator.WaitForDrainAsync(pending.Task, cleanup.Token);
+        Assert.False(wait.IsCompleted);
+        if (expired) cleanup.Cancel();
+        else pending.SetException(new InvalidOperationException("drain_failed"));
+        Assert.False(await wait);
+        Assert.Empty(store.Objects);
+        if (expired) pending.SetResult();
+        await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
+        using var document = JsonDocument.Parse(store.Objects["run/phase/job/pod/native-monitoring/index.json"]);
+        Assert.False(document.RootElement.GetProperty("capture_complete").GetBoolean());
+        Assert.Equal("unknown", document.RootElement.GetProperty("clients")[0].GetProperty("export_tail_status").GetString());
+    }
+
+    [Fact]
+    public async Task Given_MissingHostDrain_When_PublicationIsConsidered_Then_GapIsSticky()
+    {
+        var store = new MemoryStore();
+        using var metrics = new KafkaStatisticsMetrics();
+        var coordinator = new KafkaNativeMonitoringCoordinator(store, metrics, TimeProvider.System,
+            new("run", "phase", "scenario", "configuration", "job", "pod", "commit"));
+        var lifetime = coordinator.CreateLifetime(new("scenario", "run", KafkaClientRole.LoadGenProducer, "client"));
+        lifetime.MarkBuilt();
+        lifetime.Complete(true, "unknown");
+        Assert.False(await coordinator.WaitForDrainAsync(null, TestContext.Current.CancellationToken));
+        Assert.Empty(store.Objects);
+        await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
+        using var document = JsonDocument.Parse(store.Objects["run/phase/job/pod/native-monitoring/index.json"]);
+        Assert.False(document.RootElement.GetProperty("capture_complete").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Given_CompletedHostDrain_When_CleanupBudgetAlreadyExpired_Then_GapIsSticky()
+    {
+        var store = new MemoryStore();
+        using var metrics = new KafkaStatisticsMetrics();
+        var coordinator = new KafkaNativeMonitoringCoordinator(store, metrics, TimeProvider.System,
+            new("run", "phase", "scenario", "configuration", "job", "pod", "commit"));
+        var lifetime = coordinator.CreateLifetime(new("scenario", "run", KafkaClientRole.LoadGenProducer, "client"));
+        lifetime.MarkBuilt();
+        lifetime.Complete(true, "unknown");
+        using var cleanup = new CancellationTokenSource();
+        cleanup.Cancel();
+        Assert.False(await coordinator.WaitForDrainAsync(Task.CompletedTask, cleanup.Token));
+        Assert.Empty(store.Objects);
+        await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
+        using var document = JsonDocument.Parse(store.Objects["run/phase/job/pod/native-monitoring/index.json"]);
+        Assert.False(document.RootElement.GetProperty("capture_complete").GetBoolean());
+    }
+
+    [Fact]
     public async Task Given_ZeroReports_When_Completed_Then_IndexRecordsBuiltLifetime()
     {
         var store = new MemoryStore();

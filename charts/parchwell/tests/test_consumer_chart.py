@@ -92,6 +92,11 @@ def expected_member_env(values):
         'NativeMonitoring__SourceCommit': ('value', runtime['source_commit']),
         'NativeMonitoring__Phase': ('value', runtime['phase']),
         'NativeMonitoring__ConfigurationId': ('value', values['configuration_id']),
+        'Telemetry__ConnectionString': ('value', runtime['application_insights_connection_string']),
+        'Telemetry__ServiceName': ('value', 'Parchwell.Enrichment'),
+        'Telemetry__ServiceInstanceId': pod_name,
+        'Telemetry__ScenarioId': ('value', values['scenario_id']),
+        'Telemetry__RunId': ('value', runtime['run_id']),
         'PARCHWELL_SOURCE_COMMIT': ('value', runtime['source_commit']),
         'PARCHWELL_JOB_NAME': ('value', name),
         'PARCHWELL_POD_NAME': pod_name, 'PARCHWELL_POD_UID': pod_uid, 'PARCHWELL_NODE_NAME': node_name,
@@ -154,7 +159,7 @@ def verify_member(document, values):
     env = container['env']
     names = [entry['name'] for entry in env]
     expected = expected_member_env(values)
-    assert len(names) == len(set(names)) == 26 and set(names) == set(expected), set(names) ^ set(expected)
+    assert len(names) == len(set(names)) == 31 and set(names) == set(expected), set(names) ^ set(expected)
     assert {name for name in names if name.startswith(('ConsumerProcessing__', 'PARCHWELL_'))} == set(WORKER_NAMES)
     assert len(WORKER_NAMES) == 17
     for entry in env:

@@ -156,8 +156,7 @@ internal static class ProbeV2Host
             }
             catch (Exception exception) { exit = 1; await ReportFailure(logs, "probe_v2_capture_failed", exception, options).ConfigureAwait(false); }
         }
-        if (monitoring is not null && monitorDrain?.IsCompletedSuccessfully != true) monitoring.MarkIncomplete();
-        if (monitoring is not null && monitorDrain?.IsCompletedSuccessfully == true)
+        if (monitoring is not null && await monitoring.WaitForDrainAsync(monitorDrain, cleanupBudget?.Token ?? new CancellationToken(canceled: true)).ConfigureAwait(false))
         {
             try
             {
@@ -165,7 +164,7 @@ internal static class ProbeV2Host
                     !worker.Repeats.Any(value => value.Diagnostics.Contains("capture_limit", StringComparer.Ordinal)),
                     cleanupBudget?.Token ?? new CancellationToken(canceled: true)).WaitAsync(cleanupBudget?.Token ?? new CancellationToken(canceled: true)).ConfigureAwait(false);
             }
-            catch (Exception exception) { await ReportFailure(logs, "native_monitoring_completion_failed", exception, options).ConfigureAwait(false); }
+            catch (Exception exception) { monitoring.MarkIncomplete(); await ReportFailure(logs, "native_monitoring_completion_failed", exception, options).ConfigureAwait(false); }
         }
         cleanupBudget?.Dispose();
         return exit;

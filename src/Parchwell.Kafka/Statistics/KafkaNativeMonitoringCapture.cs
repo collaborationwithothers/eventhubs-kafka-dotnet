@@ -259,6 +259,27 @@ public sealed class KafkaNativeMonitoringCoordinator
         await _worker.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Waits for the host's already-started drain within its existing cleanup deadline.</summary>
+    /// <param name="drain">The drain started after host stop, or null if it could not be started.</param>
+    /// <param name="cancellationToken">The original host cleanup deadline.</param>
+    /// <returns>Whether the drain completed successfully.</returns>
+    public async Task<bool> WaitForDrainAsync(Task? drain, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (drain is not null)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await drain.WaitAsync(cancellationToken).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+                return true;
+            }
+        }
+        catch (Exception) { }
+        MarkIncomplete("host_drain_incomplete");
+        return false;
+    }
+
     internal void RebindExistingSource(KafkaNativeMonitoringLifetime client, string previousSource, string publishedSource)
     {
         lock (_gate)

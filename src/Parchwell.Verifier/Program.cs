@@ -522,11 +522,10 @@ internal static partial class Program
             watchdog?.Dispose();
             try
             {
-                if (monitoring is not null && monitorDrain?.IsCompletedSuccessfully == true)
+                if (monitoring is not null && await monitoring.WaitForDrainAsync(monitorDrain, monitoringCleanup!.Token).ConfigureAwait(false))
                     await monitoring.CompleteAsync(monitoringCleanup!.Token).WaitAsync(monitoringCleanup!.Token).ConfigureAwait(false);
-                else monitoring?.MarkIncomplete("host_drain_incomplete");
             }
-            catch (Exception) { }
+            catch (Exception) { monitoring?.MarkIncomplete("host_completion_incomplete"); }
             monitoringCleanup?.Dispose();
         }
     }

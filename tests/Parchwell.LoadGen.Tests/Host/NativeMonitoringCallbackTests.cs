@@ -14,6 +14,7 @@ namespace Parchwell.LoadGen.Tests.Host;
 #pragma warning disable CA1707
 public sealed class NativeMonitoringCallbackTests
 {
+    private static readonly string[] ExpectedSelectiveSourceKinds = ["raw_chunk", "existing_capture", "raw_chunk"];
     [Fact]
     public async Task RejectedSourceReport_LeavesAStickyGapAndIsNotObserved()
     {
@@ -79,7 +80,7 @@ public sealed class NativeMonitoringCallbackTests
         Assert.True(client.GetProperty("capture_complete").GetBoolean());
         Assert.Equal(4, client.GetProperty("report_count").GetInt32());
         JsonElement[] sources = client.GetProperty("raw_sources").EnumerateArray().ToArray();
-        Assert.Equal(new[] { "raw_chunk", "existing_capture", "raw_chunk" }, sources.Select(x => x.GetProperty("kind").GetString()));
+        Assert.Equal(ExpectedSelectiveSourceKinds, sources.Select(x => x.GetProperty("kind").GetString()));
         Assert.Equal(new long[] { 1, 3, 4 }, sources.Select(x => x.GetProperty("capture_ordinal").GetInt64()));
         Assert.Equal(new long[] { 2, 1, 1 }, sources.Select(x => x.GetProperty("row_count").GetInt64()));
         Assert.Equal(3, sources[1].GetProperty("report_ordinal").GetInt64());

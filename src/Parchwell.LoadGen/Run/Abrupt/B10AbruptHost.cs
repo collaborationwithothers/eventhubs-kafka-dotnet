@@ -122,9 +122,8 @@ internal static class B10AbruptHost
                     payloads.Add(pair.Key, await B10AbruptPublisher.ReadFileAsync(pair.Value, 268435456, lifetime.Token).ConfigureAwait(false));
                 await publisher.PublishSuccessorAsync(options.Identity(input.FirstIdentity.InstanceId), payloads, input.FirstTermination, input.Journal, input.KillUnconfirmedAttemptIds,
                     result.ReadyUtc, result.ReleaseUtc, result.Invocations, cleanupCompleted: true, lifetime.Token).ConfigureAwait(false);
-                if (monitorDrain?.IsCompletedSuccessfully != true) monitoring.MarkIncomplete();
-                try { if (monitorDrain?.IsCompletedSuccessfully == true) await monitoring.CompleteAsync(true, cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false); }
-                catch (Exception) { Console.Error.WriteLine("native_monitoring_completion_failed"); }
+                try { if (await monitoring.WaitForDrainAsync(monitorDrain, cleanup.Token).ConfigureAwait(false)) await monitoring.CompleteAsync(true, cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false); }
+                catch (Exception) { monitoring.MarkIncomplete(); Console.Error.WriteLine("native_monitoring_completion_failed"); }
                 return 0;
             }
         }

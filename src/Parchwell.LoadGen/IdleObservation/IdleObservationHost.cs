@@ -154,11 +154,10 @@ internal static class IdleObservationHost
         {
             try
             {
-                if (drain?.IsCompletedSuccessfully == true)
+                if (await monitoring.WaitForDrainAsync(drain, cleanup!.Token).ConfigureAwait(false))
                     await monitoring.CompleteAsync(captureComplete, cleanup!.Token).WaitAsync(cleanup!.Token).ConfigureAwait(false);
-                else monitoring.MarkIncomplete();
             }
-            catch (Exception exception) { ReportFailure("native_monitoring_completion_failed", exception, options); }
+            catch (Exception exception) { monitoring.MarkIncomplete(); ReportFailure("native_monitoring_completion_failed", exception, options); }
         }
         cleanup?.Dispose();
         return exit;

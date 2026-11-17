@@ -109,11 +109,10 @@ internal static class Program
         catch (Exception) { exitCode = 1; }
         try
         {
-            if (seedMonitoring is not null && seedDrain?.IsCompletedSuccessfully == true)
+            if (seedMonitoring is not null && await seedMonitoring.WaitForDrainAsync(seedDrain, seedCleanup!.Token).ConfigureAwait(false))
                 await seedMonitoring.CompleteAsync(seedCleanup!.Token).WaitAsync(seedCleanup.Token).ConfigureAwait(false);
-            else seedMonitoring?.MarkIncomplete("host_drain_incomplete");
         }
-        catch (Exception) { }
+        catch (Exception) { seedMonitoring?.MarkIncomplete("host_completion_incomplete"); }
         seedCleanup?.Dispose();
         return exitCode;
     }
@@ -222,11 +221,10 @@ internal static class Program
                 catch (Exception) { }
                 try
                 {
-                    if (monitoring is not null && drain?.IsCompletedSuccessfully == true)
+                    if (monitoring is not null && await monitoring.WaitForDrainAsync(drain, cleanup.Token).ConfigureAwait(false))
                         await monitoring.CompleteAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false);
-                    else monitoring?.MarkIncomplete("host_drain_incomplete");
                 }
-                catch (Exception) { }
+                catch (Exception) { monitoring?.MarkIncomplete("host_completion_incomplete"); }
             }
         }
     }
@@ -298,7 +296,7 @@ internal static class Program
         return builder.Build();
     }
 
-    private static void RegisterNativeMonitoring(IServiceCollection services, IConfiguration configuration, string? scenarioId, string? runId)
+    private static void RegisterNativeMonitoring(IServiceCollection services, ConfigurationManager configuration, string? scenarioId, string? runId)
     {
         services.AddOptions<KafkaNativeMonitoringOptions>()
             .Bind(configuration.GetSection(KafkaNativeMonitoringOptions.SectionName), binding => binding.ErrorOnUnknownConfiguration = true)
@@ -320,7 +318,7 @@ internal static class Program
         services.AddSingleton<NativeClientCapture>();
     }
 
-    private static void RegisterTelemetry(IServiceCollection services, IConfiguration configuration, string? scenarioId, string? runId)
+    private static void RegisterTelemetry(IServiceCollection services, ConfigurationManager configuration, string? scenarioId, string? runId)
     {
         string? instance = configuration["Telemetry:ServiceInstanceId"] ?? configuration["PARCHWELL_POD_NAME"];
         if (configuration["Telemetry:ServiceName"] != "Parchwell.Enrichment" ||

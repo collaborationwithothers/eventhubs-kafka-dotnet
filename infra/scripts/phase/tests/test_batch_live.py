@@ -515,7 +515,13 @@ class BatchLiveTests(unittest.TestCase):
                 self.assertEqual(['--single-action-seed'] if worker == 'enrichment' else ['--single-action'] if mode == 'single-action' else None, container.get('args'))
                 env = {entry['name']: entry for entry in container['env']}
                 if worker == 'enrichment':
-                    self.assertFalse(any(name.startswith('Telemetry__') for name in env))
+                    self.assertEqual({name: entry for name, entry in env.items() if name.startswith('Telemetry__')}, {
+                        'Telemetry__ConnectionString': {'name': 'Telemetry__ConnectionString', 'value': fixture.PERSISTENT['application_insights_connection_string']['value']},
+                        'Telemetry__ServiceName': {'name': 'Telemetry__ServiceName', 'value': 'Parchwell.Enrichment'},
+                        'Telemetry__ServiceInstanceId': {'name': 'Telemetry__ServiceInstanceId', 'valueFrom': {'fieldRef': {'fieldPath': 'metadata.name'}}},
+                        'Telemetry__ScenarioId': {'name': 'Telemetry__ScenarioId', 'value': item},
+                        'Telemetry__RunId': {'name': 'Telemetry__RunId', 'value': self.run_id},
+                    })
                     self.assertEqual('330000', env['SeedF04__ActionWindowMs']['value'])
                 if mode == 'single-action-judge':
                     self.assertEqual('single-action-judge', env['Verifier__Mode']['value'])
