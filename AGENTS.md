@@ -106,7 +106,7 @@ Adding or removing a skill is a governance change and goes to Hari.
 
 - Use `gh api` REST routes for issues and pull requests; `gh` subcommands that use GraphQL fail in cloud sessions.
 - Do not use `gh api --paginate`: its next-page URLs use numeric repository IDs, which the proxy refuses. Page with `per_page=100&page=N`.
-- Merge only through the REST merge route with the `sha` recorded when the required checks and Codex review were verified, under GOVERNANCE "Merge rule". Do not take that `sha` from a fresh read of the pull request head. The merge method agents use is Hari's decision.
+- Merge only through the REST merge route with the `sha` recorded when the required checks and Codex review were verified, under GOVERNANCE "Merge rule". Do not take that `sha` from a fresh read of the pull request head. Agents merge with a merge commit (`merge_method: merge`), as Hari decided on 2026-11-17 ([decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6958521790)); a change of method is his decision.
 
 ## Before opening a pull request
 
