@@ -11,6 +11,9 @@ ROOT = Path(__file__).resolve().parents[3]
 APPROVED_PROJECTION_PAIR = ('b1c9a96740111676caa0b9e95db90b4ff93f07ff2317710233558412a88ac1bc',
                             '3771b676b8d5856eb34705dcaa3e9c34ffd8184dd514179a1bf85ee7535fb16f')
 PROJECTION_PATH = 'tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py'
+APPROVED_RUNNER_PAIR = ('dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea14629a0af4625',
+                        'c147bb8000ef1273609052660e80b20c8da8bf33a77a0df65a94d32a5f7a1c40')
+RUNNER_PATH = 'tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py'
 
 
 class RequiredCheckIntegrationTests(unittest.TestCase):
@@ -397,6 +400,52 @@ class QualificationTests(unittest.TestCase):
         cases += [(path, old, new) for path in (
             'tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py',
             '.github/workflows/verifier-c5-mutation.yml',
+            'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json',
+            '.config/dotnet-tools.json')]
+        for path, measured_hash, current_hash in cases:
+            with self.subTest(path=path, measured=measured_hash, current=current_hash):
+                measured = {} if measured_hash is None else {path: measured_hash}
+                current = {} if current_hash is None else {path: current_hash}
+                context = {'shared_inputs': measured, 'target_sources': self.targets.copy(),
+                           'assessments': {'shared_inputs': {path: {'current_sha256': current_hash,
+                                                                    'basis': ['Synthetic risk.']}},
+                                           'target_sources': {}}}
+                binding = runtime.digest(runtime.canonical({'shared_inputs': measured, 'target_sources': self.targets}))
+                runtime.provenance_shape({binding: context})
+                self.assertEqual({'invalid_renewal'}, runtime.provenance_errors(context, current, self.targets, 'a.cs'))
+
+    def test_v2_runner_exact_pair_requires_complete_current_assessment(self):
+        old, new = APPROVED_RUNNER_PAIR
+        self.shared[RUNNER_PATH] = old
+        self.config['shared_inputs'] = self.shared.copy()
+        binding = self.migrate_v2()
+        for record in self.config['targets'].values():
+            for item in record['shards'].values():
+                item['timing_inputs_sha256'] = binding
+        self.shared[RUNNER_PATH] = new
+        self.config['shared_inputs'] = self.shared.copy()
+        changes = self.config['timing_inputs'][binding]['assessments']['shared_inputs']
+        self.assertIn('unaccounted_inputs', self.errors())
+        changes[RUNNER_PATH] = {'current_sha256': new, 'basis': ['Synthetic accepted timing risk.']}
+        self.assertEqual(set(), self.errors())
+        changes[RUNNER_PATH]['current_sha256'] = old
+        self.assertIn('unaccounted_inputs', self.errors())
+        changes[RUNNER_PATH]['current_sha256'] = new
+        changes['extra'] = {'current_sha256': None, 'basis': ['Synthetic extra assessment.']}
+        self.assertIn('unaccounted_inputs', self.errors())
+        del changes['extra']
+        changes[RUNNER_PATH]['basis'] = []
+        with self.assertRaises(ValueError):
+            self.errors()
+
+    def test_v2_runner_exception_rejects_other_pairs_and_nonrenewable_paths(self):
+        old, new = APPROVED_RUNNER_PAIR
+        other = runtime.digest(b'other')
+        cases = [(RUNNER_PATH, other, new), (RUNNER_PATH, old, other),
+                 (RUNNER_PATH, new, old), (RUNNER_PATH, None, new),
+                 (RUNNER_PATH, old, None)]
+        cases += [(path, old, new) for path in (
+            PROJECTION_PATH, '.github/workflows/verifier-c5-mutation.yml',
             'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json',
             '.config/dotnet-tools.json')]
         for path, measured_hash, current_hash in cases:
@@ -1577,6 +1626,18 @@ class RenewalTests(unittest.TestCase):
                 item['timing_inputs_sha256'] = timing
         self.assertEqual(set(), self.errors())
         self.renew_fixture(PROJECTION_PATH, old, new)
+        self.assertEqual({'invalid_renewal'}, self.errors())
+
+    def test_v1_rejects_even_the_runner_timing_pair(self):
+        old, new = APPROVED_RUNNER_PAIR
+        self.shared[RUNNER_PATH] = old
+        self.config['shared_inputs'] = self.shared.copy()
+        timing = runtime.digest(runtime.canonical({'shared_inputs': self.shared, 'target_sources': self.targets}))
+        for record in self.config['targets'].values():
+            for item in record['shards'].values():
+                item['timing_inputs_sha256'] = timing
+        self.assertEqual(set(), self.errors())
+        self.renew_fixture(RUNNER_PATH, old, new)
         self.assertEqual({'invalid_renewal'}, self.errors())
 
     def test_renewal_must_change_the_hash(self):
