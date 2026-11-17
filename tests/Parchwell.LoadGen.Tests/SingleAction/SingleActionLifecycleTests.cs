@@ -42,10 +42,11 @@ public sealed class SingleActionLifecycleTests
     public async Task Given_stalled_monitoring_drain_When_host_finishes_Then_scientific_cleanup_and_receipt_succeed()
     {
         using var fixture = new Fixture(holdMonitoring: true);
-        await fixture.MonitorStarted.Task;
         try
         {
-            int exit = await SingleActionHost.RunAsync(hostFactory: () => fixture.Host);
+            await fixture.MonitorStarted.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            int exit = await SingleActionHost.RunAsync(hostFactory: () => fixture.Host)
+                .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
             Assert.Equal(0, exit);
             Assert.Equal(["registration", "client-1", "client-2", "client-3", "client-4", "client-5", "capture", "stop", "dispose", "completion"], fixture.Events);
             Assert.NotNull(fixture.Publication.Completion);
@@ -215,6 +216,7 @@ public sealed class SingleActionLifecycleTests
         {
             var clock = new SingleActionCaptureTests.AdvancingClock();
             var options = SingleActionCaptureTests.Options();
+            if (holdMonitoring) options.HostCleanupSeconds = 1;
             options.ScenarioId = "F04";
             options.ConfigurationId = firstRule ? "C3" : "C1";
             options.JobName = firstRule ? "run-1-f04-c3-single" : "run-1-f04-c1-single";
@@ -226,7 +228,7 @@ public sealed class SingleActionLifecycleTests
             var services = new ServiceCollection();
             services.AddSingleton<IOptions<SingleActionHostOptions>>(Microsoft.Extensions.Options.Options.Create(options));
             services.AddSingleton(options);
-            services.AddSingleton<TimeProvider>(clock);
+            services.AddSingleton<TimeProvider>(holdMonitoring ? new DeadlineClock(clock) : clock);
             MonitorStore = NativeMonitoringFixture.Register(services, options.RunId, options.ScenarioId, options.ConfigurationId,
                 options.JobName, options.PodUid, options.SourceCommit, "ledger/synthetic/capture.json");
             if (holdMonitoring)
@@ -272,6 +274,16 @@ public sealed class SingleActionLifecycleTests
             Host = new(services.BuildServiceProvider(), Events, failure);
         }
         public void Dispose() { Host.DisposeProvider(); Logs.Dispose(); }
+    }
+    private sealed class DeadlineClock(SingleActionCaptureTests.AdvancingClock clock) : TimeProvider
+    {
+        public override long TimestampFrequency => clock.TimestampFrequency;
+        public override long GetTimestamp() => clock.GetTimestamp();
+        public override DateTimeOffset GetUtcNow() => clock.GetUtcNow();
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period) =>
+            dueTime == TimeSpan.FromMilliseconds(100)
+                ? clock.CreateTimer(callback, state, dueTime, period)
+                : TimeProvider.System.CreateTimer(callback, state, dueTime, period);
     }
     internal sealed class RecordingPublication(List<string> events, string? failure) : ISingleActionPublication
     {
