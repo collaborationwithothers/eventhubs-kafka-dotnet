@@ -1,4 +1,5 @@
 """Synthetic evidence tests for physical cohort aggregation."""
+import hashlib
 import json
 import shutil
 import tempfile
@@ -55,6 +56,20 @@ class CohortAggregateTests(unittest.TestCase):
             receipt.update(shard=name, isolated=[entry], report_sha256=digest(folder / workflow.REPORT_PATH),
                            command_log_sha256=digest(folder / 'command.log'))
             write_json(folder / 'receipt.json', receipt)
+        # Bind this independently authored small inventory to its own synthetic source.
+        sample = json.loads((source.with_name(source.name + '-a') / workflow.REPORT_PATH).read_text())
+        file = sample['files']['/synthetic/src/Parchwell.Verifier/' + WORKLOAD]
+        identities = {row['id']: {key: row.get(key) for key in (*workflow.IDENTITY, 'static')}
+                      for row in file['mutants'] if row['id'] in ('9', '10')}
+        keys = ('mutatorName', 'replacement', 'location', 'static')
+        canonical = lambda value: json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=True)
+        values = [{key: row.get(key) for key in keys} for row in file['mutants']]
+        values.sort(key=canonical)
+        inventory = hashlib.sha256(canonical(values).encode()).hexdigest()
+        self.enterContext(patch.object(workflow, 'COHORT_IDENTITIES', identities))
+        self.enterContext(patch.object(workflow, 'COHORT_INVENTORY_SHA256', inventory))
+        self.enterContext(patch.object(workflow, 'COHORT_SOURCE_SHA256',
+                                       hashlib.sha256(file['source'].encode()).hexdigest()))
         shutil.rmtree(source)
         parts = dict(workflow.PARTS)
         part = parts.pop('workload')
@@ -76,6 +91,55 @@ class CohortAggregateTests(unittest.TestCase):
         self.assertEqual(['9', '10'], summary['shards']['workload']['isolated_mutants'])
         counts = summary['targets']['workload']['status_counts']
         self.assertEqual((1, 1), (counts['Killed'], counts['Survived']))
+
+    def use_bootstrap_token(self, folder, old, actual):
+        shutil.move(folder / 'isolated' / old, folder / 'isolated' / ('bootstrap-' + old))
+        path = folder / 'receipt.json'
+        receipt = json.loads(path.read_text())
+        entry = receipt['isolated'][0]
+        entry['mutant_id'], entry['directory_id'] = actual, 'bootstrap-' + old
+        entry['argv'] = [arg.replace('/isolated/' + old + '/', '/isolated/bootstrap-' + old + '/')
+                         for arg in entry['argv']]
+        receipt['argv'] = entry['argv']
+        write_json(path, receipt)
+
+    def test_unshifted_bootstrap_tokens_preserve_summary(self):
+        for suffix, old in (('a', '9'), ('b', '10')):
+            folder = self.fixture.input / ('c5-mutation-12345-2-workload-' + suffix)
+            self.use_bootstrap_token(folder, old, old)
+        result, summary = self.fixture.invoke()
+        self.assertEqual(0, result, summary['incomplete_reasons'])
+        self.assertEqual(['9', '10'], summary['shards']['workload']['isolated_mutants'])
+
+    def test_shifted_native_ids_preserve_bootstrap_paths_and_summary(self):
+        for suffix, old, actual in (('a', '9', '654'), ('b', '10', '655')):
+            folder = self.fixture.input / ('c5-mutation-12345-2-workload-' + suffix)
+            paths = [folder / workflow.REPORT_PATH,
+                     folder / 'isolated' / old / workflow.REPORT_PATH]
+            for path in paths:
+                report = json.loads(path.read_text())
+                rows = report['files']['/synthetic/src/Parchwell.Verifier/' + WORKLOAD]['mutants']
+                for row in rows:
+                    row['id'] = {'9': '654', '10': '655'}.get(row['id'], row['id'])
+                write_json(path, report)
+            receipt_path = folder / 'receipt.json'
+            receipt = json.loads(receipt_path.read_text())
+            receipt['report_sha256'] = receipt['isolated'][0]['report_sha256'] = digest(paths[0])
+            write_json(receipt_path, receipt)
+            self.use_bootstrap_token(folder, old, actual)
+        result, summary = self.fixture.invoke()
+        self.assertEqual(0, result, summary['incomplete_reasons'])
+        self.assertEqual(['654', '655'], summary['shards']['workload']['isolated_mutants'])
+
+    def test_invalid_bootstrap_directory_is_rejected(self):
+        folder = self.fixture.input / 'c5-mutation-12345-2-workload-b'
+        path = folder / 'receipt.json'
+        receipt = json.loads(path.read_text())
+        receipt['isolated'][0]['directory_id'] = '../9'
+        write_json(path, receipt)
+        result, summary = self.fixture.invoke()
+        self.assertEqual(1, result)
+        self.assertTrue(any('invalid bootstrap directory' in reason for reason in summary['incomplete_reasons']))
 
     def test_missing_or_duplicate_physical_evidence_is_incomplete(self):
         folder = self.fixture.input / 'c5-mutation-12345-2-workload-b'
@@ -133,6 +197,30 @@ class CohortAggregateTests(unittest.TestCase):
         result, summary = self.fixture.invoke()
         self.assertEqual(1, result)
         self.assertTrue(any('cohort argv paths mismatch' in reason for reason in summary['incomplete_reasons']))
+
+    def test_inconsistent_peer_baseline_is_rejected(self):
+        folder = self.fixture.input / 'c5-mutation-12345-2-workload-b'
+        paths = [folder / workflow.REPORT_PATH, folder / 'isolated/10' / workflow.REPORT_PATH]
+        for path in paths:
+            report = json.loads(path.read_text())
+            rows = report['files']['/synthetic/src/Parchwell.Verifier/' + WORKLOAD]['mutants']
+            next(row for row in rows if row['id'] == '9')['statusReason'] = 'different reason'
+            write_json(path, report)
+        receipt_path = folder / 'receipt.json'
+        receipt = json.loads(receipt_path.read_text())
+        receipt['report_sha256'] = receipt['isolated'][0]['report_sha256'] = digest(paths[0])
+        write_json(receipt_path, receipt)
+        result, summary = self.fixture.invoke()
+        self.assertEqual(1, result)
+        self.assertTrue(any('cohort native geometry mismatch' in reason for reason in summary['incomplete_reasons']))
+
+    def test_isolated_log_hash_change_is_rejected(self):
+        folder = self.fixture.input / 'c5-mutation-12345-2-workload-b'
+        path = folder / 'isolated/10/command.log'
+        path.write_text('different log')
+        result, summary = self.fixture.invoke()
+        self.assertEqual(1, result)
+        self.assertTrue(any('isolated command log hash mismatch' in reason for reason in summary['incomplete_reasons']))
 
     def test_extra_physical_artifact_is_incomplete(self):
         folder = self.fixture.input / 'c5-mutation-12345-2-workload-foreign'
