@@ -301,7 +301,7 @@ internal static partial class Program
         services.AddSingleton(plan!);
     }
 
-    private static void RegisterNativeMonitoring(IServiceCollection services, IConfiguration configuration)
+    private static void RegisterNativeMonitoring(IServiceCollection services, ConfigurationManager configuration)
     {
         services.AddOptions<KafkaNativeMonitoringOptions>()
             .Bind(configuration.GetSection(KafkaNativeMonitoringOptions.SectionName), binding => binding.ErrorOnUnknownConfiguration = true)
