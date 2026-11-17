@@ -58,7 +58,7 @@ public sealed class VerifierNativeMonitoringTests
         };
         IAdminClient admin = NativeProxy.Create<IAdminClient>((method, _) => method.Name == "Dispose" ? null : throw new InvalidOperationException(method.Name));
         var session = new VerifierKafkaSession(fixture.Consumer, admin, fixture.Authentication, fixture.Clock, fixture.Options, new CancellationTokenSource(), lifetime);
-        session.Cleanup();
+        session.Cleanup(TestContext.Current.CancellationToken);
         Assert.True(disposed);
         fixture.ConsumerDispose = null;
         Assert.Empty(store.Objects);

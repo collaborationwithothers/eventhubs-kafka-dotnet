@@ -88,7 +88,7 @@ public sealed class ConcreteNativeFactoryCallbackTests
             {
                 settings["client.id"] = "same-client";
                 var capture = new SingleActionCapture(options, TimeProvider.System, TimeProvider.System.GetTimestamp(), new(100));
-                if (consumer) factory.Consumer(settings, capture, CancellationToken.None); else factory.Producer(settings, capture, CancellationToken.None);
+                if (consumer) factory.Consumer(settings, capture, TestContext.Current.CancellationToken); else factory.Producer(settings, capture, TestContext.Current.CancellationToken);
                 captured.Add(() => capture.Snapshot().Statistics.Select(x => x.RawBase64).ToArray());
             }
         }
@@ -101,7 +101,7 @@ public sealed class ConcreteNativeFactoryCallbackTests
             {
                 settings["client.id"] = "same-client";
                 var capture = new IdleObservationCapture(options, TimeProvider.System, TimeProvider.System.GetTimestamp(), 10, new IdleObservationClientLogBudget(1));
-                factory.Producer(settings, capture, CancellationToken.None);
+                factory.Producer(settings, capture, TestContext.Current.CancellationToken);
                 captured.Add(() => capture.Snapshot().Statistics.Select(x => x.RawBase64).ToArray());
             }
         }
@@ -116,7 +116,7 @@ public sealed class ConcreteNativeFactoryCallbackTests
                 settings["client.id"] = "same-client";
                 var capture = new ProbeV2Capture(ProbeV2Limits.Fixed(), TimeProvider.System, TimeProvider.System.GetTimestamp(), 0);
                 if (i == 0) capture.NoOutcome();
-                if (consumer) factory.Consumer(settings, capture, CancellationToken.None); else factory.Producer(settings, capture, CancellationToken.None);
+                if (consumer) factory.Consumer(settings, capture, TestContext.Current.CancellationToken); else factory.Producer(settings, capture, TestContext.Current.CancellationToken);
                 if (i == 1) capture.NoOutcome();
                 var snapshotSettings = new Dictionary<string, string>(settings, StringComparer.Ordinal);
                 captured.Add(() => capture.Snapshot(1, snapshotSettings["client.id"], ProbeV2Stage.For(options.ScenarioId, options.ConfigurationId, options.Stage), snapshotSettings, [], null, new("topic", "explicit", 0, 0, "", null)).Statistics.Select(x => x.RawBase64).ToArray());

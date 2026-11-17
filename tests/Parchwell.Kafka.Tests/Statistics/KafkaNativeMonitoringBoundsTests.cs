@@ -23,7 +23,7 @@ public sealed class KafkaNativeMonitoringBoundsTests
         var store = new Store();
         using var metrics = new KafkaStatisticsMetrics();
         var coordinator = new KafkaNativeMonitoringCoordinator(store, metrics, new Clock(), Identity);
-        await coordinator.CompleteAsync(CancellationToken.None);
+        await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
         using var index = store.Index();
         Assert.Empty(index.RootElement.GetProperty("clients").EnumerateArray());
         Assert.False(index.RootElement.GetProperty("capture_complete").GetBoolean());
@@ -53,7 +53,7 @@ public sealed class KafkaNativeMonitoringBoundsTests
         client.MarkBuilt();
         client.CaptureExisting(raw, Reference(raw));
         client.Complete(true, "unknown");
-        await coordinator.CompleteAsync(CancellationToken.None);
+        await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
         using var index = store.Index();
         Assert.Equal(accepted ? 1 : 0, index.RootElement.GetProperty("clients")[0].GetProperty("report_count").GetInt64());
         Assert.Equal(accepted, index.RootElement.GetProperty("capture_complete").GetBoolean());
@@ -75,7 +75,7 @@ public sealed class KafkaNativeMonitoringBoundsTests
         string second = Report(12);
         client.CaptureExisting(second, Reference(second));
         client.Complete(true, "unknown");
-        await coordinator.CompleteAsync(CancellationToken.None);
+        await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
         using var index = store.Index();
         Assert.Equal(accepted, index.RootElement.GetProperty("clients")[0].GetProperty("report_count").GetInt64());
         if (accepted < 2) Assert.Contains("reference_limit", Diagnostics(index));
@@ -96,7 +96,7 @@ public sealed class KafkaNativeMonitoringBoundsTests
         coordinator.SetRetainedCountsForTest(0, KafkaNativeMonitoringCoordinator.MaxRawBytes - row.Length - 1 + offset);
         client.CaptureNew(Raw);
         client.Complete(true, "unknown");
-        await coordinator.CompleteAsync(CancellationToken.None);
+        await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
         using var index = store.Index();
         Assert.Equal(accepted, index.RootElement.GetProperty("capture_complete").GetBoolean());
         Assert.Equal(accepted ? 1 : 0, index.RootElement.GetProperty("clients")[0].GetProperty("raw_sources").GetArrayLength());
@@ -125,7 +125,7 @@ public sealed class KafkaNativeMonitoringBoundsTests
         client.CaptureExisting(overflow, Reference(overflow));
         release.SetResult();
         client.Complete(true, "unknown");
-        await coordinator.CompleteAsync(CancellationToken.None);
+        await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
         using var index = store.Index();
         Assert.Equal(129, index.RootElement.GetProperty("clients")[0].GetProperty("report_count").GetInt64());
         Assert.Contains("queue_overflow", Diagnostics(index));
@@ -146,7 +146,7 @@ public sealed class KafkaNativeMonitoringBoundsTests
         for (int i = 0; i < count; i++) client.MarkIncomplete($"diagnostic_{i}");
         client.MarkIncomplete("diagnostic_0");
         client.Complete(true, "unknown");
-        await coordinator.CompleteAsync(CancellationToken.None);
+        await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
         using var index = store.Index();
         Assert.Equal(Math.Min(count, 128), Diagnostics(index).Length);
         Assert.Equal(truncated, index.RootElement.GetProperty("diagnostics_truncated").GetBoolean());
@@ -165,7 +165,7 @@ public sealed class KafkaNativeMonitoringBoundsTests
         var smallClient = small.CreateLifetime(ClientIdentity);
         smallClient.MarkBuilt();
         smallClient.Complete(true, "unknown");
-        await small.CompleteAsync(CancellationToken.None);
+        await small.CompleteAsync(TestContext.Current.CancellationToken);
         int baselineLength = baseline.IndexBytes().Length;
         var store = new Store();
         var coordinator = new KafkaNativeMonitoringCoordinator(store, metrics, new Clock(), Identity with { RunId = new string('r', 1 + KafkaNativeMonitoringCoordinator.MaxIndexBytes + offset - baselineLength) });
@@ -174,10 +174,10 @@ public sealed class KafkaNativeMonitoringBoundsTests
         client.Complete(true, "unknown");
         if (accepted)
         {
-            await coordinator.CompleteAsync(CancellationToken.None);
+            await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
             Assert.Equal(KafkaNativeMonitoringCoordinator.MaxIndexBytes + offset, store.IndexBytes().Length);
         }
-        else await Assert.ThrowsAsync<InvalidOperationException>(() => coordinator.CompleteAsync(CancellationToken.None));
+        else await Assert.ThrowsAsync<InvalidOperationException>(() => coordinator.CompleteAsync(TestContext.Current.CancellationToken));
     }
 
     private static string Report(int ts) => Raw.Replace("\"ts\":11", $"\"ts\":{ts}", StringComparison.Ordinal).Replace("\"age\":1", $"\"age\":{ts - 10}", StringComparison.Ordinal);

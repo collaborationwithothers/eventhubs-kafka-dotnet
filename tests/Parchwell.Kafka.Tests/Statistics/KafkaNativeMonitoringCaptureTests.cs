@@ -58,7 +58,7 @@ public sealed class KafkaNativeMonitoringCaptureTests
             lifetime.CaptureExisting(last, ValidReference(last, 3));
         }
         lifetime.Complete(true, "unknown");
-        await coordinator.CompleteAsync(CancellationToken.None);
+        await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(new long[] { 2, 5 }, values.ToArray());
         using var index = JsonDocument.Parse(store.Objects[$"{run}/phase/job/pod/native-monitoring/index.json"]);
@@ -88,7 +88,7 @@ public sealed class KafkaNativeMonitoringCaptureTests
         var lifetime = coordinator.CreateLifetime(new("scenario", "run", KafkaClientRole.LoadGenProducer, "client"));
         lifetime.MarkBuilt();
         lifetime.Complete(true, "unknown");
-        await coordinator.CompleteAsync(CancellationToken.None);
+        await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
         using var document = JsonDocument.Parse(store.Objects["run/phase/job/pod/native-monitoring/index.json"]);
         var client = document.RootElement.GetProperty("clients")[0];
         Assert.Equal(0, client.GetProperty("report_count").GetInt64());
@@ -109,7 +109,7 @@ public sealed class KafkaNativeMonitoringCaptureTests
         lifetime.MarkBuilt();
         lifetime.CaptureExisting("{\"name\":\"native\",\"client_id\":\"client\",\"type\":\"producer\",\"ts\":11,\"time\":1,\"age\":1}", new("evidence/blob", 1, 2, "wrong"));
         lifetime.Complete(true, "unknown");
-        await coordinator.CompleteAsync(CancellationToken.None);
+        await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
         Assert.Single(store.Objects);
         using var document = JsonDocument.Parse(store.Objects["run/phase/job/pod/native-monitoring/index.json"]);
         Assert.False(document.RootElement.GetProperty("capture_complete").GetBoolean());
@@ -134,7 +134,7 @@ public sealed class KafkaNativeMonitoringCaptureTests
         refused.MarkBuilt();
         refused.CaptureNew("{}");
         Assert.Same(refused, coordinator.CreateLifetime(identity));
-        await coordinator.CompleteAsync(CancellationToken.None);
+        await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
         using var document = JsonDocument.Parse(store.Objects["run/phase/job/pod/native-monitoring/index.json"]);
         Assert.Equal(32, document.RootElement.GetProperty("clients").GetArrayLength());
         Assert.False(document.RootElement.GetProperty("capture_complete").GetBoolean());
@@ -152,7 +152,7 @@ public sealed class KafkaNativeMonitoringCaptureTests
         lifetime.CaptureNew("{\"name\":\"native\",\"client_id\":\"client\",\"type\":\"producer\",\"ts\":5,\"time\":1,\"age\":5,\"topics\":[]}");
         lifetime.CaptureNew("{\"name\":\"native\",\"client_id\":\"client\",\"type\":\"producer\",\"ts\":4,\"time\":1,\"age\":4}");
         lifetime.Complete(true, "unknown");
-        await coordinator.CompleteAsync(CancellationToken.None);
+        await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
         using var document = JsonDocument.Parse(store.Objects["run/phase/job/pod/native-monitoring/index.json"]);
         var diagnostics = document.RootElement.GetProperty("clients")[0].GetProperty("diagnostics").EnumerateArray().Select(x => x.GetString()).ToArray();
         Assert.Contains("invalid_native_identity", diagnostics);
@@ -166,7 +166,7 @@ public sealed class KafkaNativeMonitoringCaptureTests
         var coordinator = new KafkaNativeMonitoringCoordinator(store, metrics, TimeProvider.System,
             new("run", "phase", "scenario", "configuration", "job", "pod", "commit"));
         coordinator.MarkIncomplete("host_capture_failed");
-        await coordinator.CompleteAsync(CancellationToken.None);
+        await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
         using var document = JsonDocument.Parse(store.Objects["run/phase/job/pod/native-monitoring/index.json"]);
         Assert.Empty(document.RootElement.GetProperty("clients").EnumerateArray());
         Assert.False(document.RootElement.GetProperty("capture_complete").GetBoolean());
@@ -201,10 +201,10 @@ public sealed class KafkaNativeMonitoringCaptureTests
         string hash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes));
         lifetime.MarkBuilt();
         lifetime.CaptureExisting(raw, new("ledger/run/publication/statistics.jsonl", 1, bytes.LongLength, hash));
-        await coordinator.DrainAsync(CancellationToken.None);
+        await coordinator.DrainAsync(TestContext.Current.CancellationToken);
         lifetime.RebindExistingSource("ledger/run/publication/statistics.jsonl", "ledger/run/diagnostics/statistics.jsonl");
         lifetime.Complete(true, "unknown");
-        await coordinator.CompleteAsync(CancellationToken.None);
+        await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
         using var document = JsonDocument.Parse(Assert.Single(store.Objects).Value);
         var source = document.RootElement.GetProperty("clients")[0].GetProperty("raw_sources")[0];
         Assert.True(document.RootElement.GetProperty("capture_complete").GetBoolean());
@@ -233,7 +233,7 @@ public sealed class KafkaNativeMonitoringCaptureTests
             Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes))));
         lifetime.CaptureNew(Raw(14));
         lifetime.Complete(true, "unknown");
-        await coordinator.CompleteAsync(CancellationToken.None);
+        await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
         using var index = JsonDocument.Parse(store.Objects["run/phase/job/pod/native-monitoring/index.json"]);
         var sources = index.RootElement.GetProperty("clients")[0].GetProperty("raw_sources").EnumerateArray().ToArray();
         Assert.True(index.RootElement.GetProperty("capture_complete").GetBoolean());
@@ -257,7 +257,7 @@ public sealed class KafkaNativeMonitoringCaptureTests
         lifetime.CaptureExisting(raw, new("ledger/run/capture.json", 7, 1, "invalid"));
         lifetime.CaptureNew(raw);
         lifetime.Complete(true, "unknown");
-        await coordinator.CompleteAsync(CancellationToken.None);
+        await coordinator.CompleteAsync(TestContext.Current.CancellationToken);
         using var index = JsonDocument.Parse(store.Objects["run/phase/job/pod/native-monitoring/index.json"]);
         var client = index.RootElement.GetProperty("clients")[0];
         Assert.False(client.GetProperty("capture_complete").GetBoolean());
