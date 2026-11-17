@@ -36,7 +36,8 @@ def _context(value):
             and all(isinstance(value[k], str) and value[k].isascii() and 0 < len(value[k]) <= 1024
                     for k in ('scenario_id', 'configuration_id', 'run_kind', 'purpose'))
             and type(value['scientific_admissible']) is bool
-            and isinstance(images, dict) and set(images) == {'loadgen', 'verifier', 'probe'}
+            and isinstance(images, dict)
+            and set(images) == {'loadgen', 'verifier', 'probe'} | ({'enrichment'} if value['scenario_id'] in ('C01', 'C03', 'C10') else set())
             and all(ref is None or (isinstance(ref, str) and len(ref) <= 1024
                     and re.fullmatch(r'[a-z0-9.-]+/parchwell/' + worker + r'@sha256:[0-9a-f]{64}', ref))
                     for worker, ref in images.items()))

@@ -309,6 +309,12 @@ class Transfer:
             source.unlink(missing_ok=True)
             back.unlink(missing_ok=True)
 
+CONSUMER_SCENARIOS = ('C01', 'C03', 'C10')
+READINESS_OUTCOMES = ('ready', 'not_observed', 'not_attempted')
+READINESS_CONDITIONS = ('ready', 'list_failed', 'download_failed', 'row_invalid', 'member_count',
+                        'not_assigned', 'overlap', 'coverage')
+CONSUMER_RECORD_ROWS = 40000
+
 GAP_CODES = frozenset(('config_invalid', 'source_missing', 'capture_missing', 'capture_incomplete',
                        'source_changed', 'source_too_large', 'source_length_mismatch', 'source_hash_mismatch',
                        'destination_conflict', 'destination_length_mismatch', 'destination_hash_mismatch',
@@ -373,7 +379,7 @@ def validate_receipt(receipt):
         raise InvalidArchiveConfig()
 
 
-def ordinary_fixed_inventory(run, phase, modes):
+def ordinary_fixed_inventory(run, phase, modes, scenario=None):
     """Derive fixed verifier objects from recorded ordinary job registrations.
 
     Producer and capture objects require their observed pod/registration identities;
@@ -399,7 +405,8 @@ def ordinary_fixed_inventory(run, phase, modes):
         else:
             prefix = f'{run}/{phase}/'
         started = record.get('apply') is not None
-        for name in fixed[mode]:
+        names = fixed[mode] + (('consumer-start.json',) if mode == 'start-line' and scenario in CONSUMER_SCENARIOS else ())
+        for name in names:
             inventory.append({'container': 'verifier', 'name': prefix + name, 'repeat': repeat,
                               'required': started, 'state': 'pending' if started else 'not_started'})
     return sorted(inventory, key=lambda item: (item['container'], item['name']))
@@ -616,7 +623,8 @@ def validate_manifest(value):
     if (not isinstance(run, dict) or set(run) != run_fields or type(run['scientific_admissible']) is not bool
             or any(not isinstance(run[key], str) or not run[key].isascii() or len(run[key]) > 1024
                    for key in ('scenario_id', 'configuration_id', 'run_kind', 'purpose'))
-            or not isinstance(run['images'], dict) or set(run['images']) != {'loadgen', 'verifier', 'probe'}
+            or not isinstance(run['images'], dict)
+            or set(run['images']) != {'loadgen', 'verifier', 'probe'} | ({'enrichment'} if run['scenario_id'] in CONSUMER_SCENARIOS else set())
             or any(not run[key] for key in ('scenario_id', 'configuration_id', 'run_kind', 'purpose'))
             or any(reference is not None and (not isinstance(reference, str) or len(reference) > 1024
                    or not re.fullmatch(r'[a-z0-9.-]+/parchwell/' + worker + r'@sha256:[0-9a-f]{64}', reference))
@@ -646,7 +654,7 @@ def validate_manifest(value):
                 or not safe_name(obj['destination_name']) or not obj['destination_name'].startswith(prefix)
                 or obj['destination_name'] in names or not isinstance(obj['source'], dict)
                 or set(obj['source']) != {'container', 'name', 'etag'} or not safe_name(obj['source']['container'])
-                or not safe_name(obj['source']['name']) or obj['source']['container'] not in ('ledger', 'verifier', 'single-action', 'native-monitoring', 'runner')
+                or not safe_name(obj['source']['name']) or obj['source']['container'] not in ('ledger', 'verifier', 'single-action', 'native-monitoring', 'consumer-record', 'runner')
                 or obj['destination_name'] != ((prefix + 'runner/' + obj['source']['name'] if obj['source']['container'] == 'runner' else prefix + 'objects/' + obj['source']['container'] + '/' + obj['source']['name'])
                                                 + ('.metadata.json' if obj['kind'] == 'source_metadata_projection' else ''))
                 or (obj['repeat'] is not None and (type(obj['repeat']) is not int or obj['repeat'] < 1))
@@ -1184,6 +1192,75 @@ class Collector:
         if properties is not None:
             self.source(container, name, kind, repeat, source_properties=properties)
 
+    def probe(self, container, name):
+        """Read one source's properties: None when absent, False after a recorded gap."""
+        try:
+            if shutil.disk_usage(self.transfer.spool).free < 2 * ArchiveMaxObjectBytes + 1048576 + 65536:
+                raise Gap('disk_space', 'spool reserve')
+            return self.transfer.properties(self.transfer.source_account, container, name, missing_ok=True)
+        except Gap as error:
+            self.gap(error.code, error.boundary, name)
+            return False
+
+    def consumer_member(self, phase, repeat, mode, job, pod, uid):
+        """Archive one consumer member pod's registration, completion and record blobs by fixed names."""
+        container = 'consumer-record'
+        root = f"{phase['run_id']}/{phase['phase']}/r{repeat}/consumer/{pod}/"
+        identity = {'run_id': phase['run_id'], 'phase': phase['phase'], 'scenario_id': phase['scenario'],
+                    'configuration_id': phase['configuration'], 'role': 'subject' if mode == 'consumer-subject' else 'witness',
+                    'instance_id': pod, 'job_name': job, 'pod_uid': uid, 'source_commit': phase['source_commit']}
+        def document(path, size, kind, expected):
+            if size > 65536: raise InvalidArchiveConfig()
+            with open(path, 'rb') as stream: value = strict_control(stream.read(65537), 65536)
+            if (not isinstance(value, dict) or value.get('kind') != kind or type(value.get('repeat_number')) is not int
+                    or value['repeat_number'] != repeat or any(value.get(key) != item for key, item in expected.items())):
+                raise InvalidArchiveConfig()
+            return value
+        def inspect_registration(path, size):
+            try: document(path, size, 'consumer_registration', {**identity, 'pod_name': pod})
+            except (OSError, ValueError, KeyError, TypeError):
+                self.gap('monitoring_incomplete', 'consumer registration identity', root + 'registration.json')
+        self.source(container, root + 'registration.json', 'consumer_registration', repeat, inspect_source=inspect_registration)
+        valid = []
+        def inspect_completion(path, size):
+            try:
+                value = document(path, size, 'consumer_completion', identity)
+                counts = [value.get(key) for key in ('rows', 'record_blobs', 'messages_processed')]
+                if (any(type(count) is not int or count < 0 for count in counts)
+                        or counts[1] != (counts[0] + CONSUMER_RECORD_ROWS - 1) // CONSUMER_RECORD_ROWS):
+                    raise InvalidArchiveConfig()
+                valid.append(counts[1])
+            except (OSError, ValueError, KeyError, TypeError):
+                self.gap('monitoring_incomplete', 'consumer completion contract', root + 'completion.json')
+        properties = self.probe(container, root + 'completion.json')
+        if properties:
+            self.source(container, root + 'completion.json', 'consumer_completion', repeat,
+                        inspect_source=inspect_completion, source_properties=properties)
+        def blob(index): return f'{root}record/{index:06d}.jsonl'
+        def limited(name):
+            if len(self.objects) < ArchiveMaxObjects - 2: return False
+            self.gap('object_limit', 'data object count', name)
+            return True
+        if valid:
+            # The completion receipt names the record blob count; a further blob is not archived.
+            for index in range(valid[0]):
+                if limited(blob(index)): return
+                self.source(container, blob(index), 'consumer_record', repeat)
+            if limited(blob(valid[0])): return
+            if self.probe(container, blob(valid[0])):
+                self.gap('monitoring_incomplete', 'consumer record inventory', blob(valid[0]))
+            return
+        # With no valid completion (a killed member writes none), read blobs by name up to the first absent one.
+        index = 0
+        while not limited(blob(index)):
+            properties = self.probe(container, blob(index))
+            if properties is False: return
+            if properties is None:
+                if index == 0: self.gap('monitoring_incomplete', 'consumer record inventory', blob(0))
+                return
+            self.source(container, blob(index), 'consumer_record', repeat, source_properties=properties)
+            index += 1
+
     def runner(self, name, source_path, kind):
         if len(self.objects) >= ArchiveMaxObjects - 2:
             self.gap('object_limit', 'data object count', name)
@@ -1652,11 +1729,26 @@ def project_phase_status(status):
         if not isinstance(record, dict) or not safe_name(record.get('job')) or not safe_name(record.get('mode')):
             raise InvalidArchiveConfig()
         outcome = record.get('outcome')
-        if outcome not in ('not_attempted', 'render_failed', 'apply_failed', 'unknown', 'collect_error', 'complete', 'failed'):
+        readiness = record['mode'] == 'consumer-readiness'
+        if outcome not in (READINESS_OUTCOMES if readiness else
+                           ('not_attempted', 'render_failed', 'apply_failed', 'unknown', 'collect_error', 'complete', 'failed')):
             raise InvalidArchiveConfig()
         repeat = record.get('repeat')
         if repeat is not None and (type(repeat) is not int or repeat < 1): raise InvalidArchiveConfig()
         row = {'job': record['job'], 'mode': record['mode'], 'repeat': repeat, 'outcome': outcome}
+        if readiness:
+            # A readiness record is not a Kubernetes Job, so its Job fields project as null.
+            for key in ('polls', 'elapsed_seconds'):
+                if key not in record or (record[key] is not None and (type(record[key]) is not int or record[key] < 0)):
+                    raise InvalidArchiveConfig()
+                row[key] = record[key]
+            if 'last_condition' not in record or (record['last_condition'] is not None
+                                                  and record['last_condition'] not in READINESS_CONDITIONS):
+                raise InvalidArchiveConfig()
+            row['last_condition'] = record['last_condition']
+            row.update({key: None for key in ('render', 'apply', 'wait', 'collect', 'delete', 'confirm')})
+            modes.append(row)
+            continue
         for key in ('render', 'apply', 'wait', 'collect', 'delete', 'confirm'):
             value = record.get(key)
             if value is not None and type(value) is not int: raise InvalidArchiveConfig()
@@ -1778,7 +1870,7 @@ def collect_ordinary(collector, phase, status, containers, artifacts, job_name):
     elif scenario == 'B10':
         repeat_modes = ('start-line', 'loadgen', 'loadgen2', 'verify')
         phase_modes = ('b10-sweep-line', 'b10-sweep', 'judge')
-    elif scenario in ('C01', 'C03', 'C10'):
+    elif scenario in CONSUMER_SCENARIOS:
         repeat_modes = ('consumer-subject', 'consumer-witness', 'start-line', 'loadgen', 'verify')
         phase_modes = ('judge',)
     else:
@@ -1787,7 +1879,8 @@ def collect_ordinary(collector, phase, status, containers, artifacts, job_name):
     planned = [(repeat, mode) for repeat in slots for mode in repeat_modes] + [(None, mode) for mode in phase_modes]
     records = status.get('modes')
     if not isinstance(records, list): raise InvalidArchiveConfig()
-    readiness = {(repeat, 'consumer-readiness') for repeat in slots} if scenario in ('C01', 'C03', 'C10') else set()
+    consumer = scenario in CONSUMER_SCENARIOS
+    readiness = {(repeat, 'consumer-readiness') for repeat in slots} if consumer else set()
     index = {}
     for record in records:
         if not isinstance(record, dict): raise InvalidArchiveConfig()
@@ -1795,6 +1888,9 @@ def collect_ordinary(collector, phase, status, containers, artifacts, job_name):
         if key not in planned and key not in readiness or key in index: raise InvalidArchiveConfig()
         if key in readiness and record.get('job') != job_name(phase, 'consumer-readiness', key[0]): raise InvalidArchiveConfig()
         index[key] = record
+    for key in sorted(readiness):
+        if key not in index:
+            collector.gap('monitoring_incomplete', 'missing readiness status', unit=job_name(phase, 'consumer-readiness', key[0]))
     units = []
     no_kill_repeats = set()
     first_pods = {}
@@ -1805,7 +1901,7 @@ def collect_ordinary(collector, phase, status, containers, artifacts, job_name):
         started = record is not None and record.get('apply') is not None
         optional_no_kill = repeat in no_kill_repeats and mode in ('loadgen-successor', 'b10-abrupt-verify')
         if record is None and not optional_no_kill: collector.gap('monitoring_incomplete', 'missing job status', unit=job)
-        elif record is not None and not started and not optional_no_kill and not diagnostic and mode in ('start-line', 'verify', 'b10-abrupt-verify', 'b10-final-sweep', 'judge'):
+        elif record is not None and not started and not optional_no_kill and not diagnostic and mode in ('consumer-subject', 'consumer-witness', 'start-line', 'verify', 'b10-abrupt-verify', 'b10-final-sweep', 'judge'):
             collector.gap('monitoring_incomplete', 'required job not started', unit=job)
         pods = read_job_pods(collector, artifacts, job, record) if started else []
         if started and not pods: collector.gap('monitoring_incomplete', 'missing job pod', unit=job)
@@ -1821,7 +1917,8 @@ def collect_ordinary(collector, phase, status, containers, artifacts, job_name):
             units.append(unit)
         fixed = []
         root = f'{run}/{selected}/' + (f'r{repeat}/' if repeat is not None else '')
-        if mode == 'start-line': fixed = ['start-line.json', 'broker-inventory.json', 'start-line-completion.json']
+        if mode == 'start-line':
+            fixed = ['start-line.json', 'broker-inventory.json', 'start-line-completion.json'] + (['consumer-start.json'] if consumer else [])
         elif mode == 'verify': fixed = ['result.json', 'verify-completion.json']
         elif mode == 'b10-abrupt-verify':
             segment = 'b10-abrupt-diagnostic' if diagnostic else 'b10-abrupt'
@@ -1860,7 +1957,10 @@ def collect_ordinary(collector, phase, status, containers, artifacts, job_name):
                 collector.producer(containers['ledger'], run, selected, repeat, job, name, uid, phase['source_commit'])
                 for leaf in ('ledger.jsonl', 'manifest.json', 'statistics.jsonl', 'request-lifecycle.jsonl', 'capabilities.json'):
                     collector.optional_source(containers['ledger'], f'{root}producer/{name}/diagnostics/{leaf}', 'producer_diagnostic', repeat)
-            elif mode in ('verify', 'b10-abrupt-verify', 'b10-sweep', 'b10-final-sweep'):
+            elif mode in ('consumer-subject', 'consumer-witness'):
+                collector.consumer_member(phase, repeat, mode, job, name, uid)
+            elif mode in ('verify', 'b10-abrupt-verify', 'b10-sweep', 'b10-final-sweep') and not (consumer and mode == 'verify'):
+                # Consumer verification publishes no consumed-metadata capture (decision 6943512296 point 1).
                 indices = range(10) if mode == 'b10-sweep' else range(1)
                 for index_value in indices:
                     owning_repeat = index_value // 2 + 1 if mode == 'b10-sweep' else repeat
@@ -2001,7 +2101,7 @@ def manifest_run(phase, identity):
     images = phase.get('images', {})
     if not isinstance(images, dict): raise InvalidArchiveConfig()
     values = {}
-    for worker in ('loadgen', 'verifier', 'probe'):
+    for worker in ('loadgen', 'verifier', 'probe') + (('enrichment',) if scenario in CONSUMER_SCENARIOS else ()):
         entry = images.get(worker)
         if entry is not None:
             if not isinstance(entry, dict) or set(entry) != {'reference', 'digest'}:
@@ -2087,7 +2187,7 @@ def execute(phase_instance, environ, deadline=None):
             return 1
         transfer = Transfer(source_host.split('.')[0], config['account_name'], spool, deadline)
         collector = Collector(transfer, prefix)
-        if run['images']['loadgen'] is None or run['images']['verifier'] is None:
+        if any(run['images'][worker] is None for worker in ('loadgen', 'verifier') + (('enrichment',) if phase['scenario'] in CONSUMER_SCENARIOS else ())):
             collector.gap('monitoring_incomplete', 'image identity unavailable')
         try:
             status = _common.read_json(artifacts / 'phase-status.json')
@@ -2117,9 +2217,9 @@ def execute(phase_instance, environ, deadline=None):
             if phase['scenario'] in ('probe-batch', 'probe-batch-2', 'idle-observation', 'ledger-batch'):
                 fixed, _ = fixed_nonledger_objects(phase, status['modes'])
             elif phase['scenario'] != 'B10':
-                fixed = ordinary_fixed_inventory(phase['run_id'], phase['phase'], status['modes'])
+                fixed = ordinary_fixed_inventory(phase['run_id'], phase['phase'], status['modes'], phase['scenario'])
                 expected_units, _ = ordinary_units(phase['run_id'], phase['phase'], status['modes'],
-                                                   consumer=phase['scenario'] in ('C01', 'C03', 'C10'))
+                                                   consumer=phase['scenario'] in CONSUMER_SCENARIOS)
                 if {(u['job_name'], u['state']) for u in expected_units} != {(u['job_name'], u['state']) for u in units}:
                     collector.gap('monitoring_incomplete', 'expected unit inventory')
             else:
