@@ -39,6 +39,7 @@ internal static class B10FinalClassification
         string? timeoutReason = globalFailure;
         string status = "invalid";
         OutcomeCounts? counts = null;
+        DuplicateBreakdown? timeoutBreakdown = null;
         HashSet<string> restartReasons = new(input.RestartReasons, StringComparer.Ordinal);
         IReadOnlyList<ConsumedRecord> original = globalFailure is null && input.Starts is not null
             ? records.Where(record => Inside(record, input.Starts, input.Ends!)).ToArray() : [];
@@ -70,7 +71,10 @@ internal static class B10FinalClassification
                     else if (input.Nonfinal is { } data && data.GetProperty("timeout").ValueKind != JsonValueKind.Null &&
                         !AgreeTimeout(data.GetProperty("timeout"), OutcomeClassifier.Classify(input.Rows, timeoutRecords.Where(record => Inside(record, input.Starts!, input.Ends!)).ToArray())))
                         timeoutReason = "b10_final_window_mismatch";
-                    else status = "complete_valid";
+                    else if (input.Nonfinal is { } observed && !AgreeBreakdown(observed,
+                        DuplicateClassifier.TryClassify(timeoutRecords.Where(record => Inside(record, input.Starts!, input.Ends!)).ToArray())))
+                        timeoutReason = "b10_final_window_mismatch";
+                    else { status = "complete_valid"; timeoutBreakdown = DuplicateClassifier.TryClassify(timeoutRecords); }
                 }
             }
         }
@@ -94,7 +98,8 @@ internal static class B10FinalClassification
                     input.TimeoutInstance is null ? new HashSet<string>() : new HashSet<string>([input.TimeoutInstance], StringComparer.Ordinal), input.SuccessorInstance)))
                 { restartReasons.Add("b10_restart_late_record_unjoined"); complete = false; }
                 if (input.Nonfinal is { } nonfinal && evaluated is not null && globalFailure is null &&
-                    !AgreeArms(nonfinal.GetProperty("arms"), EvaluateArms(input, union.Where(record => Inside(record, input.Starts!, input.Ends!)).ToArray(), true, options.MaxDiagnosticsPerCheck.Value)))
+                    !AgreeArms(nonfinal.GetProperty("arms"), EvaluateArms(input, union.Where(record => Inside(record, input.Starts!, input.Ends!)).ToArray(), true, options.MaxDiagnosticsPerCheck.Value),
+                        EvaluateArms(input, original.DistinctBy(record => (record.Topic, record.Partition, record.Offset)).ToArray(), true, options.MaxDiagnosticsPerCheck.Value)))
                 { restartReasons.Add("b10_restart_late_record_unjoined"); complete = false; }
                 if (!input.KillTooLate && scenario is not null && input.Start is not null && globalFailure is null)
                 {
@@ -109,7 +114,16 @@ internal static class B10FinalClassification
                 }
                 bool emptyKillBad = input.KillTooLate && restartReasons.Any(reason => reason is not ("kill_too_late" or "b10_restart_native_error_captured" or "b10_restart_fatal_captured" or
                     "b10_restart_timeout_bookkeeping_unavailable" or "b10_restart_sweep_unavailable" or "b10_restart_late_record_unjoined"));
-                if (!emptyKillBad) arms = evaluated?.Select(arm => ProjectArm(input.First, arm, complete)).ToArray();
+                if (!emptyKillBad)
+                {
+                    IReadOnlyList<ConsumedRecord> population = input.Starts is null ? [] : records
+                        .Where(record => record.Offset >= input.Starts.GetValueOrDefault(record.Partition, long.MaxValue) &&
+                            (record.InstanceId is null || !earlier.Contains(record.InstanceId)))
+                        .DistinctBy(record => (record.Topic, record.Partition, record.Offset)).ToArray();
+                    IReadOnlyList<AbruptArm>? observations = EvaluateArms(input, population, globalFailure is null && input.Starts is not null, options.MaxDiagnosticsPerCheck.Value);
+                    arms = evaluated?.Select(arm => ProjectArm(input.First, arm, complete) with
+                    { DuplicateBreakdown = observations?.Single(item => item.Arm == arm.Arm).DuplicateBreakdown }).ToArray();
+                }
             }
             string comparison = Comparison(arms, restartReasons);
             bool eligible = input.InputValid && input.Nonfinal is { } accepted &&
@@ -121,7 +135,7 @@ internal static class B10FinalClassification
                 input.First is null ? null : new(input.First.NativeErrors.Count, input.First.NativeErrors.FatalCount, input.First.NativeErrors.Tail), arms);
         }
         return new(input.Number, input.Source, input.Versions.OrderBy(version => version.InstanceId, StringComparer.Ordinal).ToArray(), status == "complete_valid", status,
-            counts, timeoutReason is null ? [] : [timeoutReason], restart);
+            counts, timeoutReason is null ? [] : [timeoutReason], restart, timeoutBreakdown);
     }
 
     private static OutcomeCounts? TimeoutCounts(B10FinalInput input, IReadOnlyList<ConsumedRecord> records, LoadedScenario scenario,
@@ -148,10 +162,11 @@ internal static class B10FinalClassification
         return owned;
     }
 
-    private static IReadOnlyList<AbruptArm>? EvaluateArms(B10FinalInput input, IReadOnlyList<ConsumedRecord> records, bool complete, int maximumCopies)
+    internal static IReadOnlyList<AbruptArm>? EvaluateArms(B10FinalInput input, IReadOnlyList<ConsumedRecord> records, bool complete, int maximumCopies)
     {
         if (input.First is null) return null;
-        if (!input.KillTooLate) return AbruptClassification.Evaluate(input.First, input.Successor, records, complete, maximumCopies);
+        if (!input.KillTooLate) return AbruptClassification.Evaluate(input.First, input.Successor, records, complete, maximumCopies,
+            timeoutInstances: input.TimeoutInstance is null ? null : new HashSet<string>([input.TimeoutInstance], StringComparer.Ordinal));
         // The empty arm has known zero counts. The ordinary classifier addresses its first member, so evaluate only the control here.
         AbruptFirstEvidence first = input.First;
         var members = new List<AbruptMember>();
@@ -165,6 +180,15 @@ internal static class B10FinalClassification
                 .OrderBy(record => record.Partition).ThenBy(record => record.Offset).ToArray();
             long originalCopies = copies.LongCount(record => record.InstanceId == first.Pod && record.AttemptId == id);
             long resendCopies = copies.LongCount(record => record.InstanceId == first.Pod && record.AttemptId == resend);
+            ConsumedRecord[] cohort = copies.Where(record => !IsTimeout(record)).ToArray();
+            bool ambiguous = records.Any(record => !IsTimeout(record) && record.Key is null &&
+                !(record.InstanceId == first.Pod && record.AttemptId is not null &&
+                  (first.Attempts.ContainsKey(record.AttemptId) || first.Warmups.ContainsKey(record.AttemptId))));
+            bool malformed = records.Any(record => !IsTimeout(record) &&
+                (record.Key == attempt.Key && (record.Sequence == attempt.Sequence || record.Sequence is null) ||
+                 record.InstanceId == first.Pod && (record.AttemptId == id || record.AttemptId == resend)) &&
+                (record.Problems.Count != 0 || record.Key != attempt.Key || record.Sequence != attempt.Sequence ||
+                 record.ValueSha256 != attempt.PayloadSha256));
             if (complete && originalCopies > 0 && resendCopies > 0)
             {
                 ConsumedRecord original = copies.First(record => record.InstanceId == first.Pod && record.AttemptId == id);
@@ -175,7 +199,11 @@ internal static class B10FinalClassification
                 complete ? originalCopies : null, complete ? resendCopies : null, complete ? copies.LongLength - originalCopies - resendCopies : null,
                 complete ? checked(originalCopies * resendCopies) : null, complete ? copies.Take(maximumCopies).Select(record => new AbruptCopy(record.Partition, record.Offset, record.InstanceId, record.AttemptId,
                     record.AttemptId == id ? "original" : record.AttemptId == resend ? "resend" : "other")).ToArray() : null,
-                complete ? copies.Length > maximumCopies : null, !complete || terminal is null ? null : terminal.Delivered && resendCopies == 0));
+                complete ? copies.Length > maximumCopies : null, !complete || terminal is null ? null : terminal.Delivered && resendCopies == 0,
+                complete && !ambiguous && !malformed && cohort.All(record => record.InstanceId == first.Pod && record.AttemptId is not null &&
+                    first.Accepted.Contains(record.AttemptId) && !first.Rejected.Contains(record.AttemptId) && first.Attempts.TryGetValue(record.AttemptId, out AbruptAttempt? authenticated) && authenticated.Key == record.Key &&
+                    authenticated.Sequence == record.Sequence && authenticated.PayloadSha256 == record.ValueSha256)
+                    ? DuplicateClassifier.TryClassify(cohort) : null));
         }
         AbruptWitness? witness = witnesses.OrderBy(item => item.OriginalAttemptId, StringComparer.Ordinal).ThenBy(item => item.ResendAttemptId, StringComparer.Ordinal)
             .ThenBy(item => item.Original.Partition).ThenBy(item => item.Original.Offset).ThenBy(item => item.Resend.Partition).ThenBy(item => item.Resend.Offset).FirstOrDefault();
@@ -185,9 +213,12 @@ internal static class B10FinalClassification
         return [new("same_instance", first.Attempts[first.Control[0]].Key, first.Control.Count, first.Control.Count,
             complete ? members.LongCount(member => member.OriginalCopies > 0) : null, complete ? members.LongCount(member => member.ResendCopies > 0) : null,
             complete ? members.Sum(member => member.PairCount!.Value) : null, witness, members, unreported.LongLength, complete ? seen : null,
-            complete ? unreported.LongLength - seen : null, complete && members.All(member => member.ResendLost.HasValue) ? members.LongCount(member => member.ResendLost == true) : null),
+            complete ? unreported.LongLength - seen : null, complete && members.All(member => member.ResendLost.HasValue) ? members.LongCount(member => member.ResendLost == true) : null,
+            complete ? DuplicateBreakdown.Sum(members.Select(member => member.DuplicateBreakdown)) : null),
             new("cross_restart", $"B10/{input.Options!.RunId}/C1/{input.Number}/cross_restart", 0, 0, complete ? 0 : null, complete ? 0 : null, complete ? 0 : null,
-                null, [], 0, complete ? 0 : null, complete ? 0 : null, complete ? 0 : null)];
+                null, [], 0, complete ? 0 : null, complete ? 0 : null, complete ? 0 : null, complete ? new DuplicateBreakdown(0, 0) : null)];
+
+        bool IsTimeout(ConsumedRecord record) => input.TimeoutInstance is not null && record.InstanceId == input.TimeoutInstance;
     }
 
     private static B10FinalArm ProjectArm(AbruptFirstEvidence first, AbruptArm arm, bool complete)
@@ -205,7 +236,7 @@ internal static class B10FinalClassification
         Agree(expected, "ok", actual.Ok) && Agree(expected, "loss", actual.Loss) && Agree(expected, "phantom", actual.Phantom) &&
         Agree(expected, "reported_failure", actual.ReportedFailure) && Agree(expected, "duplicate", actual.Duplicate) && Agree(expected, "reorder", actual.Reorder);
     private static bool Agree(JsonElement expected, string field, long? actual) => !expected.TryGetProperty(field, out JsonElement value) || value.ValueKind == JsonValueKind.Null || value.GetInt64() == actual;
-    private static bool AgreeArms(JsonElement expected, IReadOnlyList<AbruptArm>? actual)
+    private static bool AgreeArms(JsonElement expected, IReadOnlyList<AbruptArm>? actual, IReadOnlyList<AbruptArm>? observations)
     {
         if (expected.ValueKind == JsonValueKind.Null) return true;
         if (actual is null || expected.GetArrayLength() != actual.Count) return false;
@@ -213,7 +244,8 @@ internal static class B10FinalClassification
         foreach (JsonElement arm in expected.EnumerateArray())
         {
             AbruptArm? found = actual.SingleOrDefault(item => item.Arm == arm.GetProperty("arm").GetString());
-            if (found is null) return false;
+            AbruptArm? observed = observations?.SingleOrDefault(item => item.Arm == arm.GetProperty("arm").GetString());
+            if (found is null || !AgreeBreakdown(arm, observed?.DuplicateBreakdown)) return false;
             if (!Agree(arm, "originals_seen", found.OriginalsSeen) || !Agree(arm, "resends_seen", found.ResendsSeen) ||
                 !Agree(arm, "pair_count", found.PairCount) || !Agree(arm, "unreported_seen", found.UnreportedSeen) ||
                 !Agree(arm, "unreported_unseen", found.UnreportedUnseen) || !Agree(arm, "lost_resends", found.LostResends) ||
@@ -221,7 +253,8 @@ internal static class B10FinalClassification
             foreach (JsonElement member in arm.GetProperty("members").EnumerateArray())
             {
                 AbruptMember? match = found.Members.SingleOrDefault(item => item.OriginalAttemptId == member.GetProperty("original_attempt_id").GetString());
-                if (match is null || !Agree(member, "copy_count", match.CopyCount) || !Agree(member, "original_copies", match.OriginalCopies) ||
+                AbruptMember? observedMember = observed?.Members.SingleOrDefault(item => item.OriginalAttemptId == member.GetProperty("original_attempt_id").GetString());
+                if (match is null || !AgreeBreakdown(member, observedMember?.DuplicateBreakdown) || !Agree(member, "copy_count", match.CopyCount) || !Agree(member, "original_copies", match.OriginalCopies) ||
                     !Agree(member, "resend_copies", match.ResendCopies) || !Agree(member, "other_copies", match.OtherCopies) ||
                     !Agree(member, "pair_count", match.PairCount) || !AgreeFlag(member, "copies_truncated", match.CopiesTruncated) ||
                     !AgreeFlag(member, "resend_lost", match.ResendLost) || !AgreeCopies(member.GetProperty("copies"), match.Copies)) return false;
@@ -229,6 +262,9 @@ internal static class B10FinalClassification
         }
         return true;
     }
+    private static bool AgreeBreakdown(JsonElement parent, DuplicateBreakdown? actual) =>
+        !parent.TryGetProperty("duplicate_breakdown", out JsonElement value) ||
+        DuplicateBreakdown.TryRead(value, out DuplicateBreakdown? expected) && expected == actual;
     private static bool AgreeWitness(JsonElement expected, AbruptWitness? actual) =>
         expected.ValueKind == JsonValueKind.Null || actual is not null &&
         expected.GetProperty("original_attempt_id").GetString() == actual.OriginalAttemptId && expected.GetProperty("resend_attempt_id").GetString() == actual.ResendAttemptId &&

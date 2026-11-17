@@ -1,4 +1,5 @@
 using Parchwell.Verifier.Common.Results;
+using System.Text.Json.Serialization;
 
 namespace Parchwell.Verifier.Common.Phase;
 
@@ -10,7 +11,8 @@ internal sealed record B10FinalData(ArtifactReference? SweepLine, bool ScanCompl
     IReadOnlyList<B10FinalRepeat> Repeats);
 internal sealed record B10FinalRepeat(int Repeat, ArtifactReference? Source,
     IReadOnlyList<B10FinalProducerVersion> ProducerVersions, bool ClassificationFinal, string Status,
-    OutcomeCounts? Timeout, IReadOnlyList<string> Reasons, B10FinalRestart? Restart);
+    OutcomeCounts? Timeout, IReadOnlyList<string> Reasons, B10FinalRestart? Restart,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DuplicateBreakdown? DuplicateBreakdown = null);
 internal sealed record B10FinalProducerVersion(string InstanceId, string? WorkloadGenerator,
     string? ConfluentKafka, string? Librdkafka, string? Dotnet);
 internal sealed record B10FinalRestart(string Eligibility, IReadOnlyList<string> EligibilityReasons,
@@ -20,7 +22,8 @@ internal sealed record B10FinalTermination(string? Class, string? Outcome);
 internal sealed record B10FinalNativeErrors(long Count, long FatalCount, string Tail);
 internal sealed record B10FinalArm(string Arm, string? CutAttemptId, IReadOnlyList<string> UnconfirmedAttemptIds,
     long? UnconfirmedCount, long? ResendInvoked, long? OriginalsSeen, long? ResendsSeen, long? PairCount,
-    long? UnreportedAttempts, long? UnreportedSeen, long? UnreportedUnseen, long? LostResends, B10FinalWitness? Witness);
+    long? UnreportedAttempts, long? UnreportedSeen, long? UnreportedUnseen, long? LostResends, B10FinalWitness? Witness,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DuplicateBreakdown? DuplicateBreakdown = null);
 internal sealed record B10FinalWitness(string OriginalAttemptId, string ResendAttemptId,
     B10FinalCoordinate Original, B10FinalCoordinate Resend);
 internal sealed record B10FinalCoordinate(int Partition, long Offset);

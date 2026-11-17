@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Parchwell.Verifier.Common.Serialization;
+using Parchwell.Verifier.Common.Results;
 
 namespace Parchwell.Verifier.Common.Phase;
 
@@ -80,7 +81,7 @@ internal static class B10FinalProjectionCodec
         int ordinal = 0;
         foreach (JsonElement repeat in repeats.EnumerateArray())
         {
-            Exact(repeat, "repeat", "source", "producer_versions", "classification_final", "status", "timeout", "reasons", "restart");
+            ExactOptional(repeat, "duplicate_breakdown", "repeat", "source", "producer_versions", "classification_final", "status", "timeout", "reasons", "restart");
             Require(repeat.GetProperty("repeat").TryGetInt32(out int number) && number == ++ordinal);
             Reference(repeat.GetProperty("source"), "verifier", phase == "C0" ? PhasePaths.Result(run, phase, number) : $"{run}/{phase}/r{number}/b10-abrupt/nonfinal-result.json");
             bool final = Boolean(repeat.GetProperty("classification_final"));
@@ -89,6 +90,8 @@ internal static class B10FinalProjectionCodec
             JsonElement timeout = repeat.GetProperty("timeout");
             Require((timeout.ValueKind != JsonValueKind.Null) == final);
             if (final) { Exact(timeout, "ok", "loss", "phantom", "reported_failure", "duplicate", "reorder"); foreach (JsonProperty p in timeout.EnumerateObject()) Count(p.Value); }
+            if (repeat.TryGetProperty("duplicate_breakdown", out JsonElement repeatBreakdown))
+                Require(final && DuplicateBreakdown.TryRead(repeatBreakdown, out DuplicateBreakdown? breakdown) && breakdown!.IsValid(timeout.GetProperty("duplicate").GetInt64()));
             string[] reasons = Strings(repeat.GetProperty("reasons"));
             Require((!final || reasons.Length == 0) && reasons.Length <= 100 && reasons.SequenceEqual(reasons.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)) && reasons.All(x => RepeatReasons.Contains(x, StringComparer.Ordinal)));
             JsonElement versions = repeat.GetProperty("producer_versions");
@@ -145,7 +148,7 @@ internal static class B10FinalProjectionCodec
         int armIndex = 0;
         foreach (JsonElement arm in arms.EnumerateArray())
         {
-            Exact(arm, "arm", "cut_attempt_id", "unconfirmed_attempt_ids", "unconfirmed_count", "resend_invoked", "originals_seen", "resends_seen", "pair_count", "unreported_attempts", "unreported_seen", "unreported_unseen", "lost_resends", "witness");
+            ExactOptional(arm, "duplicate_breakdown", "arm", "cut_attempt_id", "unconfirmed_attempt_ids", "unconfirmed_count", "resend_invoked", "originals_seen", "resends_seen", "pair_count", "unreported_attempts", "unreported_seen", "unreported_unseen", "lost_resends", "witness");
             Require(Text(arm, "arm") == (armIndex++ == 0 ? "same_instance" : "cross_restart"));
             _ = ScalarText(arm.GetProperty("cut_attempt_id"), true);
             string[] ids = Strings(arm.GetProperty("unconfirmed_attempt_ids")); Require(ids.Distinct(StringComparer.Ordinal).Count() == ids.Length);
@@ -170,6 +173,8 @@ internal static class B10FinalProjectionCodec
                     N("pair_count") is >= 1 && ids.Contains(Text(witness, "original_attempt_id"), StringComparer.Ordinal) &&
                     Text(witness, "original_attempt_id") != Text(witness, "resend_attempt_id"));
             }
+            if (arm.TryGetProperty("duplicate_breakdown", out JsonElement armBreakdown))
+                Require(scan && DuplicateBreakdown.TryRead(armBreakdown, out _));
             bool localUnjoined = reasons.Contains("b10_restart_late_record_unjoined", StringComparer.Ordinal);
             bool emptyCross = scan && terminationClass == "intended_self_kill" && outcome == "kill_too_late" &&
                 Text(arm, "arm") == "cross_restart" && N("unconfirmed_count") == 0;
@@ -188,6 +193,13 @@ internal static class B10FinalProjectionCodec
         string expectedComparison = unavailable ? "unavailable" : (HasPair(0), HasPair(1)) switch
         { (true, true) => "both", (true, false) => "same_instance_only", (false, true) => "cross_restart_only", _ => "neither" };
         Require(comparison == expectedComparison);
+    }
+
+    internal static void ExactOptional(JsonElement value, string optional, params string[] fields)
+    {
+        if (value.ValueKind == JsonValueKind.Object && value.TryGetProperty(optional, out _))
+            Exact(value, [.. fields, optional]);
+        else Exact(value, fields);
     }
 
     internal static void Exact(JsonElement value, params string[] fields)

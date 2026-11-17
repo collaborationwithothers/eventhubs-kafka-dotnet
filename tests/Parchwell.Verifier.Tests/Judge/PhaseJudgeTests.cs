@@ -620,6 +620,66 @@ public sealed class PhaseJudgeTests
         Assert.All(PhaseJudge.Evaluate(phase, evidence).Repeats, repeat => Assert.Null(repeat.B10Intake));
     }
 
+    [Fact]
+    public void Given_RepeatObservations_When_Aggregated_Then_MissingStaysMissing()
+    {
+        PhaseRepeatEvidence[] evidence = Enumerable.Range(1, 5).Select(i => Complete(i, null) with { DuplicateBreakdown = new(2, 3) }).ToArray();
+        PhaseJudgement all = PhaseJudge.Evaluate("C0", evidence);
+        Assert.Equal(new DuplicateBreakdown(10, 15), all.DuplicateBreakdown);
+        evidence[1] = evidence[1] with { DuplicateBreakdown = null };
+        PhaseJudgement mixed = PhaseJudge.Evaluate("C0", evidence);
+        Assert.NotNull(mixed.Counts);
+        Assert.Null(mixed.DuplicateBreakdown);
+        Assert.Equal(new DuplicateBreakdown(2, 3), mixed.Repeats[0].DuplicateBreakdown);
+        Assert.Null(mixed.Repeats[1].DuplicateBreakdown);
+        evidence[0] = evidence[0] with { VerifierReceiptValid = false };
+        Assert.Null(PhaseJudge.Evaluate("C0", evidence).Repeats[0].DuplicateBreakdown);
+    }
+
+    [Fact]
+    public void Given_LegacyFinalizations_When_Judged_Then_UsesFinalUnionObservationsAndPreservesMixedHistory()
+    {
+        PhaseRepeatEvidence[] evidence = Enumerable.Range(1, 5).Select(i => Complete(i, null) with
+        {
+            DuplicateBreakdown = new(5, 0),
+            B10Finality = new(false, new(i, null, null, true, VerifierResultStatus.CompleteValid, new(1, 0, 0, 0, 3, 0), [], new(1, 2)))
+        }).ToArray();
+        PhaseJudgement result = PhaseJudge.Evaluate("C0", evidence, "B10");
+        Assert.Equal(new DuplicateBreakdown(5, 10), result.DuplicateBreakdown);
+        Assert.All(result.Repeats, repeat => Assert.Equal(new DuplicateBreakdown(1, 2), repeat.DuplicateBreakdown));
+        evidence[2] = evidence[2] with { B10Finality = new(false, evidence[2].B10Finality!.Finalization! with { DuplicateBreakdown = null }) };
+        PhaseJudgement mixed = PhaseJudge.Evaluate("C0", evidence, "B10");
+        Assert.NotNull(mixed.Counts);
+        Assert.Null(mixed.DuplicateBreakdown);
+        Assert.Null(mixed.Repeats[2].DuplicateBreakdown);
+        Assert.Equal(new DuplicateBreakdown(1, 2), mixed.Repeats[0].DuplicateBreakdown);
+    }
+
+    [Theory]
+    [InlineData("slot")] [InlineData("start")] [InlineData("publication")] [InlineData("receipt")]
+    [InlineData("job")] [InlineData("registration")] [InlineData("inventory")]
+    [InlineData("invalid")] [InlineData("incomplete")]
+    public void Given_RepeatObservation_When_CountAuthorizationFails_Then_ObservationIsAbsent(string change)
+    {
+        PhaseRepeatEvidence[] evidence = Enumerable.Range(1, 5).Select(i => Complete(i, null) with { DuplicateBreakdown = new(2, 3) }).ToArray();
+        evidence[0] = change switch
+        {
+            "slot" => evidence[0] with { SlotPresent = false },
+            "start" => evidence[0] with { StartLineAccepted = false },
+            "publication" => evidence[0] with { PublicationAccepted = false },
+            "receipt" => evidence[0] with { VerifierReceiptValid = false },
+            "job" => evidence[0] with { JobBindingPass = false },
+            "registration" => evidence[0] with { RegistrationCountPass = false },
+            "inventory" => evidence[0] with { InventoryCoveragePass = false },
+            "invalid" => evidence[0] with { KnownInvalid = true },
+            _ => evidence[0] with { TrustedIncomplete = true }
+        };
+        PhaseJudgement result = PhaseJudge.Evaluate("C0", evidence);
+        Assert.Null(result.Repeats[0].Counts);
+        Assert.Null(result.Repeats[0].DuplicateBreakdown);
+        Assert.Null(result.DuplicateBreakdown);
+    }
+
     private static PhaseRepeatEvidence[] B10Repeats(string phase) => Enumerable.Range(1, 5).Select(i =>
         Complete(i, null) with
         {

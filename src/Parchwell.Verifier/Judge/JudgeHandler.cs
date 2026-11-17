@@ -52,7 +52,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
             bool present=listing.Names.Any(n=>n.StartsWith(repeat,StringComparison.Ordinal));
             bool startAccepted=false,publicationAccepted=false,receiptValid=false,knownInvalid=false,trustedIncomplete=false;
             bool? jobBinding=null,registrationCount=null,inventoryCoverage=null;
-            OutcomeCounts? counts=null;ProbeRepeatObservation? probe=null;string? identity=null;WorkloadObservation? workload=null;
+            OutcomeCounts? counts=null;DuplicateBreakdown? duplicateBreakdown=null;ProbeRepeatObservation? probe=null;string? identity=null;WorkloadObservation? workload=null;
             BrokerConnectionCount? brokerCount=null; B04RecordedEvidence? b04Evidence=null; BatchingRecordedEvidence? batchingEvidence=null;
             byte[]? startBytes=null,note=null,inventory=null;
             B10IntakeEvidence? b10Intake=null;
@@ -304,7 +304,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                                 inventoryCoverage=r.RepeatChecks?.BrokerInventoryCoverage switch{"pass"=>true,"fail"=>false,_=>null};
                                 if(result.Status==VerifierResultStatus.Invalid)knownInvalid=true;
                                 if(result.Status==VerifierResultStatus.Incomplete)trustedIncomplete=true;
-                                if(result.Status==VerifierResultStatus.CompleteValid)counts=result.Counts;
+                                if(result.Status==VerifierResultStatus.CompleteValid){counts=result.Counts;duplicateBreakdown=result.DuplicateBreakdown;}
                                 identity=result.Identity.InstanceId;
                             }
                             // Probe evidence has an independent authorization path: a
@@ -354,7 +354,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                     acceptedVersions.Add((observation.GeneratorVersion,kafka,native,dotnet));
                 }
             originals.Add(new(i,originalResult,originalReceipt,windowChecksComplete && receiptValid && publicationAccepted && !knownInvalid && jobBinding==true && registrationCount==true && inventoryCoverage==true,verifyCompleted));
-            slots.Add(new(i,present&&!extra,startAccepted,publicationAccepted,receiptValid,jobBinding,registrationCount,inventoryCoverage,knownInvalid,trustedIncomplete,counts,probe,identity,workload,brokerCount,b04Evidence,batchingEvidence,b10Intake,B10ProducerObservations:b10Observations));
+            slots.Add(new(i,present&&!extra,startAccepted,publicationAccepted,receiptValid,jobBinding,registrationCount,inventoryCoverage,knownInvalid,trustedIncomplete,counts,probe,identity,workload,brokerCount,b04Evidence,batchingEvidence,b10Intake,B10ProducerObservations:b10Observations,DuplicateBreakdown:duplicateBreakdown));
         }
         if(!listing.IsComplete)slots=slots.Select(x=>x with{SlotPresent=false,TrustedIncomplete=true}).ToList();
         B10SweepProjection? sweepProjection=null;
@@ -424,7 +424,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
             new Dictionary<string,object?>(StringComparer.Ordinal){["worker_started_utc"]=phaseStarted?.ToString("O",System.Globalization.CultureInfo.InvariantCulture),["judge_completed_utc"]=phaseStarted is null?null:clock.GetUtcNow().ToString("O",System.Globalization.CultureInfo.InvariantCulture),["duration_seconds"]=phaseStarted is null?null:(decimal?)(clock.GetUtcNow()-phaseStarted.Value).TotalSeconds},
             new Dictionary<string,object?>(StringComparer.Ordinal){["error_codes"]=acceptedA01.SelectMany(e=>e.DeliveryErrorCodes??Array.Empty<int>()).Select(x=>x.ToString(System.Globalization.CultureInfo.InvariantCulture)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Concat(listing.IsComplete?Array.Empty<string>():new[]{listing.FailureCode??"listing_incomplete"}).ToArray(),["max_throttle_ms"]=a01Windows.Where(w=>w.ThrottleMaximumMilliseconds.HasValue).Select(w=>(long?)w.ThrottleMaximumMilliseconds!.Value).Max(),["request_timeout_increment"]=Sum(w=>w.RequestTimeoutsIncrement),["disconnect_increment"]=Sum(w=>w.DisconnectsIncrement),["rtt_p99_ms"]=a01Windows.Where(w=>w.RoundTripP99Microseconds.HasValue).Select(w=>(decimal?)w.RoundTripP99Microseconds!.Value/1000m).Max()},
             judgement.Repeats,judgement.Counts,(consumerResult?.RootReasons??judgement.Reasons).Concat(versionReasons).Concat(timingReasons).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Take(100).ToArray(),sweepProjection,
-            Consumer:consumerResult,ConsumerRepeats:consumerRepeats);
+            Consumer:consumerResult,ConsumerRepeats:consumerRepeats,DuplicateBreakdown:judgement.DuplicateBreakdown);
         byte[] bytes=PhaseCandidateCodec.Write(candidate);
         string name=PhasePaths.Candidate(options.RunId!,options.Phase!);
         if(options.CandidateOutputName!=name)throw new InvalidOperationException("Candidate path is not the derived phase path.");

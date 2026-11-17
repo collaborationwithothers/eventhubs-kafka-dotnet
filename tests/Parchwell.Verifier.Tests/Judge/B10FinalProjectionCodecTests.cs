@@ -5,6 +5,7 @@ using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Results;
 using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.Judge;
+using Parchwell.Verifier.VerifyRun.B10Final;
 using Xunit;
 
 namespace Parchwell.Verifier.Tests.Judge;
@@ -14,6 +15,109 @@ namespace Parchwell.Verifier.Tests.Judge;
 public sealed class B10FinalProjectionCodecTests
 {
     private static readonly InputLimits Limits = new(32, 16_777_216, 83_886_080, 1_048_576, 100_000, 1_000_000, 65_536);
+
+    [Fact]
+    public void Given_HistoricalAndPresentBreakdowns_When_RoundTripped_Then_KeepAbsenceAndValues()
+    {
+        B10FinalProjection historical = Read(Node());
+        Assert.Null(historical.Data.Repeats[0].DuplicateBreakdown);
+        JsonObject root = Node();
+        JsonNode repeat = root["data"]!["repeats"]![0]!;
+        repeat["timeout"]!["duplicate"] = 4;
+        repeat["duplicate_breakdown"] = JsonNode.Parse("{\"duplicate_same_attempt\":3,\"duplicate_different_attempt\":1}");
+        repeat["restart"]!["arms"]![0]!["duplicate_breakdown"] = JsonNode.Parse("{\"duplicate_same_attempt\":0,\"duplicate_different_attempt\":0}");
+        B10FinalProjection parsed = Read(root);
+        Assert.Equal(new DuplicateBreakdown(3, 1), parsed.Data.Repeats[0].DuplicateBreakdown);
+        Assert.Equal(new DuplicateBreakdown(0, 0), parsed.Data.Repeats[0].Restart!.Arms![0].DuplicateBreakdown);
+        Assert.Equal(parsed.Data.Repeats[0].DuplicateBreakdown, B10FinalProjectionCodec.Read(B10FinalProjectionCodec.Write(parsed)).Data.Repeats[0].DuplicateBreakdown);
+    }
+
+    [Theory]
+    [InlineData("null")] [InlineData("[]")] [InlineData("{}")] [InlineData("{\"duplicate_same_attempt\":0}")]
+    [InlineData("{\"duplicate_different_attempt\":0}")]
+    [InlineData("{\"duplicate_same_attempt\":null,\"duplicate_different_attempt\":0}")]
+    [InlineData("{\"duplicate_same_attempt\":-1,\"duplicate_different_attempt\":0}")]
+    [InlineData("{\"duplicate_same_attempt\":0.5,\"duplicate_different_attempt\":0}")]
+    [InlineData("{\"duplicate_same_attempt\":9223372036854775808,\"duplicate_different_attempt\":0}")]
+    [InlineData("{\"duplicate_same_attempt\":true,\"duplicate_different_attempt\":0}")]
+    [InlineData("{\"duplicate_same_attempt\":\"0\",\"duplicate_different_attempt\":0}")]
+    [InlineData("{\"duplicate_same_attempt\":9223372036854775807,\"duplicate_different_attempt\":1}")]
+    [InlineData("{\"duplicate_same_attempt\":0,\"duplicate_different_attempt\":0,\"other\":0}")]
+    public void Given_MalformedBreakdown_When_ReadAtRepeatOrArm_Then_Rejects(string literal)
+    {
+        foreach (bool arm in new[] { false, true })
+        {
+            JsonObject root = Node(); JsonNode repeat = root["data"]!["repeats"]![0]!;
+            JsonNode target = arm ? repeat["restart"]!["arms"]![0]! : repeat;
+            target["duplicate_breakdown"] = JsonNode.Parse(literal);
+            Assert.Throws<FormatException>(() => Read(root));
+        }
+    }
+
+    [Fact]
+    public void Given_MismatchOrInvalidWriterBreakdown_When_Used_Then_Rejects()
+    {
+        JsonObject root = Node();
+        root["data"]!["repeats"]![0]!["duplicate_breakdown"] = JsonNode.Parse("{\"duplicate_same_attempt\":1,\"duplicate_different_attempt\":0}");
+        Assert.Throws<FormatException>(() => Read(root));
+        B10FinalProjection original = Fixture().Projection();
+        B10FinalRepeat[] repeats = original.Data.Repeats.ToArray();
+        repeats[0] = repeats[0] with { DuplicateBreakdown = new(-1, 0) };
+        Assert.Throws<FormatException>(() => B10FinalProjectionCodec.Write(original with { Data = original.Data with { Repeats = repeats } }));
+    }
+
+    [Theory]
+    [InlineData("{}", true)]
+    [InlineData("{\"duplicate_breakdown\":{\"duplicate_same_attempt\":3,\"duplicate_different_attempt\":1}}", true)]
+    [InlineData("{\"duplicate_breakdown\":null}", false)]
+    [InlineData("{\"duplicate_breakdown\":{\"duplicate_same_attempt\":3}}", false)]
+    [InlineData("{\"duplicate_breakdown\":{\"duplicate_same_attempt\":3,\"duplicate_different_attempt\":2}}", false)]
+    public void Given_NonfinalTimeoutBreakdown_When_Validated_Then_RequiresMatchingCount(string json, bool valid)
+    {
+        using JsonDocument document = JsonDocument.Parse(json);
+        if (valid) B10FinalRepeatEvidence.ValidateBreakdown(document.RootElement, 4);
+        else Assert.Throws<FormatException>(() => B10FinalRepeatEvidence.ValidateBreakdown(document.RootElement, 4));
+    }
+
+    [Theory]
+    [InlineData(0L)] [InlineData(1L)] [InlineData(long.MaxValue)]
+    public void Given_ValidBreakdownBoundary_When_ReadAndWritten_Then_PreservesInt64(long value)
+    {
+        JsonObject root = Node(); JsonNode repeat = root["data"]!["repeats"]![0]!;
+        repeat["timeout"]!["duplicate"] = value;
+        repeat["duplicate_breakdown"] = new JsonObject { ["duplicate_same_attempt"] = value, ["duplicate_different_attempt"] = 0 };
+        B10FinalProjection projection = Read(root);
+        Assert.Equal(new DuplicateBreakdown(value, 0), B10FinalProjectionCodec.Read(B10FinalProjectionCodec.Write(projection)).Data.Repeats[0].DuplicateBreakdown);
+    }
+
+    [Theory]
+    [InlineData(3L, false)] [InlineData(4L, true)] [InlineData(5L, false)]
+    public void Given_ComponentsBelowAtOrAboveDuplicate_When_Read_Then_RequiresEquality(long sum, bool valid)
+    {
+        JsonObject root = Node(); JsonNode repeat = root["data"]!["repeats"]![0]!;
+        repeat["timeout"]!["duplicate"] = 4;
+        repeat["duplicate_breakdown"] = new JsonObject { ["duplicate_same_attempt"] = sum, ["duplicate_different_attempt"] = 0 };
+        if (valid) Assert.Equal(new DuplicateBreakdown(4, 0), Read(root).Data.Repeats[0].DuplicateBreakdown);
+        else Assert.Throws<FormatException>(() => Read(root));
+    }
+
+    [Fact]
+    public void Given_DuplicateBreakdownMember_When_Read_Then_RejectsDuplicateProperty()
+    {
+        JsonObject root = Node();
+        root["data"]!["repeats"]![0]!["duplicate_breakdown"] = new JsonObject { ["duplicate_same_attempt"] = 0, ["duplicate_different_attempt"] = 0 };
+        string json = root.ToJsonString().Replace("\"duplicate_same_attempt\":0", "\"duplicate_same_attempt\":0,\"duplicate_same_attempt\":0", StringComparison.Ordinal);
+        Assert.Throws<FormatException>(() => B10FinalProjectionCodec.Read(Encoding.UTF8.GetBytes(json)));
+    }
+
+    [Fact]
+    public void Given_BreakdownWithoutFinalTimeout_When_Read_Then_Rejects()
+    {
+        JsonObject root = Node(); JsonNode repeat = root["data"]!["repeats"]![0]!;
+        repeat["classification_final"] = false; repeat["status"] = "invalid"; repeat["timeout"] = null;
+        repeat["duplicate_breakdown"] = new JsonObject { ["duplicate_same_attempt"] = 0, ["duplicate_different_attempt"] = 0 };
+        Assert.Throws<FormatException>(() => Read(root));
+    }
 
     [Fact]
     public void Given_ProducedFinalProjection_When_OldReadersRead_Then_AllRejectTheNewKind()
@@ -316,7 +420,10 @@ public sealed class B10FinalProjectionCodecTests
     [Fact]
     public void Given_ProjectionByteBudget_When_Read_Then_AcceptsAtBoundaryAndRejectsAboveBeforeParsing()
     {
-        byte[] actual = B10FinalProjectionCodec.Write(Fixture().Projection());
+        B10FinalProjection projection = Fixture().Projection();
+        B10FinalRepeat[] repeats = projection.Data.Repeats.ToArray();
+        repeats[0] = repeats[0] with { DuplicateBreakdown = new(0, repeats[0].Timeout!.Duplicate) };
+        byte[] actual = B10FinalProjectionCodec.Write(projection with { Data = projection.Data with { Repeats = repeats } });
         foreach (long size in new[] { B10FinalProjectionCodec.MaximumBytes - 1, B10FinalProjectionCodec.MaximumBytes })
         {
             byte[] padded = new byte[size]; Array.Fill(padded, (byte)' '); actual.CopyTo(padded, 0);

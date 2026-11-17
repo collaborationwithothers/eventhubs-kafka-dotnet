@@ -28,6 +28,21 @@ public sealed class B10LateWriteChecksTests
         B10LateWriteJudgement result=Classify(ledgers,original,late);
         Assert.True(result.Valid);Assert.Empty(result.Reasons);
         Assert.Equal(new OutcomeCounts(ok,loss,phantom,failure,duplicate,reorder),result.Counts);
+        Assert.Equal(includeLate ? new DuplicateBreakdown(1,1) : new DuplicateBreakdown(0,0), result.DuplicateBreakdown);
+    }
+
+    [Fact]
+    public void Given_OriginalAndLateCopiesAcrossPartitions_When_Classified_Then_UsesTheFullOwnedUnion()
+    {
+        ConsumedRecord original = Record(First, "a", 1, 7);
+        ConsumedRecord otherPartition = original with { Partition = 1 };
+        ConsumedRecord lateAttempt = Record(Second, "a", 1, 8);
+        ConsumedRecord earlier = original with { InstanceId = "earlier", Offset = 9 };
+        B10LateWriteJudgement result = B10LateWriteChecks.Classify([First, Second], [[Row(First, "a", 1)], [Row(Second, "a", 1)]],
+            [original, earlier], [otherPartition, lateAttempt], new HashSet<string>(StringComparer.Ordinal) { "earlier" });
+        Assert.True(result.Valid);
+        Assert.Equal(2, result.Counts!.Duplicate);
+        Assert.Equal(new DuplicateBreakdown(1, 1), result.DuplicateBreakdown);
     }
 
     [Theory]
@@ -85,7 +100,7 @@ public sealed class B10LateWriteChecksTests
             "problems"=>record with {Problems=[Problem("attempt-id")]},_=>record
         };
         B10LateWriteJudgement result=Classify([[Row(First,"a",1)],[]],[record],failure=="duplicate-coordinate"?[record]:[]);
-        Assert.False(result.Valid);Assert.Null(result.Counts);Assert.Equal(["b10_record_reconciliation_invalid"],result.Reasons);
+        Assert.False(result.Valid);Assert.Null(result.Counts);Assert.Null(result.DuplicateBreakdown);Assert.Equal(["b10_record_reconciliation_invalid"],result.Reasons);
     }
 
     [Theory]

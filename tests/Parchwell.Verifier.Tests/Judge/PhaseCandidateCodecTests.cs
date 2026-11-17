@@ -867,6 +867,133 @@ public sealed class PhaseCandidateCodecTests
         catch(FormatException) { return false; }
     }
 
+    [Fact]
+    public void Given_FiveRepeatObservations_When_WrittenAndRead_Then_RequiresMatchingAggregate()
+    {
+        PhaseCandidate source = Candidate();
+        PhaseRepeatResult[] repeats = Enumerable.Range(1, 5).Select(i => source.Repeats[0] with { Repeat = i, Counts = new(1, 0, 0, 0, 3, 0), DuplicateBreakdown = new(1, 2) }).ToArray();
+        PhaseCandidate candidate = source with { Repeats = repeats, Counts = new(5, 0, 0, 0, 15, 0), DuplicateBreakdown = new(5, 10) };
+        byte[] bytes = PhaseCandidateCodec.Write(candidate);
+        using var read = PhaseCandidateCodec.Read(bytes);
+        Assert.Equal(5, read.RootElement.GetProperty("duplicate_breakdown").GetProperty("duplicate_same_attempt").GetInt64());
+        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Write(candidate with { DuplicateBreakdown = new(6, 9) }));
+        repeats[1] = repeats[1] with { DuplicateBreakdown = null };
+        using var mixed = PhaseCandidateCodec.Read(PhaseCandidateCodec.Write(candidate with { Repeats = repeats, DuplicateBreakdown = null }));
+        Assert.False(mixed.RootElement.TryGetProperty("duplicate_breakdown", out _));
+    }
+
+    [Theory]
+    [InlineData("repeat-status")] [InlineData("repeat-source")] [InlineData("repeat-no-counts")]
+    [InlineData("root-no-counts")] [InlineData("root-missing")] [InlineData("root-mismatch")]
+    [InlineData("unknown-root")] [InlineData("unknown-repeat")] [InlineData("schema")]
+    public void Given_ObservedCandidate_When_EnvelopeIsInvalid_Then_Rejects(string change)
+    {
+        PhaseCandidate source = Candidate();
+        PhaseRepeatResult[] repeats = Enumerable.Range(1, 5).Select(i => source.Repeats[0] with { Repeat = i, Counts = new(1, 0, 0, 0, 1, 0), DuplicateBreakdown = new(1, 0) }).ToArray();
+        JsonObject root = JsonNode.Parse(PhaseCandidateCodec.Write(source with { Repeats = repeats, Counts = new(5, 0, 0, 0, 5, 0), DuplicateBreakdown = new(5, 0) }))!.AsObject();
+        switch (change)
+        {
+            case "repeat-status": root["repeats"]![0]!["status"] = "invalid"; break;
+            case "repeat-source": root["repeats"]![0]!["checks"]!["j3_verifier_receipt"] = false; break;
+            case "repeat-no-counts": root["repeats"]![0]!.AsObject().Remove("counts"); break;
+            case "root-no-counts": root.Remove("counts"); break;
+            case "root-missing": root.Remove("duplicate_breakdown"); break;
+            case "root-mismatch": root["duplicate_breakdown"]!["duplicate_same_attempt"] = 4; break;
+            case "unknown-root": root["extra"] = 0; break;
+            case "unknown-repeat": root["repeats"]![0]!["extra"] = 0; break;
+            case "schema": root["schema_version"] = 2; break;
+        }
+        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(root.ToJsonString())));
+    }
+
+    [Theory]
+    [InlineData(-1, false)] [InlineData(0, true)] [InlineData(1, true)]
+    public void Given_ObservedCandidateBytes_When_LimitVaries_Then_EnforcesMaximum(int delta, bool accepted)
+    {
+        PhaseCandidate source = Candidate();
+        PhaseRepeatResult[] repeats = Enumerable.Range(1, 5).Select(i => source.Repeats[0] with { Repeat = i, DuplicateBreakdown = new(0, 0) }).ToArray();
+        byte[] compact = PhaseCandidateCodec.Write(source with { Repeats = repeats, DuplicateBreakdown = new(0, 0) });
+        int length = checked((int)PhaseCandidateCodec.MaximumBytes + delta);
+        byte[] padded = [.. compact, .. System.Text.Encoding.UTF8.GetBytes(new string(' ', length - compact.Length))];
+        if (accepted) using (PhaseCandidateCodec.Read(padded)) { }
+        else Assert.Throws<InputLimitExceededException>(() => PhaseCandidateCodec.Read(padded));
+    }
+
+    [Theory]
+    [InlineData(1, false)] [InlineData(2, true)] [InlineData(3, false)]
+    public void Given_RepeatComponentSum_When_ReadAndWritten_Then_RequiresExistingDuplicateCount(long same, bool accepted)
+    {
+        PhaseCandidate source = Candidate();
+        PhaseRepeatResult repeat = source.Repeats[0] with { Counts = new(1, 0, 0, 0, 2, 0), DuplicateBreakdown = new(same, 0) };
+        if (accepted) Assert.NotEmpty(PhaseCandidateCodec.Write(source with { Repeats = [repeat] }));
+        else Assert.Throws<FormatException>(() => PhaseCandidateCodec.Write(source with { Repeats = [repeat] }));
+        repeat = repeat with { DuplicateBreakdown = new(2, 0) };
+        JsonObject root = JsonNode.Parse(PhaseCandidateCodec.Write(source with { Repeats = [repeat] }))!.AsObject();
+        root["repeats"]![0]!["duplicate_breakdown"]!["duplicate_same_attempt"] = same;
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes(root.ToJsonString());
+        if (accepted) using (PhaseCandidateCodec.Read(bytes)) { }
+        else Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(bytes));
+    }
+
+    [Theory]
+    [InlineData(-1, 0)] [InlineData(0, -1)] [InlineData(1, 0)] [InlineData(long.MaxValue, 1)]
+    public void Given_InvalidRepeatComponents_When_Written_Then_Rejects(long same, long different)
+    {
+        PhaseCandidate source = Candidate();
+        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Write(source with { Repeats = [source.Repeats[0] with { DuplicateBreakdown = new(same, different) }] }));
+    }
+
+    [Fact]
+    public void Given_MaximumObservation_When_Read_Then_PreservesCheckedLimit()
+    {
+        PhaseCandidate source = Candidate();
+        PhaseRepeatResult[] repeats = Enumerable.Range(1, 5).Select(i => source.Repeats[0] with { Repeat = i, Counts = new(1, 0, 0, 0, i == 1 ? long.MaxValue : 0, 0), DuplicateBreakdown = new(i == 1 ? long.MaxValue : 0, 0) }).ToArray();
+        using JsonDocument read = PhaseCandidateCodec.Read(PhaseCandidateCodec.Write(source with { Repeats = repeats, Counts = new(5, 0, 0, 0, long.MaxValue, 0), DuplicateBreakdown = new(long.MaxValue, 0) }));
+        Assert.Equal(long.MaxValue, read.RootElement.GetProperty("duplicate_breakdown").GetProperty("duplicate_same_attempt").GetInt64());
+    }
+
+    [Fact]
+    public void Given_RepeatAggregateOverflow_When_Read_Then_Rejects()
+    {
+        PhaseCandidate source = Candidate();
+        PhaseRepeatResult[] repeats = Enumerable.Range(1, 5).Select(i => source.Repeats[0] with { Repeat = i, Counts = new(1, 0, 0, 0, 0, 0), DuplicateBreakdown = new(0, 0) }).ToArray();
+        byte[] bytes = PhaseCandidateCodec.Write(source with { Repeats = repeats, DuplicateBreakdown = new(0, 0) });
+        JsonObject root = JsonNode.Parse(bytes)!.AsObject();
+        JsonArray array = root["repeats"]!.AsArray();
+        array[0]!["counts"]!["duplicate"] = long.MaxValue;
+        array[0]!["duplicate_breakdown"]!["duplicate_same_attempt"] = long.MaxValue;
+        array[1]!["counts"]!["duplicate"] = 1;
+        array[1]!["duplicate_breakdown"]!["duplicate_same_attempt"] = 1;
+        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(root.ToJsonString())));
+    }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData("{}")]
+    [InlineData("[]")]
+    [InlineData("{\"duplicate_same_attempt\":0}")]
+    [InlineData("{\"duplicate_different_attempt\":0}")]
+    [InlineData("{\"duplicate_same_attempt\":0,\"duplicate_different_attempt\":0,\"duplicate_same_attempt\":0}")]
+    [InlineData("{\"duplicate_same_attempt\":true,\"duplicate_different_attempt\":0}")]
+    [InlineData("{\"duplicate_same_attempt\":\"0\",\"duplicate_different_attempt\":0}")]
+    [InlineData("{\"duplicate_same_attempt\":9223372036854775808,\"duplicate_different_attempt\":0}")]
+    [InlineData("{\"duplicate_same_attempt\":1,\"duplicate_different_attempt\":0}")]
+    [InlineData("{\"duplicate_same_attempt\":0,\"duplicate_different_attempt\":0,\"extra\":0}")]
+    [InlineData("{\"duplicate_same_attempt\":0,\"duplicate_different_attempt\":null}")]
+    [InlineData("{\"duplicate_same_attempt\":null,\"duplicate_different_attempt\":0}")]
+    [InlineData("{\"duplicate_same_attempt\":0,\"duplicate_different_attempt\":-1}")]
+    [InlineData("{\"duplicate_same_attempt\":-1,\"duplicate_different_attempt\":1}")]
+    [InlineData("{\"duplicate_same_attempt\":0.5,\"duplicate_different_attempt\":0}")]
+    [InlineData("{\"duplicate_same_attempt\":9223372036854775807,\"duplicate_different_attempt\":1}")]
+    public void Given_MalformedRepeatObservation_When_Read_Then_Rejects(string observation)
+    {
+        string json = System.Text.Encoding.UTF8.GetString(PhaseCandidateCodec.Write(Candidate()));
+        string repeatJson = json.Replace("\"repeat\":1", "\"duplicate_breakdown\":" + observation + ",\"repeat\":1", StringComparison.Ordinal);
+        string rootJson = json.Replace("\"schema_version\":1", "\"duplicate_breakdown\":" + observation + ",\"schema_version\":1", StringComparison.Ordinal);
+        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(repeatJson)));
+        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(rootJson)));
+    }
+
     private static PhaseCandidate Candidate()
     {
         var checks=new PhaseRepeatChecks(true,true,true,true,true,true,true);

@@ -44,6 +44,7 @@ internal static class B10SweepChecks
             B10OriginalEvidence original = originals[i];
             if (repeat.Repeat != i + 1 || original.Repeat != i + 1 ||
                 repeat.Result != original.Result || repeat.VerifyReceipt != original.VerifyReceipt ||
+                repeat.DuplicateBreakdown is { } breakdown && (repeat.Counts is null || !breakdown.IsValid(repeat.Counts.Duplicate)) ||
                 repeat.ClassificationFinal && (!original.Eligible || repeat.Status != VerifierResultStatus.CompleteValid || repeat.Counts is null) ||
                 !repeat.ClassificationFinal && (repeat.Status == VerifierResultStatus.CompleteValid || repeat.Counts is not null))
                 return false;

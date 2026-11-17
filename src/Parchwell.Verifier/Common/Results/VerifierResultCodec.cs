@@ -74,6 +74,13 @@ internal static class VerifierResultCodec
                 writer.WriteNumber("phantom", counts.Phantom);
                 writer.WriteNumber("reported_failure", counts.ReportedFailure);
                 writer.WriteNumber("duplicate", counts.Duplicate);
+                if (result.DuplicateBreakdown is { } breakdown)
+                {
+                    writer.WriteStartObject("duplicate_breakdown");
+                    writer.WriteNumber("duplicate_same_attempt", breakdown.DuplicateSameAttempt);
+                    writer.WriteNumber("duplicate_different_attempt", breakdown.DuplicateDifferentAttempt);
+                    writer.WriteEndObject();
+                }
                 writer.WriteNumber("reorder", counts.Reorder);
             }
 
@@ -184,6 +191,11 @@ internal static class VerifierResultCodec
             return Failure(artifact, "ok", "counts_not_allowed_for_status");
         }
 
+        DuplicateBreakdown? duplicateBreakdown = null;
+        if (root.TryGetProperty("duplicate_breakdown", out JsonElement breakdownElement) &&
+            (!DuplicateBreakdown.TryRead(breakdownElement, out duplicateBreakdown) || counts is null || !duplicateBreakdown!.IsValid(counts.Duplicate)))
+            return Failure(artifact, "duplicate_breakdown", "invalid_duplicate_breakdown");
+
         if (!TryOptionalObject(root, "broker_count", artifact, ParseBrokerCount, out BrokerConnectionCount? brokerCount, out StructuralProblem? brokerProblem))
             return ParseResult<VerifierResult>.Failure(brokerProblem!);
         if (!TryOptionalObject(root, "configuration_fidelity", artifact, ParseConfigurationFidelity, out ConfigurationFidelityResult? fidelity, out StructuralProblem? fidelityProblem))
@@ -237,7 +249,7 @@ internal static class VerifierResultCodec
 
         return ParseResult<VerifierResult>.Success(new VerifierResult(
             schemaVersion, identity!, generatorVersion!, runtimeVersions!, verifierCommit!, verifierKafkaVersion!, verifierLibrdkafkaVersion!,
-            status, failedChecks!, startLine, endLine, drainTime, drainElapsed, counts, brokerCount, fidelity, probe, a01, hashes!, diagnostics!, workload, b04, batching, b10Intake, classificationFinal, windowChecksComplete, b10Observations, root.TryGetProperty("consumer", out JsonElement consumer) ? consumer.Clone() : null));
+            status, failedChecks!, startLine, endLine, drainTime, drainElapsed, counts, brokerCount, fidelity, probe, a01, hashes!, diagnostics!, workload, b04, batching, b10Intake, classificationFinal, windowChecksComplete, b10Observations, root.TryGetProperty("consumer", out JsonElement consumer) ? consumer.Clone() : null, duplicateBreakdown));
     }
 
     private static void ValidateForWrite(VerifierResult result, OutputLimits limits)
@@ -267,6 +279,9 @@ internal static class VerifierResultCodec
         }
         if (result.Status == VerifierResultStatus.CompleteValid && result.Counts is null)
             throw new ArgumentException("A complete_valid result requires all six supplied outcome counts.", nameof(result));
+        if (result.DuplicateBreakdown is { } breakdown &&
+            (result.Status != VerifierResultStatus.CompleteValid || result.Counts is null || !breakdown.IsValid(result.Counts.Duplicate)))
+            throw new ArgumentException("Invalid duplicate breakdown.", nameof(result));
         if (result.DrainTimeMilliseconds is not null && result.DrainElapsedAtStopMilliseconds is not null)
             throw new ArgumentException("drain_time and drain_elapsed_at_stop are mutually exclusive.", nameof(result));
         if (result.BrokerCount is not null && !result.BrokerCount.LowerBound)
@@ -1069,7 +1084,7 @@ internal static class VerifierResultCodec
         var fields = new HashSet<string>(StringComparer.Ordinal)
         {
             "generator_version", "runtime_versions", "start_line", "end_line", "drain_time", "drain_elapsed_at_stop", "drain_elapsed_at_stop_lower_bound",
-            "broker_count", "configuration_fidelity", "probe_observation", "a01_recorded_evidence", "workload_observation", "b04_recorded_evidence", "batching_recorded_evidence", "b10_intake", "classification_final", "b10_window_checks_complete", "b10_producer_observations", "consumer"
+            "broker_count", "configuration_fidelity", "probe_observation", "a01_recorded_evidence", "workload_observation", "b04_recorded_evidence", "batching_recorded_evidence", "b10_intake", "classification_final", "b10_window_checks_complete", "b10_producer_observations", "consumer", "duplicate_breakdown"
         };
         fields.UnionWith(CountFields);
         return fields;

@@ -1355,6 +1355,32 @@ class PhaseTests(unittest.TestCase):
                 self.assertEqual(self.fake.download, (self.candidate_dir / 'candidate.json').read_bytes())
                 self.assertEqual(f'full_allowed={str(gate == "pass").lower()}\n', self.output_file.read_text())
 
+    def test_candidate_duplicate_observation_transports_exact_bytes_with_historical_omission(self):
+        for recorded in (False, True):
+            with self.subTest(recorded=recorded):
+                self.prepare('probe')
+                candidate = self.candidate()
+                candidate['counts'] = {'ok': 5, 'loss': 0, 'phantom': 0, 'reported_failure': 0,
+                                       'duplicate': 20, 'reorder': 0}
+                for repeat in candidate['repeats']:
+                    repeat['counts'] = {'ok': 1, 'loss': 0, 'phantom': 0, 'reported_failure': 0,
+                                        'duplicate': 4, 'reorder': 0}
+                    if recorded:
+                        repeat['duplicate_breakdown'] = {'duplicate_same_attempt': 3,
+                                                         'duplicate_different_attempt': 1}
+                if recorded:
+                    candidate['duplicate_breakdown'] = {'duplicate_same_attempt': 15,
+                                                        'duplicate_different_attempt': 5}
+                self.fake.download = (json.dumps(candidate, indent=2) + '\n').encode()
+                with self.mocked():
+                    self.assertEqual(0, self.main('candidate'))
+                transported = (self.candidate_dir / 'candidate.json').read_bytes()
+                self.assertEqual(self.fake.download, transported)
+                self.assertEqual(candidate, json.loads(transported))
+                self.assertEqual(recorded, 'duplicate_breakdown' in json.loads(transported))
+                self.assertTrue(all(('duplicate_breakdown' in repeat) == recorded
+                                    for repeat in json.loads(transported)['repeats']))
+
     def test_candidate_rejections(self):
         self.prepare('probe')
         base = self.candidate()

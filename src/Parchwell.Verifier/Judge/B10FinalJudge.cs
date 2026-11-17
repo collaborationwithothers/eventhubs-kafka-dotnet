@@ -6,6 +6,7 @@ using Parchwell.Verifier.Common.Results;
 using Parchwell.Verifier.Common.Serialization;
 using Parchwell.Verifier.Common.Storage;
 using Parchwell.Verifier.Common.Window;
+using Parchwell.Verifier.VerifyRun.B10Final;
 
 namespace Parchwell.Verifier.Judge;
 
@@ -173,7 +174,7 @@ internal static class B10FinalJudge
                 }
                 repeats.Add(new(repeat.Repeat, repeat.Status, repeat.Reasons,
                     new(present || source is not null && accepted, accepted, accepted, registrationPass, registrationPass, coverage, false), repeat.Timeout, null,
-                    registrationPass ? registrations.Timeout?.Identity.InstanceId : null, ClassificationFinal: repeat.ClassificationFinal));
+                    registrationPass ? registrations.Timeout?.Identity.InstanceId : null, ClassificationFinal: repeat.ClassificationFinal, DuplicateBreakdown: repeat.DuplicateBreakdown));
             }
             Require(MatchesSweepReference(projection, note, options, B10FinalRegistrationReader.ParseUtc(receipt.StartedUtc), completions));
             Require(!collision || !projection.Data.ScanComplete && projection.Data.Repeats.All(repeat => repeat.Status == "invalid" &&
@@ -226,7 +227,8 @@ internal static class B10FinalJudge
                 ["duration_seconds"] = phaseStarted is null ? null : (decimal?)(completed - phaseStarted.Value).TotalSeconds },
             new Dictionary<string, object?>(StringComparer.Ordinal) { ["error_codes"] = Array.Empty<string>(), ["max_throttle_ms"] = null,
                 ["request_timeout_increment"] = null, ["disconnect_increment"] = null, ["rtt_p99_ms"] = null },
-            repeats, counts, reasons.Order(StringComparer.Ordinal).Take(100).ToArray(), B10Final: final);
+            repeats, counts, reasons.Order(StringComparer.Ordinal).Take(100).ToArray(), B10Final: final,
+            DuplicateBreakdown: counts is null ? null : SumBreakdowns(repeats));
         byte[] candidateBytes = PhaseCandidateCodec.Write(candidate);
         string candidateName = PhasePaths.Candidate(options.RunId!, options.Phase!);
         if (options.CandidateOutputName != candidateName) throw new InvalidOperationException("Candidate path is not the derived phase path.");
@@ -300,8 +302,18 @@ internal static class B10FinalJudge
             B10FinalProjectionCodec.Text(identity, "pod_name") == B10FinalProjectionCodec.Text(identity, "instance_id") &&
             identity.GetProperty("predecessor_instance_id").ValueKind == JsonValueKind.Null);
         _ = B10FinalProjectionCodec.Text(identity, "pod_uid");
-        B10FinalProjectionCodec.Exact(root.GetProperty("data"), "first_instance_id", "successor_instance_id", "timeout_instance_id", "timeout", "comparison",
+        B10FinalProjectionCodec.ExactOptional(root.GetProperty("data"), "duplicate_breakdown", "first_instance_id", "successor_instance_id", "timeout_instance_id", "timeout", "comparison",
             "native_errors", "eligibility", "eligibility_reasons", "start_line", "end_line", "window_complete", "window_limit", "arms", "problems", "problem_details", "finality", "earlier_repeat_records");
+        JsonElement data = root.GetProperty("data");
+        JsonElement timeout = data.GetProperty("timeout");
+        B10FinalRepeatEvidence.ValidateBreakdown(data, timeout.ValueKind == JsonValueKind.Null ? null : timeout.GetProperty("duplicate").GetInt64(), timeout.ValueKind != JsonValueKind.Null);
+        JsonElement arms = data.GetProperty("arms");
+        if (arms.ValueKind != JsonValueKind.Null)
+            foreach (JsonElement arm in arms.EnumerateArray())
+            {
+                B10FinalRepeatEvidence.ValidateBreakdown(arm);
+                foreach (JsonElement member in arm.GetProperty("members").EnumerateArray()) B10FinalRepeatEvidence.ValidateBreakdown(member);
+            }
     }
 
     internal static B10FinalCandidate BuildFinal(B10FinalProjection projection, ArtifactReference reference, ArtifactReference receipt)
@@ -333,6 +345,12 @@ internal static class B10FinalJudge
             restart = new(5, eligible.Length, eligible, pairs, losses, eligibleLosses, selection, reason, selection == "confirmed" ? RestartSubject : null);
         }
         return new(reference, receipt, projection.Data.ScanComplete, projection.Data.ResidualRisk, repeats, timeout, restart);
+    }
+
+    private static DuplicateBreakdown? SumBreakdowns(IEnumerable<PhaseRepeatResult> repeats)
+    {
+        try { return DuplicateBreakdown.Sum(repeats.Select(repeat => repeat.DuplicateBreakdown)); }
+        catch (OverflowException) { return null; }
     }
 
     internal static OutcomeCounts SumCounts(IEnumerable<OutcomeCounts> counts)

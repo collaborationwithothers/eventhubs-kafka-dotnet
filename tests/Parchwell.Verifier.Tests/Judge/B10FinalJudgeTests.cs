@@ -19,6 +19,46 @@ namespace Parchwell.Verifier.Tests.Judge;
 // ADR-021 rules are observed through the real JudgeHandler with independent literal phase inputs.
 public sealed class B10FinalJudgeTests
 {
+    [Fact]
+    public async Task Given_FinalTimeoutObservations_When_Judged_Then_MirrorsAndSumsThem()
+    {
+        var fixture = new B10FinalJudgeFixture("C0");
+        for (int index = 0; index < 5; index++)
+            fixture.Repeats[index] = fixture.Repeats[index] with { DuplicateBreakdown = new(0, 0) };
+        fixture.Repeats[0] = fixture.Repeats[0] with { Timeout = new(1, 0, 0, 0, 4, 0), DuplicateBreakdown = new(3, 1) };
+        using JsonDocument candidate = await fixture.JudgeAsync();
+        JsonElement root = candidate.RootElement;
+        Assert.Equal(3, root.GetProperty("duplicate_breakdown").GetProperty("duplicate_same_attempt").GetInt64());
+        Assert.Equal(1, root.GetProperty("duplicate_breakdown").GetProperty("duplicate_different_attempt").GetInt64());
+        Assert.Equal(root.GetProperty("b10_final").GetProperty("repeats")[0].GetProperty("duplicate_breakdown").GetRawText(),
+            root.GetProperty("repeats")[0].GetProperty("duplicate_breakdown").GetRawText());
+    }
+
+    [Fact]
+    public async Task Given_HistoricalRepeatObservationMissing_When_Judged_Then_OmitsAggregate()
+    {
+        var fixture = new B10FinalJudgeFixture("C0");
+        fixture.Repeats[0] = fixture.Repeats[0] with { DuplicateBreakdown = new(0, 0) };
+        using JsonDocument candidate = await fixture.JudgeAsync();
+        Assert.False(candidate.RootElement.TryGetProperty("duplicate_breakdown", out _));
+        Assert.Equal("complete_valid", candidate.RootElement.GetProperty("status").GetString());
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public async Task Given_MirroredTimeoutMismatch_When_CandidateRead_Then_Rejects(bool rootMismatch)
+    {
+        var fixture = new B10FinalJudgeFixture("C0");
+        for (int index = 0; index < 5; index++) fixture.Repeats[index] = fixture.Repeats[index] with { DuplicateBreakdown = new(0, 0) };
+        fixture.Repeats[0] = fixture.Repeats[0] with { Timeout = new(1, 0, 0, 0, 1, 0), DuplicateBreakdown = new(1, 0) };
+        using JsonDocument candidate = await fixture.JudgeAsync();
+        JsonObject root = JsonNode.Parse(candidate.RootElement.GetRawText())!.AsObject();
+        JsonNode target = rootMismatch ? root : root["repeats"]![0]!;
+        target["duplicate_breakdown"]!["duplicate_same_attempt"] = 0;
+        target["duplicate_breakdown"]!["duplicate_different_attempt"] = 1;
+        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(Encoding.UTF8.GetBytes(root.ToJsonString())));
+    }
+
     [Theory]
     [InlineData(0, "untestable")]
     [InlineData(1, "confirmed")]

@@ -19,6 +19,25 @@ public sealed class B10AbruptVerifyClassificationTests(B10AbruptVerifyKafkaFixtu
     private static readonly string[] ProblemNames = ["b10_abrupt_verify_start_line_invalid", "b10_abrupt_verify_first_evidence_invalid", "b10_abrupt_verify_successor_absent", "b10_abrupt_verify_successor_evidence_invalid", "b10_abrupt_verify_window_incomplete", "b10_abrupt_verify_probe_record_malformed", "b10_abrupt_verify_timeout_evidence_invalid", "b10_abrupt_verify_record_unjoined", "b10_abrupt_verify_end_line_advanced"];
     private static readonly string[] ReasonNames = ["b10_restart_configuration_invalid", "b10_restart_first_evidence_unavailable", "b10_restart_identity_unauthenticated", "b10_restart_termination_unverified", "b10_restart_native_error_captured", "b10_restart_fatal_captured", "b10_restart_timeout_bookkeeping_unavailable", "b10_abrupt_control_incomplete", "b10_restart_successor_evidence_unavailable", "b10_restart_resend_count_invalid", "b10_abrupt_successor_late", "b10_restart_window_incomplete", "b10_restart_guard_failed"];
 
+    [Fact]
+    public async Task Given_ProbeCopies_When_HostWritesResult_Then_BreakdownUsesFullPopulation()
+    {
+        await kafka.ResetAsync(); using var run = NewRun();
+        await run.ProduceAsync(0, 0); await run.ProduceAsync(0, 1); await run.ProduceAsync(0, 2);
+        await run.ProduceAsync(1, 0, instance: B10AbruptVerifyEvidence.Second, attempt: "r4");
+        await run.ProduceAsync(1, 1, instance: B10AbruptVerifyEvidence.Second, attempt: "r4");
+        await AssertResult(run, [], []);
+        JsonNode arm = Arm(run, "cross_restart");
+        JsonNode member = arm["members"]![0]!;
+        Assert.Equal(6, Number(member, "pair_count"));
+        Assert.Equal(3, Number(member["duplicate_breakdown"]!, "duplicate_same_attempt"));
+        Assert.Equal(1, Number(member["duplicate_breakdown"]!, "duplicate_different_attempt"));
+        Assert.Equal(3, Number(arm["duplicate_breakdown"]!, "duplicate_same_attempt"));
+        Assert.Equal(1, Number(arm["duplicate_breakdown"]!, "duplicate_different_attempt"));
+        Assert.Equal(0, Number(run.Data["duplicate_breakdown"]!, "duplicate_same_attempt"));
+        Assert.Equal(0, Number(run.Data["duplicate_breakdown"]!, "duplicate_different_attempt"));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -31,8 +50,13 @@ public sealed class B10AbruptVerifyClassificationTests(B10AbruptVerifyKafkaFixtu
         await run.ProduceAsync(1, 0, instance: B10AbruptVerifyEvidence.Timeout, attempt: "t2", key: "k2", sequence: 0);
         await run.ProduceAsync(1, 1, instance: B10AbruptVerifyEvidence.Timeout, attempt: "t3", key: "k2", sequence: 0);
         await AssertResult(run, deliveredPrior ? [7] : [], deliveredPrior ? [7] : []);
-        if (deliveredPrior) Assert.Null(run.Data["timeout"]);
-        else Assert.Equal(new long[] { 2, 0, 1, 0, 1, 0 }, TimeoutFields.Select(field => Number(run.Data["timeout"]!, field)));
+        if (deliveredPrior) { Assert.Null(run.Data["timeout"]); Assert.Null(run.Data["duplicate_breakdown"]); }
+        else
+        {
+            Assert.Equal(new long[] { 2, 0, 1, 0, 1, 0 }, TimeoutFields.Select(field => Number(run.Data["timeout"]!, field)));
+            Assert.Equal(0, Number(run.Data["duplicate_breakdown"]!, "duplicate_same_attempt"));
+            Assert.Equal(1, Number(run.Data["duplicate_breakdown"]!, "duplicate_different_attempt"));
+        }
     }
 
     [Theory]
