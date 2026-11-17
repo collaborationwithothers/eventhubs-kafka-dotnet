@@ -840,6 +840,50 @@ class QualificationTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     runtime.shape(self.config)
 
+    def assert_committed_maps_reconstructed(self, approved_runner_pair):
+        if approved_runner_pair:
+            self.shared[runtime.RUNNER] = runtime.RUNNER_TIMING_PAIR[0]
+            self.config['shared_inputs'] = self.shared.copy()
+        binding = self.migrate_v2()
+        context = self.config['timing_inputs'][binding]
+        context['source_commit'] = 'a' * 40
+        for record in self.config['targets'].values():
+            for item in record['shards'].values():
+                item['timing_inputs_sha256'] = binding
+        if approved_runner_pair:
+            self.shared[runtime.RUNNER] = runtime.RUNNER_TIMING_PAIR[1]
+            self.config['shared_inputs'] = self.shared.copy()
+            context['assessments']['shared_inputs'][runtime.RUNNER] = {
+                'current_sha256': self.shared[runtime.RUNNER], 'basis': ['Synthetic approved pair.']}
+        def tree(shared, targets):
+            return (None, None, (shared, targets), None, None)
+        shared = context['shared_inputs'].copy()
+        targets = context['target_sources'].copy()
+        with mock.patch.object(runtime, 'proof_tree', return_value=tree(shared, targets)) as committed:
+            self.assertEqual(set(), self.errors())
+            committed.assert_called_with(context['source_commit'])
+            for mapping in ('shared_inputs', 'target_sources'):
+                with self.subTest(approved_runner_pair=approved_runner_pair, mapping=mapping):
+                    reconstructed_shared = shared.copy()
+                    reconstructed_targets = targets.copy()
+                    if mapping == 'shared_inputs':
+                        reconstructed_shared['global.json'] = '0' * 64
+                    else:
+                        reconstructed_targets['a.cs'] = '0' * 64
+                    committed.return_value = tree(reconstructed_shared, reconstructed_targets)
+                    self.assertEqual({'stale_inputs'}, self.errors())
+                    del context['source_commit']
+                    self.assertEqual(set(), self.errors())
+                    context['source_commit'] = 'a' * 40
+                    committed.return_value = tree(shared, targets)
+                    self.assertEqual(set(), self.errors())
+
+    def test_committed_maps_checked_without_runner_exception(self):
+        self.assert_committed_maps_reconstructed(False)
+
+    def test_committed_maps_checked_with_approved_runner_pair(self):
+        self.assert_committed_maps_reconstructed(True)
+
     def test_config_exception_requires_linked_timing_and_does_not_renew_tooling(self):
         self.shared[runtime.CONFIG_PATH] = runtime.digest(b'old config')
         self.config['shared_inputs'] = self.shared.copy()
