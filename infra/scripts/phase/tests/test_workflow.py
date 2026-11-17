@@ -118,7 +118,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertFalse((REPO / 'docs/operations/workflows/b04-scenario.yml.txt').exists())
         self.assertEqual({'workflow_dispatch': {'inputs': {'scenario': {
             'description': 'Scenario definition to run', 'type': 'choice', 'required': 'true',
-            'default': 'A01', 'options': ['A01', 'B04', 'B10', 'probe-batch', 'probe-batch-2', 'idle-observation', 'ledger-batch']},
+            'default': 'A01', 'options': ['A01', 'B04', 'B10', 'C03', 'C10', 'C01', 'probe-batch', 'probe-batch-2', 'idle-observation', 'ledger-batch']},
             'run_kind': {'description': 'Probe batch run kind', 'type': 'choice', 'required': 'true',
                          'default': 'smoke', 'options': ['smoke', 'batch']},
             'items': {'description': 'Probe batch items (probe-batch: all or ordered B01,B03,B05,C08,C12,F04; probe-batch-2: smoke all or authentication-controls; batch all or ordered B08,E01,F06; idle-observation: all or ordered A02,A03,A04)',
@@ -135,23 +135,23 @@ class WorkflowTests(unittest.TestCase):
         phase = importlib.util.module_from_spec(phase_spec)
         phase_spec.loader.exec_module(phase)
         self.assertEqual(
-            ['A01', 'B04', 'B10', 'probe-batch', 'probe-batch-2', 'idle-observation', 'ledger-batch'],
+            ['A01', 'B04', 'B10', 'C03', 'C10', 'C01', 'probe-batch', 'probe-batch-2', 'idle-observation', 'ledger-batch'],
             self.workflow['on']['workflow_dispatch']['inputs']['scenario']['options'])
-        self.assertEqual(['A01', 'B04', 'B10'], sorted(phase.SCENARIOS))
+        self.assertEqual(['A01', 'B04', 'B10', 'C01', 'C03', 'C10'], sorted(phase.SCENARIOS))
 
     def test_job_topology_routing_and_main_guards(self):
         self.assertEqual(['probe', 'full-C0', 'full-C3'], list(self.jobs))
         self.assertNotIn('needs', self.jobs['probe'])
         self.assertEqual(['probe'], self.jobs['full-C0']['needs'])
         factor = "(!inputs.test_handler_refresh_path || (inputs.scenario == 'probe-batch-2' && inputs.run_kind == 'smoke' && inputs.items == 'authentication-controls' && inputs.capture_authentication_metadata))"
-        self.assertEqual(f"(inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2' && inputs.scenario != 'idle-observation' && inputs.scenario != 'ledger-batch' && inputs.scenario != 'B04' && inputs.scenario != 'B10' && needs.probe.outputs.full_allowed == 'true') && {factor} && " + NATIVE_FACTOR, self.jobs['full-C0']['if'])
+        self.assertEqual(f"(inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2' && inputs.scenario != 'idle-observation' && inputs.scenario != 'ledger-batch' && inputs.scenario != 'B04' && inputs.scenario != 'B10' && inputs.scenario != 'C03' && inputs.scenario != 'C10' && inputs.scenario != 'C01' && needs.probe.outputs.full_allowed == 'true') && {factor} && " + NATIVE_FACTOR, self.jobs['full-C0']['if'])
         self.assertEqual(['probe', 'full-C0'], self.jobs['full-C3']['needs'])
         self.assertEqual(f"(always() && inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2' && inputs.scenario != 'idle-observation' && inputs.scenario != 'ledger-batch') && {factor} && " + NATIVE_FACTOR, self.jobs['full-C3']['if'])
         self.assertEqual(f"(inputs.scenario != 'probe-batch' && inputs.scenario != 'probe-batch-2' && inputs.scenario != 'idle-observation' && inputs.scenario != 'ledger-batch') && {factor} && " + NATIVE_FACTOR, self.jobs['probe']['if'])
         expected_phases = {
-            'probe': ("${{ (inputs.scenario == 'B04' || inputs.scenario == 'B10') && 'C0' || 'probe' }}", "${{ inputs.scenario || 'A01' }}"),
+            'probe': ("${{ (inputs.scenario == 'B04' || inputs.scenario == 'B10' || inputs.scenario == 'C03' || inputs.scenario == 'C10' || inputs.scenario == 'C01') && 'C0' || 'probe' }}", "${{ inputs.scenario || 'A01' }}"),
             'full-C0': ('C0', "${{ inputs.scenario || 'A01' }}"),
-            'full-C3': ("${{ (inputs.scenario == 'B04' || inputs.scenario == 'B10') && 'C1' || 'C3' }}", "${{ inputs.scenario || 'A01' }}"),
+            'full-C3': ("${{ (inputs.scenario == 'B04' || inputs.scenario == 'B10' || inputs.scenario == 'C03' || inputs.scenario == 'C10' || inputs.scenario == 'C01') && 'C1' || 'C3' }}", "${{ inputs.scenario || 'A01' }}"),
         }
         for name, job in self.jobs.items():
             self.assertEqual('parchwell-scenarios', job['environment'])
@@ -318,11 +318,66 @@ class WorkflowTests(unittest.TestCase):
         for step in final_steps[start:end + 1]:
             self.assertEqual("steps.allowed.outputs.workload == 'true'", step['if'])
 
+    @staticmethod
+    def evaluate(source, scenario):
+        """Evaluate a workflow expression that depends on the scenario input only (every other input at its default)."""
+        evaluated = source.strip()
+        if evaluated.startswith('${{'):
+            evaluated = evaluated[3:-2]
+        inputs = {'scenario': scenario, 'run_kind': 'smoke', 'items': 'all', 'capture_authentication_metadata': False,
+                  'test_handler_refresh_path': False, 'test_native_authentication': False}
+        evaluated = evaluated.replace('always()', 'True').replace("needs.probe.outputs.full_allowed", "'true'")
+        for name in ('capture_authentication_metadata', 'test_handler_refresh_path', 'test_native_authentication'):
+            evaluated = evaluated.replace('!inputs.' + name, 'not inputs.' + name)
+        evaluated = evaluated.replace('&&', ' and ').replace('||', ' or ')
+        for name, value in inputs.items():
+            evaluated = evaluated.replace('inputs.' + name, repr(value))
+        return eval(evaluated, {'__builtins__': {}}, {})
+
+    # Plan consumer-jobs T1
+    def test_consumer_options_and_triggers(self):
+        self.assertEqual(['workflow_dispatch'], list(self.workflow['on']))
+        self.assertEqual(['A01', 'B04', 'B10', 'C03', 'C10', 'C01', 'probe-batch', 'probe-batch-2', 'idle-observation', 'ledger-batch'],
+                         self.workflow['on']['workflow_dispatch']['inputs']['scenario']['options'])
+        self.assertEqual('A01', self.workflow['on']['workflow_dispatch']['inputs']['scenario']['default'])
+        self.assertEqual(self.path.read_bytes(), (REPO / 'docs/operations/workflows/scenario.yml.txt').read_bytes())
+
+    # Plan consumer-jobs T2
+    def test_consumer_scenarios_take_the_b04_route(self):
+        expected = {'A01': ('probe', 'C3'), 'B04': ('C0', 'C1'), 'B10': ('C0', 'C1'),
+                    'C03': ('C0', 'C1'), 'C10': ('C0', 'C1'), 'C01': ('C0', 'C1')}
+        for scenario, (probe, full_c3) in expected.items():
+            with self.subTest(scenario=scenario):
+                self.assertEqual(probe, self.evaluate(self.jobs['probe']['env']['PARCHWELL_PHASE'], scenario))
+                self.assertEqual(full_c3, self.evaluate(self.jobs['full-C3']['env']['PARCHWELL_PHASE'], scenario))
+                self.assertEqual(scenario == 'A01', bool(self.evaluate(self.jobs['full-C0']['if'], scenario)))
+
+    # Plan consumer-jobs T3
+    def test_consumer_artifact_names(self):
+        for job, phase_name, fallback in (('probe', 'C0', 'a01-probe'), ('full-C3', 'C1', 'a01-C3')):
+            uploads = [step for step in self.jobs[job]['steps'] if step.get('uses', '').startswith('actions/upload-artifact@')]
+            self.assertEqual(3, len(uploads))
+            for step, kind in zip(uploads, ('candidate', 'pods', 'archive')):
+                for scenario, prefix in (('C03', f'c03-{phase_name}'), ('C10', f'c10-{phase_name}'), ('C01', f'c01-{phase_name}'),
+                                         ('B04', f'b04-{phase_name}'), ('B10', f'b10-{phase_name}'), ('A01', fallback)):
+                    with self.subTest(job=job, kind=kind, scenario=scenario):
+                        name = self.evaluate(step['with']['name'].split('}}')[0] + '}}', scenario)
+                        self.assertEqual(prefix, name)
+                        self.assertTrue(step['with']['name'].endswith(f'-{kind}-${{{{ github.run_id }}}}-${{{{ github.run_attempt }}}}'))
+
+    # Plan consumer-jobs T4
+    def test_consumer_image_steps_carry_the_enrichment_digest(self):
+        self.assertEqual('${{ steps.images.outputs.enrichment_digest }}', self.jobs['probe']['outputs']['enrichment_digest'])
+        steps = self.steps(self.jobs['full-C3'])
+        for name in ('allowed', 'images'):
+            self.assertEqual('${{ needs.probe.outputs.enrichment_digest }}', steps[name]['env']['ENRICHMENT_DIGEST'], name)
+        self.assertIn('C03|C10|C01) bash infra/scripts/phase/phase.sh allow-images ;;', steps['allowed']['run'])
+
     def test_artifacts_and_image_reuse(self):
         expected_prefixes = {
-            'probe': "${{ inputs.scenario == 'B04' && 'b04-C0' || inputs.scenario == 'B10' && 'b10-C0' || 'a01-probe' }}",
+            'probe': "${{ inputs.scenario == 'B04' && 'b04-C0' || inputs.scenario == 'B10' && 'b10-C0' || inputs.scenario == 'C03' && 'c03-C0' || inputs.scenario == 'C10' && 'c10-C0' || inputs.scenario == 'C01' && 'c01-C0' || 'a01-probe' }}",
             'full-C0': 'a01-C0',
-            'full-C3': "${{ inputs.scenario == 'B04' && 'b04-C1' || inputs.scenario == 'B10' && 'b10-C1' || 'a01-C3' }}",
+            'full-C3': "${{ inputs.scenario == 'B04' && 'b04-C1' || inputs.scenario == 'B10' && 'b10-C1' || inputs.scenario == 'C03' && 'c03-C1' || inputs.scenario == 'C10' && 'c10-C1' || inputs.scenario == 'C01' && 'c01-C1' || 'a01-C3' }}",
         }
         for name, job in self.jobs.items():
             uploads = [step for step in job['steps'] if step.get('uses', '').startswith('actions/upload-artifact@')]
@@ -341,7 +396,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual('Decide whether the final phase workload runs', selector['name'])
         self.assertEqual('''case "$PARCHWELL_SCENARIO" in
   A01) bash infra/scripts/phase/phase.sh allow-c3 ;;
-  B04|B10) bash infra/scripts/phase/phase.sh allow-images ;;
+  B04|B10|C03|C10|C01) bash infra/scripts/phase/phase.sh allow-images ;;
   *) exit 2 ;;
 esac
 ''', selector['run'])
@@ -596,7 +651,7 @@ esac
         self.assertLess(list(stop_steps).index('stop_prepare'), list(stop_steps).index('login'))
         self.assertIsNone(stop_steps['login'].get('if'))
         self.assertIn("steps.stop_prepare.outcome == 'success'", stop_steps['stop']['if'])
-        self.assertEqual(['A01', 'B04', 'B10', 'probe-batch'], self.workflow['on']['workflow_dispatch']['inputs']['scenario']['options'][:4])
+        self.assertEqual(['A01', 'B04', 'B10', 'C03', 'C10', 'C01', 'probe-batch'], self.workflow['on']['workflow_dispatch']['inputs']['scenario']['options'][:7])
 
     def test_capture_validation_and_actual_stop_prerequisites(self):
         def expression(source, inputs, outcomes):
@@ -798,7 +853,7 @@ class B10AbruptWorkflowTests(unittest.TestCase):
         '.github/workflows/cluster-smoke.yml': 'e9266d30ff356782918f5fc5b048963265c58a48a3ea6c4733496374f30e3196',
         '.github/workflows/docs-advisory.yml': '39bea63dea8fb37d330e2be1b74782bdc33b3d2655e804ee6b78a231263475ec',
         '.github/workflows/dotnet-verification.yml': '894bd2a0506a6f8f42e3fbf4fa336713a63fb12c1f85cdc9f9973da694da0bfa',
-        '.github/workflows/scenario.yml': '9074eaa66c904a21c49aa8a9b08752de37de126edcd055836aaed3804eb15ba8',
+        '.github/workflows/scenario.yml': 'b42c2e7d21e42a50ed64a46fd31b596673e82a82a038ee85d407c119c3470148',
         '.github/workflows/sweeper.yml': 'fdff4a41ab1df0ade1c8e6d216adaeba6aba13dc6415b0b184de1101d7dc2234',
         '.github/workflows/verifier-c5-mutation.yml': '727bd42cb29f1a8cb67ac43ebbbc9db34c190887889b9971e12fee80442ca6fb',
     }

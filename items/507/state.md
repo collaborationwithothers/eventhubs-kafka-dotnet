@@ -1,0 +1,21 @@
+# State: #507 Chart and workflow: consumer Jobs and admission of C03, C10, C01 (#499 entry 4)
+Covers: comment 6939648300 created 2026-11-17T05:35:05Z; read at 2026-11-17T06:00:42Z
+Parent items: #499
+Item plan: [proposal revision 2 of #499](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894560135), split row 4
+Implementing tool: Claude Code. Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6928719509](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6928719509)
+Approved plan: [consumer-jobs contract-grade plan, Revision: 5](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6914731922), file items/507/plan-consumer-jobs.md at commit b67cf7fdc068fd7a62eab1b2aa3b144904412ce5 on branch claude/507-plan
+Decisions in force:
+- The issue body: split entry 4 of #499, predecessors the pull requests of #505 and #506, Hari merges. Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507)
+- Adopts #499 round 1 answers (group shape, start order, invalid runs). Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6895300348](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6895300348)
+- Adopts #499 round 2 answers (consumer-record container and roles in this entry, both members on the workload node, verifier order). Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6895329189](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6895329189)
+- Adopts the standing decision of #499. Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6895537201](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6895537201)
+- Adopts Q1, Q2, Q5 and Q6 as recommended. Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6915070211](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6915070211)
+- Q3 bounds with a 7200 s consumer phase budget, Q4 smoke counts as #508's, DA1 to DA5 accepted. Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6925863575](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6925863575)
+- Drop the new blob.containers output key, Q7 workflow Reader on consumer-record, Q8 archive support is #531. Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6926375790](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6926375790)
+- Separate azurerm_role_assignment.consumer_record, collect before delete, two contract updates. Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6926743261](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6926743261)
+- Approval of plan revision 5 at the commit above, with the apply-in-implementation fixes of the revision 5 check. Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6928714258](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6928714258)
+- Implementing tool is Claude Code, replacing Codex for this issue. Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6928719509](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6928719509)
+- Hari allowed one test change: C01, C03 and C10 added to the scenario_id assertion in ChartContractTests.cs, and no other test file under tests/Parchwell.*. Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6939648300](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/507#issuecomment-6939648300)
+Open questions:
+- None
+Next action: Cold review, then open the pull request; Hari merges (protected paths).

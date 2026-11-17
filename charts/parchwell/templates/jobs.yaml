@@ -4,6 +4,8 @@
 {{- include "parchwell.idleObservationJudgeJob" . -}}
 {{- else if has .Values.runtime.mode (list "single-action-v2" "single-action-v2-judge") -}}
 {{- include "parchwell.probeV2Job" . -}}
+{{- else if has .Values.runtime.mode (list "consumer-subject" "consumer-witness") -}}
+{{- include "parchwell.consumerJob" . -}}
 {{- else -}}
 {{- if has .Values.runtime.mode (list "single-action" "single-action-judge" "single-action-seed") -}}
 {{- include "parchwell.singleActionJob" . -}}
@@ -15,6 +17,7 @@
 {{- $role := include "parchwell.role" . -}}
 {{- $job := include "parchwell.jobName" . -}}
 {{- $account := index $r.service_accounts $role -}}
+{{- $consumer := include "parchwell.isConsumerScenario" . -}}
 {{- $phaseOK := or (and (eq $r.phase "probe") (eq $.Values.configuration_id "C0")) (eq $r.phase $.Values.configuration_id) -}}
 {{- if not $phaseOK }}{{ fail "phase/configuration must be probe/C0, C0/C0, C1/C1, or C3/C3" }}{{ end -}}
 {{- if and (not $phaseMode) (ne $r.loadgen_job_name (printf "%s-%s-r%d-loadgen" $r.run_id (lower $r.phase) (int $r.repeat))) }}{{ fail "loadgen_job_name must equal the derived producer Job name" }}{{ end -}}
@@ -159,9 +162,13 @@ spec:
             - name: {{ printf "Verifier__ScenarioLoadOptions__%s" $key | quote }}
               value: {{ include "parchwell.envValue" $value | quote }}
             {{- end }}
-            {{- range $key, $value := dict "Mode" $mode "ScenarioId" $.Values.scenario_id "ConfigurationId" $.Values.configuration_id "RunId" $r.run_id "Phase" $r.phase "JobName" $job "VerifierCommit" $r.source_commit "BlobServiceUri" $r.blob.account_url "VerifierContainer" "verifier" "LedgerContainer" "ledger" }}
+            {{- range $key, $value := dict "Mode" (ternary "consumer-verify" $mode (and (ne $consumer "") (eq $mode "verify"))) "ScenarioId" $.Values.scenario_id "ConfigurationId" $.Values.configuration_id "RunId" $r.run_id "Phase" $r.phase "JobName" $job "VerifierCommit" $r.source_commit "BlobServiceUri" $r.blob.account_url "VerifierContainer" "verifier" "LedgerContainer" "ledger" }}
             - name: {{ printf "Verifier__%s" $key | quote }}
               value: {{ $value | quote }}
+            {{- end }}
+            {{- if and $consumer (has $mode (list "start-line" "verify")) }}
+            - name: Verifier__ConsumerRecordContainer
+              value: consumer-record
             {{- end }}
             - name: Verifier__VerifierClientId
               valueFrom: {fieldRef: {fieldPath: metadata.name}}
