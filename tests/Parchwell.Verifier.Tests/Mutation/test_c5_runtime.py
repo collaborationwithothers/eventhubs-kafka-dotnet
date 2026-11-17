@@ -324,6 +324,69 @@ class CommittedProvenanceTests(unittest.TestCase):
         runtime.proof_tree.cache_clear()
         return runtime.committed_effective_config(self.context, self.owner, self.shard, self.head)
 
+    def set_old_tables(self, targets, cuts):
+        import ast
+        key = (self.old, runtime.RUNNER)
+        data = self.blobs[key]
+        lines = data.splitlines(keepends=True)
+        offsets = [0]
+        for line in lines:
+            offsets.append(offsets[-1] + len(line))
+        replacements = {'TARGETS': targets, 'PRIMARY_CUTS': cuts}
+        edits = []
+        for node in ast.parse(data).body:
+            if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) and node.targets[0].id in replacements:
+                v = node.value
+                edits.append((offsets[v.lineno - 1] + v.col_offset, offsets[v.end_lineno - 1] + v.end_col_offset,
+                              repr(replacements[node.targets[0].id]).encode()))
+        for start, end, value in sorted(edits, reverse=True):
+            data = data[:start] + value + data[end:]
+        self.blobs[key] = data
+        config = json.loads(self.blobs[(self.old, runtime.CONFIG_PATH)])
+        config['stryker-config']['mutate'] = [v[0] for v in targets.values()]
+        self.blobs[(self.old, runtime.CONFIG_PATH)] = json.dumps(config).encode()
+        parts = runtime.workflow.build_parts(targets, cuts)
+        physical = {}
+        for name, (target, _, _) in parts.items():
+            members = [member for member, (logical, _) in runtime.workflow.COHORTS.items() if logical == name]
+            for member in members or [name]:
+                physical[member] = targets[target][0]
+        self.blobs[(self.old, runtime.WORKFLOW)] = ('        include:\n' + ''.join(
+            f'          - shard: {s}\n            target: {p}\n' for s, p in physical.items()) + '    env:\n').encode()
+        self.assertEqual([v[0] for v in targets.values()], config['stryker-config']['mutate'])
+        self.assertEqual(physical, runtime.workflow_matrix(self.blobs[(self.old, runtime.WORKFLOW)]))
+
+    def test_removal_and_reordering_reject_with_each_tree_in_parity(self):
+        targets = dict(runtime.workflow.TARGETS)
+        cuts = dict(runtime.workflow.PRIMARY_CUTS)
+        self.set_old_tables(targets, cuts)
+        self.assertTrue(self.equivalent())
+        targets['old-only'] = ('Synthetic/Old.cs', 1)
+        self.context['target_sources']['Synthetic/Old.cs'] = runtime.digest(b'old-only target')
+        self.set_old_tables(targets, cuts)
+        self.assertFalse(self.equivalent())
+        del self.context['target_sources']['Synthetic/Old.cs']
+        items = list(runtime.workflow.TARGETS.items())
+        items[1], items[2] = items[2], items[1]
+        self.set_old_tables(dict(items), cuts)
+        self.assertFalse(self.equivalent())
+
+    def test_own_cut_and_physical_owner_reject_with_parity(self):
+        targets = dict(runtime.workflow.TARGETS)
+        cuts = dict(runtime.workflow.PRIMARY_CUTS)
+        self.set_old_tables(targets, cuts)
+        self.assertTrue(self.equivalent())
+        changed = list(cuts['phase'])
+        changed[0] += 1
+        cuts['phase'] = tuple(changed)
+        self.set_old_tables(targets, cuts)
+        self.assertFalse(self.equivalent())
+        cuts = dict(runtime.workflow.PRIMARY_CUTS)
+        targets['phase'] = (targets['phase'][0], targets['phase'][1] + 1)
+        cuts['phase'] = cuts['phase'] + (cuts['phase'][-1] + 1000,)
+        self.set_old_tables(targets, cuts)
+        self.assertFalse(self.equivalent())
+
     def test_additive_target_preserves_committed_invocation(self):
         self.assertTrue(self.equivalent())
 
@@ -393,6 +456,47 @@ class CommittedProvenanceTests(unittest.TestCase):
         changed = runner.replace(b'range(116, 122)', b'range(116, 123)', 1)
         self.assertNotEqual(original_code, runtime.runner_literals(changed)[1])
 
+    def test_runner_literal_types_and_boundaries(self):
+        import ast
+        runner = self.blobs[(self.head, runtime.RUNNER)]
+        lines = runner.splitlines(keepends=True)
+        offsets = [0]
+        for line in lines:
+            offsets.append(offsets[-1] + len(line))
+        nodes = {node.targets[0].id: node.value for node in ast.parse(runner).body
+                 if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)}
+        def changed(name, expression):
+            node = nodes[name]
+            start = offsets[node.lineno - 1] + node.col_offset
+            end = offsets[node.end_lineno - 1] + node.end_col_offset
+            return runner[:start] + expression.encode() + runner[end:]
+        self.assertTrue(runtime.runner_literals(runner)[0]['TARGETS'])
+        cases = {
+            'TARGETS': ['{}', '[]', "{'': ('a.cs', 1)}", "{'a': ('', 1)}",
+                        "{'a': ('a.cs', 0)}", "{'a': ('a.cs', True)}", "{'a': ['a.cs', 1]}",
+                        "{'a': ('a.cs', 1), 'b': ('a.cs', 1)}",
+                        "{'a': ('a.cs', 1), 'a': ('b.cs', 1)}"],
+            'PRIMARY_CUTS': ['[]', "{'unknown': (1,)}", "{'phase': [1]}",
+                             "{'phase': (0,)}", "{'phase': (-1,)}", "{'phase': (True,)}",
+                             "{'phase': (1,), 'phase': (2,)}"],
+            'COHORT_BOOTSTRAP_SPANS': ['{}', '[]', "{'x': (0, 1)}", "{'1': [0, 1]}",
+                                       "{'1': (-1, 1)}", "{'1': (1, 1)}", "{'1': (2, 1)}",
+                                       "{'1': (False, 1)}", "{'1': (0, 1), '1': (1, 2)}"],
+            'COHORT_COORDINATES': ['()', '[]', '((0, 0, 0),)', '((-1, 0, 0, 0),)',
+                                   '((False, 0, 0, 0),)', '([0, 0, 0, 0],)'],
+            'COHORT_SOURCE_SHA256': ["''", "'a' * 64", "'A' * 64", '1'],
+            'COHORT_INVENTORY_SHA256': ["''", repr('A' * 64), repr('a' * 63)],
+        }
+        for name, expressions in cases.items():
+            for expression in expressions:
+                with self.subTest(name=name, expression=expression), self.assertRaises((ValueError, TypeError)):
+                    runtime.runner_literals(changed(name, expression))
+        for name, expression in [('PRIMARY_CUTS', '{}'), ('COHORT_BOOTSTRAP_SPANS', "{'1': (0, 1)}"),
+                                 ('COHORT_COORDINATES', '((0, 0, 0, 0),)'),
+                                 ('COHORT_SOURCE_SHA256', repr('a' * 64))]:
+            with self.subTest(name=name, boundary=expression):
+                self.assertEqual(ast.literal_eval(expression), runtime.runner_literals(changed(name, expression))[0][name])
+
     def test_fresh_pinned_shard_requires_current_source_and_linked_measurement(self):
         path = runtime.CODEC_TARGET
         shard = next(iter(runtime.CODEC_NEIGHBOR))
@@ -427,6 +531,89 @@ class CommittedProvenanceTests(unittest.TestCase):
             del record['geometry_status']
             self.assertFalse(runtime.fresh_pinned_timing(config, path, record, shard, item,
                                                          original, self.head))
+
+    def test_full_validation_accepts_fresh_pinned_measurements_and_rejects_tampering(self):
+        for path in (runtime.RUNNER, runtime.CONFIG_PATH, runtime.WORKFLOW):
+            self.blobs[(self.old, path)] = self.blobs[(self.head, path)]
+        sources = {}
+        for path in set(runtime.workflow.SHARDS.values()):
+            source = (ROOT / 'src/Parchwell.Verifier' / path).read_bytes() + b'\n// fresh synthetic source\n'
+            sources[path] = source
+            self.blobs[(self.old, 'src/Parchwell.Verifier/' + path)] = source
+            self.blobs[(self.head, 'src/Parchwell.Verifier/' + path)] = source
+        targets = {path: runtime.digest(source) for path, source in sources.items()}
+        self.context['target_sources'] = targets.copy()
+        measured = {'shared_inputs': self.context['shared_inputs'], 'target_sources': targets}
+        binding = runtime.digest(runtime.canonical(measured))
+        evidence = {'source_commit': self.old, 'locator': 'synthetic timing', 'sha256': 'c' * 64,
+                    'kind': 'local_probe', 'note': 'hardware=synthetic calibration=uncertain'}
+        records = {path: {'source_sha256': targets[path], 'evidence': [evidence.copy()], 'shards': {}}
+                   for path in targets}
+        proofs = {}
+        for shard, path in runtime.workflow.SHARDS.items():
+            item = {'selection_sha256': runtime.digest(runtime.canonical(runtime.workflow.shard_config(shard, sources[path]))),
+                    'timing_inputs_sha256': binding, 'main_mutants': 1, 'main_work_seconds': 2,
+                    'parallelism': 2, 'setup_seconds': 1, 'isolated_seconds': 1,
+                    'estimated_seconds': 3, 'basis': 'observed_workers=2; synthetic'}
+            records[path]['shards'][shard] = item
+            proofs[shard] = {'kind': 'measured', 'source_commit': self.old, 'artifact_sha256': evidence['sha256'],
+                             'timing_inputs_sha256': binding, 'observed_workers': 2,
+                             'observed_seconds': 10, 'method': 'synthetic timing'}
+        config = {'schema_version': 2, 'budget_seconds': 2700, 'shared_inputs': self.context['shared_inputs'].copy(),
+                  'targets': records, 'timing_inputs': {binding: self.context}, 'timing_evidence': proofs}
+        shard = 'b10-final-projection-codec-p8'
+        path = runtime.CODEC_TARGET
+        item = records[path]['shards'][shard]
+        proof = proofs[shard]
+        def validate():
+            runtime.proof_tree.cache_clear()
+            runtime.shape(config)
+            return runtime.validate(config, config['shared_inputs'], targets, sources, runtime.workflow.SHARDS, self.head)
+        self.assertTrue(runtime.committed_effective_config(self.context, path, shard, self.head))
+        self.assertTrue(runtime.fresh_pinned_timing(config, path, records[path], shard, item, sources[path], self.head))
+        self.assertEqual(set(), validate())
+        version_one = dict(config, schema_version=1)
+        self.assertFalse(runtime.fresh_pinned_timing(version_one, path, records[path], shard, item, sources[path], self.head))
+        proof['artifact_sha256'] = '0' * 64
+        self.assertIn('missing_measurement', validate())
+        self.assertIn('invalid_estimate', validate())
+        proof['artifact_sha256'] = evidence['sha256']
+        proof['source_commit'] = self.head
+        self.assertIn('missing_measurement', validate())
+        self.assertIn('invalid_estimate', validate())
+        proof['source_commit'] = self.old
+        item['selection_sha256'] = '0' * 64
+        self.assertIn('layout_mismatch', validate())
+        item['selection_sha256'] = runtime.digest(runtime.canonical(runtime.workflow.shard_config(shard, sources[path])))
+        self.blobs[(self.head, 'src/Parchwell.Verifier/' + path)] += b'changed'
+        self.assertIn('invalid_estimate', validate())
+        self.blobs[(self.head, 'src/Parchwell.Verifier/' + path)] = sources[path]
+        self.context.pop('source_commit')
+        self.assertIn('invalid_estimate', validate())
+        self.context['source_commit'] = self.old
+        tampered = dict(targets, **{path: '0' * 64})
+        with mock.patch.object(runtime, 'input_maps', return_value=(self.context['shared_inputs'], tampered)):
+            self.assertIn('invalid_estimate', validate())
+        self.assertEqual(set(), validate())
+        old_config = json.loads(self.blobs[(self.old, runtime.CONFIG_PATH)])
+        self.blobs[(self.old, runtime.CONFIG_PATH)] = json.dumps(old_config, indent=4).encode()
+        self.context['shared_inputs'][runtime.CONFIG_PATH] = runtime.digest(self.blobs[(self.old, runtime.CONFIG_PATH)])
+        current_hash = runtime.digest(self.blobs[(self.head, runtime.CONFIG_PATH)])
+        config['shared_inputs'][runtime.CONFIG_PATH] = current_hash
+        self.context['assessments']['shared_inputs'][runtime.CONFIG_PATH] = {
+            'current_sha256': current_hash, 'basis': ['Synthetic accepted risk.']}
+        new_binding = runtime.digest(runtime.canonical({'shared_inputs': self.context['shared_inputs'],
+                                                        'target_sources': targets}))
+        config['timing_inputs'] = {new_binding: self.context}
+        for record in records.values():
+            for shard_item in record['shards'].values():
+                shard_item['timing_inputs_sha256'] = new_binding
+        for shard_proof in proofs.values():
+            shard_proof['timing_inputs_sha256'] = new_binding
+        self.assertEqual(set(), validate())
+        proof['source_commit'] = self.head
+        self.assertIn('missing_measurement', validate())
+        self.assertIn('invalid_estimate', validate())
 
 
 class CommittedInputClassificationTests(unittest.TestCase):
