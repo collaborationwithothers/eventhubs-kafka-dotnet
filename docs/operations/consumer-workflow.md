@@ -39,4 +39,4 @@ A consumer window must not exceed 1620000 ms: the 1800 s member Job deadline, mi
 
 ## Not yet in place
 
-The `judge` step fails for these scenarios until the phase judgement of the consumer block merges. The evidence archive does not yet admit C01, C03 or C10, so a consumer dispatch records an archive failure in its report summary until archive support merges.
+The `judge` step accepts these scenarios since the consumer phase judge merged. The evidence archive does not yet admit C01, C03 or C10, so a consumer dispatch records an archive failure in its report summary until archive support merges.
