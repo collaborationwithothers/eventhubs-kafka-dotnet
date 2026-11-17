@@ -63,7 +63,7 @@ def prepare(repository: Path, root: Path, target: str, retained: Path) -> dict:
     sources = source_names(names)
     assigned = VERIFIER + target
     if not sources or len(sources) > MAX_VERIFIER_FILES or assigned not in sources:
-        raise ValueError("projection target/source inventory invalid")
+        raise ValueError(f"projection target/source inventory invalid (source_count={len(sources)}, limit={MAX_VERIFIER_FILES}, target_present={assigned in sources})")
     if any((repository / name).is_symlink() for name in sources):
         raise ValueError("verifier source symlink is unsupported")
     archive = root.parent / "source.tar"

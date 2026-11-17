@@ -2413,7 +2413,7 @@ class RunnerTests(unittest.TestCase):
                 self.addCleanup(shutil.rmtree, stage, True)
                 self.addCleanup(shutil.rmtree, retained, True)
                 if count > projection.MAX_VERIFIER_FILES:
-                    with self.assertRaisesRegex(ValueError, "projection target/source inventory invalid"):
+                    with self.assertRaisesRegex(ValueError, "source_count=257, limit=256, target_present=True"):
                         projection.prepare(self.root, stage, workflow.SHARDS["phase"], retained)
                 with patch.object(projection, "MAX_VERIFIER_FILES", max(count, projection.MAX_VERIFIER_FILES)):
                     manifest = projection.prepare(self.root, stage, workflow.SHARDS["phase"], retained)
