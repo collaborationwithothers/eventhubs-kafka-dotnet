@@ -162,14 +162,19 @@ class ConsumerArchiveTests(unittest.TestCase):
                 self.assertEqual(accepted, pack._context(value['run']))
 
     def test_missing_enrichment_image_is_a_gap(self):
-        # T3, last sentence
-        fixture = self.phase()
-        del fixture.h.phase['images']['enrichment']
-        code, manifest, _ = fixture.run_archive()
-        self.assertEqual(1, code)
-        self.assertIsNone(manifest['run']['images']['enrichment'])
-        self.assertEqual(1, len(gaps(manifest, 'image identity unavailable')))
-        self.assertEqual(1, len(manifest['gaps']))
+        # T3, last sentence, and requirement 2: the image is absent or null.
+        for null in (False, True):
+            with self.subTest(null=null):
+                fixture = self.phase()
+                if null:
+                    fixture.h.phase['images']['enrichment'] = None
+                else:
+                    del fixture.h.phase['images']['enrichment']
+                code, manifest, _ = fixture.run_archive()
+                self.assertEqual(1, code)
+                self.assertIsNone(manifest['run']['images']['enrichment'])
+                self.assertEqual(1, len(gaps(manifest, 'image identity unavailable')))
+                self.assertEqual(1, len(manifest['gaps']))
 
     def test_readiness_projection(self):
         # T4
@@ -181,6 +186,9 @@ class ConsumerArchiveTests(unittest.TestCase):
                 del record[key]
             return json.loads(archive.project_phase_status({'run_id': run, 'phase': 'C0', 'modes': [record]}))['modes'][0]
         nulls = {key: None for key in ('render', 'apply', 'wait', 'collect', 'delete', 'confirm')}
+        for condition in archive.READINESS_CONDITIONS:
+            with self.subTest(condition=condition):
+                self.assertEqual(condition, project(last_condition=condition)['last_condition'])
         accepted = [({}, 'ready', 3, 12, 'ready'),
                     ({'outcome': 'not_observed', 'polls': 60, 'elapsed_seconds': 300, 'last_condition': 'list_failed'}, 'not_observed', 60, 300, 'list_failed'),
                     ({'outcome': 'not_attempted', 'polls': 0, 'elapsed_seconds': 0, 'last_condition': None}, 'not_attempted', 0, 0, None)]
