@@ -180,10 +180,12 @@ public sealed class B10SecondWorkerTests
             values["LoadGen__PodUid"] = "uid-" + pod;
             values["LoadGen__MaxAttempts"] = "2";
             values["LoadGen__MaxScheduleLateness"] = "00:00:05";
-            string[] args = values.Select(pair => "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal) + "=" + pair.Value).ToArray();
+            LoadGenHostProcessTests.SyncNativeMonitoring(values);
+        string[] args = values.Select(pair => "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal) + "=" + pair.Value).ToArray();
             TimeoutProducer? current = null;
             IHost host = Program.BuildHostCore(args, services =>
             {
+                services.AddSingleton<IKafkaNativeMonitoringStore>(new NativeMonitoringFixture());
                 services.RemoveAll<IScenarioSource>();
                 services.AddSingleton<IScenarioSource>(new SyntheticSource());
                 services.RemoveAll<IKafkaTokenProvider>();

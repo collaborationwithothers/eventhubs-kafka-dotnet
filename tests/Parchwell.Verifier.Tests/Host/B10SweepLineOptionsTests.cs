@@ -210,6 +210,7 @@ public sealed class B10SweepLineOptionsTests
         values["Telemetry:ConnectionString"] = "InstrumentationKey=synthetic-key";
         values["Telemetry:ServiceName"] = "Parchwell.Verifier"; values["Telemetry:ServiceInstanceId"] = options.PodName;
         values["Telemetry:ScenarioId"] = options.ScenarioId; values["Telemetry:RunId"] = options.RunId;
+        NativeMonitoringTestSupport.AddConfiguration(values);
         return values;
     }
 

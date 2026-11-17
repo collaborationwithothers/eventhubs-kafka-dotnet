@@ -311,6 +311,9 @@
                 },
                 "single_action": {
                   "const": "single-action"
+                },
+                "native_monitoring": {
+                  "const": "native-monitoring"
                 }
               }
             }

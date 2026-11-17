@@ -213,13 +213,18 @@ internal sealed class B10AbruptProducer
         }
         lock (gate) probes.Add(attempt);
         if (arm == "cross_restart") killAdmitted = true;
+        string? retryKind = predecessorAttemptId is null ? null : "same_instance_control";
         try
         {
             attempt.InvokedTimestamp = clock.GetTimestamp();
-            producer!.Produce(options.Topic, Message(key, payload, attemptId, sequence), report => RecordTerminal(attempt, report));
+            var message = Message(key, payload, attemptId, sequence);
+            if (retryKind is not null) LoadGenTelemetry.RetryEvent(identity, retryKind, "invoked");
+            producer!.Produce(options.Topic, message, report => RecordTerminal(attempt, report, retryKind));
+            if (retryKind is not null) LoadGenTelemetry.RetryEvent(identity, retryKind, "accepted");
         }
         catch (ProduceException<byte[], byte[]> exception)
         {
+            if (retryKind is not null) LoadGenTelemetry.RetryEvent(identity, retryKind, "synchronous_rejected");
             JsonElement rejection = B10AbruptWire.Element(new { attempt_id = attemptId, prepared_sequence = prepared.Sequence, error_code = (int)exception.Error.Code, error_reason = exception.Error.Reason });
             await journal.AppendAsync("synchronous_rejection", rejection, cancellationToken).ConfigureAwait(false);
             lock (gate)
@@ -228,6 +233,11 @@ internal sealed class B10AbruptProducer
                 else attempt.Terminal = rejection;
             }
             return attempt;
+        }
+        catch
+        {
+            if (retryKind is not null) LoadGenTelemetry.RetryEvent(identity, retryKind, "invocation_exception");
+            throw;
         }
         await journal.AppendAsync("accepted", B10AbruptWire.Element(new { attempt_id = attemptId, prepared_sequence = prepared.Sequence }), cancellationToken).ConfigureAwait(false);
         attempt.Accepted = true; timeline.Hold(B10AbruptStage.ProbeAccepted); return attempt;
@@ -307,7 +317,7 @@ internal sealed class B10AbruptProducer
         if (TimeLeft() <= TimeSpan.Zero) throw Attach(new InvalidDataException("b10_abrupt_deadline_exhausted"));
     }
 
-    internal void RecordTerminal(ProbeAttempt attempt, DeliveryReport<byte[], byte[]> report)
+    internal void RecordTerminal(ProbeAttempt attempt, DeliveryReport<byte[], byte[]> report, string? retryKind = null)
     {
         try
         {
@@ -315,6 +325,7 @@ internal sealed class B10AbruptProducer
             int? status = Enum.IsDefined(report.Status) ? (int)report.Status : null;
             JsonElement terminal = B10AbruptWire.Element(new { attempt_id = attempt.AttemptId, completion_source = "callback", delivered = !report.Error.IsError, error_code = (int)report.Error.Code, persistence_status = status });
             lock (gate) { if (attempt.Terminal is not null) { Fault(1); return; } attempt.Terminal = terminal; }
+            if (retryKind is not null) LoadGenTelemetry.RetryEvent(identity, retryKind, report.Error.IsError ? "terminal_failed" : "terminal_delivered");
             if (journal is not null && !journal.TryCaptureTerminal(terminal)) Fault(2);
             if (!IsPermittedTerminal((int)report.Error.Code, status)) Fault(3, (int)report.Error.Code);
         }
@@ -350,7 +361,24 @@ internal sealed class B10AbruptProducer
                 var attempt = new ProbeAttempt(attemptId, key, payload, originalId, probes.Count) { Sequence = sequence };
                 probes.Add(attempt); DateTimeOffset invoked = clock.GetUtcNow(); long invocationTimestamp = clock.GetTimestamp();
                 attempt.InvokedTimestamp = invocationTimestamp;
-                producer!.Produce(options.Topic, Message(key, payload, attemptId, sequence), report => RecordTerminal(attempt, report));
+                const string retryKind = "cross_restart_successor";
+                try
+                {
+                    var message = Message(key, payload, attemptId, sequence);
+                    LoadGenTelemetry.RetryEvent(identity, retryKind, "invoked");
+                    producer!.Produce(options.Topic, message, report => RecordTerminal(attempt, report, retryKind));
+                    LoadGenTelemetry.RetryEvent(identity, retryKind, "accepted");
+                }
+                catch (ProduceException<byte[], byte[]>)
+                {
+                    LoadGenTelemetry.RetryEvent(identity, retryKind, "synchronous_rejected");
+                    throw;
+                }
+                catch
+                {
+                    LoadGenTelemetry.RetryEvent(identity, retryKind, "invocation_exception");
+                    throw;
+                }
                 invocations.Add(new { attempt_id = attemptId, predecessor_attempt_id = originalId, key, sequence, payload_sha256 = Hash(payload), invocation_utc = invoked.ToString("O",CultureInfo.InvariantCulture), monotonic_ticks = invocationTimestamp });
             }
             await DrainAsync(options.ProducerDrainTimeout, cancellationToken).ConfigureAwait(false);

@@ -646,7 +646,7 @@ def validate_manifest(value):
                 or not safe_name(obj['destination_name']) or not obj['destination_name'].startswith(prefix)
                 or obj['destination_name'] in names or not isinstance(obj['source'], dict)
                 or set(obj['source']) != {'container', 'name', 'etag'} or not safe_name(obj['source']['container'])
-                or not safe_name(obj['source']['name']) or obj['source']['container'] not in ('ledger', 'verifier', 'single-action', 'runner')
+                or not safe_name(obj['source']['name']) or obj['source']['container'] not in ('ledger', 'verifier', 'single-action', 'native-monitoring', 'runner')
                 or obj['destination_name'] != ((prefix + 'runner/' + obj['source']['name'] if obj['source']['container'] == 'runner' else prefix + 'objects/' + obj['source']['container'] + '/' + obj['source']['name'])
                                                 + ('.metadata.json' if obj['kind'] == 'source_metadata_projection' else ''))
                 or (obj['repeat'] is not None and (type(obj['repeat']) is not int or obj['repeat'] < 1))
@@ -705,18 +705,22 @@ def validate_manifest(value):
     return identity
 
 
-def ordinary_units(run, phase, records):
+def ordinary_units(run, phase, records, consumer=False):
     """Derive all ordinary scheduled units, including jobs never reached."""
     if not safe_name(run) or '/' in run or not safe_name(phase) or '/' in phase or not isinstance(records, list):
         raise InvalidArchiveConfig()
-    planned = [(repeat, mode) for repeat in range(1, 6) for mode in ('start-line', 'loadgen', 'verify')]
+    modes = ('consumer-subject', 'consumer-witness', 'start-line', 'loadgen', 'verify') if consumer else ('start-line', 'loadgen', 'verify')
+    planned = [(repeat, mode) for repeat in range(1, 6) for mode in modes]
     planned.append((None, 'judge'))
+    readiness = {(repeat, 'consumer-readiness') for repeat in range(1, 6)} if consumer else set()
     indexed = {}
     for record in records:
         if not isinstance(record, dict):
             raise InvalidArchiveConfig()
         key = (record.get('repeat'), record.get('mode'))
-        if key not in planned or key in indexed:
+        if key not in planned and key not in readiness or key in indexed:
+            raise InvalidArchiveConfig()
+        if key in readiness and record.get('job') != f'{run}-{phase.lower()}-r{key[0]}-consumer-readiness':
             raise InvalidArchiveConfig()
         indexed[key] = record
     result = []
@@ -776,7 +780,8 @@ def load_context(environ):
                 or containers.get('verifier') != 'verifier'
                 or ('claim_check' in containers and containers['claim_check'] != 'claim-check')
                 or (phase.get('scenario') == 'probe-batch' and containers.get('single_action') != 'single-action')
-                or ('single_action' in containers and containers['single_action'] != 'single-action')):
+                or ('single_action' in containers and containers['single_action'] != 'single-action')
+                or ('native_monitoring' in containers and containers['native_monitoring'] != 'native-monitoring')):
             raise InvalidArchiveConfig()
         return private, artifacts, phase, identity, config, source_host, containers
     except (KeyError, TypeError, ValueError, OSError, _common.Invalid):
@@ -934,6 +939,7 @@ class Collector:
         self.transfer, self.prefix = transfer, prefix
         self.objects, self.captures, self.gaps = [], [], []
         self.window_sources = {}
+        self.native_existing = {}
         self.names = set()
         self.verified_bytes = 0
         self.logical_bytes = 0
@@ -965,6 +971,35 @@ class Collector:
                 except Exception:
                     self.window_sources[name] = None
             inspect_source = inspect_window
+        if name.endswith('/statistics.jsonl'):
+            previous_inspect = inspect_source
+            def inspect_statistics(path, size):
+                if previous_inspect is not None:
+                    previous_inspect(path, size)
+                import hashlib
+                refs = {}
+                try:
+                    with open(path, 'rb') as stream:
+                        for ordinal in range(1, 4098):
+                            _common.check_deadline(self.transfer.deadline, time.monotonic)
+                            line = stream.readline(MetadataChunkMaxBytes + 1)
+                            if not line: break
+                            if ordinal > 4096 or not line.endswith(b'\n') or len(line) > MetadataChunkMaxBytes:
+                                raise ValueError('statistics scan bounds')
+                            row = strict_control(line, MetadataChunkMaxBytes)
+                            raw = row['raw_json'].encode('utf-8')
+                            client_id = row['identity']['client_id']
+                            if len(raw) > MetadataRowMaxBytes or not isinstance(client_id, str):
+                                raise ValueError('statistics row bounds')
+                            refs[(client_id, ordinal)] = (len(raw), hashlib.sha256(raw).hexdigest())
+                except (OSError, ValueError, KeyError, TypeError, UnicodeError, AttributeError):
+                    self.gap('monitoring_incomplete', 'statistics source scan', name)
+                except BaseException:
+                    self.gap('monitoring_incomplete', 'statistics source scan', name)
+                    raise
+                finally:
+                    self.native_existing[(container, name)] = refs
+            inspect_source = inspect_statistics
         destination = f'{self.prefix}objects/{container}/{name}'
         if destination in self.names: raise InvalidArchiveConfig()
         self.names.add(destination)
@@ -1080,9 +1115,21 @@ class Collector:
         self.objects.append(obj)
         try:
             remaining = ArchiveMaxBytes - 1048576 - 65536 - self.logical_bytes
+            def validate(doc):
+                valid = validate_capture_projection(doc, mode, identity, run_kind)
+                if valid:
+                    refs = {}
+                    for repeat in doc['repeats']:
+                        for row in repeat['statistics']:
+                            key = (repeat['client_id'], row['sequence'])
+                            if key in refs:
+                                self.gap('monitoring_incomplete', 'duplicate native source row', name)
+                            refs[key] = (row['raw_base64'][1], row['raw_base64'][2])
+                    self.native_existing[(container, name)] = refs
+                return valid
             size, sha, etag, dest_etag, _, valid = self.transfer.project_source(
                 container, name, destination, remaining,
-                lambda doc: validate_capture_projection(doc, mode, identity, run_kind),
+                validate,
                 reserve=lambda count: setattr(self, 'logical_bytes', self.logical_bytes + count))
             obj.update(bytes=size, sha256=sha, destination_etag=dest_etag, state='verified')
             obj['source']['etag'] = etag; self.verified_bytes += size
@@ -1694,6 +1741,15 @@ def check_v2_actor_logs(collector, phase, status, units, artifacts, private):
                     raise InvalidArchiveConfig()
                 diagnostic_lines.append({'text': text})
             name = f'probe-v2/raw/{job}/{pod}.containers.{role}.log'
+            refs = {}
+            for slot in documents[1]['repeats']:
+                for row in slot['statistics']:
+                    raw = base64.b64decode(row['raw_base64'], validate=True)
+                    key = (slot['client_id'], row['sequence'])
+                    if key in refs:
+                        collector.gap('monitoring_incomplete', 'duplicate native source row', name)
+                    refs[key] = (len(raw), hashlib.sha256(raw).hexdigest())
+            collector.native_existing[('runner', name)] = refs
             source = {'container': 'runner', 'name': name, 'etag': None, 'bytes': len(log), 'sha256': hashlib.sha256(log).hexdigest()}
             projection = {'schema_version': 1, 'kind': 'source_metadata_projection', 'source': source,
                           'format': 'probe_v2_stdout', 'metadata': {'registration': documents[0], 'capture': documents[1], 'lines': diagnostic_lines}}
@@ -1722,17 +1778,22 @@ def collect_ordinary(collector, phase, status, containers, artifacts, job_name):
     elif scenario == 'B10':
         repeat_modes = ('start-line', 'loadgen', 'loadgen2', 'verify')
         phase_modes = ('b10-sweep-line', 'b10-sweep', 'judge')
+    elif scenario in ('C01', 'C03', 'C10'):
+        repeat_modes = ('consumer-subject', 'consumer-witness', 'start-line', 'loadgen', 'verify')
+        phase_modes = ('judge',)
     else:
         repeat_modes = ('start-line', 'loadgen', 'verify')
         phase_modes = ('judge',)
     planned = [(repeat, mode) for repeat in slots for mode in repeat_modes] + [(None, mode) for mode in phase_modes]
     records = status.get('modes')
     if not isinstance(records, list): raise InvalidArchiveConfig()
+    readiness = {(repeat, 'consumer-readiness') for repeat in slots} if scenario in ('C01', 'C03', 'C10') else set()
     index = {}
     for record in records:
         if not isinstance(record, dict): raise InvalidArchiveConfig()
         key = (record.get('repeat'), record.get('mode'))
-        if key not in planned or key in index: raise InvalidArchiveConfig()
+        if key not in planned and key not in readiness or key in index: raise InvalidArchiveConfig()
+        if key in readiness and record.get('job') != job_name(phase, 'consumer-readiness', key[0]): raise InvalidArchiveConfig()
         index[key] = record
     units = []
     no_kill_repeats = set()
@@ -1811,10 +1872,112 @@ def collect_ordinary(collector, phase, status, containers, artifacts, job_name):
     return units
 
 
+NATIVE_MONITORING_MODES = frozenset((
+    'loadgen', 'loadgen2', 'loadgen-restart', 'loadgen-successor',
+    'single-action', 'single-action-seed', 'single-action-v2', 'idle-observation',
+    'consumer-subject', 'consumer-witness',
+    'consumer-verify', 'start-line', 'verify', 'b10-sweep-line', 'b10-sweep',
+    'b10-final-sweep', 'b10-abrupt-verify',
+))
+
+
+def collect_native_monitoring(collector, phase, status, units):
+    """Read native-host indexes from recorded starts; never list storage."""
+    spec = importlib.util.spec_from_file_location('parchwell_archive_native', Path(__file__).with_name('archive_native_monitoring.py'))
+    native = importlib.util.module_from_spec(spec); spec.loader.exec_module(native)
+    by_job = {r['job']: r for r in status['modes'] if isinstance(r, dict) and isinstance(r.get('job'), str)}
+    for unit in units:
+        if (unit['state'] != 'started' or not unit['pod_uid']
+                or unit['mode'] not in NATIVE_MONITORING_MODES
+                or phase['scenario'] == 'probe-batch' and phase.get('run_kind') == 'smoke'):
+            continue
+        job = unit['job_name']
+        record = by_job.get(job, {})
+        scenario = unit['item'] or phase['scenario']
+        configuration = record.get('configuration') or phase.get('configuration') or phase['phase']
+        run = phase['run_id']
+        selected = phase['phase']
+        if phase['scenario'] in ('probe-batch', 'probe-batch-2', 'idle-observation', 'ledger-batch'):
+            selected = configuration
+        if phase['scenario'] == 'ledger-batch' and unit['item']:
+            run = f"{run}-{unit['item'].lower()}"
+        identity = {'run_id': run, 'phase': selected, 'scenario_id': scenario,
+                    'configuration_id': configuration, 'job_name': job, 'pod_uid': unit['pod_uid'],
+                    'source_commit': phase['source_commit']}
+        prefix = f"{run}/{selected}/{job}/{unit['pod_uid']}/native-monitoring/"
+        documents = []
+        def inspect(path, size):
+            try:
+                with open(path, 'rb') as stream:
+                    data = stream.read(native.MAX_INDEX + 1)
+                documents.append(native.index(data, identity, prefix))
+            except (OSError, ValueError, TypeError, UnicodeError, RecursionError):
+                raise Gap('monitoring_incomplete', 'native index contract') from None
+        obj = collector.source('native-monitoring', prefix + 'index.json', 'native_monitoring_index',
+                               repeat=unit['repeat'], inspect_source=inspect, max_object=native.MAX_INDEX)
+        if obj is None or not documents:
+            collector.gap('monitoring_incomplete', 'native index unavailable', unit=job)
+            continue
+        document = documents[0]
+        if document['diagnostics_truncated']:
+            collector.gap('diagnostics_truncated', 'native index diagnostics', unit=job)
+        if not document['capture_complete']:
+            collector.gap('monitoring_incomplete', 'native capture incomplete', unit=job)
+        pod = unit['pod_name']
+        def same_pod(container, name):
+            return bool(pod) and (
+                container == 'runner' and name.startswith(f'probe-v2/raw/{job}/{pod}.containers.')
+                or container in ('ledger', 'single-action') and (
+                    f'/producer/{pod}/' in '/' + name
+                    or f'/b10-abrupt/{pod}/' in '/' + name
+                    or f'/b10-abrupt-diagnostic/{pod}/' in '/' + name
+                    or name.endswith(f'/instances/{pod}/capture.json')))
+
+        covered = set()
+        for client in document['clients']:
+            for descriptor in client['raw_sources']:
+                if descriptor['kind'] == 'existing_capture':
+                    parts = descriptor['source'].split('/', 1)
+                    existing = next((item for item in collector.objects
+                                     if len(parts) == 2 and item['source']['container'] == parts[0]
+                                     and item['source']['name'] == parts[1] and item['state'] == 'verified'), None)
+                    refs = collector.native_existing.get(tuple(parts), {})
+                    actual = refs.get((client['client_id'], descriptor['report_ordinal']))
+                    key = (*parts, client['client_id'], descriptor['report_ordinal'])
+                    if (existing is None or len(parts) != 2 or not same_pod(*parts)
+                            or actual != (descriptor['byte_length'], descriptor['sha256']) or key in covered):
+                        collector.gap('monitoring_incomplete', 'native existing capture binding', unit=job)
+                    else:
+                        covered.add(key)
+                    continue
+                def inspect_chunk(path, size, descriptor=descriptor, ordinal=client['ordinal']):
+                    try:
+                        native.chunk(path, descriptor, ordinal, collector.transfer.deadline)
+                    except TimeoutError:
+                        raise Gap('deadline', 'native chunk validation') from None
+                    except (OSError, ValueError, TypeError, UnicodeError, RecursionError):
+                        raise Gap('monitoring_incomplete', 'native chunk contract') from None
+                result = collector.source('native-monitoring', descriptor['source'], 'native_monitoring_raw',
+                                          repeat=unit['repeat'], expected_length=descriptor['byte_length'],
+                                          expected_sha256=descriptor['sha256'], max_object=native.MAX_RAW,
+                                          inspect_source=inspect_chunk)
+                if result is None:
+                    collector.gap('monitoring_incomplete', 'native raw unavailable', unit=job)
+        for (container, name), refs in collector.native_existing.items():
+            if not same_pod(container, name):
+                continue
+            verified = any(item['source']['container'] == container and item['source']['name'] == name
+                           and item['state'] == 'verified' for item in collector.objects)
+            if verified and any((container, name, client_id, sequence) not in covered
+                                for client_id, sequence in refs):
+                collector.gap('monitoring_incomplete', 'native existing capture coverage', unit=job)
+
+
 def manifest_run(phase, identity):
     """Use the frozen phase identifier for batch-wide configuration identity."""
     scenario = phase.get('scenario')
     allowed = {'A01': ('probe', 'C0', 'C3'), 'B04': ('C0', 'C1'), 'B10': ('C0', 'C1'),
+               'C01': ('C0', 'C1'), 'C03': ('C0', 'C1'), 'C10': ('C0', 'C1'),
                'probe-batch': ('single-action',), 'probe-batch-2': ('single-action',),
                'idle-observation': ('idle-observation',), 'ledger-batch': ('ledger-batch',)}
     if scenario not in allowed or phase.get('phase') not in allowed[scenario] or phase['phase'] != identity['phase']:
@@ -1822,7 +1985,8 @@ def manifest_run(phase, identity):
     diagnostic = phase.get('b10_abrupt_diagnostic') is True
     if diagnostic and (scenario != 'B10' or phase['phase'] != 'C1' or phase.get('purpose') != 'diagnostic_trial' or phase.get('run_kind') != 'smoke'):
         raise InvalidArchiveConfig()
-    prefix = ('b10d' if diagnostic else {'A01': 'a01', 'B04': 'b04', 'B10': 'b10', 'probe-batch': 'probe',
+    prefix = ('b10d' if diagnostic else {'A01': 'a01', 'B04': 'b04', 'B10': 'b10',
+              'C01': 'c01', 'C03': 'c03', 'C10': 'c10', 'probe-batch': 'probe',
               'probe-batch-2': 'probe', 'idle-observation': 'idle', 'ledger-batch': 'ledger'}[scenario])
     if identity['run_id'] != f"{prefix}-{identity['github_run_id']}-{identity['github_run_attempt']}":
         raise InvalidArchiveConfig()
@@ -1947,13 +2111,15 @@ def execute(phase_instance, environ, deadline=None):
                                   v2=phase['scenario'] == 'probe-batch-2')
             else:
                 units = collect_ordinary(collector, phase, status, containers, artifacts, phase_instance.mode_job)
+            collect_native_monitoring(collector, phase, status, units)
             # Cross-check the adapters against the independently derived fixed paths;
             # this never discovers objects by listing or starts a second transfer.
             if phase['scenario'] in ('probe-batch', 'probe-batch-2', 'idle-observation', 'ledger-batch'):
                 fixed, _ = fixed_nonledger_objects(phase, status['modes'])
             elif phase['scenario'] != 'B10':
                 fixed = ordinary_fixed_inventory(phase['run_id'], phase['phase'], status['modes'])
-                expected_units, _ = ordinary_units(phase['run_id'], phase['phase'], status['modes'])
+                expected_units, _ = ordinary_units(phase['run_id'], phase['phase'], status['modes'],
+                                                   consumer=phase['scenario'] in ('C01', 'C03', 'C10'))
                 if {(u['job_name'], u['state']) for u in expected_units} != {(u['job_name'], u['state']) for u in units}:
                     collector.gap('monitoring_incomplete', 'expected unit inventory')
             else:
@@ -2043,7 +2209,7 @@ def legacy_repeat_shape(repeat, mode):
         if (not isinstance(row, dict) or set(row) != {'sequence', 'observed_elapsed_ms', 'raw_base64'}
                 or not legacy_integer(row['sequence'], 32) or row['sequence'] < 1
                 or not legacy_integer(row['observed_elapsed_ms'], nonnegative=True)
-                or not isinstance(row['raw_base64'], tuple) or len(row['raw_base64']) != 2
+                or not isinstance(row['raw_base64'], tuple) or len(row['raw_base64']) != 3
                 or row['raw_base64'][0] != 'statistics_base64'):
             return False
     if mode == 'idle-observation':

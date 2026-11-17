@@ -17,6 +17,7 @@ using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.LoadGen.Run.Execution;
 using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Input;
+using Parchwell.LoadGen.Common.Monitoring;
 using Parchwell.LoadGen.Run.Publication;
 using Parchwell.LoadGen.Run.Restart;
 using Parchwell.Scenarios;
@@ -70,6 +71,11 @@ internal static class Program
         ProducerLifecycleOptions? lifecycleOptions = null;
         ProducerRunContext? runContext = null;
         TimeProvider? clock = null;
+        NativeMonitoringHost? monitoring = null;
+        LoadGenWorker? worker = null;
+        bool monitorDrained = false;
+        Task? monitorDrain = null;
+        CancellationTokenSource? hostCleanupDeadline = null;
         bool readyForCompletion = false;
         int exitCode = 1;
         try
@@ -77,6 +83,7 @@ internal static class Program
             host = hostFactory?.Invoke() ?? BuildHost(args, configureTestServices);
             LoadGenHostOptions options = host.Services.GetRequiredService<IOptions<LoadGenHostOptions>>().Value;
             runOptions = options;
+            monitoring = host.Services.GetService<NativeMonitoringHost>();
             clock = host.Services.GetRequiredService<TimeProvider>();
             lifecycle = host.Services.GetRequiredService<IProducerRunLifecycle>();
             IConfiguration configuration = host.Services.GetRequiredService<IConfiguration>();
@@ -101,7 +108,7 @@ internal static class Program
                 }
             }, null, options.ProcessLifetimeTimeout, Timeout.InfiniteTimeSpan);
             await host.StartAsync().ConfigureAwait(false);
-            LoadGenWorker worker = host.Services.GetRequiredService<LoadGenWorker>();
+            worker = host.Services.GetRequiredService<LoadGenWorker>();
             CancellationToken applicationStopping = host.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
             try { await Task.Delay(Timeout.InfiniteTimeSpan, applicationStopping).ConfigureAwait(false); }
             catch (OperationCanceledException) when (applicationStopping.IsCancellationRequested) { }
@@ -120,7 +127,7 @@ internal static class Program
                 if (host is not null)
                 {
                     TimeSpan cleanupTimeout = runOptions?.CleanupTimeout ?? TimeSpan.FromSeconds(10);
-                    using var hostCleanupDeadline = new CancellationTokenSource(cleanupTimeout, clock ?? TimeProvider.System);
+                    hostCleanupDeadline = new CancellationTokenSource(cleanupTimeout, clock ?? TimeProvider.System);
                     try
                     {
                         await host.StopAsync(hostCleanupDeadline.Token).WaitAsync(hostCleanupDeadline.Token).ConfigureAwait(false);
@@ -135,6 +142,7 @@ internal static class Program
                         ReportHostFailure(exception, runOptions, logger, alwaysWriteIdentityFallback: true);
                         exitCode = 1;
                     }
+                    monitorDrain = monitoring?.DrainAsync(hostCleanupDeadline.Token);
                     try
                     {
                         await Task.Run(host.Dispose).WaitAsync(hostCleanupDeadline.Token).ConfigureAwait(false);
@@ -149,6 +157,7 @@ internal static class Program
                         ReportHostFailure(exception, runOptions, logger, alwaysWriteIdentityFallback: true);
                         exitCode = 1;
                     }
+
                 }
             }
             catch (Exception exception)
@@ -179,6 +188,18 @@ internal static class Program
                 exitCode = 1;
             }
         }
+        if (monitoring is not null)
+        {
+            monitorDrained = await monitoring.WaitForDrainAsync(monitorDrain, hostCleanupDeadline?.Token ?? new CancellationToken(canceled: true)).ConfigureAwait(false);
+            try
+            {
+                if (monitorDrained && runContext is not null && !readyForCompletion && worker?.DiagnosticPublicationSucceeded == true)
+                    monitoring.RebindSource("ledger/" + runContext.DiagnosticsPrefix + "statistics.jsonl");
+                if (monitorDrained) await monitoring.CompleteAsync(readyForCompletion || worker?.DiagnosticPublicationSucceeded == true, hostCleanupDeadline!.Token).WaitAsync(hostCleanupDeadline!.Token).ConfigureAwait(false);
+            }
+            catch (Exception) { monitoring.MarkIncomplete(); Console.Error.WriteLine("native_monitoring_completion_failed"); }
+        }
+        hostCleanupDeadline?.Dispose();
         return exitCode;
     }
 
@@ -405,14 +426,32 @@ internal static class Program
             return new BlobPredecessorEvidenceSource(client, hostOptions.BlobContainer);
         });
         builder.Services.AddSingleton<Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, KafkaOAuthBearerSession, IProducer<byte[], byte[]>>>(
-            provider => (configuration, statistics, evidence, authentication) => provider
-                .GetRequiredService<KafkaAuthenticationFactory>()
-                .CreateProducerBuilder<byte[], byte[]>(configuration, authentication)
-                .SetStatisticsHandler((_, report) => statistics.Capture(report))
-                .SetLogHandler((_, message) => evidence.CaptureLog(message))
-                .SetErrorHandler((_, error) => evidence.CaptureError(error))
-                .Build());
-        builder.Services.AddSingleton<RunSessionFactory>();
+            provider =>
+            {
+                KafkaAuthenticationFactory factory = provider.GetRequiredService<KafkaAuthenticationFactory>();
+                NativeMonitoringHost monitoring = provider.GetRequiredService<NativeMonitoringHost>();
+                return (configuration, statistics, evidence, authentication) => factory
+                    .CreateProducerBuilder<byte[], byte[]>(configuration, authentication)
+                    .SetStatisticsHandler((_, report) => monitoring.CaptureBridge(statistics, report))
+                    .SetLogHandler((_, message) => evidence.CaptureLog(message))
+                    .SetErrorHandler((_, error) => evidence.CaptureError(error))
+                    .Build();
+            });
+        var nativeOptions = new KafkaNativeMonitoringOptions();
+        builder.Configuration.GetSection(KafkaNativeMonitoringOptions.SectionName).Bind(nativeOptions, value => value.ErrorOnUnknownConfiguration = true);
+        if (nativeOptions.RunId != bootstrapOptions.RunId || nativeOptions.Phase != bootstrapOptions.Phase ||
+            nativeOptions.ScenarioId != bootstrapOptions.ScenarioId || nativeOptions.ConfigurationId != bootstrapOptions.ConfigurationId ||
+            nativeOptions.JobName != bootstrapOptions.JobName || nativeOptions.PodUid != bootstrapOptions.PodUid ||
+            nativeOptions.SourceCommit != sourceCommit || nativeOptions.BlobEndpoint != bootstrapOptions.BlobEndpoint)
+            throw new InvalidOperationException("native_monitoring_identity_mismatch");
+        ProducerRunContext nativeContext = CreateRunContext(bootstrapOptions, sourceCommit);
+        NativeMonitoringHost.Register(builder.Services, nativeOptions, "ledger/" + nativeContext.PublicationPrefix + "statistics.jsonl");
+        builder.Services.AddSingleton(provider => new RunSessionFactory(
+            provider.GetRequiredService<IOptions<LoadGenHostOptions>>(), provider.GetRequiredService<RunEvidenceSinkRouter>(),
+            provider.GetRequiredService<KafkaStatisticsBridgeFactory>(), provider.GetRequiredService<KafkaConfigurationFactory>(),
+            provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<KafkaAuthenticationFactory>(),
+            provider.GetRequiredService<Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, KafkaOAuthBearerSession, IProducer<byte[], byte[]>>>(),
+            beforeEvidenceWriterDrain: null, provider.GetRequiredService<NativeMonitoringHost>()));
         builder.Services.AddSingleton<LoadGenWorker>();
         builder.Services.AddHostedService(provider => provider.GetRequiredService<LoadGenWorker>());
         configureTestServices?.Invoke(builder.Services);

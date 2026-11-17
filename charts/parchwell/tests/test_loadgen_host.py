@@ -243,7 +243,8 @@ def main():
             rendered=rendered_environment(values,td,f'second-{i}')
             proc=bounded(60,host,td/f'second-{i}.host.out',host_environment(rendered,td))
             assert proc.returncode==1 and 'loadgen_configuration_invalid:OptionsValidationException:LoadGen host inputs or finite budgets are invalid.' in proc.stderr, (i,proc.stderr)
-            rendered['LoadGen__JobName']=d['runtime']['loadgen_job_name']; out=td/f'second-{i}.first-name.host.out'
+            rendered['LoadGen__JobName']=d['runtime']['loadgen_job_name']
+            rendered['NativeMonitoring__JobName']=d['runtime']['loadgen_job_name']; out=td/f'second-{i}.first-name.host.out'
             proc=bounded(60,host,out,host_environment(rendered,td))
             assert proc.returncode==0 and out.read_bytes()==EXPECTED, (i,proc.stderr)
         b10_second=[d for d in positive_cases() if d['runtime']['mode']=='loadgen2' and d['scenario_id']=='B10']; assert len(b10_second)==4

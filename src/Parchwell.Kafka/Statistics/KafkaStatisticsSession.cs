@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Threading.Channels;
+using System.Text.Json;
 using Parchwell.Kafka.Configuration;
 
 namespace Parchwell.Kafka.Statistics;
@@ -14,6 +15,11 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
     private readonly TimeProvider _timeProvider;
     private readonly IKafkaStatisticsEvidenceSink _sink;
     private readonly KafkaStatisticsMetrics _metrics;
+    private readonly KafkaNativeMetricState _nativeMetrics;
+    private long? _monitoringTimestamp;
+    private long? _monitoringCreation;
+    private string? _monitoringName;
+    private bool _monitoringIdentityRejected;
     private readonly bool _nativeClockCompatible;
     private readonly Action? _completionBoundaryObserver;
     private readonly string _sessionId = Guid.NewGuid().ToString("N");
@@ -69,6 +75,7 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
         _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
         _sink = sink ?? throw new ArgumentNullException(nameof(sink));
         _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
+        _nativeMetrics = _metrics.CreateNativeState(_identity, true);
         _nativeClockCompatible = nativeClockCompatible;
         _completionBoundaryObserver = completionBoundaryObserver;
         _sessionStartTimestamp = _timeProvider.GetTimestamp();
@@ -95,17 +102,22 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
     /// closed and is refused because capture has closed records capture loss.
     /// </remarks>
     /// <param name="json">The original librdkafka statistics JSON.</param>
-    public void Capture(string json)
+    public void Capture(string json) => TryCapture(json);
+
+    /// <summary>Attempts existing bridge admission without changing its evidence rules.</summary>
+    /// <param name="json">The original librdkafka statistics JSON.</param>
+    /// <returns>True when the report was queued; false when admission rejected or ignored it.</returns>
+    public bool TryCapture(string json)
     {
         if (Volatile.Read(ref _admissionClosed))
         {
-            return;
+            return false;
         }
 
         if (!_completionState.TryBeginCapture())
         {
             AddDiagnostic("late_capture");
-            return;
+            return false;
         }
 
         bool entered = false;
@@ -118,26 +130,28 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
             {
                 _completionState.TryRecordCaptureLoss();
                 AddDiagnostic("capture_contention");
-                return;
+                return false;
             }
 
             if (!_captureOpen || _disposed)
             {
                 _completionState.TryRecordCaptureLoss();
                 AddDiagnostic("late_capture");
-                return;
+                return false;
             }
 
             if (json is null || json.Length > _options.MaxSnapshotCharacters)
             {
                 AddDiagnostic("oversized_snapshot");
-                return;
+                return false;
             }
 
             if (!_queue.Writer.TryWrite(new CapturedReport(json, receivedAt, receiptTimestamp)))
             {
                 AddDiagnostic("capture_queue_overflow");
+                return false;
             }
+            return true;
         }
         finally
         {
@@ -390,6 +404,31 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
             }
         }
 
+        KafkaNativeMetricProjection projection = KafkaNativeMetricParser.Parse(captured.Json);
+        KafkaNativeMetricIdentity? nativeIdentity = ReadMonitoringIdentity(captured.Json);
+        bool nativeValid = nativeIdentity is not null && ValidateMonitoringIdentity(nativeIdentity, captured.ReceiptTimestamp);
+        if (!nativeValid)
+        {
+            _monitoringIdentityRejected = true;
+        }
+
+        if (nativeValid)
+        {
+            try
+            {
+                _nativeMetrics.Record(projection);
+            }
+            catch (Exception)
+            {
+                _monitoringIdentityRejected = true;
+            }
+        }
+        else if (!projection.IsValid)
+        {
+            // Retain parser diagnostics without admitting points for an unvalidated identity.
+            _nativeMetrics.Record(projection with { IsValid = false, Identity = null });
+        }
+
         foreach (MetricEmission emission in emissions)
         {
             try
@@ -402,13 +441,36 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
             }
         }
 
+        if (snapshotValid && nativeValid && nativeIdentity is not null)
+        {
+            foreach (MetricEmission emission in emissions)
+            {
+                try
+                {
+                    _nativeMetrics.RecordCanonical(nativeIdentity, emission.Broker.Name,
+                        ReadBrokerAddress(captured.Json, emission.Broker.Name), emission.RequestTimeoutDelta, emission.DisconnectDelta);
+                }
+                catch (Exception)
+                {
+                    _monitoringIdentityRejected = true;
+                }
+            }
+        }
+
         KafkaStatisticsReport report = new(
             _identity,
             _sessionId,
             captured.ReceivedAt,
             captured.Json,
             snapshot,
-            reportDiagnostics.ToImmutableArray());
+            reportDiagnostics.ToImmutableArray())
+        {
+            Monitoring = new KafkaStatisticsMonitoringStatus(
+                !_monitoringIdentityRejected && _nativeMetrics.IsComplete,
+                _nativeMetrics.Diagnostics.Select(d => new KafkaStatisticsMonitoringDiagnostic(d.Code, d.Field))
+                    .Concat(_monitoringIdentityRejected ? new[] { new KafkaStatisticsMonitoringDiagnostic("identity_or_recording_failure", null) } : Array.Empty<KafkaStatisticsMonitoringDiagnostic>())
+                    .ToImmutableArray())
+        };
 
         try
         {
@@ -446,6 +508,96 @@ public sealed class KafkaStatisticsSession : IAsyncDisposable
                 AddDiagnostic("evidence_sink_failure");
             }
         }
+    }
+
+    private bool ValidateMonitoringIdentity(KafkaNativeMetricIdentity identity, long receiptTimestamp)
+    {
+        bool consumer = _identity.Role is KafkaClientRole.EnrichmentConsumer or KafkaClientRole.VerifierConsumer;
+        long creation = identity.Ts - identity.Age;
+        bool valid = StringComparer.Ordinal.Equals(identity.ClientId, _identity.ClientId)
+            && StringComparer.Ordinal.Equals(identity.Type, consumer ? "consumer" : "producer")
+            && (_monitoringName is null || StringComparer.Ordinal.Equals(identity.Name, _monitoringName))
+            && (_monitoringTimestamp is null || identity.Ts > _monitoringTimestamp)
+            && (_monitoringCreation is null || creation == _monitoringCreation);
+        if (_nativeClockCompatible)
+        {
+            valid &= creation >= ToMicrosecondsCeiling(_sessionStartTimestamp, _timeProvider.TimestampFrequency)
+                && identity.Ts <= ToMicrosecondsFloor(receiptTimestamp, _timeProvider.TimestampFrequency);
+        }
+
+        if (valid)
+        {
+            _monitoringName ??= identity.Name;
+            _monitoringTimestamp = identity.Ts;
+            _monitoringCreation ??= creation;
+        }
+
+        return valid;
+    }
+
+    internal static KafkaNativeMetricIdentity? ReadMonitoringIdentity(string json)
+    {
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(json, new JsonDocumentOptions { MaxDepth = 64 });
+            JsonElement root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object) return null;
+            HashSet<string> names = new(StringComparer.Ordinal);
+            foreach (JsonProperty property in root.EnumerateObject())
+            {
+                if (!names.Add(property.Name)) return null;
+            }
+            if (!TryString(root, "name", out string name) || !TryString(root, "client_id", out string clientId)
+                || !TryString(root, "type", out string type) || !TryNumber(root, "ts", out long ts)
+                || !TryNumber(root, "time", out long time) || !TryNumber(root, "age", out long age)) return null;
+            return new(name, clientId, type, ts, time, age);
+        }
+        catch (JsonException) { return null; }
+    }
+
+    private static bool TryString(JsonElement root, string name, out string value)
+    {
+        value = string.Empty;
+        if (!root.TryGetProperty(name, out JsonElement item) || item.ValueKind != JsonValueKind.String) return false;
+        value = item.GetString()!;
+        return value.Length > 0;
+    }
+
+    private static bool TryNumber(JsonElement root, string name, out long value)
+    {
+        value = 0;
+        return root.TryGetProperty(name, out JsonElement item) && item.ValueKind == JsonValueKind.Number
+            && item.TryGetInt64(out value) && value >= 0;
+    }
+
+    private static string? ReadBrokerAddress(string json, string broker)
+    {
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(json, new JsonDocumentOptions { MaxDepth = 64 });
+            if (!document.RootElement.TryGetProperty("brokers", out JsonElement brokers)
+                || brokers.ValueKind != JsonValueKind.Object) return null;
+            JsonElement selected = default;
+            int matches = 0;
+            foreach (JsonProperty property in brokers.EnumerateObject())
+            {
+                if (StringComparer.Ordinal.Equals(property.Name, broker)) { selected = property.Value; matches++; }
+            }
+            if (matches != 1 || selected.ValueKind != JsonValueKind.Object) return null;
+            string? address = null;
+            int addresses = 0;
+            foreach (JsonProperty property in selected.EnumerateObject())
+            {
+                if (property.NameEquals("nodename"))
+                {
+                    addresses++;
+                    if (property.Value.ValueKind != JsonValueKind.String) return null;
+                    address = property.Value.GetString();
+                }
+            }
+            return addresses == 1 ? address : null;
+        }
+        catch (JsonException) { return null; }
     }
 
     private bool ValidateSnapshot(

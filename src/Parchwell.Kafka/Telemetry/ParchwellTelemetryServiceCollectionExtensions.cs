@@ -83,6 +83,7 @@ public static class ParchwellTelemetryServiceCollectionExtensions
         telemetry.WithTracing(tracing => tracing.AddSource(ParchwellTelemetrySources.WorkerActivitySourceName));
         telemetry.WithMetrics(metrics => metrics
             .AddMeter(KafkaStatisticsMetrics.MeterName, KafkaAuthenticationMetrics.MeterName, ParchwellTelemetrySources.WorkerMeterName)
+            .AddView("kafka.librdkafka.*", new MetricStreamConfiguration { CardinalityLimit = 2000 })
             .AddView("kafka.broker.throttle.max_ms", HistogramView())
             .AddView("kafka.broker.rtt.p99_us", HistogramView()));
         services.Configure<OpenTelemetryLoggerOptions>(options =>

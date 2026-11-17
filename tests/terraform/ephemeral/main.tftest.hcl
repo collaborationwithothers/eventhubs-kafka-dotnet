@@ -221,6 +221,12 @@ override_resource {
 }
 
 override_resource {
+  target          = module.storage.module.containers["native_monitoring"].azapi_resource.this
+  override_during = plan
+  values          = { id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring", output = {} }
+}
+
+override_resource {
   target          = module.storage.module.containers["consumer_record"].azapi_resource.this
   override_during = plan
   values = {
@@ -274,7 +280,7 @@ override_data {
 run "foundation" {
   command = plan
   assert {
-    condition = toset(keys(azurerm_role_assignment.workflow_evidence_reader)) == toset(["ledger", "verifier", "single_action", "consumer_record"]) && alltrue([
+    condition = toset(keys(azurerm_role_assignment.workflow_evidence_reader)) == toset(["ledger", "verifier", "single_action", "native_monitoring", "consumer_record"]) && alltrue([
       for name, grant in azurerm_role_assignment.workflow_evidence_reader :
       grant.role_definition_name == "Storage Blob Data Reader" && grant.principal_id == "00000000-0000-0000-0000-000000000009" && grant.principal_type == "ServicePrincipal" && grant.skip_service_principal_aad_check && grant.scope == module.storage.containers[name].id
     ]) && length(local.storage_config.role_assignments) == 0 && length(local.storage_config.containers.claim_check.role_assignments) == 0
@@ -298,6 +304,16 @@ run "foundation" {
   assert {
     condition     = module.eventhubs.resource_eventhubs["document-events"].partition_count == 32 && module.eventhubs.resource_eventhubs["document-events-dlq"].partition_count == 4 && alltrue([for hub in module.eventhubs.resource_eventhubs : hub.message_retention == 7 && hub.status == "Active"])
     error_message = "Delete topics must keep fixed partitions, seven-day retention and Active status."
+  }
+
+  assert {
+    condition = toset([for role in azurerm_role_assignment.native_monitoring : jsonencode([role.principal_id, role.role_definition_name, role.scope])]) == toset([
+      jsonencode(["00000000-0000-0000-0000-000000000004", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring"]),
+      jsonencode(["00000000-0000-0000-0000-000000000005", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring"]),
+      jsonencode(["00000000-0000-0000-0000-000000000006", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring"]),
+      jsonencode(["00000000-0000-0000-0000-000000000013", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring"])
+    ]) && length(azurerm_role_assignment.native_monitoring) == 4 && alltrue([for role in azurerm_role_assignment.native_monitoring : role.principal_type == "ServicePrincipal" && role.skip_service_principal_aad_check])
+    error_message = "Native monitoring must grant exactly the four workload identities contributor access to its container only."
   }
 
   assert {
@@ -362,6 +378,11 @@ run "foundation" {
 
           }
         }
+        "native_monitoring" = {
+          "name"             = "native-monitoring"
+          "public_access"    = "None"
+          "role_assignments" = {}
+        }
         "single_action" = {
           "name"          = "single-action"
           "public_access" = "None"
@@ -410,6 +431,10 @@ run "foundation" {
       "claim_check" = {
         "id"   = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/claim-check"
         "name" = "claim-check"
+      }
+      "native_monitoring" = {
+        "id"   = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring"
+        "name" = "native-monitoring"
       }
       "single_action" = {
         "id"   = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/single-action"
@@ -540,10 +565,11 @@ run "foundation" {
     condition = jsonencode(output.blob) == jsonencode({
       "account_url" = "https://stparchwelloffline1.blob.core.windows.net"
       "containers" = {
-        "ledger"        = "ledger"
-        "verifier"      = "verifier"
-        "claim_check"   = "claim-check"
-        "single_action" = "single-action"
+        "ledger"            = "ledger"
+        "verifier"          = "verifier"
+        "claim_check"       = "claim-check"
+        "single_action"     = "single-action"
+        "native_monitoring" = "native-monitoring"
       }
     })
     error_message = "Blob output must expose its HTTPS account URL and exact container keys/names."
@@ -678,7 +704,7 @@ run "probe_v2_roles_false" {
       verifier_ledger_reader             = { service_account = "verifier", role_definition_name = "Storage Blob Data Reader", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/ledger", principal_id = "00000000-0000-0000-0000-000000000006" }
       verifier_results_contributor       = { service_account = "verifier", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/verifier", principal_id = "00000000-0000-0000-0000-000000000006" }
     })
-    error_message = "Disabled V2 roles must preserve the complete twelve-entry applied role map."
+    error_message = "Disabled V2 roles must preserve the complete twelve-entry scientific workload role map."
   }
   assert {
     condition = output.probe_v2_role_scope.probe_namespace_data_roles == false && output.probe_v2_role_scope.namespace_id == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1" && jsonencode(output.probe_v2_role_scope.topics) == jsonencode({
@@ -778,7 +804,7 @@ run "archive_smoke_source" {
     values          = { id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/archive-smoke-source", output = {} }
   }
   assert {
-    condition     = jsonencode(local.storage_config.containers.archive_smoke_source) == jsonencode({ name = "archive-smoke-source", public_access = "None", role_assignments = { workflow = { role_definition_id_or_name = "Storage Blob Data Contributor", principal_id = "00000000-0000-0000-0000-000000000009", principal_type = "ServicePrincipal", skip_service_principal_aad_check = true } } }) && length(local.storage_config.containers) == 6 && length(local.storage_config.role_assignments) == 0 && output.blob.containers.archive_smoke_source == "archive-smoke-source" && length(output.blob.containers) == 5
+    condition     = jsonencode(local.storage_config.containers.archive_smoke_source) == jsonencode({ name = "archive-smoke-source", public_access = "None", role_assignments = { workflow = { role_definition_id_or_name = "Storage Blob Data Contributor", principal_id = "00000000-0000-0000-0000-000000000009", principal_type = "ServicePrincipal", skip_service_principal_aad_check = true } } }) && length(local.storage_config.containers) == 7 && length(local.storage_config.role_assignments) == 0 && output.blob.containers.archive_smoke_source == "archive-smoke-source" && length(output.blob.containers) == 6
     error_message = "Smoke adds exactly one nonpublic source container and its output without account grants."
   }
   assert {

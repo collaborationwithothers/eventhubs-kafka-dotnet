@@ -16,6 +16,28 @@ namespace Parchwell.LoadGen.Tests.Evidence;
 public sealed class RunEvidenceSessionTests
 {
     [Fact]
+    public async Task Given_AdmittedReports_When_Written_Then_ObserverSeesFlushedRowsInFileOrderAndCannotFaultEvidence()
+    {
+        string path = NewDirectory();
+        var observed = new List<(long Ordinal, string Raw)>();
+        await using var session = new RunEvidenceSession(Identity(), Options(path), TimeProvider.System);
+        session.AttachAdmittedObserver((report, ordinal) =>
+        {
+            string[] rows = File.ReadAllLines(Path.Combine(path, "statistics.jsonl"));
+            Assert.Equal(ordinal, rows.LongLength);
+            using JsonDocument row = JsonDocument.Parse(rows[^1]);
+            Assert.Equal(report.RawJson, row.RootElement.GetProperty("raw_json").GetString());
+            observed.Add((ordinal, report.RawJson));
+            if (ordinal == 1) throw new InvalidOperationException("monitor failure");
+        });
+        await session.WriteAsync(Report("{\"first\":1}", Snapshot(0, 0)), TestContext.Current.CancellationToken);
+        await session.WriteAsync(Report("{\"second\":2}", Snapshot(0, 0)), TestContext.Current.CancellationToken);
+        await session.CompleteAsync(null, TestContext.Current.CancellationToken);
+        Assert.Equal(new[] { (1L, "{\"first\":1}"), (2L, "{\"second\":2}") }, observed);
+        Assert.False(session.IsFaulted);
+    }
+
+    [Fact]
     public void Given_InvalidBudget_When_Constructing_Then_DoesNotTouchDirectory()
     {
         string path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));

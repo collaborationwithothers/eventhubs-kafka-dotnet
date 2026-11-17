@@ -2,7 +2,9 @@ using Confluent.Kafka;
 using Microsoft.Extensions.Options;
 using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Configuration;
+using Parchwell.Kafka.Statistics;
 using Parchwell.Verifier.Common.Consumer;
+using Parchwell.Verifier.Common.Kafka;
 
 namespace Parchwell.Verifier.VerifyRun.Consumer.Offsets;
 
@@ -21,15 +23,26 @@ internal sealed class ConsumerCommittedOffsetReader
     private readonly TimeProvider clock;
 
     public ConsumerCommittedOffsetReader(KafkaConfigurationFactory configurations, KafkaAuthenticationFactory authentication,
-        IOptions<VerifierHostOptions> configured, ConsumerVerificationPlan plan, TimeProvider clock)
-        : this(configurations,authentication,configured,plan,clock,(config,session)=>authentication.CreateConsumerBuilder<byte[],byte[]>(config,session)
-            .SetKeyDeserializer(Deserializers.ByteArray).SetValueDeserializer(Deserializers.ByteArray).Build())
+        IOptions<VerifierHostOptions> configured, ConsumerVerificationPlan plan, TimeProvider clock,
+        KafkaNativeMonitoringCoordinator monitoring)
+        : this(configurations, authentication, configured, plan, clock,
+            (config, session, lifetime) => authentication.CreateConsumerBuilder<byte[], byte[]>(config, session)
+                .SetKeyDeserializer(Deserializers.ByteArray).SetValueDeserializer(Deserializers.ByteArray)
+                .SetStatisticsHandler(VerifierKafkaSessionFactory.StatisticsHandler(lifetime!)).Build(), monitoring)
     {
     }
 
     internal ConsumerCommittedOffsetReader(KafkaConfigurationFactory configurations, KafkaAuthenticationFactory authentication,
         IOptions<VerifierHostOptions> configured, ConsumerVerificationPlan plan, TimeProvider clock,
         Func<ConsumerConfig,KafkaOAuthBearerSession,IConsumer<byte[],byte[]>> build)
+        : this(configurations, authentication, configured, plan, clock, (config, session, _) => build(config, session), null)
+    {
+    }
+
+    internal ConsumerCommittedOffsetReader(KafkaConfigurationFactory configurations, KafkaAuthenticationFactory authentication,
+        IOptions<VerifierHostOptions> configured, ConsumerVerificationPlan plan, TimeProvider clock,
+        Func<ConsumerConfig,KafkaOAuthBearerSession,KafkaNativeMonitoringLifetime?,IConsumer<byte[],byte[]>> build,
+        KafkaNativeMonitoringCoordinator? monitoring)
     {
         this.clock=clock;
         create=(deadline, token)=>
@@ -37,6 +50,9 @@ internal sealed class ConsumerCommittedOffsetReader
             VerifierHostOptions options=configured.Value;
             var acquisition=CancellationTokenSource.CreateLinkedTokenSource(token);
             IConsumer<byte[],byte[]>? consumer=null;
+            KafkaNativeMonitoringLifetime? lifetime=monitoring?.CreateLifetime(new KafkaStatisticsIdentity(options.ScenarioId!,
+                options.RunId!, KafkaClientRole.VerifierConsumer, options.VerifierClientId!));
+            bool built=false;
             try
             {
                 TimeSpan remaining=deadline-clock.GetUtcNow();
@@ -47,16 +63,19 @@ internal sealed class ConsumerCommittedOffsetReader
                 KafkaOAuthBearerSession session=authentication.CreateSession(new KafkaAuthenticationIdentity(options.ScenarioId!,
                     options.RunId!,KafkaClientRole.VerifierConsumer,options.VerifierClientId!),acquisition.Token);
                 ConsumerConfig config=ConfigurationForRead(configurations.CreateVerifierConsumer().Configuration,options,plan);
-                consumer=build(config,session);
+                consumer=build(config,session,lifetime);
+                built=true;
+                lifetime?.MarkBuilt();
                 session.InstallToken(consumer);
                 token.ThrowIfCancellationRequested();
                 if(installDeadline.IsCancellationRequested||session.InitialFailure is not null||session.InstalledTokenExpiresOn is null)
                     throw new KafkaException(new Error(ErrorCode.Local_TimedOut));
-                return new ConsumerLease(consumer,acquisition);
+                return new ConsumerLease(consumer,acquisition,lifetime);
             }
             catch
             {
-                try{consumer?.Dispose();}finally{acquisition.Dispose();}
+                if(!built)lifetime?.MarkBuildFailed();
+                try{consumer?.Dispose();}finally{lifetime?.Complete(false,"unknown");acquisition.Dispose();}
                 throw;
             }
         };
@@ -66,7 +85,7 @@ internal sealed class ConsumerCommittedOffsetReader
     {
         ArgumentNullException.ThrowIfNull(create);
         this.clock=clock;
-        this.create=(_,token)=>new ConsumerLease(create(token),null);
+        this.create=(_,token)=>new ConsumerLease(create(token),null,null);
     }
 
     internal static ConsumerConfig ConfigurationForRead(ConsumerConfig baseline,VerifierHostOptions options,ConsumerVerificationPlan plan)
@@ -109,9 +128,9 @@ internal sealed class ConsumerCommittedOffsetReader
         return Task.FromResult(new ConsumerOffsetRead(outcome,requested,started,ended,error,offsets));
     }
 
-    private sealed class ConsumerLease(IConsumer<byte[],byte[]> consumer,CancellationTokenSource? acquisition):IDisposable
+    private sealed class ConsumerLease(IConsumer<byte[],byte[]> consumer,CancellationTokenSource? acquisition,KafkaNativeMonitoringLifetime? lifetime):IDisposable
     {
         internal IConsumer<byte[],byte[]> Consumer {get;}=consumer;
-        public void Dispose(){try{Consumer.Dispose();}finally{acquisition?.Dispose();}}
+        public void Dispose(){bool disposed=false;try{Consumer.Dispose();disposed=true;}finally{lifetime?.Complete(disposed,"unknown");acquisition?.Dispose();}}
     }
 }

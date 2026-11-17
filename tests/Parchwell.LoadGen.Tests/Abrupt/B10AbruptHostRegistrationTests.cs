@@ -122,6 +122,10 @@ public sealed class B10AbruptHostRegistrationTests
                 values[B10AbruptOptions.Prefix + "JobName"] = "b10d-1-1-c1-r1-loadgen-" + (role == "successor" ? "successor" : "restart");
             }
             B10AbruptOptions options = B10AbruptOptions.Read(values);
+            string[] names = ["BlobEndpoint", "RunId", "Phase", "ScenarioId", "ConfigurationId", "JobName", "PodUid", "SourceCommit"];
+            foreach (string name in names)
+                Environment.SetEnvironmentVariable("NativeMonitoring__" + name, values[B10AbruptOptions.Prefix + name]);
+            Environment.SetEnvironmentVariable("NativeMonitoring__BlobContainer", "native-monitoring");
             using IHost host = B10AbruptHost.BuildServices(options);
             LoadedScenario loaded = await host.Services.GetRequiredService<ScenarioLoader>()
                 .LoadAsync("B10", TestContext.Current.CancellationToken);
@@ -130,6 +134,8 @@ public sealed class B10AbruptHostRegistrationTests
         finally
         {
             Environment.SetEnvironmentVariable(TelemetryVariable, previous);
+            foreach (string name in new[] { "BlobEndpoint", "RunId", "Phase", "ScenarioId", "ConfigurationId", "JobName", "PodUid", "SourceCommit", "BlobContainer" })
+                Environment.SetEnvironmentVariable("NativeMonitoring__" + name, null);
         }
     }
 

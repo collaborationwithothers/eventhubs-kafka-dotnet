@@ -1,12 +1,13 @@
 using Confluent.Kafka;
 using Microsoft.Extensions.Options;
+using Parchwell.Enrichment.Common.NativeMonitoring;
 
 namespace Parchwell.Enrichment.ConsumerProcessing;
 
 internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOptions> options,
     IConsumerProcessingPlanSource? planSource, Func<ConsumerConfig> baselineFactory,
     Func<IConsumerRecordStore> storeFactory, ConsumerProcessingConsumerFactory consumerFactory,
-    TimeProvider clock, Action<int> exitProcess, ConsumerSignalSender signal, TextWriter? error = null)
+    TimeProvider clock, Action<int> exitProcess, ConsumerSignalSender signal, TextWriter? error = null, NativeClientCapture? monitoring = null)
 {
     public async Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
@@ -85,6 +86,7 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
                     consumer.Dispose();
                 }
                 catch (Exception) { failure = appendFailed ? "consumer_record_append_failed" : failure ?? "consumer_close_failed"; }
+                monitoring?.Complete(failure is null);
                 recordOpen = false;
             }
         }

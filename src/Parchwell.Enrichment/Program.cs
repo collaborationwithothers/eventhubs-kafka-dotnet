@@ -11,6 +11,9 @@ using Parchwell.Enrichment.SeedF04;
 using Parchwell.Enrichment.ConsumerProcessing;
 using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Configuration;
+using Parchwell.Kafka.Telemetry;
+using Parchwell.Kafka.Statistics;
+using Parchwell.Enrichment.Common.NativeMonitoring;
 
 namespace Parchwell.Enrichment;
 
@@ -43,6 +46,10 @@ internal static class Program
         SeedF04Result? result = null;
         TimeProvider clock = TimeProvider.System;
         bool hostCleaned = true;
+        bool seedFailed = false;
+        KafkaNativeMonitoringCoordinator? seedMonitoring = null;
+        Task? seedDrain = null;
+        CancellationTokenSource? seedCleanup = null;
         int exitCode = 1;
         try
         {
@@ -63,17 +70,27 @@ internal static class Program
         }
         catch (Exception)
         {
+            seedFailed = true;
             await Console.Error.WriteLineAsync($"seed_startup_or_execution_failed scenario_id=F04 run_id={options?.RunId ?? "unknown"}").ConfigureAwait(false);
         }
         finally
         {
             if (host is not null)
             {
-                using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(options?.HostCleanupSeconds ?? 10), clock);
+                seedCleanup = new CancellationTokenSource(TimeSpan.FromSeconds(options?.HostCleanupSeconds ?? 10), clock);
+                CancellationTokenSource cleanup = seedCleanup;
                 try { await host.StopAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false); }
                 catch (Exception) { hostCleaned = false; }
+                try
+                {
+                    seedMonitoring = host.Services.GetService<KafkaNativeMonitoringCoordinator>();
+                    if (seedFailed && options is not null) seedMonitoring?.MarkIncomplete("host_startup_failed");
+                }
+                catch (Exception) { }
+                seedDrain = seedMonitoring?.DrainAsync(cleanup.Token);
                 try { await Task.Run(host.Dispose, CancellationToken.None).WaitAsync(cleanup.Token).ConfigureAwait(false); }
                 catch (Exception) { hostCleaned = false; }
+
             }
         }
         try { watchdog?.Dispose(); }
@@ -90,6 +107,13 @@ internal static class Program
             }
         }
         catch (Exception) { exitCode = 1; }
+        try
+        {
+            if (seedMonitoring is not null && await seedMonitoring.WaitForDrainAsync(seedDrain, seedCleanup!.Token).ConfigureAwait(false))
+                await seedMonitoring.CompleteAsync(seedCleanup!.Token).WaitAsync(seedCleanup.Token).ConfigureAwait(false);
+        }
+        catch (Exception) { seedMonitoring?.MarkIncomplete("host_completion_incomplete"); }
+        seedCleanup?.Dispose();
         return exitCode;
     }
 
@@ -119,6 +143,8 @@ internal static class Program
         });
         if (!validationOnly)
         {
+            RegisterTelemetry(builder.Services, configuration, "F04", configuration["SeedF04:RunId"]);
+            RegisterNativeMonitoring(builder.Services, configuration, "F04", configuration["SeedF04:RunId"]);
             builder.Services.AddParchwellKafkaAuthentication(options =>
             {
                 options.TenantId = configuration["AZURE_TENANT_ID"];
@@ -133,7 +159,16 @@ internal static class Program
                 KafkaOAuthBearerSession session = authentication.CreateSession(new KafkaAuthenticationIdentity(
                     "F04", options.RunId, KafkaClientRole.EnrichmentProducer, options.PodName), stopping);
                 ProducerConfig producer = services.GetRequiredService<KafkaConfigurationFactory>().CreateEnrichmentProducer().Configuration;
-                return authentication.CreateProducerBuilder<byte[], byte[]>(producer, session).Build();
+                KafkaNativeMonitoringLifetime lifetime = services.GetRequiredService<NativeClientCapture>().Begin(
+                    new KafkaStatisticsIdentity("F04", options.RunId, KafkaClientRole.EnrichmentProducer, options.PodName));
+                try
+                {
+                    IProducer<byte[], byte[]> result = authentication.CreateProducerBuilder<byte[], byte[]>(producer, session)
+                        .SetStatisticsHandler(NativeClientCapture.ProducerHandler(lifetime)).Build();
+                    lifetime.MarkBuilt();
+                    return result;
+                }
+                catch { lifetime.MarkBuildFailed(); lifetime.Complete(false, "unknown"); throw; }
             });
             builder.Services.AddSingleton<SeedF04Worker>();
         }
@@ -145,11 +180,14 @@ internal static class Program
         IHost? host = null;
         ConsumerProcessingOptions? options = null;
         string reason = "consumer_identity_invalid";
+        bool identityValidated = false;
+        bool hostFailed = false;
         try
         {
             host = hostFactory?.Invoke() ?? BuildConsumerProcessingHost(configure);
             options = host.Services.GetRequiredService<IOptions<ConsumerProcessingOptions>>().Value;
             options.ValidateDeploymentIdentity(host.Services.GetRequiredService<IConfiguration>());
+            identityValidated = true;
             reason = "consumer_plan_invalid";
             if (host.Services.GetService<IConsumerProcessingPlanSource>() is null)
                 throw new InvalidOperationException(reason);
@@ -159,6 +197,7 @@ internal static class Program
         }
         catch (Exception)
         {
+            hostFailed = true;
             await Console.Error.WriteLineAsync($"consumer_processing_failed reason={reason} scenario_id={ConsumerIdentity(options?.ScenarioId)} run_id={ConsumerIdentity(options?.RunId)} role={ConsumerIdentity(options?.Role)}").ConfigureAwait(false);
             return 1;
         }
@@ -170,8 +209,22 @@ internal static class Program
                 using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10), clock);
                 try { await host.StopAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false); }
                 catch (Exception) { }
+                KafkaNativeMonitoringCoordinator? monitoring = null;
+                try
+                {
+                    monitoring = host.Services.GetService<KafkaNativeMonitoringCoordinator>();
+                    if (hostFailed && identityValidated) monitoring?.MarkIncomplete("host_startup_failed");
+                }
+                catch (Exception) { }
+                Task? drain = monitoring?.DrainAsync(cleanup.Token);
                 try { await Task.Run(host.Dispose, CancellationToken.None).WaitAsync(cleanup.Token).ConfigureAwait(false); }
                 catch (Exception) { }
+                try
+                {
+                    if (monitoring is not null && await monitoring.WaitForDrainAsync(drain, cleanup.Token).ConfigureAwait(false))
+                        await monitoring.CompleteAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false);
+                }
+                catch (Exception) { monitoring?.MarkIncomplete("host_completion_incomplete"); }
             }
         }
     }
@@ -195,6 +248,8 @@ internal static class Program
             string repeat = configuration["ConsumerProcessing:RepeatNumber"] ?? string.Empty;
             options.EnrichmentGroupId = $"{run}-{phase.ToLowerInvariant()}-r{repeat}-consumers";
         });
+        RegisterTelemetry(builder.Services, configuration, configuration["ConsumerProcessing:ScenarioId"], configuration["ConsumerProcessing:RunId"]);
+        RegisterNativeMonitoring(builder.Services, configuration, configuration["ConsumerProcessing:ScenarioId"], configuration["ConsumerProcessing:RunId"]);
         builder.Services.AddParchwellKafkaAuthentication(options =>
         {
             options.TenantId = configuration["AZURE_TENANT_ID"];
@@ -216,11 +271,20 @@ internal static class Program
             CancellationToken stopping = services.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
             KafkaOAuthBearerSession session = authentication.CreateSession(new KafkaAuthenticationIdentity(
                 options.ScenarioId, options.RunId, KafkaClientRole.EnrichmentConsumer, options.PodName), stopping);
-            return authentication.CreateConsumerBuilder<byte[], byte[]>(consumerConfiguration, session)
+            KafkaNativeMonitoringLifetime lifetime = services.GetRequiredService<NativeClientCapture>().Begin(
+                new KafkaStatisticsIdentity(options.ScenarioId, options.RunId, KafkaClientRole.EnrichmentConsumer, options.PodName));
+            try
+            {
+            IConsumer<byte[], byte[]> result = authentication.CreateConsumerBuilder<byte[], byte[]>(consumerConfiguration, session)
+                .SetStatisticsHandler(NativeClientCapture.ConsumerHandler(lifetime))
                 .SetPartitionsAssignedHandler(handlers.Assigned)
                 .SetPartitionsRevokedHandler((consumer, partitions) => handlers.Revoked(consumer, partitions.Select(partition => partition.TopicPartition).ToList()))
                 .SetPartitionsLostHandler((consumer, partitions) => handlers.Lost(consumer, partitions.Select(partition => partition.TopicPartition).ToList()))
                 .SetOffsetsCommittedHandler(handlers.OffsetsCommitted).Build();
+            lifetime.MarkBuilt();
+            return result;
+            }
+            catch { lifetime.MarkBuildFailed(); lifetime.Complete(false, "unknown"); throw; }
         });
         builder.Services.TryAddSingleton<Action<int>>(_ => Environment.Exit);
         builder.Services.TryAddSingleton<ConsumerSignalSender>(_ => ConsumerSelfSignal.Send);
@@ -228,8 +292,47 @@ internal static class Program
             services.GetRequiredService<IOptions<ConsumerProcessingOptions>>(), services.GetService<IConsumerProcessingPlanSource>(),
             services.GetRequiredService<Func<ConsumerConfig>>(), services.GetRequiredService<Func<IConsumerRecordStore>>(),
             services.GetRequiredService<ConsumerProcessingConsumerFactory>(), services.GetRequiredService<TimeProvider>(),
-            services.GetRequiredService<Action<int>>(), services.GetRequiredService<ConsumerSignalSender>()));
+            services.GetRequiredService<Action<int>>(), services.GetRequiredService<ConsumerSignalSender>(), monitoring: services.GetRequiredService<NativeClientCapture>()));
         return builder.Build();
+    }
+
+    private static void RegisterNativeMonitoring(IServiceCollection services, ConfigurationManager configuration, string? scenarioId, string? runId)
+    {
+        services.AddOptions<KafkaNativeMonitoringOptions>()
+            .Bind(configuration.GetSection(KafkaNativeMonitoringOptions.SectionName), binding => binding.ErrorOnUnknownConfiguration = true)
+            .Validate(options => options.IsValid(out _) && options.RunId == runId && options.ScenarioId == scenarioId &&
+                options.BlobEndpoint == (configuration["ConsumerProcessing:BlobEndpoint"] ?? configuration["SeedF04:BlobEndpoint"]) &&
+                options.Phase == (configuration["ConsumerProcessing:Phase"] ?? "C2") &&
+                options.ConfigurationId == (configuration["ConsumerProcessing:Phase"] ?? "C2") &&
+                options.JobName == configuration["PARCHWELL_JOB_NAME"] && options.PodUid == configuration["PARCHWELL_POD_UID"] &&
+                options.SourceCommit == configuration["PARCHWELL_SOURCE_COMMIT"], "Native monitoring identity is invalid.").ValidateOnStart();
+        services.AddParchwellNativeMonitoring();
+        services.TryAddSingleton<IKafkaNativeMonitoringStore>(provider =>
+        {
+            var options = provider.GetRequiredService<IOptions<KafkaNativeMonitoringOptions>>().Value;
+            return new BlobNativeMonitoringStore(new BlobContainerClient(new Uri(new Uri(options.BlobEndpoint), options.BlobContainer),
+                new WorkloadIdentityCredential(), new BlobClientOptions()));
+        });
+        services.AddSingleton(provider => provider.GetRequiredService<KafkaNativeMonitoringFactory>()
+            .Create(provider.GetRequiredService<IOptions<KafkaNativeMonitoringOptions>>().Value.CreateIdentity()));
+        services.AddSingleton<NativeClientCapture>();
+    }
+
+    private static void RegisterTelemetry(IServiceCollection services, ConfigurationManager configuration, string? scenarioId, string? runId)
+    {
+        string? instance = configuration["Telemetry:ServiceInstanceId"] ?? configuration["PARCHWELL_POD_NAME"];
+        if (configuration["Telemetry:ServiceName"] != "Parchwell.Enrichment" ||
+            configuration["Telemetry:ScenarioId"] != scenarioId || configuration["Telemetry:RunId"] != runId ||
+            string.IsNullOrWhiteSpace(instance))
+            throw new InvalidOperationException("enrichment_telemetry_identity_invalid");
+        services.AddParchwellTelemetry(new WorkloadIdentityCredential(), options =>
+        {
+            options.ConnectionString = configuration["Telemetry:ConnectionString"] ?? string.Empty;
+            options.ServiceName = configuration["Telemetry:ServiceName"] ?? string.Empty;
+            options.ServiceInstanceId = instance;
+            options.ScenarioId = scenarioId ?? string.Empty;
+            options.RunId = runId ?? string.Empty;
+        });
     }
 
     private static string ConsumerIdentity(string? value) => string.IsNullOrEmpty(value) ? "unknown" : value;

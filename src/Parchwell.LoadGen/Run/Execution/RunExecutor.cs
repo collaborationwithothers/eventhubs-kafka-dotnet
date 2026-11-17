@@ -97,7 +97,7 @@ public sealed class RunExecutor
 
         // Invokes one attempt. A scheduled event passes its due time; a retry passes null and is exempt from the lateness limit.
         // Returns false when admission must stop.
-        bool TryInvoke(PlannedEvent planned, long? dueTimestamp)
+        bool TryInvoke(PlannedEvent planned, long? dueTimestamp, string? retryKind)
         {
             var payload = WorkloadGenerator.GeneratePayload(planned, profile.Seed);
             long invocationOrdinal = admittedAttemptCount;
@@ -115,7 +115,7 @@ public sealed class RunExecutor
             };
             var callbackSeen = 0;
             Action<DeliveryReport<byte[], byte[]>> deliveryHandler = report =>
-                RecordDelivery(report, identity, attempt!, invokedTimestamp, startTimestamp,
+                RecordDelivery(report, identity, attempt!, invokedTimestamp, startTimestamp, retryKind,
                     () => Interlocked.Exchange(ref callbackSeen, 1) == 0,
                     () => Interlocked.Or(ref guardFlags, AsynchronousFailure),
                     () => Interlocked.Or(ref guardFlags, MissingPersistence),
@@ -164,10 +164,13 @@ public sealed class RunExecutor
                 if (dueTimestamp.HasValue) scheduledInvocationCount = checked(scheduledInvocationCount + 1);
                 try
                 {
+                    if (retryKind is not null) LoadGenTelemetry.RetryEvent(identity, retryKind, "invoked");
                     producer!.Produce(options.Topic, message, deliveryHandler);
+                    if (retryKind is not null) LoadGenTelemetry.RetryEvent(identity, retryKind, "accepted");
                 }
                 catch (ProduceException<byte[], byte[]> exception) when (exception.Error.Code == ErrorCode.Local_QueueFull)
                 {
+                    if (retryKind is not null) LoadGenTelemetry.RetryEvent(identity, retryKind, "synchronous_rejected");
                     var completedTimestamp = clock.GetTimestamp();
                     var row = new LedgerRow(1, identity, attempt, "synchronous_rejection", false,
                         (int)exception.Error.Code, exception.Error.Code.ToString(), null, "pre_enqueue",
@@ -181,8 +184,16 @@ public sealed class RunExecutor
                         return false;
                     }
                 }
+                catch (ProduceException<byte[], byte[]>)
+                {
+                    if (retryKind is not null) LoadGenTelemetry.RetryEvent(identity, retryKind, "synchronous_rejected");
+                    Interlocked.Or(ref guardFlags, NativeProducerException);
+                    AddDiagnostic("native_produce_exception");
+                    throw;
+                }
                 catch
                 {
+                    if (retryKind is not null) LoadGenTelemetry.RetryEvent(identity, retryKind, "invocation_exception");
                     Interlocked.Or(ref guardFlags, NativeProducerException);
                     AddDiagnostic("native_produce_exception");
                     throw;
@@ -208,7 +219,7 @@ public sealed class RunExecutor
                     continue;
                 }
                 retriesBySlot[slot] = used + 1;
-                if (!TryInvoke(queued.Planned, dueTimestamp: null)) return false;
+                if (!TryInvoke(queued.Planned, dueTimestamp: null, retryKind: "timeout")) return false;
             }
             return true;
         }
@@ -260,7 +271,7 @@ public sealed class RunExecutor
                 var dueTimestamp = AddMicroseconds(startTimestamp, planned.DueMicroseconds, clock.TimestampFrequency);
                 await DelayUntilAsync(dueTimestamp, authentication?.InitialFailureTask, cancellationToken).ConfigureAwait(false);
                 if (ObserveInitialAuthenticationFailure()) break;
-                if (!TryInvoke(planned, dueTimestamp)) break;
+                if (!TryInvoke(planned, dueTimestamp, restart is null ? null : "cross_restart_successor")) break;
             }
             cancellationToken.ThrowIfCancellationRequested();
             admissionStopped = true;
@@ -579,7 +590,7 @@ public sealed class RunExecutor
     }
 
     private void RecordDelivery(DeliveryReport<byte[], byte[]> report, RunIdentity identity, AttemptEntry attempt,
-        long invokedTimestamp, long startTimestamp, Func<bool> tryStart,
+        long invokedTimestamp, long startTimestamp, string? retryKind, Func<bool> tryStart,
         Action asyncFailure, Action missingPersistence, Action possiblyPersisted, Action callbackFailure, Action ledgerFailure, Action<LedgerRow> recorded)
     {
         try
@@ -589,6 +600,7 @@ public sealed class RunExecutor
                 callbackFailure();
                 return;
             }
+            if (retryKind is not null) LoadGenTelemetry.RetryEvent(identity, retryKind, report.Error.IsError ? "terminal_failed" : "terminal_delivered");
             var completedTimestamp = clock.GetTimestamp();
             var errorCode = report.Error.Code;
             var delivered = !report.Error.IsError;

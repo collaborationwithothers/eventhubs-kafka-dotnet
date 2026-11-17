@@ -1,3 +1,4 @@
+using Parchwell.LoadGen.Tests.Host;
 using System.Reflection;
 using System.Text.Json;
 using Azure.Core;
@@ -696,6 +697,8 @@ public sealed class ProbeV2LifecycleTests
             services.AddSingleton<IOptions<ProbeV2Options>>(Microsoft.Extensions.Options.Options.Create(Options));
             services.AddSingleton(Options);
             services.AddSingleton<TimeProvider>(clock);
+            _ = NativeMonitoringFixture.Register(services, Options.RunId, Options.ScenarioId, Options.ConfigurationId,
+                Options.JobName, Options.PodUid, Options.SourceCommit, "ledger/synthetic/capture.json");
             services.AddSingleton<IHostApplicationLifetime>(new Lifetime(Stopping.Token));
             services.AddParchwellScenarios(value =>
             {

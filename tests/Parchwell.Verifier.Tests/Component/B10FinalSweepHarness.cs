@@ -294,8 +294,9 @@ internal sealed class B10FinalSweepHarness : IDisposable
     {
         ValidateModeConfiguration(target.Configuration);
         using var authentication = new KafkaSessionTestSupport(); authentication.Refresh();
-        int exit = await Program.RunAsync(target.Configuration.Select(pair => "--" + pair.Key + "=" + pair.Value).ToArray(), services =>
+        int exit = await Program.RunAsync(NativeMonitoringTestSupport.Arguments(target.Configuration.Select(pair => "--" + pair.Key + "=" + pair.Value)), services =>
         {
+            NativeMonitoringTestSupport.RegisterStore(services);
             services.RemoveAll<IHostedService>();
             foreach (ServiceDescriptor item in services.Where(item => item.ServiceType.Name is "IConfigureTracerProviderBuilder" or "IConfigureMeterProviderBuilder" or "IConfigureLoggerProviderBuilder").ToArray()) services.Remove(item);
             services.RemoveAll<IVerifierArtifactStore>(); services.AddSingleton<IVerifierArtifactStore>(target);

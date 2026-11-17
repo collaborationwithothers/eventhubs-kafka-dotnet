@@ -1,5 +1,6 @@
 using Confluent.Kafka;
 using Parchwell.Kafka.Authentication;
+using Parchwell.Kafka.Statistics;
 using Parchwell.Verifier.Common.Serialization;
 
 namespace Parchwell.Verifier.Common.Kafka;
@@ -13,12 +14,13 @@ internal sealed class VerifierKafkaSession
     private readonly TimeProvider clock;
     private readonly VerifierHostOptions options;
     private readonly CancellationTokenSource acquisition;
+    private readonly KafkaNativeMonitoringLifetime? monitoring;
     private bool installed;
     private bool cleaned;
 
     internal VerifierKafkaSession(IConsumer<byte[], byte[]> consumer, IAdminClient admin,
         KafkaOAuthBearerSession authentication, TimeProvider clock, VerifierHostOptions options,
-        CancellationTokenSource acquisition)
+        CancellationTokenSource acquisition, KafkaNativeMonitoringLifetime? monitoring = null)
     {
         Consumer = consumer ?? throw new ArgumentNullException(nameof(consumer));
         this.admin = admin ?? throw new ArgumentNullException(nameof(admin));
@@ -26,6 +28,7 @@ internal sealed class VerifierKafkaSession
         this.clock = clock ?? throw new ArgumentNullException(nameof(clock));
         this.options = options ?? throw new ArgumentNullException(nameof(options));
         this.acquisition = acquisition ?? throw new ArgumentNullException(nameof(acquisition));
+        this.monitoring = monitoring;
     }
 
     public IConsumer<byte[], byte[]> Consumer { get; }
@@ -123,6 +126,7 @@ internal sealed class VerifierKafkaSession
         catch (Exception exception) { failures.Add(exception); }
         try { Consumer.Dispose(); }
         catch (Exception exception) { failures.Add(exception); }
+        monitoring?.Complete(failures.Count == 0, "unknown");
         acquisition.Dispose();
         if (failures.Count != 0) throw new AggregateException("Kafka cleanup failed.", failures);
         cancellationToken.ThrowIfCancellationRequested();

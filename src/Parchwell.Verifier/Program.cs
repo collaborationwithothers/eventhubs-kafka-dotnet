@@ -3,6 +3,8 @@ using Azure.Storage.Blobs;
 using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Telemetry;
+using Parchwell.Kafka.Statistics;
+using Parchwell.Verifier.Common.NativeMonitoring;
 using Parchwell.Scenarios;
 using Parchwell.Verifier.Common.Kafka;
 using Parchwell.Verifier.Common.Scenario;
@@ -155,6 +157,7 @@ internal static partial class Program
 
         if (mode is "consumer-verify" or "start-line" or "verify" or "b10-sweep-line" or "b10-sweep" or "b10-final-sweep" or "b10-abrupt-verify")
         {
+            RegisterNativeMonitoring(services, configuration);
             services.AddParchwellKafka(KafkaClientRole.VerifierConsumer, options =>
             {
                 options.NamespaceName = configuration["Verifier:NamespaceName"]!;
@@ -298,6 +301,31 @@ internal static partial class Program
         services.AddSingleton(plan!);
     }
 
+    private static void RegisterNativeMonitoring(IServiceCollection services, ConfigurationManager configuration)
+    {
+        services.AddOptions<KafkaNativeMonitoringOptions>()
+            .Bind(configuration.GetSection(KafkaNativeMonitoringOptions.SectionName), binding => binding.ErrorOnUnknownConfiguration = true)
+            .Validate(options => options.IsValid(out _) &&
+                options.RunId == configuration["Verifier:RunId"] && options.ScenarioId == configuration["Verifier:ScenarioId"] &&
+                options.ConfigurationId == configuration["Verifier:ConfigurationId"] &&
+                options.Phase == configuration["Verifier:Phase"] &&
+                options.BlobEndpoint == configuration["Verifier:BlobServiceUri"] &&
+                options.JobName == (configuration["Verifier:JobName"] ?? configuration["PARCHWELL_JOB_NAME"]) &&
+                options.PodUid == (configuration["Verifier:PodUid"] ?? configuration["PARCHWELL_POD_UID"]) &&
+                options.SourceCommit == (configuration["PARCHWELL_SOURCE_COMMIT"] ?? configuration["Verifier:SourceCommit"]),
+                "Native monitoring identity is invalid.").ValidateOnStart();
+        services.AddParchwellNativeMonitoring();
+        services.AddSingleton<IKafkaNativeMonitoringStore>(provider =>
+        {
+            var options = provider.GetRequiredService<IOptions<KafkaNativeMonitoringOptions>>().Value;
+            var client = new BlobContainerClient(new Uri(new Uri(options.BlobEndpoint), options.BlobContainer),
+                new WorkloadIdentityCredential(), new BlobClientOptions());
+            return new BlobNativeMonitoringStore(client);
+        });
+        services.AddSingleton(provider => provider.GetRequiredService<KafkaNativeMonitoringFactory>()
+            .Create(provider.GetRequiredService<IOptions<KafkaNativeMonitoringOptions>>().Value.CreateIdentity()));
+    }
+
     private static void RegisterTelemetry(IServiceCollection services,ConfigurationManager configuration)
     {
         var credential=new WorkloadIdentityCredential(new WorkloadIdentityCredentialOptions
@@ -349,6 +377,7 @@ internal static partial class Program
         ICompletionReceiptPublisher? receiptPublisher=null;
         VerifierHostOptions? hostOptions=null;
         bool cleanupCompleted = true;
+        bool hostFailed = false;
         try
         {
             host = BuildHostCore(args, configureForTests, timeProvider);
@@ -370,6 +399,7 @@ internal static partial class Program
             catch (Exception exception)
             {
                 cleanupCompleted = false;
+                hostFailed = true;
                 state!.MarkFailed();
                 LogHostFailed(
                     logger!,
@@ -381,6 +411,7 @@ internal static partial class Program
         catch (Exception exception)
         {
             cleanupCompleted = false;
+            hostFailed = true;
             if (host is not null)
             {
                 logger ??= host.Services.GetService<ILoggerFactory>()?.CreateLogger(nameof(Program));
@@ -399,9 +430,13 @@ internal static partial class Program
             }
         }
 
+        KafkaNativeMonitoringCoordinator? monitoring = null;
+        Task? monitorDrain = null;
+        CancellationTokenSource? monitoringCleanup = null;
         if (host is not null)
         {
             using var singleActionCleanup=hostOptions?.Mode=="single-action-judge"?new CancellationTokenSource(TimeSpan.FromSeconds(10),timeProvider??TimeProvider.System):null;
+            monitoringCleanup = new CancellationTokenSource(hostOptions?.CleanupTimeout ?? TimeSpan.FromSeconds(10), timeProvider ?? TimeProvider.System);
             try
             {
                 await host.StopAsync(singleActionCleanup?.Token??CancellationToken.None).ConfigureAwait(false);
@@ -420,6 +455,14 @@ internal static partial class Program
                 cleanupCompleted = false;
                 state?.MarkFailed();
             }
+
+            try
+            {
+                monitoring = host.Services.GetService<KafkaNativeMonitoringCoordinator>();
+                if (hostFailed && hostOptions is not null) monitoring?.MarkIncomplete("host_startup_failed");
+            }
+            catch (Exception) { }
+            monitorDrain = monitoring?.DrainAsync(monitoringCleanup.Token);
 
             try
             {
@@ -447,6 +490,8 @@ internal static partial class Program
                 cleanupCompleted = false;
                 state?.MarkFailed();
             }
+
+
         }
 
         try
@@ -475,6 +520,13 @@ internal static partial class Program
         finally
         {
             watchdog?.Dispose();
+            try
+            {
+                if (monitoring is not null && await monitoring.WaitForDrainAsync(monitorDrain, monitoringCleanup!.Token).ConfigureAwait(false))
+                    await monitoring.CompleteAsync(monitoringCleanup!.Token).WaitAsync(monitoringCleanup!.Token).ConfigureAwait(false);
+            }
+            catch (Exception) { monitoring?.MarkIncomplete("host_completion_incomplete"); }
+            monitoringCleanup?.Dispose();
         }
     }
 

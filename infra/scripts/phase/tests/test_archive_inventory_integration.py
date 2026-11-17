@@ -127,6 +127,25 @@ class Harness:
         r = {'mode': mode, 'job': job, 'item': item, 'configuration': config, 'repeat': repeat, 'apply': 0, 'collect': 0, 'outcome': 'failed'}
         if stage: r['stage'] = stage
         self.status['modes'].append(r)
+        # A killed process cannot publish a final index. Other fixture pods explicitly
+        # report a built lifetime with no callbacks, as required by the amendment.
+        if mode not in ('loadgen-restart', 'judge', 'single-action-judge', 'single-action-v2-judge', 'idle-observation-judge', 'probe-gate') and not (self.phase['scenario'] == 'probe-batch' and self.phase['run_kind'] == 'smoke'):
+            run = self.phase['run_id']
+            selected = self.phase['phase']
+            scenario = item or self.phase['scenario']
+            configuration = config or self.phase['configuration']
+            if self.phase['scenario'] in ('probe-batch', 'probe-batch-2', 'idle-observation', 'ledger-batch'):
+                selected = configuration
+            if self.phase['scenario'] == 'ledger-batch' and item:
+                run += '-' + item.lower()
+            identity = {'run_id':run, 'phase':selected, 'scenario_id':scenario, 'configuration_id':configuration,
+                        'job_name':job, 'pod_uid':'uid', 'source_commit':'a'*40}
+            client = {'ordinal':1, 'role':'LoadGenProducer', 'client_id':job, 'native_identity':None,
+                      'build_status':'built', 'report_count':0, 'raw_sources':[], 'diagnostics':[],
+                      'capture_complete':True, 'export_tail_status':'unknown'}
+            self.cli.put('native-monitoring', f'{run}/{selected}/{job}/uid/native-monitoring/index.json',
+                         {'schema_version':1, 'identity':identity, 'clients':[client],
+                          'capture_complete':True, 'diagnostics_truncated':False})
         d = self.artifacts/job; d.mkdir()
         v2 = mode in ('single-action-v2', 'single-action-v2-judge')
         role = ('verifier' if stage == 'judge' else 'loadgen' if stage == 'seed' else
@@ -141,7 +160,7 @@ class Harness:
     def run(self):
         (self.private/'phase.json').write_bytes(encoded(self.phase))
         (self.private/'ephemeral-output.json').write_bytes(encoded({'blob': {'value': {'account_url': 'https://source123.blob.core.windows.net/',
-            'containers': {'ledger': 'ledger', 'verifier': 'verifier', 'single_action': 'single-action', 'claim_check': 'claim-check'}}}}))
+            'containers': {'ledger': 'ledger', 'verifier': 'verifier', 'single_action': 'single-action', 'claim_check': 'claim-check', 'native_monitoring': 'native-monitoring'}}}}))
         (self.artifacts/'phase-status.json').write_bytes(encoded(self.status))
         h = self
         class Phase:
@@ -196,7 +215,7 @@ def publish_legacy(h, container, prefix, item, config, job, pod, idle=False):
         h.cli.put(container, prefix+name, data)
 
 
-def publish_v2_actor(h, job, pod, config, stage):
+def publish_v2_actor(h, job, pod, config, stage, native_report=None):
     role = 'loadgen' if stage == 'seed' else 'probe' if config == 'C6' else 'enrichment-consumer'
     h.status['modes'][-1]['role'] = role
     identity = {'schema_version':2, 'mode':'single-action-v2', 'synthetic':True, 'run_id':h.phase['run_id'],
@@ -209,6 +228,17 @@ def publish_v2_actor(h, job, pod, config, stage):
                 'client_errors':[], 'statistics':[], 'diagnostics':[]} for n in range(1, 6)]
     repeats[0]['requested'] = {'topic':'document-events', 'partition_mode':'explicit', 'partition':0, 'offset':None,
                                'key_base64':'aw==', 'value_base64':'Qk9EWV9TRUNSRVQ='}
+    if native_report is not None:
+        repeats[0].update(admission='required', client_id=pod + '-r1', action='produce', terminal=True,
+                          result='success', statistics=[{'sequence':3, 'observed_elapsed_ms':10,
+                                                         'raw_base64':base64.b64encode(native_report).decode()}])
+        index_key = ('source123', 'native-monitoring', f'probe-42-1/{config}/{job}/uid/native-monitoring/index.json')
+        index = json.loads(h.cli.blobs[index_key])
+        locator = f'runner/probe-v2/raw/{job}/{pod}.containers.{role}.log'
+        index['clients'][0].update(client_id=pod + '-r1', report_count=1, raw_sources=[{
+            'kind':'existing_capture', 'source':locator, 'byte_length':len(native_report),
+            'sha256':sha(native_report), 'report_ordinal':3, 'capture_ordinal':1, 'row_count':1}])
+        h.cli.blobs[index_key] = encoded(index)
     capture = {**identity, 'managed_version':'2.16.0', 'native_version':'2.16.0', 'repeats':repeats,
                'handler_exit_code':0, 'cleanup_completed':True, 'host_cleanup_completed':True}
     folder = h.artifacts/job
@@ -268,8 +298,8 @@ def complete_family(h, scenario):
                         leaves=('ledger.jsonl','manifest.json','statistics.jsonl','request-lifecycle.jsonl','capabilities.json')
                         h.cli.put('ledger',proot+'publication/index.json',{'schema_version':1,'identity':ident,'worker_status':'complete',
                             'bookkeeping_complete':True,'worker_complete':True,'publication_complete':True,
-                            'artifacts':[{'name':leaf,'length':3,'sha256':sha(b'abc')} for leaf in leaves]})
-                        for leaf in leaves: h.cli.put('ledger',proot+'publication/'+leaf,b'abc')
+                            'artifacts':[{'name':leaf,'length':len(b'' if leaf == 'statistics.jsonl' else b'abc'), 'sha256':sha(b'' if leaf == 'statistics.jsonl' else b'abc')} for leaf in leaves]})
+                        for leaf in leaves: h.cli.put('ledger',proot+'publication/'+leaf,b'' if leaf == 'statistics.jsonl' else b'abc')
                     else:
                         for leaf in ('result.json','verify-completion.json'):
                             h.cli.put('verifier',root+leaf,window_source(child,config,item,repeat,'result') if leaf=='result.json' else b'published verification')
@@ -309,7 +339,7 @@ def abrupt_fixture(h, repeat=1):
     for name,data in [('registration.json',firstreg),('journal.jsonl',journal),('abrupt-manifest.json',manifest),('termination.json',termination)]:
         h.cli.put('ledger',firstroot+name,data)
     leaves=('ledger.jsonl','manifest.json','statistics.jsonl','request-lifecycle.jsonl','capabilities.json')
-    bodies={name:('body-'+name).encode() for name in leaves}
+    bodies={name:(b'' if name == 'statistics.jsonl' else ('body-'+name).encode()) for name in leaves}
     for name,data in bodies.items(): h.cli.put('ledger',nextroot+name,data)
     h.cli.put('ledger',nextroot+'registration.json',registration)
     completion=envelope('successor_receipt',nextident,{'first_termination':descriptor('termination.json',termination),
@@ -322,11 +352,22 @@ def abrupt_fixture(h, repeat=1):
 
 
 def complete_b10(h):
-    """All scheduled scientific C1 jobs with complete archive publications."""
+    """Synthetic full evidence for testing archive completion, including killed children."""
     run='b10-42-1'; target=None
     for repeat in range(1,6):
         pair=abrupt_fixture(h,repeat)
         if repeat==1: target=pair
+        # Supply synthetic complete input to exercise the collector's success path;
+        # an actual killed child may leave its monitoring index unavailable.
+        firstjob=f'{run}-c1-r{repeat}-loadgen-restart'
+        identity={'run_id':run,'phase':'C1','scenario_id':'B10','configuration_id':'C1',
+                  'job_name':firstjob,'pod_uid':'uid','source_commit':'a'*40}
+        client={'ordinal':1,'role':'LoadGenProducer','client_id':firstjob,'native_identity':None,
+                'build_status':'built','report_count':0,'raw_sources':[],'diagnostics':[],
+                'capture_complete':True,'export_tail_status':'unknown'}
+        h.cli.put('native-monitoring',f'{run}/C1/{firstjob}/uid/native-monitoring/index.json',
+                  {'schema_version':1,'identity':identity,'clients':[client],
+                   'capture_complete':True,'diagnostics_truncated':False})
         root=f'{run}/C1/r{repeat}/'
         start=f'{run}-c1-r{repeat}-start-line'; h.job('start-line',start,repeat=repeat)
         for leaf in ('start-line.json','broker-inventory.json','start-line-completion.json'):
@@ -340,8 +381,8 @@ def complete_b10(h):
         leaves=('ledger.jsonl','manifest.json','statistics.jsonl','request-lifecycle.jsonl','capabilities.json')
         h.cli.put('ledger',proot+'publication/index.json',{'schema_version':1,'identity':ident,'worker_status':'complete',
             'bookkeeping_complete':True,'worker_complete':True,'publication_complete':True,
-            'artifacts':[{'name':leaf,'length':3,'sha256':sha(b'abc')} for leaf in leaves]})
-        for leaf in leaves: h.cli.put('ledger',proot+'publication/'+leaf,b'abc')
+            'artifacts':[{'name':leaf,'length':len(b'' if leaf == 'statistics.jsonl' else b'abc'), 'sha256':sha(b'' if leaf == 'statistics.jsonl' else b'abc')} for leaf in leaves]})
+        for leaf in leaves: h.cli.put('ledger',proot+'publication/'+leaf,b'' if leaf == 'statistics.jsonl' else b'abc')
         verify=f'{run}-c1-r{repeat}-b10-abrupt-verify'; h.job('b10-abrupt-verify',verify,repeat=repeat)
         for leaf in ('b10-abrupt/nonfinal-result.json','b10-abrupt/verify-completion.json'):
             h.cli.put('verifier',root+leaf,window_source(run,'C1','B10',repeat,'abrupt') if leaf.endswith('nonfinal-result.json') else b'fixed output')
@@ -468,8 +509,9 @@ class InventoryIntegrationTests(unittest.TestCase):
                             for o in manifest['objects']))
 
     def test_v2_complete_and_control_readback_and_bad_hash(self):
-        for bad in (False, True):
-            with self.subTest(bad=bad):
+        for fault in ('none', 'candidate_hash', 'native_hash', 'native_zero', 'native_omitted'):
+            with self.subTest(fault=fault):
+                bad = fault != 'none'
                 h = self.harness('probe-batch-2', 'single-action', 'probe-42-1', 'smoke', items=['F06'],
                                  probe_v2_selection='authentication-controls', capture_authentication_metadata=True)
                 for config, stages in [('C6', ('seed','action','judge')), ('C9', ('action','judge'))]:
@@ -478,7 +520,8 @@ class InventoryIntegrationTests(unittest.TestCase):
                         mode = 'single-action-v2-judge' if stage == 'judge' else 'single-action-v2'
                         pod = h.job(mode, job, 'F06', config, stage=stage)
                         if stage != 'judge':
-                            publish_v2_actor(h, job, pod, config, stage)
+                            publish_v2_actor(h, job, pod, config, stage,
+                                             b'{"name":"native-producer","client_id":"fixture"}' if config == 'C6' and stage == 'seed' else None)
                             continue
                         prefix = f'probe-42-1/single-action-v2/F06/{config}/'
                         candidate = encoded(candidate_fixture('probe-42-1', config))
@@ -486,19 +529,31 @@ class InventoryIntegrationTests(unittest.TestCase):
                         receipt = {'schema_version': 2, 'mode': mode, 'run_id': 'probe-42-1', 'scenario_id': 'F06',
                                    'configuration_id': config, 'source_commit': 'a'*40, 'job_name': job, 'pod_name': pod,
                                    'pod_uid': 'uid', 'candidate_name': prefix+'candidate.json',
-                                   'candidate_sha256': ('0'*64 if bad and config == 'C6' else sha(candidate)),
+                                   'candidate_sha256': ('0'*64 if fault == 'candidate_hash' and config == 'C6' else sha(candidate)),
                                    'handler_exit_code': 1, 'cleanup_completed': True}
                         h.cli.put('verifier', prefix+'judge-completion.json', receipt)
+                if fault in ('native_hash', 'native_zero', 'native_omitted'):
+                    key = ('source123', 'native-monitoring', 'probe-42-1/C6/probe-42-1-f06-c6-seed/uid/native-monitoring/index.json')
+                    index = json.loads(h.cli.blobs[key])
+                    if fault == 'native_hash':
+                        index['clients'][0]['raw_sources'][0]['sha256'] = 'f'*64
+                    elif fault == 'native_zero':
+                        index['clients'][0].update(report_count=0, raw_sources=[])
+                    else:
+                        index['clients'][0]['client_id'] = 'another-client'
+                        index['clients'][0].update(report_count=0, raw_sources=[])
+                    h.cli.blobs[key] = encoded(index)
                 code, manifest, receipt = h.run()
                 self.assertEqual(1 if bad else 0, code)
                 self.assertEqual(not bad, receipt['archive_complete'])
+                self.assertFalse(any(o['kind']=='native_monitoring_raw' for o in manifest['objects']))
                 self.assertEqual(5, len(manifest['expected_units']))
                 self.assert_fixture_diagnostics(h, manifest, v2=True)
-                self.assertEqual(16, manifest['totals']['expected_objects'] - 4) # 4 publications, 5 pods, phase status, 3 collection statuses and 3 stdout projections
-                self.assertEqual(15 if bad else 16, manifest['totals']['verified_objects'] - 4)
+                self.assertEqual(16, manifest['totals']['expected_objects'] - 4 - sum(o['kind']=='native_monitoring_index' for o in manifest['objects'])) # Original publications, pods, status and stdout projections remain required.
+                self.assertEqual(15 if fault == 'candidate_hash' else 16, manifest['totals']['verified_objects'] - 4 - sum(o['kind']=='native_monitoring_index' and o['state']=='verified' for o in manifest['objects']))
                 if bad:
                     self.assertIsNone(receipt['completion'])
-                    self.assertTrue(any(g['code'] == 'source_hash_mismatch' for g in receipt['gaps']))
+                    self.assertTrue(any(g['code'] == ('source_hash_mismatch' if fault == 'candidate_hash' else 'monitoring_incomplete') for g in receipt['gaps']))
                 else:
                     prefix = manifest['destination']['prefix']
                     mb = h.cli.blobs[('archive123','run-evidence',prefix+'archive-manifest.json')]
@@ -741,17 +796,17 @@ class InventoryIntegrationTests(unittest.TestCase):
                 if fault=='journal_hash':
                     key=('source123','ledger',first+'journal.jsonl'); h.cli.blobs[key]=b'x'*len(h.cli.blobs[key])
                 elif fault=='successor_hash':
-                    key=('source123','ledger',successor+'statistics.jsonl'); h.cli.blobs[key]=b'x'*len(h.cli.blobs[key])
+                    key=('source123','ledger',successor+'ledger.jsonl'); h.cli.blobs[key]=b'x'*len(h.cli.blobs[key])
                 elif fault=='successor_missing': del h.cli.blobs[('source123','ledger',successor+'statistics.jsonl')]
                 code,m,r=h.run(); self.assertEqual(0 if fault=='none' else 1,code)
                 self.assertEqual(fault=='none',r['archive_complete'])
                 self.assertEqual(28,len(m['expected_units']))
                 self.assert_fixture_diagnostics(h, m)
-                self.assertEqual(161,m['totals']['expected_objects'] - 2 * 28)
-                self.assertEqual(161 if fault=='none' else 160,m['totals']['verified_objects'] - 2 * 28)
+                self.assertEqual(161,m['totals']['expected_objects'] - 2 * 28 - sum(o['kind']=='native_monitoring_index' for o in m['objects']))
+                self.assertEqual(161 if fault=='none' else 160,m['totals']['verified_objects'] - 2 * 28 - sum(o['kind']=='native_monitoring_index' and o['state']=='verified' for o in m['objects']))
                 self.assertEqual(6,len(m['captures']))
                 objects={o['source']['name']:o for o in m['objects']}
-                journal=objects[first+'journal.jsonl']; artifact=objects[successor+'statistics.jsonl']
+                journal=objects[first+'journal.jsonl']; artifact=objects[successor+('ledger.jsonl' if fault == 'successor_hash' else 'statistics.jsonl')]
                 self.assertEqual('failed' if fault=='journal_hash' else 'verified',journal['state'])
                 self.assertEqual('failed' if fault=='successor_hash' else 'missing' if fault=='successor_missing' else 'verified',artifact['state'])
                 self.assertEqual('source_hash_mismatch' if fault in ('journal_hash','successor_hash') else
@@ -760,12 +815,25 @@ class InventoryIntegrationTests(unittest.TestCase):
                 for name in ('registration.json','abrupt-manifest.json','termination.json'):
                     self.assertEqual('verified',objects[first+name]['state'])
                 for name in ('registration.json','completion.json',*leaves):
-                    if name!='statistics.jsonl': self.assertEqual('verified',objects[successor+name]['state'])
+                    if name != ('ledger.jsonl' if fault == 'successor_hash' else 'statistics.jsonl'): self.assertEqual('verified',objects[successor+name]['state'])
                 if fault=='none':
                     self.assertIsNotNone(r['completion']); self.assertEqual([],r['gaps'])
                 else:
                     self.assertIsNone(r['completion'])
                     self.assertIn('source_hash_mismatch' if fault.endswith('hash') else 'source_missing', [g['code'] for g in r['gaps']])
+
+    def test_b10_missing_first_child_native_index_prevents_completion(self):
+        h=self.harness('B10','C1','b10-42-1','scientific')
+        complete_b10(h)
+        job='b10-42-1-c1-r1-loadgen-restart'
+        index=f'b10-42-1/C1/{job}/uid/native-monitoring/index.json'
+        del h.cli.blobs[('source123','native-monitoring',index)]
+        code,m,r=h.run()
+        self.assertEqual(1,code)
+        self.assertFalse(r['archive_complete'])
+        self.assertIsNone(r['completion'])
+        self.assertTrue(any(g['code']=='monitoring_incomplete' and g['boundary']=='native index unavailable'
+                            and g['expected_unit']==job for g in m['gaps']))
 
     def test_marker_readback_failure_leaves_data_and_false_receipt(self):
         h=self.harness('probe-batch-2','single-action','probe-42-1','smoke',items=['F06'],
@@ -787,10 +855,221 @@ class InventoryIntegrationTests(unittest.TestCase):
         code,m,r=h.run(); self.assertEqual(1,code); self.assertFalse(r['archive_complete'])
         self.assertIsNone(r['completion']); self.assertIsNotNone(r['manifest'])
         self.assert_fixture_diagnostics(h, m, v2=True)
-        self.assertEqual(16,m['totals']['verified_objects'] - 4)
+        self.assertEqual(16,m['totals']['verified_objects'] - 4 - sum(o['kind']=='native_monitoring_index' and o['state']=='verified' for o in m['objects']))
         self.assertTrue(any(g['code']=='destination_hash_mismatch' for g in r['gaps']))
         self.assertTrue(any(key[0]=='archive123' and key[2].endswith('/candidate.json.metadata.json') for key in h.cli.blobs))
         self.assertFalse(any(key[0]=='archive123' and key[2].endswith('/candidate.json') for key in h.cli.blobs))
+
+    def test_consumer_members_require_native_indexes_and_readiness_is_not_a_job(self):
+        for missing in (False, True):
+            with self.subTest(missing=missing):
+                h = self.harness('C03', 'C0', 'c03-42-1', 'scientific')
+                for repeat in range(1, 6):
+                    for mode in ('consumer-subject', 'consumer-witness', 'start-line', 'loadgen', 'verify'):
+                        h.job(mode, f'c03-42-1-c0-r{repeat}-{mode}', repeat=repeat)
+                    h.status['modes'].append({'mode':'consumer-readiness', 'repeat':repeat,
+                                              'job':f'c03-42-1-c0-r{repeat}-consumer-readiness', 'outcome':'complete'})
+                h.job('judge', 'c03-42-1-c0-judge')
+                job = 'c03-42-1-c0-r1-consumer-subject'
+                index = f'c03-42-1/C0/{job}/uid/native-monitoring/index.json'
+                if missing:
+                    del h.cli.blobs[('source123', 'native-monitoring', index)]
+                _, manifest, receipt = h.run()
+                members = [u for u in manifest['expected_units'] if u['mode'] in ('consumer-subject', 'consumer-witness')]
+                self.assertEqual(10, len(members))
+                self.assertTrue(all(u['state'] == 'started' and u['pod_uid'] == 'uid' for u in members))
+                self.assertFalse(any(u['mode'] == 'consumer-readiness' for u in manifest['expected_units']))
+                self.assertFalse(any(g['boundary'] in ('inventory construction', 'expected unit inventory') for g in manifest['gaps']))
+                obj = next(o for o in manifest['objects'] if o['source']['name'] == index)
+                self.assertEqual('missing' if missing else 'verified', obj['state'])
+                if missing:
+                    self.assertIsNone(receipt['completion'])
+                    self.assertTrue(any(g['code'] == 'monitoring_incomplete' and g['expected_unit'] == job for g in manifest['gaps']))
+
+    def test_judge_has_no_monitoring_index_but_native_host_requires_one(self):
+        for missing_native in (False, True):
+            with self.subTest(missing_native=missing_native):
+                h = self.harness('probe-batch', 'single-action', 'probe-42-1', 'batch', items=['B01'])
+                complete_family(h, 'probe-batch')
+                judge = 'probe-42-1-b01-c0-single-judge'
+                judge_index = f'probe-42-1/C0/{judge}/uid/native-monitoring/index.json'
+                self.assertNotIn(('source123', 'native-monitoring', judge_index), h.cli.blobs)
+                native_job = 'probe-42-1-b01-c0-single'
+                native_index = f'probe-42-1/C0/{native_job}/uid/native-monitoring/index.json'
+                if missing_native:
+                    del h.cli.blobs[('source123', 'native-monitoring', native_index)]
+                code, manifest, receipt = h.run()
+                self.assertEqual(1 if missing_native else 0, code)
+                self.assertEqual(not missing_native, receipt['archive_complete'])
+                self.assertFalse(any(o['source']['name'] == judge_index for o in manifest['objects']))
+                if missing_native:
+                    self.assertIsNone(receipt['completion'])
+                    self.assertTrue(any(g['code'] == 'monitoring_incomplete' and g['expected_unit'] == native_job
+                                        for g in manifest['gaps']))
+
+    def test_v2_mixed_private_and_existing_callbacks(self):
+        for complete in (True, False):
+            with self.subTest(complete=complete):
+                h = self.harness('probe-batch-2', 'single-action', 'probe-42-1', 'smoke', items=['F06'],
+                                 probe_v2_selection='authentication-controls', capture_authentication_metadata=True)
+                for config, stages in [('C6', ('seed', 'action', 'judge')), ('C9', ('action', 'judge'))]:
+                    for stage in stages:
+                        job = f'probe-42-1-f06-{config.lower()}-{stage}'
+                        mode = 'single-action-v2-judge' if stage == 'judge' else 'single-action-v2'
+                        pod = h.job(mode, job, 'F06', config, stage=stage)
+                        if stage != 'judge':
+                            publish_v2_actor(h, job, pod, config, stage,
+                                             b'{"selected":true}' if config == 'C6' and stage == 'seed' else None)
+                            continue
+                        prefix = f'probe-42-1/single-action-v2/F06/{config}/'
+                        body = encoded(candidate_fixture('probe-42-1', config))
+                        h.cli.put('verifier', prefix + 'candidate.json', body)
+                        h.cli.put('verifier', prefix + 'judge-completion.json', {
+                            'schema_version':2, 'mode':mode, 'run_id':'probe-42-1', 'scenario_id':'F06',
+                            'configuration_id':config, 'source_commit':'a'*40, 'job_name':job, 'pod_name':pod,
+                            'pod_uid':'uid', 'candidate_name':prefix+'candidate.json', 'candidate_sha256':sha(body),
+                            'handler_exit_code':1, 'cleanup_completed':True})
+                prefix = 'probe-42-1/C6/probe-42-1-f06-c6-seed/uid/native-monitoring/'
+                key = ('source123', 'native-monitoring', prefix + 'index.json')
+                index = json.loads(h.cli.blobs[key]); client = index['clients'][0]
+                selected = client['raw_sources'][0]; selected['capture_ordinal'] = 2
+                chunks = []
+                for ordinal in (1, 3):
+                    name = prefix + f'raw-000001-{ordinal:010d}.jsonl'
+                    raw = encoded({'client_ordinal':1, 'report_ordinal':ordinal, 'raw':f'private-{ordinal}'}) + b'\n'
+                    h.cli.put('native-monitoring', name, raw)
+                    chunks.append({'kind':'raw_chunk', 'source':name, 'byte_length':len(raw), 'sha256':sha(raw),
+                                   'report_ordinal':ordinal, 'capture_ordinal':ordinal, 'row_count':1})
+                client.update(report_count=3 if complete else 4, raw_sources=[chunks[0], selected, chunks[1]],
+                              capture_complete=complete)
+                index['capture_complete'] = complete
+                h.cli.blobs[key] = encoded(index)
+                code, manifest, receipt = h.run()
+                self.assertEqual(0 if complete else 1, code)
+                self.assertEqual(complete, receipt['archive_complete'])
+                objects = [o for o in manifest['objects'] if o['kind'] == 'native_monitoring_raw']
+                self.assertEqual(2, len(objects))
+                self.assertTrue(all(o['state'] == 'verified' for o in objects))
+                self.assertEqual(2, len({o['destination_name'] for o in objects}))
+                if not complete:
+                    self.assertIsNone(receipt['completion'])
+                    self.assertTrue(any(g['code'] == 'monitoring_incomplete' for g in manifest['gaps']))
+
+    def test_native_existing_legacy_reference_binds_raw_bytes(self):
+        for changed in (False, True):
+            with self.subTest(changed=changed):
+                h = self.harness('probe-batch', 'single-action', 'probe-42-1', 'batch', items=['B01'])
+                complete_family(h, 'probe-batch')
+                job = 'probe-42-1-b01-c0-single'; pod = job + '-pod'
+                source = f'probe-42-1/single-action/B01/C0/instances/{pod}/capture.json'
+                key = ('source123', 'single-action', source)
+                capture = json.loads(h.cli.blobs[key])
+                raw = b'{"name":"native"}'
+                capture['repeats'][0]['statistics'] = [{'sequence':1, 'observed_elapsed_ms':0,
+                                                         'raw_base64':base64.b64encode(raw).decode()}]
+                h.cli.blobs[key] = encoded(capture)
+                index_key = ('source123', 'native-monitoring', f'probe-42-1/C0/{job}/uid/native-monitoring/index.json')
+                index = json.loads(h.cli.blobs[index_key])
+                index['clients'][0].update(client_id=f'{pod}-r1', report_count=1, raw_sources=[{
+                    'kind':'existing_capture', 'source':'single-action/' + source, 'byte_length':len(raw),
+                    'sha256':('f'*64 if changed else sha(raw)), 'report_ordinal':1, 'capture_ordinal':1, 'row_count':1}])
+                h.cli.blobs[index_key] = encoded(index)
+                code, manifest, receipt = h.run()
+                self.assertEqual(1 if changed else 0, code)
+                self.assertEqual(not changed, receipt['archive_complete'])
+                if changed:
+                    self.assertIsNone(receipt['completion'])
+                    self.assertTrue(any(g['code']=='monitoring_incomplete' for g in manifest['gaps']))
+                else:
+                    self.assertFalse(any(o['kind']=='native_monitoring_raw' for o in manifest['objects']))
+
+    def test_native_existing_source_requires_exact_coverage(self):
+        for fault in ('none', 'zero', 'partial', 'omitted_client', 'duplicate', 'empty_clients'):
+            with self.subTest(fault=fault):
+                h = self.harness('probe-batch', 'single-action', 'probe-42-1', 'batch', items=['B01'])
+                complete_family(h, 'probe-batch')
+                job = 'probe-42-1-b01-c0-single'; pod = job + '-pod'
+                source = f'probe-42-1/single-action/B01/C0/instances/{pod}/capture.json'
+                key = ('source123', 'single-action', source)
+                capture = json.loads(h.cli.blobs[key])
+                raws = [b'{"name":"first"}', b'{"name":"second"}', b'{"name":"third"}']
+                for repeat, rows in ((0, [(1, raws[0]), (3, raws[1])]), (1, [(1, raws[2])])):
+                    capture['repeats'][repeat]['statistics'] = [
+                        {'sequence': sequence, 'observed_elapsed_ms': sequence,
+                         'raw_base64': base64.b64encode(raw).decode()} for sequence, raw in rows]
+                original = encoded(capture)
+                h.cli.blobs[key] = original
+                index_key = ('source123', 'native-monitoring', f'probe-42-1/C0/{job}/uid/native-monitoring/index.json')
+                index = json.loads(h.cli.blobs[index_key])
+                def descriptor(sequence, raw, capture_ordinal):
+                    return {'kind':'existing_capture', 'source':'single-action/' + source,
+                            'byte_length':len(raw), 'sha256':sha(raw), 'report_ordinal':sequence, 'capture_ordinal':capture_ordinal, 'row_count':1}
+                first = index['clients'][0]
+                first.update(client_id=f'{pod}-r1', report_count=2,
+                             raw_sources=[descriptor(1, raws[0], 1), descriptor(3, raws[1], 2)])
+                second = dict(first, ordinal=2, client_id=f'{pod}-r2', report_count=1,
+                              raw_sources=[descriptor(1, raws[2], 1)])
+                index['clients'] = [first, second]
+                if fault == 'zero':
+                    first.update(report_count=0, raw_sources=[])
+                elif fault == 'partial':
+                    first.update(report_count=1, raw_sources=first['raw_sources'][:1])
+                elif fault == 'omitted_client':
+                    index['clients'] = [first]
+                elif fault == 'duplicate':
+                    index['clients'].append(dict(first, ordinal=3))
+                elif fault == 'empty_clients':
+                    index['clients'] = []
+                h.cli.blobs[index_key] = encoded(index)
+                code, manifest, receipt = h.run()
+                self.assertEqual(0 if fault == 'none' else 1, code)
+                self.assertEqual(fault == 'none', receipt['archive_complete'])
+                if fault != 'none':
+                    self.assertIsNone(receipt['completion'])
+                    self.assertTrue(any(g['code'] == 'monitoring_incomplete' for g in manifest['gaps']))
+                self.assertFalse(any(o['kind'] == 'native_monitoring_raw' for o in manifest['objects']))
+                obj = next(o for o in manifest['objects'] if o['source']['name'] == source)
+                projected = json.loads(h.cli.blobs[('archive123', 'run-evidence', obj['destination_name'])])
+                self.assertEqual(sha(original), projected['source']['sha256'])
+                self.assertEqual('success', projected['metadata']['repeats'][0]['result'])
+                self.assertNotIn(b'BODY_SECRET', b''.join(v for (account, _, _), v in h.cli.blobs.items() if account == 'archive123'))
+
+    def test_native_index_and_chunk_fail_closed(self):
+        for fault in ('missing', 'malformed', 'identity', 'hash', 'truncated'):
+            with self.subTest(fault=fault):
+                h = self.harness('probe-batch', 'single-action', 'probe-42-1', 'batch', items=['B01'])
+                complete_family(h, 'probe-batch')
+                job = 'probe-42-1-b01-c0-single'
+                prefix = f'probe-42-1/C0/{job}/uid/native-monitoring/'
+                key = ('source123', 'native-monitoring', prefix + 'index.json')
+                document = json.loads(h.cli.blobs[key])
+                if fault == 'missing':
+                    del h.cli.blobs[key]
+                elif fault == 'malformed':
+                    h.cli.blobs[key] = b'{"schema_version":1,"schema_version":1}'
+                elif fault == 'identity':
+                    document['identity']['pod_uid'] = 'wrong'
+                    h.cli.blobs[key] = encoded(document)
+                elif fault == 'truncated':
+                    document['capture_complete'] = False
+                    document['diagnostics_truncated'] = True
+                    h.cli.blobs[key] = encoded(document)
+                else:
+                    raw = b'{"client_ordinal":1,"report_ordinal":1,"raw":"PRIVATE_NATIVE_SENTINEL"}\n'
+                    chunk = prefix + 'raw-000001-0000000001.jsonl'
+                    document['clients'][0].update(report_count=1, raw_sources=[{
+                        'kind':'raw_chunk', 'source':chunk, 'byte_length':len(raw), 'sha256':'f'*64,
+                        'report_ordinal':1, 'capture_ordinal':1, 'row_count':1}])
+                    h.cli.put('native-monitoring', chunk, raw)
+                    h.cli.blobs[key] = encoded(document)
+                code, manifest, receipt = h.run()
+                self.assertEqual(1, code)
+                self.assertFalse(receipt['archive_complete'])
+                self.assertIsNone(receipt['completion'])
+                self.assertTrue(any(g['code'] in ('monitoring_incomplete', 'diagnostics_truncated', 'source_hash_mismatch')
+                                    for g in manifest['gaps']))
+                for path in (h.artifacts/'archive').iterdir():
+                    self.assertNotIn(b'PRIVATE_NATIVE_SENTINEL', path.read_bytes())
 
     def test_complete_nonledger_families_and_missing_immutable_reference(self):
         cases=[('probe-batch','single-action','probe-42-1',['B01']),
@@ -808,8 +1087,8 @@ class InventoryIntegrationTests(unittest.TestCase):
                     self.assertEqual(units,len(m['expected_units']))
                     self.assert_fixture_diagnostics(h, m)
                     self.assertTrue(all(u['state']=='started' for u in m['expected_units']))
-                    self.assertEqual(count,m['totals']['expected_objects'] - 2 * units)
-                    self.assertEqual(count-int(missing),m['totals']['verified_objects'] - 2 * units)
+                    self.assertEqual(count,m['totals']['expected_objects'] - 2 * units - sum(o['kind']=='native_monitoring_index' for o in m['objects']))
+                    self.assertEqual(count-int(missing),m['totals']['verified_objects'] - 2 * units - sum(o['kind']=='native_monitoring_index' and o['state']=='verified' for o in m['objects']))
                     self.assertEqual(captures,len(m['captures']))
                     self.assertTrue(all(c['complete'] and c['rows']==0 for c in m['captures']))
                     byname={o['source']['name']:o for o in m['objects']}

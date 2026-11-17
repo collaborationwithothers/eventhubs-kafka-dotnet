@@ -7,6 +7,7 @@ using Parchwell.LoadGen.Run.Contracts;
 using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Input;
 using Parchwell.LoadGen.Run.Ledger;
+using Parchwell.LoadGen.Common.Monitoring;
 using Parchwell.LoadGen.Run.Restart;
 using Parchwell.LoadGen.Run.Workload;
 using Parchwell.Scenarios;
@@ -24,6 +25,7 @@ public sealed class RunSessionFactory
     private readonly KafkaAuthenticationFactory _authenticationFactory;
     private readonly Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, KafkaOAuthBearerSession, IProducer<byte[], byte[]>> _producerFactory;
     private readonly Func<Task>? _beforeEvidenceWriterDrain;
+    private readonly NativeMonitoringHost? _monitoring;
 
     public RunSessionFactory(IOptions<LoadGenHostOptions> options, RunEvidenceSinkRouter sinkRouter,
         KafkaStatisticsBridgeFactory statisticsFactory, KafkaConfigurationFactory configurationFactory,
@@ -38,7 +40,7 @@ public sealed class RunSessionFactory
         KafkaStatisticsBridgeFactory statisticsFactory, KafkaConfigurationFactory configurationFactory,
         TimeProvider timeProvider, KafkaAuthenticationFactory authenticationFactory,
         Func<ProducerConfig, KafkaStatisticsSession, RunEvidenceSession, KafkaOAuthBearerSession, IProducer<byte[], byte[]>> producerFactory,
-        Func<Task>? beforeEvidenceWriterDrain)
+        Func<Task>? beforeEvidenceWriterDrain, NativeMonitoringHost? monitoring = null)
     {
         _options = options.Value;
         _sinkRouter = sinkRouter;
@@ -48,6 +50,7 @@ public sealed class RunSessionFactory
         _authenticationFactory = authenticationFactory;
         _producerFactory = producerFactory;
         _beforeEvidenceWriterDrain = beforeEvidenceWriterDrain;
+        _monitoring = monitoring;
     }
 
     /// <summary>Creates output writers, statistics capture, and executor after admission has passed.</summary>
@@ -92,9 +95,24 @@ public sealed class RunSessionFactory
                 requiresStatisticsEvidence || options.RequireStatisticsEvidence!.Value,
                 options.LedgerDrainTimeout, options.StatisticsCompletionTimeout, options.EvidenceCompletionTimeout,
                 ApplicationRetryPolicy.ForScenario(identity.ScenarioId));
-            var executor = new RunExecutor(() => _producerFactory(
-                producerConfig, statistics, evidence, authentication), ledger, _timeProvider, statistics, evidence, authentication);
-            return new RunSession(identity, executor, statistics, ledger, evidence, executionOptions);
+            var executor = new RunExecutor(() =>
+            {
+                KafkaNativeMonitoringLifetime? lifetime = _monitoring?.Begin(new KafkaStatisticsIdentity(
+                    identity.ScenarioId, identity.RunId, KafkaClientRole.LoadGenProducer, identity.ClientId));
+                if (lifetime is not null)
+                {
+                    _monitoring!.AttachBridge(statistics, lifetime);
+                    evidence.AttachAdmittedObserver((report, ordinal) => _monitoring.ObserveExisting(lifetime, report, ordinal));
+                }
+                try
+                {
+                    IProducer<byte[], byte[]> producer = _producerFactory(producerConfig, statistics, evidence, authentication);
+                    lifetime?.MarkBuilt();
+                    return producer;
+                }
+                catch { lifetime?.MarkBuildFailed(); throw; }
+            }, ledger, _timeProvider, statistics, evidence, authentication);
+            return new RunSession(identity, executor, statistics, ledger, evidence, executionOptions, _monitoring);
         }
         catch (Exception failure)
         {
@@ -127,9 +145,10 @@ public sealed class RunSession : IAsyncDisposable
     private readonly LocalLedgerStore _ledger;
     private readonly RunEvidenceSession _evidence;
     private readonly RunExecutionOptions _executionOptions;
+    private readonly NativeMonitoringHost? _monitoring;
     internal RunSession(RunIdentity identity, RunExecutor executor,
         KafkaStatisticsSession statistics, LocalLedgerStore ledger, RunEvidenceSession evidence,
-        RunExecutionOptions executionOptions)
+        RunExecutionOptions executionOptions, NativeMonitoringHost? monitoring = null)
     {
         _identity = identity;
         _executor = executor;
@@ -137,6 +156,7 @@ public sealed class RunSession : IAsyncDisposable
         _ledger = ledger;
         _evidence = evidence;
         _executionOptions = executionOptions;
+        _monitoring = monitoring;
     }
 
     public Task<RunExecutionResult> ExecuteAsync(WorkloadProfile profile, CancellationToken cancellationToken) =>
@@ -157,6 +177,7 @@ public sealed class RunSession : IAsyncDisposable
         catch (Exception exception) { failures.Add(exception); }
         try { await _evidence.DisposeAsync().ConfigureAwait(false); }
         catch (Exception exception) { failures.Add(exception); }
+        if (_evidence.IsFaulted) _monitoring?.MarkIncomplete();
         if (failures.Count != 0) throw new AggregateException(failures);
     }
 }

@@ -63,6 +63,8 @@ public sealed class LoadGenWorker : BackgroundService
     /// <summary>Gets the process exit status after the worker stops.</summary>
     public int ExitCode { get; private set; } = 1;
 
+    internal bool DiagnosticPublicationSucceeded { get; private set; }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         try
@@ -195,6 +197,7 @@ public sealed class LoadGenWorker : BackgroundService
             {
                 await _lifecycle.PublishDiagnosticsAsync(runContext, result, lifecycleOptions,
                     CancellationToken.None).ConfigureAwait(false);
+                DiagnosticPublicationSucceeded = true;
                 diagnosticsActivity.Succeed();
             }
             catch (Exception exception)

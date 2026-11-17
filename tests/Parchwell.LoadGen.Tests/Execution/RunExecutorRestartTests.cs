@@ -24,9 +24,11 @@ public sealed class RunExecutorRestartTests
              (ErrorCode.Local_MsgTimedOut, PersistenceStatus.PossiblyPersisted)]);
         RestartInstance restart = RestartInstance.Create(Second, first.Result.Manifest, first.Rows);
 
+        using var metrics = new RetryMetricCapture(Second.RunId, Second.ScenarioId, Second.ClientId);
         var second = await RunAsync(Second, Profile(2), restart,
             [(ErrorCode.Local_MsgTimedOut, PersistenceStatus.PossiblyPersisted)]);
 
+        Assert.Equal(["invoked", "terminal_failed", "accepted"], metrics.Events("cross_restart_successor"));
         Assert.Equal([new RestartPlannedEntry(0, "pod-a-1", "tenant", "d0", "tenant-d0", 0, "uploaded", 0)], restart.Plan.Planned);
         RunManifest manifest = second.Result.Manifest;
         Assert.Equal(0, second.Result.ExitCode);

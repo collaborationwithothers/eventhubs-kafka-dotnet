@@ -16,4 +16,8 @@ public sealed record KafkaStatisticsReport(
     DateTimeOffset ReceivedAt,
     string RawJson,
     KafkaStatisticsSnapshot? Snapshot,
-    ImmutableArray<KafkaStatisticsDiagnostic> Diagnostics);
+    ImmutableArray<KafkaStatisticsDiagnostic> Diagnostics)
+{
+    /// <summary>Independent in-memory monitoring coverage at the time this report was processed.</summary>
+    public KafkaStatisticsMonitoringStatus? Monitoring { get; init; }
+}

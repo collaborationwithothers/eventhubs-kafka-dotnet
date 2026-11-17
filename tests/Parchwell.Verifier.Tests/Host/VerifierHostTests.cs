@@ -87,6 +87,7 @@ public sealed class VerifierHostTests
             mode is null ? [] : [$"--Verifier:Mode={mode}"],
             services =>
             {
+                NativeMonitoringTestSupport.RegisterStore(services);
                 services.RemoveAll<IVerifierModeHandler>();
                 services.AddSingleton<IVerifierModeHandler>(new CountingHandler(() => handlerCalls++));
             });
@@ -512,6 +513,7 @@ public sealed class VerifierHostTests
 
         int exitCode = await Program.RunAsync(args, services =>
         {
+            NativeMonitoringTestSupport.RegisterStore(services);
             services.RemoveAll<IVerifierModeHandler>();
             services.AddSingleton<IVerifierModeHandler>(handler);
         });
@@ -534,6 +536,7 @@ public sealed class VerifierHostTests
         }
         int exitCode = await Program.RunAsync(args, services =>
         {
+            NativeMonitoringTestSupport.RegisterStore(services);
             services.RemoveAll<IVerifierModeHandler>();
             services.AddSingleton<IVerifierModeHandler>(new SuccessHandler(
                 mode == "start-line" ? VerifierMode.StartLine : VerifierMode.ProbeGate));
@@ -556,6 +559,7 @@ public sealed class VerifierHostTests
         if (value is not null) args = args.Append($"--Verifier:{property}={value}").ToArray();
         int exitCode = await Program.RunAsync(args, services =>
         {
+            NativeMonitoringTestSupport.RegisterStore(services);
             services.RemoveAll<IVerifierModeHandler>();
             services.AddSingleton<IVerifierModeHandler>(new ReturningHandler(VerifierMode.Verify, () =>
             {
@@ -574,6 +578,7 @@ public sealed class VerifierHostTests
             .Concat(["--Verifier:MaxConsumedRecords=1", "--Verifier:MaxConsumedBytes=1"]).ToArray();
         int exitCode = await Program.RunAsync(args, services =>
         {
+            NativeMonitoringTestSupport.RegisterStore(services);
             services.RemoveAll<IVerifierModeHandler>();
             services.AddSingleton<IVerifierModeHandler>(new SuccessHandler(VerifierMode.Verify));
         });
@@ -589,6 +594,7 @@ public sealed class VerifierHostTests
     {
         int exitCode = await Program.RunAsync(ArgumentsFor("probe-gate", TempPath()), services =>
         {
+            NativeMonitoringTestSupport.RegisterStore(services);
             services.RemoveAll<IVerifierModeHandler>();
             services.AddSingleton<IVerifierModeHandler>(new ReturningHandler(VerifierMode.ProbeGate, () => handlerCode));
         });
@@ -605,6 +611,7 @@ public sealed class VerifierHostTests
         {
             int exitCode = await Program.RunAsync(ArgumentsFor("probe-gate", outputPath), services =>
             {
+                NativeMonitoringTestSupport.RegisterStore(services);
                 services.RemoveAll<IVerifierModeHandler>();
                 services.AddSingleton<IVerifierModeHandler>(new ReturningHandler(VerifierMode.ProbeGate, () =>
                 {
@@ -631,6 +638,7 @@ public sealed class VerifierHostTests
         {
             int exitCode = await Program.RunAsync(ArgumentsFor("probe-gate", outputPath), services =>
             {
+                NativeMonitoringTestSupport.RegisterStore(services);
                 services.RemoveAll<IVerifierModeHandler>();
                 services.AddSingleton<IVerifierModeHandler>(new ReturningHandler(VerifierMode.ProbeGate, () =>
                 {
@@ -657,6 +665,7 @@ public sealed class VerifierHostTests
             ArgumentsFor("probe-gate", TempPath()),
             services =>
             {
+                NativeMonitoringTestSupport.RegisterStore(services);
                 registeredServices.AddRange(services);
                 services.RemoveAll<IVerifierModeHandler>();
             });
@@ -691,6 +700,7 @@ public sealed class VerifierHostTests
         using IHost host = Program.BuildHost(ArgumentsFor(mode, TempPath())
             .Append($"--Verifier:ScenarioRoot={Path.GetTempPath()}").ToArray(), services =>
             {
+                NativeMonitoringTestSupport.RegisterStore(services);
                 registrations.AddRange(services);
                 services.RemoveAll<IVerifierModeHandler>();
             });
@@ -765,6 +775,7 @@ public sealed class VerifierHostTests
         string outputPath = TempPath();
         Action<IServiceCollection> configure = services =>
         {
+            NativeMonitoringTestSupport.RegisterStore(services);
             services.RemoveAll<IVerifierModeHandler>();
             services.AddSingleton<IVerifierModeHandler>(provider => new ControlledHandler(
                 VerifierMode.ProbeGate,
@@ -1174,6 +1185,7 @@ public sealed class VerifierWatchdogChildProcessTests
         var clock = new ManualTimeProvider();
         Action<IServiceCollection> configure = services =>
         {
+            NativeMonitoringTestSupport.RegisterStore(services);
             services.RemoveAll<IVerifierModeHandler>();
             services.AddSingleton<IVerifierModeHandler>(new ChildBlockingHandler(clock, scenario, outputPath));
             if (scenario == "blocked-disposal-after-publication")

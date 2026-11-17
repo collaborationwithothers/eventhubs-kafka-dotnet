@@ -67,27 +67,32 @@ internal sealed class SingleActionCapture(SingleActionHostOptions options, TimeP
             if (error.IsFatal) { _fatalError ??= error; _fatalObservation ??= (elapsed, unix, ++_terminalSequence); }
         }
     }
-    internal void Statistics(string raw)
+    internal void Statistics(string raw) => TryStatistics(raw, out _);
+
+    internal bool TryStatistics(string raw, out long sequence)
     {
+        sequence = 0;
         long elapsed = ElapsedMs;
         lock (_gate)
         {
-            if (_limit) return;
-            if (_statisticsCallbacks >= options.MaxStatisticsReports) { MarkLimit(); return; }
+            if (_limit) return false;
+            if (_statisticsCallbacks >= options.MaxStatisticsReports) { MarkLimit(); return false; }
             byte[] bytes;
             try
             {
-                if (StrictUtf8.GetByteCount(raw) > options.MaxStatisticsReportBytes) { MarkLimit(); return; }
+                if (StrictUtf8.GetByteCount(raw) > options.MaxStatisticsReportBytes) { MarkLimit(); return false; }
                 bytes = StrictUtf8.GetBytes(raw);
             }
-            catch (EncoderFallbackException) { MarkLimit(); return; }
+            catch (EncoderFallbackException) { MarkLimit(); return false; }
             string encoded = Convert.ToBase64String(bytes);
-            int sequence = ++_statisticsSequence;
+            int admittedSequence = ++_statisticsSequence;
             if (!EnqueueLocked(() =>
             {
-                _statistics.Add(new(sequence, elapsed, encoded));
-            })) return;
+                _statistics.Add(new(admittedSequence, elapsed, encoded));
+            })) return false;
             _statisticsCallbacks++;
+            sequence = admittedSequence;
+            return true;
         }
     }
     internal void Diagnostic(string value)

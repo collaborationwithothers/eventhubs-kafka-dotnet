@@ -297,6 +297,7 @@ public sealed class B10SweepOptionsTests
         values["Telemetry:ServiceInstanceId"] = options.PodName;
         values["Telemetry:ScenarioId"] = options.ScenarioId;
         values["Telemetry:RunId"] = options.RunId;
+        NativeMonitoringTestSupport.AddConfiguration(values);
         return values;
     }
 }

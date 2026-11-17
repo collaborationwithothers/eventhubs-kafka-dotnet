@@ -42,24 +42,29 @@ internal sealed class IdleObservationCapture(IdleObservationOptions options, Tim
         }
     }
 
-    internal void Statistics(string raw)
+    internal void Statistics(string raw) => TryStatistics(raw, out _);
+
+    internal bool TryStatistics(string raw, out long sequence)
     {
+        sequence = 0;
         long elapsed = ElapsedMs;
         lock (_gate)
         {
-            if (_limit) return;
-            if (_statisticsCallbacks >= maxStatisticsReports) { MarkLimit(); return; }
+            if (_limit) return false;
+            if (_statisticsCallbacks >= maxStatisticsReports) { MarkLimit(); return false; }
             byte[] bytes;
             try
             {
-                if (StrictUtf8.GetByteCount(raw) > options.MaxStatisticsReportBytes) { MarkLimit(); return; }
+                if (StrictUtf8.GetByteCount(raw) > options.MaxStatisticsReportBytes) { MarkLimit(); return false; }
                 bytes = StrictUtf8.GetBytes(raw);
             }
-            catch (EncoderFallbackException) { MarkLimit(); return; }
+            catch (EncoderFallbackException) { MarkLimit(); return false; }
             string encoded = Convert.ToBase64String(bytes);
-            int sequence = ++_statisticsSequence;
-            if (!EnqueueLocked(() => _statistics.Add(new(sequence, elapsed, encoded)))) return;
+            int admittedSequence = ++_statisticsSequence;
+            if (!EnqueueLocked(() => _statistics.Add(new(admittedSequence, elapsed, encoded)))) return false;
             _statisticsCallbacks++;
+            sequence = admittedSequence;
+            return true;
         }
     }
 

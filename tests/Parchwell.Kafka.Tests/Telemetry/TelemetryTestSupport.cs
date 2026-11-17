@@ -239,7 +239,7 @@ internal sealed class LogRecorder : BaseProcessor<LogRecord>
     }
 }
 
-internal sealed record RecordedMetric(string Name, string? Unit, long Count, double Min, double Max, long Sum, IReadOnlyDictionary<string, object?> Tags);
+internal sealed record RecordedMetric(string Name, string? Unit, long Count, double Min, double Max, long Sum, IReadOnlyDictionary<string, object?> Tags, long? Gauge = null);
 
 internal sealed class MetricRecorder : BaseExporter<Metric>
 {
@@ -267,7 +267,8 @@ internal sealed class MetricRecorder : BaseExporter<Metric>
 
                 Records.Enqueue(new RecordedMetric(metric.Name, metric.Unit,
                     histogram ? point.GetHistogramCount() : 0, min, max,
-                    metric.MetricType == MetricType.LongSum ? point.GetSumLong() : 0, tags));
+                    metric.MetricType == MetricType.LongSum ? point.GetSumLong() : 0, tags,
+                    metric.MetricType == MetricType.LongGauge ? point.GetGaugeLastValueLong() : null));
             }
         }
 

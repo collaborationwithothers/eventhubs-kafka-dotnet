@@ -84,6 +84,24 @@ spec:
               cpu: "3"
               memory: 12Gi
           env:
+            - name: NativeMonitoring__BlobEndpoint
+              value: {{ $r.blob.account_url | quote }}
+            - name: NativeMonitoring__BlobContainer
+              value: "native-monitoring"
+            - name: NativeMonitoring__RunId
+              value: {{ $r.run_id | quote }}
+            - name: NativeMonitoring__ScenarioId
+              value: {{ $.Values.scenario_id | quote }}
+            - name: NativeMonitoring__JobName
+              value: {{ $job | quote }}
+            - name: NativeMonitoring__PodUid
+              valueFrom: {fieldRef: {fieldPath: metadata.uid}}
+            - name: NativeMonitoring__SourceCommit
+              value: {{ $r.source_commit | quote }}
+            - name: NativeMonitoring__Phase
+              value: {{ $r.phase | quote }}
+            - name: NativeMonitoring__ConfigurationId
+              value: {{ $.Values.configuration_id | quote }}
             - name: PARCHWELL_SOURCE_COMMIT
               value: {{ $r.source_commit | quote }}
             - name: PARCHWELL_JOB_NAME
@@ -92,11 +110,11 @@ spec:
               valueFrom: {fieldRef: {fieldPath: metadata.name}}
             - name: PARCHWELL_POD_UID
               valueFrom: {fieldRef: {fieldPath: metadata.uid}}
-            {{- if ne $worker "enrichment" }}
+            {{- if or (ne $worker "enrichment") (eq $mode "single-action-seed") }}
             - name: Telemetry__ConnectionString
               value: {{ $r.application_insights_connection_string | quote }}
             - name: Telemetry__ServiceName
-              value: {{ ternary "Parchwell.LoadGen" "Parchwell.Verifier" (eq $worker "loadgen") | quote }}
+              value: {{ ternary "Parchwell.Enrichment" (ternary "Parchwell.LoadGen" "Parchwell.Verifier" (eq $worker "loadgen")) (eq $mode "single-action-seed") | quote }}
             - name: Telemetry__ServiceInstanceId
               valueFrom: {fieldRef: {fieldPath: metadata.name}}
             - name: Telemetry__ScenarioId
@@ -116,7 +134,7 @@ spec:
             {{- range $key, $value := $r.bounds.single_action_capture -}}{{- $_ := set $fields $key $value -}}{{- end -}}
             {{- else if eq $mode "single-action-seed" -}}
             {{- $prefix = "SeedF04" -}}
-            {{- $fields = dict "RunId" $r.run_id "SourceCommit" $r.source_commit "JobName" $job "NamespaceName" $r.eventhubs.namespace_name "ActionWindowMs" 330000 "ProcessLifetimeSeconds" 390 "CleanupSeconds" 10 "HostCleanupSeconds" 10 "MaxReceiptBytes" 65536 -}}
+            {{- $fields = dict "RunId" $r.run_id "SourceCommit" $r.source_commit "JobName" $job "NamespaceName" $r.eventhubs.namespace_name "BlobEndpoint" $r.blob.account_url "ActionWindowMs" 330000 "ProcessLifetimeSeconds" 390 "CleanupSeconds" 10 "HostCleanupSeconds" 10 "MaxReceiptBytes" 65536 -}}
             {{- else -}}
             {{- $_ := set $fields "CaptureContainer" $captureContainer -}}
             {{- $_ := set $fields "CapturePrefix" (printf "%s/single-action/%s/%s/" $r.run_id $.Values.scenario_id $.Values.configuration_id) -}}

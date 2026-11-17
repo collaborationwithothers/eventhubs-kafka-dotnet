@@ -41,6 +41,7 @@ public sealed class ChartEnvironmentVerifierHostTests(ITestOutputHelper output)
 
         int exit=await Program.RunAsync([],services=>
         {
+            NativeMonitoringTestSupport.RegisterStore(services);
             services.RemoveAll<IHostedService>();
             foreach(var descriptor in services.Where(item=>item.ServiceType.Name is "IConfigureTracerProviderBuilder" or "IConfigureMeterProviderBuilder" or "IConfigureLoggerProviderBuilder").ToArray())
                 services.Remove(descriptor);
@@ -253,7 +254,11 @@ public sealed class ChartEnvironmentVerifierHostTests(ITestOutputHelper output)
             ["PARCHWELL_SOURCE_COMMIT"]=commit,["PARCHWELL_JOB_NAME"]=verify,["PARCHWELL_POD_NAME"]="verifier-pod-c5",["PARCHWELL_POD_UID"]="verifier-pod-uid-c5",
             ["AZURE_TENANT_ID"]="tenant-c5",["AZURE_CLIENT_ID"]="workload-client-c5",["AZURE_FEDERATED_TOKEN_FILE"]="/tmp/federated-token-c5",
             ["Telemetry__ConnectionString"]="InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=http://127.0.0.1:1/",
-            ["Telemetry__ServiceName"]="Parchwell.Verifier",["Telemetry__ServiceInstanceId"]="verifier-pod-c5",["Telemetry__ScenarioId"]="A01",["Telemetry__RunId"]=run
+            ["Telemetry__ServiceName"]="Parchwell.Verifier",["Telemetry__ServiceInstanceId"]="verifier-pod-c5",["Telemetry__ScenarioId"]="A01",["Telemetry__RunId"]=run,
+            ["NativeMonitoring__BlobEndpoint"]="https://storage.example/",["NativeMonitoring__BlobContainer"]="native-monitoring",
+            ["NativeMonitoring__RunId"]=run,["NativeMonitoring__Phase"]=phase,["NativeMonitoring__ScenarioId"]="A01",
+            ["NativeMonitoring__ConfigurationId"]="C0",["NativeMonitoring__JobName"]=verify,
+            ["NativeMonitoring__PodUid"]="verifier-pod-uid-c5",["NativeMonitoring__SourceCommit"]=commit
         };
         return values;
     }

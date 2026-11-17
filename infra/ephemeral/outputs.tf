@@ -10,7 +10,7 @@ output "blob" {
   description = "Blob account URL and workload container names."
   value = {
     account_url = "https://${module.storage.fqdn.blob}"
-    containers  = merge({ ledger = module.storage.containers.ledger.name, verifier = module.storage.containers.verifier.name, claim_check = module.storage.containers.claim_check.name, single_action = module.storage.containers.single_action.name }, var.archive_smoke_enabled ? { archive_smoke_source = module.storage.containers.archive_smoke_source.name } : {})
+    containers  = merge({ ledger = module.storage.containers.ledger.name, verifier = module.storage.containers.verifier.name, claim_check = module.storage.containers.claim_check.name, single_action = module.storage.containers.single_action.name, native_monitoring = module.storage.containers.native_monitoring.name }, var.archive_smoke_enabled ? { archive_smoke_source = module.storage.containers.archive_smoke_source.name } : {})
   }
 }
 output "private_endpoint_ips" {
@@ -22,7 +22,7 @@ output "private_endpoint_ips" {
 }
 
 output "probe_v2_role_scope" {
-  description = "Private applied identity and role-scope evidence for probe V2; not proof of absent inherited access."
+  description = "Private applied scientific workload role-scope evidence for probe V2; excludes feature-specific grants and is not proof of absent inherited access."
   sensitive   = true
   value = {
     namespace_id = module.eventhubs.resource_id

@@ -257,6 +257,44 @@ class LiteralControlTests(unittest.TestCase):
 
 
 class RunIdentityTests(unittest.TestCase):
+    def test_supported_phase_and_run_identity_pairs_are_closed(self):
+        cases = {
+            'A01': ('a01', {'probe': 'C0', 'C0': 'C0', 'C3': 'C3'}),
+            'B04': ('b04', {'C0': 'C0', 'C1': 'C1'}),
+            'B10': ('b10', {'C0': 'C0', 'C1': 'C1'}),
+            'C01': ('c01', {'C0': 'C0', 'C1': 'C1'}),
+            'C03': ('c03', {'C0': 'C0', 'C1': 'C1'}),
+            'C10': ('c10', {'C0': 'C0', 'C1': 'C1'}),
+            'probe-batch': ('probe', {'single-action': None}),
+            'probe-batch-2': ('probe', {'single-action': None}),
+            'idle-observation': ('idle', {'idle-observation': None}),
+            'ledger-batch': ('ledger', {'ledger-batch': None}),
+        }
+        for scenario, (prefix, phases) in cases.items():
+            for selected, configuration in phases.items():
+                with self.subTest(scenario=scenario, phase=selected):
+                    identity = {'github_run_id': '42', 'github_run_attempt': 1,
+                                'run_id': f'{prefix}-42-1', 'phase': selected, 'source_commit': 'a' * 40}
+                    phase = {'scenario': scenario, 'phase': selected, 'configuration': configuration}
+                    run = archive.manifest_run(phase, identity)
+                    self.assertEqual((scenario, configuration or selected),
+                                     (run['scenario_id'], run['configuration_id']))
+                    for bad_phase, bad_identity in (
+                        ({**phase, 'scenario': 'unknown'}, identity),
+                        ({**phase, 'phase': 'unsupported'}, {**identity, 'phase': 'unsupported'}),
+                        ({**phase, 'phase': 'C3' if 'C3' not in phases else 'C1'},
+                         {**identity, 'phase': 'C3' if 'C3' not in phases else 'C1'}),
+                        (phase, {**identity, 'phase': 'unsupported'}),
+                        (phase, {**identity, 'run_id': 'wrong-42-1'}),
+                        (phase, {**identity, 'run_id': f"{'b04' if prefix == 'a01' else 'a01'}-42-1"}),
+                        (phase, {**identity, 'run_id': f'{prefix}-42-2'}),
+                    ):
+                        with self.assertRaises(archive.InvalidArchiveConfig):
+                            archive.manifest_run(bad_phase, bad_identity)
+                    if configuration is not None:
+                        with self.assertRaises(archive.InvalidArchiveConfig):
+                            archive.manifest_run({**phase, 'configuration': 'wrong'}, identity)
+
     def test_b10_diagnostic_trial_is_not_scientifically_admissible(self):
         identity = {'github_run_id': '42', 'github_run_attempt': 1, 'run_id': 'b10d-42-1', 'phase': 'C1', 'source_commit': 'a' * 40}
         phase = {'scenario': 'B10', 'phase': 'C1', 'configuration': 'C1', 'run_kind': 'smoke',

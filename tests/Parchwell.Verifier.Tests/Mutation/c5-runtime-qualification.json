@@ -63,22 +63,30 @@
     "src/Parchwell.Kafka/Configuration/KafkaSettingSource.cs": "f3cae18c354ff2018614a1f9422bc36bf914cf7d2916c4f7cb478c4bd74d101c",
     "src/Parchwell.Kafka/Parchwell.Kafka.csproj": "d2e21020adf42f67b06bf5033335afb6233638cab9a6e9445bded30062788484",
     "src/Parchwell.Kafka/Properties/AssemblyInfo.cs": "4ccad28f774ce15722c8e82708237331c4e2c8820d8768be83375346a297fcae",
+    "src/Parchwell.Kafka/Statistics/IKafkaNativeMonitoringStore.cs": "2710df9ce00117075d346d9726a0b4f2068603b26a7c98c7c5bb3859e3a6f04c",
     "src/Parchwell.Kafka/Statistics/IKafkaStatisticsEvidenceSink.cs": "28f2951695f500cdf06bf7e8fc9db484616c4ec451ce65aae7e863f3e6a8ae19",
     "src/Parchwell.Kafka/Statistics/KafkaBrokerStatistics.cs": "371903009a832a327cb8acdeee5c27b817686182bff6f480381e44b0eef01adf",
+    "src/Parchwell.Kafka/Statistics/KafkaNativeMetricCatalogue.cs": "10c182835956ad85316caccfded68e7f643f92e5d49c34b95b4331ebf452614a",
+    "src/Parchwell.Kafka/Statistics/KafkaNativeMetricParser.cs": "6b8370d5d838e6691e399640c2f033575033ca9fe23cc6750555a4211221a340",
+    "src/Parchwell.Kafka/Statistics/KafkaNativeMetricProjection.cs": "e36c2c08e397e72243fcd9d84dc1270b6526ea8b51d3eead5ff09a9360752def",
+    "src/Parchwell.Kafka/Statistics/KafkaNativeMetricState.cs": "e51f3d85dacf1b953ab6de064ef60b8cc8e0e24b4705739f7f05c592f3073039",
+    "src/Parchwell.Kafka/Statistics/KafkaNativeMonitoringCapture.cs": "2c0d14face9ff856cfbf88d3bca6d0023647b3533fa743739f8f023cdfe87352",
+    "src/Parchwell.Kafka/Statistics/KafkaNativeMonitoringOptions.cs": "a78620d18c20097cca22a16f8991e8566f5a5a64349f00379c1ca067a002fd03",
     "src/Parchwell.Kafka/Statistics/KafkaStatisticsBridgeFactory.cs": "d708a7be90890a2065132693456c3c817f4ef2bbd08aea046e80b7e9bbd50143",
     "src/Parchwell.Kafka/Statistics/KafkaStatisticsCompletion.cs": "229ced2c2bc03d275d5fcbb8f4b698abbb20328e45d0f8aea1dc7e08349508fe",
     "src/Parchwell.Kafka/Statistics/KafkaStatisticsDiagnostic.cs": "fa6685f3e17c6beca4467dcc2f5622f85937f28a15def0388bd0d98ea86bde3a",
     "src/Parchwell.Kafka/Statistics/KafkaStatisticsIdentity.cs": "eac73d15879541de0e0e540aae00823ef7043b9ea4afd8b015affafc4ad7c0e2",
-    "src/Parchwell.Kafka/Statistics/KafkaStatisticsMetrics.cs": "fe4f6288818deb6da5203f18af89c8c55ea8b24edcf2c8d80a0107a32cbd8f02",
+    "src/Parchwell.Kafka/Statistics/KafkaStatisticsMetrics.cs": "2fc513da909f34e45d5786723da4d21741dda81b9050446c50d4720654eab038",
+    "src/Parchwell.Kafka/Statistics/KafkaStatisticsMonitoringStatus.cs": "0d630f447685cf575e780350cb697143cd250c3bb13a44336c1eb2f50d455505",
     "src/Parchwell.Kafka/Statistics/KafkaStatisticsOptions.cs": "d13b61ef181795e251d6ea4feb7e03db83344d097ad29b5d9c4df5c986d49e75",
     "src/Parchwell.Kafka/Statistics/KafkaStatisticsParser.cs": "53f8792b9985397c74091d22c85b1b2da627ec03b0f7c8fb6d97ae88521763af",
-    "src/Parchwell.Kafka/Statistics/KafkaStatisticsReport.cs": "61a1deafc7cf7992bdc9e871c96a87d033ed3556020b1905bc4b3ad6a95fd38b",
+    "src/Parchwell.Kafka/Statistics/KafkaStatisticsReport.cs": "9d5528dab7dd12a509e221c19b63f25e2b825d2b762eea5d2f568578a26f3eb1",
     "src/Parchwell.Kafka/Statistics/KafkaStatisticsServiceCollectionExtensions.cs": "12b010c131c3867054127b9b1b1d8945c98d484f134c09b3a98b68e38df81cd6",
-    "src/Parchwell.Kafka/Statistics/KafkaStatisticsSession.cs": "aa094c79b12939617007d6b842e9098d331f0b3e14df1bbb0fdd8338af40ba0f",
+    "src/Parchwell.Kafka/Statistics/KafkaStatisticsSession.cs": "1288e8f5655c5797fc0f959be40d370846ee5b47b184142063b641068b9d4908",
     "src/Parchwell.Kafka/Statistics/KafkaStatisticsSnapshot.cs": "70237ee71214b6ba2881081ca750b50a1e033835cc12293f6aad9fa46467c0f2",
     "src/Parchwell.Kafka/Statistics/KafkaWindowStatistics.cs": "4441980563ca945a5a6a4b39c02afb9adf28ec58a37e789da80c9e01f302b49b",
     "src/Parchwell.Kafka/Telemetry/ParchwellTelemetryOptions.cs": "bb515629199189d2ea4be682c395fa80ddc42c315f1c5e4bbde4d32dbfa6f576",
-    "src/Parchwell.Kafka/Telemetry/ParchwellTelemetryServiceCollectionExtensions.cs": "0bf0d4104b9d40feaa4397ce59f2041748123a4323a089da6717fb1af6cb5a19",
+    "src/Parchwell.Kafka/Telemetry/ParchwellTelemetryServiceCollectionExtensions.cs": "112270d3cd426c8f091cd10d776c1635f71d41d7712742d2fba8cd777164d991",
     "src/Parchwell.Kafka/Telemetry/ParchwellTelemetrySources.cs": "2fd20d5f737c0d476427535d8a6c90a4aa97c81ab45b267ab882a64341d4fbcc",
     "src/Parchwell.Kafka/packages.lock.json": "c59708b937db00f9e3aec0ef5a7fde689a6218645a4158fb49d6a5bddc717f98",
     "src/Parchwell.LoadGen/packages.lock.json": "c9c2f3096cba8a0c3dc705fd2c9c5f0404ebf5a173837b5ffd9c0f73ba7d4e26",
@@ -110,9 +118,10 @@
     "src/Parchwell.Verifier/Common/Consumer/ConsumerVerificationPlan.cs": "39fea56cdc8688df7d6c47412ec80f9ebeb8e3cf63fcd36a92475d7c9abd4860",
     "src/Parchwell.Verifier/Common/Contracts/CheckAssessment.cs": "954935825eb8acf1f92c912c19afdbc0e140b272504d63d2c71fcc4b4e193edc",
     "src/Parchwell.Verifier/Common/Contracts/RunIdentity.cs": "53b552ed4a123fbcb128a20715225a4efc778e464df52e2fb951bd4bf76cd019",
-    "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSession.cs": "61699a578df86cf471981b44eda8d28bd712c21d38dd9b755472176913790354",
-    "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSessionFactory.cs": "003cb3f953f7748c12666a7ca719a6db6763176dbb72255608694c6c3a2c810e",
+    "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSession.cs": "77aa05942c72fd527ad74685c011dbddc7d1a60494b464a7990f8c7eeb3d523a",
+    "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSessionFactory.cs": "ba6d6b90e29f8176890a2e9b76656628e15ff81dd51d5e115dd5c03b7907b530",
     "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaTokenProvider.cs": "ece4f51e384b5e83bc913d3cefe08ac542b5480e0e223e251deec103723f36d2",
+    "src/Parchwell.Verifier/Common/NativeMonitoring/BlobNativeMonitoringStore.cs": "e6a6f4f8f9ac2f8c050a63c7e4867d353cdef75424f2914918c80f7c54444ab5",
     "src/Parchwell.Verifier/Common/Phase/B10SweepEvidence.cs": "92fd2a1cfb72e9454682a8b6ca39c90f13dd8a87a071f9350cdca76fd748f9a5",
     "src/Parchwell.Verifier/Common/Phase/PhaseIdentity.cs": "f9a5baf696556088f72d8891a8da83348eb72a4fa944c5d7c61b3c4d6d06941b",
     "src/Parchwell.Verifier/Common/Phase/PhasePaths.cs": "4d22f738676b82048a4b1b9feccfeceb01427a2802c1e6f147102861551e93c1",
@@ -147,7 +156,7 @@
     "src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs": "6a4872672703e12d6368a8e027b7fe8accf38630731da74fa610b21d9b0ae939",
     "src/Parchwell.Verifier/ProbeGate/ProbeGateRequest.cs": "e3199ed7633543e25d1a4b2c8d4fa839382035eb750f24b57dadb6b4ff2049f2",
     "src/Parchwell.Verifier/ProbeGate/ProbeGateResult.cs": "26f62dc09a9af721e47df90a353e638cf117aa52cf9e05da726876c4bc310fc6",
-    "src/Parchwell.Verifier/Program.cs": "3aca2a97ba0369fe43b70c95284c4b895cedb31d44273b024e5cf5077e5fabaf",
+    "src/Parchwell.Verifier/Program.cs": "8da106d10e2fb1f2f08baff9b9ed151b51f87cf25a8e05b583fd8503c2feca27",
     "src/Parchwell.Verifier/StartLine/B10SweepLineHandler.cs": "0ec9027a631af6f0646b4fbe5079580f22b71c69f2939a9be1bffd55a0a09caf",
     "src/Parchwell.Verifier/StartLine/BrokerInventoryCodec.cs": "4d3095eba706234f73739afb2c6b4b5d4b4a67b3a42e619b4f3476c0c1092041",
     "src/Parchwell.Verifier/StartLine/StartLineHandler.cs": "d9b11257f06b305d3397a3899af365ee18c1038b577d72ca9667bbed03e285d7",
@@ -173,7 +182,7 @@
     "src/Parchwell.Verifier/VerifyRun/Consumer/ConsumerRepeatExtension.cs": "6d564c03b57b02c2ac6ab280107bce2aaa8c477ac4a592044dc0c9159682c114",
     "src/Parchwell.Verifier/VerifyRun/Consumer/IRepeatResultExtension.cs": "a7549004b04f7d80171cd7366674abc15ca6bedb09786106318fd6c052d3ba7b",
     "src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs": "6ede189c5012c672ba6ebc5200f4beedc3a49c8ed16b8845a06230635b73a26a",
-    "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerCommittedOffsetReader.cs": "7b1df2aa09dac260d04eb62e2ef467a8ada22ae03ba267eea11537467d30de7b",
+    "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerCommittedOffsetReader.cs": "f8e28f746f4af593d1cc6cd62409ce669bbcfec03f03b3a3c9183b3828e8855e",
     "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerOffsetRead.cs": "cfadc39c9393d8c6c78f7a920490b17f6f5c29d220d44b67b0b88c580f2691fc",
     "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationJudgeHandler.cs": "7d9329fec7609b5238f7f01f65d15948bdb52ad5cca44abb97c80c9e460c529f",
     "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationJudgeHost.cs": "e36235d5999d47a7966e71f56c61d1505232cb3232b88e0fed2cf9a123466462",
@@ -247,7 +256,7 @@
     "tests/Parchwell.Verifier.Tests/Consumer/StartSnapshotTests.cs": "c0bf1695e8e14e7e54b716d213a07f01e22e3c7acd72f9f25550b3d59af95a31",
     "tests/Parchwell.Verifier.Tests/Host/B10EarlierRepeatExclusionTests.cs": "48c8e18f0b6ca5b0f4d1c50f38e797f85dfff58b6546b261d24b4661ccd448ff",
     "tests/Parchwell.Verifier.Tests/Host/B10ExpectedProducerJobsTests.cs": "46cdbfea42d395729283a2f9c403269ba10eb0256c350ca73d3d6adcfc5a582a",
-    "tests/Parchwell.Verifier.Tests/Host/B10FinalHostTests.cs": "94c1a570c0d8d5b4124c7119ce5f6e4a9b7ba2bec0a1dbf9efa275de14e68619",
+    "tests/Parchwell.Verifier.Tests/Host/B10FinalHostTests.cs": "f5186aacb65df2dadc86eec4c514f1b1a533880733df39e5c3b19ff7fd46a321",
     "tests/Parchwell.Verifier.Tests/Host/B10FinalSweepUnitTests.cs": "45fd88227d7d1fdc97f4ed6674b7a90bae54bed7352f54dca6a5d3e09c939f6e",
     "tests/Parchwell.Verifier.Tests/Host/B10LateObservationDiagnosticsTests.cs": "69096977206e0c7a28f4d5becca94e2a7e06061c4608922eab3d96a5dc564ccb",
     "tests/Parchwell.Verifier.Tests/Host/B10OneJobC0VerifyTests.cs": "517588e82c60148f117391efd629bbf2e218920d8857694601716d968f2b5872",
@@ -255,19 +264,19 @@
     "tests/Parchwell.Verifier.Tests/Host/B10ScientificThreeJobLegacyReaderTests.cs": "e5febabc6ff4cff4409b45b7d1eea4140537a8a50ece2513997c6ac5a037b4f8",
     "tests/Parchwell.Verifier.Tests/Host/B10ScientificThreeJobOptionsTests.cs": "c5902b41f4aa867e92a438330321b4378500a21c72aee768e43a4b89516cf87d",
     "tests/Parchwell.Verifier.Tests/Host/B10SweepHandlerTests.cs": "a22aac994165638c1825ddff184051fdf25919211e2dac0a058beb9374028e15",
-    "tests/Parchwell.Verifier.Tests/Host/B10SweepLineHandlerTests.cs": "d420f375ad14e970787aef9d8137cd2708435df029787d3aeb4e448f3a01cfbb",
-    "tests/Parchwell.Verifier.Tests/Host/B10SweepLineOptionsTests.cs": "3cc0cf3ea36bcb8fb6c17906c0921c4b513f969d3a47daa556546fc094cc2191",
-    "tests/Parchwell.Verifier.Tests/Host/B10SweepOptionsTests.cs": "8b3992e3630be2f69101e6c3af4aec96e37b47940f12a67ce45ae4d324651932",
+    "tests/Parchwell.Verifier.Tests/Host/B10SweepLineHandlerTests.cs": "e13fd5d23258c7e2a8cde6c4ce832f1755e0fd9fe59056a0dd911943b0796bea",
+    "tests/Parchwell.Verifier.Tests/Host/B10SweepLineOptionsTests.cs": "68552e06ce74768e517d6c83f84d7b4310205f3f3007cb53c10b6595753d920d",
+    "tests/Parchwell.Verifier.Tests/Host/B10SweepOptionsTests.cs": "881823cf46b1e7517a367b66022faddf127133458960e4f20f0920d810921211",
     "tests/Parchwell.Verifier.Tests/Host/B10TrialStartLineOptionsTests.cs": "383a2553cdb4f58b20be06f74572ce8397f7d4c6a07eb099aac1634d4e792d73",
     "tests/Parchwell.Verifier.Tests/Host/B10TwoInstanceVerifyTests.cs": "ccca452e11a55689a736a1acbb268300381b72ffa277508f613723beee44819d",
     "tests/Parchwell.Verifier.Tests/Host/BrokerInventoryTests.cs": "e2ec290b2450ec05986765f7995df6703e1ba1aea0d31f72bb9282056099bc92",
     "tests/Parchwell.Verifier.Tests/Host/C3HandlerTests.cs": "cc7daabb792a37e7da99a05d32768fd83815be2fa227e094fa38c4b3d40f26b8",
-    "tests/Parchwell.Verifier.Tests/Host/ChartEnvironmentVerifierHostTests.cs": "77b34aeb5a421c7286a04e440780737412179a85bfdf84af1e3e2c36ffef766b",
+    "tests/Parchwell.Verifier.Tests/Host/ChartEnvironmentVerifierHostTests.cs": "48e4ff2bc0a7692c57ad50c1af881f5f3cb4d427f9aa1c4610577c762430b040",
     "tests/Parchwell.Verifier.Tests/Host/ConsumerJudgeOptionsTests.cs": "64bd336ead19b4ea1c36e0a9a96c13f2e76dce2fd205eca02bbdc8688d22a37a",
     "tests/Parchwell.Verifier.Tests/Host/ImageSmokeTests.cs": "be613a4b55103a0538dddee591e47c26b10033fc972c0b56710ca18eb4a101e4",
     "tests/Parchwell.Verifier.Tests/Host/StartLineHandlerTests.cs": "0255aff534a2ae853ae813dfa1f424d69b6ea82752da1d65bf1b114f3264741a",
     "tests/Parchwell.Verifier.Tests/Host/TelemetryWiringTests.cs": "ecfc325e82f9b8c787a158eede69ebb44188082d2ddcd29e3d7465568d474262",
-    "tests/Parchwell.Verifier.Tests/Host/VerifierCompletionTests.cs": "09fbab7f9fd35d873bbabf10aabe4651aea1083dc623a3fe0db033bc0ed38a4e",
+    "tests/Parchwell.Verifier.Tests/Host/VerifierCompletionTests.cs": "9efb7c7121808be4879fc18556869aa1733bb5ff1ba2c930b26aa540ca1b009c",
     "tests/Parchwell.Verifier.Tests/Host/VerifierKafkaTokenProviderHostTests.cs": "9a301d3232e73ce0b1a634607a12fbee18b5da43b060909717e91147b0cfc061",
     "tests/Parchwell.Verifier.Tests/Host/VerifyInputCapacityTests.cs": "1a4cfa11b8b6d7f1dcd7dbe494bc683c818dec4e23d94595fff3483823095d97",
     "tests/Parchwell.Verifier.Tests/Host/VerifyRunDiagnosticTests.cs": "3d98c0a523717ff8fc4f544e6e405a870ad4a9646025f03eff7e2eb04081734e",
@@ -302,6 +311,7 @@
     "tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py": "3771b676b8d5856eb34705dcaa3e9c34ffd8184dd514179a1bf85ee7535fb16f",
     "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": "c147bb8000ef1273609052660e80b20c8da8bf33a77a0df65a94d32a5f7a1c40",
     "tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json": "08dc4239d731048aabf4fc7683887121b951d0226a16d1a4293dd57e6de10001",
+    "tests/Parchwell.Verifier.Tests/NativeMonitoring/VerifierNativeMonitoringTests.cs": "4d907495debffed9b44a282f817286b63bf0a8882330f3453717a11679e30221",
     "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj": "a3d7fe4824fb1f4c11d5bdca6438d04c92eec1c3614e9db02df27f232468721a",
     "tests/Parchwell.Verifier.Tests/Phase/B10IntakeWireTests.cs": "7c4e96508b3d2ad28ca613e8bb33570b41d50082a95855cb7e57fc240743a315",
     "tests/Parchwell.Verifier.Tests/Phase/B10RegistrationTests.cs": "9027fe0c884e57baf8f46b88427af682621deebf71f34ecc76b34d0f762e6553",
@@ -345,9 +355,10 @@
     "tests/Parchwell.Verifier.Tests/Support/B10SweepFixture.cs": "f648d74ab97161049394b6fa6fe3b8a26c4d094df942864d1ab9d10b2ba6fc2a",
     "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": "d16f72187085d0545f7625a6546c53eaa436249c801f62908ae35e9f8ea2636e",
     "tests/Parchwell.Verifier.Tests/Support/KafkaSessionTestSupport.cs": "d4b4b06c096c80ad6b4cdbdb5f16df5639ea53912b276f827e80850752e5c7d3",
+    "tests/Parchwell.Verifier.Tests/Support/NativeMonitoringTestSupport.cs": "0f35c3c71bb7ed4efac0804b6738d599e29ff7738eb445e3413dfabafcd98115",
     "tests/Parchwell.Verifier.Tests/Support/ProbeGateEvidenceBuilder.cs": "45acec2e62becd32a7b3e4f9349a3d366dc824d216fab847eafb708c92adb278",
     "tests/Parchwell.Verifier.Tests/Support/RecordedEvidence.cs": "428e8f4dcd5e9b160b1daa60d6ff04e4e292d1b2493f1b9b7fed62b341b4a7b7",
-    "tests/Parchwell.Verifier.Tests/Support/VerifierHostTestOptions.cs": "9824f6035d61539ed4c5122ddf171ba72f618b061517334d1efc35bd3046100c",
+    "tests/Parchwell.Verifier.Tests/Support/VerifierHostTestOptions.cs": "5fb1bb8e31baf1d0c3045bb756abf49bc5bde65bd0042cbf03432434eb1d7d9b",
     "tests/Parchwell.Verifier.Tests/Window/B10RunWindowTests.cs": "bcead6b4e5318a2b1b0a28e8aa01d3a94f5cdb9d2068c1da728a0bd6d7df029a",
     "tests/Parchwell.Verifier.Tests/Window/B10ScientificThreeJobStartLineCodecTests.cs": "91543ad9a424770553838dc4e9ffb91dc68f680ba281e38a4392255473d8e0d2",
     "tests/Parchwell.Verifier.Tests/Window/B10TrialStartLineCodecTests.cs": "b326978264d5bb953fdfb3f4db32871de86cc98ba7c14d5a04b1fa5d2defec06",
@@ -5338,9 +5349,12 @@
             "basis": [
               "Consumer-verifier main merge e8da5826deba9b42bbf5224c835ad728768544ef: upstream base SHA-256 b187138fb3ab8a46e961d76c0844ff4efa362ea9150185eeafebe89ffde98fa9; upstream current SHA-256 3aca2a97ba0369fe43b70c95284c4b895cedb31d44273b024e5cf5077e5fabaf; archive pre-merge SHA-256 b187138fb3ab8a46e961d76c0844ff4efa362ea9150185eeafebe89ffde98fa9; integrated 6a4625a32fc60f6fcc7b0147f2c50bff9ecef955 SHA-256 3aca2a97ba0369fe43b70c95284c4b895cedb31d44273b024e5cf5077e5fabaf. Values null indicate absent inputs.",
               "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes.",
-              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted."
+              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Verifier/Program.cs ; measured SHA-256 b187138fb3ab8a46e961d76c0844ff4efa362ea9150185eeafebe89ffde98fa9; main SHA-256 3aca2a97ba0369fe43b70c95284c4b895cedb31d44273b024e5cf5077e5fabaf; current SHA-256 c337efb35dcfb963e966048142770a8071eefac5948c1274e4fe32b20a129c58.",
+              "Hari explicitly accepted retained-estimate runtime uncertainty for exact corrected shutdown SHA-256 8da106d10e2fb1f2f08baff9b9ed151b51f87cf25a8e05b583fd8503c2feca27 in https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6948702178, adopting https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6947881192. Source correction 9b5fafd1345ed76f9dad1d61c57bcd9fd97f179e waits for queued native monitoring within the original cleanup token and records incomplete drain/completion; this can add bounded shutdown time and is not claimed timing-neutral. Preserve original measured maps, estimates, all target/evidence records, provisional status, preceding bases, exact runner/projection exceptions and mandatory later full main-only mutation acceptance."
             ],
-            "current_sha256": "3aca2a97ba0369fe43b70c95284c4b895cedb31d44273b024e5cf5077e5fabaf"
+            "current_sha256": "8da106d10e2fb1f2f08baff9b9ed151b51f87cf25a8e05b583fd8503c2feca27"
           },
           "src/Parchwell.Verifier/StartLine/StartLineHandler.cs": {
             "basis": [
@@ -5399,9 +5413,11 @@
               "Consumer-verifier main merge e8da5826deba9b42bbf5224c835ad728768544ef: upstream base SHA-256 None; upstream current SHA-256 7b1df2aa09dac260d04eb62e2ef467a8ada22ae03ba267eea11537467d30de7b; archive pre-merge SHA-256 None; integrated 6a4625a32fc60f6fcc7b0147f2c50bff9ecef955 SHA-256 7b1df2aa09dac260d04eb62e2ef467a8ada22ae03ba267eea11537467d30de7b. Values null indicate absent inputs.",
               "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes.",
               "No C5 target changed. Deadline classification correction and its added unit tests renew shared inputs; full mutant test-population runtime risk remains accepted pending post-merge main mutation acceptance. Consumer evidence publication remains gated.",
-              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted."
+              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerCommittedOffsetReader.cs ; measured SHA-256 None; main SHA-256 7b1df2aa09dac260d04eb62e2ef467a8ada22ae03ba267eea11537467d30de7b; current SHA-256 f8e28f746f4af593d1cc6cd62409ce669bbcfec03f03b3a3c9183b3828e8855e."
             ],
-            "current_sha256": "7b1df2aa09dac260d04eb62e2ef467a8ada22ae03ba267eea11537467d30de7b"
+            "current_sha256": "f8e28f746f4af593d1cc6cd62409ce669bbcfec03f03b3a3c9183b3828e8855e"
           },
           "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerOffsetRead.cs": {
             "basis": [
@@ -5641,6 +5657,176 @@
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/535#issuecomment-6941063514 accepts existing runtime estimates only for the exact forward executable runner hash pair in proposal6940747444. Codec cohort source identities, complete pinned inventory and fresh-process mutation population are unchanged; native IDs are resolved from each retained report, with strict bootstrap directory and aggregate evidence validation. Original measured maps and timing records remain. Additional validation runtime is unmeasured and may exceed estimates; full main-only mutation acceptance remains required."
             ],
             "current_sha256": "c147bb8000ef1273609052660e80b20c8da8bf33a77a0df65a94d32a5f7a1c40"
+          },
+          "src/Parchwell.Kafka/Statistics/IKafkaNativeMonitoringStore.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/IKafkaNativeMonitoringStore.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 2710df9ce00117075d346d9726a0b4f2068603b26a7c98c7c5bb3859e3a6f04c."
+            ],
+            "current_sha256": "2710df9ce00117075d346d9726a0b4f2068603b26a7c98c7c5bb3859e3a6f04c"
+          },
+          "src/Parchwell.Kafka/Statistics/KafkaNativeMetricCatalogue.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/KafkaNativeMetricCatalogue.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 10c182835956ad85316caccfded68e7f643f92e5d49c34b95b4331ebf452614a."
+            ],
+            "current_sha256": "10c182835956ad85316caccfded68e7f643f92e5d49c34b95b4331ebf452614a"
+          },
+          "src/Parchwell.Kafka/Statistics/KafkaNativeMetricParser.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/KafkaNativeMetricParser.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 6b8370d5d838e6691e399640c2f033575033ca9fe23cc6750555a4211221a340."
+            ],
+            "current_sha256": "6b8370d5d838e6691e399640c2f033575033ca9fe23cc6750555a4211221a340"
+          },
+          "src/Parchwell.Kafka/Statistics/KafkaNativeMetricProjection.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/KafkaNativeMetricProjection.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 e36c2c08e397e72243fcd9d84dc1270b6526ea8b51d3eead5ff09a9360752def."
+            ],
+            "current_sha256": "e36c2c08e397e72243fcd9d84dc1270b6526ea8b51d3eead5ff09a9360752def"
+          },
+          "src/Parchwell.Kafka/Statistics/KafkaNativeMetricState.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/KafkaNativeMetricState.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 e51f3d85dacf1b953ab6de064ef60b8cc8e0e24b4705739f7f05c592f3073039."
+            ],
+            "current_sha256": "e51f3d85dacf1b953ab6de064ef60b8cc8e0e24b4705739f7f05c592f3073039"
+          },
+          "src/Parchwell.Kafka/Statistics/KafkaNativeMonitoringCapture.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/KafkaNativeMonitoringCapture.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 ba234895d88fb769f61a60f2faa4d7487ff0f08683b1fce58d04f4a3d742db3d.",
+              "Hari explicitly accepted retained-estimate runtime uncertainty for exact corrected shutdown SHA-256 2c0d14face9ff856cfbf88d3bca6d0023647b3533fa743739f8f023cdfe87352 in https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6948702178, adopting https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6947881192. Source correction 9b5fafd1345ed76f9dad1d61c57bcd9fd97f179e waits for queued native monitoring within the original cleanup token and records incomplete drain/completion; this can add bounded shutdown time and is not claimed timing-neutral. Preserve original measured maps, estimates, all target/evidence records, provisional status, preceding bases, exact runner/projection exceptions and mandatory later full main-only mutation acceptance."
+            ],
+            "current_sha256": "2c0d14face9ff856cfbf88d3bca6d0023647b3533fa743739f8f023cdfe87352"
+          },
+          "src/Parchwell.Kafka/Statistics/KafkaNativeMonitoringOptions.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/KafkaNativeMonitoringOptions.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 a78620d18c20097cca22a16f8991e8566f5a5a64349f00379c1ca067a002fd03."
+            ],
+            "current_sha256": "a78620d18c20097cca22a16f8991e8566f5a5a64349f00379c1ca067a002fd03"
+          },
+          "src/Parchwell.Kafka/Statistics/KafkaStatisticsMetrics.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/KafkaStatisticsMetrics.cs ; measured SHA-256 fe4f6288818deb6da5203f18af89c8c55ea8b24edcf2c8d80a0107a32cbd8f02; main SHA-256 fe4f6288818deb6da5203f18af89c8c55ea8b24edcf2c8d80a0107a32cbd8f02; current SHA-256 2fc513da909f34e45d5786723da4d21741dda81b9050446c50d4720654eab038."
+            ],
+            "current_sha256": "2fc513da909f34e45d5786723da4d21741dda81b9050446c50d4720654eab038"
+          },
+          "src/Parchwell.Kafka/Statistics/KafkaStatisticsMonitoringStatus.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/KafkaStatisticsMonitoringStatus.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 0d630f447685cf575e780350cb697143cd250c3bb13a44336c1eb2f50d455505."
+            ],
+            "current_sha256": "0d630f447685cf575e780350cb697143cd250c3bb13a44336c1eb2f50d455505"
+          },
+          "src/Parchwell.Kafka/Statistics/KafkaStatisticsReport.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/KafkaStatisticsReport.cs ; measured SHA-256 61a1deafc7cf7992bdc9e871c96a87d033ed3556020b1905bc4b3ad6a95fd38b; main SHA-256 61a1deafc7cf7992bdc9e871c96a87d033ed3556020b1905bc4b3ad6a95fd38b; current SHA-256 9d5528dab7dd12a509e221c19b63f25e2b825d2b762eea5d2f568578a26f3eb1."
+            ],
+            "current_sha256": "9d5528dab7dd12a509e221c19b63f25e2b825d2b762eea5d2f568578a26f3eb1"
+          },
+          "src/Parchwell.Kafka/Statistics/KafkaStatisticsSession.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/KafkaStatisticsSession.cs ; measured SHA-256 aa094c79b12939617007d6b842e9098d331f0b3e14df1bbb0fdd8338af40ba0f; main SHA-256 aa094c79b12939617007d6b842e9098d331f0b3e14df1bbb0fdd8338af40ba0f; current SHA-256 1288e8f5655c5797fc0f959be40d370846ee5b47b184142063b641068b9d4908."
+            ],
+            "current_sha256": "1288e8f5655c5797fc0f959be40d370846ee5b47b184142063b641068b9d4908"
+          },
+          "src/Parchwell.Kafka/Telemetry/ParchwellTelemetryServiceCollectionExtensions.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Telemetry/ParchwellTelemetryServiceCollectionExtensions.cs ; measured SHA-256 0bf0d4104b9d40feaa4397ce59f2041748123a4323a089da6717fb1af6cb5a19; main SHA-256 0bf0d4104b9d40feaa4397ce59f2041748123a4323a089da6717fb1af6cb5a19; current SHA-256 112270d3cd426c8f091cd10d776c1635f71d41d7712742d2fba8cd777164d991."
+            ],
+            "current_sha256": "112270d3cd426c8f091cd10d776c1635f71d41d7712742d2fba8cd777164d991"
+          },
+          "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSession.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSession.cs ; measured SHA-256 61699a578df86cf471981b44eda8d28bd712c21d38dd9b755472176913790354; main SHA-256 61699a578df86cf471981b44eda8d28bd712c21d38dd9b755472176913790354; current SHA-256 77aa05942c72fd527ad74685c011dbddc7d1a60494b464a7990f8c7eeb3d523a."
+            ],
+            "current_sha256": "77aa05942c72fd527ad74685c011dbddc7d1a60494b464a7990f8c7eeb3d523a"
+          },
+          "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSessionFactory.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSessionFactory.cs ; measured SHA-256 003cb3f953f7748c12666a7ca719a6db6763176dbb72255608694c6c3a2c810e; main SHA-256 003cb3f953f7748c12666a7ca719a6db6763176dbb72255608694c6c3a2c810e; current SHA-256 ba6d6b90e29f8176890a2e9b76656628e15ff81dd51d5e115dd5c03b7907b530."
+            ],
+            "current_sha256": "ba6d6b90e29f8176890a2e9b76656628e15ff81dd51d5e115dd5c03b7907b530"
+          },
+          "src/Parchwell.Verifier/Common/NativeMonitoring/BlobNativeMonitoringStore.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Verifier/Common/NativeMonitoring/BlobNativeMonitoringStore.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 e6a6f4f8f9ac2f8c050a63c7e4867d353cdef75424f2914918c80f7c54444ab5."
+            ],
+            "current_sha256": "e6a6f4f8f9ac2f8c050a63c7e4867d353cdef75424f2914918c80f7c54444ab5"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/B10FinalHostTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/Host/B10FinalHostTests.cs ; measured SHA-256 94c1a570c0d8d5b4124c7119ce5f6e4a9b7ba2bec0a1dbf9efa275de14e68619; main SHA-256 94c1a570c0d8d5b4124c7119ce5f6e4a9b7ba2bec0a1dbf9efa275de14e68619; current SHA-256 f5186aacb65df2dadc86eec4c514f1b1a533880733df39e5c3b19ff7fd46a321."
+            ],
+            "current_sha256": "f5186aacb65df2dadc86eec4c514f1b1a533880733df39e5c3b19ff7fd46a321"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/B10SweepLineHandlerTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/Host/B10SweepLineHandlerTests.cs ; measured SHA-256 d420f375ad14e970787aef9d8137cd2708435df029787d3aeb4e448f3a01cfbb; main SHA-256 d420f375ad14e970787aef9d8137cd2708435df029787d3aeb4e448f3a01cfbb; current SHA-256 e13fd5d23258c7e2a8cde6c4ce832f1755e0fd9fe59056a0dd911943b0796bea."
+            ],
+            "current_sha256": "e13fd5d23258c7e2a8cde6c4ce832f1755e0fd9fe59056a0dd911943b0796bea"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/B10SweepLineOptionsTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/Host/B10SweepLineOptionsTests.cs ; measured SHA-256 3cc0cf3ea36bcb8fb6c17906c0921c4b513f969d3a47daa556546fc094cc2191; main SHA-256 3cc0cf3ea36bcb8fb6c17906c0921c4b513f969d3a47daa556546fc094cc2191; current SHA-256 68552e06ce74768e517d6c83f84d7b4310205f3f3007cb53c10b6595753d920d."
+            ],
+            "current_sha256": "68552e06ce74768e517d6c83f84d7b4310205f3f3007cb53c10b6595753d920d"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/B10SweepOptionsTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/Host/B10SweepOptionsTests.cs ; measured SHA-256 8b3992e3630be2f69101e6c3af4aec96e37b47940f12a67ce45ae4d324651932; main SHA-256 8b3992e3630be2f69101e6c3af4aec96e37b47940f12a67ce45ae4d324651932; current SHA-256 881823cf46b1e7517a367b66022faddf127133458960e4f20f0920d810921211."
+            ],
+            "current_sha256": "881823cf46b1e7517a367b66022faddf127133458960e4f20f0920d810921211"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/ChartEnvironmentVerifierHostTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/Host/ChartEnvironmentVerifierHostTests.cs ; measured SHA-256 77b34aeb5a421c7286a04e440780737412179a85bfdf84af1e3e2c36ffef766b; main SHA-256 77b34aeb5a421c7286a04e440780737412179a85bfdf84af1e3e2c36ffef766b; current SHA-256 48e4ff2bc0a7692c57ad50c1af881f5f3cb4d427f9aa1c4610577c762430b040."
+            ],
+            "current_sha256": "48e4ff2bc0a7692c57ad50c1af881f5f3cb4d427f9aa1c4610577c762430b040"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/VerifierCompletionTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/Host/VerifierCompletionTests.cs ; measured SHA-256 09fbab7f9fd35d873bbabf10aabe4651aea1083dc623a3fe0db033bc0ed38a4e; main SHA-256 09fbab7f9fd35d873bbabf10aabe4651aea1083dc623a3fe0db033bc0ed38a4e; current SHA-256 9efb7c7121808be4879fc18556869aa1733bb5ff1ba2c930b26aa540ca1b009c."
+            ],
+            "current_sha256": "9efb7c7121808be4879fc18556869aa1733bb5ff1ba2c930b26aa540ca1b009c"
+          },
+          "tests/Parchwell.Verifier.Tests/NativeMonitoring/VerifierNativeMonitoringTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/NativeMonitoring/VerifierNativeMonitoringTests.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 4307cbf3c91e3512180463f29103b03b0b8467fe956f4af81a37d77cfdc2dfe9.",
+              "Hari explicitly accepted the same retained-estimate runtime uncertainty for the exact corrected verifier-test SHA-256 4d907495debffed9b44a282f817286b63bf0a8882330f3453717a11679e30221 in https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6947446988, adopting https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943603607. Source correction 1e159253a92bd53cb8efe8d9466297ddaf9c48aa passes the xUnit test cancellation token instead of the default token; preserve preceding assessment history. No timing-neutrality or new measurement is claimed. Original measured maps, estimates, evidence, provisional status, exact tool exceptions and mandatory later full main-only mutation acceptance remain unchanged."
+            ],
+            "current_sha256": "4d907495debffed9b44a282f817286b63bf0a8882330f3453717a11679e30221"
+          },
+          "tests/Parchwell.Verifier.Tests/Support/NativeMonitoringTestSupport.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/Support/NativeMonitoringTestSupport.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 0f35c3c71bb7ed4efac0804b6738d599e29ff7738eb445e3413dfabafcd98115."
+            ],
+            "current_sha256": "0f35c3c71bb7ed4efac0804b6738d599e29ff7738eb445e3413dfabafcd98115"
+          },
+          "tests/Parchwell.Verifier.Tests/Support/VerifierHostTestOptions.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/Support/VerifierHostTestOptions.cs ; measured SHA-256 9824f6035d61539ed4c5122ddf171ba72f618b061517334d1efc35bd3046100c; main SHA-256 9824f6035d61539ed4c5122ddf171ba72f618b061517334d1efc35bd3046100c; current SHA-256 5fb1bb8e31baf1d0c3045bb756abf49bc5bde65bd0042cbf03432434eb1d7d9b."
+            ],
+            "current_sha256": "5fb1bb8e31baf1d0c3045bb756abf49bc5bde65bd0042cbf03432434eb1d7d9b"
           }
         },
         "target_sources": {}
@@ -6141,9 +6327,12 @@
             "basis": [
               "Consumer-verifier main merge e8da5826deba9b42bbf5224c835ad728768544ef: upstream base SHA-256 b187138fb3ab8a46e961d76c0844ff4efa362ea9150185eeafebe89ffde98fa9; upstream current SHA-256 3aca2a97ba0369fe43b70c95284c4b895cedb31d44273b024e5cf5077e5fabaf; archive pre-merge SHA-256 b187138fb3ab8a46e961d76c0844ff4efa362ea9150185eeafebe89ffde98fa9; integrated 6a4625a32fc60f6fcc7b0147f2c50bff9ecef955 SHA-256 3aca2a97ba0369fe43b70c95284c4b895cedb31d44273b024e5cf5077e5fabaf. Values null indicate absent inputs.",
               "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes.",
-              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted."
+              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Verifier/Program.cs ; measured SHA-256 b187138fb3ab8a46e961d76c0844ff4efa362ea9150185eeafebe89ffde98fa9; main SHA-256 3aca2a97ba0369fe43b70c95284c4b895cedb31d44273b024e5cf5077e5fabaf; current SHA-256 c337efb35dcfb963e966048142770a8071eefac5948c1274e4fe32b20a129c58.",
+              "Hari explicitly accepted retained-estimate runtime uncertainty for exact corrected shutdown SHA-256 8da106d10e2fb1f2f08baff9b9ed151b51f87cf25a8e05b583fd8503c2feca27 in https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6948702178, adopting https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6947881192. Source correction 9b5fafd1345ed76f9dad1d61c57bcd9fd97f179e waits for queued native monitoring within the original cleanup token and records incomplete drain/completion; this can add bounded shutdown time and is not claimed timing-neutral. Preserve original measured maps, estimates, all target/evidence records, provisional status, preceding bases, exact runner/projection exceptions and mandatory later full main-only mutation acceptance."
             ],
-            "current_sha256": "3aca2a97ba0369fe43b70c95284c4b895cedb31d44273b024e5cf5077e5fabaf"
+            "current_sha256": "8da106d10e2fb1f2f08baff9b9ed151b51f87cf25a8e05b583fd8503c2feca27"
           },
           "src/Parchwell.Verifier/StartLine/StartLineHandler.cs": {
             "basis": [
@@ -6216,9 +6405,11 @@
               "Consumer-verifier main merge e8da5826deba9b42bbf5224c835ad728768544ef: upstream base SHA-256 None; upstream current SHA-256 7b1df2aa09dac260d04eb62e2ef467a8ada22ae03ba267eea11537467d30de7b; archive pre-merge SHA-256 None; integrated 6a4625a32fc60f6fcc7b0147f2c50bff9ecef955 SHA-256 7b1df2aa09dac260d04eb62e2ef467a8ada22ae03ba267eea11537467d30de7b. Values null indicate absent inputs.",
               "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes.",
               "No C5 target changed. Deadline classification correction and its added unit tests renew shared inputs; full mutant test-population runtime risk remains accepted pending post-merge main mutation acceptance. Consumer evidence publication remains gated.",
-              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted."
+              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerCommittedOffsetReader.cs ; measured SHA-256 None; main SHA-256 7b1df2aa09dac260d04eb62e2ef467a8ada22ae03ba267eea11537467d30de7b; current SHA-256 f8e28f746f4af593d1cc6cd62409ce669bbcfec03f03b3a3c9183b3828e8855e."
             ],
-            "current_sha256": "7b1df2aa09dac260d04eb62e2ef467a8ada22ae03ba267eea11537467d30de7b"
+            "current_sha256": "f8e28f746f4af593d1cc6cd62409ce669bbcfec03f03b3a3c9183b3828e8855e"
           },
           "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerOffsetRead.cs": {
             "basis": [
@@ -6451,9 +6642,11 @@
             "basis": [
               "Change-specific assessment: Adds reflection-based capture option serialization to host fixture configuration. Small additional setup is visible, but the profile does not prove the old estimate covers it.",
               "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
-              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/Host/B10FinalHostTests.cs ; measured SHA-256 b23938fcf6d20c323dbc53adae963508544753aedda03ffa1a526365da0ebdda; main SHA-256 94c1a570c0d8d5b4124c7119ce5f6e4a9b7ba2bec0a1dbf9efa275de14e68619; current SHA-256 f5186aacb65df2dadc86eec4c514f1b1a533880733df39e5c3b19ff7fd46a321."
             ],
-            "current_sha256": "94c1a570c0d8d5b4124c7119ce5f6e4a9b7ba2bec0a1dbf9efa275de14e68619"
+            "current_sha256": "f5186aacb65df2dadc86eec4c514f1b1a533880733df39e5c3b19ff7fd46a321"
           },
           "tests/Parchwell.Verifier.Tests/Host/B10FinalSweepUnitTests.cs": {
             "basis": [
@@ -6483,17 +6676,21 @@
             "basis": [
               "Change-specific assessment: Adds reflection to emit capture options during fixture setup. No measurement isolates its effect across historical mutation runs.",
               "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
-              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/Host/B10SweepOptionsTests.cs ; measured SHA-256 941e5c2439012490a84f3986a866cdf9eba66f676e2e78ad877f5b143c2bcd2e; main SHA-256 8b3992e3630be2f69101e6c3af4aec96e37b47940f12a67ce45ae4d324651932; current SHA-256 881823cf46b1e7517a367b66022faddf127133458960e4f20f0920d810921211."
             ],
-            "current_sha256": "8b3992e3630be2f69101e6c3af4aec96e37b47940f12a67ce45ae4d324651932"
+            "current_sha256": "881823cf46b1e7517a367b66022faddf127133458960e4f20f0920d810921211"
           },
           "tests/Parchwell.Verifier.Tests/Host/ChartEnvironmentVerifierHostTests.cs": {
             "basis": [
               "Change-specific assessment: Adds four capture configuration values to a host-test environment. They may affect validation or enable work; no zero-effect proof.",
               "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
-              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/Host/ChartEnvironmentVerifierHostTests.cs ; measured SHA-256 a450c1a3551d7589019afe9a12dbf0aff1c90bca52a990602547f90c6df2265b; main SHA-256 77b34aeb5a421c7286a04e440780737412179a85bfdf84af1e3e2c36ffef766b; current SHA-256 48e4ff2bc0a7692c57ad50c1af881f5f3cb4d427f9aa1c4610577c762430b040."
             ],
-            "current_sha256": "77b34aeb5a421c7286a04e440780737412179a85bfdf84af1e3e2c36ffef766b"
+            "current_sha256": "48e4ff2bc0a7692c57ad50c1af881f5f3cb4d427f9aa1c4610577c762430b040"
           },
           "tests/Parchwell.Verifier.Tests/Host/ConsumerJudgeOptionsTests.cs": {
             "basis": [
@@ -6554,9 +6751,11 @@
             "basis": [
               "Change-specific assessment: Enables capture and adds command-line options for shared test defaults. It affects dependent tests; do not assert a negligible effect without stronger evidence.",
               "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
-              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/Support/VerifierHostTestOptions.cs ; measured SHA-256 4c5e6c31e295c749a9149ae4f2cfbf6a927a3ebb75e2ddf5d7eae0dd4ad1dda1; main SHA-256 9824f6035d61539ed4c5122ddf171ba72f618b061517334d1efc35bd3046100c; current SHA-256 5fb1bb8e31baf1d0c3045bb756abf49bc5bde65bd0042cbf03432434eb1d7d9b."
             ],
-            "current_sha256": "9824f6035d61539ed4c5122ddf171ba72f618b061517334d1efc35bd3046100c"
+            "current_sha256": "5fb1bb8e31baf1d0c3045bb756abf49bc5bde65bd0042cbf03432434eb1d7d9b"
           },
           "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": {
             "basis": [
@@ -6573,6 +6772,148 @@
               "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
             ],
             "current_sha256": "e8e5761f0db2e6426b7a8330453853bd1ff9f0c4a8f0429d2f0d1b79bd92c4ce"
+          },
+          "src/Parchwell.Kafka/Statistics/IKafkaNativeMonitoringStore.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/IKafkaNativeMonitoringStore.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 2710df9ce00117075d346d9726a0b4f2068603b26a7c98c7c5bb3859e3a6f04c."
+            ],
+            "current_sha256": "2710df9ce00117075d346d9726a0b4f2068603b26a7c98c7c5bb3859e3a6f04c"
+          },
+          "src/Parchwell.Kafka/Statistics/KafkaNativeMetricCatalogue.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/KafkaNativeMetricCatalogue.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 10c182835956ad85316caccfded68e7f643f92e5d49c34b95b4331ebf452614a."
+            ],
+            "current_sha256": "10c182835956ad85316caccfded68e7f643f92e5d49c34b95b4331ebf452614a"
+          },
+          "src/Parchwell.Kafka/Statistics/KafkaNativeMetricParser.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/KafkaNativeMetricParser.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 6b8370d5d838e6691e399640c2f033575033ca9fe23cc6750555a4211221a340."
+            ],
+            "current_sha256": "6b8370d5d838e6691e399640c2f033575033ca9fe23cc6750555a4211221a340"
+          },
+          "src/Parchwell.Kafka/Statistics/KafkaNativeMetricProjection.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/KafkaNativeMetricProjection.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 e36c2c08e397e72243fcd9d84dc1270b6526ea8b51d3eead5ff09a9360752def."
+            ],
+            "current_sha256": "e36c2c08e397e72243fcd9d84dc1270b6526ea8b51d3eead5ff09a9360752def"
+          },
+          "src/Parchwell.Kafka/Statistics/KafkaNativeMetricState.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/KafkaNativeMetricState.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 e51f3d85dacf1b953ab6de064ef60b8cc8e0e24b4705739f7f05c592f3073039."
+            ],
+            "current_sha256": "e51f3d85dacf1b953ab6de064ef60b8cc8e0e24b4705739f7f05c592f3073039"
+          },
+          "src/Parchwell.Kafka/Statistics/KafkaNativeMonitoringCapture.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/KafkaNativeMonitoringCapture.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 ba234895d88fb769f61a60f2faa4d7487ff0f08683b1fce58d04f4a3d742db3d.",
+              "Hari explicitly accepted retained-estimate runtime uncertainty for exact corrected shutdown SHA-256 2c0d14face9ff856cfbf88d3bca6d0023647b3533fa743739f8f023cdfe87352 in https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6948702178, adopting https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6947881192. Source correction 9b5fafd1345ed76f9dad1d61c57bcd9fd97f179e waits for queued native monitoring within the original cleanup token and records incomplete drain/completion; this can add bounded shutdown time and is not claimed timing-neutral. Preserve original measured maps, estimates, all target/evidence records, provisional status, preceding bases, exact runner/projection exceptions and mandatory later full main-only mutation acceptance."
+            ],
+            "current_sha256": "2c0d14face9ff856cfbf88d3bca6d0023647b3533fa743739f8f023cdfe87352"
+          },
+          "src/Parchwell.Kafka/Statistics/KafkaNativeMonitoringOptions.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/KafkaNativeMonitoringOptions.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 a78620d18c20097cca22a16f8991e8566f5a5a64349f00379c1ca067a002fd03."
+            ],
+            "current_sha256": "a78620d18c20097cca22a16f8991e8566f5a5a64349f00379c1ca067a002fd03"
+          },
+          "src/Parchwell.Kafka/Statistics/KafkaStatisticsMetrics.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/KafkaStatisticsMetrics.cs ; measured SHA-256 fe4f6288818deb6da5203f18af89c8c55ea8b24edcf2c8d80a0107a32cbd8f02; main SHA-256 fe4f6288818deb6da5203f18af89c8c55ea8b24edcf2c8d80a0107a32cbd8f02; current SHA-256 2fc513da909f34e45d5786723da4d21741dda81b9050446c50d4720654eab038."
+            ],
+            "current_sha256": "2fc513da909f34e45d5786723da4d21741dda81b9050446c50d4720654eab038"
+          },
+          "src/Parchwell.Kafka/Statistics/KafkaStatisticsMonitoringStatus.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/KafkaStatisticsMonitoringStatus.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 0d630f447685cf575e780350cb697143cd250c3bb13a44336c1eb2f50d455505."
+            ],
+            "current_sha256": "0d630f447685cf575e780350cb697143cd250c3bb13a44336c1eb2f50d455505"
+          },
+          "src/Parchwell.Kafka/Statistics/KafkaStatisticsReport.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/KafkaStatisticsReport.cs ; measured SHA-256 61a1deafc7cf7992bdc9e871c96a87d033ed3556020b1905bc4b3ad6a95fd38b; main SHA-256 61a1deafc7cf7992bdc9e871c96a87d033ed3556020b1905bc4b3ad6a95fd38b; current SHA-256 9d5528dab7dd12a509e221c19b63f25e2b825d2b762eea5d2f568578a26f3eb1."
+            ],
+            "current_sha256": "9d5528dab7dd12a509e221c19b63f25e2b825d2b762eea5d2f568578a26f3eb1"
+          },
+          "src/Parchwell.Kafka/Statistics/KafkaStatisticsSession.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Statistics/KafkaStatisticsSession.cs ; measured SHA-256 aa094c79b12939617007d6b842e9098d331f0b3e14df1bbb0fdd8338af40ba0f; main SHA-256 aa094c79b12939617007d6b842e9098d331f0b3e14df1bbb0fdd8338af40ba0f; current SHA-256 1288e8f5655c5797fc0f959be40d370846ee5b47b184142063b641068b9d4908."
+            ],
+            "current_sha256": "1288e8f5655c5797fc0f959be40d370846ee5b47b184142063b641068b9d4908"
+          },
+          "src/Parchwell.Kafka/Telemetry/ParchwellTelemetryServiceCollectionExtensions.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Kafka/Telemetry/ParchwellTelemetryServiceCollectionExtensions.cs ; measured SHA-256 0bf0d4104b9d40feaa4397ce59f2041748123a4323a089da6717fb1af6cb5a19; main SHA-256 0bf0d4104b9d40feaa4397ce59f2041748123a4323a089da6717fb1af6cb5a19; current SHA-256 112270d3cd426c8f091cd10d776c1635f71d41d7712742d2fba8cd777164d991."
+            ],
+            "current_sha256": "112270d3cd426c8f091cd10d776c1635f71d41d7712742d2fba8cd777164d991"
+          },
+          "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSession.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSession.cs ; measured SHA-256 61699a578df86cf471981b44eda8d28bd712c21d38dd9b755472176913790354; main SHA-256 61699a578df86cf471981b44eda8d28bd712c21d38dd9b755472176913790354; current SHA-256 77aa05942c72fd527ad74685c011dbddc7d1a60494b464a7990f8c7eeb3d523a."
+            ],
+            "current_sha256": "77aa05942c72fd527ad74685c011dbddc7d1a60494b464a7990f8c7eeb3d523a"
+          },
+          "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSessionFactory.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSessionFactory.cs ; measured SHA-256 003cb3f953f7748c12666a7ca719a6db6763176dbb72255608694c6c3a2c810e; main SHA-256 003cb3f953f7748c12666a7ca719a6db6763176dbb72255608694c6c3a2c810e; current SHA-256 ba6d6b90e29f8176890a2e9b76656628e15ff81dd51d5e115dd5c03b7907b530."
+            ],
+            "current_sha256": "ba6d6b90e29f8176890a2e9b76656628e15ff81dd51d5e115dd5c03b7907b530"
+          },
+          "src/Parchwell.Verifier/Common/NativeMonitoring/BlobNativeMonitoringStore.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/src/Parchwell.Verifier/Common/NativeMonitoring/BlobNativeMonitoringStore.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 e6a6f4f8f9ac2f8c050a63c7e4867d353cdef75424f2914918c80f7c54444ab5."
+            ],
+            "current_sha256": "e6a6f4f8f9ac2f8c050a63c7e4867d353cdef75424f2914918c80f7c54444ab5"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/B10SweepLineHandlerTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/Host/B10SweepLineHandlerTests.cs ; measured SHA-256 d420f375ad14e970787aef9d8137cd2708435df029787d3aeb4e448f3a01cfbb; main SHA-256 d420f375ad14e970787aef9d8137cd2708435df029787d3aeb4e448f3a01cfbb; current SHA-256 e13fd5d23258c7e2a8cde6c4ce832f1755e0fd9fe59056a0dd911943b0796bea."
+            ],
+            "current_sha256": "e13fd5d23258c7e2a8cde6c4ce832f1755e0fd9fe59056a0dd911943b0796bea"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/B10SweepLineOptionsTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/Host/B10SweepLineOptionsTests.cs ; measured SHA-256 3cc0cf3ea36bcb8fb6c17906c0921c4b513f969d3a47daa556546fc094cc2191; main SHA-256 3cc0cf3ea36bcb8fb6c17906c0921c4b513f969d3a47daa556546fc094cc2191; current SHA-256 68552e06ce74768e517d6c83f84d7b4310205f3f3007cb53c10b6595753d920d."
+            ],
+            "current_sha256": "68552e06ce74768e517d6c83f84d7b4310205f3f3007cb53c10b6595753d920d"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/VerifierCompletionTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/Host/VerifierCompletionTests.cs ; measured SHA-256 09fbab7f9fd35d873bbabf10aabe4651aea1083dc623a3fe0db033bc0ed38a4e; main SHA-256 09fbab7f9fd35d873bbabf10aabe4651aea1083dc623a3fe0db033bc0ed38a4e; current SHA-256 9efb7c7121808be4879fc18556869aa1733bb5ff1ba2c930b26aa540ca1b009c."
+            ],
+            "current_sha256": "9efb7c7121808be4879fc18556869aa1733bb5ff1ba2c930b26aa540ca1b009c"
+          },
+          "tests/Parchwell.Verifier.Tests/NativeMonitoring/VerifierNativeMonitoringTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/NativeMonitoring/VerifierNativeMonitoringTests.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 4307cbf3c91e3512180463f29103b03b0b8467fe956f4af81a37d77cfdc2dfe9.",
+              "Hari explicitly accepted the same retained-estimate runtime uncertainty for the exact corrected verifier-test SHA-256 4d907495debffed9b44a282f817286b63bf0a8882330f3453717a11679e30221 in https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6947446988, adopting https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943603607. Source correction 1e159253a92bd53cb8efe8d9466297ddaf9c48aa passes the xUnit test cancellation token instead of the default token; preserve preceding assessment history. No timing-neutrality or new measurement is claimed. Original measured maps, estimates, evidence, provisional status, exact tool exceptions and mandatory later full main-only mutation acceptance remain unchanged."
+            ],
+            "current_sha256": "4d907495debffed9b44a282f817286b63bf0a8882330f3453717a11679e30221"
+          },
+          "tests/Parchwell.Verifier.Tests/Support/NativeMonitoringTestSupport.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
+              "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/Support/NativeMonitoringTestSupport.cs ; measured SHA-256 None; main SHA-256 None; current SHA-256 0f35c3c71bb7ed4efac0804b6738d599e29ff7738eb445e3413dfabafcd98115."
+            ],
+            "current_sha256": "0f35c3c71bb7ed4efac0804b6738d599e29ff7738eb445e3413dfabafcd98115"
           }
         },
         "target_sources": {

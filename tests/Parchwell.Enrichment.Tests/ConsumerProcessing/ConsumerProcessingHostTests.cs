@@ -5,7 +5,9 @@ using System.Text.Json;
 using Confluent.Kafka;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Parchwell.Enrichment.ConsumerProcessing;
+using Parchwell.Kafka.Statistics;
 using Xunit;
 
 namespace Parchwell.Enrichment.Tests.ConsumerProcessing;
@@ -32,6 +34,7 @@ public sealed class ConsumerProcessingHostTests
                 builder.Configuration.Sources.Clear();
                 builder.Configuration.AddInMemoryCollection(configuration);
                 builder.Services.AddSingleton<TimeProvider>(harness.Clock);
+                builder.Services.AddSingleton<IKafkaNativeMonitoringStore>(new MemoryMonitoringStore());
                 builder.Services.AddSingleton<IConsumerProcessingPlanSource>(new ConsumerTestHarness.PlanSource(harness.Plan));
                 builder.Services.AddSingleton<Func<IConsumerRecordStore>>(_ => () => harness.Store);
                 builder.Services.AddSingleton<ConsumerProcessingConsumerFactory>(_ => harness.CreateConsumer);
@@ -48,6 +51,26 @@ public sealed class ConsumerProcessingHostTests
         finally { File.Delete(tokenPath); }
     }
 
+    [Theory]
+    [InlineData("BlobEndpoint", "https://other.example/")]
+    [InlineData("Phase", "C9")]
+    [InlineData("ConfigurationId", "C9")]
+    [InlineData("JobName", "other-job")]
+    [InlineData("PodUid", "other-pod")]
+    [InlineData("SourceCommit", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")]
+    public void Given_mismatched_monitoring_identity_When_options_are_resolved_Then_validation_fails(string field, string value)
+    {
+        using var harness = new ConsumerTestHarness();
+        Dictionary<string, string?> configuration = HostConfiguration(harness.Options);
+        configuration["NativeMonitoring:" + field] = value;
+        using var host = Program.BuildConsumerProcessingHost(builder =>
+        {
+            builder.Configuration.Sources.Clear();
+            builder.Configuration.AddInMemoryCollection(configuration);
+        });
+        Assert.Throws<OptionsValidationException>(() => host.Services.GetRequiredService<IOptions<KafkaNativeMonitoringOptions>>().Value);
+    }
+
     internal static Dictionary<string, string?> HostConfiguration(ConsumerProcessingOptions options)
     {
         Dictionary<string, string?> values = typeof(ConsumerProcessingOptions).GetProperties()
@@ -59,7 +82,25 @@ public sealed class ConsumerProcessingHostTests
         values["PARCHWELL_POD_NAME"] = options.PodName;
         values["PARCHWELL_POD_UID"] = options.PodUid;
         values["PARCHWELL_NODE_NAME"] = options.NodeName;
+        values["Telemetry:ConnectionString"] = "InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://localhost/";
+        values["Telemetry:ServiceName"] = "Parchwell.Enrichment";
+        values["Telemetry:ServiceInstanceId"] = options.PodName;
+        values["Telemetry:ScenarioId"] = options.ScenarioId;
+        values["Telemetry:RunId"] = options.RunId;
+        values["NativeMonitoring:BlobEndpoint"] = options.BlobEndpoint;
+        values["NativeMonitoring:BlobContainer"] = "native-monitoring";
+        values["NativeMonitoring:RunId"] = options.RunId;
+        values["NativeMonitoring:Phase"] = options.Phase;
+        values["NativeMonitoring:ScenarioId"] = options.ScenarioId;
+        values["NativeMonitoring:ConfigurationId"] = options.Phase;
+        values["NativeMonitoring:JobName"] = options.JobName;
+        values["NativeMonitoring:PodUid"] = options.PodUid;
+        values["NativeMonitoring:SourceCommit"] = options.SourceCommit;
         return values;
+    }
+    private sealed class MemoryMonitoringStore : IKafkaNativeMonitoringStore
+    {
+        public Task CreateAsync(string path, ReadOnlyMemory<byte> content, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 }
 #pragma warning restore CA1707

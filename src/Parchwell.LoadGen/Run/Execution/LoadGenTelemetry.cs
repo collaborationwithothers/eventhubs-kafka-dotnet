@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using Parchwell.LoadGen.Run.Contracts;
 
 namespace Parchwell.LoadGen.Run.Execution;
 
@@ -9,6 +10,14 @@ internal static class LoadGenTelemetry
     private static readonly Meter Meter = new("Parchwell.Workers");
     private static readonly Counter<long> Operations = Meter.CreateCounter<long>("parchwell.worker.operations");
     private static readonly Histogram<double> Duration = Meter.CreateHistogram<double>("parchwell.worker.operation.duration_ms", "ms");
+
+    private static readonly Counter<long> RetryEvents = Meter.CreateCounter<long>("parchwell.loadgen.application_retry.events", "count");
+
+    internal static void RetryEvent(RunIdentity identity, string kind, string transition) => RetryEvents.Add(1, new TagList
+    {
+        { "scenario", identity.ScenarioId }, { "run", identity.RunId }, { "role", "LoadGenProducer" },
+        { "client_id", identity.ClientId }, { "retry_kind", kind }, { "event", transition }
+    });
 
     internal static OperationScope Begin(TimeProvider clock, string scenario, string run, string clientId, string operation) =>
         new OperationScope(clock, scenario, run, clientId, operation);

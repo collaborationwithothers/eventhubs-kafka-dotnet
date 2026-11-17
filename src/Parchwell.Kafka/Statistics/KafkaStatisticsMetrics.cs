@@ -14,6 +14,10 @@ internal sealed class KafkaStatisticsMetrics : IDisposable
     internal const string MeterName = "Parchwell.Kafka.Statistics";
 
     private readonly Meter _meter = new(MeterName);
+    private readonly Dictionary<string, Instrument<long>> _native = new(StringComparer.Ordinal);
+    internal object NativeLock { get; } = new();
+    internal int NativeLifetimes { get; set; }
+    internal Dictionary<string, HashSet<KafkaNativeMetricTuple>> NativeTuples { get; } = new(StringComparer.Ordinal);
     private readonly Histogram<long> _throttle;
     private readonly Histogram<long> _roundTripTime;
     private readonly Counter<long> _requestTimeouts;
@@ -26,6 +30,17 @@ internal sealed class KafkaStatisticsMetrics : IDisposable
         _roundTripTime = _meter.CreateHistogram<long>("kafka.broker.rtt.p99_us", "us");
         _requestTimeouts = _meter.CreateCounter<long>("kafka.broker.req_timeouts", "count");
         _disconnects = _meter.CreateCounter<long>("kafka.broker.disconnects", "count");
+        foreach (var definition in KafkaNativeMetricCatalogue.Definitions)
+        {
+            if (definition.Kind.StartsWith("Gauge", StringComparison.Ordinal))
+            {
+                _native.Add(definition.Name, _meter.CreateGauge<long>(definition.Name, definition.Unit));
+            }
+            else if (definition.Kind.StartsWith("Counter", StringComparison.Ordinal))
+            {
+                _native.Add(definition.Name, _meter.CreateCounter<long>(definition.Name, definition.Unit));
+            }
+        }
     }
 
     /// <summary>Records available broker windows and validated cumulative-counter deltas.</summary>
@@ -67,6 +82,31 @@ internal sealed class KafkaStatisticsMetrics : IDisposable
         {
             _disconnects.Add(disconnectDeltaValue, in tags);
         }
+    }
+
+    internal KafkaNativeMetricState CreateNativeState(KafkaStatisticsIdentity identity, bool compatibilityBacked) =>
+        new(this, identity, compatibilityBacked);
+
+    internal void RecordNative(KafkaNativeMetricPoint point, KafkaNativeMetricIdentity nativeIdentity,
+        KafkaStatisticsIdentity identity, long value)
+    {
+        var tags = new TagList
+        {
+            { "scenario", identity.ScenarioId }, { "run", identity.RunId },
+            { "role", identity.Role.ToString() }, { "client_id", identity.ClientId },
+            { "native_client_name", nativeIdentity.Name }, { "client_type", nativeIdentity.Type }
+        };
+        if (point.Broker is not null) tags.Add("broker", point.Broker);
+        if (point.BrokerAddress is not null) tags.Add("broker_address", point.BrokerAddress);
+        if (point.Topic is not null) tags.Add("topic", point.Topic);
+        if (point.Partition is int partition) tags.Add("partition", partition);
+        if (point.Request is not null) tags.Add("request_type", point.Request);
+        if (point.State is not null)
+        {
+            tags.Add(point.Definition.Path[(point.Definition.Path.LastIndexOf('.') + 1)..], point.State);
+        }
+        if (_native[point.Definition.Name] is Counter<long> counter) counter.Add(value, in tags);
+        else ((Gauge<long>)_native[point.Definition.Name]).Record(value, in tags);
     }
 
     /// <summary>Disposes the meter and its instruments.</summary>

@@ -7,6 +7,8 @@ using Microsoft.Extensions.Options;
 using Parchwell.Kafka.Authentication;
 using Parchwell.Kafka.Configuration;
 using Parchwell.Kafka.Telemetry;
+using Parchwell.Kafka.Statistics;
+using Parchwell.LoadGen.Common.Monitoring;
 using Parchwell.LoadGen.Common.SingleAction;
 using Parchwell.Scenarios;
 
@@ -66,10 +68,27 @@ internal static class IdleObservationHost
         builder.Services.AddSingleton<IIdleObservationPublication>(provider => new IdleObservationPublication(
             new BlobServiceClient(new Uri(options.BlobEndpoint), new WorkloadIdentityCredential(), new BlobClientOptions { Retry = { MaxRetries = 0 } }),
             provider.GetRequiredService<IdleObservationOptions>()));
-        builder.Services.AddSingleton(provider => new IdleObservationSessionFactory(provider.GetRequiredService<KafkaAuthenticationFactory>(), options));
+        if (registerTelemetry)
+        {
+            var nativeOptions = new KafkaNativeMonitoringOptions();
+            builder.Configuration.GetSection(KafkaNativeMonitoringOptions.SectionName).Bind(nativeOptions, value => value.ErrorOnUnknownConfiguration = true);
+            ValidateNativeIdentity(nativeOptions, options);
+            NativeMonitoringHost.Register(builder.Services, nativeOptions,
+                options.BlobContainer + "/" + IdleObservationPublication.Prefix(options) + $"instances/{options.PodName}/capture.json");
+        }
+        builder.Services.AddSingleton(provider => new IdleObservationSessionFactory(provider.GetRequiredService<KafkaAuthenticationFactory>(), options, provider.GetService<NativeMonitoringHost>()));
         builder.Services.AddSingleton<IdleObservationWorker>();
         configureServices?.Invoke(builder.Services);
         return builder.Build();
+    }
+
+    internal static void ValidateNativeIdentity(KafkaNativeMonitoringOptions nativeOptions, IdleObservationOptions options)
+    {
+        if (nativeOptions.RunId != options.RunId || nativeOptions.Phase != options.ConfigurationId || nativeOptions.ScenarioId != options.ScenarioId ||
+            nativeOptions.ConfigurationId != options.ConfigurationId || nativeOptions.JobName != options.JobName ||
+            nativeOptions.PodUid != options.PodUid || nativeOptions.SourceCommit != options.SourceCommit ||
+            nativeOptions.BlobEndpoint != options.BlobEndpoint)
+            throw new InvalidOperationException("native_monitoring_identity_mismatch");
     }
 
     internal static async Task<int> RunAsync(Action<IServiceCollection>? configureServices = null, Func<IHost>? hostFactory = null)
@@ -80,6 +99,9 @@ internal static class IdleObservationHost
         IIdleObservationPublication? publication = null;
         ITimer? watchdog = null;
         bool captureComplete = false;
+        NativeMonitoringHost? monitoring = null;
+        Task? drain = null;
+        CancellationTokenSource? cleanup = null;
         int exit = 1;
         try
         {
@@ -104,11 +126,15 @@ internal static class IdleObservationHost
         {
             if (host is not null)
             {
-                using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(options?.HostCleanupSeconds ?? 10), clock);
+                cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(options?.HostCleanupSeconds ?? 10), clock);
+                try { monitoring = host.Services.GetService<NativeMonitoringHost>(); }
+                catch (Exception exception) { ReportFailure("native_monitoring_initialization_failed", exception, options); }
                 try { await host.StopAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false); }
                 catch (Exception exception) { ReportFailure("idle_observation_host_stop_failed", exception, options); exit = 1; }
+                drain = monitoring?.DrainAsync(cleanup.Token);
                 try { await Task.Run(host.Dispose).WaitAsync(cleanup.Token).ConfigureAwait(false); }
                 catch (Exception exception) { ReportFailure("idle_observation_host_dispose_failed", exception, options); exit = 1; }
+
             }
         }
         try { watchdog?.Dispose(); }
@@ -124,6 +150,16 @@ internal static class IdleObservationHost
             }
             catch (Exception exception) { ReportFailure("idle_observation_completion_failed", exception, options); exit = 1; }
         }
+        if (monitoring is not null)
+        {
+            try
+            {
+                if (await monitoring.WaitForDrainAsync(drain, cleanup!.Token).ConfigureAwait(false))
+                    await monitoring.CompleteAsync(captureComplete, cleanup!.Token).WaitAsync(cleanup!.Token).ConfigureAwait(false);
+            }
+            catch (Exception exception) { monitoring.MarkIncomplete(); ReportFailure("native_monitoring_completion_failed", exception, options); }
+        }
+        cleanup?.Dispose();
         return exit;
     }
     private static void ReportFailure(string operation, Exception exception, IdleObservationOptions? options) =>

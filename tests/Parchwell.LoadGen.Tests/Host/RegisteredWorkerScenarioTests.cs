@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Parchwell.Kafka.Configuration;
+using Parchwell.Kafka.Statistics;
 using Parchwell.LoadGen;
 using Parchwell.LoadGen.Run.Input;
 using Parchwell.Scenarios;
@@ -31,9 +32,11 @@ public sealed class RegisteredWorkerScenarioTests
         inputs["LoadGen__RunId"] = "run-1";
         inputs["LoadGen__RepeatNumber"] = "1";
         inputs["LoadGen__JobName"] = $"run-1-{phase.ToLowerInvariant()}-r1-loadgen";
+        LoadGenHostProcessTests.SyncNativeMonitoring(inputs);
         string[] args = inputs.Select(pair => "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal) + "=" + pair.Value).ToArray();
         var telemetry = new RecordingTelemetryRegistration();
-        using IHost host = Program.BuildHostCore(args, null, telemetry.Register);
+        using IHost host = Program.BuildHostCore(args, services =>
+            services.AddSingleton<IKafkaNativeMonitoringStore>(new NativeMonitoringFixture()), telemetry.Register);
 
         LoadGenHostOptions options = host.Services.GetRequiredService<IOptions<LoadGenHostOptions>>().Value;
         Assert.Equal(configuration, options.ConfigurationId);

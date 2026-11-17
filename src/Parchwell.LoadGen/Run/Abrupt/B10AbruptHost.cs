@@ -2,6 +2,7 @@ using Azure.Identity;
 using Azure.Storage.Blobs;
 using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Parchwell.Kafka.Authentication;
@@ -13,6 +14,7 @@ using Parchwell.LoadGen.Run.Evidence;
 using Parchwell.LoadGen.Run.Execution;
 using Parchwell.LoadGen.Run.Input;
 using Parchwell.LoadGen.Run.Ledger;
+using Parchwell.LoadGen.Common.Monitoring;
 using Parchwell.Scenarios;
 using System.Globalization;
 using System.Text;
@@ -34,7 +36,9 @@ internal static class B10AbruptHost
     {
         try
         {
-            B10AbruptOptions.Read().Validate();
+            B10AbruptOptions options = B10AbruptOptions.Read();
+            options.Validate();
+            _ = ReadNativeOptions(new ConfigurationBuilder().AddEnvironmentVariables().Build(), options);
             Console.Out.WriteLine("{\"b10_abrupt_configuration_valid\":true}");
             return 0;
         }
@@ -86,17 +90,31 @@ internal static class B10AbruptHost
                 await using var journalScope = journal;
                 var runtime = await CreateProducerAsync(host.Services, options, journal, input, lifetime.Token).ConfigureAwait(false);
                 var identity = new RunIdentity(options.ScenarioId, options.ConfigurationId, options.RunId, options.PodName, options.PodName, options.PodName);
-                if (input is null)
+                B10AbruptProducer.SuccessorArtifacts result;
+                try
                 {
-                    return await runtime.Producer.RunFirstAsync(runtime.Profile, identity, runtime.Execution, lifetime.Token).ConfigureAwait(false);
+                    if (input is null)
+                    {
+                        int childExit = await runtime.Producer.RunFirstAsync(runtime.Profile, identity, runtime.Execution, lifetime.Token).ConfigureAwait(false);
+                        CloseFailedBuildCapture(runtime.Statistics.DisposeAsync, runtime.Evidence.DisposeAsync);
+                        return childExit;
+                    }
+                    result = await runtime.Producer.RunSuccessorAsync(runtime.Profile, identity, runtime.Execution,
+                        input.Entries, input.ReleaseUtc, lifetime.Token).ConfigureAwait(false);
                 }
-                B10AbruptProducer.SuccessorArtifacts result = await runtime.Producer.RunSuccessorAsync(runtime.Profile, identity, runtime.Execution,
-                    input.Entries, input.ReleaseUtc, lifetime.Token).ConfigureAwait(false);
-                using (var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10), clock))
+                catch
+                {
+                    CloseFailedBuildCapture(runtime.Statistics.DisposeAsync, runtime.Evidence.DisposeAsync);
+                    throw;
+                }
+                NativeMonitoringHost monitoring = host.Services.GetRequiredService<NativeMonitoringHost>();
+                using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10), clock);
+                Task? monitorDrain = null;
                 {
                     await runtime.Statistics.DisposeAsync().AsTask().WaitAsync(cleanup.Token).ConfigureAwait(false);
                     await runtime.Evidence.DisposeAsync().AsTask().WaitAsync(cleanup.Token).ConfigureAwait(false);
                     await host.StopAsync(cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false);
+                    monitorDrain = monitoring.DrainAsync(cleanup.Token);
                     await Task.Run(host.Dispose, cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false);
                 }
                 var payloads = new Dictionary<string, byte[]>(StringComparer.Ordinal);
@@ -104,6 +122,8 @@ internal static class B10AbruptHost
                     payloads.Add(pair.Key, await B10AbruptPublisher.ReadFileAsync(pair.Value, 268435456, lifetime.Token).ConfigureAwait(false));
                 await publisher.PublishSuccessorAsync(options.Identity(input.FirstIdentity.InstanceId), payloads, input.FirstTermination, input.Journal, input.KillUnconfirmedAttemptIds,
                     result.ReadyUtc, result.ReleaseUtc, result.Invocations, cleanupCompleted: true, lifetime.Token).ConfigureAwait(false);
+                try { if (await monitoring.WaitForDrainAsync(monitorDrain, cleanup.Token).ConfigureAwait(false)) await monitoring.CompleteAsync(true, cleanup.Token).WaitAsync(cleanup.Token).ConfigureAwait(false); }
+                catch (Exception) { monitoring.MarkIncomplete(); Console.Error.WriteLine("native_monitoring_completion_failed"); }
                 return 0;
             }
         }
@@ -111,6 +131,24 @@ internal static class B10AbruptHost
         {
             return ReportFailure(exception, Console.Error);
         }
+    }
+
+    internal static void CloseFailedBuildCapture(Func<ValueTask> closeStatistics, Func<ValueTask> closeEvidence)
+    {
+        // Closing the capture queues must not wait for a store or change the original failure path.
+        ObserveClose(closeStatistics);
+        ObserveClose(closeEvidence);
+    }
+
+    private static void ObserveClose(Func<ValueTask> close)
+    {
+        try
+        {
+            Task task = close().AsTask();
+            _ = task.ContinueWith(static completed => _ = completed.Exception,
+                CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        }
+        catch (Exception) { Console.Error.WriteLine("b10_abrupt_capture_close_failed"); }
     }
 
     internal static async Task<int> RunValidatedSuccessorAsync(B10AbruptOptions options, B10AbruptPublisher publisher,
@@ -157,6 +195,9 @@ internal static class B10AbruptHost
         AddB10KafkaRoles(builder.Services, options);
         if (options.Role != "parent")
         {
+            KafkaNativeMonitoringOptions nativeOptions = ReadNativeOptions(builder.Configuration, options);
+            NativeMonitoringHost.Register(builder.Services, nativeOptions,
+                "ledger/" + B10AbruptWire.ArtifactPrefix(options.Identity(), options.Purpose) + "statistics.jsonl");
             builder.Services.AddSingleton<RunEvidenceSinkRouter>();
             builder.Services.AddSingleton<IKafkaStatisticsEvidenceSink>(services => services.GetRequiredService<RunEvidenceSinkRouter>());
             builder.Services.AddParchwellKafkaAuthentication(value =>
@@ -170,6 +211,19 @@ internal static class B10AbruptHost
         }
         ConfigureTestServices?.Invoke(builder.Services);
         return builder.Build();
+    }
+
+    private static KafkaNativeMonitoringOptions ReadNativeOptions(IConfiguration configuration, B10AbruptOptions options)
+    {
+        var nativeOptions = new KafkaNativeMonitoringOptions();
+        configuration.GetSection(KafkaNativeMonitoringOptions.SectionName).Bind(nativeOptions, value => value.ErrorOnUnknownConfiguration = true);
+        if (!nativeOptions.IsValid(out string? failure) || nativeOptions.BlobContainer != "native-monitoring")
+            throw new InvalidOperationException(failure ?? "native_monitoring_container_invalid");
+        if (nativeOptions.RunId != options.RunId || nativeOptions.Phase != options.Phase || nativeOptions.ScenarioId != options.ScenarioId ||
+            nativeOptions.ConfigurationId != options.ConfigurationId || nativeOptions.JobName != options.JobName || nativeOptions.PodUid != options.PodUid ||
+            nativeOptions.SourceCommit != options.SourceCommit || nativeOptions.BlobEndpoint != options.BlobEndpoint)
+            throw new InvalidOperationException("native_monitoring_identity_mismatch");
+        return nativeOptions;
     }
 
     // ScenarioResolver.Resolve builds a baseline for every role that scenarios/B10/scenario.yaml declares,
@@ -205,26 +259,58 @@ internal static class B10AbruptHost
         Directory.CreateDirectory(evidencePath);
         var evidence = new RunEvidenceSession(identity, new RunEvidenceOptions(evidencePath, 2048, 1048576, 134217728, 100, TimeSpan.FromSeconds(20)),
             clock, RunEvidenceExpectations.CaptureOnly(role, true));
-        var statisticsIdentity = new KafkaStatisticsIdentity("B10", options.RunId, KafkaClientRole.LoadGenProducer, options.PodName);
-        var settings = role.Settings.ToDictionary(pair => pair.Key, pair => pair.Value.Value, StringComparer.Ordinal);
-        var actual = settings.Keys.ToDictionary(key => key, key => config.Get(key), StringComparer.Ordinal);
-        var observations = new B10AbruptStatistics(statisticsIdentity, brokers, settings, actual, evidence);
-        observations.ActivateNativeCaptureTracking();
-        services.GetRequiredService<RunEvidenceSinkRouter>().Attach(observations);
-        KafkaStatisticsSession statistics = services.GetRequiredService<KafkaStatisticsBridgeFactory>().Create(statisticsIdentity);
-        KafkaAuthenticationFactory authFactory = services.GetRequiredService<KafkaAuthenticationFactory>();
-        authFactory.ValidateProducerConfiguration(config);
-        KafkaOAuthBearerSession authentication = authFactory.CreateSession(new KafkaAuthenticationIdentity("B10", options.RunId, KafkaClientRole.LoadGenProducer, options.PodName), cancellationToken);
-        var statisticsHandler = StatisticsHandler(observations, statistics);
-        var errorHandler = CreateErrorHandler(evidence, journal, clock);
-        IProducer<byte[], byte[]> Factory() => ProducerFactoryOverride is { } factory ? factory(config, statisticsHandler, errorHandler) : authFactory.CreateProducerBuilder<byte[], byte[]>(config, authentication)
-            .SetStatisticsHandler(statisticsHandler).SetLogHandler((_, log) => evidence.CaptureLog(log)).SetErrorHandler(errorHandler).Build();
-        var producer = new B10AbruptProducer(Factory, clock, observations, journal, evidence, options.Identity(input?.FirstIdentity.InstanceId),
-            SuccessorCompletion(statistics, evidence, brokers, evidencePath), new B10AbruptTimeline(clock, options.Role, Console.Error), selfKill: SelfKillOverride, purpose: options.Purpose);
-        var execution = new RunExecutionOptions(186000, 900000, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(300), TimeSpan.FromSeconds(10),
-            16384, 67108864, 268435456, options.OutputRoot, "document-events", brokers, false, true,
-            TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(20), ApplicationRetryPolicy.ForScenario("B10"));
-        return new(producer, loaded.Profile, execution, authentication, statistics, evidence);
+        KafkaStatisticsSession? statisticsToClose = null;
+        try
+        {
+            var statisticsIdentity = new KafkaStatisticsIdentity("B10", options.RunId, KafkaClientRole.LoadGenProducer, options.PodName);
+            var settings = role.Settings.ToDictionary(pair => pair.Key, pair => pair.Value.Value, StringComparer.Ordinal);
+            var actual = settings.Keys.ToDictionary(key => key, key => config.Get(key), StringComparer.Ordinal);
+            var observations = new B10AbruptStatistics(statisticsIdentity, brokers, settings, actual, evidence);
+            observations.ActivateNativeCaptureTracking();
+            services.GetRequiredService<RunEvidenceSinkRouter>().Attach(observations);
+            KafkaStatisticsSession statistics = services.GetRequiredService<KafkaStatisticsBridgeFactory>().Create(statisticsIdentity);
+            statisticsToClose = statistics;
+            KafkaAuthenticationFactory authFactory = services.GetRequiredService<KafkaAuthenticationFactory>();
+            authFactory.ValidateProducerConfiguration(config);
+            KafkaOAuthBearerSession authentication = authFactory.CreateSession(new KafkaAuthenticationIdentity("B10", options.RunId, KafkaClientRole.LoadGenProducer, options.PodName), cancellationToken);
+            NativeMonitoringHost? monitoring = services.GetService<NativeMonitoringHost>();
+            var statisticsHandler = StatisticsHandler(observations, statistics, monitoring);
+            var errorHandler = CreateErrorHandler(evidence, journal, clock);
+            IProducer<byte[], byte[]> Factory()
+            {
+                KafkaNativeMonitoringLifetime? lifetime = monitoring?.Begin(statisticsIdentity);
+                if (lifetime is not null)
+                {
+                    monitoring!.AttachBridge(statistics, lifetime);
+                    evidence.AttachAdmittedObserver((report, ordinal) => monitoring.ObserveExisting(lifetime, report, ordinal));
+                }
+                try
+                {
+                    IProducer<byte[], byte[]> result = ProducerFactoryOverride is { } factory ? factory(config, statisticsHandler, errorHandler) : authFactory.CreateProducerBuilder<byte[], byte[]>(config, authentication)
+                        .SetStatisticsHandler(statisticsHandler).SetLogHandler((_, log) => evidence.CaptureLog(log)).SetErrorHandler(errorHandler).Build();
+                    lifetime?.MarkBuilt();
+                    return result;
+                }
+                catch
+                {
+                    try { lifetime?.MarkBuildFailed(); }
+                    catch (Exception) { Console.Error.WriteLine("native_monitoring_failed_build_record_failed"); }
+                    throw;
+                }
+            }
+            var producer = new B10AbruptProducer(Factory, clock, observations, journal, evidence, options.Identity(input?.FirstIdentity.InstanceId),
+                SuccessorCompletion(statistics, evidence, brokers, evidencePath), new B10AbruptTimeline(clock, options.Role, Console.Error), selfKill: SelfKillOverride, purpose: options.Purpose);
+            var execution = new RunExecutionOptions(186000, 900000, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(300), TimeSpan.FromSeconds(10),
+                16384, 67108864, 268435456, options.OutputRoot, "document-events", brokers, false, true,
+                TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(20), ApplicationRetryPolicy.ForScenario("B10"));
+            return new(producer, loaded.Profile, execution, authentication, statistics, evidence);
+        }
+        catch
+        {
+            if (statisticsToClose is not null) CloseFailedBuildCapture(statisticsToClose.DisposeAsync, evidence.DisposeAsync);
+            else ObserveClose(evidence.DisposeAsync);
+            throw;
+        }
     }
 
     internal static Action<IProducer<byte[], byte[]>, Error> CreateErrorHandler(RunEvidenceSession evidence, B10AbruptJournal? journal, TimeProvider clock) =>
@@ -236,8 +322,14 @@ internal static class B10AbruptHost
 
     // Native-capture tracking must see a report before the session can reject it, or the B10 adapter
     // could not match a report the session dropped.
-    internal static Action<IProducer<byte[], byte[]>, string> StatisticsHandler(B10AbruptStatistics observations, KafkaStatisticsSession statistics) =>
-        (_, raw) => { observations.CaptureNative(raw); statistics.Capture(raw); };
+    internal static Action<IProducer<byte[], byte[]>, string> StatisticsHandler(B10AbruptStatistics observations, KafkaStatisticsSession statistics,
+        NativeMonitoringHost? monitoring = null) =>
+        (_, raw) =>
+        {
+            observations.CaptureNative(raw);
+            if (monitoring is null) statistics.Capture(raw);
+            else monitoring.CaptureBridge(statistics, raw);
+        };
 
     // The successor completes statistics while its client is live. The producer disposes the client after that,
     // and only then completes evidence, so disposal callbacks reach the evidence session before it is finalized.

@@ -133,8 +133,9 @@ public sealed class B10AbruptVerifyBoundedReadTests(B10AbruptVerifyKafkaFixture 
     {
         using var authentication = new KafkaSessionTestSupport();
         authentication.Refresh();
-        return await Program.RunAsync(run.Configuration.Select(pair => "--" + pair.Key + "=" + pair.Value).ToArray(), services =>
+        return await Program.RunAsync(NativeMonitoringTestSupport.Arguments(run.Configuration.Select(pair => "--" + pair.Key + "=" + pair.Value)), services =>
         {
+            NativeMonitoringTestSupport.RegisterStore(services);
             services.RemoveAll<IHostedService>();
             foreach (ServiceDescriptor item in services.Where(item => item.ServiceType.Name is "IConfigureTracerProviderBuilder" or "IConfigureMeterProviderBuilder" or "IConfigureLoggerProviderBuilder").ToArray()) services.Remove(item);
             services.RemoveAll<IVerifierArtifactStore>();

@@ -268,6 +268,7 @@ public sealed class B10FinalHostTests
         bool configured = false;
         int exit = await Program.RunAsync(Arguments(options), services =>
         {
+            NativeMonitoringTestSupport.RegisterStore(services);
             configured = true;
             services.RemoveAll<IVerifierArtifactStore>();
             services.RemoveAll<IProducerArtifactStore>();
@@ -318,6 +319,7 @@ public sealed class B10FinalHostTests
         int calls = 0;
         int exit = await Program.RunAsync(Arguments(Options()), services =>
         {
+            NativeMonitoringTestSupport.RegisterStore(services);
             services.RemoveAll<IVerifierModeHandler>();
             services.AddSingleton<IVerifierModeHandler>(new CountingHandler(() => calls++));
         });
@@ -371,7 +373,7 @@ public sealed class B10FinalHostTests
         values["Telemetry:ServiceInstanceId"] = options.PodName;
         values["Telemetry:ScenarioId"] = options.ScenarioId;
         values["Telemetry:RunId"] = options.RunId;
-        return values.Select(pair => $"--{pair.Key}={pair.Value}").ToArray();
+        return NativeMonitoringTestSupport.Arguments(values.Select(pair => $"--{pair.Key}={pair.Value}"));
     }
 
     private sealed class CountingHandler(Action called) : IVerifierModeHandler

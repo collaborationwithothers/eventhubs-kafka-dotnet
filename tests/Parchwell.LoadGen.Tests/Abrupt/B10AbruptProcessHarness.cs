@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Parchwell.Kafka.Statistics;
 using Parchwell.LoadGen.Run.Abrupt;
+using Parchwell.LoadGen.Tests.Host;
 
 namespace Parchwell.LoadGen.Tests.Abrupt;
 
@@ -41,9 +42,13 @@ internal static class B10AbruptProcessHarness
             B10AbruptHost.CaptureBeforeOverride = capture.Before;
             B10AbruptHost.CaptureAfterOverride = capture.After;
         }
+        foreach (string name in new[] { "BlobEndpoint", "RunId", "Phase", "ScenarioId", "ConfigurationId", "JobName", "PodUid", "SourceCommit" })
+            Environment.SetEnvironmentVariable("NativeMonitoring__" + name, Environment.GetEnvironmentVariable("B10Abrupt__" + name));
+        Environment.SetEnvironmentVariable("NativeMonitoring__BlobContainer", "native-monitoring");
         var clock = new ProcessClock();
         B10AbruptHost.ConfigureTestServices = services =>
         {
+            services.AddSingleton<IKafkaNativeMonitoringStore>(new NativeMonitoringFixture());
             if (control.Mode != "host-cross-failure")
             {
                 services.RemoveAll<IB10AbruptStorage>();

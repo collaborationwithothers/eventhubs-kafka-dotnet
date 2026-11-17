@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Parchwell.Enrichment.SeedF04;
+using Parchwell.Kafka.Statistics;
 using Xunit;
 
 namespace Parchwell.Enrichment.Tests.SeedF04;
@@ -27,6 +28,7 @@ public sealed class SeedF04HostTests
     [InlineData("PodName")]
     [InlineData("PodUid")]
     [InlineData("NamespaceName")]
+    [InlineData("BlobEndpoint")]
     [InlineData("ActionWindowMs")]
     [InlineData("ProcessLifetimeSeconds")]
     [InlineData("CleanupSeconds")]
@@ -60,6 +62,7 @@ public sealed class SeedF04HostTests
     [InlineData("RunId", "wrong-run")]
     [InlineData("PodUid", "invalid")]
     [InlineData("NamespaceName", "https://invalid.example")]
+    [InlineData("BlobEndpoint", "http://storage.example/")]
     public async Task Given_invalid_option_When_validation_mode_runs_Then_configuration_fails(string option, string value)
     {
         Assert.Equal(1, await Program.RunAsync(["--validate-seed-configuration"], builder =>
@@ -130,6 +133,27 @@ public sealed class SeedF04HostTests
         Assert.Single(output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries));
     }
 
+    [Fact]
+    public async Task Given_blocked_monitoring_index_When_seed_finishes_Then_receipt_and_cleanup_precede_the_failure()
+    {
+        var producer = DispatchProxy.Create<IProducer<byte[], byte[]>, SeedF04Tests.RecordingProducer>();
+        var recorded = (SeedF04Tests.RecordingProducer)(object)producer;
+        var store = new BlockingStore();
+        var host = CreateHost(producer, recorded.Events, store: store);
+        KafkaNativeMonitoringCoordinator monitoring = host.Services.GetRequiredService<KafkaNativeMonitoringCoordinator>();
+        await monitoring.DrainAsync(TestContext.Current.CancellationToken);
+        using var output = new RecordingWriter(recorded.Events);
+        Task<int> run = Program.RunAsync(["--single-action-seed"], output: output, hostFactory: () => host);
+        await store.Started.Task;
+        Assert.Equal(CompleteLifecycleOrder, recorded.Events);
+        Assert.Single(output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries));
+        Assert.False(run.IsCompleted);
+        Assert.False(store.CaptureComplete);
+        store.Fail.TrySetException(new IOException("synthetic_storage_failure"));
+        Assert.Equal(0, await run);
+        Assert.False(store.IndexStored);
+    }
+
     [Theory]
     [InlineData("stop")]
     [InlineData("dispose")]
@@ -167,25 +191,69 @@ public sealed class SeedF04HostTests
         builder.Configuration.AddInMemoryCollection(Configuration());
     }
 
-    private static Dictionary<string, string?> Configuration() => new(StringComparer.Ordinal)
+    [Fact]
+    public void Given_seed_monitoring_account_differs_When_options_are_resolved_Then_validation_fails()
+    {
+        Dictionary<string, string?> values = Configuration();
+        values["NativeMonitoring:BlobEndpoint"] = "https://other.example/";
+        using IHost host = Program.BuildHost(builder =>
+        {
+            builder.Configuration.Sources.Clear();
+            builder.Configuration.AddInMemoryCollection(values);
+        });
+        Assert.Throws<OptionsValidationException>(() => host.Services.GetRequiredService<IOptions<KafkaNativeMonitoringOptions>>().Value);
+    }
+
+    internal static Dictionary<string, string?> Configuration() => new(StringComparer.Ordinal)
     {
         ["SeedF04:RunId"] = "synthetic-run", ["SeedF04:SourceCommit"] = new string('a', 40),
         ["SeedF04:JobName"] = "synthetic-run-f04-seed", ["SeedF04:PodName"] = "synthetic-run-f04-seed-abcde",
         ["SeedF04:PodUid"] = "11111111-2222-3333-4444-555555555555", ["SeedF04:NamespaceName"] = "synthetic-eh",
         ["SeedF04:ActionWindowMs"] = "330000", ["SeedF04:ProcessLifetimeSeconds"] = "390", ["SeedF04:CleanupSeconds"] = "10",
-        ["SeedF04:HostCleanupSeconds"] = "10", ["SeedF04:MaxReceiptBytes"] = "65536",
+        ["SeedF04:BlobEndpoint"] = "https://storage.example/", ["SeedF04:HostCleanupSeconds"] = "10", ["SeedF04:MaxReceiptBytes"] = "65536",
         ["PARCHWELL_SOURCE_COMMIT"] = new string('a', 40), ["PARCHWELL_JOB_NAME"] = "synthetic-run-f04-seed",
-        ["PARCHWELL_POD_NAME"] = "synthetic-run-f04-seed-abcde", ["PARCHWELL_POD_UID"] = "11111111-2222-3333-4444-555555555555"
+        ["PARCHWELL_POD_NAME"] = "synthetic-run-f04-seed-abcde", ["PARCHWELL_POD_UID"] = "11111111-2222-3333-4444-555555555555",
+        ["Telemetry:ConnectionString"] = "InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://localhost/",
+        ["Telemetry:ServiceName"] = "Parchwell.Enrichment", ["Telemetry:ServiceInstanceId"] = "synthetic-run-f04-seed-abcde",
+        ["Telemetry:ScenarioId"] = "F04", ["Telemetry:RunId"] = "synthetic-run",
+        ["NativeMonitoring:BlobEndpoint"] = "https://storage.example/", ["NativeMonitoring:BlobContainer"] = "native-monitoring",
+        ["NativeMonitoring:RunId"] = "synthetic-run", ["NativeMonitoring:Phase"] = "C2", ["NativeMonitoring:ScenarioId"] = "F04",
+        ["NativeMonitoring:ConfigurationId"] = "C2", ["NativeMonitoring:JobName"] = "synthetic-run-f04-seed",
+        ["NativeMonitoring:PodUid"] = "11111111-2222-3333-4444-555555555555", ["NativeMonitoring:SourceCommit"] = new string('a', 40)
     };
 
-    private static RecordingHost CreateHost(IProducer<byte[], byte[]> producer, List<string> events, string? failure = null)
+    private static RecordingHost CreateHost(IProducer<byte[], byte[]> producer, List<string> events, string? failure = null, BlockingStore? store = null)
     {
         HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton<IOptions<SeedF04Options>>(Options.Create(SeedF04Tests.ValidOptions()));
         builder.Services.AddSingleton<Func<IProducer<byte[], byte[]>>>(() => producer);
         builder.Services.AddSingleton<SeedF04Worker>();
+        if (store is not null)
+        {
+            builder.Services.AddSingleton<IKafkaNativeMonitoringStore>(store);
+            builder.Services.AddParchwellNativeMonitoring();
+            builder.Services.AddSingleton(provider => provider.GetRequiredService<KafkaNativeMonitoringFactory>().Create(
+                new KafkaNativeMonitoringIdentity("synthetic-run", "C2", "F04", "C2", "synthetic-run-f04-seed",
+                    "11111111-2222-3333-4444-555555555555", new string('a', 40))));
+        }
         return new RecordingHost(builder.Build(), events, failure);
+    }
+
+    private sealed class BlockingStore : IKafkaNativeMonitoringStore
+    {
+        internal TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal TaskCompletionSource Fail { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal bool IndexStored { get; private set; }
+        internal bool CaptureComplete { get; private set; }
+        public async Task CreateAsync(string path, ReadOnlyMemory<byte> content, CancellationToken cancellationToken)
+        {
+            using JsonDocument index = JsonDocument.Parse(content);
+            CaptureComplete = index.RootElement.GetProperty("capture_complete").GetBoolean();
+            Started.TrySetResult();
+            await Fail.Task.WaitAsync(cancellationToken);
+            IndexStored = true;
+        }
     }
 
     private sealed class RecordingWriter(List<string> events) : StringWriter
