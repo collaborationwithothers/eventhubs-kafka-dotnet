@@ -1,0 +1,113 @@
+schema_version: 1
+id: C03
+subject: >-
+  librdkafka v2.16.0 documents that if max.poll.interval.ms is exceeded the
+  consumer is considered failed and the group rebalances, and lists KIP-62
+  background heartbeats as supported. Microsoft keeps max.poll.interval.ms at
+  300000 for Event Hubs and requires it to exceed session.timeout.ms.
+
+assessment_rules:
+  counted_repeats: complete_valid only
+  repeats_per_configuration: 5
+  replacements: 0
+  evidence: >-
+    The verifier consumer block of each repeat: status, counts and membership
+    (docs/operations/verifier-contract.md). A repeat that is not
+    complete_valid has no counts and no membership.
+  scaled_limit: >-
+    The subject runs max.poll.interval.ms 60000, not the 300000 baseline, and
+    its slow message lasts 90000 ms, not 6 minutes. session.timeout.ms stays
+    30000 and heartbeat.interval.ms stays 3000. The witness runs the baseline.
+  takeover_threshold: >-
+    45000000 microseconds (45 s), a policy value between session.timeout.ms
+    (30 s) and the subject's max.poll.interval.ms (60 s). A takeover at or
+    above it means the group did not remove the subject at the session
+    timeout, so its heartbeats continued while it made no Consume call.
+
+configurations:
+  C0:
+    H1_poll_limit_loses_partitions:
+      question: >-
+        Inline slow message, no Consume call for 90000 ms: does the subject
+        lose its partitions while its heartbeats continue, and are messages
+        processed again?
+      holds_when: >-
+        All 5 repeats complete_valid, and in each: membership.subject_lost_rows
+        >= 1, membership.witness_assigned_slow_partition_during_slow is true,
+        membership.witness_takeover_microseconds >= 45000000, and
+        counts.processed_again >= 1.
+      contradicted_when: >-
+        All 5 repeats complete_valid, and in at least one:
+        membership.subject_lost_rows = 0 and membership.subject_revoked_rows = 0;
+        or membership.witness_takeover_microseconds < 45000000.
+      otherwise: inconclusive
+    H3_no_commit_on_lost:
+      question: >-
+        After the subject's application receives the lost callback for its
+        partitions, is any offset committed for them before the subject is
+        assigned partitions again (K-28)?
+      published_text_must_state: >-
+        H3 observes only the time after the application received the lost
+        callback. The window between the poll-limit expiry and the subject's
+        next Consume call was not observed.
+      holds_when: >-
+        H1 holds, and in each repeat membership.subject_commit_entries_after_lost = 0.
+      contradicted_when: >-
+        All 5 repeats complete_valid, and in at least one with
+        membership.subject_lost_rows >= 1:
+        membership.subject_commit_entries_after_lost >= 1.
+      otherwise: inconclusive
+    consumer_loss:
+      mode: recorded_only
+      value: counts.committed_never_processed per repeat
+  C1:
+    H2_pause_keeps_partitions:
+      question: >-
+        Paused for 90000 ms while still calling Consume: does the subject keep
+        its partitions (K-55)?
+      holds_when: >-
+        All 5 repeats complete_valid, and in each: membership.subject_lost_rows
+        = 0, membership.subject_revoked_rows = 0,
+        membership.witness_assigned_rows = 0, membership.slow_processed_rows = 1
+        and counts.processed_again = 0.
+      contradicted_when: >-
+        All 5 repeats complete_valid, and in at least one:
+        membership.subject_lost_rows >= 1.
+      otherwise: inconclusive
+    consumer_loss:
+      mode: recorded_only
+      value: counts.committed_never_processed per repeat
+
+not_tested:
+  K-47:
+    question: Does consumer token refresh run only inside Consume?
+    reason: >-
+      Dropped by decision 6894534441 point 3: the poll limit removes the
+      consumer from the group long before an Entra token expires, and F01
+      covers the refresh handler on consumers that call Consume.
+    publication: published as not tested
+    decision: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894534441
+
+verdict:
+  confirmed_when: H1 holds and H2 holds.
+  contradicted_when: H1 is contradicted or H2 is contradicted.
+  no_verdict_when: neither of the above; the run is investigated, not published.
+  smoke_run: never published as a result; it gives no verdict.
+  separate_lines: H3 and consumer_loss are published on their own lines and do not change the verdict.
+  text_must_state:
+    - >-
+      librdkafka v2.16.0 documents background heartbeats (KIP-62) and a
+      max.poll.interval.ms that needs Consume calls. State what the run
+      observed: whether the inline subject's partitions moved to the witness
+      before or after the 45 s takeover threshold, and whether the paused
+      subject that kept calling Consume kept its partitions.
+    - The scaled limit in assessment_rules.scaled_limit.
+    - K-47 was not tested.
+
+sources:
+  - https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md
+  - https://github.com/confluentinc/librdkafka/blob/v2.16.0/INTRODUCTION.md
+  - https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka.c
+  - https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_cgrp.c
+  - https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_int.h
+  - https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations

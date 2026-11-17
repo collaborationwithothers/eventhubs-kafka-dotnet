@@ -143,6 +143,7 @@ public static class KafkaScenarioOverridePolicy
         new(KafkaSettingKeys.SessionTimeoutMs, [KafkaClientRole.EnrichmentConsumer], ["C08"], [NativeConfiguration, NativeSource]),
         new(KafkaSettingKeys.HeartbeatIntervalMs, [KafkaClientRole.EnrichmentConsumer], ["C08"], [NativeConfiguration, NativeSource]),
         new(KafkaSettingKeys.PartitionAssignmentStrategy, [KafkaClientRole.EnrichmentConsumer], ["C08"], [NativeConfiguration, NativeSource]),
+        new(KafkaSettingKeys.MaxPollIntervalMs, KafkaScenarioOverrideValueKind.Integer, 1, 86_400_000, [KafkaClientRole.EnrichmentConsumer], ["C03"], [NativeConfiguration]),
         new(KafkaSettingKeys.Debug, ["cgrp", "topic,fetch,metadata"], false, true,
             [KafkaClientRole.EnrichmentConsumer, KafkaClientRole.VerifierConsumer], ["C08", "F04"], [NativeConfiguration]),
         new(KafkaSettingKeys.SocketKeepaliveEnable, KafkaScenarioOverrideValueKind.Boolean, 0, 1, [KafkaClientRole.LoadGenProducer], ["A02"], [NativeConfiguration]),

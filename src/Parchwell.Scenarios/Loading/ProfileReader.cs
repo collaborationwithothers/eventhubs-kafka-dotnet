@@ -23,7 +23,8 @@ internal static class ProfileReader
             validation.ThrowIfErrors();
             throw new InvalidOperationException("Unreachable");
         }
-        validation.CheckFields(map, "", "schema_version", "id", "seed", "tenants", "documents_per_burst", "payloads", "stages");
+        validation.TryFields(map, "", ["schema_version", "id", "seed", "tenants", "documents_per_burst", "payloads", "stages", "consumer"],
+            ["schema_version", "id", "seed", "tenants", "documents_per_burst", "payloads", "stages"]);
         var version = ReadVersion(validation, map);
         var id = validation.String(map, "id", "") ?? "";
         validation.IsSlug(id, map.Fields.GetValueOrDefault("id"), "id");
@@ -40,8 +41,29 @@ internal static class ProfileReader
         foreach (var (name, buckets) in payloads) CheckWeightSum(validation, buckets.Select(static bucket => bucket.Weight), "payloads." + name);
         var stages = ReadStages(validation, map.Fields.GetValueOrDefault("stages"));
         CheckStageTotals(validation, stages);
+        var consumer = ReadConsumer(validation, map.Fields.GetValueOrDefault("consumer"));
         validation.ThrowIfErrors();
-        return new WorkloadProfile(version, id, seed, tenants, documents, payloads, stages, root.Location);
+        return new WorkloadProfile(version, id, seed, tenants, documents, payloads, stages, root.Location, consumer);
+    }
+
+    // 60000 ms is the consumer worker's own upper bound for the processing delay (ConsumerProcessingPlan).
+    private const int MaxProcessingDelayMs = 60000;
+
+    private static ConsumerProfile? ReadConsumer(NodeValidation validation, InputNode? node)
+    {
+        if (node is null) return null;
+        if (node is not MapNode map || map.Fields.Count != 1 || !map.Fields.TryGetValue("processing_delay_ms", out var delayNode))
+        {
+            validation.Error(node, "consumer", "profile_consumer_shape", "Expected exactly the processing_delay_ms field.");
+            return null;
+        }
+        if (delayNode is not ScalarNode { IsPlain: true } scalar || scalar.Value.Length == 0 || !scalar.Value.All(char.IsAsciiDigit) ||
+            !int.TryParse(scalar.Value, NumberStyles.None, CultureInfo.InvariantCulture, out var delay) || delay > MaxProcessingDelayMs)
+        {
+            validation.Error(delayNode, "consumer.processing_delay_ms", "profile_consumer_range", "Expected a plain decimal integer from 0 to 60000.");
+            return null;
+        }
+        return new ConsumerProfile(delay);
     }
 
     private static int ReadVersion(NodeValidation validation, MapNode map)

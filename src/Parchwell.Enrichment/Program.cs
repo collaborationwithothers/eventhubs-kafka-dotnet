@@ -256,6 +256,9 @@ internal static class Program
             options.ClientId = configuration["AZURE_CLIENT_ID"];
             options.TokenFilePath = configuration["AZURE_FEDERATED_TOKEN_FILE"];
         });
+        // TryAdd, after configure ran, so a registration made by a test wins.
+        builder.Services.TryAddSingleton<IConsumerProcessingPlanSource>(services =>
+            new ScenarioConsumerProcessingPlanSource(services.GetRequiredService<IOptions<ConsumerProcessingOptions>>(), AppContext.BaseDirectory));
         builder.Services.TryAddSingleton<Func<ConsumerConfig>>(services =>
             () => services.GetRequiredService<KafkaConfigurationFactory>().CreateEnrichmentConsumer().Configuration);
         builder.Services.TryAddSingleton<Func<IConsumerRecordStore>>(services => () =>
