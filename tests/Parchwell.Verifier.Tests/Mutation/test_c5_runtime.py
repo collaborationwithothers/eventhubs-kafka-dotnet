@@ -1,6 +1,8 @@
 import importlib.util
+import fnmatch
 import json
 from pathlib import Path
+import shlex
 import tempfile
 import unittest
 import os
@@ -17,7 +19,7 @@ RUNNER_PATH = 'tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py'
 
 
 class RequiredCheckIntegrationTests(unittest.TestCase):
-    def invoke_step(self, event, fail_check):
+    def invoke_step(self, event, fail_check, fail_discovery=False):
         import yaml
         workflow = yaml.safe_load((ROOT / '.github/workflows/dotnet-verification.yml').read_text())
         job = workflow['jobs']['dotnet-verification']
@@ -30,31 +32,50 @@ class RequiredCheckIntegrationTests(unittest.TestCase):
             log = directory / 'calls'
             stub = directory / 'python3'
             stub.write_text('#!/bin/bash\nprintf "%s\\n" "$*" >> "$CALL_LOG"\n'
+                            'if [[ "$1" = -m && "$FAIL_DISCOVERY" = yes ]]; then exit 1; fi\n'
                             'if [[ "$1" == *c5_runtime.py && "$FAIL_CHECK" = yes ]]; then exit 1; fi\n')
             stub.chmod(0o755)
             env = {**os.environ, 'PATH': str(directory) + os.pathsep + os.environ['PATH'],
                    'CALL_LOG': str(log), 'FAIL_CHECK': 'yes' if fail_check else 'no',
+                   'FAIL_DISCOVERY': 'yes' if fail_discovery else 'no',
                    'PARCHWELL_EVENT': event, 'PARCHWELL_BASE_SHA': 'base-sha',
                    'PARCHWELL_HEAD_SHA': 'head-sha'}
             result = subprocess.run(['bash', '-c', step['run']], cwd=ROOT, env=env, check=False)
             return result.returncode, log.read_text().splitlines()
 
+    def assert_c5_discovery(self, invocation):
+        arguments = shlex.split(invocation)
+        self.assertEqual(['-m', 'unittest', 'discover'], arguments[:3])
+        self.assertEqual('tests/Parchwell.Verifier.Tests/Mutation', arguments[arguments.index('-s') + 1])
+        pattern = arguments[arguments.index('-p') + 1]
+        for module in ('test_c5_runtime.py', 'test_c5_workflow.py',
+                       'test_c5_cohort_runner.py', 'test_c5_cohort_aggregate.py'):
+            with self.subTest(module=module):
+                self.assertTrue(fnmatch.fnmatchcase(module, pattern), invocation)
+
     def test_required_check_propagates_rejection(self):
         status, calls = self.invoke_step('pull_request', True)
         self.assertNotEqual(0, status)
-        self.assertEqual(3, len(calls))
-        self.assertIn('test_c5_runtime.py', calls[0])
-        self.assertIn('test_c5_workflow.py', calls[1])
-        self.assertIn('--head head-sha', calls[2])
-        self.assertIn('--base base-sha', calls[2])
+        self.assertEqual(2, len(calls))
+        self.assert_c5_discovery(calls[0])
+        self.assertIn('--head head-sha', calls[1])
+        self.assertIn('--base base-sha', calls[1])
+
+    def test_discovery_failure_stops_before_qualification(self):
+        status, calls = self.invoke_step('pull_request', False, fail_discovery=True)
+        self.assertNotEqual(0, status)
+        self.assertEqual(1, len(calls))
+        self.assert_c5_discovery(calls[0])
 
     def test_main_validates_without_diff(self):
         for event in ('push', 'workflow_dispatch'):
             with self.subTest(event=event):
                 status, calls = self.invoke_step(event, True)
                 self.assertNotEqual(0, status)
-                self.assertIn('--head head-sha', calls[2])
-                self.assertNotIn('--base', calls[2])
+                self.assertEqual(2, len(calls))
+                self.assert_c5_discovery(calls[0])
+                self.assertIn('--head head-sha', calls[1])
+                self.assertNotIn('--base', calls[1])
 
 
 def xml(*results):
