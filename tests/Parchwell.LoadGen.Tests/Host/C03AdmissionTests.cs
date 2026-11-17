@@ -18,7 +18,7 @@ namespace Parchwell.LoadGen.Tests.Host;
 // C03 admission in the load generator: the pair rule is local to it (ScenarioPhases is unchanged), the committed files resolve, and the workload spreads its partitions as DA8 assumes.
 public sealed class C03AdmissionTests
 {
-    private static LoadGenHostOptions Options(string scenario, string phase, string configuration, string? jobName = null)
+    private static LoadGenHostOptions HostOptions(string scenario, string phase, string configuration, string? jobName = null)
     {
         string[] args = LoadGenHostProcessTests.CreateInputs(Path.Combine(Path.GetTempPath(), "c03-" + Guid.NewGuid().ToString("N")))
             .Select(pair => "--" + pair.Key.Replace("__", ":", StringComparison.Ordinal) + "=" + pair.Value).ToArray();
@@ -40,7 +40,7 @@ public sealed class C03AdmissionTests
     [InlineData("C1")]
     public void Given_C03_with_matching_phase_and_configuration_When_validating_Then_options_and_run_context_accept_it(string phase)
     {
-        Assert.Null(Record.Exception(Options("C03", phase, phase).Validate));
+        Assert.Null(Record.Exception(HostOptions("C03", phase, phase).Validate));
         Assert.Null(Record.Exception(Context("C03", phase, phase).Validate));
     }
 
@@ -52,7 +52,7 @@ public sealed class C03AdmissionTests
     [InlineData("C01", "C0", "C0")]
     public void Given_an_unaccepted_pair_When_validating_Then_each_check_keeps_its_failure_name(string scenario, string phase, string configuration)
     {
-        Assert.Equal("phase_configuration_pair_invalid", Assert.Throws<InvalidOperationException>(Options(scenario, phase, configuration).Validate).Message);
+        Assert.Equal("phase_configuration_pair_invalid", Assert.Throws<InvalidOperationException>(HostOptions(scenario, phase, configuration).Validate).Message);
         Assert.Equal("producer_run_context_invalid", Assert.Throws<InvalidDataException>(Context(scenario, phase, configuration).Validate).Message);
     }
 
@@ -60,7 +60,7 @@ public sealed class C03AdmissionTests
     public void Given_C03_with_the_B10_restart_job_name_When_validating_Then_it_is_rejected_outside_B10()
     {
         Assert.Equal("restart_instance_requires_b10",
-            Assert.Throws<InvalidOperationException>(Options("C03", "C0", "C0", "child-run-c0-r1-loadgen2").Validate).Message);
+            Assert.Throws<InvalidOperationException>(HostOptions("C03", "C0", "C0", "child-run-c0-r1-loadgen2").Validate).Message);
         Assert.Equal("restart_instance_requires_b10",
             Assert.Throws<InvalidDataException>(Context("C03", "C0", "C0", "run-1-c0-r1-loadgen2").Validate).Message);
     }
@@ -74,16 +74,16 @@ public sealed class C03AdmissionTests
         var limits = Options.Create(new ScenarioLoadOptions { MaxDocumentCharacters = 100000, MaxNestingDepth = 32, MaxScalarCharacters = 10000, MaxParserEvents = 10000 });
         LoadedScenario loaded = await new ScenarioLoader(source, limits).LoadAsync("C03", TestContext.Current.CancellationToken);
         var services = new ServiceCollection();
-        foreach (KafkaClientRole role in Enum.GetValues<KafkaClientRole>())
-            services.AddParchwellKafka(role, value => { value.NamespaceName = "unit-test"; value.ClientId = "worker-pod"; value.EnrichmentGroupId = "worker-group"; });
+        foreach (KafkaClientRole kafkaRole in Enum.GetValues<KafkaClientRole>())
+            services.AddParchwellKafka(kafkaRole, value => { value.NamespaceName = "unit-test"; value.ClientId = "worker-pod"; value.EnrichmentGroupId = "worker-group"; });
         using ServiceProvider provider = services.BuildServiceProvider();
         KafkaConfigurationFactory factory = provider.GetRequiredService<KafkaConfigurationFactory>();
         ResolvedScenario resolved = new ScenarioResolver(factory).Resolve(loaded);
         // The two checks LoadGenWorker makes after resolving: the configuration is declared and has a LoadGenProducer role.
-        ResolvedRoleConfiguration role = resolved.Configurations[configuration].Roles[KafkaClientRole.LoadGenProducer];
+        ResolvedRoleConfiguration producer = resolved.Configurations[configuration].Roles[KafkaClientRole.LoadGenProducer];
         Assert.Equal(factory.CreateLoadGenProducer().Configuration.OrderBy(pair => pair.Key, StringComparer.Ordinal),
-            role.Settings.Select(pair => KeyValuePair.Create(pair.Key, pair.Value.Value)).OrderBy(pair => pair.Key, StringComparer.Ordinal));
-        Assert.DoesNotContain(role.Settings, pair => pair.Value.Override is not null);
+            producer.Settings.Select(pair => KeyValuePair.Create(pair.Key, pair.Value.Value)).OrderBy(pair => pair.Key, StringComparer.Ordinal));
+        Assert.DoesNotContain(producer.Settings, pair => pair.Value.Override is not null);
     }
 
     // CRC-32 as librdkafka's consistent partitioner uses it (reflected polynomial 0xEDB88320). Written here so the test adds no package.

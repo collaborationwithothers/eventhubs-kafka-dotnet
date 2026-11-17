@@ -13,6 +13,7 @@ namespace Parchwell.Enrichment.Tests.ConsumerProcessing;
 // Protects the production consumer plan source for C03 (the packaged scenario files, the subject and witness plans and the failure path).
 public sealed class ScenarioPlanSourceTests
 {
+    private static readonly string[] Prefixes = ["NativeMonitoring:", "Telemetry:", "PARCHWELL_", "ConsumerProcessing:"];
     private static readonly string[] PollSetting = ["max.poll.interval.ms"];
 
     internal static ConsumerProcessingOptions Options(string scenario, string phase, string role)
@@ -110,7 +111,7 @@ public sealed class ScenarioPlanSourceTests
         Dictionary<string, string?> values = ConsumerProcessingHostTests.HostConfiguration(options);
         // The 31 names charts/parchwell/templates/_consumer.tpl lines 74 to 120 set: nine NativeMonitoring, five Telemetry, five PARCHWELL_ and twelve ConsumerProcessing.
         Assert.Equal(31, values.Count);
-        Assert.Equal([9, 5, 5, 12], new[] { "NativeMonitoring:", "Telemetry:", "PARCHWELL_", "ConsumerProcessing:" }
+        Assert.Equal([9, 5, 5, 12], Prefixes
             .Select(prefix => values.Keys.Count(key => key.StartsWith(prefix, StringComparison.Ordinal))));
         Assert.DoesNotContain(values.Keys, key => key.Contains("ScenarioLoadOptions", StringComparison.Ordinal));
         using var host = Program.BuildConsumerProcessingHost(builder =>
