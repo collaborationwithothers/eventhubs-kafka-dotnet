@@ -31,7 +31,9 @@ public sealed class ConsumerPhaseJudgeTests
         "timestamp-without-fraction", "not-attempted-with-error-code", "members-object", "reassignment-without-kill",
         "partition-negative", "offset-missing-error-code", "counts-extra-property", "committed-never-negative", "partitions-object",
         "processed-again-above-extra-rows", "complete-with-reasons", "duplicate-reasons", "incomplete-with-reassignment",
-        "not-attempted-with-started", "not-attempted-with-ended", "schema-0"
+        "not-attempted-with-started", "not-attempted-with-ended", "schema-0", "membership-missing", "membership-extra-property",
+        "membership-reordered", "membership-negative-rows", "membership-takeover-string", "membership-no-slow-rows", "membership-during-slow-number",
+        "membership-without-counts"
     };
 
     private static void BreakBlock(string change, JsonObject block)
@@ -41,15 +43,25 @@ public sealed class ConsumerPhaseJudgeTests
         switch (change)
         {
             case "missing": break;
+            case "membership-missing": block.Remove("membership"); break;
+            case "membership-extra-property": block["membership"]!["x"] = 0; break;
+            case "membership-reordered":
+                JsonNode first = block["membership"]!["slow_partition"]!.DeepClone();
+                block["membership"]!.AsObject().Remove("slow_partition"); block["membership"]!["slow_partition"] = first; break;
+            case "membership-negative-rows": block["membership"]!["subject_lost_rows"] = -1; break;
+            case "membership-takeover-string": block["membership"]!["witness_takeover_microseconds"] = "61"; break;
+            case "membership-no-slow-rows": block["membership"]!["slow_processed_rows"] = 0; break;
+            case "membership-during-slow-number": block["membership"]!["witness_assigned_slow_partition_during_slow"] = 1; break;
+            case "membership-without-counts": block.Remove("counts"); break;
             case "extra-property": block["x"] = 0; break;
             case "schema-2": block["schema_version"] = 2; break;
             case "status-done": block["status"] = "done"; break;
             case "reasons-unordered":
-                block["status"] = "invalid"; block.Remove("counts");
+                block["status"] = "invalid"; RemoveCounts(block);
                 block["reasons"] = new JsonArray("consumer_stop_invalid", "consumer_record_invalid"); break;
-            case "invalid-without-reasons": block["status"] = "invalid"; block.Remove("counts"); break;
+            case "invalid-without-reasons": block["status"] = "invalid"; RemoveCounts(block); break;
             case "unknown-reason":
-                block["status"] = "invalid"; block.Remove("counts"); block["reasons"] = new JsonArray("consumer_x"); break;
+                block["status"] = "invalid"; RemoveCounts(block); block["reasons"] = new JsonArray("consumer_x"); break;
             case "incomplete-with-counts":
                 block["status"] = "incomplete"; block["reasons"] = new JsonArray("consumer_completion_deadline"); break;
             case "complete-without-counts": block.Remove("counts"); break;
@@ -82,10 +94,10 @@ public sealed class ConsumerPhaseJudgeTests
             case "processed-again-above-extra-rows": counts()["processed_again"] = 3; break;
             case "complete-with-reasons": block["reasons"] = new JsonArray("consumer_stop_invalid"); break;
             case "duplicate-reasons":
-                block["status"] = "invalid"; block.Remove("counts");
+                block["status"] = "invalid"; RemoveCounts(block);
                 block["reasons"] = new JsonArray("consumer_record_invalid", "consumer_record_invalid"); break;
             case "incomplete-with-reassignment":
-                block["status"] = "incomplete"; block.Remove("counts"); block["reasons"] = new JsonArray("consumer_completion_deadline");
+                block["status"] = "incomplete"; RemoveCounts(block); block["reasons"] = new JsonArray("consumer_completion_deadline");
                 block["kill_count"] = 5; block["reassignment"] = Reassignment(5, null); break;
             case "not-attempted-with-started":
                 offsetRead()["outcome"] = "not_attempted"; offsetRead()["ended_utc"] = null; offsetRead()["error_code"] = null; offsetRead()["offsets"] = new JsonArray(); break;
@@ -180,7 +192,7 @@ public sealed class ConsumerPhaseJudgeTests
         Stores stores = Mutated((await BaseC0.Value), 2, block =>
         {
             block["status"] = consumerStatus;
-            if (consumerStatus == "incomplete") { block["reasons"] = new JsonArray("consumer_completion_deadline"); block.Remove("counts"); }
+            if (consumerStatus == "incomplete") { block["reasons"] = new JsonArray("consumer_completion_deadline"); RemoveCounts(block); }
         }, exit);
         (_, byte[] bytes) = await JudgeAsync(stores, "C03", "C0");
         Assert.Equal(expected, RepeatOf(Parse(bytes), 2)["checks"]!["j3_verifier_receipt"]!.GetValue<bool>());
@@ -191,7 +203,7 @@ public sealed class ConsumerPhaseJudgeTests
     {
         Stores stores = Mutated((await BaseC0.Value), 3, block =>
         {
-            block["status"] = "incomplete"; block["reasons"] = new JsonArray("consumer_completion_deadline"); block.Remove("counts");
+            block["status"] = "incomplete"; block["reasons"] = new JsonArray("consumer_completion_deadline"); RemoveCounts(block);
         }, 1);
         (int exit, byte[] bytes) = await JudgeAsync(stores, "C03", "C0");
         JsonNode candidate = Parse(bytes), third = RepeatOf(candidate, 3);
@@ -209,7 +221,7 @@ public sealed class ConsumerPhaseJudgeTests
     {
         Stores stores = Mutated((await BaseC0.Value), 2, block =>
         {
-            block["status"] = "invalid"; block["reasons"] = new JsonArray("consumer_record_invalid"); block.Remove("counts");
+            block["status"] = "invalid"; block["reasons"] = new JsonArray("consumer_record_invalid"); RemoveCounts(block);
         }, 1);
         (int exit, byte[] bytes) = await JudgeAsync(stores, "C03", "C0");
         JsonNode candidate = Parse(bytes);
@@ -226,7 +238,7 @@ public sealed class ConsumerPhaseJudgeTests
             result["status"] = "incomplete";
             foreach (string count in CountFields) result.Remove(count);
             result["consumer"]!["status"] = "invalid"; result["consumer"]!["reasons"] = new JsonArray(consumerReasons.Select(x => (JsonNode?)x).ToArray());
-            result["consumer"]!.AsObject().Remove("counts");
+            RemoveCounts(result["consumer"]!.AsObject());
         }, 1);
         return stores;
     }
@@ -347,9 +359,46 @@ public sealed class ConsumerPhaseJudgeTests
         JsonNode second = RepeatOf(Parse(bytes), 2);
         Assert.True(second["checks"]!["j3_verifier_receipt"]!.GetValue<bool>());
         var expected = new JsonObject();
-        foreach (string name in new[] { "status", "reasons", "group_id", "kill_count", "offset_read", "counts", "reassignment" })
+        foreach (string name in new[] { "status", "reasons", "group_id", "kill_count", "offset_read", "counts", "membership", "reassignment" })
             if (expectedBlock.TryGetPropertyValue(name, out JsonNode? value)) expected[name] = value?.DeepClone();
         Assert.Equal(expected.ToJsonString(), Text(second["consumer"]));
+    }
+
+    [Fact]
+    public async Task Given_MembershipOnABlockOfAnotherConsumerScenario_When_Judged_Then_FailsJ3()
+    {
+        Stores stores = (await BaseC1.Value).Copy();
+        Apply(stores, "C1", 2, result => result["consumer"]!["membership"] = JsonNode.Parse(Membership));
+        (int exit, byte[] bytes) = await JudgeAsync(stores, "C10", "C1");
+        JsonNode second = RepeatOf(Parse(bytes), 2);
+        Assert.Equal(1, exit);
+        Assert.False(second["checks"]!["j3_verifier_receipt"]!.GetValue<bool>());
+        Assert.Null(second["consumer"]);
+    }
+
+    [Fact]
+    public async Task Given_FiveC03Repeats_When_Judged_Then_EachProjectionCarriesMembershipAfterCountsAndTheRootDoesNot()
+    {
+        (int exit, byte[] bytes) = await JudgeAsync((await BaseC0.Value).Copy(), "C03", "C0");
+        JsonNode candidate = Parse(bytes);
+        Assert.Equal(0, exit);
+        for (int repeat = 1; repeat <= 5; repeat++)
+        {
+            JsonObject projection = RepeatOf(candidate, repeat)["consumer"]!.AsObject();
+            string[] names = projection.Select(property => property.Key).ToArray();
+            Assert.Equal(["status", "reasons", "group_id", "kill_count", "offset_read", "counts", "membership"], names);
+            Assert.Equal(Membership, Text(projection["membership"]));
+        }
+        Assert.Equal(["status", "reasons", "counts"], candidate["consumer"]!.AsObject().Select(property => property.Key).ToArray());
+        using JsonDocument read = PhaseCandidateCodec.Read(bytes);
+    }
+
+    [Fact]
+    public async Task Given_C03CandidateProjectionWithoutMembership_When_Read_Then_Rejects()
+    {
+        JsonObject root = await JudgedRoot();
+        root["repeats"]![1]!["consumer"]!.AsObject().Remove("membership");
+        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(Encoding.UTF8.GetBytes(root.ToJsonString())));
     }
 
     [Fact]
@@ -518,7 +567,27 @@ public sealed class ConsumerPhaseJudgeTests
     private static JsonObject Reassignment(long? microseconds, string? reason) =>
         new() { ["microseconds"] = microseconds, ["unavailable_reason"] = reason };
 
-    private static JsonObject DefaultBlock(int repeat, string phase = "C0") => JsonNode.Parse($$$"""
+    /// <summary>The fixture change that C03's membership rule forces (plan 7.1, option a): a block without <c>counts</c> carries no <c>membership</c> either.</summary>
+    private static void RemoveCounts(JsonObject block) { block.Remove("counts"); block.Remove("membership"); }
+
+    private const string Membership = """{"slow_partition":3,"slow_offset":10,"slow_processed_rows":2,"subject_lost_rows":1,"subject_revoked_rows":0,"witness_assigned_rows":2,"witness_assigned_slow_partition_during_slow":true,"witness_takeover_microseconds":61000000,"subject_commit_entries_after_lost":0}""";
+
+    private static JsonObject DefaultBlock(int repeat, string phase = "C0", string scenario = "C03")
+    {
+        JsonObject block = DefaultBlockWithoutMembership(repeat, phase);
+        if (scenario != "C03") return block;
+        // Insert after counts, as the verifier writes it.
+        var withMembership = new JsonObject();
+        foreach (var property in block.ToList())
+        {
+            block.Remove(property.Key);
+            withMembership[property.Key] = property.Value;
+            if (property.Key == "counts") withMembership["membership"] = JsonNode.Parse(Membership);
+        }
+        return withMembership;
+    }
+
+    private static JsonObject DefaultBlockWithoutMembership(int repeat, string phase) => JsonNode.Parse($$$"""
         {"schema_version":1,"status":"complete_valid","reasons":[],"group_id":"{{{Run}}}-{{{phase.ToLowerInvariant()}}}-r{{{repeat}}}-consumers","kill_count":null,
          "members":[],"offset_read":{"outcome":"success","requested_partitions":[0,1],"started_utc":"2026-11-16T10:00:00.0000000Z","ended_utc":"2026-11-16T10:00:01.0000000Z","error_code":0,
          "offsets":[{"partition":0,"offset":7,"error_code":0},{"partition":1,"offset":9,"error_code":0}]},
@@ -526,11 +595,11 @@ public sealed class ConsumerPhaseJudgeTests
          "counts":{"processed_once":10,"processed_again":1,"processed_again_extra_rows":2,"committed_never_processed":0}}
         """)!.AsObject();
 
-    private static JsonObject DefaultProjection(int repeat, string phase = "C0")
+    private static JsonObject DefaultProjection(int repeat, string phase = "C0", string scenario = "C03")
     {
-        JsonObject block = DefaultBlock(repeat, phase);
+        JsonObject block = DefaultBlock(repeat, phase, scenario);
         var projection = new JsonObject();
-        foreach (string name in new[] { "status", "reasons", "group_id", "kill_count", "offset_read", "counts", "reassignment" })
+        foreach (string name in new[] { "status", "reasons", "group_id", "kill_count", "offset_read", "counts", "membership", "reassignment" })
             if (block.TryGetPropertyValue(name, out JsonNode? value)) projection[name] = value?.DeepClone();
         return projection;
     }
@@ -555,7 +624,7 @@ public sealed class ConsumerPhaseJudgeTests
         }
         var stores = new Stores(verifier, ledger);
         for (int repeat = 1; repeat <= 5 && addConsumer; repeat++)
-            Apply(stores, phase, repeat, result => result["consumer"] = DefaultBlock(repeat, phase));
+            Apply(stores, phase, repeat, result => result["consumer"] = DefaultBlock(repeat, phase, scenario));
         return stores;
     }
 
