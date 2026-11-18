@@ -1,5 +1,5 @@
 # State: #494 Native Kafka telemetry and retained diagnostic evidence
-Covers: comment 6958665895 created 2026-11-17T19:31:33Z; read at 2026-11-17T19:32:58Z
+Covers: comment 6971737490 created 2026-11-18T07:10:49Z; read at 2026-11-18T07:11:40Z
 Parent items: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/347
 Item plan: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/f96eab914d00c06484431ff67a1808fb331c7e13/items/494/plan-observability-evidence.md
 Implementing tool: Codex. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6892754688
@@ -31,9 +31,12 @@ Decisions in force:
 - Approve one additional focused review of the remaining telemetry CI correction at ed124b1d and affected contracts, plus at most one needed blocking-correction follow-up. Preserve the cumulative two comprehensive/four focused rounds and every other gate. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6954583219
 - Approve one additional focused review of the archive-success fixture repair at 7c7da22e and affected contracts, plus at most one needed blocking-correction follow-up. Preserve the cumulative two comprehensive/six focused rounds and every other gate. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6955429023
 - Adopt the bounded PR3 preparation amendment: separately reviewed exact effective-config/source-bound cohort prerequisite; retain timings only for unchanged targets under the exact 28 shared and ten other-target hashes at cdb82664; at most two sizing passes with 19 invocations each and 2700 seconds per invocation including child work, existing one 600-second profile and ten finding-group cap. Preserve every source, scientific, evidence/score, cumulative review, CI/protected-merge and later main-only acceptance gate. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637
+- Approve the replacement profile and exact corrected fixture hash pairs, retaining original timing records for unchanged target sources/selectors only and requiring fresh evidence for changed targets. No automatic further retry. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6969607168
+- Approve the additional focused review of the uncited-profile sentence correction, retaining cumulative history and final-head hosted gates. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6971609420
+- Continue PR 546 through the remaining review corrections and focused coverage under Hari's instruction to complete the PR. Correct the state index and existing collector input-bound regressions; native execution remains paused and protected merge remains required. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6971737490
 Open questions:
 - None
-Next action: complete ordinary review and hosted CI for the offline sparse collector while the frozen product first-pass inventories finish. Reserve the remaining first-pass slot for a reviewed source-bound native collector trial within the existing allowance. Final product layout, qualification, review and applicable main-only acceptance remain unresolved.
+Next action: finish PR 546 review corrections, final-head hosted checks and protected merge. Keep native preparation paused; this collector PR authorizes no native invocation. Final product layout, source-bound qualification, review and applicable main-only acceptance remain unresolved. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6971737490
 
 Current implementation:
 - Archive PR 528 is merged at 911c5a1eaaac55107271755f2aa9697ea7a8acf9. Its cumulative cold review is two comprehensive and eight focused rounds; no reset. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/528

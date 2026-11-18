@@ -2812,6 +2812,32 @@ class LocalSampleTests(unittest.TestCase):
         self.assertEqual(child['config_sha256_before'], child['config_sha256_after'])
         self.launch.assert_called_once()
 
+    def test_invalid_sample_timeouts_fail_before_launch_or_output(self):
+        for timeout in (0, -1, float('nan'), float('inf'), 16201, True):
+            with self.subTest(timeout=timeout), self.assertRaisesRegex(ValueError, 'timeout must be positive'):
+                self.invoke(timeout=timeout)
+            self.assertFalse(self.output.exists())
+        self.launch.assert_not_called()
+
+    def test_invalid_inventory_commits_fail_before_launch_or_output(self):
+        for commit in ('', 'main', 'B' * 40, 'b' * 39, 'b' * 41, None):
+            with self.subTest(commit=commit), self.assertRaisesRegex(ValueError, 'invalid inventory source commit'):
+                runtime.local_sample(self.target, self.inventory, commit, self.selection, self.output, 100)
+            self.assertFalse(self.output.exists())
+        self.launch.assert_not_called()
+
+    def test_inventory_commit_with_different_target_bytes_fails_before_launch(self):
+        original_git = self.workflow.git.side_effect
+        reference = f"{'b' * 40}:{self.workflow.projection.VERIFIER}{self.target}"
+        def git(root, *args):
+            source = original_git(root, *args)
+            return source + b'\n// different source' if args == ('show', reference) else source
+        self.workflow.git.side_effect = git
+        with self.assertRaisesRegex(ValueError, 'inventory commit has different target source'):
+            self.invoke()
+        self.assertFalse(self.output.exists())
+        self.launch.assert_not_called()
+
     def test_preflight_rejects_manifest_and_dirty_source_without_launch_or_output(self):
         for selection in ([], ['1', '1'], ['unknown'], {'ids': ['1']}):
             with self.subTest(selection=selection):
