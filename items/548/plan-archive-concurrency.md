@@ -1,281 +1,175 @@
 # archive-concurrency contract-grade plan
 
-Revision: 2
+Revision: 3
 
-This plan makes a C01, C03 or C10 phase archive fit inside its fixed 600-second deadline by moving blob bytes through the Blob SDK instead of one Azure CLI process per call, and then collecting the five repeats concurrently. Running the existing CLI calls in parallel would gain nothing: the CLI session wrapper holds one exclusive lock for the whole of every `az` command. The SDK route changes a transport rule of the approved observability specification, so it needs Hari's decision (open question 1) before either pull request is approvable.
+This plan raises the phase evidence archive deadline from 600 seconds to 1800 seconds, as Hari decided on 2026-11-18. It changes the constant, the copy of the value in the archive policy block that every archive manifest records, the archive readiness smoke's own deadline, the operations document and the tests that pin 600. Nothing else about the archive changes: every object is still verified as today.
 
-Two pull requests, in order, under factory.md "Item lifecycle" step 3 "Split by scope". Base: `main` at `08c708aae6a8cc27c87110013540089bb5553a43`. Line numbers are at that base.
-
-| Order | Pull request | Piece |
-|---|---|---|
-| 1 | `548-sdk-transport` | Replace the CLI storage-call transport with an SDK helper behind the existing `Transfer.command` seam. Every phase archive uses it. |
-| 2 | `548-consumer-workers` | Collect the five repeats of a consumer phase in five workers, each with its own spool and helper. Predecessor: `548-sdk-transport` merged. |
+One pull request. The plan keeps its short name, `archive-concurrency`, because the `plan-pr` skill step 2 keeps a plan's name across revisions; the concurrency design of revision 2 is withdrawn. Base: `main` at `08c708aae6a8cc27c87110013540089bb5553a43`. Line numbers are at that base.
 
 ## 1. Goal and authority
 
-Goal: a consumer phase whose evidence is all present archives every object before `ArchiveDeadlineSeconds` (600 s) expires, so its receipt carries no `deadline` gap. The deadline stays 600 s. The time the archive needs is measured at the next C03 smoke run, not estimated into a new deadline.
+Goal: an archive command, in a scenario phase or in the archive readiness smoke, has an 1800-second monotonic deadline instead of 600 seconds, and every manifest, document and test that states the deadline states 1800.
 
 Authority, in creation order:
-- Issue 548 body (`updated_at` 2026-11-18T08:25:04Z). It records the C03 smoke run [44248514485](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44248514485): the C1 step "Archive phase evidence" ran 08:02:07 to 08:12:07 UTC and both phases hit the deadline ([smoke report 6973117302](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6973117302), check 8). It records Hari's choice, in the #347 control session on 2026-11-18, to make the archive transfer objects concurrently rather than raise the deadline, and that this gates the #508 batch dispatch.
-- [Decision 6943512296 on issue 531](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/531#issuecomment-6943512296), point 2, cited by the smoke report: the overrun risk was accepted by name and Hari decides the response before the C03 batch. Issue 548 is that response.
-- The approved observability specification, [items/494/plan-observability-evidence.md at f96eab914d00c06484431ff67a1808fb331c7e13](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/f96eab914d00c06484431ff67a1808fb331c7e13/items/494/plan-observability-evidence.md), section "Resource and work bounds". Its transport paragraph (line 212) says: "use the existing serialized Azure CLI subprocess as transport ... No shell, no new package, token extraction or credential persistence." Its preflight paragraph (line 215) says: "do not alter the general session wrapper's authentication/renewal behavior." Pull request 1 departs from line 212. Open question 1 asks Hari to amend it.
-- `docs/operations/archive-smoke.md` line 68: the archive smoke's SDK observation already "obtains a token through the existing serialized CLI session and passes the token and its actual expiry to the CLI's Python interpreter through standard input." Pull request 1 reuses that mechanism for data transfer.
-- [Decision 6973159782](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/548#issuecomment-6973159782): Claude Code implements this issue, on the implementation model; Codex reviews; the plan needs Hari's approval and `ready-for-agent`.
-- [Decision 6973214094](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/548#issuecomment-6973214094): point 1, the plan evaluates server-side copy alongside concurrent transfers through the runner, citing current Microsoft documentation for each claim about copy behaviour (section 1.2); point 3, the workflow identity does the copy and workloads get no archive access (`docs/blueprint.md` line 652). Its point 2 is replaced by the next decision.
-- [Decision 6973250625](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/548#issuecomment-6973250625), reworded point 2: copies may be asynchronous, concurrent or server-side, in any order, but every archived object is verified: the source etag read is bound to the copy, the destination content hash matches the source, and each copy is confirmed complete. All copies complete and are verified before the ephemeral source storage is destroyed; an object not verified in time is an archive gap, which holds publication (`docs/blueprint.md` line 651). Section 5 maps each point to the design.
-- Control session for issue 347, message of 2026-11-18 to this session: issue 549 investigates the missing native-monitoring indexes and may touch the same archive code; keep this scope to transfer concurrency. Evidence of coordination, not a decision.
+- Issue 548 body. It records the C03 smoke run [44248514485](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44248514485), whose "Archive phase evidence" step hit `ArchiveDeadlineSeconds` (600 s) in both phases ([smoke report 6973117302](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6973117302), check 8). It records that a `deadline` gap holds publication and that the issue gates the #508 batch dispatch. Its route (concurrent transfer, no larger deadline) is replaced by decision 6976180742 below.
+- [Decision 6973159782](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/548#issuecomment-6973159782): Claude Code implements this issue, on the implementation model in CLAUDE.md "Model bindings"; Codex reviews; the plan needs Hari's approval and `ready-for-agent`.
+- [Decision 6973214094](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/548#issuecomment-6973214094) and [decision 6973250625](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/548#issuecomment-6973250625): the server-side copy evaluation and its verification rules. Decision 6976180742 point 2 says the server-side copy requirement lapses "because no copy mechanism changes". Point 3 of decision 6973214094 (the workflow identity does the copy; workloads get no archive access) describes today's design, which this plan does not touch.
+- [Decision 6976180742](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/548#issuecomment-6976180742), Hari's words "raise to 1800":
+  1. `ArchiveDeadlineSeconds` (`infra/scripts/phase/archive.py` line 8) changes from 600 to 1800. It is a policy value. Its basis is an estimate, not a measurement: 141 of 202 objects verified in 600 s, about 4.3 s per object, about 230 objects per consumer phase, about 990 s. The next C03 smoke measures it.
+  2. The revision 2 concurrency design is withdrawn, with its open questions and deployment assumptions D1 to D4. Every archived object is still verified, as today.
+  3. The change applies to every scenario that archives. Every place that states the 600 s value changes with it, including `docs/operations/archive-smoke.md` line 52 and any test that pins it.
+  4. Cost: each phase may keep the ephemeral environment up longer before teardown, by up to 20 minutes more than today.
 
-### 1.1 Measured evidence
+The approved observability specification ([items/494/plan-observability-evidence.md at f96eab914d00c06484431ff67a1808fb331c7e13](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/f96eab914d00c06484431ff67a1808fb331c7e13/items/494/plan-observability-evidence.md)) states the old value at line 76 ("Archive command | 600 s aggregate monotonic deadline, including enumeration/retries/hash/readback | Record gap and continue cleanup") and line 185 (`ArchiveDeadlineSeconds=600`). It is a document pinned at a commit and is not edited. Decision 6976180742 amends that value; section 9 makes the operations document say so.
 
-Read by script from the archive artifacts of run 44248514485 (`c03-C0-archive-44248514485-1`, `c03-C1-archive-44248514485-1`), 2026-11-18:
+### 1.1 Where 600 is stated on `main`
 
-| Phase | Expected objects | Verified | Failed `deadline` | Of which `native_monitoring_index` | Verified bytes |
-|---|---|---|---|---|---|
-| C0 | 202 | 141 | 61 | 25 | 3547510 |
-| C1 | 202 | 128 | 74 | 25 | 2818991 |
+Found by `grep -rn` over the repository, excluding `.git` and `node_modules`, for `ArchiveDeadlineSeconds`, `deadline_seconds`, `DEADLINE`, `600-second`, `600 s` and the word `600`; each hit was read in context. The archive deadline is stated in exactly these places:
 
-The largest verified object is 388865 bytes. The time goes on calls, not bytes.
+| Place | Text on `main` | Role |
+|---|---|---|
+| `infra/scripts/phase/archive.py` line 8 | `ArchiveDeadlineSeconds = 600` | Phase archive deadline. Read by `phase.py` line 280 (`deadline=started + module.ArchiveDeadlineSeconds`) and by `archive.py` line 2156 (default when `execute` gets no deadline). |
+| `infra/scripts/archive/smoke.py` line 22 | `DEADLINE = 600` | Archive readiness smoke deadline, read at line 662 (`deadline = time.monotonic() + DEADLINE`). |
+| `infra/scripts/archive/smoke.py` line 25 | `'deadline_seconds': 600` inside `POLICY` | The policy block. The phase archive imports this module as `_common` (`archive.py` lines 58-61), writes `dict(_common.POLICY)` into every manifest (line 2171) and rejects any manifest whose `policy` is not equal to `_common.POLICY` (line 642). The smoke writes it into its own manifest (line 598). |
+| `docs/operations/archive-smoke.md` line 52 | "An archive command has a 600-second monotonic deadline, including SDK requests/backoff and hashing." | Operations document. |
+| `infra/scripts/phase/tests/test_archive_config.py` line 117 | `'deadline_seconds': 600` in a manifest dict | Test fixture. |
+| `infra/scripts/phase/tests/test_archive_config.py` lines 243-246, 251 | Literal manifest bytes with `"deadline_seconds":600`, its length 911 and SHA-256 `6c5fcc28...`, and the marker that binds them (length 500, SHA-256 `f1500fca...`) | Golden byte test. |
+| `infra/scripts/phase/tests/test_archive_pack.py` lines 24, 25, 64 | The same manifest bytes, the same marker and the manifest SHA-256 | Golden byte test. |
 
-Source read on `main`:
-- `infra/scripts/phase/archive.py` lines 73-77: every storage call is one `az storage blob` subprocess through `self.command`, which defaults to `_common.command` (`infra/scripts/archive/smoke.py` lines 189-256).
-- `infra/scripts/phase/archive.py` lines 261-311 (`Transfer.copy`): a fresh object costs six calls (source `show`, source `download`, destination `show`, `upload`, destination `show`, destination `download`); `test_archive_transfer.py` line 50 pins that sequence.
-- `scripts/azure-cli-session/az` lines 406-438: the wrapper takes `fcntl.flock(..., LOCK_EX)` on one session lock file and holds it until the real CLI command exits. Two `az` invocations never overlap. `.github/workflows/scenario.yml` lines 146-149 put this wrapper first on `PATH` for the archive step.
-- `infra/scripts/phase/archive.py` line 2178: the archive already runs `_common.preflight`, which resolves the CLI's own Python and requires `azure-storage-blob` `12.29.0b1` in it (`smoke.py` lines 259-277).
+Every other `600` hit is a different bound and must not change: command wrapper timeouts (`.github/workflows/dotnet-verification.yml` lines 207-281, `docs/operations/lifecycle.md` lines 67 and 134), token lifetimes in tests (`scripts/tests/test_azure_cli_session.py`, `infra/scripts/tests/test_archive_smoke.py` lines 107 and 129), the F06 audit (`docs/operations/single-action-contract.md` lines 238 and 254 and the C# code and tests that pin `audit_seconds`), mutation profiles (`tests/Parchwell.Verifier.Tests/Mutation/`, `docs/operations/verifier-mutation.md`), file modes `0o600`, and historical evidence under `docs/operations/evidence/` and `results/`.
 
-Estimate (2026-11-18, basis: the table above, assuming time per object is constant across a phase): at the C0 rate of 141 objects in at most 600 s, 177 objects need about 750 s and 202 objects about 860 s, before any native-monitoring raw chunks that issue 549 may add. Not measured.
+The workflows give the archive steps no step timeout. `.github/workflows/scenario.yml` lines 237-242, 463-468, 725-730 and 955-960 run `phase.sh archive` without `timeout-minutes`, inside jobs with `timeout-minutes: 360` (lines 62, 294, 520, 788). `.github/workflows/archive-smoke.yml` line 113 runs `smoke.py run` without a step timeout inside a job with `timeout-minutes: 360` (line 15). No workflow changes.
 
-### 1.2 Server-side copy evaluated (decision 6973214094 point 1)
+### 1.2 Measured job time
 
-Server-side copy means the archive account fetches the source blob itself (`Copy Blob From URL`, synchronous, or `Copy Blob`, asynchronous), so the bytes do not pass through the runner. Microsoft Learn, read 2026-11-18 with the Microsoft Learn MCP server:
-- `Copy Blob From URL` copies synchronously "for source blob sizes up to 256 mebibytes (MiB)", with `x-ms-source-if-match` to bind the source ETag (412 on mismatch) and `If-None-Match: *` for create-only (https://learn.microsoft.com/rest/api/storageservices/copy-blob-from-url, "Request"). That would satisfy the etag binding and create-only rules.
-- The same page is inconsistent on source authorization. Its "Authorization" table says a source block blob in another storage account supports Microsoft Entra ID authorization: "No", only SAS. Its "Remarks" say "In version 2020-10-02 and later, Microsoft Entra authorization is supported for the source of the copy operation", through `x-ms-copy-source-authorization` with scheme bearer. Which holds for this account pair is not verified. A SAS is not an option here: both accounts set `shared_access_key_enabled = false` (`infra/ephemeral/storage.tf` line 12, `infra/persistent/archive.tf` line 12), and archive-smoke.md line 91 accepts no SAS URL.
-- Both accounts set `public_network_access_enabled = false` (`infra/ephemeral/storage.tf` line 11, `infra/persistent/archive.tf` line 11) and are reached through private endpoints. Microsoft documents that copy between accounts with network restrictions depends on topology, and that the destination service fetching from a firewalled source can fail with `403 ... CannotVerifyCopySource` (https://learn.microsoft.com/troubleshoot/azure/azure-storage/blobs/connectivity/copy-blobs-between-storage-accounts-network-restriction). Whether the archive account can read the ephemeral source in this network is not verified and would need a live smoke (factory.md "Item lifecycle" step 1: a plan that changes live infrastructure needs a smoke first, and enabling it might need network or `AllowedCopyScope` changes on protected Terraform).
-- Server-side copy does not remove the source read. Decision 6973250625 requires the destination hash to match the source, and the source's SHA-256 is known only by reading it: blob properties carry `Content-MD5` at most, and the approved specification line 211 says "Metadata hash or Content-MD5 alone is not SHA256 content verification". Many sources are also inspected before archiving (`inspect_source` callbacks in `Collector.source`, consumer completion and registration checks, projections). So each object would still need a source download and a destination readback; server-side copy replaces only the upload.
-
-Conclusion: server-side copy saves at most one of six calls per object, adds two unverified prerequisites (Entra source authorization across accounts, and network reachability between private accounts), and may need protected infrastructure changes. This plan does not choose it. Concurrent transfers through the runner keep every existing verification step and need no infrastructure change. Open question 1 lists server-side copy as alternative (d).
+Read on 2026-11-18 from the jobs API of run 44248514485: the C0 job (`probe`) ran 06:04:01 to 07:03:44 UTC, 3583 s, and the C1 job (`full-C3`) 07:22:27 to 08:15:14 UTC, 3167 s. Each "Archive phase evidence" step ran 600 s (06:51:07 to 07:01:07, and 08:02:07 to 08:12:07). Adding at most 1200 s to each archive step gives at most 4783 s and 4367 s, under the 21600-second (360-minute) job timeout. Differences computed by script. This is arithmetic on one run, not a measurement of a longer archive.
 
 ## 2. Scope
 
-### 2.1 Pull request 1, `548-sdk-transport`
-
 Files allowed to change:
-- `infra/scripts/phase/archive_sdk.py` (new): the parent-side command adapter and token holder.
-- `infra/scripts/phase/archive_sdk_helper.py` (new): the helper process run by the CLI's Python. The implementer may merge it into `archive_sdk.py` if one file can serve both roles without importing the SDK in the parent.
-- `infra/scripts/phase/archive.py`: `execute` only (lines 2154-2271), to construct `Transfer` with the new command and to stop helpers at exit.
-- `infra/scripts/phase/tests/test_archive_sdk.py` (new).
-- `docs/operations/archive-smoke.md`: the two sentences in section 9.
+- `infra/scripts/phase/archive.py`: line 8 only.
+- `infra/scripts/archive/smoke.py`: lines 22 and 25 only.
+- `docs/operations/archive-smoke.md`: lines 52 and 101 only, as section 9 pins.
+- `infra/scripts/phase/tests/test_archive_config.py`: the fixture lines of section 1.1 and the new tests T1 and T2.
+- `infra/scripts/phase/tests/test_archive_pack.py`: lines 24, 25 and 64.
+- `infra/scripts/phase/tests/test_phase.py`: the new test T3 only.
+- `items/548/state.md`: created by the implementing session under docs/agents/factory.md "Item state file".
 
-### 2.2 Pull request 2, `548-consumer-workers`
-
-Files allowed to change:
-- `infra/scripts/phase/archive.py`: `Collector` (lines 940-1595), `read_job_pods` (lines 1621-1720) only where it reads `collector.transfer.spool`, `collect_ordinary` (lines 1856-1972) and `execute`.
-- `infra/scripts/phase/archive_sdk.py`, only if a worker needs a factory it lacks.
-- `infra/scripts/phase/tests/test_archive_workers.py` (new).
-- `docs/operations/archive-smoke.md`: the paragraph in section 9.
-
-### 2.3 Paths that must not change (both pull requests)
-
-- `scripts/azure-cli-session/az` and its tests. Its lock and renewal stay as they are (specification line 215).
-- `infra/scripts/archive/smoke.py` and the archive smoke workflow. The smoke keeps the CLI transport.
-- `.github/workflows/**` and `docs/operations/workflows/**`. No workflow change is needed: the archive step already runs with the wrapper on `PATH` and `_common.preflight` already finds the CLI's Python.
-- `collect_native_monitoring` (lines 1984-2073), `archive_native_monitoring.py`, `archive_nonledger.py`: issue 549's area. They keep their sequential behaviour.
-- `GAP_CODES`, `validate_gaps`, the manifest, marker and receipt schemas, `_common.POLICY` and every constant in `archive.py` lines 5-11.
-- Every existing test assertion in `infra/scripts/phase/tests/` and `infra/scripts/tests/`.
+Paths that must not change: `.github/workflows/**` and `docs/operations/workflows/**`; `infra/persistent/**`, `infra/ephemeral/**`, `infra/cluster/**`; `charts/**`; `src/**`; `results/**`; `docs/blueprint.md`; `items/494/**`; every `600` listed as a different bound in section 1.1; every other archive limit in `POLICY` (`max_bytes`, `max_object_bytes`, `max_objects`, `transfer_passes`, `metadata_chunk_bytes`, `metadata_row_bytes`) and the other constants in `archive.py` lines 5-11.
 
 ## 3. External contracts
 
-Unchanged and relied on:
-- Manifest, completion marker and receipt: field sets, `policy` object (including `deadline_seconds: 600` and `transfer_passes: 1`), sort orders in `execute` lines 2237-2239 and the 100-gap cap with `diagnostics_truncated` (`Collector.gap`, lines 955-961).
-- Gap codes and the boundary strings that `Transfer` already raises: `properties`, `invalid properties`, `conditional download`, `conditional create`, `object properties`, `command timeout`, `global deadline`, `command interrupted`, `command output limit`, `spool reserve`.
-- Destination layout `v1/<commit>/<run id>/<attempt>/<run>/<phase>/...`, container `run-evidence`, create-only uploads, ETag-conditional downloads, independent length and SHA-256 readback (archive-smoke.md line 101).
-- The `Transfer` command seam: `command(args, deadline)` returns `(returncode, stdout bytes, stderr bytes)` or raises `Gap` (`archive.py` lines 73-77).
-
-Changed:
-- Transport (pull request 1). Storage calls of a phase archive run as SDK requests in a helper process started with the CLI's Python, authenticated by an access token for `https://storage.azure.com/` obtained with `az account get-access-token` through the serialized wrapper. New boundary strings, both under the existing code `transport`: `storage token` and `sdk helper`.
-- Concurrency (pull request 2). For C01, C03 and C10 only, collection of repeats 1 to 5 runs in five concurrent workers. The spool reserve check on that path requires 2689925120 free bytes (5 x 537985024).
-- `docs/operations/archive-smoke.md` wording in section 9.
+- **Manifest policy block.** Every archive manifest written after this change, by a phase archive or by the readiness smoke, carries exactly `"policy":{"max_bytes":17179869184,"max_object_bytes":268435456,"max_objects":1024,"deadline_seconds":1800,"transfer_passes":1,"metadata_chunk_bytes":134217728,"metadata_row_bytes":1048576}` in that key order. Key set, key order and the other six values are unchanged.
+- **Consequence for stored manifests.** `validate_manifest` (`archive.py` line 642) requires `policy == _common.POLICY`. After the change, a manifest archived before it (with `deadline_seconds` 600) fails `validate_manifest` and therefore `verify_controls` (line 1604). On `main`, `verify_controls` is called only through `archive_pack.verify_pack` (`archive_pack.py` line 118), and no production code calls `verify_pack`; it is reached only from `infra/scripts/phase/tests/test_archive_pack.py`. So no current workflow reads an older manifest. Decision 6976180742 point 3 covers this value in the policy block; the plan adds no compatibility path. Any later work that packs an archive written before this change must handle the older policy; section 11 records it.
+- **Deadline value.** `archive.ArchiveDeadlineSeconds`, `smoke.DEADLINE` and `smoke.POLICY['deadline_seconds']` are each the integer `1800`.
+- Gap codes, boundaries, receipt fields, artifact names and the deadline's monotonic clock are unchanged. Running out of time still records `deadline` gaps, which hold publication (`docs/blueprint.md` line 651).
 
 ## 4. Requirements
 
-### 4.1 Pull request 1
-
-R1. WHEN `execute` builds the phase `Transfer`, THEN it passes an SDK command adapter as `command`, bound to the CLI Python that `_common.preflight` returned. `Transfer` and `Collector` code is unchanged.
-
-R2. WHEN the adapter receives argv `['az', 'storage', 'blob', <action>, '--account-name', A, '--container-name', C, '--name', N, '--auth-mode', 'login', '--only-show-errors', *extra]` with `<action>` and `extra` exactly as `Transfer.properties`, `Transfer.download` or `Transfer.upload` produce them (`archive.py` lines 79, 104-106, 113-115), THEN it performs one helper request: `show` is Get Blob Properties; `download` is Get Blob with `If-Match: <etag>` into `--file`, one connection; `upload` creates a block blob from `--file` with `If-None-Match: *`, one connection (one Put Blob up to the SDK's single-put size, otherwise Put Block requests committed by one Put Block List carrying the condition). WHEN argv has any other shape, THEN it returns `(2, b'', b'')` and sends nothing.
-
-R3. WHEN a `show` succeeds, THEN stdout is the JSON `{"properties":{"contentLength":<int>,"etag":"<etag>"}}` and the return code 0. `download` and `upload` success return `(0, b'', b'')`.
-
-R4. WHEN a request fails with a storage service error, THEN the return code is 1 and stderr is the service error code as ASCII (for example `b'BlobNotFound'`, `b'ConditionNotMet'`, `b'BlobAlreadyExists'`). WHEN the SDK raises `ResourceModifiedError` on a conditional download, THEN stderr is `b'ResourceModifiedError'`. Any other failure returns 1 with empty stderr. The existing `Transfer` regexes then map these to `source_missing`, `source_changed`, `destination_conflict` or `transport` exactly as for the CLI.
-
-R5. WHEN a request has no answer within `min(60 s, deadline - now)`, THEN the adapter stops the helper process (R18), raises `Gap('deadline', 'command timeout')`, and does not resend that request. The next request starts a new helper. WHEN `deadline - now <= 0` before a request, THEN it raises `Gap('deadline', 'global deadline')` and sends nothing.
-
-R6. WHEN the adapter needs a token (first request, or the held token's `expires_on` is less than 120 s after now), THEN it runs, on the main thread (R18), `_common.command(['az', 'account', 'get-access-token', '--resource', 'https://storage.azure.com/', '--output', 'json', '--only-show-errors'], min(deadline, now + 15), cap=16384)` once, and validates `accessToken` against `[A-Za-z0-9._-]{1,8192}` and `expires_on` as an integer in `1..4102444800`, as `smoke.py` lines 413-424 do. WHEN that fails or is invalid, THEN the current request raises `Gap('transport', 'storage token')`. The next request may try once more. A token obtained while a helper runs reaches that helper on its standard input before the adapter's next request to it.
-
-R7. WHEN the helper starts, THEN it is started on the main thread (R18) with the CLI Python and `start_new_session=True`, without `preexec_fn`. Its first action, before reading input, is `resource.setrlimit(resource.RLIMIT_FSIZE, (268435456, 268435456))`, the same bound that `_common.limit_child` sets (`smoke.py` lines 136-137). It receives the account hosts, token and expiry only on standard input. It builds one `BlobServiceClient` per storage account with the SDK's default retry policy and `max_single_get_size` and `max_single_put_size` left at their defaults, and serves requests one at a time.
-
-R8. WHEN the helper cannot start, exits, or writes a response that is not one JSON object with exactly the fields the adapter expects, THEN the request returns 1 with empty stderr for `download` and `upload`, and for `show` the adapter raises `Gap('transport', 'sdk helper')`.
-
-R9. WHEN `execute` returns or raises, including after `KeyboardInterrupt`, THEN every helper process it started has been stopped and waited for.
-
-R18. Every subprocess start, every `_common.command` call and every `_common.stop_command` call happens on the main thread. Both functions call `signal.signal` (`smoke.py` lines 143, 194-195, 201), which Python allows only on the main thread, and Python documents `preexec_fn` as unsafe when threads exist. In pull request 1 the archive is single-threaded, so the adapter calls them directly. Pull request 2 keeps this rule through R19.
-
-R10. The token never appears in any process argv, environment variable, file, log line, stdout or stderr of the parent, or in any file under the spool or public directories.
-
-### 4.2 Pull request 2
-
-R11. WHEN `phase['scenario']` is C01, C03 or C10, THEN `collect_ordinary` processes repeats 1 to 5 in five concurrent workers. Each worker handles that repeat's planned modes in the existing planned order. After all five finish, the main thread handles the phase-level modes (`judge`) in order. Units are returned in the same order as the sequential code would return them.
-
-R12. WHEN any other scenario runs, THEN collection is sequential, exactly as on `main`.
-
-R13. WHEN a worker runs, THEN it has its own `Transfer` with its own spool directory `<spool>/w<repeat>` (mode 0700) and its own SDK command adapter and helper process. No two concurrent operations use the same spool path. The main thread keeps the original `Transfer` for phase-level modes, native monitoring and controls.
-
-R14. WHEN the concurrent path checks the spool reserve, THEN it requires free space of at least 2689925120 bytes; below that it raises `Gap('disk_space', 'spool reserve')`. The sequential path keeps 537985024.
-
-R15. WHEN workers run, THEN every change to shared `Collector` state (`objects`, `captures`, `gaps`, `names`, `window_sources`, `native_existing`, `verified_bytes`, `logical_bytes` and the object-count check) happens under one lock, and the lock is not held during a storage call. The byte reservation re-checks the phase total under that lock: WHEN `logical_bytes + size > 17179869184 - 1048576 - 65536` (17178755072), THEN it raises `Gap('byte_limit', 'phase bytes')` and does not add `size`; otherwise it adds `size` in the same locked step. The check before the transfer (`archive.py` line 1019) stays as a fast refusal.
-
-R16. WHEN the main thread receives `KeyboardInterrupt` while workers run, THEN it stops every worker's helper with `_common.stop_command`, waits at most 10 s for the workers, and `execute` records `Gap('interrupted', 'inventory interrupted')` through its existing path (lines 2235-2236). No completion marker is written.
-
-R19. WHEN a worker needs a token, a helper start or a helper stop, THEN it asks the main thread through a queue and waits for the answer. The main thread waits for the workers by servicing that queue, not by a bare `join`, and runs each request under R5 to R7 and R18. A worker never calls `signal.signal`, `_common.command`, `_common.stop_command` or `subprocess.Popen`. A worker reads a helper response only by waiting on the pipe with a timeout (for example `selectors`), within `min(60 s, deadline - now)`.
-
-R17. WHEN all workers finish, THEN `manifest['objects']`, `manifest['captures']`, `manifest['gaps']`, `manifest['expected_units']` and `manifest['totals']` equal those of a sequential run over the same inputs, whenever fewer than 100 gaps occur. With 100 or more gaps the stored gaps still number exactly 100, the last being `diagnostics_truncated`; which other gaps survive may differ.
+- R1. WHEN `infra/scripts/phase/archive.py` is loaded THEN `ArchiveDeadlineSeconds` is the `int` `1800`.
+- R2. WHEN `infra/scripts/archive/smoke.py` is loaded THEN `DEADLINE` is the `int` `1800` and `POLICY['deadline_seconds']` is the `int` `1800`, and `POLICY` keeps the key order and other values of section 3.
+- R3. WHEN `Phase.archive` runs with `time.monotonic()` returning `1000.0` at its start THEN it calls the archive module's `execute` with `deadline=2800.0`.
+- R4. WHEN `validate_manifest` gets a manifest whose `policy` equals section 3's block THEN it returns the identity. WHEN `deadline_seconds` in that block is `600`, `1799` or `1801` THEN it raises `InvalidArchiveConfig`.
+- R5. WHEN the golden manifest of section 6 is encoded THEN its length is 912 bytes and its SHA-256 is `37041710d72f19bc31914711eaf10d78dcb8643e6cda98032ea375f1159471de`, and the golden marker that binds it is 500 bytes with SHA-256 `660f6115d897491a6116485e329c7a107c3f7238debbbc3bb5a8ff645bbc7461`.
+- R6. WHEN the archive runs out of time THEN behaviour is unchanged: the remaining objects become `deadline` gaps and the receipt is incomplete. No test changes for this path except the fixture changes of section 6.
 
 ## 5. Invariants and safety rules
 
-- At most six storage calls per object and no helper-level retry (specification line 210). A timed-out request is never resent.
-- One absolute 600-second monotonic deadline per phase archive, shared by all workers and helpers.
-- Create-only uploads, ETag-conditional downloads, independent readback before `verified`. A destination conflict is never overwritten.
-- Logical archived bytes per phase stay at most 17178755072 (`ArchiveMaxBytes` less the control reserve), also under concurrency (R15).
-- At most 256 MiB written per child file (`RLIMIT_FSIZE`, set by `limit_child` for CLI children and by the helper itself, R7).
-- No new package: the helper uses the `azure-storage-blob` `12.29.0b1` already pinned and checked in the CLI's Python. No new Azure identity, role, secret or environment variable (hard safety rules 3 and 7). The token lives only in process memory and pipes of the workflow job.
-- The general session wrapper is not changed.
-- No result, verdict, expected outcome or file under `results/` changes.
-- Decision 6973250625, point by point. Source etag bound: every source download is `If-Match` on the etag from the properties call, and a mismatch is `source_changed` (`Transfer.download`, lines 103-109). Destination hash matches source: `verified` only after the destination readback's SHA-256 equals the source's (`Transfer.copy`, lines 298-301). Copy confirmed complete: the readback is the confirmation; nothing is assumed from the upload response. Before teardown: the archive step (`scenario.yml` line 237) runs before "Destroy ephemeral infrastructure" (line 261), and the shared deadline ends all work inside that step; an object not verified by then keeps its gap. Concurrency does not change any of these per-object steps.
-- Decision 6973214094 point 3: the helper runs in the workflow job with the workflow identity's token; workloads gain no archive access.
+- Every archived object is still verified as today: source etag bound, destination SHA-256 equal to the source, completion confirmed (decision 6973250625 point 2, and decision 6976180742 point 2).
+- The archive step still runs before "Destroy ephemeral infrastructure" in each phase job (`scenario.yml` lines 237 and 261 for C0, 725 and 749 for C1). Teardown still runs whether the archive passes or fails (AGENTS.md hard safety rule 6).
+- No workflow, Terraform, chart or identity changes. AGENTS.md hard safety rules 1, 2, 3, 8 and 9 are untouched.
+- No verdict, expected outcome or file under `results/` changes.
 
 ## 6. Test map
 
-Fixture: a fake helper written for the test, run with `sys.executable`, that serves the adapter's protocol from an in-memory blob table and records each request. The SDK-calling helper itself is tested against a fake `azure` package placed on its `sys.path`, which records constructor and method arguments. The real SDK is not installed in CI.
+The golden manifest is the existing literal in `test_archive_config.py` line 243 and `test_archive_pack.py` line 24, with `"deadline_seconds":600` replaced by `"deadline_seconds":1800` and nothing else. The golden marker is the existing literal in `test_archive_config.py` line 244 and `test_archive_pack.py` line 25, with `"bytes":911` replaced by `"bytes":912` and `6c5fcc28afea6d49840fc75d06c28551a4a45afe119d822eb1b43b5872d0cbba` replaced by `37041710d72f19bc31914711eaf10d78dcb8643e6cda98032ea375f1159471de`. These values were computed on 2026-11-18 by applying exactly those replacements to the literals on `main` and hashing the result.
 
-Standing fixture rule (plan rule 2, modelled on [#404 decision 6830544567](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6830544567) point 2): when an existing test's fixture is rejected by a new check, the implementer does exactly one of (a) change the fixture so it passes the new checks, keeping every assertion and the boundary the test exercises; or (b) where invalid input is the test's purpose, keep the input and change the expected values to exactly what this plan's checks produce. The rule never permits removing a case, loosening an assertion or changing a check. The PR implementation notes list each change with the check that forces it; the cold review and Codex review check each listed change. Pull request 1 is not expected to trigger it, because `Transfer` and its fake `command` tests are unchanged.
-
-### 6.1 Pull request 1, `test_archive_sdk.py`
-
-| Test | Requirement | Input | Expected |
+| Test | Requirement | Inputs | Literal expected values |
 |---|---|---|---|
-| `test_copy_through_adapter_fresh_destination` | R1-R3 | source `('source','ledger','run/a')` = `b'abc'`, no destination; `Transfer('source','dest',spool,deadline,adapter).copy('ledger','run/a','v1/a',3)` | returns `(3, 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad', <source etag>, <dest etag>)`; helper ops `['show','download','show','upload','show','download']`; spool empty after |
-| `test_copy_existing_destination` | R2 | as above, destination already `b'abc'` | ops `['show','download','show','download']`; same tuple |
-| `test_rejects_unknown_argv` | R2 | `['az','storage','blob','delete',...]`; `upload` without `--if-none-match` | `(2, b'', b'')`; zero helper ops |
-| `test_show_output_shape` | R3 | `show` of a 3-byte blob, etag `"0x1"` | stdout parses to exactly `{'properties': {'contentLength': 3, 'etag': '"0x1"'}}` |
-| `test_service_codes_map` | R4 | helper answers `BlobNotFound` on show; `ConditionNotMet` on source download; `BlobAlreadyExists` on upload | `properties(..., missing_ok=True)` returns `None`; `copy` raises `Gap('source_changed','conditional download')`; `copy` raises `Gap('destination_conflict','conditional create')` |
-| `test_request_timeout_not_resent` | R5 | fake clock; helper never answers the source download | `Gap('deadline','command timeout')`; helper stopped; that object's ops `['show','download']`; next copy starts a second helper (start count 2) |
-| `test_global_deadline` | R5 | deadline already past | `Gap('deadline','global deadline')`; zero helper ops |
-| `test_token_once_and_refresh` | R6 | token `expires_on` = now + 3600; then a second token at now + 100 | one `get-access-token` call for 10 copies; with expiry now + 100, the next request makes a second call |
-| `test_token_failure` | R6 | `get-access-token` returns 1 | `Gap('transport','storage token')` on the first `properties`; zero helper ops |
-| `test_helper_invalid_response` | R8 | helper answers `{"ok":true,"extra":1}` | `show`: `Gap('transport','sdk helper')`; `download`: `Transfer` raises `Gap('transport','conditional download')` |
-| `test_helper_started_bounded` | R7 | patch `subprocess.Popen` | args `[<cli python>, <helper path>]`; `start_new_session=True`; no `preexec_fn`; token absent from args and `env` |
-| `test_helper_sets_file_limit` | R7 | run the helper with the fake `azure` package; ask it to download a 268435457-byte fake blob | `resource.getrlimit(RLIMIT_FSIZE)` inside the helper is `(268435456, 268435456)`; the request fails (return 1); no file larger than 268435456 bytes remains |
-| `test_token_refresh_reaches_running_helper` | R6 | fake clock; first token expires at now + 100; helper already running | the second token is written to that helper's stdin before the next request; the helper's following request uses the second token |
-| `test_helper_sdk_calls` | R2, R7 | fake `azure` package; helper served one `show`, one `download` with etag `"0x1"`, one `upload` | `get_blob_properties()`; `download_blob(etag='"0x1"', match_condition=MatchConditions.IfNotModified, max_concurrency=1)`; `upload_blob(<stream>, overwrite=False, max_concurrency=1)`; two `BlobServiceClient` constructions, one per account URL |
-| `test_execute_stops_helpers` | R9 | `execute` with a fake inventory that raises `KeyboardInterrupt` after one copy | every started helper has exited; receipt `archive_complete: false` with an `interrupted` gap |
-| `test_token_never_leaks` | R10 | token `SENTINELTOKEN0123456789` | absent from every Popen argv and env, from captured stdout and stderr, and from every file under the spool and public directories after `execute` |
+| T1 `ArchiveConfigTests.test_archive_deadline_is_1800_seconds` (new, `test_archive_config.py`) | R1, R2 | The loaded `archive` module and `archive._common` | `(1800, 1800, 1800) == (archive.ArchiveDeadlineSeconds, archive._common.DEADLINE, archive._common.POLICY['deadline_seconds'])`; each value has `type` `int`; `list(archive._common.POLICY) == ['max_bytes', 'max_object_bytes', 'max_objects', 'deadline_seconds', 'transfer_passes', 'metadata_chunk_bytes', 'metadata_row_bytes']` |
+| T2 `CaptureInventoryTests.test_manifest_policy_deadline_boundary` (new, `test_archive_config.py`, the class at line 88 that holds the test it reuses) | R4 | The manifest dict of `test_manifest_zero_data_and_object_completion_rejected` (line 110), after the fixture change below, with `policy['deadline_seconds']` set to each of `1800`, `600`, `1799`, `1801` | `1800`: returns the identity of line 108. `600`, `1799`, `1801`: each raises `archive.InvalidArchiveConfig` |
+| T3 `PhaseTests.test_archive_deadline_is_start_plus_1800` (new, `test_phase.py`) | R3 | `Phase.archive` with the phase module's `time.monotonic` returning `1000.0` and the loaded archive module's `execute` replaced by a recorder | `execute` called once, with keyword `deadline` equal to `2800.0` |
+| `test_manifest_zero_data_and_object_completion_rejected` (`test_archive_config.py` line 107, fixture change) | R4 | Line 117: `'deadline_seconds': 600` becomes `'deadline_seconds': 1800` | Assertions unchanged |
+| `LiteralControlTests.test_literal_zero_data_bindings_and_mutations` (`test_archive_config.py` line 240, fixture change) | R5 | Line 243: the golden manifest. Line 244: the golden marker | Line 245: `(912, '37041710d72f19bc31914711eaf10d78dcb8643e6cda98032ea375f1159471de')`. Line 246: `(500, '660f6115d897491a6116485e329c7a107c3f7238debbbc3bb5a8ff645bbc7461')`. Line 251: `'bytes': 500, 'sha256': '660f6115d897491a6116485e329c7a107c3f7238debbbc3bb5a8ff645bbc7461'`. Every other assertion unchanged |
+| `test_archive_pack.py` (fixture change) | R5 | Line 24: `MANIFEST` becomes the golden manifest. Line 25: `MARKER` becomes the golden marker | Line 64: `'37041710d72f19bc31914711eaf10d78dcb8643e6cda98032ea375f1159471de'`. Every other assertion unchanged |
+| Existing suites that read `archive._common.POLICY` (`test_archive_transfer.py` line 94, `test_archive_boundaries.py` line 29) and every other existing archive test | R6 | Unchanged | Pass unchanged |
 
-Existing `test_archive_transfer.py`, `test_archive_boundaries.py` and the archive smoke tests run unchanged.
+Standing fixture rule (modelled on [issue 404 decision 6830544567](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6830544567) point 2). The changed policy value makes `validate_manifest` reject fixtures that carry 600. When an existing test's fixture is rejected by that changed check, the implementer does exactly one of:
+- (a) changes the fixture so it passes, keeping every assertion and the boundary the test exercises;
+- (b) where the input's bytes are the test's purpose, as in the two golden tests above, keeps the input except the one changed value and changes the expected values to exactly what the changed input produces.
 
-### 6.2 Pull request 2, `test_archive_workers.py`
-
-| Test | Requirement | Input | Expected |
-|---|---|---|---|
-| `test_consumer_repeats_run_concurrently` | R11 | C03 phase status fixture from `test_archive_consumer.py`; fake transfers whose first `copy` waits on `threading.Barrier(5, timeout=5)` | barrier passes (5 concurrent workers); returned units equal the sequential order |
-| `test_concurrent_equals_sequential` | R17 | same fixture, all objects present; run once with workers and once forced sequential | `objects`, `captures`, `gaps`, `expected_units`, `totals` equal |
-| `test_non_consumer_stays_sequential` | R12 | A01-shaped fixture (`start-line`, `loadgen`, `verify`) | maximum concurrent copies observed is 1 |
-| `test_worker_spools_disjoint` | R13 | fake transfers record the path of every open spool file | no path open in two workers at once; paths under `w1`..`w5` |
-| `test_concurrent_disk_reserve` | R14 | `disk_usage().free` = 2689925119, then 2689925120 | first: every worker object `disk_space` / `spool reserve`; second: no `disk_space` gap |
-| `test_gap_cap_under_workers` | R15, R17 | 150 failing objects across workers | `len(gaps) == 100`; last gap `diagnostics_truncated` / `diagnostic count` |
-| `test_interrupt_stops_workers` | R16 | `KeyboardInterrupt` raised in the main thread while workers wait | all fake helpers stopped; gap `interrupted` / `inventory interrupted`; no marker; exit 1 |
-| `test_worker_subprocess_calls_on_main_thread` | R18, R19 | real worker threads; fake token command, fake `Popen` and fake `stop_command` that record `threading.current_thread()`; one helper timeout in repeat 3 | every recorded call ran on `threading.main_thread()`; zero `ValueError`; the timed-out helper is stopped; repeat 3's object has gap `deadline` / `command timeout` |
-| `test_byte_cap_atomic` | R15 | `logical_bytes` = 17178755072 - 10; five workers each reserve 8 bytes behind a `threading.Barrier(5)` | exactly one reservation succeeds; four objects have `byte_limit` / `phase bytes`; final `logical_bytes` = 17178755070 |
-| `test_shared_deadline` | R15 | fake clock passes the deadline mid-run | no copy starts after the deadline in any worker; remaining objects `deadline` |
+The rule never permits removing a case, loosening an assertion or changing a check. The pull request's implementation notes list each fixture change with the check that forces it. The cold review and Codex review check each listed change. The rows above are the changes this plan expects; any other fixture the suite rejects is listed the same way.
 
 ## 7. Deployment assumptions
 
-Each stays under section 13 until Hari accepts it by name.
-
-- D1. The CLI's bundled `azure-storage-blob` `12.29.0b1` accepts the calls in `test_helper_sdk_calls` and sends `If-Match` and `If-None-Match: *` as the current Learn reference describes. Evidence: Learn reference for the current package (section 8), read 2026-11-18; the pinned tag's source was not read. No test covers the real SDK; the next C03 smoke run is the first evidence, taken on fresh connections and under no Kafka load: `scenario.yml` runs the archive step (line 237) after the phase's Jobs have finished and before "Delete this run's worker Jobs" (line 256).
-- D2. `az account get-access-token --resource https://storage.azure.com/` through the wrapper returns a token whose identity has the same blob data access that `--auth-mode login` uses today. Evidence: the CLI documents that `--auth-mode login` "will directly use your login credentials"; the archive smoke's SDK observation uses this token path only after a failure, and no recorded run shows it used for a write. Not measured; first evidence at the next C03 smoke run, on a fresh connection, under no load.
-- D3. The runner's spool file system has at least 2689925120 free bytes during the consumer archive. Evidence: none read, idle or under load; the runner label comes from the repository variable `PARCHWELL_RUNNER_LABEL` (`scenario.yml` line 60). A shortfall records `disk_space` gaps rather than corrupting evidence.
-- D4. SDK requests with five helpers bring a consumer phase under 600 s. This is the quantity issue 548 asks to measure; it is unmeasured. It is measured at the next C03 smoke run, on fresh helper connections, after the workload has stopped.
+- D1. A C03 consumer phase archive completes inside 1800 s. Evidence: an estimate in decision 6976180742 point 1 (about 990 s), from one run's rate taken on the live archive under its normal phase load, not a measurement of a full phase. No offline test can cover it. Hari accepted it by name in [decision 6976180742](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/548#issuecomment-6976180742) point 1 ("That is an estimate ... The next C03 smoke measures it"). If the next C03 smoke still records `deadline` gaps, that is a finding for Hari, not a reason to change the value in this pull request.
+- D2. The Azure CLI session wrapper keeps the workflow identity usable for an archive step of up to 1800 s. Evidence: the wrapper re-checks freshness before every command and refreshes the federated assertion when stale (`scripts/azure-cli-session/az` lines 256-266, 315-363 and 430-437). The existing offline test `test_18_synthetic_long_phase_renews_distinct_assertions` (`scripts/tests/test_azure_cli_session.py` line 1072) covers renewal on a synthetic clock. No live evidence exists of one archive step longer than 600 s: the only live archive steps stopped at 600 s. Covered offline, so not a blocking assumption.
+- D3. The longer step fits the job timeout. Evidence: section 1.2, from the jobs API of one completed run, not under a longer archive.
 
 ## 8. Acceptance commands
 
-Each pull request:
-- `python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'` passes; it includes the phase suite through `infra/scripts/tests/test_phase_bridge.py`. Evidence: the CI log of the required `.NET verification` check at the head commit.
-- `python3 -m unittest -v infra/scripts/phase/tests/test_archive_sdk.py` (pull request 1) or `test_archive_workers.py` (pull request 2) lists every test in section 6 as `ok`.
-- An ASCII scan of changed files finds no non-ASCII byte.
+- `python3 infra/scripts/lifecycle/command.py 600 -- python3 -m unittest discover -s infra/scripts/tests -p 'test_*.py'` passes. It includes the phase suite through `infra/scripts/tests/test_phase_bridge.py` line 9. Evidence: the log of the required `.NET verification` check at the head commit (`dotnet-verification.yml` line 207).
+- `python3 -m unittest -v infra/scripts/phase/tests/test_archive_config.py infra/scripts/phase/tests/test_archive_pack.py` and `python3 -m unittest -v infra/scripts/phase/tests/test_phase.py` list T1, T2, T3 and the changed tests as `ok`. Evidence: the command output in the pull request's validation notes.
+- `git grep -n -E "ArchiveDeadlineSeconds = |^DEADLINE = |'deadline_seconds': |\"deadline_seconds\":" -- infra docs ':!infra/scripts/phase/tests'` shows only `1800`. Test files are excluded because T2 uses 600, 1799 and 1801 as rejected inputs. Evidence: the command output in the validation notes.
+- An ASCII scan of the changed files finds no non-ASCII byte.
 
-After pull request 2 merges (section 11): the next C03 smoke run's two archive receipts.
+After merge (section 11): the next C03 smoke run's two archive receipts and the duration of each "Archive phase evidence" step.
 
 ## 9. Documentation changes (`docs/operations/archive-smoke.md`)
 
-`/docs/operations/` has no owner in `.github/CODEOWNERS` (line 6), so this file is not a protected path.
+Line 52, first sentence. Replace:
 
-Pull request 1, line 91: replace "It uses the existing serialized workflow CLI session." with:
+> An archive command has a 600-second monotonic deadline, including SDK requests/backoff and hashing.
 
-> It obtains a storage access token through the existing serialized workflow CLI session and moves blob bytes through the pinned Blob SDK in the CLI's own Python interpreter, under [the issue 548 transport decision](<link to the decision that answers open question 1>).
+with:
 
-Pull request 1, line 101, after "A transfer has one helper pass under the aggregate deadline;": insert "each storage call that the approved specification counts as one CLI call is one SDK helper request, bounded by 60 seconds and the aggregate deadline;".
+> An archive command has an 1800-second monotonic deadline, including SDK requests/backoff and hashing. Hari raised it from 600 seconds on 2026-11-18 ([decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/548#issuecomment-6976180742)), for the readiness smoke and every phase archive.
 
-Pull request 2, append to the consumer paragraph (line 107):
+The rest of line 52 is unchanged. This line is where the value is stated.
 
-> For C01, C03 and C10 the archive collects repeats 1 to 5 in five concurrent workers, each with its own spool directory and SDK helper, then collects the phase-level Jobs. That path requires five times the single-worker spool reserve. When 100 or more gaps occur, which ones survive the cap can differ between runs.
+Line 101, after its first sentence ("The fixed limits and exact wire schemas are owned by the [approved specification](...).") insert:
+
+> The archive command deadline is the one exception: it is the value stated in "Controls and public evidence" above, not the specification's 600 seconds.
+
+The rest of line 101 is unchanged.
 
 ## 10. Plan-check questions
 
-(a) Steps whose effort scales with a number unknown at planning time: the objects per phase, bounded by `ArchiveMaxObjects` (1024) and the 600 s deadline, with exhaustion action "record the gap and continue" (existing). Worker count is fixed at 5. Implementation and tests have no runtime-sized step.
+(a) Steps whose effort scales with a number unknown at planning time: none in the implementation; the files and values are fixed. The archive itself handles a runtime object count, bounded by the 1800 s deadline; its exhaustion action is the existing one, `deadline` gaps that hold publication.
 
-(b) Stricter than its authority: pull request 2's spool reserve check is five times the specification's single-object reserve, and R15 re-checks the 16 GiB phase total under a lock. Looser: pull request 1 replaces the specification's CLI transport (line 212), which is open question 1; pull request 2 keeps up to five source and readback spool pairs at once, where line 212 keeps one pair (at most 512 MiB plus control metadata), which is open question 4.
+(b) Where the plan is stricter than its parent: there is no item plan. Against the approved specification, the plan is less strict on one value (1800 s instead of 600 s), by decision 6976180742. It adds tests T1 to T3, which pin the value in all three places and its use by `Phase.archive`; the specification already required the exact policy match that T2 exercises.
 
-(c) Dependencies neither on `main` nor in the pull requests: the real SDK behaviour (D1), the token's data access (D2), runner disk (D3) and the timing (D4). The token output format is on `main` (`smoke.py` lines 413-424) and is the CLI's documented output, cited at archive-smoke.md line 68.
+(c) Tests or checks that depend on code, data or behaviour neither on `main` nor in the pull request: none offline. The new golden values were computed from the literals on `main` (section 6). D1 depends on live archive timing and is accepted by decision 6976180742 point 1.
 
 ## 11. Deferred work
 
-- Measurement at the next C03 smoke run. Evidence: none yet (D4). On the verdict path: yes, it gates the #508 batch. Deferral is permitted because it needs a paid dispatch after both pull requests merge. Responsible: the #347 control session, dispatching on `main` under its own authority. Completion evidence: both phases' "Archive phase evidence" step durations from the run's job API, and receipts with no `deadline` gap. Exhaustion action: if a `deadline` gap remains, push no further change and hand off to Hari with the durations; do not raise `ArchiveDeadlineSeconds`.
-- Concurrency for native-monitoring collection. Evidence: 25 index objects per phase failed in the smoke run, so their transfer cost is unknown; issue 549 owns that code. Not on the verdict path of this issue unless D4 fails. Responsible: issue 549's plan, or a follow-up after the measurement. Gate: none from this plan.
+- Measure a full C03 phase archive. Evidence: D1 is an estimate. On the verdict path: yes, it gates the #508 batch dispatch (issue body). Deferral is permitted because it needs a paid live run after merge, under decision 6976180742 point 1. Responsible: the control session for issue 347, which owns the next C03 smoke dispatch. Stage: after this pull request merges. Bound and exhaustion action: one C03 smoke run; any `deadline` gap is a finding for Hari. Completion evidence: both archive receipts of that run with `archive_complete` true and the step durations. Gate it blocks: the #508 batch dispatch.
+- Older manifests. Evidence: section 3. On the verdict path: not today, because no production code reads a stored manifest. Responsible: any later plan that adds a reader of archived manifests. Completion evidence: that plan states how a manifest with `deadline_seconds` 600 is treated. Gate it blocks: none now.
 
 ## 12. Sources
 
-Tool: Microsoft Learn MCP server (`microsoft_docs_search`), 2026-11-18.
-- Conditional headers, `If-Match` and `If-None-Match: *` ("perform the operation only if the resource doesn't exist"): https://learn.microsoft.com/rest/api/storageservices/specifying-conditional-headers-for-blob-service-operations
-- `BlobClient.upload_blob` `overwrite=False` fails with `ResourceExistsError`; `etag` and `match_condition`; `max_concurrency`: https://learn.microsoft.com/python/api/azure-storage-blob/azure.storage.blob.blobclient
-- `BlobServiceClient` constructor, default token audience `https://storage.azure.com/`: https://learn.microsoft.com/python/api/azure-storage-blob/azure.storage.blob.blobserviceclient
-- Access token default lifetime "a random value ranging between 60-90 minutes": https://learn.microsoft.com/entra/identity-platform/access-tokens#token-lifetime
-- `az storage blob download` `--if-match`, `--max-connections`: https://learn.microsoft.com/cli/azure/storage/blob
-- `Copy Blob From URL`, request headers, authorization table and remarks: https://learn.microsoft.com/rest/api/storageservices/copy-blob-from-url
-- Copy between network-restricted accounts, `CannotVerifyCopySource`: https://learn.microsoft.com/troubleshoot/azure/azure-storage/blobs/connectivity/copy-blobs-between-storage-accounts-network-restriction
-- Thread safety of Python Blob SDK clients: not found for Python. The Learn thread-safety page is for .NET (https://learn.microsoft.com/dotnet/azure/sdk/thread-safety). The design therefore uses one client per helper process, serving one request at a time.
+- Repository files on `main` at `08c708aae6a8cc27c87110013540089bb5553a43`, at the lines cited.
+- [items/494/plan-observability-evidence.md at f96eab914d00c06484431ff67a1808fb331c7e13](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/f96eab914d00c06484431ff67a1808fb331c7e13/items/494/plan-observability-evidence.md), lines 76 and 185.
+- GitHub jobs API for run 44248514485, read 2026-11-18 (section 1.2).
+- The decisions in section 1.
+
+The plan relies on no Kafka, librdkafka, Confluent.Kafka or Azure Event Hubs behaviour, and on no new Azure behaviour, so no documentation tool was needed.
 
 ## 13. Open questions for Hari
 
-1. Transport. Amend the approved specification's line 212 so the phase archive moves blob bytes through the pinned Blob SDK in a helper process, with a storage token obtained through the serialized CLI session, as pull request 1 describes? Alternatives: (b) change `scripts/azure-cli-session/az` so storage commands share the lock and only renewal is exclusive; this changes the wrapper used by every Azure job, contradicts line 215, keeps one CLI process start per call, and concurrent CLI use of one configuration directory is unverified; (c) raise the deadline, which issue 548 records Hari declined; (d) server-side copy, evaluated in section 1.2 and not recommended. Recommendation: (a). Without (a) or (b), pull request 2 gains nothing, because the wrapper lock serialises every call.
-2. Build pull request 2 before measuring? Recommendation: yes, so one smoke run measures the final design; pull request 1 alone may suffice, but finding that out costs a second paid smoke run.
-3. Accept deployment assumptions D1 to D4 by name, with the next C03 smoke run as their first evidence.
-4. Resident spool. Amend the approved specification's line 212 ("Keep only source spool and destination readback spool concurrently (maximum512MiB plus control metadata)") so a consumer phase may hold five such pairs at once, at most 5 x 537985024 = 2689925120 bytes, checked by R14? Alternative: keep one pair, which makes pull request 2 impossible. Recommendation: amend, for C01, C03 and C10 only.
+None.
 
 ## 14. Size estimate
 
-Estimate, 2026-11-18, basis: the files in section 2 and the test tables in section 6.
-- Pull request 1: 5 files, 600 to 900 changed lines.
-- Pull request 2: 3 files, 400 to 600 changed lines.
+Estimate, 2026-11-18, basis: the line counts of section 1.1 plus three new tests of about 10 to 20 lines each: about 6 files changed (7 with `items/548/state.md`), about 60 lines added and 10 removed. Not measured; not enforced.
 
 ## 15. Stop rule
 
-The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it needs to change a contract in section 3, a requirement in section 4, or the scope in section 2.
+The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it needs to change a contract, a requirement or the scope, including any file outside section 2, any value other than the deadline, or a workflow.
 
-## 16. Changes since revision 1
+## 16. Changes since revision 2
 
-All from [plan check 6973493886](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/548#issuecomment-6973493886).
-- Finding 2: new R18 and R19 keep every subprocess start, token fetch and helper stop on the main thread; R5, R6, R7 and R13 point to them; R7 sets the file-size limit inside the helper instead of through `preexec_fn`; new tests `test_helper_sets_file_limit` and `test_worker_subprocess_calls_on_main_thread`.
-- Finding 3: R15 re-checks the 16 GiB phase total under the lock; new invariant; new test `test_byte_cap_atomic`.
-- Finding 4: new open question 4; plan-check answer (b) records the looser point.
-- Finding 5: section 9 no longer calls the document a protected path.
-- Finding 6: four line citations corrected.
-- Non-blocking notes: R6 states how a refreshed token reaches a running helper, with `test_token_refresh_reaches_running_helper`; R2 describes chunked uploads.
+Revision 2 (`9dc75f31d2d87efb08d93ed6f56bd8b18f4262e1`) is replaced in full by decision 6976180742:
+- The SDK transport, the concurrent consumer workers, the resident spool, the server-side copy evaluation, deployment assumptions D1 to D4 and open questions 1 to 4 are removed (decision point 2).
+- The two pull requests become one, which raises the deadline to 1800 s everywhere it is stated (decision points 1 and 3).
+- The revision 2 check findings and `apply in implementation` texts applied to the withdrawn design and lapse with it.
