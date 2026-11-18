@@ -225,7 +225,8 @@ internal static class PhaseCandidateCodec
     }
     private static void ValidateRootConsumer(JsonElement consumer)
     {
-        if(consumer.ValueKind!=JsonValueKind.Object||!consumer.TryGetProperty("status",out JsonElement status)||status.ValueKind!=JsonValueKind.String||
+        JsonElement status = default;
+        if(consumer.ValueKind!=JsonValueKind.Object||!consumer.TryGetProperty("status",out status)||status.ValueKind!=JsonValueKind.String||
             status.GetString() is not ("complete_valid" or "invalid" or "incomplete"))throw new FormatException("Candidate consumer status is invalid.");
         bool complete=status.GetString()=="complete_valid";
         if(!ConsumerEvidenceRules.HasExactly(consumer,complete?["status","reasons","counts"]:["status","reasons"]))throw new FormatException("Candidate consumer object has missing or unknown fields.");
@@ -271,7 +272,8 @@ internal static class PhaseCandidateCodec
             try { total = B10FinalJudge.SumCounts(projected.Select(x => x.Timeout!)); }
             catch (OverflowException) { expectedStatus = "incomplete"; }
         }
-        if (root.GetProperty("status").GetString() != expectedStatus || root.TryGetProperty("counts", out JsonElement totalElement) != (total is not null))
+        JsonElement totalElement = default;
+        if (root.GetProperty("status").GetString() != expectedStatus || root.TryGetProperty("counts", out totalElement) != (total is not null))
             throw new FormatException("Candidate phase status or counts disagree with its final repeats.");
         if (total is not null)
         {
@@ -360,7 +362,14 @@ internal static class PhaseCandidateCodec
         if(value.TryGetProperty("delivery_error_codes",out JsonElement codes))
         {
             if(codes.ValueKind!=JsonValueKind.Array||codes.GetArrayLength()>256)throw new FormatException("Candidate B04 delivery codes are invalid.");
-            int? prior=null;foreach(JsonElement item in codes.EnumerateArray()){if(item.ValueKind!=JsonValueKind.Number||!item.TryGetInt32(out int n)||prior.HasValue&&prior.Value>=n)throw new FormatException("Candidate B04 delivery codes are not distinct ascending Int32 values.");prior=n;}
+            int? prior = null;
+            foreach (JsonElement item in codes.EnumerateArray())
+            {
+                int code = default;
+                if (item.ValueKind != JsonValueKind.Number || !item.TryGetInt32(out code) || prior.HasValue && prior.Value >= code)
+                    throw new FormatException("Candidate B04 delivery codes are not distinct ascending Int32 values.");
+                prior = code;
+            }
         }
         if(value.TryGetProperty("fatal_errors",out JsonElement fatal))
         {
@@ -368,7 +377,8 @@ internal static class PhaseCandidateCodec
             int i=0;int priorCode=0;string? priorName=null;foreach(JsonElement item in fatal.EnumerateArray())
             {
                 Exact(item,["code","name"]);
-                if(item.GetProperty("code").ValueKind!=JsonValueKind.Number||!item.GetProperty("code").TryGetInt32(out int code)||item.GetProperty("name").ValueKind!=JsonValueKind.String||item.GetProperty("name").GetString()!.Length>256)throw new FormatException("Candidate B04 fatal error is invalid.");
+                int code = default;
+                if(item.GetProperty("code").ValueKind!=JsonValueKind.Number||!item.GetProperty("code").TryGetInt32(out code)||item.GetProperty("name").ValueKind!=JsonValueKind.String||item.GetProperty("name").GetString()!.Length>256)throw new FormatException("Candidate B04 fatal error is invalid.");
                 string name=item.GetProperty("name").GetString()!;
                 if(i>0&&(priorCode>code||priorCode==code&&StringComparer.Ordinal.Compare(priorName,name)>=0))throw new FormatException("Candidate B04 fatal errors are not distinct ascending values.");
                 priorCode=code;priorName=name;i++;
@@ -384,7 +394,8 @@ internal static class PhaseCandidateCodec
         long? Field(string name)
         {
             if(!value.TryGetProperty(name,out JsonElement item))return null;
-            if(item.ValueKind!=JsonValueKind.Number||!item.TryGetInt64(out long number))throw new FormatException("Candidate batching evidence value is invalid.");
+            long number = default;
+            if(item.ValueKind!=JsonValueKind.Number||!item.TryGetInt64(out number))throw new FormatException("Candidate batching evidence value is invalid.");
             return number;
         }
     }
