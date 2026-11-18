@@ -4,6 +4,7 @@ import importlib.util
 import json
 from pathlib import Path
 import unittest
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 
@@ -251,6 +252,88 @@ class ConsumerArchiveTests(unittest.TestCase):
             expected.add(('source_missing', 'source properties', f'c03-42-1/C0/{job}/uid/native-monitoring/index.json', None))
             expected.add(('monitoring_incomplete', 'native index unavailable', None, job))
         self.assertEqual(expected, {(g['code'], g['boundary'], g['object_name'], g['expected_unit']) for g in manifest['gaps']})
+
+    def native_gaps(self, manifest):
+        return {(g['code'], g['boundary'], g['object_name'], g['expected_unit']) for g in manifest['gaps']}
+
+    def test_native_stage_after_deadline_names_the_deadline(self):
+        # Issue 549 T1: the native stage runs last, so a spent deadline fails every index with `deadline`.
+        for phase in ('C0', 'C1'):
+            with self.subTest(phase=phase):
+                fixture = self.phase('C03', phase)
+                clock = [1000.0]
+                original = archive.collect_native_monitoring
+
+                def late(*args, **kwargs):
+                    clock[0] = 1000.0 + archive.ArchiveDeadlineSeconds + 1
+                    return original(*args, **kwargs)
+
+                with mock.patch.object(archive.time, 'monotonic', lambda: clock[0]), \
+                        mock.patch.object(archive, 'collect_native_monitoring', late):
+                    code, manifest, receipt = fixture.run_archive()
+                self.assertEqual(1, code)
+                self.assertFalse(receipt['archive_complete'])
+                self.assertIsNone(receipt['completion'])
+                indexes = [o for o in manifest['objects'] if o['kind'] == 'native_monitoring_index']
+                self.assertEqual(25, len(indexes))
+                self.assertEqual({('failed', 'deadline')}, {(o['state'], o['gap_code']) for o in indexes})
+                expected = set()
+                for repeat in range(1, 6):
+                    for mode in ('consumer-subject', 'consumer-witness', 'loadgen', 'start-line', 'verify'):
+                        job = fixture.job(repeat, mode)
+                        expected.add(('deadline', 'global deadline', f'c03-42-1/{phase}/{job}/uid/native-monitoring/index.json', None))
+                        expected.add(('monitoring_incomplete', 'native index failed: deadline', None, job))
+                self.assertEqual(50, len(manifest['gaps']))
+                self.assertEqual(expected, self.native_gaps(manifest))
+                self.assertEqual([], gaps(manifest, 'native index unavailable'))
+
+    def test_native_index_transport_failure_names_transport(self):
+        # Issue 549 T2
+        fixture = self.phase()
+        job = fixture.job(2, 'consumer-witness')
+        path = f'c03-42-1/C0/{job}/uid/native-monitoring/index.json'
+        real = fixture.h.cli
+
+        def failing(args, deadline):
+            if args[3] == 'show' and args[args.index('--name') + 1] == path:
+                return 1, b'', b'AuthorizationPermissionMismatch'
+            return real(args, deadline)
+
+        fixture.h.cli = failing
+        code, manifest, receipt = fixture.run_archive()
+        self.assertEqual(1, code)
+        self.assertEqual({('transport', 'properties', path, None),
+                          ('monitoring_incomplete', 'native index failed: transport', None, job)}, self.native_gaps(manifest))
+
+    def test_native_index_contract_failure_names_its_code(self):
+        # Issue 549 T3
+        fixture = self.phase()
+        job = fixture.job(3, 'verify')
+        path = f'c03-42-1/C0/{job}/uid/native-monitoring/index.json'
+        fixture.h.cli.blobs[('source123', 'native-monitoring', path)] = b'{}'
+        code, manifest, receipt = fixture.run_archive()
+        self.assertEqual(1, code)
+        index = next(o for o in manifest['objects'] if o['source']['name'] == path)
+        self.assertEqual(('failed', 'monitoring_incomplete'), (index['state'], index['gap_code']))
+        self.assertEqual({('monitoring_incomplete', 'native index contract', path, None),
+                          ('monitoring_incomplete', 'native index failed: monitoring_incomplete', None, job)},
+                         self.native_gaps(manifest))
+
+    def test_native_index_beyond_object_limit_stays_unavailable(self):
+        # Issue 549 T6: no object exists for the unit, so the boundary keeps its absent-index meaning.
+        fixture = self.phase()
+        with mock.patch.object(archive, 'ArchiveMaxObjects', 217):
+            code, manifest, receipt = fixture.run_archive()
+        job = fixture.job(5, 'verify')
+        path = f'c03-42-1/C0/{job}/uid/native-monitoring/index.json'
+        self.assertEqual(1, code)
+        self.assertFalse(receipt['archive_complete'])
+        self.assertEqual(215, len(manifest['objects']))
+        self.assertEqual(24, sum(o['kind'] == 'native_monitoring_index' for o in manifest['objects']))
+        self.assertNotIn(path, [o['source']['name'] for o in manifest['objects']])
+        self.assertEqual({('object_limit', 'data object count', path, None),
+                          ('monitoring_incomplete', 'native index unavailable', None, job)}, self.native_gaps(manifest))
+        self.assertEqual([], [g for g in manifest['gaps'] if g['boundary'].startswith('native index failed:')])
 
     def test_extra_record_blob_after_completion_count(self):
         # T7
