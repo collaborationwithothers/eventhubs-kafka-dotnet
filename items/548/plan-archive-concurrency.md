@@ -1,6 +1,6 @@
 # archive-concurrency contract-grade plan
 
-Revision: 1
+Revision: 2
 
 This plan makes a C01, C03 or C10 phase archive fit inside its fixed 600-second deadline by moving blob bytes through the Blob SDK instead of one Azure CLI process per call, and then collecting the five repeats concurrently. Running the existing CLI calls in parallel would gain nothing: the CLI session wrapper holds one exclusive lock for the whole of every `az` command. The SDK route changes a transport rule of the approved observability specification, so it needs Hari's decision (open question 1) before either pull request is approvable.
 
@@ -38,7 +38,7 @@ The largest verified object is 388865 bytes. The time goes on calls, not bytes.
 
 Source read on `main`:
 - `infra/scripts/phase/archive.py` lines 73-77: every storage call is one `az storage blob` subprocess through `self.command`, which defaults to `_common.command` (`infra/scripts/archive/smoke.py` lines 189-256).
-- `infra/scripts/phase/archive.py` lines 266-311 (`Transfer.copy`): a fresh object costs six calls (source `show`, source `download`, destination `show`, `upload`, destination `show`, destination `download`); `test_archive_transfer.py` line 49 pins that sequence.
+- `infra/scripts/phase/archive.py` lines 261-311 (`Transfer.copy`): a fresh object costs six calls (source `show`, source `download`, destination `show`, `upload`, destination `show`, destination `download`); `test_archive_transfer.py` line 50 pins that sequence.
 - `scripts/azure-cli-session/az` lines 406-438: the wrapper takes `fcntl.flock(..., LOCK_EX)` on one session lock file and holds it until the real CLI command exits. Two `az` invocations never overlap. `.github/workflows/scenario.yml` lines 146-149 put this wrapper first on `PATH` for the archive step.
 - `infra/scripts/phase/archive.py` line 2178: the archive already runs `_common.preflight`, which resolves the CLI's own Python and requires `azure-storage-blob` `12.29.0b1` in it (`smoke.py` lines 259-277).
 
@@ -68,7 +68,7 @@ Files allowed to change:
 ### 2.2 Pull request 2, `548-consumer-workers`
 
 Files allowed to change:
-- `infra/scripts/phase/archive.py`: `Collector` (lines 940-1595), `read_job_pods` (lines 1621-1720) only where it reads `collector.transfer.spool`, `collect_ordinary` (lines 1856-1981) and `execute`.
+- `infra/scripts/phase/archive.py`: `Collector` (lines 940-1595), `read_job_pods` (lines 1621-1720) only where it reads `collector.transfer.spool`, `collect_ordinary` (lines 1856-1972) and `execute`.
 - `infra/scripts/phase/archive_sdk.py`, only if a worker needs a factory it lacks.
 - `infra/scripts/phase/tests/test_archive_workers.py` (new).
 - `docs/operations/archive-smoke.md`: the paragraph in section 9.
@@ -85,7 +85,7 @@ Files allowed to change:
 ## 3. External contracts
 
 Unchanged and relied on:
-- Manifest, completion marker and receipt: field sets, `policy` object (including `deadline_seconds: 600` and `transfer_passes: 1`), sort orders in `execute` lines 2242-2244 and the 100-gap cap with `diagnostics_truncated` (`Collector.gap`, lines 955-961).
+- Manifest, completion marker and receipt: field sets, `policy` object (including `deadline_seconds: 600` and `transfer_passes: 1`), sort orders in `execute` lines 2237-2239 and the 100-gap cap with `diagnostics_truncated` (`Collector.gap`, lines 955-961).
 - Gap codes and the boundary strings that `Transfer` already raises: `properties`, `invalid properties`, `conditional download`, `conditional create`, `object properties`, `command timeout`, `global deadline`, `command interrupted`, `command output limit`, `spool reserve`.
 - Destination layout `v1/<commit>/<run id>/<attempt>/<run>/<phase>/...`, container `run-evidence`, create-only uploads, ETag-conditional downloads, independent length and SHA-256 readback (archive-smoke.md line 101).
 - The `Transfer` command seam: `command(args, deadline)` returns `(returncode, stdout bytes, stderr bytes)` or raises `Gap` (`archive.py` lines 73-77).
@@ -101,21 +101,23 @@ Changed:
 
 R1. WHEN `execute` builds the phase `Transfer`, THEN it passes an SDK command adapter as `command`, bound to the CLI Python that `_common.preflight` returned. `Transfer` and `Collector` code is unchanged.
 
-R2. WHEN the adapter receives argv `['az', 'storage', 'blob', <action>, '--account-name', A, '--container-name', C, '--name', N, '--auth-mode', 'login', '--only-show-errors', *extra]` with `<action>` and `extra` exactly as `Transfer.properties`, `Transfer.download` or `Transfer.upload` produce them (`archive.py` lines 79, 104-106, 113-115), THEN it performs one helper request: `show` is Get Blob Properties; `download` is Get Blob with `If-Match: <etag>` into `--file`, one connection; `upload` is Put Blob to a block blob with `If-None-Match: *`, one connection, from `--file`. WHEN argv has any other shape, THEN it returns `(2, b'', b'')` and sends nothing.
+R2. WHEN the adapter receives argv `['az', 'storage', 'blob', <action>, '--account-name', A, '--container-name', C, '--name', N, '--auth-mode', 'login', '--only-show-errors', *extra]` with `<action>` and `extra` exactly as `Transfer.properties`, `Transfer.download` or `Transfer.upload` produce them (`archive.py` lines 79, 104-106, 113-115), THEN it performs one helper request: `show` is Get Blob Properties; `download` is Get Blob with `If-Match: <etag>` into `--file`, one connection; `upload` creates a block blob from `--file` with `If-None-Match: *`, one connection (one Put Blob up to the SDK's single-put size, otherwise Put Block requests committed by one Put Block List carrying the condition). WHEN argv has any other shape, THEN it returns `(2, b'', b'')` and sends nothing.
 
 R3. WHEN a `show` succeeds, THEN stdout is the JSON `{"properties":{"contentLength":<int>,"etag":"<etag>"}}` and the return code 0. `download` and `upload` success return `(0, b'', b'')`.
 
 R4. WHEN a request fails with a storage service error, THEN the return code is 1 and stderr is the service error code as ASCII (for example `b'BlobNotFound'`, `b'ConditionNotMet'`, `b'BlobAlreadyExists'`). WHEN the SDK raises `ResourceModifiedError` on a conditional download, THEN stderr is `b'ResourceModifiedError'`. Any other failure returns 1 with empty stderr. The existing `Transfer` regexes then map these to `source_missing`, `source_changed`, `destination_conflict` or `transport` exactly as for the CLI.
 
-R5. WHEN a request has no answer within `min(60 s, deadline - now)`, THEN the adapter stops the helper process with `_common.stop_command`, raises `Gap('deadline', 'command timeout')`, and does not resend that request. The next request starts a new helper. WHEN `deadline - now <= 0` before a request, THEN it raises `Gap('deadline', 'global deadline')` and sends nothing.
+R5. WHEN a request has no answer within `min(60 s, deadline - now)`, THEN the adapter stops the helper process (R18), raises `Gap('deadline', 'command timeout')`, and does not resend that request. The next request starts a new helper. WHEN `deadline - now <= 0` before a request, THEN it raises `Gap('deadline', 'global deadline')` and sends nothing.
 
-R6. WHEN the adapter needs a token (first request, or the held token's `expires_on` is less than 120 s after now), THEN it runs `_common.command(['az', 'account', 'get-access-token', '--resource', 'https://storage.azure.com/', '--output', 'json', '--only-show-errors'], min(deadline, now + 15), cap=16384)` once, and validates `accessToken` against `[A-Za-z0-9._-]{1,8192}` and `expires_on` as an integer in `1..4102444800`, as `smoke.py` lines 413-424 do. WHEN that fails or is invalid, THEN the current request raises `Gap('transport', 'storage token')`. The next request may try once more.
+R6. WHEN the adapter needs a token (first request, or the held token's `expires_on` is less than 120 s after now), THEN it runs, on the main thread (R18), `_common.command(['az', 'account', 'get-access-token', '--resource', 'https://storage.azure.com/', '--output', 'json', '--only-show-errors'], min(deadline, now + 15), cap=16384)` once, and validates `accessToken` against `[A-Za-z0-9._-]{1,8192}` and `expires_on` as an integer in `1..4102444800`, as `smoke.py` lines 413-424 do. WHEN that fails or is invalid, THEN the current request raises `Gap('transport', 'storage token')`. The next request may try once more. A token obtained while a helper runs reaches that helper on its standard input before the adapter's next request to it.
 
-R7. WHEN the helper starts, THEN it is started with the CLI Python, `start_new_session=True` and `_common.limit_child` as `preexec_fn`, and receives the account hosts, token and expiry only on standard input. It builds one `BlobServiceClient` per storage account with the SDK's default retry policy and `max_single_get_size` and `max_single_put_size` left at their defaults, and serves requests one at a time.
+R7. WHEN the helper starts, THEN it is started on the main thread (R18) with the CLI Python and `start_new_session=True`, without `preexec_fn`. Its first action, before reading input, is `resource.setrlimit(resource.RLIMIT_FSIZE, (268435456, 268435456))`, the same bound that `_common.limit_child` sets (`smoke.py` lines 136-137). It receives the account hosts, token and expiry only on standard input. It builds one `BlobServiceClient` per storage account with the SDK's default retry policy and `max_single_get_size` and `max_single_put_size` left at their defaults, and serves requests one at a time.
 
 R8. WHEN the helper cannot start, exits, or writes a response that is not one JSON object with exactly the fields the adapter expects, THEN the request returns 1 with empty stderr for `download` and `upload`, and for `show` the adapter raises `Gap('transport', 'sdk helper')`.
 
 R9. WHEN `execute` returns or raises, including after `KeyboardInterrupt`, THEN every helper process it started has been stopped and waited for.
+
+R18. Every subprocess start, every `_common.command` call and every `_common.stop_command` call happens on the main thread. Both functions call `signal.signal` (`smoke.py` lines 143, 194-195, 201), which Python allows only on the main thread, and Python documents `preexec_fn` as unsafe when threads exist. In pull request 1 the archive is single-threaded, so the adapter calls them directly. Pull request 2 keeps this rule through R19.
 
 R10. The token never appears in any process argv, environment variable, file, log line, stdout or stderr of the parent, or in any file under the spool or public directories.
 
@@ -125,13 +127,15 @@ R11. WHEN `phase['scenario']` is C01, C03 or C10, THEN `collect_ordinary` proces
 
 R12. WHEN any other scenario runs, THEN collection is sequential, exactly as on `main`.
 
-R13. WHEN a worker runs, THEN it has its own `Transfer` with its own spool directory `<spool>/w<repeat>` (mode 0700) and its own SDK command adapter. No two concurrent operations use the same spool path. The main thread keeps the original `Transfer` for phase-level modes, native monitoring and controls.
+R13. WHEN a worker runs, THEN it has its own `Transfer` with its own spool directory `<spool>/w<repeat>` (mode 0700) and its own SDK command adapter and helper process. No two concurrent operations use the same spool path. The main thread keeps the original `Transfer` for phase-level modes, native monitoring and controls.
 
 R14. WHEN the concurrent path checks the spool reserve, THEN it requires free space of at least 2689925120 bytes; below that it raises `Gap('disk_space', 'spool reserve')`. The sequential path keeps 537985024.
 
-R15. WHEN workers run, THEN every change to shared `Collector` state (`objects`, `captures`, `gaps`, `names`, `window_sources`, `native_existing`, `verified_bytes`, `logical_bytes` and the object-count check) happens under one lock, and the lock is not held during a storage call.
+R15. WHEN workers run, THEN every change to shared `Collector` state (`objects`, `captures`, `gaps`, `names`, `window_sources`, `native_existing`, `verified_bytes`, `logical_bytes` and the object-count check) happens under one lock, and the lock is not held during a storage call. The byte reservation re-checks the phase total under that lock: WHEN `logical_bytes + size > 17179869184 - 1048576 - 65536` (17178755072), THEN it raises `Gap('byte_limit', 'phase bytes')` and does not add `size`; otherwise it adds `size` in the same locked step. The check before the transfer (`archive.py` line 1019) stays as a fast refusal.
 
-R16. WHEN the main thread receives `KeyboardInterrupt` while workers run, THEN it stops every worker's helper, waits at most 10 s for the workers, and `execute` records `Gap('interrupted', 'inventory interrupted')` through its existing path (lines 2235-2236). No completion marker is written.
+R16. WHEN the main thread receives `KeyboardInterrupt` while workers run, THEN it stops every worker's helper with `_common.stop_command`, waits at most 10 s for the workers, and `execute` records `Gap('interrupted', 'inventory interrupted')` through its existing path (lines 2235-2236). No completion marker is written.
+
+R19. WHEN a worker needs a token, a helper start or a helper stop, THEN it asks the main thread through a queue and waits for the answer. The main thread waits for the workers by servicing that queue, not by a bare `join`, and runs each request under R5 to R7 and R18. A worker never calls `signal.signal`, `_common.command`, `_common.stop_command` or `subprocess.Popen`. A worker reads a helper response only by waiting on the pipe with a timeout (for example `selectors`), within `min(60 s, deadline - now)`.
 
 R17. WHEN all workers finish, THEN `manifest['objects']`, `manifest['captures']`, `manifest['gaps']`, `manifest['expected_units']` and `manifest['totals']` equal those of a sequential run over the same inputs, whenever fewer than 100 gaps occur. With 100 or more gaps the stored gaps still number exactly 100, the last being `diagnostics_truncated`; which other gaps survive may differ.
 
@@ -140,7 +144,8 @@ R17. WHEN all workers finish, THEN `manifest['objects']`, `manifest['captures']`
 - At most six storage calls per object and no helper-level retry (specification line 210). A timed-out request is never resent.
 - One absolute 600-second monotonic deadline per phase archive, shared by all workers and helpers.
 - Create-only uploads, ETag-conditional downloads, independent readback before `verified`. A destination conflict is never overwritten.
-- At most 256 MiB written per child file (`RLIMIT_FSIZE` through `limit_child`).
+- Logical archived bytes per phase stay at most 17178755072 (`ArchiveMaxBytes` less the control reserve), also under concurrency (R15).
+- At most 256 MiB written per child file (`RLIMIT_FSIZE`, set by `limit_child` for CLI children and by the helper itself, R7).
 - No new package: the helper uses the `azure-storage-blob` `12.29.0b1` already pinned and checked in the CLI's Python. No new Azure identity, role, secret or environment variable (hard safety rules 3 and 7). The token lives only in process memory and pipes of the workflow job.
 - The general session wrapper is not changed.
 - No result, verdict, expected outcome or file under `results/` changes.
@@ -167,7 +172,9 @@ Standing fixture rule (plan rule 2, modelled on [#404 decision 6830544567](https
 | `test_token_once_and_refresh` | R6 | token `expires_on` = now + 3600; then a second token at now + 100 | one `get-access-token` call for 10 copies; with expiry now + 100, the next request makes a second call |
 | `test_token_failure` | R6 | `get-access-token` returns 1 | `Gap('transport','storage token')` on the first `properties`; zero helper ops |
 | `test_helper_invalid_response` | R8 | helper answers `{"ok":true,"extra":1}` | `show`: `Gap('transport','sdk helper')`; `download`: `Transfer` raises `Gap('transport','conditional download')` |
-| `test_helper_started_bounded` | R7 | patch `subprocess.Popen` | args `[<cli python>, <helper path>]`; `start_new_session=True`; `preexec_fn is _common.limit_child`; token absent from args and `env` |
+| `test_helper_started_bounded` | R7 | patch `subprocess.Popen` | args `[<cli python>, <helper path>]`; `start_new_session=True`; no `preexec_fn`; token absent from args and `env` |
+| `test_helper_sets_file_limit` | R7 | run the helper with the fake `azure` package; ask it to download a 268435457-byte fake blob | `resource.getrlimit(RLIMIT_FSIZE)` inside the helper is `(268435456, 268435456)`; the request fails (return 1); no file larger than 268435456 bytes remains |
+| `test_token_refresh_reaches_running_helper` | R6 | fake clock; first token expires at now + 100; helper already running | the second token is written to that helper's stdin before the next request; the helper's following request uses the second token |
 | `test_helper_sdk_calls` | R2, R7 | fake `azure` package; helper served one `show`, one `download` with etag `"0x1"`, one `upload` | `get_blob_properties()`; `download_blob(etag='"0x1"', match_condition=MatchConditions.IfNotModified, max_concurrency=1)`; `upload_blob(<stream>, overwrite=False, max_concurrency=1)`; two `BlobServiceClient` constructions, one per account URL |
 | `test_execute_stops_helpers` | R9 | `execute` with a fake inventory that raises `KeyboardInterrupt` after one copy | every started helper has exited; receipt `archive_complete: false` with an `interrupted` gap |
 | `test_token_never_leaks` | R10 | token `SENTINELTOKEN0123456789` | absent from every Popen argv and env, from captured stdout and stderr, and from every file under the spool and public directories after `execute` |
@@ -185,6 +192,8 @@ Existing `test_archive_transfer.py`, `test_archive_boundaries.py` and the archiv
 | `test_concurrent_disk_reserve` | R14 | `disk_usage().free` = 2689925119, then 2689925120 | first: every worker object `disk_space` / `spool reserve`; second: no `disk_space` gap |
 | `test_gap_cap_under_workers` | R15, R17 | 150 failing objects across workers | `len(gaps) == 100`; last gap `diagnostics_truncated` / `diagnostic count` |
 | `test_interrupt_stops_workers` | R16 | `KeyboardInterrupt` raised in the main thread while workers wait | all fake helpers stopped; gap `interrupted` / `inventory interrupted`; no marker; exit 1 |
+| `test_worker_subprocess_calls_on_main_thread` | R18, R19 | real worker threads; fake token command, fake `Popen` and fake `stop_command` that record `threading.current_thread()`; one helper timeout in repeat 3 | every recorded call ran on `threading.main_thread()`; zero `ValueError`; the timed-out helper is stopped; repeat 3's object has gap `deadline` / `command timeout` |
+| `test_byte_cap_atomic` | R15 | `logical_bytes` = 17178755072 - 10; five workers each reserve 8 bytes behind a `threading.Barrier(5)` | exactly one reservation succeeds; four objects have `byte_limit` / `phase bytes`; final `logical_bytes` = 17178755070 |
 | `test_shared_deadline` | R15 | fake clock passes the deadline mid-run | no copy starts after the deadline in any worker; remaining objects `deadline` |
 
 ## 7. Deployment assumptions
@@ -205,7 +214,9 @@ Each pull request:
 
 After pull request 2 merges (section 11): the next C03 smoke run's two archive receipts.
 
-## 9. Documentation changes (`docs/operations/archive-smoke.md`, a protected path)
+## 9. Documentation changes (`docs/operations/archive-smoke.md`)
+
+`/docs/operations/` has no owner in `.github/CODEOWNERS` (line 6), so this file is not a protected path.
 
 Pull request 1, line 91: replace "It uses the existing serialized workflow CLI session." with:
 
@@ -221,7 +232,7 @@ Pull request 2, append to the consumer paragraph (line 107):
 
 (a) Steps whose effort scales with a number unknown at planning time: the objects per phase, bounded by `ArchiveMaxObjects` (1024) and the 600 s deadline, with exhaustion action "record the gap and continue" (existing). Worker count is fixed at 5. Implementation and tests have no runtime-sized step.
 
-(b) Stricter than its authority: pull request 2's spool reserve is five times the specification's single-object reserve. Looser: pull request 1 replaces the specification's CLI transport (line 212), which is open question 1.
+(b) Stricter than its authority: pull request 2's spool reserve check is five times the specification's single-object reserve, and R15 re-checks the 16 GiB phase total under a lock. Looser: pull request 1 replaces the specification's CLI transport (line 212), which is open question 1; pull request 2 keeps up to five source and readback spool pairs at once, where line 212 keeps one pair (at most 512 MiB plus control metadata), which is open question 4.
 
 (c) Dependencies neither on `main` nor in the pull requests: the real SDK behaviour (D1), the token's data access (D2), runner disk (D3) and the timing (D4). The token output format is on `main` (`smoke.py` lines 413-424) and is the CLI's documented output, cited at archive-smoke.md line 68.
 
@@ -247,6 +258,7 @@ Tool: Microsoft Learn MCP server (`microsoft_docs_search`), 2026-11-18.
 1. Transport. Amend the approved specification's line 212 so the phase archive moves blob bytes through the pinned Blob SDK in a helper process, with a storage token obtained through the serialized CLI session, as pull request 1 describes? Alternatives: (b) change `scripts/azure-cli-session/az` so storage commands share the lock and only renewal is exclusive; this changes the wrapper used by every Azure job, contradicts line 215, keeps one CLI process start per call, and concurrent CLI use of one configuration directory is unverified; (c) raise the deadline, which issue 548 records Hari declined; (d) server-side copy, evaluated in section 1.2 and not recommended. Recommendation: (a). Without (a) or (b), pull request 2 gains nothing, because the wrapper lock serialises every call.
 2. Build pull request 2 before measuring? Recommendation: yes, so one smoke run measures the final design; pull request 1 alone may suffice, but finding that out costs a second paid smoke run.
 3. Accept deployment assumptions D1 to D4 by name, with the next C03 smoke run as their first evidence.
+4. Resident spool. Amend the approved specification's line 212 ("Keep only source spool and destination readback spool concurrently (maximum512MiB plus control metadata)") so a consumer phase may hold five such pairs at once, at most 5 x 537985024 = 2689925120 bytes, checked by R14? Alternative: keep one pair, which makes pull request 2 impossible. Recommendation: amend, for C01, C03 and C10 only.
 
 ## 14. Size estimate
 
@@ -257,3 +269,13 @@ Estimate, 2026-11-18, basis: the files in section 2 and the test tables in secti
 ## 15. Stop rule
 
 The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it needs to change a contract in section 3, a requirement in section 4, or the scope in section 2.
+
+## 16. Changes since revision 1
+
+All from [plan check 6973493886](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/548#issuecomment-6973493886).
+- Finding 2: new R18 and R19 keep every subprocess start, token fetch and helper stop on the main thread; R5, R6, R7 and R13 point to them; R7 sets the file-size limit inside the helper instead of through `preexec_fn`; new tests `test_helper_sets_file_limit` and `test_worker_subprocess_calls_on_main_thread`.
+- Finding 3: R15 re-checks the 16 GiB phase total under the lock; new invariant; new test `test_byte_cap_atomic`.
+- Finding 4: new open question 4; plan-check answer (b) records the looser point.
+- Finding 5: section 9 no longer calls the document a protected path.
+- Finding 6: four line citations corrected.
+- Non-blocking notes: R6 states how a refreshed token reaches a running helper, with `test_token_refresh_reaches_running_helper`; R2 describes chunked uploads.
