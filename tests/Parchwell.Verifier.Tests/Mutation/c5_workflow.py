@@ -239,7 +239,7 @@ PRIMARY_CUTS = {'phase': (3600, 4517, 5582, 6493, 6495, 6500, 7173),
  'outcome-classifier': (1130, 1131),
  'abrupt-classification': (1802, 1817),
  'verifier-result-codec': (19296, 19326),
- 'phase-candidate-codec': (30545, 30566),
+ 'phase-candidate-codec': (30603, 30624),
  'verify-run-handler': (30378, 30402)}
 def build_parts(targets: dict[str, tuple[str, int]],
                 primary_cuts: dict[str, tuple[int, ...]]) -> dict[str, tuple[str, int, int]]:
