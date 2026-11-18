@@ -295,8 +295,6 @@ jobs:
             target: Common/Phase/B10SweepEvidenceCodec.cs
           - shard: b10-sweep-codec-p5
             target: Common/Phase/B10SweepEvidenceCodec.cs
-          - shard: b10-sweep-codec-p6
-            target: Common/Phase/B10SweepEvidenceCodec.cs
           - shard: b10-sweep-codec-crossing
             target: Common/Phase/B10SweepEvidenceCodec.cs
           - shard: b10-final-sweep-handler-p1
@@ -477,6 +475,10 @@ jobs:
             target: Common/Results/VerifierResultCodec.cs
           - shard: verifier-result-codec-p16
             target: Common/Results/VerifierResultCodec.cs
+          - shard: verifier-result-codec-p17
+            target: Common/Results/VerifierResultCodec.cs
+          - shard: verifier-result-codec-p18
+            target: Common/Results/VerifierResultCodec.cs
           - shard: verifier-result-codec-crossing
             target: Common/Results/VerifierResultCodec.cs
           - shard: phase-candidate-codec-p1
@@ -510,8 +512,6 @@ jobs:
           - shard: phase-candidate-codec-p15
             target: Judge/PhaseCandidateCodec.cs
           - shard: phase-candidate-codec-p16
-            target: Judge/PhaseCandidateCodec.cs
-          - shard: phase-candidate-codec-p17
             target: Judge/PhaseCandidateCodec.cs
           - shard: phase-candidate-codec-crossing
             target: Judge/PhaseCandidateCodec.cs
