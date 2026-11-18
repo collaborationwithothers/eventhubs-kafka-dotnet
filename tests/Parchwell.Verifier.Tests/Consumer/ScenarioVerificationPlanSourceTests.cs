@@ -58,6 +58,22 @@ public sealed class ScenarioVerificationPlanSourceTests
         Assert.All(Reserved, key => Assert.DoesNotContain(key, plan.SubjectSettings.Keys));
         Assert.All(Reserved, key => Assert.DoesNotContain(key, plan.WitnessSettings.Keys));
         Assert.True(ConsumerPlanValidation.IsValid(plan, options));
+        Assert.Equal(360000, plan.WindowMs);
+        Assert.Equal(phase == "C0" ? "inline" : "pause", plan.SlowMessageMode);
+    }
+
+    [Fact]
+    public void Given_a_window_without_a_slow_message_mode_or_the_reverse_When_validated_Then_the_plan_is_rejected()
+    {
+        VerifierHostOptions options = Options();
+        Assert.True(Source(options).TryGetPlan("C03", "C0", out ConsumerVerificationPlan? plan));
+        Assert.True(ConsumerPlanValidation.IsValid(plan! with { WindowMs = null, SlowMessageMode = null }, options));
+        Assert.True(ConsumerPlanValidation.IsValid(plan with { WindowMs = 360000, SlowMessageMode = "inline" }, options));
+        Assert.False(ConsumerPlanValidation.IsValid(plan with { WindowMs = 360000, SlowMessageMode = null }, options));
+        Assert.False(ConsumerPlanValidation.IsValid(plan with { WindowMs = null, SlowMessageMode = "inline" }, options));
+        Assert.True(ConsumerPlanValidation.IsValid(plan with { WindowMs = 1, SlowMessageMode = "pause" }, options));
+        Assert.False(ConsumerPlanValidation.IsValid(plan with { WindowMs = 0, SlowMessageMode = "inline" }, options));
+        Assert.False(ConsumerPlanValidation.IsValid(plan with { WindowMs = 360000, SlowMessageMode = "other" }, options));
     }
 
     [Theory]

@@ -193,7 +193,7 @@ internal static class PhaseCandidateCodec
                 _ = B10ProducerObservationsCodec.Read(observations, boundIntake);
             }
             if(repeat.TryGetProperty("consumer",out JsonElement repeatConsumer)!=consumerPair)throw new FormatException("A repeat consumer projection is required for consumer pairs and rejected for every other scenario.");
-            if(consumerPair&&repeatConsumer.ValueKind!=JsonValueKind.Null&&ConsumerEvidenceRules.ReadProjection(repeatConsumer,ConsumerEvidenceRules.GroupId(root.GetProperty("run_id").GetString()!,phaseName!,ordinal)) is null)
+            if(consumerPair&&repeatConsumer.ValueKind!=JsonValueKind.Null&&ConsumerEvidenceRules.ReadProjection(repeatConsumer,ConsumerEvidenceRules.GroupId(root.GetProperty("run_id").GetString()!,phaseName!,ordinal),scenarioName) is null)
                 throw new FormatException("Candidate repeat consumer projection is invalid.");
             if(repeat.GetProperty("checks").EnumerateObject().Any(p=>p.Value.ValueKind is not (JsonValueKind.True or JsonValueKind.False)))throw new FormatException("Candidate repeat checks must be booleans.");
             if(repeat.GetProperty("identity").ValueKind is not (JsonValueKind.Null or JsonValueKind.String))throw new FormatException("Candidate identity has the wrong kind.");

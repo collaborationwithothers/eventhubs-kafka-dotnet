@@ -31,7 +31,9 @@ internal sealed class ScenarioConsumerVerificationPlanSource(VerifierHostOptions
                 .Where(pair => !Reserved.Contains(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value.Value, StringComparer.Ordinal);
             Dictionary<string, string> witness = factory.CreateEnrichmentConsumer().Configuration
                 .Where(pair => !Reserved.Contains(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
-            plan = new ConsumerVerificationPlan(null, scenario.Definition.ConsumerProcessing!.CompletionDeadlineMs, subject, witness);
+            ConsumerProcessingDefinition processing = scenario.Definition.ConsumerProcessing!;
+            plan = new ConsumerVerificationPlan(null, processing.CompletionDeadlineMs, subject, witness,
+                processing.WindowMs, processing.Configurations[configurationId].Mode);
             return true;
         }
         catch (Exception)

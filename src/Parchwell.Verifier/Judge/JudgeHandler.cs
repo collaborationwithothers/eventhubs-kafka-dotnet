@@ -257,7 +257,7 @@ internal sealed class JudgeHandler(IOptions<VerifierHostOptions> configured, IVe
                         {
                             ConsumerProjection? consumerBlock=null;
                             bool consumerEvidenceValid=!consumerScenario ? result.Consumer is null : result.Consumer is JsonElement rawBlock &&
-                                (consumerBlock=ConsumerEvidenceRules.ReadBlock(rawBlock,ConsumerEvidenceRules.GroupId(options.RunId!,options.Phase!,i))) is not null;
+                                (consumerBlock=ConsumerEvidenceRules.ReadBlock(rawBlock,ConsumerEvidenceRules.GroupId(options.RunId!,options.Phase!,i),options.ScenarioId)) is not null;
                             bool fullyComplete=result.Status==VerifierResultStatus.CompleteValid&&(!consumerScenario||consumerBlock?.Status=="complete_valid");
                             bool semanticReceipt = result.VerifierCommit==r.SourceCommit && consumerEvidenceValid &&
                                 (r.HandlerExitCode==0 ? fullyComplete : !fullyComplete);

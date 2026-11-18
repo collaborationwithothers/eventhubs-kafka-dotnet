@@ -49,6 +49,8 @@ internal static class ConsumerJudgement
                     bool stopped=subject&&request.Plan.KillCount is int n?member.Rows.Count>0&&member.Rows[^1].Kind=="kill_intent"&&kills==1&&member.Completion is null&&member.Rows.Count(r=>r.Kind=="processed")==n-1:kills==0&&member.Completion is not null;
                     if(!stopped)Add("consumer_stop_invalid",member);
                 }
+                if(request.Plan.SlowMessageMode is not null&&(members.Where(m=>m.Registration!.Role=="subject").Sum(m=>m.Rows.Count(r=>r.Kind=="processed"&&r.Slow))!=1||
+                    members.Where(m=>m.Registration!.Role=="witness").Any(m=>m.Rows.Any(r=>r.Kind=="processed"&&r.Slow))))invalid.Add("consumer_slow_message_invalid");
                 if(!ValidStart(request,members))invalid.Add("consumer_start_assignment_invalid");
                 if(final)
                 {
@@ -91,6 +93,7 @@ internal static class ConsumerJudgement
                 if(count==0)never++;else if(count==1)once++;else{again++;extra+=count-1;}
             }
             block["counts"]=new {ProcessedOnce=once,ProcessedAgain=again,ProcessedAgainExtraRows=extra,CommittedNeverProcessed=never};
+            if(request.Plan.SlowMessageMode is not null)block["membership"]=Membership(request,members);
             if(request.Plan.KillCount is not null)block["reassignment"]=Reassignment(members);
         }
         return new(status,JsonSerializer.SerializeToElement(block,JsonOptions),!skip);
@@ -118,6 +121,42 @@ internal static class ConsumerJudgement
             if(s.Role!=member.Registration!.Role||!member.Rows.Any(r=>r.Kind=="partition_event"&&r.Event=="assigned"&&r.RowSequence<=s.FirstReadLastRowSequence)||member.Rows.Any(r=>r.Kind=="partition_event"&&r.RowSequence>s.FirstReadLastRowSequence&&r.RowSequence<=s.SecondReadLastRowSequence))return false;
         }
         return request.Window.Partitions.All(p=>members.Count(m=>Held(m,snapshot.Members.Single(s=>s.InstanceId==m.Registration!.InstanceId).FirstReadLastRowSequence).Contains(p.Partition))==1);
+    }
+    /// <summary>
+    /// The per-repeat membership observation of a scenario whose subject processes one slow message. Only rows before boundary B count,
+    /// B being the earlier registration plus the declared window, because neither member closes its consumer before then.
+    /// </summary>
+    private static object Membership(ConsumerJudgementRequest request,IReadOnlyList<ConsumerMember> members)
+    {
+        ConsumerMember subject=members.Single(m=>m.Registration!.Role=="subject"),witness=members.Single(m=>m.Registration!.Role=="witness");
+        long subjectFirst=request.Snapshot!.Members.Single(s=>s.InstanceId==subject.Registration!.InstanceId).FirstReadLastRowSequence;
+        long witnessFirst=request.Snapshot.Members.Single(s=>s.InstanceId==witness.Registration!.InstanceId).FirstReadLastRowSequence;
+        DateTimeOffset boundary=members.Select(m=>m.Registration!.RegisteredUtc).Min()+TimeSpan.FromTicks(request.Plan.WindowMs!.Value*TimeSpan.TicksPerMillisecond);
+        ConsumerRow slow=subject.Rows.Single(r=>r.Kind=="processed"&&r.Slow);
+        DateTimeOffset started=slow.ProcessingStartedUtc!.Value,ended=slow.Time;
+        ConsumerRow[] subjectEvents=subject.Rows.Where(r=>r.Kind=="partition_event"&&r.RowSequence>subjectFirst&&r.Time<boundary).OrderBy(r=>r.RowSequence).ToArray();
+        ConsumerRow[] lost=subjectEvents.Where(r=>r.Event=="lost").ToArray();
+        ConsumerRow[] witnessAssigned=witness.Rows.Where(r=>r.Kind=="partition_event"&&r.Event=="assigned"&&(r.Partitions??[]).Contains(slow.Partition)).ToArray();
+        ConsumerRow? takeover=witnessAssigned.Where(r=>r.Time>=started&&r.Time<boundary).MinBy(r=>r.Time);
+        long afterLost=0;
+        if(lost.Length>0)
+        {
+            ConsumerRow first=lost[0];IReadOnlyList<int> partitions=first.Partitions??[];
+            ConsumerRow? next=subject.Rows.Where(r=>r.Kind=="partition_event"&&r.Event=="assigned"&&r.RowSequence>first.RowSequence).MinBy(r=>r.RowSequence);
+            long upper=next?.RowSequence??subject.Rows.Where(r=>r.Time<boundary).Select(r=>r.RowSequence).DefaultIfEmpty(-1).Max()+1;
+            afterLost=subject.Rows.Where(r=>r.Kind=="commit"&&r.ErrorCode==0&&r.RowSequence>first.RowSequence&&r.RowSequence<upper)
+                .SelectMany(r=>r.Offsets??[]).Count(o=>o.ErrorCode==0&&o.Offset>=0&&partitions.Contains(o.Partition));
+        }
+        return new
+        {
+            SlowPartition=slow.Partition,SlowOffset=slow.Offset,
+            SlowProcessedRows=members.SelectMany(m=>m.Rows).Count(r=>r.Kind=="processed"&&r.Partition==slow.Partition&&r.Offset==slow.Offset),
+            SubjectLostRows=lost.Length,SubjectRevokedRows=subjectEvents.Count(r=>r.Event=="revoked"),
+            WitnessAssignedRows=witness.Rows.Count(r=>r.Kind=="partition_event"&&r.Event=="assigned"&&r.RowSequence>witnessFirst&&r.Time<boundary),
+            WitnessAssignedSlowPartitionDuringSlow=witnessAssigned.Any(r=>r.Time>=started&&r.Time<=ended),
+            WitnessTakeoverMicroseconds=takeover is null?(long?)null:(takeover.Time-started).Ticks/10,
+            SubjectCommitEntriesAfterLost=afterLost
+        };
     }
     private static object Reassignment(IReadOnlyList<ConsumerMember> members)
     {
