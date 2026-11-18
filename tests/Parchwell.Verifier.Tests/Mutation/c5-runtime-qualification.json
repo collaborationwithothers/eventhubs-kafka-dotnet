@@ -118,8 +118,8 @@
     "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifactReader.cs": "20e12e34b4502625aa0f9f82a096f035b25a1eba442f42c56e2d1d3158e87760",
     "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifacts.cs": "ab9e5c90b886c8fd07bda7fa85956f5d0b235a38c285a3f1f304ace6879a13dc",
     "src/Parchwell.Verifier/Common/Consumer/ConsumerRecordLimits.cs": "7e772a07fcc98dc19a3524d82f7e3bd37467009d7f46fa9b05b503311d78a16c",
-    "src/Parchwell.Verifier/Common/Consumer/ConsumerVerificationPlan.cs": "39fea56cdc8688df7d6c47412ec80f9ebeb8e3cf63fcd36a92475d7c9abd4860",
-    "src/Parchwell.Verifier/Common/Consumer/ScenarioConsumerVerificationPlanSource.cs": "c5607f894123c4082cfacf73a63fe6583f430a8b613e0745f7812a0aa54d7844",
+    "src/Parchwell.Verifier/Common/Consumer/ConsumerVerificationPlan.cs": "8f09b23fab1ddeb2d1b33e2857357877fa3eba6fc67ca333c04c612a3896c3dd",
+    "src/Parchwell.Verifier/Common/Consumer/ScenarioConsumerVerificationPlanSource.cs": "af8cf61cbe37e54fc5aaadfb684be01d2626d4807cf410388ee6422300db17c6",
     "src/Parchwell.Verifier/Common/Contracts/CheckAssessment.cs": "954935825eb8acf1f92c912c19afdbc0e140b272504d63d2c71fcc4b4e193edc",
     "src/Parchwell.Verifier/Common/Contracts/RunIdentity.cs": "53b552ed4a123fbcb128a20715225a4efc778e464df52e2fb951bd4bf76cd019",
     "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSession.cs": "77aa05942c72fd527ad74685c011dbddc7d1a60494b464a7990f8c7eeb3d523a",
@@ -149,10 +149,10 @@
     "src/Parchwell.Verifier/Common/Window/StartLineNote.cs": "249dca8c9c1ce896f9275a7c2766eeb788805a8a5bfa3ec8738baf45cd25a0aa",
     "src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs": "50183e73c15874dfec6785f00bdfb2852c78a9536583bfdd7b2f4d52ca85118f",
     "src/Parchwell.Verifier/ImageSmoke.cs": "d70b8871232ece0c670491906054a4937d27f3dcc9267d93b80c6a49e5ac60ac",
-    "src/Parchwell.Verifier/Judge/ConsumerPhaseEvidence.cs": "a46748b092ddf9de76e6e13a003c0a4904bb11d571581da158e44ba463bd696f",
-    "src/Parchwell.Verifier/Judge/JudgeHandler.cs": "db2888ab53b9532b25982f29724672dcc7ed6db4952172dbb243c2cb8468698f",
+    "src/Parchwell.Verifier/Judge/ConsumerPhaseEvidence.cs": "8c52a60dcad7133a452f2c9ec68ece3df022986020189ad7cbc5024362e968ab",
+    "src/Parchwell.Verifier/Judge/JudgeHandler.cs": "1de8bd77733f3d42ce9cf80aac718d02db7e25917cac4e51753e4bb61ac04da4",
     "src/Parchwell.Verifier/Judge/PhaseCandidate.cs": "866fe754d3fcf821674e916a343fa69922f927cd3b0a8872f17745b06d07202e",
-    "src/Parchwell.Verifier/Judge/PhaseCandidateCodec.cs": "bf39855e24af7fc619fb7940ff34f3311bd3a427e9268e8541f52bf4b6c5c972",
+    "src/Parchwell.Verifier/Judge/PhaseCandidateCodec.cs": "b743748788b2bcf3610dc6f0a60389ca4e008926eb04d669b3e1b40d42f5e032",
     "src/Parchwell.Verifier/Parchwell.Verifier.csproj": "044e7d99ceac19ae3dc8c6ea45e82d2322c4f2f7d19b4d50a556b1686f918535",
     "src/Parchwell.Verifier/ProbeGate/IProbeGateFileStore.cs": "7b0b302f3603dee035bb377eabc59d5a6299d3e96764df7a41b1e154789d3f0b",
     "src/Parchwell.Verifier/ProbeGate/LocalProbeGateFileStore.cs": "2e24e4d97767d598f227bc71ceb369351535668e9008f0b21dd61b6e45a03e1a",
@@ -185,7 +185,7 @@
     "src/Parchwell.Verifier/VerifyRun/Configuration/RegisteredProducerConfigurationResolver.cs": "6b5040db8285f7ebf9ee12a553c0644e4bcd5e431634d8a32373f99f5a002b7d",
     "src/Parchwell.Verifier/VerifyRun/Consumer/ConsumerRepeatExtension.cs": "6d564c03b57b02c2ac6ab280107bce2aaa8c477ac4a592044dc0c9159682c114",
     "src/Parchwell.Verifier/VerifyRun/Consumer/IRepeatResultExtension.cs": "a7549004b04f7d80171cd7366674abc15ca6bedb09786106318fd6c052d3ba7b",
-    "src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs": "6ede189c5012c672ba6ebc5200f4beedc3a49c8ed16b8845a06230635b73a26a",
+    "src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs": "64eefc613cd6331b5e34fd7d867a7aafd24ad20132585ec3d1831681bb1de20a",
     "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerCommittedOffsetReader.cs": "f8e28f746f4af593d1cc6cd62409ce669bbcfec03f03b3a3c9183b3828e8855e",
     "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerOffsetRead.cs": "cfadc39c9393d8c6c78f7a920490b17f6f5c29d220d44b67b0b88c580f2691fc",
     "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationJudgeHandler.cs": "7d9329fec7609b5238f7f01f65d15948bdb52ad5cca44abb97c80c9e460c529f",
@@ -243,6 +243,7 @@
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerIoBoundaryTests.cs": "f6398f1657e628057c9d27182cb4575158299e67d99110ffe036fa261c518e3f",
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementFixture.cs": "6f508fa7a0ca17e66d10f32ae15cefb2ed19a67162c4dcfc9847509b1f2294db",
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": "e9afd69a5e20cd35d3b028fdbf8a08f49495eabbb1a8885a7052c1e2901df7bc",
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerMembershipTests.cs": "465a90a5285eff1cfe6fe42fe736da36c31ef2317e2a026d5815bd28196269c5",
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerNumericBoundaryTests.cs": "e2947d57cea08d8cf59a1c3274869673dbbf2506436e45e8f858ab16dca9132e",
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRecordNameTests.cs": "1cbfadee609abe30add6ced5b5c27a989f6fc157da6f09055457edab3124dbcd",
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRegistrationPathTests.cs": "475284527c17705e17ee53f53c698a625bbfcb68199fe13d8d40f9ce469d7fb7",
@@ -257,7 +258,7 @@
     "tests/Parchwell.Verifier.Tests/Consumer/OffsetSetupDeadlineTests.cs": "759ca209a9b45ec9a0c6a22741eb319ca2faf6b1d6d3e5eb83f6ed1e4a635515",
     "tests/Parchwell.Verifier.Tests/Consumer/PhaseWireBaseFixtures.cs": "f98cd76eb2b6fbb4c54db0e8977265d2fb7a4f1acfc9725333d70fb611c13b6e",
     "tests/Parchwell.Verifier.Tests/Consumer/PhaseWireConsumerTests.cs": "8fa808762a51298af56b079acd810135814e9f66f5e97f25be6696bc285e3630",
-    "tests/Parchwell.Verifier.Tests/Consumer/ScenarioVerificationPlanSourceTests.cs": "d3fbb7de0ed94a9249ff1fa3fd295107663d05be2b418d648fa0059f16014399",
+    "tests/Parchwell.Verifier.Tests/Consumer/ScenarioVerificationPlanSourceTests.cs": "9157cac31cd3055fcfc4046e05f90bb9e3dc4ac2b1ccc97cddc2b06fe21ca782",
     "tests/Parchwell.Verifier.Tests/Consumer/StartSnapshotTests.cs": "1fda577ec439430c8b010c40c54c0517adb9b7e9e9ad9bf1bb08b8f470a62369",
     "tests/Parchwell.Verifier.Tests/Host/B10EarlierRepeatExclusionTests.cs": "48c8e18f0b6ca5b0f4d1c50f38e797f85dfff58b6546b261d24b4661ccd448ff",
     "tests/Parchwell.Verifier.Tests/Host/B10ExpectedProducerJobsTests.cs": "46cdbfea42d395729283a2f9c403269ba10eb0256c350ca73d3d6adcfc5a582a",
@@ -297,7 +298,7 @@
     "tests/Parchwell.Verifier.Tests/Judge/B10FinalProjectionCodecTests.cs": "939714db1761e60ac52e24072b517f20dda8eb18180b5c10db9c779db12b55e4",
     "tests/Parchwell.Verifier.Tests/Judge/B10JudgeChecksTests.cs": "2d3d34d268659aa4c036127dcdb855a93afdb31093613dc1d8a7617a6c7114e2",
     "tests/Parchwell.Verifier.Tests/Judge/B10SweepChecksTests.cs": "f642d2dddd63534b318d58f1dad5e8cf5603852282886f9af56e91e71cc729bc",
-    "tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs": "4afef2316aa0621312e0a2efbd9ed498b4322d2ab411325e7d4f6c907f0cd811",
+    "tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs": "c65a5081bc554539b52c8fa8ddb966c9853489be9f34a578898039bc7ac8fd4c",
     "tests/Parchwell.Verifier.Tests/Judge/JudgeHandlerTests.cs": "b008e9ae2993b2701413e6a363a9f247c81f5456b9cbb38435198af93ebff115",
     "tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs": "8433b902feb0c34c4108081fe741b9a6d4c48b6a7caba6ba9692ae4f284ace7b",
     "tests/Parchwell.Verifier.Tests/Judge/PhaseJudgeTests.cs": "cb496a667c4a4faa89a1d578d261e14c816a081f0195bd3569d50b3e55496b43",
@@ -5439,16 +5440,20 @@
             "basis": [
               "Consumer-verifier main merge e8da5826deba9b42bbf5224c835ad728768544ef: upstream base SHA-256 None; upstream current SHA-256 39fea56cdc8688df7d6c47412ec80f9ebeb8e3cf63fcd36a92475d7c9abd4860; archive pre-merge SHA-256 None; integrated 6a4625a32fc60f6fcc7b0147f2c50bff9ecef955 SHA-256 39fea56cdc8688df7d6c47412ec80f9ebeb8e3cf63fcd36a92475d7c9abd4860. Values null indicate absent inputs.",
               "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes.",
-              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted."
+              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted.",
+              "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
             ],
-            "current_sha256": "39fea56cdc8688df7d6c47412ec80f9ebeb8e3cf63fcd36a92475d7c9abd4860"
+            "current_sha256": "8f09b23fab1ddeb2d1b33e2857357877fa3eba6fc67ca333c04c612a3896c3dd"
           },
           "src/Parchwell.Verifier/Common/Consumer/ScenarioConsumerVerificationPlanSource.cs": {
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a source file changed or added for the C03 inputs of issue 508 (scenario schema, override entry, verifier plan source or resolver registration). No C5 target source changed.",
-              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision)."
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
+              "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
             ],
-            "current_sha256": "c5607f894123c4082cfacf73a63fe6583f430a8b613e0745f7812a0aa54d7844"
+            "current_sha256": "af8cf61cbe37e54fc5aaadfb684be01d2626d4807cf410388ee6422300db17c6"
           },
           "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSession.cs": {
             "basis": [
@@ -5498,15 +5503,19 @@
           },
           "src/Parchwell.Verifier/Judge/ConsumerPhaseEvidence.cs": {
             "basis": [
-              "#521 consumer phase judge (items/521/plan-consumer-phase-judge.md, revision 3): changes shared inputs only; every C5 target source, Judge/PhaseJudge.cs included, is unchanged. Added judge and consumer tests may raise per-mutant runtime. That risk is accepted by the approval of that plan revision, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/521#issuecomment-6926201546, pending the required post-merge mutation acceptance run on main."
+              "#521 consumer phase judge (items/521/plan-consumer-phase-judge.md, revision 3): changes shared inputs only; every C5 target source, Judge/PhaseJudge.cs included, is unchanged. Added judge and consumer tests may raise per-mutant runtime. That risk is accepted by the approval of that plan revision, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/521#issuecomment-6926201546, pending the required post-merge mutation acceptance run on main.",
+              "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
             ],
-            "current_sha256": "a46748b092ddf9de76e6e13a003c0a4904bb11d571581da158e44ba463bd696f"
+            "current_sha256": "8c52a60dcad7133a452f2c9ec68ece3df022986020189ad7cbc5024362e968ab"
           },
           "src/Parchwell.Verifier/Judge/JudgeHandler.cs": {
             "basis": [
-              "#521 consumer phase judge (items/521/plan-consumer-phase-judge.md, revision 3): changes shared inputs only; every C5 target source, Judge/PhaseJudge.cs included, is unchanged. Added judge and consumer tests may raise per-mutant runtime. That risk is accepted by the approval of that plan revision, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/521#issuecomment-6926201546, pending the required post-merge mutation acceptance run on main."
+              "#521 consumer phase judge (items/521/plan-consumer-phase-judge.md, revision 3): changes shared inputs only; every C5 target source, Judge/PhaseJudge.cs included, is unchanged. Added judge and consumer tests may raise per-mutant runtime. That risk is accepted by the approval of that plan revision, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/521#issuecomment-6926201546, pending the required post-merge mutation acceptance run on main.",
+              "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
             ],
-            "current_sha256": "db2888ab53b9532b25982f29724672dcc7ed6db4952172dbb243c2cb8468698f"
+            "current_sha256": "1de8bd77733f3d42ce9cf80aac718d02db7e25917cac4e51753e4bb61ac04da4"
           },
           "src/Parchwell.Verifier/Judge/PhaseCandidate.cs": {
             "basis": [
@@ -5516,9 +5525,11 @@
           },
           "src/Parchwell.Verifier/Judge/PhaseCandidateCodec.cs": {
             "basis": [
-              "#521 consumer phase judge (items/521/plan-consumer-phase-judge.md, revision 3): changes shared inputs only; every C5 target source, Judge/PhaseJudge.cs included, is unchanged. Added judge and consumer tests may raise per-mutant runtime. That risk is accepted by the approval of that plan revision, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/521#issuecomment-6926201546, pending the required post-merge mutation acceptance run on main."
+              "#521 consumer phase judge (items/521/plan-consumer-phase-judge.md, revision 3): changes shared inputs only; every C5 target source, Judge/PhaseJudge.cs included, is unchanged. Added judge and consumer tests may raise per-mutant runtime. That risk is accepted by the approval of that plan revision, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/521#issuecomment-6926201546, pending the required post-merge mutation acceptance run on main.",
+              "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
             ],
-            "current_sha256": "bf39855e24af7fc619fb7940ff34f3311bd3a427e9268e8541f52bf4b6c5c972"
+            "current_sha256": "b743748788b2bcf3610dc6f0a60389ca4e008926eb04d669b3e1b40d42f5e032"
           },
           "src/Parchwell.Verifier/Parchwell.Verifier.csproj": {
             "basis": [
@@ -5594,9 +5605,11 @@
               "Consumer-verifier main merge e8da5826deba9b42bbf5224c835ad728768544ef: upstream base SHA-256 None; upstream current SHA-256 6ede189c5012c672ba6ebc5200f4beedc3a49c8ed16b8845a06230635b73a26a; archive pre-merge SHA-256 None; integrated 6a4625a32fc60f6fcc7b0147f2c50bff9ecef955 SHA-256 6ede189c5012c672ba6ebc5200f4beedc3a49c8ed16b8845a06230635b73a26a. Values null indicate absent inputs.",
               "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes.",
               "No C5 target changed. Codex corrections guard empty consumer member paths and index existing joins/counts without changing verdict rules. Added registration-path boundary tests increase every mutant full-population run; the runtime risk remains accepted pending the approved post-merge main acceptance run, which still gates consumer publication.",
-              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted."
+              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted.",
+              "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
             ],
-            "current_sha256": "6ede189c5012c672ba6ebc5200f4beedc3a49c8ed16b8845a06230635b73a26a"
+            "current_sha256": "64eefc613cd6331b5e34fd7d867a7aafd24ad20132585ec3d1831681bb1de20a"
           },
           "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerCommittedOffsetReader.cs": {
             "basis": [
@@ -5694,6 +5707,13 @@
               "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted."
             ],
             "current_sha256": "e9afd69a5e20cd35d3b028fdbf8a08f49495eabbb1a8885a7052c1e2901df7bc"
+          },
+          "tests/Parchwell.Verifier.Tests/Consumer/ConsumerMembershipTests.cs": {
+            "basis": [
+              "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
+            ],
+            "current_sha256": "465a90a5285eff1cfe6fe42fe736da36c31ef2317e2a026d5815bd28196269c5"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerNumericBoundaryTests.cs": {
             "basis": [
@@ -5817,9 +5837,11 @@
           "tests/Parchwell.Verifier.Tests/Consumer/ScenarioVerificationPlanSourceTests.cs": {
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a test or test fixture file changed or added for the C03 inputs of issue 508. No C5 target source changed.",
-              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision)."
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
+              "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
             ],
-            "current_sha256": "d3fbb7de0ed94a9249ff1fa3fd295107663d05be2b418d648fa0059f16014399"
+            "current_sha256": "9157cac31cd3055fcfc4046e05f90bb9e3dc4ac2b1ccc97cddc2b06fe21ca782"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/StartSnapshotTests.cs": {
             "basis": [
@@ -5887,9 +5909,11 @@
           "tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs": {
             "basis": [
               "#521 consumer phase judge (items/521/plan-consumer-phase-judge.md, revision 3): changes shared inputs only; every C5 target source, Judge/PhaseJudge.cs included, is unchanged. Added judge and consumer tests may raise per-mutant runtime. That risk is accepted by the approval of that plan revision, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/521#issuecomment-6926201546, pending the required post-merge mutation acceptance run on main.",
-              "#521 consumer phase judge (items/521/plan-consumer-phase-judge.md, revision 3): changes shared inputs only; every C5 target source, Judge/PhaseJudge.cs included, is unchanged. Added judge and consumer tests may raise per-mutant runtime. That risk is accepted by the approval of that plan revision, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/521#issuecomment-6926201546, pending the required post-merge mutation acceptance run on main."
+              "#521 consumer phase judge (items/521/plan-consumer-phase-judge.md, revision 3): changes shared inputs only; every C5 target source, Judge/PhaseJudge.cs included, is unchanged. Added judge and consumer tests may raise per-mutant runtime. That risk is accepted by the approval of that plan revision, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/521#issuecomment-6926201546, pending the required post-merge mutation acceptance run on main.",
+              "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
             ],
-            "current_sha256": "4afef2316aa0621312e0a2efbd9ed498b4322d2ab411325e7d4f6c907f0cd811"
+            "current_sha256": "c65a5081bc554539b52c8fa8ddb966c9853489be9f34a578898039bc7ac8fd4c"
           },
           "tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py": {
             "basis": [
@@ -6492,16 +6516,20 @@
             "basis": [
               "Consumer-verifier main merge e8da5826deba9b42bbf5224c835ad728768544ef: upstream base SHA-256 None; upstream current SHA-256 39fea56cdc8688df7d6c47412ec80f9ebeb8e3cf63fcd36a92475d7c9abd4860; archive pre-merge SHA-256 None; integrated 6a4625a32fc60f6fcc7b0147f2c50bff9ecef955 SHA-256 39fea56cdc8688df7d6c47412ec80f9ebeb8e3cf63fcd36a92475d7c9abd4860. Values null indicate absent inputs.",
               "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes.",
-              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted."
+              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted.",
+              "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
             ],
-            "current_sha256": "39fea56cdc8688df7d6c47412ec80f9ebeb8e3cf63fcd36a92475d7c9abd4860"
+            "current_sha256": "8f09b23fab1ddeb2d1b33e2857357877fa3eba6fc67ca333c04c612a3896c3dd"
           },
           "src/Parchwell.Verifier/Common/Consumer/ScenarioConsumerVerificationPlanSource.cs": {
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a source file changed or added for the C03 inputs of issue 508 (scenario schema, override entry, verifier plan source or resolver registration). No C5 target source changed.",
-              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision)."
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
+              "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
             ],
-            "current_sha256": "c5607f894123c4082cfacf73a63fe6583f430a8b613e0745f7812a0aa54d7844"
+            "current_sha256": "af8cf61cbe37e54fc5aaadfb684be01d2626d4807cf410388ee6422300db17c6"
           },
           "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSession.cs": {
             "basis": [
@@ -6575,15 +6603,19 @@
           },
           "src/Parchwell.Verifier/Judge/ConsumerPhaseEvidence.cs": {
             "basis": [
-              "#521 consumer phase judge (items/521/plan-consumer-phase-judge.md, revision 3): changes shared inputs only; every C5 target source, Judge/PhaseJudge.cs included, is unchanged. Added judge and consumer tests may raise per-mutant runtime. That risk is accepted by the approval of that plan revision, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/521#issuecomment-6926201546, pending the required post-merge mutation acceptance run on main."
+              "#521 consumer phase judge (items/521/plan-consumer-phase-judge.md, revision 3): changes shared inputs only; every C5 target source, Judge/PhaseJudge.cs included, is unchanged. Added judge and consumer tests may raise per-mutant runtime. That risk is accepted by the approval of that plan revision, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/521#issuecomment-6926201546, pending the required post-merge mutation acceptance run on main.",
+              "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
             ],
-            "current_sha256": "a46748b092ddf9de76e6e13a003c0a4904bb11d571581da158e44ba463bd696f"
+            "current_sha256": "8c52a60dcad7133a452f2c9ec68ece3df022986020189ad7cbc5024362e968ab"
           },
           "src/Parchwell.Verifier/Judge/JudgeHandler.cs": {
             "basis": [
-              "#521 consumer phase judge (items/521/plan-consumer-phase-judge.md, revision 3): changes shared inputs only; every C5 target source, Judge/PhaseJudge.cs included, is unchanged. Added judge and consumer tests may raise per-mutant runtime. That risk is accepted by the approval of that plan revision, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/521#issuecomment-6926201546, pending the required post-merge mutation acceptance run on main."
+              "#521 consumer phase judge (items/521/plan-consumer-phase-judge.md, revision 3): changes shared inputs only; every C5 target source, Judge/PhaseJudge.cs included, is unchanged. Added judge and consumer tests may raise per-mutant runtime. That risk is accepted by the approval of that plan revision, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/521#issuecomment-6926201546, pending the required post-merge mutation acceptance run on main.",
+              "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
             ],
-            "current_sha256": "db2888ab53b9532b25982f29724672dcc7ed6db4952172dbb243c2cb8468698f"
+            "current_sha256": "1de8bd77733f3d42ce9cf80aac718d02db7e25917cac4e51753e4bb61ac04da4"
           },
           "src/Parchwell.Verifier/Judge/PhaseCandidate.cs": {
             "basis": [
@@ -6593,9 +6625,11 @@
           },
           "src/Parchwell.Verifier/Judge/PhaseCandidateCodec.cs": {
             "basis": [
-              "#521 consumer phase judge (items/521/plan-consumer-phase-judge.md, revision 3): changes shared inputs only; every C5 target source, Judge/PhaseJudge.cs included, is unchanged. Added judge and consumer tests may raise per-mutant runtime. That risk is accepted by the approval of that plan revision, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/521#issuecomment-6926201546, pending the required post-merge mutation acceptance run on main."
+              "#521 consumer phase judge (items/521/plan-consumer-phase-judge.md, revision 3): changes shared inputs only; every C5 target source, Judge/PhaseJudge.cs included, is unchanged. Added judge and consumer tests may raise per-mutant runtime. That risk is accepted by the approval of that plan revision, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/521#issuecomment-6926201546, pending the required post-merge mutation acceptance run on main.",
+              "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
             ],
-            "current_sha256": "bf39855e24af7fc619fb7940ff34f3311bd3a427e9268e8541f52bf4b6c5c972"
+            "current_sha256": "b743748788b2bcf3610dc6f0a60389ca4e008926eb04d669b3e1b40d42f5e032"
           },
           "src/Parchwell.Verifier/Parchwell.Verifier.csproj": {
             "basis": [
@@ -6685,9 +6719,11 @@
               "Consumer-verifier main merge e8da5826deba9b42bbf5224c835ad728768544ef: upstream base SHA-256 None; upstream current SHA-256 6ede189c5012c672ba6ebc5200f4beedc3a49c8ed16b8845a06230635b73a26a; archive pre-merge SHA-256 None; integrated 6a4625a32fc60f6fcc7b0147f2c50bff9ecef955 SHA-256 6ede189c5012c672ba6ebc5200f4beedc3a49c8ed16b8845a06230635b73a26a. Values null indicate absent inputs.",
               "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes.",
               "No C5 target changed. Codex corrections guard empty consumer member paths and index existing joins/counts without changing verdict rules. Added registration-path boundary tests increase every mutant full-population run; the runtime risk remains accepted pending the approved post-merge main acceptance run, which still gates consumer publication.",
-              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted."
+              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted.",
+              "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
             ],
-            "current_sha256": "6ede189c5012c672ba6ebc5200f4beedc3a49c8ed16b8845a06230635b73a26a"
+            "current_sha256": "64eefc613cd6331b5e34fd7d867a7aafd24ad20132585ec3d1831681bb1de20a"
           },
           "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerCommittedOffsetReader.cs": {
             "basis": [
@@ -6804,6 +6840,13 @@
               "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted."
             ],
             "current_sha256": "e9afd69a5e20cd35d3b028fdbf8a08f49495eabbb1a8885a7052c1e2901df7bc"
+          },
+          "tests/Parchwell.Verifier.Tests/Consumer/ConsumerMembershipTests.cs": {
+            "basis": [
+              "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
+            ],
+            "current_sha256": "465a90a5285eff1cfe6fe42fe736da36c31ef2317e2a026d5815bd28196269c5"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerNumericBoundaryTests.cs": {
             "basis": [
@@ -6927,9 +6970,11 @@
           "tests/Parchwell.Verifier.Tests/Consumer/ScenarioVerificationPlanSourceTests.cs": {
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a test or test fixture file changed or added for the C03 inputs of issue 508. No C5 target source changed.",
-              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision)."
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
+              "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
             ],
-            "current_sha256": "d3fbb7de0ed94a9249ff1fa3fd295107663d05be2b418d648fa0059f16014399"
+            "current_sha256": "9157cac31cd3055fcfc4046e05f90bb9e3dc4ac2b1ccc97cddc2b06fe21ca782"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/StartSnapshotTests.cs": {
             "basis": [
@@ -7046,9 +7091,11 @@
           "tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs": {
             "basis": [
               "#521 consumer phase judge (items/521/plan-consumer-phase-judge.md, revision 3): changes shared inputs only; every C5 target source, Judge/PhaseJudge.cs included, is unchanged. Added judge and consumer tests may raise per-mutant runtime. That risk is accepted by the approval of that plan revision, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/521#issuecomment-6926201546, pending the required post-merge mutation acceptance run on main.",
-              "#521 consumer phase judge (items/521/plan-consumer-phase-judge.md, revision 3): changes shared inputs only; every C5 target source, Judge/PhaseJudge.cs included, is unchanged. Added judge and consumer tests may raise per-mutant runtime. That risk is accepted by the approval of that plan revision, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/521#issuecomment-6926201546, pending the required post-merge mutation acceptance run on main."
+              "#521 consumer phase judge (items/521/plan-consumer-phase-judge.md, revision 3): changes shared inputs only; every C5 target source, Judge/PhaseJudge.cs included, is unchanged. Added judge and consumer tests may raise per-mutant runtime. That risk is accepted by the approval of that plan revision, https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/521#issuecomment-6926201546, pending the required post-merge mutation acceptance run on main.",
+              "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
             ],
-            "current_sha256": "4afef2316aa0621312e0a2efbd9ed498b4322d2ab411325e7d4f6c907f0cd811"
+            "current_sha256": "c65a5081bc554539b52c8fa8ddb966c9853489be9f34a578898039bc7ac8fd4c"
           },
           "tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py": {
             "basis": [
