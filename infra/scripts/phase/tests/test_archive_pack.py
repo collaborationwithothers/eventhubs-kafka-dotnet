@@ -21,8 +21,8 @@ C0 = {'github_run_id': '42', 'github_run_attempt': 1, 'run_id': 'a01-42-1',
       'configuration_id': 'C0', 'images': {'loadgen': None, 'verifier': None, 'probe': None},
       'run_kind': 'smoke', 'purpose': 'diagnostic', 'scientific_admissible': False}
 C1 = {**C0, 'phase': 'C1', 'configuration_id': 'C1'}
-MANIFEST = b'{"schema_version":1,"kind":"run_evidence_archive","archive_complete":true,"run":{"github_run_id":"42","github_run_attempt":1,"run_id":"a01-42-1","scenario_id":"A01","configuration_id":"C0","phase":"C0","source_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","images":{"loadgen":null,"verifier":null,"probe":null},"run_kind":"smoke","purpose":"diagnostic","scientific_admissible":false},"destination":{"account_host":"archive123.blob.core.windows.net","container":"run-evidence","prefix":"v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/42/1/a01-42-1/C0/","retention_days":90},"policy":{"max_bytes":17179869184,"max_object_bytes":268435456,"max_objects":1024,"deadline_seconds":600,"transfer_passes":1,"metadata_chunk_bytes":134217728,"metadata_row_bytes":1048576},"expected_units":[],"objects":[],"captures":[],"totals":{"expected_objects":0,"verified_objects":0,"verified_bytes":0},"gaps":[],"completion":null}\n'
-MARKER = b'{"schema_version":1,"kind":"run_evidence_archive_completion","identity":{"github_run_id":"42","github_run_attempt":1,"run_id":"a01-42-1","phase":"C0","source_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"manifest":{"name":"v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/42/1/a01-42-1/C0/archive-manifest.json","bytes":911,"sha256":"6c5fcc28afea6d49840fc75d06c28551a4a45afe119d822eb1b43b5872d0cbba"},"totals":{"expected_objects":0,"verified_objects":0,"verified_bytes":0},"archive_complete":true}\n'
+MANIFEST = b'{"schema_version":1,"kind":"run_evidence_archive","archive_complete":true,"run":{"github_run_id":"42","github_run_attempt":1,"run_id":"a01-42-1","scenario_id":"A01","configuration_id":"C0","phase":"C0","source_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","images":{"loadgen":null,"verifier":null,"probe":null},"run_kind":"smoke","purpose":"diagnostic","scientific_admissible":false},"destination":{"account_host":"archive123.blob.core.windows.net","container":"run-evidence","prefix":"v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/42/1/a01-42-1/C0/","retention_days":90},"policy":{"max_bytes":17179869184,"max_object_bytes":268435456,"max_objects":1024,"deadline_seconds":1800,"transfer_passes":1,"metadata_chunk_bytes":134217728,"metadata_row_bytes":1048576},"expected_units":[],"objects":[],"captures":[],"totals":{"expected_objects":0,"verified_objects":0,"verified_bytes":0},"gaps":[],"completion":null}\n'
+MARKER = b'{"schema_version":1,"kind":"run_evidence_archive_completion","identity":{"github_run_id":"42","github_run_attempt":1,"run_id":"a01-42-1","phase":"C0","source_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"manifest":{"name":"v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/42/1/a01-42-1/C0/archive-manifest.json","bytes":912,"sha256":"37041710d72f19bc31914711eaf10d78dcb8643e6cda98032ea375f1159471de"},"totals":{"expected_objects":0,"verified_objects":0,"verified_bytes":0},"archive_complete":true}\n'
 
 
 def encode(obj):
@@ -61,7 +61,7 @@ class PackTests(unittest.TestCase):
     def test_complete_single_and_multiple(self):
         self.assertTrue(check([C0], [triple()])['complete'])
         self.assertTrue(check([C0, C1], [triple(C1), triple()])['complete'])
-        self.assertEqual('6c5fcc28afea6d49840fc75d06c28551a4a45afe119d822eb1b43b5872d0cbba', hashlib.sha256(MANIFEST).hexdigest())
+        self.assertEqual('37041710d72f19bc31914711eaf10d78dcb8643e6cda98032ea375f1159471de', hashlib.sha256(MANIFEST).hexdigest())
 
     def test_same_phase_from_distinct_runs(self):
         other = {**C0, 'github_run_id': '43', 'run_id': 'a01-43-1'}

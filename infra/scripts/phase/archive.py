@@ -5,7 +5,7 @@ from urllib.parse import urlsplit
 ArchiveMaxBytes = 17179869184
 ArchiveMaxObjectBytes = 268435456
 ArchiveMaxObjects = 1024
-ArchiveDeadlineSeconds = 600
+ArchiveDeadlineSeconds = 1800
 ArchiveTransferPasses = 1
 MetadataChunkMaxBytes = 134217728
 MetadataRowMaxBytes = 1048576
