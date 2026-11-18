@@ -52,7 +52,9 @@ public sealed class ConsumerPhaseJudgeTests
             case "membership-takeover-string": block["membership"]!["witness_takeover_microseconds"] = "61"; break;
             case "membership-no-slow-rows": block["membership"]!["slow_processed_rows"] = 0; break;
             case "membership-during-slow-number": block["membership"]!["witness_assigned_slow_partition_during_slow"] = 1; break;
-            case "membership-without-counts": block.Remove("counts"); break;
+            case "membership-without-counts":
+                // A valid invalid block that keeps membership, so only the membership rule can fail it.
+                block["status"] = "invalid"; block["reasons"] = new JsonArray("consumer_record_invalid"); block.Remove("counts"); break;
             case "extra-property": block["x"] = 0; break;
             case "schema-2": block["schema_version"] = 2; break;
             case "status-done": block["status"] = "done"; break;
@@ -141,7 +143,7 @@ public sealed class ConsumerPhaseJudgeTests
     }
 
     private static readonly string[] CountFields = ["ok", "loss", "phantom", "reported_failure", "duplicate", "reorder"];
-    private static readonly string[] StatusChanges = ["status-done", "reasons-unordered", "invalid-without-reasons", "unknown-reason", "incomplete-with-counts", "duplicate-reasons", "incomplete-with-reassignment"];
+    private static readonly string[] StatusChanges = ["status-done", "reasons-unordered", "invalid-without-reasons", "unknown-reason", "incomplete-with-counts", "duplicate-reasons", "incomplete-with-reassignment", "membership-without-counts"];
 
     [Theory]
     [MemberData(nameof(BrokenBlocks))]
@@ -374,6 +376,25 @@ public sealed class ConsumerPhaseJudgeTests
         Assert.Equal(1, exit);
         Assert.False(second["checks"]!["j3_verifier_receipt"]!.GetValue<bool>());
         Assert.Null(second["consumer"]);
+    }
+
+    [Theory]
+    [InlineData(1, 0, true)]
+    [InlineData(2, 0, false)]
+    [InlineData(2, null, false)]
+    public async Task Given_BoundaryMembershipValues_When_Judged_Then_J3PassesAndTheBlockIsProjected(int slowRows, int? takeover, bool during)
+    {
+        Stores stores = Mutated(await BaseC0.Value, 2, block =>
+        {
+            block["membership"]!["slow_processed_rows"] = slowRows;
+            block["membership"]!["witness_takeover_microseconds"] = takeover;
+            block["membership"]!["witness_assigned_slow_partition_during_slow"] = during;
+        });
+        (_, byte[] bytes) = await JudgeAsync(stores, "C03", "C0");
+        JsonNode second = RepeatOf(Parse(bytes), 2);
+        Assert.True(second["checks"]!["j3_verifier_receipt"]!.GetValue<bool>());
+        Assert.Equal(slowRows, second["consumer"]!["membership"]!["slow_processed_rows"]!.GetValue<int>());
+        Assert.Equal(takeover, second["consumer"]!["membership"]!["witness_takeover_microseconds"]?.GetValue<int>());
     }
 
     [Fact]

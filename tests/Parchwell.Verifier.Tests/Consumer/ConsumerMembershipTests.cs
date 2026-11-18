@@ -166,6 +166,24 @@ public sealed class ConsumerMembershipTests
         Assert.Equal(Expect(2, 1, 0, 2, during, microseconds, 0), MembershipOf(Build(SubjectLostThenAssigned(), WitnessAfterTakeover(takeover))));
 
     [Theory]
+    [InlineData("00:06:00", false, null)]
+    [InlineData("00:05:59.9999999", true, 239999999)]
+    public void Given_AWitnessRowAtTheEdgeOfB_When_Judged_Then_OnlyARowBeforeBCountsAsAssignedAndTakeover(string time, bool counted, int? microseconds)
+    {
+        ConsumerRow[] witness = [Event("witness", "assigned", time, AllPartitions)];
+        Assert.Equal(Expect(1, 0, 0, counted ? 1 : 0, false, microseconds, 0), MembershipOf(Build([], witness, mode: "pause")));
+    }
+
+    [Theory]
+    [InlineData("00:06:00", 1)]
+    [InlineData("00:05:59.9999999", 2)]
+    public void Given_NoAssignedRowAfterLostAndACommitAtTheEdgeOfB_When_Judged_Then_OnlyARowBeforeBIsTheLastCounted(string finalCommit, int entries)
+    {
+        ConsumerRow[] subject = [SubjectLostThenAssigned()[0], Commit("subject", "00:03:35", 0, (3, 8, 0))];
+        Assert.Equal(Expect(2, 1, 0, 2, true, 61000000, entries), MembershipOf(Build(subject, WitnessAfterTakeover("00:03:01"), subjectFinalCommit: finalCommit)));
+    }
+
+    [Theory]
     [InlineData("00:00:00", "00:00:05")]
     [InlineData("00:00:05", "00:00:00")]
     public void Given_EitherMemberRegisteringFirst_O10_When_Judged_Then_BIsTheEarlierRegistrationPlusTheWindow(string subjectRegistered, string witnessRegistered)

@@ -71,6 +71,7 @@ public sealed class ScenarioVerificationPlanSourceTests
         Assert.True(ConsumerPlanValidation.IsValid(plan with { WindowMs = 360000, SlowMessageMode = "inline" }, options));
         Assert.False(ConsumerPlanValidation.IsValid(plan with { WindowMs = 360000, SlowMessageMode = null }, options));
         Assert.False(ConsumerPlanValidation.IsValid(plan with { WindowMs = null, SlowMessageMode = "inline" }, options));
+        Assert.True(ConsumerPlanValidation.IsValid(plan with { WindowMs = 1, SlowMessageMode = "pause" }, options));
         Assert.False(ConsumerPlanValidation.IsValid(plan with { WindowMs = 0, SlowMessageMode = "inline" }, options));
         Assert.False(ConsumerPlanValidation.IsValid(plan with { WindowMs = 360000, SlowMessageMode = "other" }, options));
     }
