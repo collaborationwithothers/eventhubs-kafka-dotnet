@@ -2739,7 +2739,7 @@ class LocalSampleTests(unittest.TestCase):
         self.inventory.write_text(json.dumps(self.report(self.rows)))
         self.selection.write_text(json.dumps(['1']))
         self.stack.enter_context(mock.patch.object(self.workflow.projection, 'validate', return_value=True))
-        self.launch.side_effect = self.sample_launch
+        self.launch = self.stack.enter_context(mock.patch.object(runtime, 'sample_launch', side_effect=self.sample_launch, create=True))
 
     def completed_launch(self, *args):
         raise AssertionError('unexpected launcher')
@@ -2877,30 +2877,117 @@ class LocalSampleTests(unittest.TestCase):
             return {}
         self.workflow.projection.prepare.side_effect = prepare
         seen = []
-        def isolate(target, plan, output, prefix, cwd, deadline):
-            self.assertEqual(1, len(plan))
-            item = plan[0]
-            seen.append(item['mutant_id'])
-            directory = self.workflow.isolated_directory(output, item)
+        def launch(argv, cwd, log, deadline):
+            directory = Path(argv[argv.index('--output') + 1]).parent
+            identifier = directory.name
+            seen.append(identifier)
+            log.write_text('synthetic isolated log')
             report = directory / self.workflow.REPORT_PATH
             report.parent.mkdir(parents=True)
             rows = copy.deepcopy(self.rows)
             for index, entry in enumerate(rows):
                 entry['id'] = str(101 + index)
-                if str(index + 1) != item['mutant_id']:
+                if str(index + 1) != identifier:
                     entry.update(status='Ignored', statusReason='Removed by mutate filter')
             report.write_text(json.dumps(self.report(rows)))
-            return [dict(item)], None
-        with mock.patch.object(self.workflow, 'run_isolation_plan', side_effect=isolate):
-            self.assertEqual(0, self.invoke())
+            return 0, None
+        self.launch.side_effect = launch
+        self.assertEqual(0, self.invoke())
         self.assertEqual(['1', '2'], seen)
         children = self.receipt()['children']
         self.assertEqual([{'1': '101'}, {'2': '102'}], [child['native_bindings'] for child in children])
-        self.assertTrue(all((self.workflow.isolated_directory(self.output, child) / self.workflow.REPORT_PATH).is_file()
-                            for child in children))
-        self.launch.assert_not_called()
-        self.output = Path(self.tmp) / 'static-failure'
-        with mock.patch.object(self.workflow, 'run_isolation_plan', return_value=([], 'synthetic failure')) as isolated:
-            self.assertEqual(1, self.invoke())
-        isolated.assert_called_once()
-        self.assertEqual('incomplete', self.receipt()['status'])
+        self.assertEqual(['isolated', 'isolated'], [child['kind'] for child in children])
+        for child in children:
+            directory = self.workflow.isolated_directory(self.output, child)
+            self.assertEqual(runtime.digest((directory / self.workflow.REPORT_PATH).read_bytes()), child['report_sha256'])
+            self.assertEqual(runtime.digest((directory / 'command.log').read_bytes()), child['command_log_sha256'])
+            self.assertEqual(runtime.digest((directory / 'config.json').read_bytes()), child['config_sha256_after'])
+            self.assertEqual(child['config_sha256_before'], child['config_sha256_after'])
+        self.assertEqual(2, self.launch.call_count)
+        self.assertEqual(self.launch.call_args_list[0].args[3], self.launch.call_args_list[1].args[3])
+        for failure in ('failed', 'missing', 'invalid'):
+            with self.subTest(failure=failure):
+                self.output = Path(self.tmp) / ('static-' + failure)
+                self.launch.reset_mock()
+                def fail_first(argv, cwd, log, deadline):
+                    if failure == 'invalid':
+                        launch(argv, cwd, log, deadline)
+                        directory = Path(argv[argv.index('--output') + 1]).parent
+                        report = directory / self.workflow.REPORT_PATH
+                        report.write_text('{}')
+                    return (1 if failure == 'failed' else 0), None
+                self.launch.side_effect = fail_first
+                self.assertEqual(1, self.invoke())
+                self.launch.assert_called_once()
+                self.assertEqual('incomplete', self.receipt()['status'])
+
+
+class SampleLauncherDeadlineTests(unittest.TestCase):
+    def setUp(self):
+        from contextlib import ExitStack
+        self.stack = ExitStack()
+        self.addCleanup(self.stack.close)
+        self.tmp = Path(self.stack.enter_context(tempfile.TemporaryDirectory()))
+        self.log = self.tmp / 'command.log'
+        self.now = 100.0
+        self.stack.enter_context(mock.patch.object(runtime.time, 'monotonic', side_effect=lambda: self.now))
+        self.diagnostic = self.stack.enter_context(mock.patch.object(runtime.workflow, 'diagnostic'))
+        self.popen = self.stack.enter_context(mock.patch.object(runtime.subprocess, 'Popen'))
+        self.kill = self.stack.enter_context(mock.patch.object(runtime.os, 'killpg'))
+        self.signal = self.stack.enter_context(mock.patch.object(runtime.signal, 'signal'))
+        self.stack.enter_context(mock.patch.object(runtime.signal, 'getsignal', return_value='previous-handler'))
+        self.process = mock.Mock(pid=1234)
+        self.popen.return_value = self.process
+
+    def launch(self):
+        return runtime.sample_launch(['synthetic'], self.tmp, self.log, 110.0)
+
+    def assert_cleanup(self, pid):
+        self.assertEqual('previous-handler', self.signal.call_args_list[-1].args[1])
+        self.assertEqual('after', self.diagnostic.call_args_list[-1].args[3])
+        self.assertEqual(pid, self.diagnostic.call_args_list[-1].args[4])
+
+    def test_resource_capture_can_exhaust_deadline_before_popen(self):
+        def capture(*args):
+            if args[3] == 'before':
+                self.now = 111.0
+        self.diagnostic.side_effect = capture
+        self.assertEqual((None, 'time_cap_exceeded'), self.launch())
+        self.popen.assert_not_called()
+        self.assertFalse(self.log.exists())
+        self.assert_cleanup(None)
+
+    def test_popen_startup_time_reduces_wait_budget(self):
+        def start(*args, **kwargs):
+            self.now = 107.0
+            return self.process
+        self.popen.side_effect = start
+        self.process.wait.return_value = 0
+        self.assertEqual((0, None), self.launch())
+        self.process.wait.assert_called_once_with(timeout=3.0)
+        self.kill.assert_not_called()
+        self.assert_cleanup(1234)
+
+    def test_popen_startup_exhausting_deadline_kills_without_timed_wait(self):
+        def start(*args, **kwargs):
+            self.now = 111.0
+            return self.process
+        self.popen.side_effect = start
+        self.process.wait.return_value = -9
+        self.assertEqual((-9, 'time_cap_exceeded'), self.launch())
+        self.kill.assert_called_once_with(1234, runtime.signal.SIGKILL)
+        self.process.wait.assert_called_once_with()
+        self.assert_cleanup(1234)
+
+    def test_timeout_and_interruption_kill_group_and_reap(self):
+        for reason, error in (('time_cap_exceeded', subprocess.TimeoutExpired('synthetic', 10)),
+                              ('interrupted', KeyboardInterrupt())):
+            with self.subTest(reason=reason):
+                self.log.unlink(missing_ok=True)
+                self.process.reset_mock()
+                self.kill.reset_mock()
+                self.process.wait.side_effect = [error, -9]
+                self.assertEqual((-9, reason), self.launch())
+                self.kill.assert_called_once_with(1234, runtime.signal.SIGKILL)
+                self.assertEqual([mock.call(timeout=10.0), mock.call()], self.process.wait.call_args_list)
+                self.assert_cleanup(1234)

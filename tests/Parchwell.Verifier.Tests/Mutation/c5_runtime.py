@@ -1742,6 +1742,47 @@ def sample_bindings(reference_rows, actual_rows, selected_ids):
     return binding
 
 
+def sample_launch(argv, cwd, log_path, deadline):
+    """Bound native process work by an absolute deadline, including launch setup."""
+    if type(deadline) not in (int, float) or not math.isfinite(deadline):
+        raise ValueError('invalid absolute sample deadline')
+    process, reason, code = None, None, None
+    previous = signal.getsignal(signal.SIGTERM)
+    def interrupted(_signum, _frame):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, interrupted)
+    try:
+        workflow.diagnostic(workflow.capture_resources, cwd, log_path.parent, 'before', None)
+        if time.monotonic() >= deadline:
+            return None, 'time_cap_exceeded'
+        with log_path.open('xb') as log:
+            process = subprocess.Popen(argv, cwd=cwd, env={**os.environ, **workflow.OVERRIDES},
+                                       stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+            duration = deadline - time.monotonic()
+            if duration <= 0:
+                reason = 'time_cap_exceeded'
+            else:
+                try:
+                    code = process.wait(timeout=duration)
+                except subprocess.TimeoutExpired:
+                    reason = 'time_cap_exceeded'
+    except (KeyboardInterrupt, SystemExit):
+        reason = 'interrupted'
+    except (OSError, subprocess.SubprocessError):
+        reason = 'launch_failed'
+    finally:
+        if process is not None and reason is not None:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            code = process.wait()
+        signal.signal(signal.SIGTERM, previous)
+        workflow.diagnostic(workflow.capture_resources, cwd, log_path.parent, 'after',
+                            process.pid if process is not None else None)
+    return code, reason
+
+
 def local_sample(target, inventory_path, inventory_source_commit, selection_path,
                  output_dir, timeout, repository=ROOT):
     """Collect sparse observations and fresh static invocations; never qualification."""
@@ -1832,6 +1873,31 @@ def local_sample(target, inventory_path, inventory_source_commit, selection_path
         raw = json.loads(report_path.read_bytes())
         rows = workflow.report_records(raw, target, source_sha256=digest(source))
         return sample_bindings(reference, rows, wanted)
+    def run_child(directory, config, wanted, prefix, cwd, *, isolated=None):
+        remaining()
+        config_path = directory / ('config.json' if isolated is not None else 'sample-config.json')
+        log_path = directory / 'command.log'
+        workflow.write_json(config_path, config)
+        config_before = workflow.sha256(config_path)
+        argv = [*prefix, '--config-file', str(config_path), '--output', str(directory / 'stryker'),
+                '--log-to-file', '--verbosity', 'debug']
+        child = {'kind': 'isolated' if isolated is not None else 'main',
+                 'reference_ids': wanted, **(isolated or {}), 'argv': argv,
+                 'started_at_utc': workflow.utc_now(), 'config_sha256_before': config_before}
+        receipt['children'].append(child)
+        child_start = time.monotonic()
+        code, reason = sample_launch(argv, cwd, log_path, deadline)
+        workflow.diagnostic(workflow.retain_test_server_logs, directory)
+        child.update({'child_exit_code': code, 'termination_reason': reason,
+                      'command_completed': code is not None and reason is None,
+                      'finished_at_utc': workflow.utc_now(), 'elapsed_seconds': time.monotonic() - child_start,
+                      'config_sha256_after': workflow.sha256(config_path) if config_path.is_file() else None,
+                      'report_sha256': workflow.sha256(directory / workflow.REPORT_PATH)
+                      if (directory / workflow.REPORT_PATH).is_file() else None,
+                      'command_log_sha256': workflow.sha256(log_path) if log_path.is_file() else None})
+        if reason is not None or code not in (0, 2) or child['config_sha256_after'] != config_before:
+            raise ValueError(f"{child['kind']} sample command incomplete or configuration changed")
+        child['native_bindings'] = validate_report(directory, wanted)
     try:
         with tempfile.TemporaryDirectory(prefix='c5-local-sample-') as temporary:
             staging = Path(temporary) / 'repository'
@@ -1845,33 +1911,12 @@ def local_sample(target, inventory_path, inventory_source_commit, selection_path
                 prefix = ['env', f'TMPDIR={private_tmp}', 'dotnet', 'stryker']
                 cwd = staging / 'tests/Parchwell.Verifier.Tests'
                 if plan['main_ids']:
-                    config_path, log_path = output / 'sample-config.json', output / 'command.log'
-                    workflow.write_json(config_path, plan['main_config'])
-                    config_before = workflow.sha256(config_path)
-                    argv = [*prefix, '--config-file', str(config_path), '--output', str(output / 'stryker'),
-                            '--log-to-file', '--verbosity', 'debug']
-                    child = {'kind': 'main', 'reference_ids': plan['main_ids'], 'argv': argv,
-                             'started_at_utc': workflow.utc_now(), 'config_sha256_before': config_before}
-                    receipt['children'].append(child)
-                    child_start = time.monotonic()
-                    code, reason = workflow.launch(argv, cwd, log_path, remaining())
-                    child.update({'child_exit_code': code, 'termination_reason': reason,
-                                  'finished_at_utc': workflow.utc_now(), 'elapsed_seconds': time.monotonic() - child_start,
-                                  'config_sha256_after': workflow.sha256(config_path) if config_path.is_file() else None,
-                                  'report_sha256': workflow.sha256(output / workflow.REPORT_PATH)
-                                  if (output / workflow.REPORT_PATH).is_file() else None,
-                                  'command_log_sha256': workflow.sha256(log_path) if log_path.is_file() else None})
-                    if reason is not None or code not in (0, 2) or child['config_sha256_after'] != config_before:
-                        raise ValueError('main sample command incomplete or configuration changed')
-                    child['native_bindings'] = validate_report(output, plan['main_ids'])
+                    run_child(output, plan['main_config'], plan['main_ids'], prefix, cwd)
                 for item in plan['isolated']:
-                    remaining()
-                    entries, error = workflow.run_isolation_plan(target, [item], output, prefix, cwd, deadline)
-                    receipt['children'].extend({'kind': 'isolated', **entry} for entry in entries)
-                    if error is not None or len(entries) != 1:
-                        raise ValueError(error or 'isolated sample missing receipt')
-                    directory = workflow.isolated_directory(output, entries[0])
-                    receipt['children'][-1]['native_bindings'] = validate_report(directory, [item['mutant_id']])
+                    directory = workflow.isolated_directory(output, item)
+                    directory.mkdir(parents=True)
+                    run_child(directory, workflow.isolated_config(target, item), [item['mutant_id']],
+                              prefix, cwd, isolated=item)
                 remaining()
             finally:
                 try:
