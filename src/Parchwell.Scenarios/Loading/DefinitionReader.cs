@@ -24,7 +24,7 @@ internal static class DefinitionReader
             throw new InvalidOperationException("Unreachable");
         }
         validation.TryFields(rootMap, "",
-            ["schema_version", "id", "baseline", "roles", "profile", "configurations", "fault", "repeats", "gate", "measures", "single_action", "probe_v2", "idle_observation"],
+            ["schema_version", "id", "baseline", "roles", "profile", "configurations", "fault", "repeats", "gate", "measures", "single_action", "probe_v2", "idle_observation", "consumer_processing"],
             ["schema_version", "id", "baseline", "roles", "profile", "configurations", "fault", "repeats", "gate", "measures"]);
 
         var version = ReadLiteralVersion(validation, rootMap, "schema_version", "");
@@ -56,8 +56,10 @@ internal static class DefinitionReader
         if (rootMap.Fields.TryGetValue("idle_observation", out var idleNode) &&
             (rootMap.Fields.ContainsKey("single_action") || rootMap.Fields.ContainsKey("probe_v2")))
             validation.Error(idleNode, "idle_observation", "idle_observation_combined", "Idle observation cannot be combined with another probe generation.");
+        var consumerProcessing = ConsumerProcessingDefinitionReader.Read(validation, rootMap.Fields.GetValueOrDefault("consumer_processing"), definition,
+            rootMap.Fields.ContainsKey("single_action") || rootMap.Fields.ContainsKey("probe_v2") || rootMap.Fields.ContainsKey("idle_observation"));
         validation.ThrowIfErrors();
-        return definition with { SingleAction = singleAction, ProbeV2 = probeV2, IdleObservation = idleObservation };
+        return definition with { SingleAction = singleAction, ProbeV2 = probeV2, IdleObservation = idleObservation, ConsumerProcessing = consumerProcessing };
     }
 
     private static int ReadLiteralVersion(NodeValidation validation, MapNode map, string key, string path)

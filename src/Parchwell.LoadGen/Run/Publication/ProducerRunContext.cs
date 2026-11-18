@@ -37,8 +37,7 @@ public sealed record ProducerRunContext(RunIdentity Identity, string Phase, int 
     public void Validate()
     {
         Identity.Validate();
-        bool validPair = ScenarioPhases.TryGetConfiguration(Identity.ScenarioId, Phase, out string? expectedConfiguration) &&
-            Identity.ConfigurationId == expectedConfiguration;
+        bool validPair = Run.Input.LoadGenHostOptions.IsAcceptedPair(Identity.ScenarioId, Phase, Identity.ConfigurationId);
         if (!validPair || RepeatNumber is < 1 or > 5 ||
             string.IsNullOrWhiteSpace(JobName) || string.IsNullOrWhiteSpace(PodName) ||
             string.IsNullOrWhiteSpace(PodUid) || PodUid.Any(char.IsWhiteSpace) || PodUid.Any(char.IsControl) ||

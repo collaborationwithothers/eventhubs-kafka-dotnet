@@ -15,7 +15,7 @@ public sealed class ScenarioOverrideMetadataTests
     {
         var settings = KafkaScenarioOverridePolicy.Settings;
 
-        Assert.Equal(21, settings.Length);
+        Assert.Equal(22, settings.Length);
         Assert.Collection(settings,
             setting => { AssertPolicyEntry(setting, "request.timeout.ms", 1, 900_000, "A01"); Assert.Equal(KafkaScenarioOverrideValueKind.Integer, setting.ValueKind); },
             setting => { AssertPolicyEntry(setting, "socket.timeout.ms", 10, 300_000, "A01"); Assert.Equal(KafkaScenarioOverrideValueKind.Integer, setting.ValueKind); },
@@ -31,6 +31,7 @@ public sealed class ScenarioOverrideMetadataTests
             setting => AssertNewEntry(setting, "session.timeout.ms", KafkaScenarioOverrideValueKind.Omission, KafkaClientRole.EnrichmentConsumer, "C08", 0, 0),
             setting => AssertNewEntry(setting, "heartbeat.interval.ms", KafkaScenarioOverrideValueKind.Omission, KafkaClientRole.EnrichmentConsumer, "C08", 0, 0),
             setting => AssertNewEntry(setting, "partition.assignment.strategy", KafkaScenarioOverrideValueKind.Omission, KafkaClientRole.EnrichmentConsumer, "C08", 0, 0),
+            setting => AssertNewEntry(setting, "max.poll.interval.ms", KafkaScenarioOverrideValueKind.Integer, KafkaClientRole.EnrichmentConsumer, "C03", 1, 86_400_000),
             setting =>
             {
                 Assert.Equal("debug", setting.Key);

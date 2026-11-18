@@ -641,7 +641,8 @@
           "Azure.Storage.Blobs": "[12.30.1, )",
           "Confluent.Kafka": "[2.16.0, )",
           "Microsoft.Extensions.Hosting": "[10.0.13, )",
-          "Parchwell.Kafka": "[1.0.0, )"
+          "Parchwell.Kafka": "[1.0.0, )",
+          "Parchwell.Scenarios": "[1.0.0, )"
         }
       },
       "parchwell.kafka": {
@@ -651,6 +652,14 @@
           "Confluent.Kafka": "[2.16.0, )",
           "Microsoft.Extensions.Options": "[10.0.13, )",
           "Microsoft.OpenTelemetry": "[1.2.0, )"
+        }
+      },
+      "parchwell.scenarios": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.Extensions.Options": "[10.0.13, )",
+          "Parchwell.Kafka": "[1.0.0, )",
+          "YamlDotNet": "[18.1.0, )"
         }
       },
       "Azure.Core": {
@@ -756,6 +765,12 @@
           "OpenTelemetry.Instrumentation.SqlClient": "1.19.0",
           "OpenTelemetry.PersistentStorage.FileSystem": "1.1.1"
         }
+      },
+      "YamlDotNet": {
+        "type": "CentralTransitive",
+        "requested": "[18.1.0, )",
+        "resolved": "18.1.0",
+        "contentHash": "5K+9KFg2TdTl7VXv88Qzi/0lqK6JFoNP3lRuImPYGRV7K/QYklDyTrj4+A+KAki1JsQi6qKY+hDyY7d6WRqjrw=="
       }
     }
   }

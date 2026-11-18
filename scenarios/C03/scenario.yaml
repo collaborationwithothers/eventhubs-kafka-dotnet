@@ -1,0 +1,43 @@
+schema_version: 1
+id: C03
+baseline: Parchwell.Kafka
+roles:
+  - LoadGenProducer
+  - EnrichmentConsumer
+  - VerifierConsumer
+profile: profiles/c03-consumer.yaml
+
+configurations:
+  C0:
+    EnrichmentConsumer:
+      max.poll.interval.ms: 60000
+  C1:
+    EnrichmentConsumer:
+      max.poll.interval.ms: 60000
+
+fault:
+  live: {kind: none}
+  component: {kind: none}
+
+repeats: 5
+
+gate: {kind: none}
+
+measures:
+  - {id: ledger.delivery_error_code, role: LoadGenProducer}
+  - {id: client.fatal_error, role: LoadGenProducer}
+  - {id: verifier.ok, role: VerifierConsumer}
+  - {id: verifier.loss, role: VerifierConsumer}
+  - {id: verifier.phantom, role: VerifierConsumer}
+  - {id: verifier.reported_failure, role: VerifierConsumer}
+  - {id: verifier.duplicate, role: VerifierConsumer}
+  - {id: verifier.reorder, role: VerifierConsumer}
+
+consumer_processing:
+  window_ms: 360000
+  completion_deadline_ms: 30000
+  configurations:
+    C0:
+      slow_message: {ordinal: 100, duration_ms: 90000, mode: inline}
+    C1:
+      slow_message: {ordinal: 100, duration_ms: 90000, mode: pause}
