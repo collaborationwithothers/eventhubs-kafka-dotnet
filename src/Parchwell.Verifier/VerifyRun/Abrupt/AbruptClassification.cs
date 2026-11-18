@@ -97,8 +97,8 @@ internal static class AbruptClassification
                 first.Accepted.Contains(attempt.Id) && !first.Terminals.ContainsKey(attempt.Id) && !first.Rejected.Contains(attempt.Id))
                 .Select(attempt => attempt.Id).ToArray();
             long unreportedSeen = unreported.LongCount(id => records.Any(record => record.InstanceId == first.Pod && record.AttemptId == id));
-            return new(arm, first.Attempts[originals[0]].Key, originals.Count,
-                authenticated ? originals.Count : null, complete ? originalsSeen : null,
+            return new(arm, first.Attempts[originals[0]].Key, CountOriginals(originals),
+                authenticated ? CountOriginals(originals) : null, complete ? originalsSeen : null,
                 complete && authenticated ? resendsSeen : null, complete && authenticated ? pairs : null,
                 complete && authenticated ? witness : null, members, unreported.LongLength,
                 complete ? unreportedSeen : null, complete ? unreported.LongLength - unreportedSeen : null,
@@ -107,4 +107,6 @@ internal static class AbruptClassification
                 complete && authenticated ? DuplicateBreakdown.Sum(members.Select(member => member.DuplicateBreakdown)) : null);
         }
     }
+
+    private static long CountOriginals(IReadOnlyList<string> originals) => originals.Count;
 }
