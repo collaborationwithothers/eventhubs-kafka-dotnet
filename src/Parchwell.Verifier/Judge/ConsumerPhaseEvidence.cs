@@ -31,10 +31,20 @@ internal static partial class ConsumerEvidenceRules
         ProducerSideReason, "consumer_registration_invalid", "consumer_record_invalid", "consumer_start_assignment_invalid",
         "consumer_processed_outside_window", "consumer_processed_unjoined", "consumer_stop_invalid",
         "consumer_configuration_mismatch", "consumer_commit_record_disagreement", "consumer_record_unavailable",
-        "consumer_commit_evidence_unavailable", "consumer_completion_deadline", "consumer_commit_frontier_short"
+        "consumer_commit_evidence_unavailable", "consumer_completion_deadline", "consumer_commit_frontier_short",
+        "consumer_slow_message_invalid"
     ];
 
-    private static readonly string[] ProjectedNames = ["status", "reasons", "group_id", "kill_count", "offset_read", "counts", "reassignment"];
+    private static readonly string[] ProjectedNames = ["status", "reasons", "group_id", "kill_count", "offset_read", "counts", "membership", "reassignment"];
+
+    private static readonly string[] MembershipNames =
+    [
+        "slow_partition", "slow_offset", "slow_processed_rows", "subject_lost_rows", "subject_revoked_rows", "witness_assigned_rows",
+        "witness_assigned_slow_partition_during_slow", "witness_takeover_microseconds", "subject_commit_entries_after_lost"
+    ];
+
+    /// <summary>True for a scenario whose consumer blocks carry the <c>membership</c> object of C03.</summary>
+    internal static bool CarriesMembership(string? scenarioId) => scenarioId == "C03";
 
     [GeneratedRegex(@"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{7}Z$")]
     private static partial Regex TimestampRegex();
@@ -43,10 +53,10 @@ internal static partial class ConsumerEvidenceRules
     internal static string GroupId(string runId, string phase, int repeat) => $"{runId}-{phase.ToLowerInvariant()}-r{repeat}-consumers";
 
     /// <summary>Checks a full result block and builds its candidate projection.</summary>
-    internal static ConsumerProjection? ReadBlock(JsonElement block, string groupId) => Read(block, groupId, fullBlock: true);
+    internal static ConsumerProjection? ReadBlock(JsonElement block, string groupId, string? scenarioId) => Read(block, groupId, scenarioId, fullBlock: true);
 
     /// <summary>Checks a candidate's per-repeat projection.</summary>
-    internal static ConsumerProjection? ReadProjection(JsonElement projection, string groupId) => Read(projection, groupId, fullBlock: false);
+    internal static ConsumerProjection? ReadProjection(JsonElement projection, string groupId, string? scenarioId) => Read(projection, groupId, scenarioId, fullBlock: false);
 
     /// <summary>Checks the counts object of 3.3 rule 5.</summary>
     internal static ConsumerCounts? ReadCounts(JsonElement counts)
@@ -62,7 +72,7 @@ internal static partial class ConsumerEvidenceRules
         return values[2] >= values[1] ? new(values[0], values[1], values[2], values[3]) : null;
     }
 
-    private static ConsumerProjection? Read(JsonElement e, string groupId, bool fullBlock)
+    private static ConsumerProjection? Read(JsonElement e, string groupId, string? scenarioId, bool fullBlock)
     {
         if (e.ValueKind != JsonValueKind.Object || !e.TryGetProperty("status", out JsonElement statusElement) ||
             statusElement.ValueKind != JsonValueKind.String) return null;
@@ -75,6 +85,7 @@ internal static partial class ConsumerEvidenceRules
         var expected = new List<string> { "status", "reasons", "group_id", "kill_count", "offset_read" };
         if (fullBlock) expected.AddRange(["schema_version", "members", "partitions", "diagnostics"]);
         if (complete) expected.Add("counts");
+        if (complete && CarriesMembership(scenarioId)) expected.Add("membership");
         if (complete && hasKill) expected.Add("reassignment");
         if (!HasExactly(e, expected.ToArray())) return null;
         if (fullBlock)
@@ -94,6 +105,7 @@ internal static partial class ConsumerEvidenceRules
         {
             counts = ReadCounts(e.GetProperty("counts"));
             if (counts is null) return null;
+            if (CarriesMembership(scenarioId) && !ValidMembership(e.GetProperty("membership"))) return null;
             if (hasKill && !ValidReassignment(e.GetProperty("reassignment"))) return null;
         }
         if (!ValidOffsetRead(e.GetProperty("offset_read"))) return null;
@@ -114,6 +126,20 @@ internal static partial class ConsumerEvidenceRules
             if (string.CompareOrdinal(values[index - 1], values[index]) >= 0) return false;
         reasons = values.ToArray();
         return true;
+    }
+
+    private static bool ValidMembership(JsonElement e)
+    {
+        if (e.ValueKind != JsonValueKind.Object || !e.EnumerateObject().Select(property => property.Name).SequenceEqual(MembershipNames)) return false;
+        foreach (string name in MembershipNames.Where(name => name != "witness_assigned_slow_partition_during_slow" && name != "witness_takeover_microseconds"))
+        {
+            JsonElement value = e.GetProperty(name);
+            if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt64(out long number) || number < 0) return false;
+        }
+        if (e.GetProperty("slow_processed_rows").GetInt64() < 1) return false;
+        if (e.GetProperty("witness_assigned_slow_partition_during_slow").ValueKind is not (JsonValueKind.True or JsonValueKind.False)) return false;
+        JsonElement takeover = e.GetProperty("witness_takeover_microseconds");
+        return takeover.ValueKind == JsonValueKind.Null || takeover.ValueKind == JsonValueKind.Number && takeover.TryGetInt64(out long microseconds) && microseconds >= 0;
     }
 
     private static bool ValidReassignment(JsonElement e)
