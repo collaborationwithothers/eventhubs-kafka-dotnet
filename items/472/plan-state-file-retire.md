@@ -1,6 +1,6 @@
 # state-file-retire contract-grade plan (#472)
 
-Revision: 1
+Revision: 2
 
 This plan answers the questions of issue #472 with measurements and proposes one change: stop writing and reading the committed item state file, and add a script that prints an issue's decision and approval comments verbatim, in creation order. The binding record stays Hari's comments, with his quoted words, in the order "Item lifecycle" step 3 already defines. Nothing here is decided: the choice of option is open question Q1 for Hari, and the change is a governance change that only Hari merges.
 
@@ -33,7 +33,7 @@ The rule is mechanical. It does not judge whether a comment records Hari's decis
 
 ### 2.1 Consumer batch (#499 and children)
 
-| Issue | Comments | Decisions | Approvals | Adoption copies | Plans | Plan checks | Handoffs | Control actions | Tool | Other | Bytes |
+| Issue | Comments | Decisions | Approvals | Adoption copies | Plans | Plan checks | Handoffs | Control actions | Tool | Other | Characters |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | #499 | 16 | 11 | 0 | 0 | 2 | 0 | 2 | 0 | 1 | 0 | 39891 |
 | #504 | 20 | 5 | 2 | 4 | 1 | 3 | 3 | 1 | 1 | 0 | 67336 |
@@ -59,9 +59,9 @@ Observations:
 
 ### 2.2 Reading saved per session on the batch children
 
-A session with no state file reads every decision, approval and adoption comment in full, plus each #499 comment they link (factory.md "Authority reads" "Catch-up"). Measured bytes:
+A session with no state file reads every decision, approval and adoption comment in full, plus each #499 comment they link (factory.md "Authority reads" "Catch-up"). Sizes are body lengths in characters, which equal bytes for ASCII text; the KB figures below use them:
 
-| Child | Decision, approval and adoption comments | Their bytes | #499 comments they link | Linked bytes | Total read | state.md bytes |
+| Child | Decision, approval and adoption comments | Their characters | #499 comments they link | Linked characters | Total read | state.md bytes |
 |---|---|---|---|---|---|---|
 | #504 | 11 | 10934 | 5 | 9808 | 20742 | 5447 |
 | #505 | 10 | 7076 | 6 | 11001 | 18077 | 4098 |
@@ -77,7 +77,7 @@ The state file saves between 7.4 and 19.0 KB of reading per session on these chi
 
 Large threads, for contrast:
 
-| Issue | Comments | Decision and approval comments | Their bytes | state.md bytes |
+| Issue | Comments | Decision and approval comments | Their characters | state.md bytes |
 |---|---|---|---|---|
 | #404 (closed) | 395 | 197 | 404430 | 33917 |
 | #494 (open) | 70 | 34 | 78044 | 28770 |
@@ -87,7 +87,7 @@ The #472 body says #404 had "about 300 comments" and 170 decisions; the counts a
 
 ### 2.3 Upkeep and review cost
 
-- 78 state files exist on `main`; 39 first-parent commits on `main` changed them, adding 1447 lines and deleting 91. #494's file changed in 30 commits and #474's in 13.
+- 78 state files exist on `main`; 39 first-parent commits on `main` changed them, adding 1447 lines and deleting 91. Counting all commits, not only first-parent ones, #494's file changed in 30 commits and #474's in 13.
 - Codex inline review comments on the pull requests behind those 39 commits: 74 in total, 2 on a state file, both on [pull request 546](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/546): one P1 finding (uncited counts in `items/494/state.md`) and its reply.
 - Cold-review findings are not posted inline, so they were not counted. The #472 body cites [6873097154](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6873097154) for a P1 about the state file listing an unlinked chat instruction. That comment reports rounds 17 to 19 as "stale authority text", "Authority and count text" and "stale statements". It does not name the state file. The claim is not confirmed by its cited source; it may be true in a report this session did not read.
 - Drift (a session acting on a stale or wrong state-file line) was not measured. No recorded incident was found in the comments read; that is not evidence of absence.
@@ -111,7 +111,7 @@ The #472 body says #404 had "about 300 comments" and 170 decisions; the counts a
 
 Recommendation: D. The log is the comments themselves, so it keeps Hari's quoted words and the order of decisions, and it cannot drift or need review. It adds nothing a session must trust beyond the script, which has tests.
 
-Strongest counterargument: the state file's value is judgement, not text. It tells a session which decisions still apply and what to do next. A verbatim log cannot say that a later decision superseded an earlier one, so on a thread like #404 (197 authority comments, 404 KB) a session must read everything, which one session already could not do. Removing the file also removes the "Covers comment" anchor, so #494's sessions read 78 KB of decisions instead of 28.8 KB plus new comments. Against that: the measured Codex review cost of the file is low (section 2.3), so D solves a cost that the available data does not show to be large. Answer to the counterargument: #404 is closed, rule 7 children keep threads small, and the supersession judgement the file records is a paraphrase that AGENTS.md "Truth and verification" already says is not a source. Whether that answer holds for #494 and #474 is Hari's call (Q1).
+Strongest counterargument: the state file's value is judgement, not text. It tells a session which decisions still apply and what to do next. A verbatim log cannot say that a later decision superseded an earlier one, so on a thread like #404 (197 authority comments, 404 KB) a session must read everything, which one session already could not do. Removing the file also removes the "Covers comment" anchor, so #494's sessions read 78 KB of decisions instead of 28.8 KB plus new comments. It also narrows the non-authority reading on issues that have a state file today, such as #494 and #474: a fresh session reads only the newest handoff, as the existing no-state-file rule already sets, not every comment after the file's "Covers" line. Against that: the measured Codex review cost of the file is low (section 2.3), so D solves a cost that the available data does not show to be large. Answer to the counterargument: #404 is closed, rule 7 children keep threads small, and the supersession judgement the file records is a paraphrase that AGENTS.md "Truth and verification" already says is not a source. Whether that answer holds for #494 and #474 is Hari's call (Q1).
 
 ## 4. Scope
 
@@ -127,7 +127,7 @@ Files allowed to change:
 
 Paths that must not change: `results/`, every `expected.yaml`, `src/`, `tests/`, `infra/`, `.claude/hooks/`, `.claude/settings.json`, AGENTS.md, CLAUDE.md, every other workflow, `docs/blueprint.md`, and `items/*/state.md` unless Q3 says delete.
 
-Size estimate (estimate, basis: the script and test shapes in sections 5 and 9 and the text replacements in section 6, 2026-11-18): 6 files and about 380 changed lines; about 150 for the script, 170 for the tests, 50 in factory.md, 10 in the skills. If Q3 is "delete", add 78 deleted files and about 1356 deleted lines. Size is reported, not enforced.
+Size estimate (estimate, basis: the script and test shapes in sections 5 and 9 and the text replacements in section 6, 2026-11-18): 6 files and about 410 changed lines; about 160 for the script, 190 for the tests, 50 in factory.md, 10 in the skills. If Q3 is "delete", add 78 deleted files and about 1356 deleted lines. Size is reported, not enforced.
 
 ## 5. External contracts
 
@@ -168,7 +168,7 @@ Created <created_at>; updated <updated_at>; <html_url>
 <body, verbatim>
 ```
 
-`<issue>` is the number in `html_url`. Then, for each distinct linked comment ID in order of first appearance in that body, numbered `<s>.1`, `<s>.2`, ...:
+`<issue>` is the number in `html_url`. Then, for each distinct linked comment ID in order of first appearance in that body, numbered `<s>.1`, `<s>.2`, ... When the linked comment is an authority comment under 5.2:
 
 ```
 
@@ -180,7 +180,7 @@ Adoption is judged by the reading session under docs/agents/factory.md "Item lif
 <body, verbatim>
 ```
 
-If the linked comment is itself an authority comment in this log, the entry is the heading line followed by one line `Listed as entry <t>.` and no body. If it cannot be read, the entry is the heading line followed by one line `Not available.`
+If the linked comment is itself an authority comment in this log, the entry is the heading line followed by one line `Listed as entry <t>.` and no body. If the linked comment is not an authority comment under 5.2, the entry is the heading line, the `Created` line, and one line `Not printed: not a decision or approval comment.`; no part of its body is printed, so the log puts in a session's context only the bodies the catch-up of factory.md "Authority reads" selects. Whether such a comment is a decision the linking comment adopts, and whether the session's row lets it read the body, stay the session's judgement. If the linked comment cannot be read, the entry is the heading line followed by one line `Not available.`
 
 If no authority comment exists, the output after the header is one line `No decision or approval comments.`
 
@@ -201,12 +201,14 @@ Script:
 - R1. WHEN the script runs with valid inputs THEN it prints the header of 5.3 and one entry per authority comment, sorted by `created_at` then `id`, and exits 0.
 - R2. WHEN a comment's first non-empty line does not start with `## Decision` or `## Approval` after leading spaces are removed THEN it has no entry. `### Decision` and `**Decision needed:**` have no entry.
 - R3. WHEN an entry prints a body THEN the body is byte-identical to the `body` field, including quotes, curly quotes, trailing spaces and line endings.
-- R4. WHEN an authority body links comments THEN each distinct linked ID is printed once, in order of first appearance, as 5.3 sets.
+- R4. WHEN an authority body links comments THEN each distinct linked ID gets one entry, in order of first appearance, as 5.3 sets; the body is printed only for a linked authority comment.
+- R4a. WHEN a linked comment is not an authority comment THEN its entry has no body text and ends with `Not printed: not a decision or approval comment.`
 - R5. WHEN a linked comment is an authority comment in the log THEN its entry is `Listed as entry <t>.` with no body.
 - R6. WHEN a linked comment cannot be read THEN its entry is `Not available.`, the full log is printed, stderr holds the status-3 message and the exit status is 3.
 - R7. WHEN an issue's comments cannot be read THEN nothing is printed to stdout, stderr holds the status-1 message and the exit status is 1.
 - R8. WHEN fetching THEN pages are requested with the exact `gh api` arguments of 5.1, starting at page 1, and stop after the first page with fewer than 100 items.
 - R9. WHEN no authority comment exists THEN the output is the header and `No decision or approval comments.`, exit 0.
+- R9a. WHEN an `--issue` value is not a positive integer, or no `--issue` is given, THEN the exit status is 2, stdout is empty and nothing is fetched.
 
 docs/agents/factory.md (literal replacement text; places named by section):
 - R10. Status line (paragraph starting "Status: approved by Hari on 2026-10-12."): append ` Amended in the pull request for issue #472: "Authority reads", the "Item state file" section replaced by "Decision log", and "Item lifecycle" step 3; Hari's merge of that pull request is the approval.`
@@ -235,7 +237,7 @@ docs/agents/factory.md (literal replacement text; places named by section):
 Skills:
 - R16. `.agents/skills/plan-pr/SKILL.md` step 1: replace `Read the item state file and catch up on the issue` with `Catch up on the issue`.
 - R17. `.agents/skills/plan-check/SKILL.md` step 1: replace `Read the selected plan comment and the item state file, and catch up on the issue` with `Read the selected plan comment and catch up on the issue`.
-- R18. `.agents/skills/implement-plan/SKILL.md`: in step 1 replace `Read the item state file and catch up on the issue` with `Catch up on the issue`; in step 2 delete the sentence `Create or update the item state file at the time factory.md "Item state file" sets.`
+- R18. `.agents/skills/implement-plan/SKILL.md`: in step 1 replace `Read the item state file and catch up on the issue` with `Catch up on the issue`; in step 2 delete the sentence `Create or update the item state file at the time factory.md "Item state file" sets.`; and in step 2 replace `every requirement in the plan is met, every acceptance command has produced its stated evidence, and the state file is current.` with `every requirement in the plan is met and every acceptance command has produced its stated evidence.`
 
 CI (only if Q4 is "wire into CI"):
 - R19. In `.github/workflows/dotnet-verification.yml`, after the step named `Test the aggregate checker`, add a step named `Test the decision log` that runs `python3 -m unittest discover -s scripts/tests -p test_decision_log.py -v`. Triggers do not change. There is no committed copy of this workflow under `docs/operations/workflows/` at the base commit, so hard safety rule 8's copy clause does not apply.
@@ -262,23 +264,25 @@ All tests in `scripts/tests/test_decision_log.py`, `unittest`, offline mode unle
 | T1 `test_recognizes_only_decision_and_approval_headings` | R1, R2 | Issue 7: c(1,"2026-11-01T00:00:00Z","## Decision\n\nHari: \"yes\"",7), c(2,"2026-11-01T00:00:01Z","**Decision needed:** x",7), c(3,"2026-11-01T00:00:02Z","  \n  ## Approval\nok",7), c(4,"2026-11-01T00:00:03Z","### Decision\nno",7), c(5,"2026-11-01T00:00:04Z","Decision: no",7) | Exit 0; entries `### 1. Decision #7 comment 1` and `### 2. Approval #7 comment 3`; no entry for 2, 4, 5; header line `Read 5 comments. ...` |
 | T2 `test_orders_by_created_then_id_across_issues` | R1 | Issue 7: c(30,"2026-11-02T00:00:00Z","## Decision\na",7); issue 8: c(20,"2026-11-02T00:00:00Z","## Decision\nb",8), c(40,"2026-11-01T00:00:00Z","## Approval\nc",8) | Order 40, 20, 30, numbered 1, 2, 3; header `# Decision log: #7, #8` |
 | T3 `test_prints_body_verbatim` | R3 | c(1,...,"## Decision\n\nHari said: \u201cfor 531 implement using claude\u201d.  \r\nend",7) | stdout contains that body exactly, with `\u201c` and `\u201d` as the two curly quote characters |
-| T4 `test_lists_each_link_once_in_order` | R4 | c(1,...,"## Decision\nadopts https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-11 and https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/413#issuecomment-12 and again https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-11",7); linked 11 (issue 499) and 12 (issue 413) | `#### 1.1 Linked from comment 1: #499 comment 11` then `#### 1.2 Linked from comment 1: #413 comment 12`; no `1.3`; each linked body printed once |
+| T4 `test_lists_each_link_once_in_order` | R4 | c(1,...,"## Decision\nadopts https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-11 and https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/413#issuecomment-12 and again https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-11",7); linked 11 (issue 499, body `## Decision\nlinked eleven`) and 12 (issue 413, body `## Approval\nlinked twelve`) | `#### 1.1 Linked from comment 1: #499 comment 11` then `#### 1.2 Linked from comment 1: #413 comment 12`; no `1.3`; `linked eleven` and `linked twelve` each appear once |
 | T5 `test_link_to_listed_entry_has_no_body` | R5 | c(1,"2026-11-01T00:00:01Z","## Decision\nfirst",7), c(2,"2026-11-01T00:00:02Z","## Decision\nsee https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/7#issuecomment-1",7) | Entry `#### 2.1 Linked from comment 2: #7 comment 1` followed by `Listed as entry 1.`; body `## Decision\nfirst` appears once in stdout |
 | T6 `test_missing_link_exits_3` | R6 | c(1,...,"## Decision\nhttps://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-99",7); no `linked/99.json` | Exit 3; stdout contains `#### 1.1 Linked from comment 1: #499 comment 99` and `Not available.`; stderr `decision-log: 1 linked comment(s) not available` |
 | T7 `test_unreadable_issue_exits_1` | R7 | `--issue 7`, no `7.json` | Exit 1; stdout empty; stderr `decision-log: cannot read comments of #7` |
 | T8 `test_fetch_pages_with_exact_arguments` | R8, DA1 | Fetch mode, process runner mocked: page 1 returns 100 comments without authority headings, page 2 returns 1 | Exactly two calls: `["gh","api","repos/collaborationwithothers/eventhubs-kafka-dotnet/issues/7/comments?per_page=100&page=1"]` and the same with `page=2`; header `Read 101 comments. ...` |
 | T9 `test_fetch_failure_exits_1` | R7, R8 | Fetch mode, runner returns exit 1 for page 1 | Exit 1; stdout empty; stderr `decision-log: cannot read comments of #7` |
 | T10 `test_no_authority_comments` | R9 | c(1,...,"plain",7) | stdout ends with `No decision or approval comments.\n`; exit 0 |
+| T11 `test_invalid_issue_exits_2` | R9a | argument lists `["--issue","0"]`, `["--issue","abc"]` and `[]`, fetch mode with the runner mocked | Each: exit 2, stdout empty, runner never called |
+| T12 `test_non_authority_link_body_not_printed` | R4a | c(1,...,"## Decision\nsee https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-21",7); linked 21 (issue 499, body `**Decision needed:** secret handoff text`) | Entry `#### 1.1 Linked from comment 1: #499 comment 21`, its `Created` line, then `Not printed: not a decision or approval comment.`; stdout does not contain `secret handoff text`; exit 0 |
 
-Boundaries: T1 covers the heading boundary (`## Decision` vs `### Decision`, leading blank line and spaces); T8 covers the page boundary at exactly 100 items.
+Boundaries: T12 covers the authority boundary for linked comments; T1 covers the heading boundary (`## Decision` vs `### Decision`, leading blank line and spaces); T8 covers the page boundary at exactly 100 items.
 
 Fixture rule (plan rule 2): this plan adds a new script and tests and changes no existing check, so no existing fixture can be rejected. If one is, the implementer does exactly one of: (a) changes the fixture so it passes, keeping every assertion and boundary; (b) where invalid input is the test's purpose, keeps the input and changes the expected values to exactly what this plan's checks produce. No case is removed, no assertion loosened, no check changed. The PR implementation notes list each such change with the check that forces it.
 
 ## 10. Acceptance commands
 
-1. `python3 -m unittest discover -s scripts/tests -p test_decision_log.py -v`: 10 tests run, all pass.
-2. `python3 scripts/decision-log.py --issue 509 --issue 499 > "$TMP/log.md"; echo $?`: prints `0`. At the base commit, measured 2026-11-18, the log has 17 `### ` entries (6 on #509, 11 on #499); more if comments were added since, which the PR records.
-3. `grep -nE 'state\.md|[Ss]tate file' docs/agents/factory.md .agents/skills/plan-pr/SKILL.md .agents/skills/plan-check/SKILL.md .agents/skills/implement-plan/SKILL.md`: matches only inside the "Decision log" section's second paragraph.
+1. `python3 -m unittest discover -s scripts/tests -p test_decision_log.py -v`: 12 tests run, all pass.
+2. `python3 scripts/decision-log.py --issue 509 --issue 499 > "$TMP/log.md"; echo $?`: prints `0`. At the base commit, measured 2026-11-18, the log has 17 lines matching the regular expression `^### [0-9]+\. (Decision|Approval) #` (6 on #509, 11 on #499); more if comments were added since, which the PR records.
+3. `grep -nE 'state\.md|[Ss]tate file' docs/agents/factory.md .agents/skills/plan-pr/SKILL.md .agents/skills/plan-check/SKILL.md .agents/skills/implement-plan/SKILL.md`: matches only in factory.md's Status line (the paragraph starting "Status: approved by Hari on 2026-10-12.") and inside the "Decision log" section's second paragraph.
 4. `npm ci --ignore-scripts && npm run test:docs && npm run check:docs`: passes.
 5. ASCII scan of the changed text files: `grep -nP '[^\x00-\x7F]' <changed files>` prints nothing. The test file writes T3's curly quotes as `\u201c` and `\u201d` escapes.
 6. The verification gates of docs/agents/pull-requests.md "Verification gates", in its order, with the cold review under AGENTS.md "Before opening a pull request" rule 8.
@@ -310,7 +314,15 @@ Fixture rule (plan rule 2): this plan adds a new script and tests and changes no
 - D1. `docs/operations/factory-overview/generate-diagrams.py` lines 112, 241 and 253, and the SVGs generated from it, describe the state file. Not on the verdict path. Deferral is permitted because the diagrams are an overview, not a rule; a reader of the overview could be misled that the file is still kept. Responsible: a later documentation pull request after this one merges. Completion evidence: the three strings no longer name the state file and the SVGs are regenerated. Blocks no gate.
 - D2. If Q4 is answered "acceptance only", wiring the tests into CI stays deferred. Not on the verdict path. Responsible: Hari's choice of a later workflow change. Blocks no gate.
 
-## 15. Stop rule
+## 15. Changes since revision 1
+
+All from [plan check 6973676138](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/472#issuecomment-6973676138):
+- F1: contract 5.3 no longer prints the body of a linked comment that is not a decision or approval (new R4a, T12). Design-changing (external contract), so this revision gets a fresh check.
+- F2: R18 also replaces implement-plan step 2's done condition; acceptance command 3 allows the Status-line matches.
+- F3: acceptance command 2 counts entries with an exact regular expression.
+- Non-blocking points of that check: size columns say characters; the 30 and 13 commit counts are labelled as all commits; new R9a and T11 test exit status 2; section 3 states the narrower handoff reading on issues that have a state file today; size estimate updated.
+
+## 16. Stop rule
 
 The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it needs to change a contract in section 5, a requirement in section 6, or the scope in section 4.
 
