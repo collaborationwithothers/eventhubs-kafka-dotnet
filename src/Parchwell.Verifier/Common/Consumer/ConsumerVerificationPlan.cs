@@ -1,7 +1,12 @@
 namespace Parchwell.Verifier.Common.Consumer;
 
+/// <summary>
+/// What the verifier expects of one consumer pair. <paramref name="WindowMs"/> and <paramref name="SlowMessageMode"/> are set together,
+/// for a scenario whose subject processes one slow message, and absent for every other plan.
+/// </summary>
 internal sealed record ConsumerVerificationPlan(int? KillCount, int CompletionDeadlineMs,
-    IReadOnlyDictionary<string, string> SubjectSettings, IReadOnlyDictionary<string, string> WitnessSettings);
+    IReadOnlyDictionary<string, string> SubjectSettings, IReadOnlyDictionary<string, string> WitnessSettings,
+    int? WindowMs = null, string? SlowMessageMode = null);
 
 internal interface IConsumerVerificationPlanSource
 {
@@ -14,6 +19,8 @@ internal static class ConsumerPlanValidation
     {
         if (plan is null || plan.KillCount is < 1 or > 1000000 || plan.CompletionDeadlineMs is < 1000 or > 3600000 ||
             plan.SubjectSettings is null || plan.WitnessSettings is null) return false;
+        if (plan.WindowMs.HasValue != (plan.SlowMessageMode is not null) || plan.WindowMs is < 1 ||
+            plan.SlowMessageMode is not (null or "inline" or "pause")) return false;
         string[] reserved = ["bootstrap.servers", "client.id", "group.id"];
         if (reserved.Any(key => plan.SubjectSettings.ContainsKey(key) || plan.WitnessSettings.ContainsKey(key)) ||
             !plan.SubjectSettings.TryGetValue("isolation.level", out string? subject) ||
