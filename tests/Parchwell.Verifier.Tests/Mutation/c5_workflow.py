@@ -23,7 +23,7 @@ import tempfile
 import c5_projection as projection
 
 
-TARGETS = {'phase': ('Judge/PhaseJudge.cs', 6),
+TARGETS = {'phase': ('Judge/PhaseJudge.cs', 8),
  'publication': ('VerifyRun/Publication/PublicationAcceptance.cs', 7),
  'a01': ('VerifyRun/A01/A01EvidenceRecorder.cs', 2),
  'workload': ('VerifyRun/A01/WorkloadRecorder.cs', 3),
@@ -54,7 +54,7 @@ TARGETS = {'phase': ('Judge/PhaseJudge.cs', 6),
  'verifier-result-codec': ('Common/Results/VerifierResultCodec.cs', 1),
  'phase-candidate-codec': ('Judge/PhaseCandidateCodec.cs', 1),
  'verify-run-handler': ('VerifyRun/VerifyRunHandler.cs', 1)}
-PRIMARY_CUTS = {'phase': (3600, 4517, 5582, 6493, 7173),
+PRIMARY_CUTS = {'phase': (3600, 4517, 5582, 6493, 6495, 6500, 7173),
  'publication': (887, 2532, 3857, 5506, 7129, 8239),
  'a01': (3859,),
  'workload': (1418, 2624),
