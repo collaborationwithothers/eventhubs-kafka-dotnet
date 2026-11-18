@@ -57,6 +57,15 @@ public sealed class LoadGenHostOptions
     public bool? RequireStatisticsEvidence { get; set; }
     public bool? RequireRequestEvidence { get; set; }
 
+    /// <summary>
+    /// Accepts a scenario, phase and configuration when <see cref="ScenarioPhases"/> does, or for C03, whose consumer pair rule
+    /// is local to the load generator: phase C0 or C1 with the configuration of the same name. <see cref="ScenarioPhases"/>
+    /// does not list C03, because every verifier mode that reads it would then accept C03.
+    /// </summary>
+    internal static bool IsAcceptedPair(string? scenarioId, string? phase, string? configurationId) =>
+        ScenarioPhases.TryGetConfiguration(scenarioId, phase, out string? expectedConfiguration) && configurationId == expectedConfiguration ||
+        scenarioId == "C03" && phase is "C0" or "C1" && configurationId == phase;
+
     /// <summary>Validates all required inputs, identities, storage destinations, and finite time limits.</summary>
     public void Validate()
     {
@@ -91,8 +100,7 @@ public sealed class LoadGenHostOptions
         if (!System.Text.RegularExpressions.Regex.IsMatch(RunId, "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
                 System.Text.RegularExpressions.RegexOptions.CultureInvariant) || RunId.Length > 29)
             throw new InvalidOperationException("run_id_must_be_dns_label");
-        bool validPhaseConfiguration = ScenarioPhases.TryGetConfiguration(ScenarioId, Phase, out string? expectedConfiguration) &&
-            ConfigurationId == expectedConfiguration;
+        bool validPhaseConfiguration = IsAcceptedPair(ScenarioId, Phase, ConfigurationId);
         if (!validPhaseConfiguration)
             throw new InvalidOperationException("phase_configuration_pair_invalid");
         if (RepeatNumber is < 1 or > 5) throw new InvalidOperationException("repeat_number_out_of_range");

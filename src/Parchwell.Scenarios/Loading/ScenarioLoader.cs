@@ -44,6 +44,12 @@ public sealed class ScenarioLoader
         var profileSlug = definition.Profile["profiles/".Length..^".yaml".Length];
         var profileNode = await ReadNodeAsync(profilePath, options, cancellationToken).ConfigureAwait(false);
         var profile = ProfileReader.Read(profileNode, profilePath, profileSlug);
+        // The consumer worker takes its processing delay from the profile, so a consumer scenario needs the section.
+        if (definition.ConsumerProcessing is not null && profile.Consumer is null)
+        {
+            throw new ScenarioValidationException([new ScenarioDiagnostic(profilePath, "consumer", "consumer_profile_required",
+                "A scenario with consumer_processing requires a profile with a consumer section.")]);
+        }
         return new LoadedScenario(definition, profile);
     }
 

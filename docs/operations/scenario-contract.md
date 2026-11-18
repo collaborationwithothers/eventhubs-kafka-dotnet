@@ -57,7 +57,7 @@ This is the approved target policy. [C5/#162](https://github.com/collaborationwi
 
 ## Profile schema
 
-Required fields are schema_version, id, seed, tenants, documents_per_burst, payloads and stages. Version is the contract literal 1. The profile id is the filename slug. Seed is a plain signed decimal Int32; other numeric inputs below are positive plain decimal Int32 values. Quoted numbers, booleans, nulls, fractions and overflow are rejected.
+Required fields are schema_version, id, seed, tenants, documents_per_burst, payloads and stages. Version is the contract literal 1. The profile id is the filename slug. Seed is a plain signed decimal Int32; other numeric inputs below are positive plain decimal Int32 values. Quoted numbers, booleans, nulls, fractions and overflow are rejected. An optional `consumer` mapping holds exactly `processing_delay_ms`, a plain decimal integer from 0 to 60000; a scenario with `consumer_processing` requires it.
 
 - tenants is a nonempty list of {id, weight}, with unique identifiers.
 - documents_per_burst is positive.
@@ -70,7 +70,7 @@ The seed, traffic weights, burst size and discrete payload distributions describ
 
 ScenarioResolver receives KafkaConfigurationFactory in its constructor. Resolve(LoadedScenario) invokes only declared roles' existing factory methods. It returns immutable string settings, baseline metadata and omissions. It does not mutate or expose the mutable native baseline configuration. Each replacement additionally records scenario/configuration identity and source location; baseline metadata continues to describe initial emission.
 
-Legacy LoadGenProducer replacements support request.timeout.ms and socket.timeout.ms (A01), and max.in.flight and the boolean enable.idempotence (B04). Ledger-run LoadGenProducer replacements support acks from -1 to 1000 (B06) and linger.ms from 0 to 900000 (B07). librdkafka types linger.ms as a float; admitting whole milliseconds only is repository policy. A numeric baseline may carry a leading sign, as the acks baseline -1 does, and must still be a 32-bit integer. [Single-action declarations](#single-action-declarations) and [Idle observation declarations](#idle-observation-declarations) define the additional keys, activation and omission cases. Integers must be plain decimals within the pinned native ranges; booleans must be the plain literals true or false. Every replacement must differ from the baseline. Reject other keys, aliases and wrong roles. Empty configurations remain valid. Do not impose timeout-ordering constraints. Sources: [request timeout](https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_conf.c#L1797-L1802), [socket timeout](https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_conf.c#L576-L585), [merged baseline contract](kafka-baseline.md), [acks and linger.ms](https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md).
+Legacy LoadGenProducer replacements support request.timeout.ms and socket.timeout.ms (A01), and max.in.flight and the boolean enable.idempotence (B04). Ledger-run LoadGenProducer replacements support acks from -1 to 1000 (B06) and linger.ms from 0 to 900000 (B07). librdkafka types linger.ms as a float; admitting whole milliseconds only is repository policy. A numeric baseline may carry a leading sign, as the acks baseline -1 does, and must still be a 32-bit integer. [Single-action declarations](#single-action-declarations) and [Idle observation declarations](#idle-observation-declarations) define the additional keys, activation and omission cases. Integers must be plain decimals within the pinned native ranges; booleans must be the plain literals true or false. Every replacement must differ from the baseline. Reject other keys, aliases and wrong roles. Empty configurations remain valid. Do not impose timeout-ordering constraints. Sources: [request timeout](https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_conf.c#L1797-L1802), [socket timeout](https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_conf.c#L576-L585), [merged baseline contract](kafka-baseline.md), [acks and linger.ms](https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md). EnrichmentConsumer replacements also support `max.poll.interval.ms` from 1 to 86400000 (C03).
 
 Workers consume the resolved scenario/profile and effective Kafka configuration in-process under [ADR-014](../blueprint.md#adr-014-scenarios-are-a-definition-file-and-an-expected-outcome-file-per-item-workers-resolve-deployment-settings-in-process) and [ADR-020](../blueprint.md#adr-020-the-workflow-owns-the-infrastructure-lifecycle-no-net-code-orchestrates). There is no values-generator program or generated comparison contract in the target design. The chart's interface is the identifier, infrastructure, image and bounds interface fixed by the [#138 item plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/138#issuecomment-6383206899). C7 removes the obsolete generator implementation. expected.yaml is never a resolver input.
 
@@ -143,3 +143,33 @@ The override policy admits, for `LoadGenProducer` only, boolean `socket.keepaliv
 The baseline sets `topic.metadata.refresh.interval.ms` explicitly to the librdkafka default `300000` for every role, tagged A03. Microsoft's librdkafka configuration table does not list it, so ADR-015 selects the pinned native default, and the resolver can replace only an emitted or omitted baseline key ([Composition and output](#composition-and-output)).
 
 The action is a produce because librdkafka v2.16.0 builds a Produce request only when a partition's transmit queue holds messages ([rdkafka_broker.c](https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_broker.c#L4446-L4448)), and polling serves callbacks only ([rdkafka.c](https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka.c#L6147-L6154)). The client still sends its own requests while idle, such as the periodic Metadata refresh ([rdkafka.c](https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka.c#L2458-L2461)). `expected.yaml` remains assessment-only and is not added here.
+
+## Consumer processing declarations
+
+C03 uses the closed `consumer_processing` declaration, under the [#499 decisions](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894564479) and the [#508 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6943430187). The experiment is two consumer members in one group, a subject and a witness. The subject has one slow message, and the declaration says how long it takes and whether the subject keeps calling `Consume` while it processes it.
+
+`consumer_processing` contains exactly `window_ms`, `completion_deadline_ms` and `configurations`. `configurations` has one entry per configuration of the scenario, and each entry is a mapping with exactly `slow_message`, a mapping with exactly `ordinal`, `duration_ms` and `mode`. The values are configuration literals, not measurements:
+
+| Field | C03 value |
+|---|---|
+| `window_ms` | `360000` |
+| `completion_deadline_ms` | `30000` |
+| `slow_message.ordinal`, both configurations | `100` |
+| `slow_message.duration_ms`, both configurations | `90000` |
+| `slow_message.mode`, C0 | `inline`: no `Consume` call during the slow message |
+| `slow_message.mode`, C1 | `pause`: all partitions paused, `Consume` still called |
+
+In a consumer scenario, the `EnrichmentConsumer` replacements of a configuration apply to the subject member only. The witness runs the `EnrichmentConsumer` baseline. C03 replaces `max.poll.interval.ms` with `60000` in both configurations.
+
+The loader's checks are a closed list. Each failure is a diagnostic with the code and field path given:
+
+1. Admission: only C03 may declare `consumer_processing` (`consumer_processing_unexpected`), and it must (`consumer_processing_required`). Both are at path `consumer_processing`.
+2. Exclusivity: `consumer_processing` cannot appear with `single_action`, `probe_v2` or `idle_observation` (`consumer_processing_combined`).
+3. Shape: a mapping with exactly the three fields above (`consumer_processing_shape`).
+4. Window and deadline: the plain scalars `360000` and `30000` (`consumer_processing_literal`, paths `consumer_processing.window_ms` and `consumer_processing.completion_deadline_ms`).
+5. Configuration set: exactly the scenario's configuration keys (`consumer_processing_configurations`, path `consumer_processing.configurations`).
+6. Entry shape: each entry has exactly `slow_message` with exactly `ordinal`, `duration_ms` and `mode` (`consumer_processing_shape`, path `consumer_processing.configurations.<id>`).
+7. Slow message literals: ordinal `100`, duration `90000`, and mode `inline` for C0 and `pause` for C1 (`consumer_processing_literal`, path `consumer_processing.configurations.<id>.slow_message.<field>`).
+8. Fixed experiment: five repeats; no fault; no gate; roles `LoadGenProducer`, `EnrichmentConsumer`, `VerifierConsumer` in that order; the eight measures of `scenarios/C03/scenario.yaml`; and each configuration's replacements exactly `EnrichmentConsumer` `max.poll.interval.ms: 60000` (`consumer_processing_experiment`).
+
+A profile used by a scenario with `consumer_processing` must have a `consumer` mapping, otherwise loading fails with `consumer_profile_required` at the profile. A bad `consumer` mapping fails with `profile_consumer_shape` or `profile_consumer_range`.

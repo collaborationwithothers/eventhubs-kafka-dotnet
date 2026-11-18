@@ -24,7 +24,7 @@ public sealed class MalformedRecordPublicationTests
     [InlineData("000001\\.jsonl")]
     public async Task Given_UnsafeListedRecord_U4_When_Verified_Then_PublishesInvalidResultAndReceipt(string file)
     {
-        using var host = new HostEvidenceBuilder(scenarioId: "C03", phase: "C0", scenarioSourceId: "A01");
+        using var host = new HostEvidenceBuilder(scenarioId: "C03", phase: "C0");
         _ = host.Verify();
         VerifierHostOptions options = host.Options;
         var records = new ConsumerWireFixture();

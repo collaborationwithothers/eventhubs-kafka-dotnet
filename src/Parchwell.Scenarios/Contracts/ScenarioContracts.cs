@@ -138,7 +138,8 @@ public sealed record ScenarioDefinition(int SchemaVersion, string Id, string Bas
     ImmutableArray<KafkaClientRole> Roles, string Profile,
     ImmutableDictionary<string, ScenarioConfiguration> Configurations, FaultDefinition Fault,
     int Repeats, ScenarioGate Gate, ImmutableArray<MeasurementRequest> Measures, SourceLocation Source,
-    SingleActionDefinition? SingleAction = null, ProbeV2Definition? ProbeV2 = null, IdleObservationDefinition? IdleObservation = null);
+    SingleActionDefinition? SingleAction = null, ProbeV2Definition? ProbeV2 = null, IdleObservationDefinition? IdleObservation = null,
+    ConsumerProcessingDefinition? ConsumerProcessing = null);
 
 /// <summary>The validated second-batch probe rows; owning checks are in scenario-contract.md.</summary>
 public sealed record ProbeV2Definition(ImmutableDictionary<string, ProbeV2Configuration> Configurations);
@@ -149,6 +150,12 @@ public sealed record ProbeV2Configuration(string Action, KafkaClientRole Role, s
 
 /// <summary>The validated idle-observation declaration of A02, A03 or A04, with its fixed timing literals; owning checks are in scenario-contract.md, "Idle observation declarations".</summary>
 public sealed record IdleObservationDefinition(string Action, KafkaClientRole Role, int IdleSeconds, int StatisticsIntervalMs, int MaxStatisticsReports);
+
+/// <summary>The validated consumer-processing declaration of C03, with its fixed literals; owning checks are in scenario-contract.md, "Consumer processing declarations".</summary>
+public sealed record ConsumerProcessingDefinition(int WindowMs, int CompletionDeadlineMs, ImmutableDictionary<string, ConsumerSlowMessageDeclaration> Configurations);
+
+/// <summary>The one slow message of a configuration: its ordinal in the subject's processing order, how long it takes, and whether the subject keeps calling Consume (<c>pause</c>) or not (<c>inline</c>).</summary>
+public sealed record ConsumerSlowMessageDeclaration(int Ordinal, int DurationMs, string Mode);
 
 /// <summary>The validated fixed single-action rows; owning checks are in scenario-contract.md.</summary>
 public sealed record SingleActionDefinition(ImmutableDictionary<string, SingleActionConfiguration> Configurations);
@@ -184,7 +191,10 @@ public sealed record LoadStage(string Id, int OfferedAttemptsPerSecond, int Dura
 public sealed record WorkloadProfile(int SchemaVersion, string Id, int Seed,
     ImmutableArray<TenantWeight> Tenants, int DocumentsPerBurst,
     ImmutableDictionary<string, ImmutableArray<PayloadBucket>> Payloads,
-    ImmutableArray<LoadStage> Stages, SourceLocation Source);
+    ImmutableArray<LoadStage> Stages, SourceLocation Source, ConsumerProfile? Consumer = null);
+
+/// <summary>The optional consumer section of a workload profile: how long a consumer takes to process each message, in milliseconds.</summary>
+public sealed record ConsumerProfile(int ProcessingDelayMs);
 
 /// <summary>
 /// A scenario definition and its profile, both fully validated. The constructor is internal and only

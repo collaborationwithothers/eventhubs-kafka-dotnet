@@ -33,6 +33,8 @@ public sealed class HostOptionsTests
     public async Task Given_ConsumerPlanBoundary_U15_When_Starting_Then_RejectsInvalidPlanBeforeClients(string input, bool valid)
     {
         VerifierHostOptions options = ConsumerOptions();
+        // The production source now serves C03, so the case with no usable source uses C10, which it rejects (standing fixture rule (a)).
+        if (input == "no-source") options.ScenarioId = "C10";
         ConsumerVerificationPlan plan = Plan();
         switch (input)
         {
@@ -149,6 +151,29 @@ public sealed class HostOptionsTests
             Assert.NotNull(host.Services.GetRequiredService<ConsumerVerificationPlan>());
         }
         else Assert.Equal(1, await Program.RunAsync(Arguments(options), Configure));
+        Assert.Equal(0, constructed);
+    }
+
+    [Theory]
+    [InlineData("C10", "C0")]
+    [InlineData("C01", "C1")]
+    public async Task Given_C10_or_C01_with_no_registered_plan_source_When_starting_Then_the_production_source_fails_with_consumer_plan_invalid(string scenario, string phase)
+    {
+        VerifierHostOptions options = ConsumerOptions();
+        options.ScenarioId = scenario; options.Phase = phase; options.ConfigurationId = phase;
+        string lower = phase.ToLowerInvariant();
+        options.JobName = $"run-1-{lower}-r1-verify";
+        options.ExpectedInstanceId = $"run-1-{lower}-r1-loadgen";
+        options.RepeatPrefix = $"run-1/{phase}/r1/";
+        options.PhasePrefix = $"run-1/{phase}/";
+        options.ArtifactPrefix = $"run-1/{phase}/r1/producer/";
+        options.StartLineInputName = $"run-1/{phase}/r1/start-line.json";
+        options.ResultOutputName = $"run-1/{phase}/r1/result.json";
+        var constructed = 0;
+        void Configure(IServiceCollection services) => GuardClients(services, () => constructed++);
+        OptionsValidationException failure = Assert.Throws<OptionsValidationException>(() => Program.BuildHost(Arguments(options), Configure));
+        Assert.Contains("consumer_plan_invalid", failure.Failures);
+        Assert.Equal(1, await Program.RunAsync(Arguments(options), Configure));
         Assert.Equal(0, constructed);
     }
 
