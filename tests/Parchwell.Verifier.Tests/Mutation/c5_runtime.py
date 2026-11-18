@@ -1705,14 +1705,16 @@ def sample_plan(target, rows, source, selected_ids):
             f'{target}{{{length}..{workflow.SPAN_END}}}',
             *(f'!{target}{{{low}..{high}}}' for low, high in negative)]
     isolated = []
-    if static:
-        # Status normalization is a derived planning view, never a rewritten report.
-        planning = [dict(row, status=workflow.FILTERED[0], statusReason=workflow.FILTERED[1])
-                    if row['status'] != 'CompileError' else dict(row) for row in rows]
-        isolated = [item for item in workflow.isolation_plan(planning, source, regions)
-                    if item['mutant_id'] in static]
-        if {item['mutant_id'] for item in isolated} != static:
-            raise ValueError('selected static mutant has no isolated plan')
+    for identifier in sorted(static, key=int):
+        start, end = nodes[identifier]
+        others = [row for row in rows if row['id'] != identifier]
+        if any(nodes[row['id']] == (start, end) and row['status'] != 'CompileError' for row in others):
+            raise ValueError(f'mutant {identifier} shares its span with another testable mutant')
+        inner = sorted({nodes[row['id']] for row in others
+                        if start <= nodes[row['id']][0] and nodes[row['id']][1] <= end
+                        and nodes[row['id']] != (start, end)})
+        isolated.append({'mutant_id': identifier, 'span': [start, end],
+                         'exclusions': [list(node) for node in inner]})
     return {'main_ids': main, 'main_config': config, 'isolated': isolated}
 
 

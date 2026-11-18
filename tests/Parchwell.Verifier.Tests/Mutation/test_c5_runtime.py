@@ -2678,6 +2678,36 @@ class SparseSamplePlanningTests(unittest.TestCase):
         self.assertEqual(['1', '2'], [entry['mutant_id'] for entry in plan['isolated']])
         self.assertEqual(before, rows)
 
+    def test_unselected_static_peers_do_not_block_selected_static_mutant(self):
+        source = b'namespace N;\nclass C {\n    static readonly int A = 1;\n    static readonly int B = 2;\n}\n'
+        for peer_line in (3, 4):
+            with self.subTest(peer_line=peer_line):
+                rows = [self.row(1, 5, 20, line=3, static=True),
+                        self.row(2, 8, 10, line=peer_line, static=True, replacement='x'),
+                        self.row(3, 8, 10, line=peer_line, static=True, replacement='y')]
+                before = copy.deepcopy(rows)
+                plan = runtime.sample_plan(self.TARGET, rows, source, ['1'])
+                text = runtime.workflow.target_text(source)
+                starts = runtime.workflow.line_starts(text)
+                length = runtime.workflow.utf16_length(text)
+                span = list(runtime.workflow.node_span(rows[0], starts, length))
+                exclusions = ([list(runtime.workflow.node_span(rows[1], starts, length))]
+                              if peer_line == 3 else [])
+                self.assertEqual([], plan['main_ids'])
+                self.assertIsNone(plan['main_config'])
+                self.assertEqual([{'mutant_id': '1', 'span': span, 'exclusions': exclusions}],
+                                 plan['isolated'])
+                self.assertEqual(before, rows)
+
+    def test_selected_static_mutant_with_unselected_same_span_peer_fails_closed(self):
+        source = b'namespace N;\nclass C {\n    static readonly int A = 1;\n}\n'
+        rows = [self.row(1, 5, 6, line=3, static=True, replacement='x'),
+                self.row(2, 5, 6, line=3, static=True, replacement='y')]
+        before = copy.deepcopy(rows)
+        with self.assertRaisesRegex(ValueError, 'shares its span'):
+            runtime.sample_plan(self.TARGET, rows, source, ['1'])
+        self.assertEqual(before, rows)
+
 
 class SparseSampleBindingTests(unittest.TestCase):
     def setUp(self):
