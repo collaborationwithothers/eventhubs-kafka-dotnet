@@ -23,10 +23,6 @@ jobs:
             target: Judge/PhaseJudge.cs
           - shard: phase-p4
             target: Judge/PhaseJudge.cs
-          - shard: phase-p5
-            target: Judge/PhaseJudge.cs
-          - shard: phase-p6
-            target: Judge/PhaseJudge.cs
           - shard: phase-crossing
             target: Judge/PhaseJudge.cs
           - shard: publication-p1
@@ -287,8 +283,6 @@ jobs:
             target: Judge/B10SweepChecks.cs
           - shard: b10-sweep-judge-p2
             target: Judge/B10SweepChecks.cs
-          - shard: b10-sweep-judge-p3
-            target: Judge/B10SweepChecks.cs
           - shard: b10-sweep-judge-crossing
             target: Judge/B10SweepChecks.cs
           - shard: b10-sweep-codec-p1
@@ -302,12 +296,6 @@ jobs:
           - shard: b10-sweep-codec-p5
             target: Common/Phase/B10SweepEvidenceCodec.cs
           - shard: b10-sweep-codec-p6
-            target: Common/Phase/B10SweepEvidenceCodec.cs
-          - shard: b10-sweep-codec-p7
-            target: Common/Phase/B10SweepEvidenceCodec.cs
-          - shard: b10-sweep-codec-p8
-            target: Common/Phase/B10SweepEvidenceCodec.cs
-          - shard: b10-sweep-codec-p9
             target: Common/Phase/B10SweepEvidenceCodec.cs
           - shard: b10-sweep-codec-crossing
             target: Common/Phase/B10SweepEvidenceCodec.cs
@@ -343,34 +331,6 @@ jobs:
             target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
           - shard: b10-final-repeat-evidence-p11
             target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
-          - shard: b10-final-repeat-evidence-p12
-            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
-          - shard: b10-final-repeat-evidence-p13
-            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
-          - shard: b10-final-repeat-evidence-p14
-            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
-          - shard: b10-final-repeat-evidence-p15
-            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
-          - shard: b10-final-repeat-evidence-p16
-            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
-          - shard: b10-final-repeat-evidence-p17
-            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
-          - shard: b10-final-repeat-evidence-p18
-            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
-          - shard: b10-final-repeat-evidence-p19
-            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
-          - shard: b10-final-repeat-evidence-p20
-            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
-          - shard: b10-final-repeat-evidence-p21
-            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
-          - shard: b10-final-repeat-evidence-p22
-            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
-          - shard: b10-final-repeat-evidence-p23
-            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
-          - shard: b10-final-repeat-evidence-p24
-            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
-          - shard: b10-final-repeat-evidence-p25
-            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
           - shard: b10-final-repeat-evidence-crossing
             target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
           - shard: b10-final-classification-p1
@@ -386,36 +346,6 @@ jobs:
           - shard: b10-final-classification-p6
             target: VerifyRun/B10Final/B10FinalClassification.cs
           - shard: b10-final-classification-p7
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-          - shard: b10-final-classification-p8
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-          - shard: b10-final-classification-p9
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-          - shard: b10-final-classification-p10
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-          - shard: b10-final-classification-p11
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-          - shard: b10-final-classification-p12
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-          - shard: b10-final-classification-p13
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-          - shard: b10-final-classification-p14
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-          - shard: b10-final-classification-p15
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-          - shard: b10-final-classification-p16
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-          - shard: b10-final-classification-p17
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-          - shard: b10-final-classification-p18
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-          - shard: b10-final-classification-p19
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-          - shard: b10-final-classification-p20
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-          - shard: b10-final-classification-p21
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-          - shard: b10-final-classification-p22
             target: VerifyRun/B10Final/B10FinalClassification.cs
           - shard: b10-final-classification-crossing
             target: VerifyRun/B10Final/B10FinalClassification.cs
@@ -446,20 +376,6 @@ jobs:
           - shard: b10-final-projection-codec-p9
             target: Common/Phase/B10FinalProjectionCodec.cs
           - shard: b10-final-projection-codec-p10
-            target: Common/Phase/B10FinalProjectionCodec.cs
-          - shard: b10-final-projection-codec-p11
-            target: Common/Phase/B10FinalProjectionCodec.cs
-          - shard: b10-final-projection-codec-p12
-            target: Common/Phase/B10FinalProjectionCodec.cs
-          - shard: b10-final-projection-codec-p13
-            target: Common/Phase/B10FinalProjectionCodec.cs
-          - shard: b10-final-projection-codec-p14
-            target: Common/Phase/B10FinalProjectionCodec.cs
-          - shard: b10-final-projection-codec-p15
-            target: Common/Phase/B10FinalProjectionCodec.cs
-          - shard: b10-final-projection-codec-p16
-            target: Common/Phase/B10FinalProjectionCodec.cs
-          - shard: b10-final-projection-codec-p17
             target: Common/Phase/B10FinalProjectionCodec.cs
           - shard: b10-final-projection-codec-crossing
             target: Common/Phase/B10FinalProjectionCodec.cs
@@ -513,20 +429,104 @@ jobs:
             target: Judge/B10FinalJudge.cs
           - shard: b10-final-judge-p7
             target: Judge/B10FinalJudge.cs
-          - shard: b10-final-judge-p8
-            target: Judge/B10FinalJudge.cs
-          - shard: b10-final-judge-p9
-            target: Judge/B10FinalJudge.cs
-          - shard: b10-final-judge-p10
-            target: Judge/B10FinalJudge.cs
-          - shard: b10-final-judge-p11
-            target: Judge/B10FinalJudge.cs
-          - shard: b10-final-judge-p12
-            target: Judge/B10FinalJudge.cs
-          - shard: b10-final-judge-p13
-            target: Judge/B10FinalJudge.cs
           - shard: b10-final-judge-crossing
             target: Judge/B10FinalJudge.cs
+          - shard: duplicate-breakdown
+            target: Common/Results/DuplicateBreakdown.cs
+          - shard: duplicate-classifier
+            target: VerifyRun/Judgement/DuplicateClassifier.cs
+          - shard: outcome-classifier
+            target: VerifyRun/Judgement/OutcomeClassifier.cs
+          - shard: abrupt-classification-p1
+            target: VerifyRun/Abrupt/AbruptClassification.cs
+          - shard: abrupt-classification-p2
+            target: VerifyRun/Abrupt/AbruptClassification.cs
+          - shard: abrupt-classification-p3
+            target: VerifyRun/Abrupt/AbruptClassification.cs
+          - shard: abrupt-classification-crossing
+            target: VerifyRun/Abrupt/AbruptClassification.cs
+          - shard: verifier-result-codec-p1
+            target: Common/Results/VerifierResultCodec.cs
+          - shard: verifier-result-codec-p2
+            target: Common/Results/VerifierResultCodec.cs
+          - shard: verifier-result-codec-p3
+            target: Common/Results/VerifierResultCodec.cs
+          - shard: verifier-result-codec-p4
+            target: Common/Results/VerifierResultCodec.cs
+          - shard: verifier-result-codec-p5
+            target: Common/Results/VerifierResultCodec.cs
+          - shard: verifier-result-codec-p6
+            target: Common/Results/VerifierResultCodec.cs
+          - shard: verifier-result-codec-p7
+            target: Common/Results/VerifierResultCodec.cs
+          - shard: verifier-result-codec-p8
+            target: Common/Results/VerifierResultCodec.cs
+          - shard: verifier-result-codec-p9
+            target: Common/Results/VerifierResultCodec.cs
+          - shard: verifier-result-codec-p10
+            target: Common/Results/VerifierResultCodec.cs
+          - shard: verifier-result-codec-p11
+            target: Common/Results/VerifierResultCodec.cs
+          - shard: verifier-result-codec-p12
+            target: Common/Results/VerifierResultCodec.cs
+          - shard: verifier-result-codec-p13
+            target: Common/Results/VerifierResultCodec.cs
+          - shard: verifier-result-codec-p14
+            target: Common/Results/VerifierResultCodec.cs
+          - shard: verifier-result-codec-p15
+            target: Common/Results/VerifierResultCodec.cs
+          - shard: verifier-result-codec-p16
+            target: Common/Results/VerifierResultCodec.cs
+          - shard: verifier-result-codec-crossing
+            target: Common/Results/VerifierResultCodec.cs
+          - shard: phase-candidate-codec-p1
+            target: Judge/PhaseCandidateCodec.cs
+          - shard: phase-candidate-codec-p2
+            target: Judge/PhaseCandidateCodec.cs
+          - shard: phase-candidate-codec-p3
+            target: Judge/PhaseCandidateCodec.cs
+          - shard: phase-candidate-codec-p4
+            target: Judge/PhaseCandidateCodec.cs
+          - shard: phase-candidate-codec-p5
+            target: Judge/PhaseCandidateCodec.cs
+          - shard: phase-candidate-codec-p6
+            target: Judge/PhaseCandidateCodec.cs
+          - shard: phase-candidate-codec-p7
+            target: Judge/PhaseCandidateCodec.cs
+          - shard: phase-candidate-codec-p8
+            target: Judge/PhaseCandidateCodec.cs
+          - shard: phase-candidate-codec-p9
+            target: Judge/PhaseCandidateCodec.cs
+          - shard: phase-candidate-codec-p10
+            target: Judge/PhaseCandidateCodec.cs
+          - shard: phase-candidate-codec-p11
+            target: Judge/PhaseCandidateCodec.cs
+          - shard: phase-candidate-codec-p12
+            target: Judge/PhaseCandidateCodec.cs
+          - shard: phase-candidate-codec-p13
+            target: Judge/PhaseCandidateCodec.cs
+          - shard: phase-candidate-codec-p14
+            target: Judge/PhaseCandidateCodec.cs
+          - shard: phase-candidate-codec-p15
+            target: Judge/PhaseCandidateCodec.cs
+          - shard: phase-candidate-codec-p16
+            target: Judge/PhaseCandidateCodec.cs
+          - shard: phase-candidate-codec-p17
+            target: Judge/PhaseCandidateCodec.cs
+          - shard: phase-candidate-codec-crossing
+            target: Judge/PhaseCandidateCodec.cs
+          - shard: verify-run-handler-p1
+            target: VerifyRun/VerifyRunHandler.cs
+          - shard: verify-run-handler-p2
+            target: VerifyRun/VerifyRunHandler.cs
+          - shard: verify-run-handler-p3
+            target: VerifyRun/VerifyRunHandler.cs
+          - shard: verify-run-handler-p4
+            target: VerifyRun/VerifyRunHandler.cs
+          - shard: verify-run-handler-p5
+            target: VerifyRun/VerifyRunHandler.cs
+          - shard: verify-run-handler-crossing
+            target: VerifyRun/VerifyRunHandler.cs
     env:
       C5_OUTPUT: ${{ github.workspace }}/.artifacts/c5-mutation/${{ matrix.shard }}
     steps:

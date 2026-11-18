@@ -20,6 +20,39 @@ namespace Parchwell.Verifier.Tests.Judge;
 public sealed class B10FinalJudgeTests
 {
     [Fact]
+    public async Task Given_BoundAbruptObservation_When_Judged_Then_AcceptsItAndPublishesFinalObservation()
+    {
+        var fixture = new B10FinalJudgeFixture("C1");
+        fixture.Repeats[0] = fixture.Repeats[0] with { Timeout = new(1, 0, 0, 0, 4, 0), DuplicateBreakdown = new(3, 1) };
+        fixture.Publish();
+        string source = fixture.SourceName(1);
+        fixture.Mutate(source, node => node["data"]!["duplicate_breakdown"] = new JsonObject
+        {
+            ["duplicate_same_attempt"] = 0,
+            ["duplicate_different_attempt"] = 0
+        });
+        ArtifactReference reference = B10FinalJudgeFixture.Reference(source, fixture.Verifier[source]);
+        fixture.Mutate(fixture.SourceReceiptName(1), node =>
+        {
+            node["artifacts"]![0]!["length"] = reference.Length;
+            node["artifacts"]![0]!["sha256"] = reference.Sha256;
+        });
+        fixture.Repeats[0] = fixture.Repeats[0] with { Source = reference };
+        fixture.PublishProjection();
+
+        using JsonDocument candidate = await fixture.JudgeAsync(false);
+        Assert.Equal("complete_valid", candidate.RootElement.GetProperty("status").GetString());
+        JsonElement checks = candidate.RootElement.GetProperty("repeats")[0].GetProperty("checks");
+        Assert.True(checks.GetProperty("j2_publication_unaccepted").GetBoolean());
+        Assert.True(checks.GetProperty("j3_verifier_receipt").GetBoolean());
+        JsonElement repeat = candidate.RootElement.GetProperty("b10_final").GetProperty("repeats")[0];
+        Assert.Equal(4, repeat.GetProperty("timeout").GetProperty("duplicate").GetInt64());
+        Assert.Equal(3, repeat.GetProperty("duplicate_breakdown").GetProperty("duplicate_same_attempt").GetInt64());
+        Assert.Equal(1, repeat.GetProperty("duplicate_breakdown").GetProperty("duplicate_different_attempt").GetInt64());
+        Assert.Equal("eligible", repeat.GetProperty("restart").GetProperty("eligibility").GetString());
+    }
+
+    [Fact]
     public async Task Given_FinalTimeoutObservations_When_Judged_Then_MirrorsAndSumsThem()
     {
         var fixture = new B10FinalJudgeFixture("C0");
