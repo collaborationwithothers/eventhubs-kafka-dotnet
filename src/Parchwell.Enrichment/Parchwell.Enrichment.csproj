@@ -8,10 +8,15 @@
     <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:10.0.13-noble@sha256:8af87eba5e7cdafb1514d7388be287365da97c132509e84dfe252ffd552398ca</ContainerBaseImage>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="../../scenarios/C03/scenario.yaml" Link="scenarios/C03/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../scenarios/profiles/c03-consumer.yaml" Link="scenarios/profiles/c03-consumer.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="Confluent.Kafka" />
     <PackageReference Include="Azure.Storage.Blobs" />
     <PackageReference Include="Azure.Core" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <ProjectReference Include="../Parchwell.Kafka/Parchwell.Kafka.csproj" />
+    <ProjectReference Include="../Parchwell.Scenarios/Parchwell.Scenarios.csproj" />
   </ItemGroup>
 </Project>

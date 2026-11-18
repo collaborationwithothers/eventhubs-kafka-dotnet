@@ -20,6 +20,7 @@ using Parchwell.Verifier.VerifyRun.Storage;
 using Parchwell.Verifier.VerifyRun.Configuration;
 using Parchwell.Verifier.Judge;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -290,6 +291,12 @@ internal static partial class Program
     {
         if(configuration["Verifier:Mode"] != "consumer-verify") return;
         var options=new VerifierHostOptions();new VerifierHostOptionsSetup(configuration).Configure(options);
+        // TryAdd, after configureForTests ran, so a registration made by a test wins.
+        services.TryAddSingleton<IConsumerVerificationPlanSource>(_=>
+        {
+            var loadOptions=new ScenarioLoadOptions();configuration.GetSection("Verifier:ScenarioLoadOptions").Bind(loadOptions);
+            return new ScenarioConsumerVerificationPlanSource(options,loadOptions,AppContext.BaseDirectory);
+        });
         using ServiceProvider validation=services.BuildServiceProvider();
         IConsumerVerificationPlanSource? source=validation.GetService<IConsumerVerificationPlanSource>();
         ConsumerVerificationPlan? plan=null;
