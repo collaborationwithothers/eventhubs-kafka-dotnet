@@ -1663,6 +1663,259 @@ def bounded_probe(target, span, output_dir, tally_path, timeout=600, launcher=wo
     return launcher(target, span, output, timeout=timeout, repository=ROOT)
 
 
+def sample_plan(target, rows, source, selected_ids):
+    """Derive an exact sparse diagnostic selector; never change production ownership."""
+    if (not isinstance(selected_ids, list) or not selected_ids
+            or any(not isinstance(item, str) for item in selected_ids)
+            or len(selected_ids) != len(set(selected_ids))):
+        raise ValueError('selection must be a nonempty list of unique reference IDs')
+    by_id = {row['id']: row for row in rows}
+    if len(by_id) != len(rows) or not set(selected_ids) <= by_id.keys():
+        raise ValueError('unknown or duplicate inventory ID')
+    if any(by_id[item]['status'] == 'CompileError' for item in selected_ids):
+        raise ValueError('cannot select a compile-error mutant')
+    text = workflow.target_text(source)
+    starts, length = workflow.line_starts(text), workflow.utf16_length(text)
+    nodes = {identifier: workflow.node_span(row, starts, length) for identifier, row in by_id.items()}
+    regions = workflow.static_regions(text)
+    static = {identifier for identifier in selected_ids
+              if any(low <= nodes[identifier][0] and nodes[identifier][1] <= high for low, high in regions)}
+    for identifier in set(selected_ids) - static:
+        low, high = nodes[identifier]
+        if (by_id[identifier].get('static') is True
+                or any(low < end and start < high for start, end in regions)):
+            raise ValueError('selected node needs unsupported static isolation')
+    main = [identifier for identifier in selected_ids if identifier not in static]
+    config = None
+    if main:
+        positive = sorted({nodes[identifier] for identifier in main})
+        negative = sorted({span for identifier, span in nodes.items()
+                           if identifier not in main and any(low <= span[0] and span[1] <= high
+                                                            for low, high in positive)})
+        actual = {identifier for identifier, span in nodes.items()
+                  if any(low <= span[0] and span[1] <= high for low, high in positive)
+                  and not any(low <= span[0] and span[1] <= high for low, high in negative)}
+        if actual != set(main):
+            raise ValueError('requested sparse selection cannot be expressed safely by node spans')
+        config = workflow.copy.deepcopy(workflow.BASE_CONFIG)
+        # Retain a reporting-only suffix, just as production crossing selectors do.
+        # A real node has start < end <= length, so this cannot select another mutant.
+        config['stryker-config']['mutate'] = [
+            *(f'{target}{{{low}..{high}}}' for low, high in positive),
+            f'{target}{{{length}..{workflow.SPAN_END}}}',
+            *(f'!{target}{{{low}..{high}}}' for low, high in negative)]
+    isolated = []
+    if static:
+        # Status normalization is a derived planning view, never a rewritten report.
+        planning = [dict(row, status=workflow.FILTERED[0], statusReason=workflow.FILTERED[1])
+                    if row['status'] != 'CompileError' else dict(row) for row in rows]
+        isolated = [item for item in workflow.isolation_plan(planning, source, regions)
+                    if item['mutant_id'] in static]
+        if {item['mutant_id'] for item in isolated} != static:
+            raise ValueError('selected static mutant has no isolated plan')
+    return {'main_ids': main, 'main_config': config, 'isolated': isolated}
+
+
+def sample_bindings(reference_rows, actual_rows, selected_ids):
+    """Validate the untouched full inventory and bind selected identities to native IDs."""
+    def inventory(rows):
+        mapping = {workflow.identity_json(row): row for row in rows}
+        if len(mapping) != len(rows) or len({row['id'] for row in rows}) != len(rows):
+            raise ValueError('duplicate native identity or ID')
+        return mapping
+    reference, actual = inventory(reference_rows), inventory(actual_rows)
+    if reference.keys() != actual.keys():
+        raise ValueError('native identity inventory differs from reference')
+    wanted = set(selected_ids)
+    if not wanted or not wanted <= {row['id'] for row in reference_rows}:
+        raise ValueError('unknown or empty reference selection')
+    binding = {}
+    for identity, original in reference.items():
+        row = actual[identity]
+        if original['id'] in wanted:
+            if row['status'] not in workflow.TESTED:
+                raise ValueError('selected mutant was not tested')
+            binding[original['id']] = row['id']
+        elif ((row['status'], row.get('statusReason')) != workflow.FILTERED
+              and row['status'] != 'CompileError'):
+            raise ValueError('unselected mutant was executed or not filtered')
+    return binding
+
+
+def local_sample(target, inventory_path, inventory_source_commit, selection_path,
+                 output_dir, timeout, repository=ROOT):
+    """Collect sparse observations and fresh static invocations; never qualification."""
+    started = time.monotonic()
+    started_at_utc = workflow.utc_now()
+    if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0 < timeout <= 16200:
+        raise ValueError('timeout must be positive and at most 16200 seconds')
+    deadline = started + timeout
+    repository, output = Path(repository).resolve(), Path(output_dir).resolve()
+    if target not in {path for path, _ in workflow.TARGETS.values()}:
+        raise ValueError('unknown configured target')
+    if (not isinstance(inventory_source_commit, str)
+            or not re.fullmatch(r'[0-9a-f]{40}', inventory_source_commit)):
+        raise ValueError('invalid inventory source commit')
+    if output == repository or repository in output.parents or output.exists():
+        raise ValueError('output must be a nonexistent directory outside the repository')
+    ancestor = output.parent
+    while not ancestor.exists():
+        ancestor = ancestor.parent
+    inside = subprocess.run(['git', '-C', str(ancestor), 'rev-parse', '--is-inside-work-tree'],
+                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False)
+    if inside.returncode == 0 and inside.stdout.strip() == b'true':
+        raise ValueError('output must be outside Git worktrees')
+    commit, tree, clean = workflow.identity(repository)
+    if not clean:
+        raise ValueError('local sample requires a clean tracked checkout')
+    for module in (sys.modules[__name__], workflow, workflow.projection):
+        path = Path(module.__file__).resolve()
+        try:
+            relative = path.relative_to(repository).as_posix()
+        except ValueError as error:
+            raise ValueError('helper is outside the requested checkout') from error
+        if path.read_bytes() != workflow.git(repository, 'show', f'{commit}:{relative}'):
+            raise ValueError('executing helper differs from committed source')
+    if json.loads((repository / workflow.CONFIG_PATH).read_text()) != workflow.BASE_CONFIG:
+        raise ValueError('unexpected committed C5 configuration')
+    source = workflow.git(repository, 'show', f'{commit}:src/Parchwell.Verifier/{target}')
+    if source != workflow.git(repository, 'show', f'{inventory_source_commit}:src/Parchwell.Verifier/{target}'):
+        raise ValueError('inventory commit has different target source')
+    reference_bytes, selection_bytes = Path(inventory_path).read_bytes(), Path(selection_path).read_bytes()
+    reference = workflow.report_records(json.loads(reference_bytes), target,
+                                        source_sha256=digest(source))
+    selection = json.loads(selection_bytes)
+    # Check uniqueness even when every selected identity would otherwise be safe.
+    identities = [workflow.identity_json(row) for row in reference]
+    if len(identities) != len(set(identities)):
+        raise ValueError('duplicate reference identity')
+    plan = sample_plan(target, reference, source, selection)
+    if not shutil.which('dotnet'):
+        raise ValueError('dotnet is not on PATH')
+    def remaining():
+        value = deadline - time.monotonic()
+        if value <= 0:
+            raise ValueError('sample time limit reached')
+        return value
+    sdk = subprocess.check_output(['dotnet', '--version'], cwd=repository, text=True,
+                                  timeout=min(30, remaining())).strip()
+    tools = subprocess.check_output(['dotnet', 'tool', 'list', '--local'], cwd=repository, text=True,
+                                    timeout=min(30, remaining()))
+    if sdk != json.loads((repository / 'global.json').read_text())['sdk']['version']:
+        raise ValueError('selected SDK differs from pinned SDK')
+    pinned = json.loads((repository / '.config/dotnet-tools.json').read_text())['tools']['dotnet-stryker']['version']
+    if not any(len(line.split()) >= 2 and line.split()[0].lower() == 'dotnet-stryker'
+               and line.split()[1] == pinned for line in tools.splitlines()):
+        raise ValueError('pinned dotnet-stryker tool is not listed locally')
+    before = workflow.snapshot(repository)
+    if not before:
+        raise ValueError('empty source snapshot')
+    output.mkdir(parents=True, exist_ok=False)
+    (output / 'reference-report.json').write_bytes(reference_bytes)
+    (output / 'selection.json').write_bytes(selection_bytes)
+    receipt = {'purpose': workflow.LOCAL_PURPOSE, 'target': target, 'commit': commit, 'tree': tree,
+               'inventory_source_commit': inventory_source_commit, 'reference_sha256': digest(reference_bytes),
+               'selection_sha256': digest(selection_bytes), 'selected_reference_ids': selection,
+               'timeout_seconds': timeout, 'started_at_utc': started_at_utc, 'status': 'incomplete',
+               'preflight_elapsed_seconds': time.monotonic() - started,
+               'source_sha256_before': before, 'tracked_clean_before': clean,
+               'environment_overrides': dict(workflow.OVERRIDES), 'sdk_version': sdk, 'local_tools': tools,
+               'machine': {'platform': platform.platform(), 'machine': platform.machine(),
+                           'processor': platform.processor(), 'logical_cpus': os.cpu_count()},
+               'observed_workers': None, 'children': [], 'error': None, 'projection_valid': False}
+    previous = signal.getsignal(signal.SIGTERM)
+    def interrupted(_signum, _frame):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, interrupted)
+    def validate_report(directory, wanted):
+        report_path = directory / workflow.REPORT_PATH
+        raw = json.loads(report_path.read_bytes())
+        rows = workflow.report_records(raw, target, source_sha256=digest(source))
+        return sample_bindings(reference, rows, wanted)
+    try:
+        with tempfile.TemporaryDirectory(prefix='c5-local-sample-') as temporary:
+            staging = Path(temporary) / 'repository'
+            staging.mkdir()
+            projected = workflow.projection.prepare(repository, staging, target, output / 'projection-src')
+            try:
+                if (staging / (workflow.projection.VERIFIER + target)).read_bytes() != source:
+                    raise ValueError('projected target differs from committed source')
+                private_tmp = staging / '.c5-tmp'
+                private_tmp.mkdir()
+                prefix = ['env', f'TMPDIR={private_tmp}', 'dotnet', 'stryker']
+                cwd = staging / 'tests/Parchwell.Verifier.Tests'
+                if plan['main_ids']:
+                    config_path, log_path = output / 'sample-config.json', output / 'command.log'
+                    workflow.write_json(config_path, plan['main_config'])
+                    config_before = workflow.sha256(config_path)
+                    argv = [*prefix, '--config-file', str(config_path), '--output', str(output / 'stryker'),
+                            '--log-to-file', '--verbosity', 'debug']
+                    child = {'kind': 'main', 'reference_ids': plan['main_ids'], 'argv': argv,
+                             'started_at_utc': workflow.utc_now(), 'config_sha256_before': config_before}
+                    receipt['children'].append(child)
+                    child_start = time.monotonic()
+                    code, reason = workflow.launch(argv, cwd, log_path, remaining())
+                    child.update({'child_exit_code': code, 'termination_reason': reason,
+                                  'finished_at_utc': workflow.utc_now(), 'elapsed_seconds': time.monotonic() - child_start,
+                                  'config_sha256_after': workflow.sha256(config_path) if config_path.is_file() else None,
+                                  'report_sha256': workflow.sha256(output / workflow.REPORT_PATH)
+                                  if (output / workflow.REPORT_PATH).is_file() else None,
+                                  'command_log_sha256': workflow.sha256(log_path) if log_path.is_file() else None})
+                    if reason is not None or code not in (0, 2) or child['config_sha256_after'] != config_before:
+                        raise ValueError('main sample command incomplete or configuration changed')
+                    child['native_bindings'] = validate_report(output, plan['main_ids'])
+                for item in plan['isolated']:
+                    remaining()
+                    entries, error = workflow.run_isolation_plan(target, [item], output, prefix, cwd, deadline)
+                    receipt['children'].extend({'kind': 'isolated', **entry} for entry in entries)
+                    if error is not None or len(entries) != 1:
+                        raise ValueError(error or 'isolated sample missing receipt')
+                    directory = workflow.isolated_directory(output, entries[0])
+                    receipt['children'][-1]['native_bindings'] = validate_report(directory, [item['mutant_id']])
+                remaining()
+            finally:
+                try:
+                    workflow.projection.finish(staging, projected, output / 'projection.json')
+                    workflow.projection.validate(projected, output / 'projection-src', target, before)
+                    receipt['projection_valid'] = True
+                except (OSError, ValueError, TypeError, KeyError) as error:
+                    receipt['projection_error'] = str(error)
+    except (KeyboardInterrupt, SystemExit):
+        receipt['error'] = 'interrupted'
+    except (OSError, ValueError, TypeError, KeyError, subprocess.SubprocessError) as error:
+        receipt['error'] = str(error)
+    finally:
+        workflow.diagnostic(workflow.retain_test_server_logs, output)
+        receipt['finished_at_utc'] = workflow.utc_now()
+        receipt['elapsed_seconds'] = time.monotonic() - started
+        try:
+            receipt['source_sha256_after'] = workflow.snapshot(repository)
+            after_commit, after_tree, clean_after = workflow.identity(repository)
+            receipt['tracked_clean_after'] = clean_after and (after_commit, after_tree) == (commit, tree)
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
+            receipt['error'] = receipt['error'] or str(error)
+        receipt['reference_sha256_after'] = workflow.sha256(output / 'reference-report.json') if (output / 'reference-report.json').is_file() else None
+        receipt['selection_sha256_after'] = workflow.sha256(output / 'selection.json') if (output / 'selection.json').is_file() else None
+        receipt['projection_sha256'] = workflow.sha256(output / 'projection.json') if (output / 'projection.json').is_file() else None
+        if receipt['error'] is None:
+            if not receipt['projection_valid']:
+                receipt['error'] = receipt.get('projection_error', 'projection validation failed')
+            elif not receipt.get('tracked_clean_after') or before != receipt.get('source_sha256_after'):
+                receipt['error'] = 'committed source identity or snapshot changed'
+            elif (receipt['reference_sha256_after'] != receipt['reference_sha256']
+                  or receipt['selection_sha256_after'] != receipt['selection_sha256']):
+                receipt['error'] = 'retained reference or selection changed'
+            elif receipt['elapsed_seconds'] > timeout:
+                receipt['error'] = 'sample time limit reached'
+        if receipt['error'] is None:
+            receipt['status'] = 'completed_unverified'
+        try:
+            workflow.write_json(output / 'local-sample-receipt.json', receipt)
+        finally:
+            signal.signal(signal.SIGTERM, previous)
+    return 0 if receipt['status'] == 'completed_unverified' else 1
+
+
 def local_shard(shard, output_dir, timeout, repository=ROOT):
     """Measure one exact physical shard locally; the receipt is never hosted acceptance."""
     repository = Path(repository).resolve()
@@ -1818,6 +2071,13 @@ def main():
     local.add_argument('--shard', required=True)
     local.add_argument('--output-dir', required=True)
     local.add_argument('--timeout', required=True, type=float)
+    sample = commands.add_parser('local-sample')
+    sample.add_argument('--target', required=True)
+    sample.add_argument('--inventory', required=True)
+    sample.add_argument('--inventory-source-commit', required=True)
+    sample.add_argument('--selection', required=True)
+    sample.add_argument('--output-dir', required=True)
+    sample.add_argument('--timeout', required=True, type=float)
     c = commands.add_parser('check')
     c.add_argument('--base')
     c.add_argument('--head', required=True)
@@ -1831,6 +2091,13 @@ def main():
     perf.add_argument('--jobs-json', required=True)
     perf.add_argument('--output-dir', required=True)
     args = parser.parse_args()
+    if args.command == 'local-sample':
+        try:
+            return local_sample(args.target, args.inventory, args.inventory_source_commit,
+                                args.selection, args.output_dir, args.timeout)
+        except (OSError, ValueError, TypeError, KeyError, subprocess.SubprocessError) as error:
+            print(str(error), file=sys.stderr)
+            return 1
     if args.command == 'local-shard':
         try:
             return local_shard(args.shard, args.output_dir, args.timeout)

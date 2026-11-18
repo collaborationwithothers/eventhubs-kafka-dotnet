@@ -2612,3 +2612,295 @@ class LocalShardTests(unittest.TestCase):
                 profile_module.local_shard(next(iter(self.workflow.SHARDS)), self.output, 100)
         self.assertFalse(self.output.exists())
         self.launch.assert_not_called()
+
+
+class SparseSamplePlanningTests(unittest.TestCase):
+    TARGET = 'Example.cs'
+    SOURCE = b'abcdefghij\nklmnopqrst\n'
+
+    @staticmethod
+    def row(identifier, start, end, *, status='Killed', static=False, replacement='x', line=1):
+        row = {'id': str(identifier), 'mutatorName': 'Synthetic mutation',
+               'replacement': replacement, 'status': status, 'static': static,
+               'location': {'start': {'line': line, 'column': start},
+                            'end': {'line': line, 'column': end}}}
+        if status == 'Ignored':
+            row['statusReason'] = 'Removed by mutate filter'
+        return row
+
+    def plan(self, rows, selected):
+        return runtime.sample_plan(self.TARGET, rows, self.SOURCE, selected)
+
+    def test_disjoint_selected_nodes_produce_one_sparse_main_selection(self):
+        rows = [self.row(1, 1, 3), self.row(2, 5, 7), self.row(3, 9, 10)]
+        plan = self.plan(rows, ['1', '3'])
+        self.assertEqual({'1', '3'}, set(plan['main_ids']))
+        self.assertEqual([], plan['isolated'])
+        mutate = plan['main_config']['stryker-config']['mutate']
+        self.assertEqual({self.TARGET + '{0..2}', self.TARGET + '{8..9}',
+                          self.TARGET + '{22..' + str(runtime.workflow.SPAN_END) + '}'}, set(mutate))
+        self.assertEqual(runtime.workflow.BASE_CONFIG['stryker-config']['thresholds'],
+                         plan['main_config']['stryker-config']['thresholds'])
+
+    def test_selection_must_be_nonempty_unique_known_and_testable(self):
+        rows = [self.row(1, 1, 3), self.row(2, 5, 7, status='CompileError')]
+        for selected in ([], ['1', '1'], ['missing'], ['2']):
+            with self.subTest(selected=selected), self.assertRaises(ValueError):
+                self.plan(rows, selected)
+
+    def test_same_span_peers_must_all_be_selected(self):
+        rows = [self.row(1, 1, 3, replacement='x'), self.row(2, 1, 3, replacement='y')]
+        with self.assertRaises(ValueError):
+            self.plan(rows, ['1'])
+        self.assertEqual({'1', '2'}, set(self.plan(rows, ['1', '2'])['main_ids']))
+
+    def test_unselected_descendant_is_excluded_without_losing_selected_parent(self):
+        rows = [self.row(1, 1, 7), self.row(2, 3, 5), self.row(3, 9, 10)]
+        mutate = self.plan(rows, ['1'])['main_config']['stryker-config']['mutate']
+        self.assertIn(self.TARGET + '{0..6}', mutate)
+        self.assertIn('!' + self.TARGET + '{2..4}', mutate)
+        self.assertIn(self.TARGET + '{22..' + str(runtime.workflow.SPAN_END) + '}', mutate)
+        self.assertTrue(all(runtime.workflow.node_span(row, [0, 11, 22], 22)[0] < 22 for row in rows))
+
+    def test_nested_unselected_span_cannot_be_excluded_if_it_removes_selected_node(self):
+        rows = [self.row(1, 1, 7), self.row(2, 3, 5), self.row(3, 4, 5)]
+        with self.assertRaises(ValueError):
+            self.plan(rows, ['1', '3'])
+
+    def test_selected_static_mutants_are_isolated_without_changing_reference_rows(self):
+        source = b'namespace N;\nclass C {\n    static readonly int A = 1;\n    static readonly int B = 2;\n}\n'
+        rows = [self.row(1, 5, 6, line=3, static=True),
+                self.row(2, 5, 6, line=4, static=True)]
+        before = copy.deepcopy(rows)
+        plan = runtime.sample_plan(self.TARGET, rows, source, ['1', '2'])
+        self.assertEqual([], plan['main_ids'])
+        self.assertIsNone(plan['main_config'])
+        self.assertEqual(['1', '2'], [entry['mutant_id'] for entry in plan['isolated']])
+        self.assertEqual(before, rows)
+
+
+class SparseSampleBindingTests(unittest.TestCase):
+    def setUp(self):
+        row = SparseSamplePlanningTests.row
+        self.reference = [row(1, 1, 3), row(2, 5, 7), row(3, 9, 10, static=True)]
+        self.actual = [row(101, 1, 3), row(102, 5, 7, status='Ignored'),
+                       row(103, 9, 10, status='Ignored', static=True)]
+
+    def test_native_ids_can_shift_when_full_identity_and_execution_match(self):
+        self.assertEqual({'1': '101'}, runtime.sample_bindings(self.reference, self.actual, ['1']))
+
+    def test_missing_extra_duplicate_or_changed_inventory_fails_closed(self):
+        cases = {}
+        cases['missing'] = self.actual[:-1]
+        cases['extra'] = self.actual + [SparseSamplePlanningTests.row(104, 2, 4, status='Ignored')]
+        cases['duplicate id'] = copy.deepcopy(self.actual)
+        cases['duplicate id'][1]['id'] = cases['duplicate id'][0]['id']
+        cases['duplicate identity'] = copy.deepcopy(self.actual)
+        cases['duplicate identity'][1]['location'] = copy.deepcopy(cases['duplicate identity'][0]['location'])
+        cases['changed replacement'] = copy.deepcopy(self.actual)
+        cases['changed replacement'][1]['replacement'] = 'different'
+        cases['changed static'] = copy.deepcopy(self.actual)
+        cases['changed static'][2]['static'] = False
+        for label, actual in cases.items():
+            with self.subTest(case=label), self.assertRaises(ValueError):
+                runtime.sample_bindings(self.reference, actual, ['1'])
+
+    def test_reference_ids_and_identities_must_be_unique(self):
+        duplicate_id = copy.deepcopy(self.reference)
+        duplicate_id[1]['id'] = duplicate_id[0]['id']
+        duplicate_identity = copy.deepcopy(self.reference)
+        duplicate_identity[1]['location'] = copy.deepcopy(duplicate_identity[0]['location'])
+        for reference in (duplicate_id, duplicate_identity):
+            with self.subTest(reference=reference), self.assertRaises(ValueError):
+                runtime.sample_bindings(reference, self.actual, ['1'])
+
+    def test_selected_must_execute_and_no_other_mutant_may_execute(self):
+        missing = copy.deepcopy(self.actual)
+        missing[0]['status'] = 'Ignored'
+        missing[0]['statusReason'] = 'Removed by mutate filter'
+        extra = copy.deepcopy(self.actual)
+        extra[1]['status'] = 'Killed'
+        extra[1].pop('statusReason')
+        for actual in (missing, extra):
+            with self.subTest(actual=actual), self.assertRaises(ValueError):
+                runtime.sample_bindings(self.reference, actual, ['1'])
+
+
+class LocalSampleTests(unittest.TestCase):
+    def setUp(self):
+        LocalShardTests.setUp(self)
+        self.identity.return_value = ('a' * 40, 'tree', True)
+        self.target = next(iter(self.workflow.TARGETS.values()))[0]
+        self.source = (ROOT / (self.workflow.projection.VERIFIER + self.target)).read_text()
+        row = SparseSamplePlanningTests.row
+        self.rows = [row(1, 1, 2), row(2, 3, 4)]
+        self.inventory = Path(self.tmp) / 'reference.json'
+        self.selection = Path(self.tmp) / 'selected.json'
+        self.inventory.write_text(json.dumps(self.report(self.rows)))
+        self.selection.write_text(json.dumps(['1']))
+        self.stack.enter_context(mock.patch.object(self.workflow.projection, 'validate', return_value=True))
+        self.launch.side_effect = self.sample_launch
+
+    def completed_launch(self, *args):
+        raise AssertionError('unexpected launcher')
+
+    def report(self, rows):
+        return {'schemaVersion': '2', 'projectRoot': '/synthetic', 'files': {
+            '/synthetic/' + self.target: {'language': 'cs', 'source': self.source, 'mutants': rows}}}
+
+    def sample_launch(self, argv, cwd, log, timeout):
+        log.write_text('synthetic raw log')
+        rows = copy.deepcopy(self.rows)
+        rows[0]['id'] = '101'
+        rows[1].update(id='102', status='Ignored', statusReason='Removed by mutate filter')
+        report = self.output / self.workflow.REPORT_PATH
+        report.parent.mkdir(parents=True)
+        report.write_text(json.dumps(self.report(rows)))
+        return 0, None
+
+    def invoke(self, timeout=100):
+        return runtime.local_sample(self.target, self.inventory, 'b' * 40, self.selection, self.output, timeout)
+
+    def receipt(self):
+        return json.loads((self.output / 'local-sample-receipt.json').read_text())
+
+    def test_completed_sample_retains_raw_inputs_and_receipts_without_claiming_timing(self):
+        self.assertEqual(0, self.invoke())
+        receipt = self.receipt()
+        self.assertEqual(self.workflow.LOCAL_PURPOSE, receipt['purpose'])
+        self.assertEqual('completed_unverified', receipt['status'])
+        self.assertIsNone(receipt['observed_workers'])
+        self.assertEqual(self.inventory.read_bytes(), (self.output / 'reference-report.json').read_bytes())
+        self.assertEqual(self.selection.read_bytes(), (self.output / 'selection.json').read_bytes())
+        self.assertEqual(runtime.digest(self.inventory.read_bytes()), receipt['reference_sha256'])
+        self.assertEqual(runtime.digest(self.selection.read_bytes()), receipt['selection_sha256'])
+        child, = receipt['children']
+        self.assertEqual({'1': '101'}, child['native_bindings'])
+        self.assertEqual(runtime.digest((self.output / 'command.log').read_bytes()), child['command_log_sha256'])
+        self.assertEqual(runtime.digest((self.output / self.workflow.REPORT_PATH).read_bytes()), child['report_sha256'])
+        self.assertEqual(runtime.digest((self.output / 'sample-config.json').read_bytes()), child['config_sha256_after'])
+        self.assertEqual(child['config_sha256_before'], child['config_sha256_after'])
+        self.launch.assert_called_once()
+
+    def test_preflight_rejects_manifest_and_dirty_source_without_launch_or_output(self):
+        for selection in ([], ['1', '1'], ['unknown'], {'ids': ['1']}):
+            with self.subTest(selection=selection):
+                self.selection.write_text(json.dumps(selection))
+                with self.assertRaises(ValueError):
+                    self.invoke()
+                self.assertFalse(self.output.exists())
+        self.selection.write_text('["1"]')
+        self.identity.return_value = ('a' * 40, 'tree', False)
+        with self.assertRaises(ValueError):
+            self.invoke()
+        self.launch.assert_not_called()
+        self.assertFalse(self.output.exists())
+
+    def test_source_mismatch_and_duplicate_inventory_fail_preflight(self):
+        for change in ('source', 'duplicate'):
+            report = self.report(copy.deepcopy(self.rows))
+            item = report['files']['/synthetic/' + self.target]
+            if change == 'source':
+                item['source'] += 'changed'
+            else:
+                item['mutants'].append(copy.deepcopy(item['mutants'][0]))
+            self.inventory.write_text(json.dumps(report))
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                self.invoke()
+            self.assertFalse(self.output.exists())
+        self.launch.assert_not_called()
+
+    def test_failure_missing_report_and_source_drift_are_incomplete(self):
+        for case in ('failed', 'missing', 'drift'):
+            with self.subTest(case=case):
+                self.output = Path(self.tmp) / case
+                if case == 'failed':
+                    self.launch.side_effect = lambda *args: (1, None)
+                elif case == 'missing':
+                    self.launch.side_effect = lambda *args: (0, None)
+                else:
+                    self.launch.side_effect = self.sample_launch
+                    self.snapshots.side_effect = [self.snapshot, {'src/example.cs': 'b' * 64}]
+                self.assertEqual(1, self.invoke())
+                self.assertEqual('incomplete', self.receipt()['status'])
+
+    def test_existing_output_is_never_overwritten(self):
+        self.output.mkdir()
+        sentinel = self.output / 'sentinel'
+        sentinel.write_text('keep')
+        with self.assertRaises(ValueError):
+            self.invoke()
+        self.assertEqual('keep', sentinel.read_text())
+        self.launch.assert_not_called()
+
+    def test_wrong_sdk_and_helper_mismatch_fail_before_launch(self):
+        with mock.patch.object(runtime.subprocess, 'check_output', side_effect=['0.0.0', 'dotnet-stryker 5.0.0 stryker']):
+            with self.assertRaises(ValueError):
+                self.invoke()
+        with mock.patch.object(self.workflow, 'git', return_value=b'different helper'):
+            with self.assertRaises(ValueError):
+                self.invoke()
+        self.assertFalse(self.output.exists())
+        self.launch.assert_not_called()
+
+    def test_staging_time_consumes_deadline_and_prevents_launch(self):
+        now = [100.0]
+        prepare = self.workflow.projection.prepare.side_effect
+        def delayed(*args):
+            result = prepare(*args)
+            now[0] += 101
+            return result
+        self.workflow.projection.prepare.side_effect = delayed
+        with mock.patch.object(runtime.time, 'monotonic', side_effect=lambda: now[0]):
+            self.assertEqual(1, self.invoke(timeout=100))
+        self.assertEqual('incomplete', self.receipt()['status'])
+        self.launch.assert_not_called()
+
+    def test_static_samples_are_sequential_and_bind_each_fresh_report(self):
+        self.source = ('namespace N;\nclass C {\n    static readonly int A = 1;\n'
+                       '    static readonly int B = 2;\n}\n')
+        row = SparseSamplePlanningTests.row
+        self.rows = [row(1, 5, 6, line=3, static=True), row(2, 5, 6, line=4, static=True)]
+        self.inventory.write_text(json.dumps(self.report(self.rows)))
+        self.selection.write_text('["1", "2"]')
+        original_git = self.workflow.git.side_effect
+        def git(root, *args):
+            if args[-1].split(':', 1)[-1] == self.workflow.projection.VERIFIER + self.target:
+                return self.source.encode()
+            return original_git(root, *args)
+        self.workflow.git.side_effect = git
+        def prepare(root, staging, target, retained):
+            path = staging / (self.workflow.projection.VERIFIER + target)
+            path.parent.mkdir(parents=True)
+            path.write_text(self.source)
+            retained.mkdir()
+            return {}
+        self.workflow.projection.prepare.side_effect = prepare
+        seen = []
+        def isolate(target, plan, output, prefix, cwd, deadline):
+            self.assertEqual(1, len(plan))
+            item = plan[0]
+            seen.append(item['mutant_id'])
+            directory = self.workflow.isolated_directory(output, item)
+            report = directory / self.workflow.REPORT_PATH
+            report.parent.mkdir(parents=True)
+            rows = copy.deepcopy(self.rows)
+            for index, entry in enumerate(rows):
+                entry['id'] = str(101 + index)
+                if str(index + 1) != item['mutant_id']:
+                    entry.update(status='Ignored', statusReason='Removed by mutate filter')
+            report.write_text(json.dumps(self.report(rows)))
+            return [dict(item)], None
+        with mock.patch.object(self.workflow, 'run_isolation_plan', side_effect=isolate):
+            self.assertEqual(0, self.invoke())
+        self.assertEqual(['1', '2'], seen)
+        children = self.receipt()['children']
+        self.assertEqual([{'1': '101'}, {'2': '102'}], [child['native_bindings'] for child in children])
+        self.assertTrue(all((self.workflow.isolated_directory(self.output, child) / self.workflow.REPORT_PATH).is_file()
+                            for child in children))
+        self.launch.assert_not_called()
+        self.output = Path(self.tmp) / 'static-failure'
+        with mock.patch.object(self.workflow, 'run_isolation_plan', return_value=([], 'synthetic failure')) as isolated:
+            self.assertEqual(1, self.invoke())
+        isolated.assert_called_once()
+        self.assertEqual('incomplete', self.receipt()['status'])
