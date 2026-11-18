@@ -1,5 +1,5 @@
 # State: #508 C03 scenario and expected outcomes (#499 entry 5)
-Covers: comment 6960769232 created 2026-11-17T20:56:18Z; read at 2026-11-17T21:13:10Z
+Covers: comment 6969598217 created 2026-11-18T05:03:14Z; read at 2026-11-18T06:15:31Z
 Parent items: #499
 Item plan: [proposal revision 2 of #499](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894560135), split row 5
 Implementing tool: Claude Code. Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6960769232](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6960769232)
@@ -14,6 +14,7 @@ Decisions in force:
 - Agents merge by merge commit. Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6958522350](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6958522350)
 - Approval of plan revision 5 at the commit above, with two `apply in implementation` fixes: the architecture tests lock file joins the allowed files, and acceptance A3 also builds the Enrichment image. Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6960689247](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6960689247)
 - Implementing tool is Claude Code, replacing Codex for this issue. Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6960769232](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6960769232)
+- Accepts by name the mutation-runtime risk of the 21 shared inputs changed by `c03-inputs`, with hand-written version 2 assessments in place of `renew`, for that pull request only. Source: [https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217)
 Open questions:
 - None
-Next action: Open the pull request `c03-inputs`; `c03-observation` follows after it merges.
+Next action: Open the pull request `c03-observation` after Hari decides how its mutation qualification is renewed (R2.9); after it merges, dispatch `verifier-c5-mutation.yml` once on `main`.
