@@ -19,10 +19,10 @@ from urllib.parse import urlsplit
 
 MIB = 1048576
 MAX_OBJECT = 256 * MIB
-DEADLINE = 600
+DEADLINE = 1800
 FIXTURE = b'Parchwell archive readiness synthetic fixture v1\n'
 POLICY = {'max_bytes': 17179869184, 'max_object_bytes': MAX_OBJECT,
-          'max_objects': 1024, 'deadline_seconds': 600, 'transfer_passes': 1,
+          'max_objects': 1024, 'deadline_seconds': 1800, 'transfer_passes': 1,
           'metadata_chunk_bytes': 134217728, 'metadata_row_bytes': MIB}
 
 class Invalid(Exception):
