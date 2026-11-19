@@ -434,12 +434,14 @@ jobs:
           print(f"attempt={companion['attempt']}")
           PYTHON
       - name: Download coordinator shard evidence
+        if: always()
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           pattern: c5-mutation-${{ github.run_id }}-${{ github.run_attempt }}-*
           path: ${{ runner.temp }}/c5-input
           merge-multiple: false
       - name: Download companion shard evidence
+        if: always() && steps.campaign.outputs.run-id != ''
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           github-token: ${{ github.token }}
@@ -448,6 +450,7 @@ jobs:
           path: ${{ runner.temp }}/c5-input
           merge-multiple: false
       - name: Combine raw C5 populations
+        if: always()
         id: aggregate
         env:
           C5_CAMPAIGN: ${{ runner.temp }}/c5-campaign.json

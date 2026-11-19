@@ -1471,11 +1471,13 @@ class AggregationTests(unittest.TestCase):
         }
         manifest = {
             "schema": 1, "repository": repository, "commit": COMMIT, "runs": runs,
+            "incomplete_reasons": [],
             "shards": {name: {"target": path, "run_id": str(runs[role]["id"]),
                              "run_attempt": str(runs[role]["attempt"])}
                        for role, entries in layout.items() for name, path in entries.items()},
         }
-        for variant in ("complete", "wrong attempt", "wrong tree", "duplicate", "missing"):
+        for variant in ("complete", "wrong attempt", "wrong tree", "duplicate", "missing",
+                        "failed job", "missing manifest"):
             with self.subTest(variant=variant), tempfile.TemporaryDirectory(dir=self.directory) as temporary:
                 directory = Path(temporary)
                 fixture = AggregateFixture(directory)
@@ -1491,7 +1493,9 @@ class AggregationTests(unittest.TestCase):
                 elif variant == "missing":
                     shutil.rmtree(artifact)
                 manifest_path = directory / "campaign.json"
-                write_json(manifest_path, manifest)
+                if variant != "missing manifest":
+                    reasons = ["companion job failed"] if variant == "failed job" else []
+                    write_json(manifest_path, {**manifest, "incomplete_reasons": reasons})
                 with (patch.object(c5_campaign, "matrices", return_value=layout),
                       patch.object(workflow, "git", side_effect=[COMMIT.encode(), TREE.encode()]),
                       patch.dict(os.environ, {"GITHUB_REPOSITORY": repository})):
@@ -1500,8 +1504,13 @@ class AggregationTests(unittest.TestCase):
                 summary = json.loads((fixture.output / "summary.json").read_bytes())
                 self.assertEqual(variant != "complete", result == 1)
                 self.assertIs(summary["measurement_complete"], variant == "complete")
-                self.assertEqual(digest(manifest_path), summary["campaign_manifest_sha256"])
-                self.assertEqual(manifest_path.read_bytes(), (fixture.output / "campaign.json").read_bytes())
+                if variant == "missing manifest":
+                    self.assertIsNone(summary["campaign_manifest_sha256"])
+                    self.assertIn("publication", summary["shards"])
+                    self.assertNotIn(companion_shard, summary["shards"])
+                else:
+                    self.assertEqual(digest(manifest_path), summary["campaign_manifest_sha256"])
+                    self.assertEqual(manifest_path.read_bytes(), (fixture.output / "campaign.json").read_bytes())
 
     def test_combined_threshold_keeps_below_threshold_shards(self):
         populations = [["Survived"], ["Killed"] * 3, ["Killed"], ["Killed"] * 2 + ["Survived"] * 3, ["Killed"], ["Killed"], ["Killed"], ["Killed"]] + [["Killed"], ["Killed"], ["Killed"], ["Killed"]] + [["Killed"], ["Killed"], ["Killed"], ["Killed"], ["Killed"]]

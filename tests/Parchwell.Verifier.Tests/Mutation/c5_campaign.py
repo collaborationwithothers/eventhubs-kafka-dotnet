@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[3]
 PATHS = {'coordinator': '.github/workflows/verifier-c5-mutation.yml',
          'companion': '.github/workflows/verifier-c5-mutation-companion.yml'}
 BUDGET = 3000
+POLL_SECONDS = 2400
 
 
 def require(condition, message):
@@ -94,13 +95,17 @@ def validate_jobs(document, run_id, attempt, commit, matrix, coordinator, *, ter
             'missing or foreign jobs')
 
 
-def build_manifest(repository, commit, runs, layout):
+def build_manifest(repository, commit, runs, layout, incomplete_reasons=None):
     validate_layout(layout)
     require(re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repository) is not None
             and re.fullmatch(r'[0-9a-f]{40}', commit) is not None, 'invalid repository or commit')
     require(set(runs) == set(PATHS), 'invalid run roles')
     require(runs['coordinator']['id'] != runs['companion']['id'], 'run ids must differ')
-    result = {'schema': 1, 'repository': repository, 'commit': commit, 'runs': {}, 'shards': {}}
+    reasons = [] if incomplete_reasons is None else incomplete_reasons
+    require(isinstance(reasons, list) and all(isinstance(reason, str) and reason for reason in reasons),
+            'invalid incomplete reasons')
+    result = {'schema': 1, 'repository': repository, 'commit': commit, 'runs': {}, 'shards': {},
+              'incomplete_reasons': reasons}
     for role in PATHS:
         run = runs[role]
         run_id, attempt = run['id'], run['run_attempt']
@@ -117,13 +122,16 @@ def build_manifest(repository, commit, runs, layout):
 
 def validate_manifest(manifest, expected_commit, coordinator_matrix, companion_matrix):
     """Validate a manifest and return its shard-to-origin mapping; raise on any mismatch."""
-    require(isinstance(manifest, dict) and set(manifest) == {'schema', 'repository', 'commit', 'runs', 'shards'}
+    require(isinstance(manifest, dict) and set(manifest) == {'schema', 'repository', 'commit', 'runs', 'shards', 'incomplete_reasons'}
             and type(manifest['schema']) is int and manifest['schema'] == 1
             and manifest['commit'] == expected_commit, 'invalid manifest')
     require(isinstance(manifest['repository'], str)
             and re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', manifest['repository'])
             and isinstance(expected_commit, str) and re.fullmatch(r'[0-9a-f]{40}', expected_commit),
             'invalid manifest repository or commit')
+    require(isinstance(manifest['incomplete_reasons'], list)
+            and all(isinstance(reason, str) and reason for reason in manifest['incomplete_reasons']),
+            'invalid incomplete reasons')
     layout = {'coordinator': coordinator_matrix, 'companion': companion_matrix}
     validate_layout(layout)
     runs = manifest['runs']
@@ -169,6 +177,7 @@ def jobs(repository, run_id, attempt):
 
 
 def prepare(repository, commit, coordinator_id, coordinator_attempt, companion_id, companion_attempt, output):
+    deadline = time.monotonic() + POLL_SECONDS
     require(isinstance(repository, str) and re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repository)
             and isinstance(commit, str) and re.fullmatch(r'[0-9a-f]{40}', commit),
             'invalid repository or commit')
@@ -185,24 +194,32 @@ def prepare(repository, commit, coordinator_id, coordinator_attempt, companion_i
     runs = {role: api(repository, f'actions/runs/{rid}/attempts/{attempt}')
             for role, (rid, attempt) in ids.items()}
     starts = [validate_run(runs[role], role, repository, commit, *ids[role]) for role in PATHS]
-    deadline = min(starts).timestamp() + BUDGET
+    reasons = []
     while True:
-        require(time.time() <= deadline, 'campaign deadline exceeded waiting for companion')
         peer = runs['companion']
         if peer.get('status') == 'completed':
-            require(peer.get('conclusion') == 'success', 'companion run failed')
+            if peer.get('conclusion') != 'success':
+                reasons.append('companion run was not successful')
             break
-        require(peer.get('status') in ('queued', 'in_progress', 'waiting', 'pending', 'requested'),
-                'invalid companion status')
-        time.sleep(min(15, max(0, deadline - time.time())))
+        if peer.get('status') not in ('queued', 'in_progress', 'waiting', 'pending', 'requested'):
+            reasons.append('companion run has an invalid status')
+            break
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            reasons.append('companion polling timed out')
+            break
+        time.sleep(min(15, remaining))
         runs['companion'] = api(repository, f'actions/runs/{companion_id}/attempts/{companion_attempt}')
         require(validate_run(runs['companion'], 'companion', repository, commit, companion_id, companion_attempt)
                 == starts[1], 'companion creation time changed')
-    require(runs['coordinator'].get('status') == 'in_progress', 'coordinator is not running')
+    if runs['coordinator'].get('status') != 'in_progress':
+        reasons.append('coordinator run is not in progress')
     for role, (rid, attempt) in ids.items():
-        validate_jobs(jobs(repository, rid, attempt), rid, attempt, commit, layout[role], role == 'coordinator')
-    require(time.time() <= deadline, 'campaign deadline exceeded during validation')
-    manifest = build_manifest(repository, commit, runs, layout)
+        try:
+            validate_jobs(jobs(repository, rid, attempt), rid, attempt, commit, layout[role], role == 'coordinator')
+        except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
+            reasons.append(f'{role} jobs: {error}')
+    manifest = build_manifest(repository, commit, runs, layout, reasons)
     validate_manifest(manifest, commit, layout['coordinator'], layout['companion'])
     with Path(output).open('x', encoding='utf-8') as stream:
         json.dump(manifest, stream, indent=2, sort_keys=True)
@@ -218,6 +235,7 @@ def terminal_report(repository, commit, manifest_bytes, summary_bytes, layout, r
         summary = c5_runtime.strict_json(summary_bytes)
         validate_manifest(manifest, commit, layout['coordinator'], layout['companion'])
         require(manifest['repository'] == repository, 'manifest repository mismatch')
+        require(not manifest['incomplete_reasons'], 'manifest records incomplete evidence')
         require(isinstance(summary, dict) and summary.get('commit') == commit
                 and summary.get('run_id') == str(manifest['runs']['coordinator']['id'])
                 and summary.get('run_attempt') == str(manifest['runs']['coordinator']['attempt'])

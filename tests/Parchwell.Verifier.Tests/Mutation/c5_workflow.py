@@ -1464,26 +1464,30 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
         import c5_campaign
         import c5_runtime
 
+        origins = {}
         try:
+            require(git(c5_campaign.ROOT, "rev-parse", "HEAD").decode().strip() == expected_commit,
+                    "aggregate checkout does not match campaign commit")
+            expected_tree = git(c5_campaign.ROOT, "rev-parse", "HEAD^{tree}").decode().strip()
+            layout = c5_campaign.matrices()
+            c5_campaign.validate_layout(layout)
+            # Keep the coordinator's verifiable receipts if the peer cannot be bound.
+            origins = {shard: (run_id, run_attempt) for shard in layout["coordinator"]}
             manifest_bytes = campaign_manifest.read_bytes()
             manifest = c5_runtime.strict_json(manifest_bytes)
-            layout = c5_campaign.matrices()
             assigned = c5_campaign.validate_manifest(
                 manifest, expected_commit, layout["coordinator"], layout["companion"])
             caller = manifest["runs"]["coordinator"]
             require(manifest["repository"] == os.environ.get("GITHUB_REPOSITORY")
                     and str(caller["id"]) == run_id and str(caller["attempt"]) == run_attempt,
                     "campaign repository or coordinator identity mismatch")
-            require(git(c5_campaign.ROOT, "rev-parse", "HEAD").decode().strip() == expected_commit,
-                    "aggregate checkout does not match campaign commit")
-            expected_tree = git(c5_campaign.ROOT, "rev-parse", "HEAD^{tree}").decode().strip()
             with (output_dir / "campaign.json").open("xb") as stream:
                 stream.write(manifest_bytes)
             origins = {shard: (assigned[shard]["run_id"], assigned[shard]["run_attempt"])
                        for shard in SHARDS}
             campaign_hash = hashlib.sha256(manifest_bytes).hexdigest()
+            reasons.extend(manifest["incomplete_reasons"])
         except (OSError, ValueError, TypeError, KeyError, subprocess.SubprocessError) as error:
-            origins = {}
             reasons.append(f"invalid campaign manifest: {error}")
     directories = {shard: input_dir / f"c5-mutation-{origin_id}-{attempt}-{shard}"
                    for shard, (origin_id, attempt) in origins.items()}

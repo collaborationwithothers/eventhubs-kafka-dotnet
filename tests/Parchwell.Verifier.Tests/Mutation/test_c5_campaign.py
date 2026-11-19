@@ -69,7 +69,10 @@ class CampaignTests(unittest.TestCase):
                    lambda m: m['runs']['companion'].update(id=1),
                    lambda m: m['runs']['companion'].update(path='foreign'),
                    lambda m: m.update(commit='b' * 40),
-                   lambda m: m.update(extra=True)]
+                   lambda m: m.update(extra=True),
+                   lambda m: m.update(incomplete_reasons='failure'),
+                   lambda m: m.update(incomplete_reasons=['']),
+                   lambda m: m.update(incomplete_reasons=[1])]
         for change in changes:
             with self.subTest(change=change), self.assertRaises(ValueError):
                 manifest = self.manifest()
@@ -108,27 +111,47 @@ class CampaignTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'missing job pages'):
                 campaign.jobs(self.repo, 1, 1)
 
-    def test_prepare_and_failed_or_late_peer(self):
+    def test_prepare_retains_late_and_incomplete_evidence(self):
         def api(_repo, suffix):
             return copy.deepcopy(self.runs['coordinator' if '/1/' in suffix else 'companion'])
         def jobs(_repo, run_id, _attempt):
             return self.document('coordinator' if run_id == 1 else 'companion')
-        start = campaign.timestamp(self.runs['companion']['created_at']).timestamp()
         with tempfile.TemporaryDirectory() as directory, patch.object(campaign, 'matrices', return_value=self.layout), \
                 patch.object(campaign, 'api', side_effect=api), patch.object(campaign, 'jobs', side_effect=jobs), \
-                patch.object(campaign.subprocess, 'check_output', side_effect=[self.commit + '\n', b'workflow', b'workflow'] * 3), \
+                patch.object(campaign.subprocess, 'check_output', side_effect=[self.commit + '\n', b'workflow', b'workflow'] * 4), \
                 patch.object(Path, 'read_bytes', return_value=b'workflow'), \
-                patch.object(campaign.time, 'time', return_value=start + 100):
-            output = Path(directory) / 'manifest.json'
+                patch.object(campaign.time, 'time', return_value=2_000_000_000), \
+                patch.object(campaign.time, 'monotonic', return_value=0):
+            output = Path(directory) / 'late.json'
             campaign.prepare(self.repo, self.commit, 1, 1, 2, 1, output)
-            self.assertTrue(output.is_file())
+            self.assertEqual([], json.loads(output.read_text())['incomplete_reasons'])
             self.runs['companion']['conclusion'] = 'failure'
-            with self.assertRaisesRegex(ValueError, 'companion run failed'):
-                campaign.prepare(self.repo, self.commit, 1, 1, 2, 1, Path(directory) / 'fail')
-            self.runs['companion']['conclusion'] = 'success'
-            with patch.object(campaign.time, 'time', return_value=start + 3001), \
-                    self.assertRaisesRegex(ValueError, 'deadline exceeded'):
-                campaign.prepare(self.repo, self.commit, 1, 1, 2, 1, Path(directory) / 'late')
+            output = Path(directory) / 'failed.json'
+            campaign.prepare(self.repo, self.commit, 1, 1, 2, 1, output)
+            failed = json.loads(output.read_text())
+            self.assertIn('companion run was not successful', failed['incomplete_reasons'])
+            self.assertEqual('2', failed['shards']['b']['run_id'])
+            with patch.object(campaign, 'jobs', side_effect=ValueError('missing job pages')):
+                output = Path(directory) / 'missing.json'
+                campaign.prepare(self.repo, self.commit, 1, 1, 2, 1, output)
+                missing = json.loads(output.read_text())
+                self.assertIn('companion jobs: missing job pages', missing['incomplete_reasons'])
+            self.runs['companion'].update(status='in_progress', conclusion=None)
+            with patch.object(campaign.time, 'monotonic', side_effect=[0, campaign.POLL_SECONDS]):
+                output = Path(directory) / 'timeout.json'
+                campaign.prepare(self.repo, self.commit, 1, 1, 2, 1, output)
+                self.assertIn('companion polling timed out', json.loads(output.read_text())['incomplete_reasons'])
+
+    def test_prepare_rejects_unverifiable_metadata(self):
+        self.runs['companion']['head_branch'] = 'other'
+        def api(_repo, suffix):
+            return copy.deepcopy(self.runs['coordinator' if '/1/' in suffix else 'companion'])
+        with tempfile.TemporaryDirectory() as directory, patch.object(campaign, 'matrices', return_value=self.layout), \
+                patch.object(campaign, 'api', side_effect=api), \
+                patch.object(campaign.subprocess, 'check_output', side_effect=[self.commit + '\n', b'workflow', b'workflow']), \
+                patch.object(Path, 'read_bytes', return_value=b'workflow'), \
+                self.assertRaisesRegex(ValueError, 'workflow, event, branch or commit mismatch'):
+            campaign.prepare(self.repo, self.commit, 1, 1, 2, 1, Path(directory) / 'manifest.json')
 
     def terminal_inputs(self):
         manifest_bytes = json.dumps(self.manifest()).encode()
@@ -175,6 +198,14 @@ class CampaignTests(unittest.TestCase):
                 manifest, summary, runs, documents = self.terminal_inputs()
                 mutate(summary, runs, documents)
                 self.assertEqual('incomplete', self.terminal_report(manifest, summary, runs, documents)['status'])
+
+    def test_terminal_rejects_recorded_incomplete_evidence(self):
+        _, summary, runs, documents = self.terminal_inputs()
+        manifest = self.manifest()
+        manifest['incomplete_reasons'] = ['companion run was not successful']
+        manifest_bytes = json.dumps(manifest).encode()
+        summary['campaign_manifest_sha256'] = hashlib.sha256(manifest_bytes).hexdigest()
+        self.assertEqual('incomplete', self.terminal_report(manifest_bytes, summary, runs, documents)['status'])
 
     def test_terminal_rejects_malformed_or_foreign_manifest(self):
         manifest, summary, runs, documents = self.terminal_inputs()
