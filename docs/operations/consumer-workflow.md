@@ -4,6 +4,18 @@ The shared scenario workflow runs the consumer scenarios C03, C10 and C01 when i
 
 The three scenarios take the same route as [B04](b04-workflow.md): job `probe` runs phase C0, job `full-C0` is skipped and job `full-C3` runs phase C1. The C0 candidate does not gate C1. Artifacts are named `c03-C0-candidate-<run_id>-<run_attempt>`, `c03-C0-pods-<run_id>-<run_attempt>` and `c03-C0-archive-<run_id>-<run_attempt>`, and likewise for C1, `c10` and `c01`. For these scenarios the image step builds and reads back three workers in this order: `loadgen`, `verifier`, `enrichment`. Phase C1 is admitted only when all three digests from the initial job are immutable SHA-256 digests.
 
+## Storage write check
+
+Before repeat 1 of each phase, the step checks that the consumer identity can write to the container `consumer-record`. A role assignment that was created in the same Terraform apply can take up to 10 minutes to take effect for blob data access ([Assign an Azure role for access to blob data](https://learn.microsoft.com/azure/storage/blobs/assign-azure-role-data-access#assign-an-azure-role)). Without the check, a repeat whose members cannot write fails at its first write, and the phase spends its budget on dead repeats. That is the likely cause, not proven, of the failed repeats in C03 run 44461695288, phase C1.
+
+Each attempt is one Job of the Enrichment image in the mode `--consumer-storage-check`, run under the `enrichment-consumer` service account, so it uses the member Jobs' identity, network path and private DNS. It creates one probe blob, `<run>/<phase>/storage-check/<job>.probe`, and deletes it. That name is outside every `<run>/<phase>/r<n>/consumer/` prefix, so the readiness poll, the archive and the verifier never see it. The Job is named `<run>-<phase>-storage-check-a<attempt>` and is deleted and confirmed gone after each attempt; a failed delete sets the safety stop. If the write succeeds and the probe delete fails, the pod exits 3, the attempt counts as ready, and the state records `probe_delete_failed: true`.
+
+- Attempts start immediately and then 60 s after the previous attempt ended. The step stops at the first success. It gives up when 1800 s have passed since the first attempt. Both values were set by Hari on 2026-11-19 ([issue 556 decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/556#issuecomment-7001933928)); they are policy values, not measurements. The 1800 s is about three times Microsoft's documented 10 minutes.
+- The check runs before the consumer phase clock starts, so it uses none of the 7200 s phase budget or the 5100 s repeat reserve.
+- The result is the object `consumer_storage_access` in `phase-status.json`: `outcome` (`ready` or `not_ready`), `attempts`, `elapsed_seconds`, `last_failure` and `probe_delete_failed`. It is not one of the six records of a repeat.
+- On exhaustion no member Job is applied. All five repeats are recorded with their six records `not_attempted` and reason `consumer_storage_access_not_ready`, the step exits 1 as for any `not_attempted` record, and the job goes on to its judge, archive and destroy steps. A safety stop wins over this reason.
+- `last_failure` is a fixed-grammar summary read from the pod's result line, never an exception message: `kind=http status=<code> code=<storage error code>`, `kind=aadsts code=AADSTS<number>`, `kind=socket code=<socket error name>` or `kind=other`. A pod log with no valid result line gives `wait_exit_<code>_no_result`.
+
 ## Order of one repeat
 
 The orchestration is `infra/scripts/phase/consumer_repeat.py`. `R` is `<run_id>/<phase>/r<n>/`.
