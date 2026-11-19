@@ -7,7 +7,7 @@ on:
         description: Full lowercase commit SHA containing the diagnostic helpers
         required: true
         type: string
-        default: c5e5426cc8b58d864ccf5b6c844be5eb6e718749
+        default: f4eb0305877bc26448a1de9e802aebcc2e014416
 
 permissions:
   contents: read
@@ -551,7 +551,7 @@ jobs:
             done
           } > "$DIAGNOSTIC_DIR/metadata.txt"
           [[ "$GITHUB_REF" == refs/heads/main ]]
-          [[ "$SOURCE_SHA" == c5e5426cc8b58d864ccf5b6c844be5eb6e718749 ]]
+          [[ "$SOURCE_SHA" == f4eb0305877bc26448a1de9e802aebcc2e014416 ]]
       - name: Check out diagnostic source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
