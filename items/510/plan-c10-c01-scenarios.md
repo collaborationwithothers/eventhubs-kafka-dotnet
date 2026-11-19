@@ -1,10 +1,11 @@
-Revision: 1
+Revision: 2
 
 # C10 and C01 scenarios: contract-grade plan (issue 510)
 
 This plan adds the C10 and C01 consumer scenarios and their expected outcomes, in one pull request. C10 asks what is lost and what is processed twice when a consumer kills itself, with offsets stored after processing (the baseline) versus the default automatic offset store. C01 asks how long the group takes to give a killed member's partitions to the other member, with `session.timeout.ms` 30000 (Microsoft) versus 45000 (librdkafka default). Nothing in this plan publishes a result, and two of its design choices (where K-57 is tested, and how C10's automatic-store case is judged) are open questions for Hari in section 13.
 
 Base commit: `main` at `1e3b299d5d73a59e5f4c53275d9e5e7cbed5b3d5`.
+Changes in revision 2: the findings of [plan check 7001168119](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7001168119) and the archive question that the control session raised from [#531 handoff 6956490346](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/531#issuecomment-6956490346), item D2. Section 3.4 pins the shape of the validated value; section 7.2 lists four more superseded assertions; section 3.1's "Why 110" figures are corrected; R17 and R19 are in WHEN/THEN form; C10's `expected.yaml` gains a per-repeat precondition; DA1 names the shared process namespace; Q6 is new.
 Short name of the set: `c10-c01-scenarios`. One pull request, named `c10-c01-inputs`.
 Implementer: Codex, in a session Hari starts (issue body; [decision 6894614673 on #499](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894614673), point 2). The pull request gets the Claude review gate of [decision 6894587233 on #499](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894587233), point 2.
 
@@ -117,7 +118,7 @@ Meaning:
 - Phase `C0` runs the baseline: `enable.auto.offset.store` `false`, so the worker stores each offset after it records the message (`ConsumerProcessingWorker.cs` lines 193 to 197; baseline `BaselineSettingsCatalog.cs` line 183). Phase `C1` runs the librdkafka default, `enable.auto.offset.store` `true`, on the subject only.
 - In both, the subject sends SIGKILL to itself when `Consume` returns its 110th message, before processing it (ADR-022 "Self-termination", line 757). The witness runs the baseline with no kill.
 - The profile is the C03 profile, reused unchanged, so the offline partition evidence of the C03 test W1 applies (section 8, DA3).
-- Why 110. In the C03 profile each partition range of 16 partitions receives 120 messages, and every non-empty partition of either range has its first message by that range's 86th message (#508 plan test W1, on `main` as the C03 workload test). A kill at the 110th message leaves 24 messages, about 12 s at the range's arrival rate of about 2 messages per second, after the last partition's first message. With `auto.commit.interval.ms` 5000 (baseline, `BaselineSettingsCatalog.cs` line 181), at least two auto-commit timer ticks fall in that time, so every subject partition should have a committed offset when the subject dies. Without that, the witness would start such a partition at the latest offset (`auto.offset.reset` `latest`, line 185), and C10 C0 would count a K-57 loss that is not a store-mode effect. This is an inference from the documented timer and the offline workload, not a measurement; smoke check 9 tests it. The arrival rate is an estimate made on 2026-11-19 from the profile (4 attempts per second split over two ranges).
+- Why 110. In the C03 profile each partition range of 16 partitions receives 120 messages, and every non-empty partition of either range has its first message by that range's 86th message (#508 plan test W1, on `main` as the C03 workload test). A kill at the 110th message leaves 24 messages after the last partition's first message: by the generator's due times, 9.75 s in partitions 0 to 15 (86th message due at 43.75 s, 110th at 53.5 s) and 12.25 s in partitions 16 to 31 (42.5 s and 54.75 s), computed by script in the plan check of 2026-11-19. With `auto.commit.interval.ms` 5000 (baseline, `BaselineSettingsCatalog.cs` line 181), at least one auto-commit timer tick falls in that time if the subject keeps up with arrivals, so every subject partition should have a committed offset when the subject dies. Without that, the witness would start such a partition at the latest offset (`auto.offset.reset` `latest`, line 185), and C10 C0 would count a K-57 loss that is not a store-mode effect. This is an inference from the documented timer and the offline workload, not a measurement; smoke check 9 tests it.
 
 ### 3.2 `scenarios/C01/scenario.yaml`
 
@@ -225,7 +226,7 @@ Why this profile. ADR-022 completion needs, for every partition with messages in
 | C10 | none | `EnrichmentConsumer:enable.auto.offset.store=true` |
 | C01 | none | `EnrichmentConsumer:session.timeout.ms=45000` |
 
-The validated value changes shape: for each configuration it holds either a slow message (ordinal, duration, mode) or a kill count, never both and never neither. Names and representation are the implementer's. The cross-file check `consumer_profile_required` (`ScenarioLoader.cs`) and the profile checks are unchanged. Every scenario and profile on `main` keeps loading and resolving exactly as before, and C03's validated slow messages are unchanged.
+The validated value keeps its existing `Configurations` property with its type, `ImmutableDictionary<string, ConsumerSlowMessageDeclaration>` (`ScenarioContracts.cs` line 155): it holds C03's two slow messages exactly as today and is empty for C10 and C01. `ConsumerProcessingDefinition` gains one property, an `ImmutableDictionary<string, int>` of kill counts by configuration, empty for C03 and holding `C0` and `C1` for C10 and C01. Its name is the implementer's. So the existing C03 assertions on `Configurations` (`tests/Parchwell.Scenarios.Tests/ConsumerProcessingDefinitionTests.cs` lines 25 to 27) stay unchanged. The cross-file check `consumer_profile_required` (`ScenarioLoader.cs`) and the profile checks are unchanged. Every scenario and profile on `main` keeps loading and resolving exactly as before, and C03's validated slow messages are unchanged.
 
 ### 3.5 Override policy entries
 
@@ -298,9 +299,9 @@ Line 73 gains, after its last sentence: "EnrichmentConsumer replacements also su
 - R14 WHEN the load generator resolves C10 or C01 THEN its `LoadGenProducer` settings for `C0` and `C1` equal the baseline.
 - R15 WHEN the three images are published THEN each contains `scenarios/C10/scenario.yaml`, `scenarios/C01/scenario.yaml`, `scenarios/profiles/c01-consumer.yaml` and `scenarios/profiles/c03-consumer.yaml` under its application directory.
 - R16 WHEN `python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py check` reports the pull request as relevant to the mutation workload THEN the implementer runs `c5_runtime.py renew` with a basis naming this plan, at most once. If `check` then passes, continue. If it reports that new measurement is needed, push -wip and hand off to the next session (cap 1; exhaustion action `push -wip and hand off to the next session`).
-- R17 `scenarios/C10/expected.yaml` and `scenarios/C01/expected.yaml` each equal section 5.2 byte for byte.
+- R17 WHEN the pull request head is checked THEN `scenarios/C10/expected.yaml` and `scenarios/C01/expected.yaml` each equal section 5.2 byte for byte.
 - R18 WHEN `WorkloadGenerator.Generate` runs over the committed `c01-consumer.yaml`, with each message's partition the CRC-32 of its UTF-8 key modulo 32 THEN the values of test W2 hold.
-- R19 The #507 upper bounds hold for both items: `WindowMs` 360000 does not exceed 1620000, and `CompletionDeadlineMs` 30000 is below 40000 (#507 plan section 3.7 rules 1 and 2), as for C03.
+- R19 WHEN C10 or C01 is loaded THEN the #507 upper bounds hold: `WindowMs` 360000 does not exceed 1620000, and `CompletionDeadlineMs` 30000 is below 40000 (#507 plan section 3.7 rules 1 and 2), as for C03.
 
 ## 5. Hypotheses and expected outcomes
 
@@ -326,7 +327,7 @@ subject: >-
   processing. The baseline stores after processing.
 
 assessment_rules:
-  counted_repeats: complete_valid only
+  counted_repeats: complete_valid only, meeting commit_precondition
   repeats_per_configuration: 5
   replacements: 0
   evidence: >-
@@ -336,6 +337,13 @@ assessment_rules:
   kill_point: >-
     The subject sends SIGKILL to itself when Consume returns its 110th
     message, before processing it (ADR-022). The witness runs the baseline.
+  commit_precondition: >-
+    A repeat counts only when, in the archived consumer records, every
+    partition with a subject processed row has a successful subject commit
+    entry for it with a row sequence below the subject's kill-intent row.
+    Otherwise the witness starts that partition at the latest offset, and a
+    loss there is not an offset-store effect. A repeat that fails it is
+    reported, not counted.
 
 configurations:
   C0:
@@ -344,10 +352,10 @@ configurations:
         With offsets stored after processing, does a crash leave any message
         committed but never processed?
       holds_when: >-
-        All 5 repeats complete_valid, and in each:
+        All 5 repeats counted, and in each:
         counts.committed_never_processed = 0.
       contradicted_when: >-
-        All 5 repeats complete_valid, and in at least one:
+        All 5 repeats counted, and in at least one:
         counts.committed_never_processed >= 1.
       otherwise: inconclusive
     processed_again:
@@ -359,7 +367,7 @@ configurations:
         With the default automatic offset store, does a crash leave a message
         committed but never processed?
       holds_when: >-
-        All 5 repeats complete_valid, and in at least one:
+        All 5 repeats counted, and in at least one:
         counts.committed_never_processed >= 1.
       contradicted_when: never; a zero count does not contradict a possibility.
       otherwise: inconclusive
@@ -379,6 +387,7 @@ verdict:
   separate_lines: H2 and processed_again are published on their own lines and do not change the verdict.
   text_must_state:
     - The kill point in assessment_rules.kill_point.
+    - Each repeat that failed commit_precondition, with its partitions.
     - H2's published_text_must_state.
     - K-57 is tested under C01, not C10.
 
@@ -512,13 +521,15 @@ When an existing test's fixture is rejected by a check this plan adds, the imple
 
 The rule never permits removing a case, loosening an assertion or changing a check. The pull request's implementation notes list each such change with the check that forces it. The cold review and the Codex review check each listed change. Model: [#404 decision 6830544567](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6830544567) point 2.
 
-Known cases: a test that pins the full `KafkaScenarioOverridePolicy.Settings` list (`tests/Parchwell.Kafka.Tests/Configuration/ScenarioOverrideMetadataTests.cs` lines 20 to 40) takes option (a) for the new `enable.auto.offset.store` row; a test that enumerates scenario directories or `Content` items takes option (a). Cap: at most 10 existing test files changed under this rule. Exhaustion action: `push -wip and hand off to the next session`.
+Known case: a test that enumerates scenario directories or `Content` items takes option (a). The override-policy list test is not a fixture case; section 7.2 states its change. Cap: at most 10 existing test files changed under this rule. Exhaustion action: `push -wip and hand off to the next session`.
 
 ### 7.2 Assertions this plan supersedes
 
 These existing assertions pin behaviour that this plan changes on purpose. Each is changed exactly as stated, and the implementation notes list them. They are not fixture changes under section 7.1.
 
-- `ScenarioOverrideMetadataTests.cs` line 31: the `session.timeout.ms` row asserts instead value kind `Integer`, role `EnrichmentConsumer`, minimum 1, maximum 3600000, inventory [`C01`, `C08`] and omission inventory [`C08`], in the form the file uses for `connections.max.idle.ms`.
+- `tests/Parchwell.Kafka.Tests/Configuration/ScenarioOverrideMetadataTests.cs`, `Given_OverridePolicy_When_ReadingSettings_Then_ExposesEachSupportedEntry`: line 18 becomes `Assert.Equal(23, settings.Length);`; the `session.timeout.ms` element (line 31) asserts instead value kind `Integer`, role `EnrichmentConsumer`, minimum 1, maximum 3600000, inventory [`C01`, `C08`] and omission inventory [`C08`], in the form the file uses for `connections.max.idle.ms`; and after the `max.poll.interval.ms` element (line 34) one element is added: `setting => AssertNewEntry(setting, "enable.auto.offset.store", KafkaScenarioOverrideValueKind.Boolean, KafkaClientRole.EnrichmentConsumer, "C10", 0, 1),`.
+- `tests/Parchwell.Verifier.Tests/Consumer/HostOptionsTests.cs`, `Given_ConsumerPlanBoundary_U15_When_Starting_Then_RejectsInvalidPlanBeforeClients`: the `no-source` case (line 37) no longer sets `ScenarioId` to `C10`. It keeps the default scenario and instead registers, in the test's service configuration, an `IConsumerVerificationPlanSource` whose `TryGetPlan` returns false with a null plan. Its expected values (`valid` false, exit 1, no client constructed) are unchanged.
+- The same file, `Given_C10_or_C01_with_no_registered_plan_source_When_starting_Then_the_production_source_fails_with_consumer_plan_invalid` (from line 157): replaced by test V5, because the production source now serves those pairs.
 - `tests/Parchwell.Enrichment.Tests/ConsumerProcessing/ScenarioPlanSourceTests.cs`: in the theory `Given_a_pair_that_is_not_C03_C0_or_C1_When_asked_for_the_plan_Then_it_returns_null` (line 66), the rows (`C10`, `C0`) and (`C01`, `C0`) become (`C10`, `C2`) and (`C08`, `C0`); (`C03`, `C2`) stays. The theory `Given_C10_or_C01_with_phase_C0_When_the_worker_runs_with_the_production_source_Then_it_exits_1_with_consumer_plan_invalid` (line 81) keeps its assertion and its two scenarios, and builds its source over an empty root, as `Given_a_root_without_the_C03_files_When_asked_for_the_plan_Then_it_returns_null` (line 70) does, so the source returns null for a missing file. The theory `Given_C10_or_C01_with_phase_C0_When_the_host_runs_without_a_configured_source_Then_it_exits_1_and_writes_consumer_plan_invalid` (line 95) is replaced by test E4, because the production source now returns a plan for those pairs; the `consumer_plan_invalid` exit stays covered by the worker-run theory.
 - `tests/Parchwell.LoadGen.Tests/Host/C03AdmissionTests.cs`: rows (`C10`, `C0`, `C0`) and (`C01`, `C0`, `C0`) of the theory `Given_an_unaccepted_pair_When_validating_Then_each_check_keeps_its_failure_name` (line 53) move to the acceptance tests of L1; the rejection theory gains (`C10`, `C0`, `C1`), (`C10`, `C2`, `C2`) and (`C01`, `probe`, `C0`).
 - `tests/Parchwell.Verifier.Tests/Consumer/ScenarioVerificationPlanSourceTests.cs`: rows (`C10`, `C0`) and (`C01`, `C1`) of the theory `Given_any_other_pair_When_the_production_source_is_asked_Then_it_returns_false` (line 84) become (`C10`, `C2`) and (`C01`, `C2`); (`C03`, `C2`) and (`B04`, `C0`) stay.
@@ -545,6 +556,7 @@ Test names follow `Given_<state>_When_<action>_Then_<outcome>` (docs/engineering
 | V1 | R10 | Verifier | production source for the four pairs | kill 110, 110, 1, 1; deadline 30000; `WindowMs` null; `SlowMessageMode` null; C10/C1 subject map `enable.auto.offset.store` = `true`; C01/C1 subject map `session.timeout.ms` = `45000`; each C0 subject map equals its witness map; witness maps have `enable.auto.offset.store` `false` and `session.timeout.ms` `30000`; no map has the three reserved keys; `IsValid` true with the chart's `consumer-verify` budgets |
 | V2 | R12 | Verifier | for each of the eight role and configuration pairs: the plan map plus the three reserved keys; and `CreateEnrichmentConsumer().Configuration` from a factory with the same inputs, with the subject override applied | equal key for key and value for value |
 | V3 | R11 | Verifier | `TryGetPlan` for (`C10`, `C2`), (`C01`, `C2`), (`C03`, `C2`), (`B04`, `C0`) | false each time |
+| V5 | R10 | Verifier | host built with no test plan source for (`C10`, `C0`) and (`C01`, `C1`), with the options of the replaced test at `HostOptionsTests.cs` line 157 | `Program.BuildHost` succeeds; the registered `ConsumerVerificationPlan` has kill count 110 and 1, deadline 30000; no client constructed |
 | V4 | R10 | Verifier | `RegisteredProducerConfigurationResolver.Resolve` with the committed C10 files and a C10 producer registration; the same for C01 | each resolves with no exception, `EnrichmentConsumer` group ID `<run>-c0-r<repeat>-consumers` |
 | L1 | R13 | LoadGen | host options and run context: C10 `C0`/`C0`, `C1`/`C1`; C01 `C0`/`C0`, `C1`/`C1` | accepted |
 | L2 | R13 | LoadGen | C10 `C0`/`C1`; C10 `C2`/`C2`; C01 `probe`/`C0`; C01 `C0`/`C0` with Job name suffix `loadgen2` | `phase_configuration_pair_invalid` (options) and `producer_run_context_invalid` (context) for the first three; `restart_instance_requires_b10` for the last |
@@ -560,15 +572,15 @@ R16 is covered by acceptance A2. R19 is covered by tests S1 and S2's literal win
 
 Each is an assumption about the deployed runtime that no offline test in this plan covers. Each stays under section 13 (Q4) until Hari accepts it by name. Live evidence for the shared consumer design exists from the C03 smoke run [44248514485](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44248514485) ([#508 report 6973117302](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6973117302)): ten repeats, each on fresh connections (new member pods, a new group ID and new clients per repeat) under the C03 load; readiness reached, `offset_read` `success` and every block `complete_valid` in all ten; phase durations 1929 s and 1932 s. No run has exercised a self-kill. Each smoke run of section 9 takes its evidence the same way, on fresh connections under the item's load.
 
-- DA1. Live self-kill (#507 DA5). The subject's SIGKILL ends only its own process; its Job ends failed; the workflow records `failed`, which is not a bad outcome (`consumer_repeat.py` lines 14 and 158), and continues with the witness, load generator and verifier. Code evidence: the worker checks it can signal itself before registering (`ConsumerProcessingWorker.cs` lines 39 to 43). Live evidence: none. Smoke check 1.
+- DA1. Live self-kill (#507 DA5). The member pod shares its process namespace (`charts/parchwell/templates/_consumer.tpl` line 46, `shareProcessNamespace: true`), so the worker is not the namespace's first process, and a SIGKILL it sends to its own process ID ends that process and its container. That is my reading of the Linux and Kubernetes behaviour, not verified in a live pod. The subject's SIGKILL ends only its own process; its Job ends failed; the workflow records `failed`, which is not a bad outcome (`consumer_repeat.py` lines 14 and 158), and continues with the witness, load generator and verifier. Code evidence: the worker checks it can signal itself before registering (`ConsumerProcessingWorker.cs` lines 39 to 43). Live evidence: none. Smoke check 1.
 - DA2. Same node. Both members run on one node in each repeat, so `reassignment.microseconds` is not null. If they do not, that repeat's timing is unavailable and C01's hypotheses are inconclusive (ADR-022 line 774). Live evidence: none for node placement. Smoke check 10.
-- DA3. C10 commits before the kill. Every subject partition with a processed row has a successful committed entry before the kill-intent row (section 3.1 "Why 110"). Offline evidence: the C03 profile's partition spread (#508 test W1). If it fails, C10 C0 can count a K-57 loss that is not a store-mode effect, and H1 could be contradicted falsely. Smoke check 9.
+- DA3. C10 commits before the kill. Every subject partition with a processed row has a successful committed entry before the kill-intent row (section 3.1 "Why 110"). Offline evidence: the C03 profile's partition spread (#508 test W1). If it fails, a K-57 loss that is not a store-mode effect would falsely contradict H1 and falsely make H2 hold. Smoke check 9 tests it in the smoke run; in the batch, `commit_precondition` in `scenarios/C10/expected.yaml` excludes each repeat where it fails (plan check 7001168119, finding 6).
 - DA4. C01 takeover before the last message. In every repeat the witness takes the subject's partitions before 101.0 s after the load start (section 3.3). Offline evidence: test W2 for the workload; the takeover time is an estimate. If it fails, the repeat ends `incomplete` with `consumer_commit_frontier_short`. Smoke check 10.
 - DA5. Window. Within 360000 ms from each member's start, readiness, the start line, the load (60 s for C10, 150 s for C01), the takeover and the witness's catch-up finish, and every partition's commit reaches the end line. Estimate, made on 2026-11-19: C10 uses about the same share of the window as C03; C01 about 25 s more, because its load is 90 s longer and it has no 90 s slow message. Basis: the C03 smoke run completed every repeat inside the same window. A shortfall shows as `consumer_commit_frontier_short`.
 - DA6. Phase time. Repeat 5 starts within the 2100 s bound (#507 plan line 91). Evidence: C03 phases of 1929 s and 1932 s with the same window. Estimate, made on 2026-11-19: C10 and C01 phases similar. If repeat 5 is recorded `not_attempted` with `orchestration_deadline`, the conflict goes to Hari; the budget is not raised.
 - DA7. Witness capacity in C01. After the takeover the witness alone receives 4 attempts per second, each taking 200 ms plus one Blob append, whose time is not measured (ADR-022 line 790). A backlog that forms drains after the load ends; DA5 covers the time.
 - DA8. Fidelity. The `effective_settings` a live member registers equal the verifier plan maps for the two new keys. Test V2 shows it offline against the same factory; C03 smoke check 4 passed for its key. A difference would show as `consumer_configuration_mismatch`.
-- DA9. Archive. A self-killed subject writes no native-monitoring index, so every C10 and C01 repeat records an archive monitoring gap (`docs/operations/consumer-workflow.md` line 42; item D2 of the #531 plan, undecided). Smoke check 8 reports it; it goes to Hari before any batch dispatch.
+- DA9. Archive. A self-killed subject writes no native-monitoring index, because the index is written only at shutdown, so every C10 and C01 repeat records an archive monitoring gap that holds its phase's publication (`docs/operations/consumer-workflow.md` line 42; [#531 handoff 6956490346](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/531#issuecomment-6956490346), D2). Q6 asks how to handle it. Smoke check 8 reports it.
 
 ## 9. Acceptance commands and evidence
 
@@ -594,25 +606,25 @@ After the pull request merges, one smoke run per item. Each is an Azure dispatch
 
 Exhaustion action for a failed check: hand off to Hari with the run link and the failed check; no batch dispatch. Checks 8, 9 and 10 go to Hari even when they pass, with their values, before any batch dispatch.
 
-The batch dispatch of each item is the same workflow input. Prerequisites: its smoke checks pass, or Hari accepts each failure by name; Hari's decision on item D2 of the #531 plan for self-killed subjects. It waits for Hari, after he has seen the smoke results.
+The batch dispatch of each item is the same workflow input. Prerequisites: its smoke checks pass, or Hari accepts each failure by name; the Q6 change merged, or Hari's other answer to Q6 applied. It waits for Hari, after he has seen the smoke results.
 
 Mutation acceptance (factory.md "Evidence pack"). This pull request changes mutation inputs (Kafka and Scenarios sources and verifier sources). One passing `verifier-c5-mutation.yml` run on `main` at a commit that includes this merge satisfies it. The implementing session dispatches it once after the merge. It runs on GitHub runners and reaches no Azure resource; it is not a scenario dispatch. Cap: 1 dispatch. Exhaustion action: `record the gap and continue`; open a fix issue if none covers the failure; C10 and C01 evidence-pack publication stays blocked. That run gates the evidence packs, not the smoke or batch runs.
 
 ## 10. Deferred work
 
 1. Smoke runs. On the verdict path. Deferral permitted because they can only run after this pull request merges. Responsible: whoever Hari names under Q5. Stage: after merge. Prerequisites and checks: section 9. Workload bound: one dispatch per item; exhaustion action as section 9. Completion evidence: run links and the ten checks reported on #510. Gate it blocks: the batch dispatches.
-2. Batch dispatches. On the verdict path. Permitted as above. Responsible: Hari. Stage: after the smoke checks and the #531 D2 decision. Bound: one dispatch per item. Completion evidence: run links. Gate it blocks: the C10 and C01 verdict pull requests (#499 split entries 9 and 10).
+2. Batch dispatches. On the verdict path. Permitted as above. Responsible: Hari. Stage: after the smoke checks and the Q6 change. Bound: one dispatch per item. Completion evidence: run links. Gate it blocks: the C10 and C01 verdict pull requests (#499 split entries 9 and 10).
 3. Mutation acceptance run. On the verdict path. Permitted because it must run on `main` after merge. Responsible: the implementing session. Bound and exhaustion action: section 9. Completion evidence: `summary.json` with `measurement_complete: true` and `break_passed: true`. Gate it blocks: the C10 and C01 evidence packs.
-4. #531 item D2, the archive monitoring gap of a self-killed subject. On the verdict path for the batch dispatches. Deferral permitted because it is Hari's decision on another issue and changes no file of this plan. Responsible: Hari, prompted by the smoke report. Gate it blocks: the batch dispatches.
+4. The archive monitoring gap of a self-killed subject (#531 D2; Q6). On the verdict path. Deferral permitted because the fix is outside this plan's files under the recommended answer. Responsible: the session Hari names under Q6, in its own pull request. Prerequisites: Hari's answer to Q6. Completion evidence: that pull request merged. Gate it blocks: the C10 and C01 batch dispatches.
 5. README rows and reports. On the verdict path. Responsible: the verdict pull requests, which apply `text_must_state`.
 
 ## 11. Plan-check questions (factory.md "Item lifecycle" step 1)
 
-(a) Effort that scales with a number unknown at planning time: the mutation qualification renewal (R16: cap 1; exhaustion `push -wip and hand off to the next session`); the post-merge mutation run (cap 1; `record the gap and continue`); the smoke and batch dispatches (one each per item, by Hari or whom he names); fixture changes under section 7.1 (cap 10 files; `push -wip and hand off to the next session`). The superseded assertions of section 7.2 are a fixed list of four files.
+(a) Effort that scales with a number unknown at planning time: the mutation qualification renewal (R16: cap 1; exhaustion `push -wip and hand off to the next session`); the post-merge mutation run (cap 1; `record the gap and continue`); the smoke and batch dispatches (one each per item, by Hari or whom he names); fixture changes under section 7.1 (cap 10 files; `push -wip and hand off to the next session`). The superseded assertions of section 7.2 are a fixed list of five files.
 
 (b) Stricter than the parent plan: the parent is the #499 proposal, which pins no checks. Against the predecessor contracts, the declaration pins the kill counts and each configuration's replacements, so they cannot drift without a plan amendment. Looser in one place: the `session.timeout.ms` entry admits integers for any scenario, as the resolver does for every integer entry, and changes one diagnostic for invalid input (section 3.5). Different from the parent in one place, pending Q1: K-57 is tested under C01, not C10.
 
-(c) Tests or checks that depend on code, data or behaviour neither on `main` nor in the pull request: the decision rules depend on live Event Hubs behaviour (DA1 to DA7, DA9), each listed in section 8 and open under Q4. The workload properties behind DA3 and DA4 are pinned offline (the existing C03 test W1, and test W2). Offline tests depend only on code on `main` or in the pull request.
+(c) Tests or checks that depend on code, data or behaviour neither on `main` nor in the pull request: the decision rules depend on live Event Hubs and cluster behaviour (DA1 to DA9), each listed in section 8 and open under Q4. The workload properties behind DA3 and DA4 are pinned offline (the existing C03 test W1, and test W2). Offline tests depend only on code on `main` or in the pull request.
 
 ## 12. Sources
 
@@ -628,13 +640,14 @@ Tools: librdkafka v2.16.0 files were fetched at the release tag with `curl` from
 
 ## 13. Open questions for Hari
 
-Each has a recommended answer that this revision applies. Under decision 6895535291 point 2 Hari adopts recommended answers in advance, but expected outcomes and Azure dispatch are reserved to him (point 4), so Q3 to Q5 need his answer.
+Each has a recommended answer that this revision applies. Under decision 6895535291 point 2 Hari adopts recommended answers in advance, but expected outcomes, Azure dispatch and scope are reserved to him (point 4), and Q1 and Q6 change an earlier decision or add a split entry, so all six need his answer.
 
 - Q1. Where is K-57 tested? C10 has only two phases (`phase.py` lines 26 to 27), and both are needed to compare the offset-store modes at the same kill point. K-57 needs a kill before any commit, which is a different kill point. Recommended: test K-57 under C01, with the subject killed at its first message in both C01 phases. C01's timing does not depend on the kill point (section 3.2), so C01 carries K-57 for free, with a 150 s profile so its repeats can complete after a `latest` reset (section 3.3). This changes [decision 6894534441](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894534441) point 3 and the issue body's "C10 includes K-57", and edits blueprint line 1275. Alternatives: (b) add a third C10 phase, which changes `phase.py`, `scenario.yml` and the chart, protected and outside split entry 7; (c) drop K-57 and publish it as not tested.
 - Q2. How is C10's automatic-store case judged? Under ADR-022's kill point ("before processing it", line 757), the automatic store can lose a message only if an auto-commit lands within one Blob append before the kill (section 5.1). So C1 will very likely show zero loss, and its result says little about the documented risk. Recommended: keep the approved kill point; base the C10 verdict on H1 (store-after-process loses nothing) only; publish H2 on its own line as `inconclusive` unless a loss is seen, with the text of its `published_text_must_state`. Alternative: amend ADR-022 so the C10 subject is killed after processing its Nth message for longer than `auto.commit.interval.ms` and before recording it. That would make the C1 loss expected rather than rare, but it changes ADR text, the worker's kill path and the verifier's stop rule, so it needs a new split entry before C10 can run. My opinion: the alternative gives a more useful published C10 result; the recommendation is the one that fits this child's scope.
-- Q3. Approve both `expected.yaml` files as section 5.2 gives them, including these policy values: C10 kill count 110; C01 kill count 1; the C01 windows [27 s, 45 s) and [42 s, 60 s), whose lower bounds subtract one heartbeat interval and whose upper bounds add a 15 s margin that is not measured.
+- Q3. Approve both `expected.yaml` files as section 5.2 gives them, including these policy values: C10 kill count 110; C01 kill count 1; the C01 windows [27 s, 45 s) and [42 s, 60 s), whose lower bounds subtract one heartbeat interval and whose upper bounds add a 15 s margin that is not measured; and C10's `commit_precondition`, which the verdict session checks from the archived records (recommended over accepting the DA3 risk by name, the alternative in plan check 7001168119 finding 6).
 - Q4. Accept DA1 to DA9 of section 8 by name.
 - Q5. Who dispatches the two smoke runs? Recommended: the #499 batch control session, one item at a time, with the section 9 checks reported on #510, as Hari authorized for C03 ([#508 decision 6955995326](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6955995326) point 7). Batch dispatches stay with Hari.
+- Q6. How is the archive monitoring gap of a self-killed subject handled (#531 D2)? Today every C10 and C01 repeat records it, so no phase could be published. Recommended: change the archive rule so that, for a C10 or C01 subject whose record ends at its kill-intent row in a configuration with a kill count, a missing native-monitoring index is recorded as an expected absence with the reason `configured_self_kill`, not as a gap; every other missing index stays a gap. It is a change to the archive script and `docs/operations/archive-smoke.md`, outside this plan's files, so it is its own pull request, a new split entry or a #531 follow-up, and must merge before the C10 and C01 batch dispatches. The published C10 and C01 results then state that the killed subject has no native-monitoring evidence. Alternatives: (b) the worker writes its native-monitoring index before the SIGKILL, which adds a step between the kill-intent row and the kill and so changes ADR-022 "Self-termination" (line 757); (c) keep the gap and have Hari waive it by name for each published phase.
 
 ## 14. Stop rule
 
