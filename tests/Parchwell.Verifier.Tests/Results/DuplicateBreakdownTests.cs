@@ -7,17 +7,25 @@ namespace Parchwell.Verifier.Tests.Results;
 #pragma warning disable CA1707
 public sealed class DuplicateBreakdownTests
 {
+    public static TheoryData<string> MalformedWireObjects => new()
+    {
+        "null", "[]", "{}", "{\"duplicate_same_attempt\":0}", "{\"duplicate_different_attempt\":0}",
+        "{\"duplicate_same_attempt\":null,\"duplicate_different_attempt\":0}",
+        "{\"duplicate_same_attempt\":0,\"duplicate_different_attempt\":null}",
+        "{\"duplicate_same_attempt\":-1,\"duplicate_different_attempt\":0}",
+        "{\"duplicate_same_attempt\":0,\"duplicate_different_attempt\":-1}",
+        "{\"duplicate_same_attempt\":1.5,\"duplicate_different_attempt\":0}",
+        "{\"duplicate_same_attempt\":true,\"duplicate_different_attempt\":0}",
+        "{\"duplicate_same_attempt\":\"1\",\"duplicate_different_attempt\":0}",
+        "{\"duplicate_same_attempt\":[],\"duplicate_different_attempt\":0}",
+        "{\"duplicate_same_attempt\":9223372036854775808,\"duplicate_different_attempt\":0}",
+        "{\"duplicate_same_attempt\":9223372036854775807,\"duplicate_different_attempt\":1}",
+        "{\"duplicate_same_attempt\":0,\"duplicate_same_attempt\":0,\"duplicate_different_attempt\":0}",
+        "{\"duplicate_same_attempt\":0,\"duplicate_different_attempt\":0,\"extra\":0}"
+    };
+
     [Theory]
-    [InlineData("null")] [InlineData("[]")] [InlineData("{}")] [InlineData("{\"duplicate_same_attempt\":0}")]
-    [InlineData("{\"duplicate_different_attempt\":0}")] [InlineData("{\"duplicate_same_attempt\":null,\"duplicate_different_attempt\":0}")]
-    [InlineData("{\"duplicate_same_attempt\":-1,\"duplicate_different_attempt\":0}")]
-    [InlineData("{\"duplicate_same_attempt\":1.5,\"duplicate_different_attempt\":0}")]
-    [InlineData("{\"duplicate_same_attempt\":true,\"duplicate_different_attempt\":0}")]
-    [InlineData("{\"duplicate_same_attempt\":\"1\",\"duplicate_different_attempt\":0}")]
-    [InlineData("{\"duplicate_same_attempt\":9223372036854775808,\"duplicate_different_attempt\":0}")]
-    [InlineData("{\"duplicate_same_attempt\":9223372036854775807,\"duplicate_different_attempt\":1}")]
-    [InlineData("{\"duplicate_same_attempt\":0,\"duplicate_same_attempt\":0,\"duplicate_different_attempt\":0}")]
-    [InlineData("{\"duplicate_same_attempt\":0,\"duplicate_different_attempt\":0,\"extra\":0}")]
+    [MemberData(nameof(MalformedWireObjects))]
     public void Given_MalformedJson_When_Read_Then_Rejected(string json)
     {
         using JsonDocument document = JsonDocument.Parse(json);

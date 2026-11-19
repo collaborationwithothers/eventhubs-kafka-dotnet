@@ -74,23 +74,35 @@ public sealed class B10FinalClassificationDuplicateTests
     }
 
     [Theory]
-    [InlineData(false)] [InlineData(true)]
-    public void Given_NonfinalArmOrMemberBreakdown_When_Validated_Then_RejectsMalformedPresence(bool member)
+    [MemberData(nameof(Results.DuplicateBreakdownTests.MalformedWireObjects), MemberType = typeof(Results.DuplicateBreakdownTests))]
+    public void Given_NonfinalArmOrMemberBreakdown_When_Validated_Then_RejectsMalformedPresence(string literal)
+    {
+        IReadOnlyList<AbruptArm> arms = B10FinalClassification.EvaluateArms(Input(), [Record(0, "first", "original")], true, 2)!;
+        foreach (bool member in new[] { false, true })
+        {
+            JsonArray array = JsonSerializer.SerializeToNode(arms, B10FinalProjectionCodec.JsonOptions)!.AsArray();
+            JsonObject target = (member ? array[0]!["members"]![0]! : array[0]!).AsObject();
+            target["duplicate_breakdown"] = "fixture";
+            string payload = array.ToJsonString().Replace("\"duplicate_breakdown\":\"fixture\"", "\"duplicate_breakdown\":" + literal, StringComparison.Ordinal);
+            using JsonDocument malformed = JsonDocument.Parse(payload);
+            Assert.Throws<FormatException>(() => B10FinalRepeatEvidence.ValidateArms(malformed.RootElement));
+        }
+    }
+
+    [Theory]
+    [InlineData(0L)] [InlineData(1L)] [InlineData(long.MaxValue)]
+    public void Given_HistoricalOrValidArmAndMemberBreakdown_When_Validated_Then_Accepts(long count)
     {
         IReadOnlyList<AbruptArm> arms = B10FinalClassification.EvaluateArms(Input(), [Record(0, "first", "original")], true, 2)!;
         JsonArray array = JsonSerializer.SerializeToNode(arms, B10FinalProjectionCodec.JsonOptions)!.AsArray();
-        JsonObject target = (member ? array[0]!["members"]![0]! : array[0]!).AsObject();
-        target.Remove("duplicate_breakdown");
+        JsonObject arm = array[0]!.AsObject(), member = arm["members"]![0]!.AsObject();
+        arm.Remove("duplicate_breakdown");
+        member.Remove("duplicate_breakdown");
         using (JsonDocument historical = JsonDocument.Parse(array.ToJsonString())) B10FinalRepeatEvidence.ValidateArms(historical.RootElement);
-        foreach (string literal in new[] { "null", "{}", "{\"duplicate_same_attempt\":0}",
-            "{\"duplicate_same_attempt\":-1,\"duplicate_different_attempt\":0}",
-            "{\"duplicate_same_attempt\":9223372036854775807,\"duplicate_different_attempt\":1}",
-            "{\"duplicate_same_attempt\":0,\"duplicate_different_attempt\":0,\"extra\":0}" })
-        {
-            target["duplicate_breakdown"] = JsonNode.Parse(literal);
-            using JsonDocument malformed = JsonDocument.Parse(array.ToJsonString());
-            Assert.Throws<FormatException>(() => B10FinalRepeatEvidence.ValidateArms(malformed.RootElement));
-        }
+        member["duplicate_breakdown"] = new JsonObject { ["duplicate_same_attempt"] = count, ["duplicate_different_attempt"] = 0 };
+        arm["duplicate_breakdown"] = member["duplicate_breakdown"]!.DeepClone();
+        using JsonDocument present = JsonDocument.Parse(array.ToJsonString());
+        B10FinalRepeatEvidence.ValidateArms(present.RootElement);
     }
 
     [Fact]

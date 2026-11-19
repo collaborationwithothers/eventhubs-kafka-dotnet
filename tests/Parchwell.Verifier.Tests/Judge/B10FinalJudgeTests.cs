@@ -89,6 +89,8 @@ public sealed class B10FinalJudgeTests
         JsonNode target = rootMismatch ? root : root["repeats"]![0]!;
         target["duplicate_breakdown"]!["duplicate_same_attempt"] = 0;
         target["duplicate_breakdown"]!["duplicate_different_attempt"] = 1;
+        if (!rootMismatch)
+            root["duplicate_breakdown"] = target["duplicate_breakdown"]!.DeepClone();
         Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(Encoding.UTF8.GetBytes(root.ToJsonString())));
     }
 

@@ -968,30 +968,26 @@ public sealed class PhaseCandidateCodecTests
     }
 
     [Theory]
-    [InlineData("null")]
-    [InlineData("{}")]
-    [InlineData("[]")]
-    [InlineData("{\"duplicate_same_attempt\":0}")]
-    [InlineData("{\"duplicate_different_attempt\":0}")]
+    [MemberData(nameof(Results.DuplicateBreakdownTests.MalformedWireObjects), MemberType = typeof(Results.DuplicateBreakdownTests))]
     [InlineData("{\"duplicate_same_attempt\":0,\"duplicate_different_attempt\":0,\"duplicate_same_attempt\":0}")]
-    [InlineData("{\"duplicate_same_attempt\":true,\"duplicate_different_attempt\":0}")]
     [InlineData("{\"duplicate_same_attempt\":\"0\",\"duplicate_different_attempt\":0}")]
-    [InlineData("{\"duplicate_same_attempt\":9223372036854775808,\"duplicate_different_attempt\":0}")]
     [InlineData("{\"duplicate_same_attempt\":1,\"duplicate_different_attempt\":0}")]
-    [InlineData("{\"duplicate_same_attempt\":0,\"duplicate_different_attempt\":0,\"extra\":0}")]
-    [InlineData("{\"duplicate_same_attempt\":0,\"duplicate_different_attempt\":null}")]
-    [InlineData("{\"duplicate_same_attempt\":null,\"duplicate_different_attempt\":0}")]
-    [InlineData("{\"duplicate_same_attempt\":0,\"duplicate_different_attempt\":-1}")]
     [InlineData("{\"duplicate_same_attempt\":-1,\"duplicate_different_attempt\":1}")]
     [InlineData("{\"duplicate_same_attempt\":0.5,\"duplicate_different_attempt\":0}")]
-    [InlineData("{\"duplicate_same_attempt\":9223372036854775807,\"duplicate_different_attempt\":1}")]
-    public void Given_MalformedRepeatObservation_When_Read_Then_Rejects(string observation)
+    public void Given_MalformedRepeatOrRootObservation_When_Read_Then_Rejects(string observation)
     {
-        string json = System.Text.Encoding.UTF8.GetString(PhaseCandidateCodec.Write(Candidate()));
-        string repeatJson = json.Replace("\"repeat\":1", "\"duplicate_breakdown\":" + observation + ",\"repeat\":1", StringComparison.Ordinal);
-        string rootJson = json.Replace("\"schema_version\":1", "\"duplicate_breakdown\":" + observation + ",\"schema_version\":1", StringComparison.Ordinal);
-        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(repeatJson)));
-        Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(rootJson)));
+        PhaseCandidate source = Candidate();
+        PhaseRepeatResult[] repeats = Enumerable.Range(1, 5).Select(i => source.Repeats[0] with { Repeat = i, DuplicateBreakdown = new(0, 0) }).ToArray();
+        byte[] bytes = PhaseCandidateCodec.Write(source with { Repeats = repeats, Counts = new(5, 0, 0, 0, 0, 0), DuplicateBreakdown = new(0, 0) });
+        using (PhaseCandidateCodec.Read(bytes)) { }
+        foreach (bool atRoot in new[] { false, true })
+        {
+            JsonObject root = JsonNode.Parse(bytes)!.AsObject();
+            JsonNode target = atRoot ? root : root["repeats"]![0]!;
+            target["duplicate_breakdown"] = "fixture";
+            string payload = root.ToJsonString().Replace("\"duplicate_breakdown\":\"fixture\"", "\"duplicate_breakdown\":" + observation, StringComparison.Ordinal);
+            Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(System.Text.Encoding.UTF8.GetBytes(payload)));
+        }
     }
 
     private static PhaseCandidate Candidate()

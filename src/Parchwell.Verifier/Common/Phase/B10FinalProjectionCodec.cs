@@ -126,7 +126,9 @@ internal static class B10FinalProjectionCodec
         string comparison = Text(restart, "comparison");
         Require(comparison is "both" or "cross_restart_only" or "same_instance_only" or "neither" or "unavailable");
         Require(eligibility != "eligible" || scan && reasons.Length == 0 && comparison != "unavailable");
-        foreach (string field in new[] { "first_instance_id", "successor_instance_id", "timeout_instance_id" }) _ = ScalarText(restart.GetProperty(field), true);
+        string? firstInstance = ScalarText(restart.GetProperty("first_instance_id"), true);
+        string? successorInstance = ScalarText(restart.GetProperty("successor_instance_id"), true);
+        _ = ScalarText(restart.GetProperty("timeout_instance_id"), true);
         JsonElement termination = restart.GetProperty("termination"); Exact(termination, "class", "outcome");
         string? terminationClass = ScalarText(termination.GetProperty("class"), true);
         string? outcome = ScalarText(termination.GetProperty("outcome"), true);
@@ -149,7 +151,8 @@ internal static class B10FinalProjectionCodec
         foreach (JsonElement arm in arms.EnumerateArray())
         {
             ExactOptional(arm, "duplicate_breakdown", "arm", "cut_attempt_id", "unconfirmed_attempt_ids", "unconfirmed_count", "resend_invoked", "originals_seen", "resends_seen", "pair_count", "unreported_attempts", "unreported_seen", "unreported_unseen", "lost_resends", "witness");
-            Require(Text(arm, "arm") == (armIndex++ == 0 ? "same_instance" : "cross_restart"));
+            bool sameInstance = armIndex++ == 0;
+            Require(Text(arm, "arm") == (sameInstance ? "same_instance" : "cross_restart"));
             _ = ScalarText(arm.GetProperty("cut_attempt_id"), true);
             string[] ids = Strings(arm.GetProperty("unconfirmed_attempt_ids")); Require(ids.Distinct(StringComparer.Ordinal).Count() == ids.Length);
             foreach (string field in new[] { "unconfirmed_count", "resend_invoked", "originals_seen", "resends_seen", "pair_count", "unreported_attempts", "unreported_seen", "unreported_unseen", "lost_resends" }) Count(arm.GetProperty(field), true);
@@ -173,11 +176,18 @@ internal static class B10FinalProjectionCodec
                     N("pair_count") is >= 1 && ids.Contains(Text(witness, "original_attempt_id"), StringComparer.Ordinal) &&
                     Text(witness, "original_attempt_id") != Text(witness, "resend_attempt_id"));
             }
-            if (arm.TryGetProperty("duplicate_breakdown", out JsonElement armBreakdown))
-                Require(scan && DuplicateBreakdown.TryRead(armBreakdown, out _));
             bool localUnjoined = reasons.Contains("b10_restart_late_record_unjoined", StringComparer.Ordinal);
             bool emptyCross = scan && terminationClass == "intended_self_kill" && outcome == "kill_too_late" &&
-                Text(arm, "arm") == "cross_restart" && N("unconfirmed_count") == 0;
+                !sameInstance && N("unconfirmed_count") == 0;
+            if (arm.TryGetProperty("duplicate_breakdown", out JsonElement armBreakdown))
+            {
+                Require(scan && firstInstance is not null);
+                Require(DuplicateBreakdown.TryRead(armBreakdown, out DuplicateBreakdown? breakdown));
+                if (emptyCross)
+                    Require(N("resend_invoked") == 0 && breakdown!.IsValid(0));
+                else
+                    Require(N("resend_invoked").HasValue && (sameInstance || successorInstance is not null));
+            }
             if (!scan || localUnjoined)
                 foreach (string field in new[] { "originals_seen", "resends_seen", "pair_count", "unreported_seen", "unreported_unseen", "lost_resends", "witness" })
                 {

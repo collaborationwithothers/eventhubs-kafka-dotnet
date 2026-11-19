@@ -33,15 +33,9 @@ public sealed class B10FinalProjectionCodecTests
     }
 
     [Theory]
-    [InlineData("null")] [InlineData("[]")] [InlineData("{}")] [InlineData("{\"duplicate_same_attempt\":0}")]
-    [InlineData("{\"duplicate_different_attempt\":0}")]
-    [InlineData("{\"duplicate_same_attempt\":null,\"duplicate_different_attempt\":0}")]
-    [InlineData("{\"duplicate_same_attempt\":-1,\"duplicate_different_attempt\":0}")]
+    [MemberData(nameof(Results.DuplicateBreakdownTests.MalformedWireObjects), MemberType = typeof(Results.DuplicateBreakdownTests))]
     [InlineData("{\"duplicate_same_attempt\":0.5,\"duplicate_different_attempt\":0}")]
-    [InlineData("{\"duplicate_same_attempt\":9223372036854775808,\"duplicate_different_attempt\":0}")]
-    [InlineData("{\"duplicate_same_attempt\":true,\"duplicate_different_attempt\":0}")]
     [InlineData("{\"duplicate_same_attempt\":\"0\",\"duplicate_different_attempt\":0}")]
-    [InlineData("{\"duplicate_same_attempt\":9223372036854775807,\"duplicate_different_attempt\":1}")]
     [InlineData("{\"duplicate_same_attempt\":0,\"duplicate_different_attempt\":0,\"other\":0}")]
     public void Given_MalformedBreakdown_When_ReadAtRepeatOrArm_Then_Rejects(string literal)
     {
@@ -49,8 +43,9 @@ public sealed class B10FinalProjectionCodecTests
         {
             JsonObject root = Node(); JsonNode repeat = root["data"]!["repeats"]![0]!;
             JsonNode target = arm ? repeat["restart"]!["arms"]![0]! : repeat;
-            target["duplicate_breakdown"] = JsonNode.Parse(literal);
-            Assert.Throws<FormatException>(() => Read(root));
+            target["duplicate_breakdown"] = "fixture";
+            string payload = root.ToJsonString().Replace("\"duplicate_breakdown\":\"fixture\"", "\"duplicate_breakdown\":" + literal, StringComparison.Ordinal);
+            Assert.Throws<FormatException>(() => B10FinalProjectionCodec.Read(Encoding.UTF8.GetBytes(payload)));
         }
     }
 
@@ -80,6 +75,14 @@ public sealed class B10FinalProjectionCodecTests
     }
 
     [Theory]
+    [MemberData(nameof(Results.DuplicateBreakdownTests.MalformedWireObjects), MemberType = typeof(Results.DuplicateBreakdownTests))]
+    public void Given_MalformedNonfinalTimeoutBreakdown_When_Validated_Then_Rejects(string literal)
+    {
+        using JsonDocument document = JsonDocument.Parse("{\"duplicate_breakdown\":" + literal + "}");
+        Assert.Throws<FormatException>(() => B10FinalRepeatEvidence.ValidateBreakdown(document.RootElement, 0));
+    }
+
+    [Theory]
     [InlineData(0L)] [InlineData(1L)] [InlineData(long.MaxValue)]
     public void Given_ValidBreakdownBoundary_When_ReadAndWritten_Then_PreservesInt64(long value)
     {
@@ -88,6 +91,40 @@ public sealed class B10FinalProjectionCodecTests
         repeat["duplicate_breakdown"] = new JsonObject { ["duplicate_same_attempt"] = value, ["duplicate_different_attempt"] = 0 };
         B10FinalProjection projection = Read(root);
         Assert.Equal(new DuplicateBreakdown(value, 0), B10FinalProjectionCodec.Read(B10FinalProjectionCodec.Write(projection)).Data.Repeats[0].DuplicateBreakdown);
+        repeat["restart"]!["arms"]![0]!["duplicate_breakdown"] = repeat["duplicate_breakdown"]!.DeepClone();
+        projection = Read(root);
+        Assert.Equal(new DuplicateBreakdown(value, 0), B10FinalProjectionCodec.Read(B10FinalProjectionCodec.Write(projection))
+            .Data.Repeats[0].Restart!.Arms![0].DuplicateBreakdown);
+        using JsonDocument nonfinal = JsonDocument.Parse(repeat.ToJsonString());
+        B10FinalRepeatEvidence.ValidateBreakdown(nonfinal.RootElement, value);
+    }
+
+    [Theory]
+    [InlineData("first_instance_id", 0)]
+    [InlineData("successor_instance_id", 1)]
+    [InlineData("resend_invoked", 1)]
+    public void Given_UnavailableArmEvidence_When_BreakdownIsPresent_Then_ReadAndWriteReject(string field, int armIndex)
+    {
+        JsonObject root = LocalUnjoined();
+        JsonNode restart = root["data"]!["repeats"]![0]!["restart"]!;
+        JsonNode arm = restart["arms"]![armIndex]!;
+        if (field == "resend_invoked") arm[field] = null;
+        else restart[field] = null;
+        B10FinalProjection historical = Read(root);
+        B10FinalRepeat[] repeats = historical.Data.Repeats.ToArray();
+        B10FinalArm[] arms = repeats[0].Restart!.Arms!.ToArray();
+        Assert.Null(arms[armIndex].DuplicateBreakdown);
+        arms[armIndex] = arms[armIndex] with { DuplicateBreakdown = new(0, 0) };
+        repeats[0] = repeats[0] with { Restart = repeats[0].Restart! with { Arms = arms } };
+        Assert.Throws<FormatException>(() => B10FinalProjectionCodec.Write(historical with { Data = historical.Data with { Repeats = repeats } }));
+        arm["duplicate_breakdown"] = new JsonObject { ["duplicate_same_attempt"] = 0, ["duplicate_different_attempt"] = 0 };
+        Assert.Throws<FormatException>(() => Read(root));
+        if (field == "successor_instance_id")
+        {
+            restart["arms"]![0]!["duplicate_breakdown"] = arm["duplicate_breakdown"]!.DeepClone();
+            arm.AsObject().Remove("duplicate_breakdown");
+            Assert.Equal(new DuplicateBreakdown(0, 0), Read(root).Data.Repeats[0].Restart!.Arms![0].DuplicateBreakdown);
+        }
     }
 
     [Theory]
@@ -462,9 +499,16 @@ public sealed class B10FinalProjectionCodecTests
     {
         JsonObject root = LocalUnjoined(); JsonObject restart = root["data"]!["repeats"]![0]!["restart"]!.AsObject();
         restart["termination"]!["outcome"] = "kill_too_late";
+        restart["successor_instance_id"] = null;
         restart["eligibility_reasons"] = new JsonArray("b10_restart_late_record_unjoined", "kill_too_late");
         restart["arms"]![1] = JsonSerializer.SerializeToNode(B10FinalJudgeFixture.EmptyArm(), B10FinalProjectionCodec.JsonOptions);
         Assert.Equal(0, Read(root).Data.Repeats[0].Restart!.Arms![1].LostResends);
+        JsonNode cross = restart["arms"]![1]!;
+        cross["duplicate_breakdown"] = new JsonObject { ["duplicate_same_attempt"] = 0, ["duplicate_different_attempt"] = 0 };
+        Assert.Equal(new DuplicateBreakdown(0, 0), Read(root).Data.Repeats[0].Restart!.Arms![1].DuplicateBreakdown);
+        cross["duplicate_breakdown"]!["duplicate_same_attempt"] = 1;
+        Assert.Throws<FormatException>(() => Read(root));
+        cross["duplicate_breakdown"]!["duplicate_same_attempt"] = 0;
         restart["arms"]![0]!["lost_resends"] = 0;
         Assert.Throws<FormatException>(() => Read(root));
         restart["arms"]![0]!["lost_resends"] = null;

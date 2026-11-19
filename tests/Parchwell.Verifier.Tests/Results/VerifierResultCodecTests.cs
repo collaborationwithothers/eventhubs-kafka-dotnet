@@ -1417,20 +1417,23 @@ public sealed class VerifierResultCodecTests
         Assert.Equal(new DuplicateBreakdown(3, 1), RoundTrip(present).DuplicateBreakdown);
         Assert.Equal(new DuplicateBreakdown(0, 0), RoundTrip(historical with
         { Counts = new(1, 0, 0, 0, 0, 0), DuplicateBreakdown = new(0, 0) }).DuplicateBreakdown);
+        Assert.Equal(new DuplicateBreakdown(long.MaxValue, 0), RoundTrip(historical with
+        { Counts = new(1, 0, 0, 0, long.MaxValue, 0), DuplicateBreakdown = new(long.MaxValue, 0) }).DuplicateBreakdown);
     }
 
     [Theory]
-    [InlineData("null")] [InlineData("{}")] [InlineData("{\"duplicate_same_attempt\":3}")]
+    [MemberData(nameof(DuplicateBreakdownTests.MalformedWireObjects), MemberType = typeof(DuplicateBreakdownTests))]
+    [InlineData("{\"duplicate_same_attempt\":3}")]
     [InlineData("{\"duplicate_different_attempt\":1}")]
     [InlineData("{\"duplicate_same_attempt\":3,\"duplicate_different_attempt\":0}")]
     [InlineData("{\"duplicate_same_attempt\":3,\"duplicate_different_attempt\":2}")]
-    [InlineData("{\"duplicate_same_attempt\":9223372036854775807,\"duplicate_different_attempt\":1}")]
     public void Given_InvalidDuplicateBreakdown_When_Read_Then_Rejected(string value)
     {
         JsonObject json = JsonNode.Parse(VerifierResultCodec.Write(Result(VerifierResultStatus.CompleteValid,
             new(1, 0, 0, 0, 4, 0)), OutputLimits))!.AsObject();
-        json["duplicate_breakdown"] = JsonNode.Parse(value);
-        Assert.False(VerifierResultCodec.Read(Encoding.UTF8.GetBytes(json.ToJsonString()), "result.json",
+        json["duplicate_breakdown"] = "fixture";
+        string payload = json.ToJsonString().Replace("\"duplicate_breakdown\":\"fixture\"", "\"duplicate_breakdown\":" + value, StringComparison.Ordinal);
+        Assert.False(VerifierResultCodec.Read(Encoding.UTF8.GetBytes(payload), "result.json",
             RecordedEvidence.SmallLimits, 8).IsSuccess);
     }
 
@@ -1439,6 +1442,9 @@ public sealed class VerifierResultCodecTests
     {
         VerifierResult valid = Result(VerifierResultStatus.CompleteValid, new(1, 0, 0, 0, 4, 0));
         Assert.Throws<ArgumentException>(() => VerifierResultCodec.Write(valid with { DuplicateBreakdown = new(3, 0) }, OutputLimits));
+        Assert.Throws<ArgumentException>(() => VerifierResultCodec.Write(valid with { DuplicateBreakdown = new(3, 2) }, OutputLimits));
+        Assert.Throws<ArgumentException>(() => VerifierResultCodec.Write(valid with { DuplicateBreakdown = new(-1, 5) }, OutputLimits));
+        Assert.Throws<ArgumentException>(() => VerifierResultCodec.Write(valid with { DuplicateBreakdown = new(5, -1) }, OutputLimits));
         Assert.Throws<ArgumentException>(() => VerifierResultCodec.Write(valid with { DuplicateBreakdown = new(long.MaxValue, 1) }, OutputLimits));
         Assert.Throws<ArgumentException>(() => VerifierResultCodec.Write(Result(VerifierResultStatus.Invalid) with { DuplicateBreakdown = new(0, 0) }, OutputLimits));
     }
