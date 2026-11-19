@@ -7,7 +7,7 @@ on:
         description: Full lowercase commit SHA containing the diagnostic helpers
         required: true
         type: string
-        default: f1b0286dbfe5d89b99645e5c39228b389a205783
+        default: 0f41390beadfbec7d0f7d7819bbd834744ca85df
 
 permissions:
   contents: read
@@ -284,55 +284,55 @@ jobs:
             target_sha256: 8526a0adbb9e5ac1cac4c92177377616d2768c003fa7d91338d231d99baa8dba
           - shard: phase-candidate-codec-p1
             target: Judge/PhaseCandidateCodec.cs
-            target_sha256: 41e58320cdac812322082304c5f5882c59d2c97ffe2d6231b76a316f5527686e
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
           - shard: phase-candidate-codec-p2
             target: Judge/PhaseCandidateCodec.cs
-            target_sha256: 41e58320cdac812322082304c5f5882c59d2c97ffe2d6231b76a316f5527686e
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
           - shard: phase-candidate-codec-p3
             target: Judge/PhaseCandidateCodec.cs
-            target_sha256: 41e58320cdac812322082304c5f5882c59d2c97ffe2d6231b76a316f5527686e
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
           - shard: phase-candidate-codec-p4
             target: Judge/PhaseCandidateCodec.cs
-            target_sha256: 41e58320cdac812322082304c5f5882c59d2c97ffe2d6231b76a316f5527686e
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
           - shard: phase-candidate-codec-p5
             target: Judge/PhaseCandidateCodec.cs
-            target_sha256: 41e58320cdac812322082304c5f5882c59d2c97ffe2d6231b76a316f5527686e
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
           - shard: phase-candidate-codec-p6
             target: Judge/PhaseCandidateCodec.cs
-            target_sha256: 41e58320cdac812322082304c5f5882c59d2c97ffe2d6231b76a316f5527686e
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
           - shard: phase-candidate-codec-p7
             target: Judge/PhaseCandidateCodec.cs
-            target_sha256: 41e58320cdac812322082304c5f5882c59d2c97ffe2d6231b76a316f5527686e
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
           - shard: phase-candidate-codec-p8
             target: Judge/PhaseCandidateCodec.cs
-            target_sha256: 41e58320cdac812322082304c5f5882c59d2c97ffe2d6231b76a316f5527686e
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
           - shard: phase-candidate-codec-p9
             target: Judge/PhaseCandidateCodec.cs
-            target_sha256: 41e58320cdac812322082304c5f5882c59d2c97ffe2d6231b76a316f5527686e
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
           - shard: phase-candidate-codec-p10
             target: Judge/PhaseCandidateCodec.cs
-            target_sha256: 41e58320cdac812322082304c5f5882c59d2c97ffe2d6231b76a316f5527686e
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
           - shard: phase-candidate-codec-p11
             target: Judge/PhaseCandidateCodec.cs
-            target_sha256: 41e58320cdac812322082304c5f5882c59d2c97ffe2d6231b76a316f5527686e
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
           - shard: phase-candidate-codec-p12
             target: Judge/PhaseCandidateCodec.cs
-            target_sha256: 41e58320cdac812322082304c5f5882c59d2c97ffe2d6231b76a316f5527686e
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
           - shard: phase-candidate-codec-p13
             target: Judge/PhaseCandidateCodec.cs
-            target_sha256: 41e58320cdac812322082304c5f5882c59d2c97ffe2d6231b76a316f5527686e
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
           - shard: phase-candidate-codec-p14
             target: Judge/PhaseCandidateCodec.cs
-            target_sha256: 41e58320cdac812322082304c5f5882c59d2c97ffe2d6231b76a316f5527686e
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
           - shard: phase-candidate-codec-p15
             target: Judge/PhaseCandidateCodec.cs
-            target_sha256: 41e58320cdac812322082304c5f5882c59d2c97ffe2d6231b76a316f5527686e
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
           - shard: phase-candidate-codec-p16
             target: Judge/PhaseCandidateCodec.cs
-            target_sha256: 41e58320cdac812322082304c5f5882c59d2c97ffe2d6231b76a316f5527686e
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
           - shard: phase-candidate-codec-crossing
             target: Judge/PhaseCandidateCodec.cs
-            target_sha256: 41e58320cdac812322082304c5f5882c59d2c97ffe2d6231b76a316f5527686e
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
           - shard: verify-run-handler-p1
             target: VerifyRun/VerifyRunHandler.cs
             target_sha256: 2a9d721f3b7f55e6aa4b7c19f4871278712dacba0549ac27dfe2a5f70a632c8e
@@ -377,7 +377,7 @@ jobs:
             done
           } > "$DIAGNOSTIC_DIR/metadata.txt"
           [[ "$GITHUB_REF" == refs/heads/main ]]
-          [[ "$SOURCE_SHA" == f1b0286dbfe5d89b99645e5c39228b389a205783 ]]
+          [[ "$SOURCE_SHA" == 0f41390beadfbec7d0f7d7819bbd834744ca85df ]]
       - name: Check out diagnostic source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
