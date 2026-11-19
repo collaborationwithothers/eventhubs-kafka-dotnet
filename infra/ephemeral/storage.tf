@@ -1,3 +1,11 @@
+resource "random_string" "storage" {
+  length  = 5
+  lower   = true
+  upper   = false
+  numeric = true
+  special = false
+}
+
 locals {
   storage_config = {
     name                            = local.names.storage

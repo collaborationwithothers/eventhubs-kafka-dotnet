@@ -1652,6 +1652,35 @@ if name == 'az' and args[:3] == ['acr', 'repository', 'show']:
                 with self.mocked():
                     self.assertEqual(expected, self.main('check-dns'))
 
+    def test_check_dns_takes_the_storage_account_from_outputs_only(self):
+        self.prepare()
+        cases = (('stparchwelloffline1x7k2q', 0, 'valid'), ('stparchwelloffline1x7k2q9', 2, 'invalid blob host'))
+        for account, expected, label in cases:
+            with self.subTest(account=account):
+                outputs = json.loads(json.dumps(EPHEMERAL))
+                outputs['blob']['value']['account_url'] = f'https://{account}.blob.core.windows.net'
+                (self.private / 'ephemeral-output.json').write_text(json.dumps(outputs))
+                resolved = []
+                sleeps = []
+                errors = io.StringIO()
+
+                def run(instance, args, *arguments, **keywords):
+                    if tuple(args[1:3]) == ('infra/scripts/phase/phase.py', 'resolve'):
+                        resolved.append(args[3])
+                    return self.fake(instance, args, *arguments, **keywords)
+
+                with patch.object(phase.Phase, 'run', autospec=True, side_effect=run), \
+                        patch.object(phase.Phase, 'sleep', side_effect=sleeps.append), \
+                        contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(errors):
+                    code = phase.main(['check-dns'])
+                self.assertEqual(expected, code)
+                if label == 'valid':
+                    self.assertEqual(['eh-synthetic.servicebus.windows.net', f'{account}.blob.core.windows.net'], resolved)
+                else:
+                    self.assertIn('invalid blob host', errors.getvalue())
+                    self.assertEqual([], resolved)
+                    self.assertEqual([], sleeps)
+
     def test_check_dns_answers_then_fixed_storage_readiness_wait(self):
         self.prepare()
         for label, environment in STORAGE_READINESS_ENVIRONMENTS:

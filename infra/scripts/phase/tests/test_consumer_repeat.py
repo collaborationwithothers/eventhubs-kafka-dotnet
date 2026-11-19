@@ -375,6 +375,16 @@ class ConsumerRepeatTests(unittest.TestCase):
             with self.subTest(condition=condition, pods=sorted(layout)):
                 self.assertEqual(condition, self.poll(layout))
 
+    def test_poll_lists_the_account_named_by_the_outputs(self):
+        outputs = json.loads(json.dumps(shared.EPHEMERAL))
+        outputs['blob']['value']['account_url'] = 'https://stparchwelloffline1x7k2q.blob.core.windows.net'
+        (self.private / 'ephemeral-output.json').write_text(json.dumps(outputs))
+        self.assertEqual('ready', self.poll(ready_layout()))
+        listed = [args for args, _, _ in self.fake.calls if args[:4] == ('az', 'storage', 'blob', 'list')]
+        self.assertTrue(listed)
+        for args in listed:
+            self.assertEqual('stparchwelloffline1x7k2q', args[args.index('--account-name') + 1])
+
     # T15
     def test_list_failure_is_a_failed_poll(self):
         prefix = f'{self.run_id}/C0/r1/consumer/'
