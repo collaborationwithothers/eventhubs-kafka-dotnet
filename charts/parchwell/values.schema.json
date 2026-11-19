@@ -114,13 +114,14 @@
             "idle-observation",
             "idle-observation-judge",
             "consumer-subject",
-            "consumer-witness"
+            "consumer-witness",
+            "consumer-storage-check"
           ]
         },
         "repeat": {
           "type": "integer",
           "minimum": 1,
-          "maximum": 5
+          "maximum": 31
         },
         "b10_last_verifier_completed_utc": { "type": "string", "format": "date-time", "minLength": 1 },
         "b10_last_loadgen_terminated_utc": { "type": "string", "format": "date-time", "minLength": 1 },
@@ -829,8 +830,13 @@
                 }
               },
               {
-                "if": { "properties": { "mode": { "enum": ["consumer-subject", "consumer-witness"] } }, "required": ["mode"] },
+                "if": { "properties": { "mode": { "enum": ["consumer-subject", "consumer-witness", "consumer-storage-check"] } }, "required": ["mode"] },
                 "then": { "required": ["repeat"] }
+              },
+              {
+                "$comment": "Only the consumer storage check counts attempts (up to 31); every other mode counts repeats 1 to 5.",
+                "if": { "properties": { "mode": { "not": { "const": "consumer-storage-check" } } } },
+                "then": { "properties": { "repeat": { "maximum": 5 } } }
               },
               {
                 "if": {
@@ -1218,7 +1224,7 @@
           "runtime": {
             "required": ["enrichment_image", "service_accounts"],
             "properties": {
-              "mode": { "enum": ["start-line", "loadgen", "verify", "judge", "consumer-subject", "consumer-witness"] },
+              "mode": { "enum": ["start-line", "loadgen", "verify", "judge", "consumer-subject", "consumer-witness", "consumer-storage-check"] },
               "service_accounts": { "required": ["loadgen", "verifier", "enrichment-consumer"], "not": { "required": ["probe"] } }
             }
           }
@@ -1229,7 +1235,7 @@
         ]
       },
       "else": {
-        "properties": { "runtime": { "properties": { "mode": { "not": { "enum": ["consumer-subject", "consumer-witness"] } } } } },
+        "properties": { "runtime": { "properties": { "mode": { "not": { "enum": ["consumer-subject", "consumer-witness", "consumer-storage-check"] } } } } },
         "if": { "properties": { "runtime": { "properties": { "mode": { "enum": ["single-action", "single-action-judge", "single-action-seed", "single-action-v2", "single-action-v2-judge"] } }, "required": ["mode"] } }, "required": ["runtime"] },
         "else": { "properties": { "runtime": { "properties": { "service_accounts": { "not": { "required": ["enrichment-consumer"] } } } } } }
       }

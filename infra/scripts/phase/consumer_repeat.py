@@ -20,6 +20,14 @@ CONSUMER_PHASE_SECONDS = 7200
 CONSUMER_REPEAT_RESERVE_SECONDS = 5100
 READINESS_CAP_SECONDS = 300
 READINESS_INTERVAL_SECONDS = 5
+# Policy values set by Hari on 2026-11-19 (issue 556 decision), not measurements: the write check before the repeats.
+STORAGE_CHECK_INTERVAL_SECONDS = 60
+STORAGE_CHECK_CAP_SECONDS = 1800
+STORAGE_CHECK_MODE = "consumer-storage-check"
+STORAGE_CHECK_NOT_READY = "consumer_storage_access_not_ready"
+STORAGE_CHECK_RESULT = re.compile(
+    r"consumer_storage_check result=(ok|failed|probe_delete_failed|configuration_invalid)"
+    r"(?: (kind=http status=[0-9]{3}(?: code=[A-Za-z0-9]{1,64})?|kind=aadsts code=AADSTS[0-9]{1,8}|kind=socket code=[A-Za-z]{1,64}|kind=other))?")
 TERMINATION_RESERVE = 5  # equals phase.py TERMINATION_RESERVE: Phase.run refuses a command with this many seconds or fewer left
 PARTITIONS = 32  # infra/ephemeral/eventhubs.tf, document-events partition_count
 RECORD_BLOB_MAXIMUM = 65536 * 40000  # the worker's row cap times rows per blob (ConsumerRecordLimits.cs)
@@ -62,7 +70,11 @@ class ConsumerRepeats:
     # -- the phase -------------------------------------------------------------------------------------------
 
     def run(self):
-        started = time.monotonic()
+        if not self.storage_access():
+            for repeat in SLOTS:
+                self.skip_repeat(repeat, "safety_stop" if self.safety_stop() else STORAGE_CHECK_NOT_READY)
+            return int(any(record["outcome"] in BAD_OUTCOMES for record in self.p.state()["modes"]))
+        started = time.monotonic()  # the check above is not part of the consumer phase budget
         for repeat in SLOTS:
             if self.safety_stop():
                 self.skip_repeat(repeat, "safety_stop")
@@ -71,6 +83,93 @@ class ConsumerRepeats:
             else:
                 self.repeat(repeat)
         return int(any(record["outcome"] in BAD_OUTCOMES for record in self.p.state()["modes"]))
+
+    # -- storage access check ------------------------------------------------------------------------------
+
+    def storage_access(self):
+        """Write one probe blob as the consumer identity until it works or 1800 s have passed. Returns True when ready.
+
+        Each attempt is one short Job of the Enrichment image under the enrichment-consumer service account.
+        The attempt number takes the place of the repeat number in the Job name. The result goes to the phase
+        state under consumer_storage_access, not to the six records of a repeat.
+        """
+        began = time.monotonic()
+        result = {"outcome": "not_ready", "attempts": 0, "elapsed_seconds": 0, "last_failure": None, "probe_delete_failed": False}
+        ready = False
+        while True:
+            result["attempts"] += 1
+            outcome, summary = self.storage_attempt(result["attempts"])
+            result["probe_delete_failed"] |= outcome == "probe_delete_failed"
+            ready = outcome in ("ok", "probe_delete_failed")
+            result["last_failure"] = None if ready else summary
+            result["elapsed_seconds"] = max(0, math.floor(time.monotonic() - began))
+            result["outcome"] = "ready" if ready else "not_ready"
+            self.save_storage_access(result)
+            if ready or self.safety_stop():
+                break
+            self.p.sleep(STORAGE_CHECK_INTERVAL_SECONDS)
+            if time.monotonic() - began >= STORAGE_CHECK_CAP_SECONDS:
+                result["elapsed_seconds"] = max(0, math.floor(time.monotonic() - began))
+                self.save_storage_access(result)
+                break
+        return ready
+
+    def save_storage_access(self, result):
+        state = self.p.state()
+        state["consumer_storage_access"] = dict(result)
+        self.p.save_state(state)
+
+    def storage_attempt(self, attempt):
+        """One attempt. Returns (ok | probe_delete_failed | failed, safe summary). It never raises."""
+        job = self.p.mode_job(self.p.read("phase.json"), STORAGE_CHECK_MODE, attempt)
+        if self.p.render(STORAGE_CHECK_MODE, attempt) is None:
+            return "failed", "render_failed"
+        rendered = self.p.private / f"rendered-{job}.yaml"
+        outcome, summary = "failed", "apply_failed"
+        if not self.p.run(["kubectl", "apply", "-f", str(rendered), "--request-timeout=30s"], 60):
+            code = self.p.run(["bash", "infra/scripts/lifecycle/lifecycle.sh", "wait-job", job, "120"], 210)
+            log = self.p.private / f"{job}.log"
+            logged = self.p.run(["kubectl", "logs", f"job/{job}", "-n", "parchwell", "--request-timeout=30s"], 30, output=log, maximum=65536)
+            outcome, summary = self.storage_result(code, log if not logged else None)
+        self.delete_check_job(job)
+        return outcome, summary
+
+    def storage_result(self, wait_code, log):
+        """Read the result line of the check pod. Only a line that matches the fixed grammar is kept."""
+        line = None
+        if log is not None:
+            try:
+                lines = [text for text in log.read_text(encoding="utf-8", errors="replace").splitlines()
+                         if text.startswith("consumer_storage_check ")]
+                line = STORAGE_CHECK_RESULT.fullmatch(lines[-1]) if lines else None
+            except OSError:
+                line = None
+        if line is None:
+            return "failed", f"wait_exit_{wait_code}_no_result"
+        result, detail = line.group(1), line.group(2)
+        if (result, wait_code) in (("ok", 0), ("probe_delete_failed", 1)):  # the pod exits 0 and 3; the wait reports Failed as 1
+            return result, detail or ""
+        return "failed", (detail or result)
+
+    def delete_check_job(self, job):
+        """Delete the check Job and confirm no pod remains; any failure sets safety_stop (as delete_confirm does)."""
+        deleted = self.p.run(["kubectl", "delete", "job", job, "-n", "parchwell", "--ignore-not-found",
+                              "--cascade=foreground", "--wait=true", "--timeout=90s", "--request-timeout=30s"], 120)
+        confirmation = self.p.private / f"confirm-{job}.json"
+        confirmed = self.p.run(["kubectl", "get", "pods", "-n", "parchwell", "-l", f"job-name={job}", "-o", "json",
+                                "--request-timeout=30s"], 30, output=confirmation, maximum=4 * 1024 * 1024)
+        empty = False
+        if not confirmed:
+            try:
+                data = self.strict_json(confirmation.read_bytes())
+                empty = isinstance(data, dict) and data.get("items") == []
+            except Exception:  # phase.strict_json raises phase.Failure, which this module cannot import
+                empty = False
+        if deleted or confirmed or not empty:
+            state = self.p.state()
+            state["safety_stop"] = True
+            self.p.save_state(state)
+            print(f"safety_stop: pods of {job} may still run", flush=True)
 
     def skip_repeat(self, repeat, reason):
         """Append the six records of a repeat that runs no command."""
