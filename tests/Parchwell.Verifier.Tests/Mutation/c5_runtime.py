@@ -317,7 +317,10 @@ import c5_workflow as workflow
 
 REPO = ROOT
 WORKFLOW = '.github/workflows/verifier-c5-mutation.yml'
+COMPANION_WORKFLOW = '.github/workflows/verifier-c5-mutation-companion.yml'
+CAMPAIGN_LIMITS = {WORKFLOW: 172, COMPANION_WORKFLOW: 146}
 RUNNER = 'tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py'
+CAMPAIGN_VALIDATOR = 'tests/Parchwell.Verifier.Tests/Mutation/c5_campaign.py'
 TEST_PROJECT = 'tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj'
 HEX = re.compile(r'^[0-9a-f]{64}$')
 PROJECTION = 'tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py'
@@ -325,7 +328,7 @@ PROJECTION_TIMING_PAIR = ('b1c9a96740111676caa0b9e95db90b4ff93f07ff2317710233558
                           '3771b676b8d5856eb34705dcaa3e9c34ffd8184dd514179a1bf85ee7535fb16f')
 RUNNER_TIMING_PAIR = ('dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea14629a0af4625',
                       'c147bb8000ef1273609052660e80b20c8da8bf33a77a0df65a94d32a5f7a1c40')
-NON_RENEWABLE = {RUNNER, WORKFLOW, PROJECTION,
+NON_RENEWABLE = {RUNNER, WORKFLOW, COMPANION_WORKFLOW, CAMPAIGN_VALIDATOR, PROJECTION,
                  'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json', '.config/dotnet-tools.json'}
 EXCLUDED = ('Component/', 'Support/ComponentEvidenceBuilder.cs', 'Host/VerifyRunHandlerTests.cs',
             'Host/VerifierHostTests.cs', 'Host/B10AbruptRejectionTests.cs')
@@ -388,6 +391,18 @@ def workflow_matrix(data):
     return dict(pairs)
 
 
+def workflow_layout(ref, paired):
+    coordinator = workflow_matrix(blob(ref, WORKFLOW))
+    if not paired:
+        return coordinator
+    companion = workflow_matrix(blob(ref, COMPANION_WORKFLOW))
+    if (not coordinator or not companion or coordinator.keys() & companion.keys()
+            or len(coordinator) > CAMPAIGN_LIMITS[WORKFLOW]
+            or len(companion) > CAMPAIGN_LIMITS[COMPANION_WORKFLOW]):
+        raise ValueError('overlapping or oversized C5 campaign matrices')
+    return coordinator | companion
+
+
 def project_closure(ref, names):
     projects = {TEST_PROJECT, 'src/Parchwell.Verifier/Parchwell.Verifier.csproj'}
     pending = list(projects)
@@ -446,6 +461,8 @@ def input_maps(ref, declared_targets=None):
         '.config/dotnet-tools.json', 'docs/operations/a01-runtime-limits.json', RUNNER, WORKFLOW,
         'tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py',
         'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json'}
+    if COMPANION_WORKFLOW in names:
+        selected.update((COMPANION_WORKFLOW, CAMPAIGN_VALIDATOR))
     ancestors = {str(parent) for project in projects for parent in PurePosixPath(project).parents}
     selected.update(p for p in names if (PurePosixPath(p).name in ('Directory.Build.props', 'Directory.Build.targets', 'Directory.Packages.props') and str(PurePosixPath(p).parent) in ancestors) or re.fullmatch(r'(?:NuGet\.[Cc]onfig|global\.json|.*?/packages\.lock\.json)', p))
     selected.update(p for p in names if re.fullmatch(r'scenarios/profiles/[^/]+\.yaml', p))
@@ -473,7 +490,7 @@ def input_maps(ref, declared_targets=None):
                 raise ValueError('unsupported build inclusion')
         if p == RUNNER:
             data = execution_runner(data)
-        elif p == WORKFLOW:
+        elif p in CAMPAIGN_LIMITS:
             data = execution_workflow(data)
         result[p] = digest(data)
     targets = {p: digest(blob(ref, 'src/Parchwell.Verifier/' + p)) for p, _ in declared_targets.values()}
@@ -832,6 +849,16 @@ COHORT_LITERAL_NAMES = {'COHORT_BOOTSTRAP_SPANS', 'COHORT_SOURCE_SHA256',
                         'COHORT_INVENTORY_SHA256', 'COHORT_COORDINATES'}
 CONFIG_PATH = 'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json'
 RUNNER_REFERENCE_COMMIT = '1e38605cceaf14c92ec9157e8eead43eedbf3a8d'
+# Reviewed transition for the retained owners in issue 494. These digests
+# exclude only the literal cuts/target tables and matrix rows.
+CAPACITY_BASELINE = '0f41390beadfbec7d0f7d7819bbd834744ca85df'
+CAPACITY_BASELINE_RUNNER = 'd4b1fb55e3e7dce9294d3914dc0c77f5b2cddc46c25132043eb9383025f1ee50'
+CAPACITY_EXECUTION = {
+    RUNNER: '64519ad2c4efbcd00465e4c674ff858000fbb62e78f673a7f290d4365f6b1b4f',
+    WORKFLOW: '46fc59ca64f5a28bee0dc4a93b3226b57bba32dd5cea05ec9fae839e71ce4108',
+    COMPANION_WORKFLOW: '1fade2b54ce8b20ed963ba5ebc5ff8cd0e6315f67b402cb46b1bfe695ffbebfb',
+    CAMPAIGN_VALIDATOR: '4f3ce2a13b13136f9cf09cf272aae3a8ba857b565ecb11d32e5dac0cb57bf4f8',
+}
 
 
 def runner_literals(data, legacy=False):
@@ -839,19 +866,62 @@ def runner_literals(data, legacy=False):
     tree = ast.parse(data.decode('utf-8'))
     names = ({'COHORT_BOOTSTRAP_SPANS'} if legacy else COHORT_LITERAL_NAMES) | {'TARGETS', 'PRIMARY_CUTS'}
     assignments = {}
+    codec = None
     for node in tree.body:
         if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) and node.targets[0].id in names:
             name = node.targets[0].id
             if name in assignments:
                 raise ValueError('duplicate runner declaration')
             assignments[name] = node
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == 'RESULT_CODEC_COHORT':
+            if codec is not None or not isinstance(node.annotation, ast.Name) or node.annotation.id != 'CohortDefinition' or node.value is None:
+                raise ValueError('invalid typed cohort declaration')
+            codec = node
     if set(assignments) != names:
         raise ValueError('missing runner declaration')
     for node in ast.walk(tree):
         if isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)) and node.id in names:
             if not any(node is assignment.targets[0] for assignment in assignments.values()):
                 raise ValueError('runner declaration rebound')
+        if (isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del))
+                and node.id == 'RESULT_CODEC_COHORT' and (codec is None or node is not codec.target)):
+            raise ValueError('typed cohort declaration rebound')
     values = {name: ast.literal_eval(node.value) for name, node in assignments.items()}
+    if codec is not None:
+        # literal_eval accepts duplicate keys, including in nested dictionaries.
+        for node in ast.walk(codec.value):
+            if isinstance(node, ast.Dict):
+                keys = [ast.literal_eval(key) for key in node.keys]
+                if len(keys) != len(set(keys)):
+                    raise ValueError('duplicate typed cohort key')
+        declaration = ast.literal_eval(codec.value)
+        if (not isinstance(declaration, dict)
+                or set(declaration) != {'source_sha256', 'inventory_sha256', 'bootstrap', 'identities'}
+                or any(not isinstance(declaration[key], str) or not HEX.fullmatch(declaration[key])
+                       for key in ('source_sha256', 'inventory_sha256'))):
+            raise ValueError('invalid typed cohort declaration')
+        identities, bootstrap = declaration['identities'], declaration['bootstrap']
+        if (not isinstance(identities, dict) or set(identities) != set(map(str, range(4093, 4103)))
+                or not isinstance(bootstrap, dict) or set(bootstrap) != {'4093', '4098'}):
+            raise ValueError('invalid typed cohort ownership')
+        def valid_span(span):
+            return (isinstance(span, tuple) and len(span) == 2
+                    and all(type(n) is int and n >= 0 for n in span) and span[0] < span[1])
+        if any(not isinstance(item, tuple) or len(item) != 2 or not valid_span(item[0])
+               or not isinstance(item[1], tuple) or any(not valid_span(span) for span in item[1])
+               for item in bootstrap.values()):
+            raise ValueError('invalid typed cohort bootstrap')
+        for identity in identities.values():
+            if (not isinstance(identity, dict) or set(identity) != {'mutatorName', 'replacement', 'location', 'static'}
+                    or not isinstance(identity['mutatorName'], str) or not identity['mutatorName']
+                    or not isinstance(identity['replacement'], str) or identity['static'] is not True
+                    or not isinstance(identity['location'], dict) or set(identity['location']) != {'start', 'end'}):
+                raise ValueError('invalid typed cohort identity')
+            for point in identity['location'].values():
+                if (not isinstance(point, dict) or set(point) != {'line', 'column'}
+                        or any(type(n) is not int or n < 1 for n in point.values())):
+                    raise ValueError('invalid typed cohort location')
+        values['RESULT_CODEC_COHORT'] = declaration
     targets, cuts = values['TARGETS'], values['PRIMARY_CUTS']
     if (not isinstance(targets, dict) or not targets or any(
             not isinstance(k, str) or not k or not isinstance(v, tuple) or len(v) != 2
@@ -893,6 +963,27 @@ def runner_literals(data, legacy=False):
     return values, masked
 
 
+def committed_physical_owners(declarations, matrix):
+    """Reconstruct the committed physical mapping and require exact matrix coverage."""
+    parts = workflow.build_parts(declarations['TARGETS'], declarations['PRIMARY_CUTS'])
+    cohorts = {}
+    for index in range(1, 4):
+        owner = f'b10-final-projection-codec-p{index}'
+        cohorts[owner] = tuple(f'{owner}-{suffix}' for suffix in ('a', 'b'))
+    if 'RESULT_CODEC_COHORT' in declarations:
+        owner = 'verifier-result-codec-p2'
+        cohorts[owner] = (f'{owner}-a', f'{owner}-b')
+    result = {}
+    for name, part in parts.items():
+        for physical in cohorts.get(name, (name,)):
+            if physical in result:
+                raise ValueError('duplicate physical owner')
+            result[physical] = (declarations['TARGETS'][part[0]][0], part)
+    if not isinstance(matrix, dict) or matrix != {name: value[0] for name, value in result.items()}:
+        raise ValueError('committed matrix ownership mismatch')
+    return result
+
+
 def strict_json(data):
     def unique(pairs):
         result = {}
@@ -912,8 +1003,9 @@ def proof_tree(ref):
     data = blob(ref, RUNNER)
     legacy = digest(execution_runner(data)) == RUNNER_TIMING_PAIR[0]
     declarations, code = runner_literals(data, legacy=legacy)
-    return (declarations, code, input_maps(ref, declarations['TARGETS']),
-            strict_json(blob(ref, CONFIG_PATH)), workflow_matrix(blob(ref, WORKFLOW)))
+    maps = input_maps(ref, declarations['TARGETS'])
+    return (declarations, code, maps, strict_json(blob(ref, CONFIG_PATH)),
+            workflow_layout(ref, COMPANION_WORKFLOW in maps[0]))
 
 
 def selector_ast(data):
@@ -952,6 +1044,42 @@ def legacy_runner_bridge(commit, old, new_code):
     return reference
 
 
+def same_selection(old, old_matrix, new, new_matrix, owner, shard):
+    old_physical = committed_physical_owners(old, old_matrix)
+    new_physical = committed_physical_owners(new, new_matrix)
+    selection = new_physical.get(shard)
+    if selection is None or selection[0] != owner or old_physical.get(shard) != selection:
+        return False
+    key = selection[1][0]
+    return (old['TARGETS'][key] == new['TARGETS'][key]
+            and old['PRIMARY_CUTS'].get(key) == new['PRIMARY_CUTS'].get(key))
+
+
+@functools.lru_cache(maxsize=8)
+def capacity_bridge(head):
+    """Bind the one reviewed transition to identical worker templates and inputs."""
+    baseline = proof_tree(CAPACITY_BASELINE)
+    current = proof_tree(head)
+    old_shared, old_targets = baseline[2]
+    new_shared, new_targets = current[2]
+    if (old_shared.get(RUNNER) != CAPACITY_BASELINE_RUNNER
+            or {path: new_shared.get(path) for path in CAPACITY_EXECUTION} != CAPACITY_EXECUTION
+            or {p: h for p, h in old_shared.items() if p not in CAPACITY_EXECUTION}
+            != {p: h for p, h in new_shared.items() if p not in CAPACITY_EXECUTION}
+            or old_targets != new_targets or baseline[3] != current[3]
+            or any(baseline[0][key] != current[0][key] for key in COHORT_LITERAL_NAMES)):
+        raise ValueError('capacity transition input mismatch')
+
+    def worker(ref, path):
+        content = execution_workflow(blob(ref, path))
+        return content.split(b'\njobs:\n', 1)[1].split(b'\n  aggregate:\n', 1)[0].rstrip()
+
+    prior_worker = worker(CAPACITY_BASELINE, WORKFLOW)
+    if any(worker(head, path) != prior_worker for path in CAMPAIGN_LIMITS):
+        raise ValueError('capacity transition worker mismatch')
+    return baseline, workflow_matrix(blob(head, COMPANION_WORKFLOW))
+
+
 def committed_effective_config(context, owner, shard, head):
     """Derive an unchanged shard invocation family from two committed trees."""
     try:
@@ -959,11 +1087,17 @@ def committed_effective_config(context, owner, shard, head):
         if not head or not shard or not re.fullmatch(r'[0-9a-f]{40}', commit):
             return False
         old, old_code, old_maps, old_config, old_matrix = proof_tree(commit)
-        new, new_code, _, new_config, new_matrix = proof_tree(head)
+        new, new_code, new_maps, new_config, new_matrix = proof_tree(head)
+        if COMPANION_WORKFLOW in new_maps[0] and COMPANION_WORKFLOW not in old_maps[0]:
+            baseline, retained = capacity_bridge(head)
+            if (retained.get(shard) != owner or shard in workflow.COHORTS
+                    or not same_selection(baseline[0], baseline[4], new, new_matrix, owner, shard)
+                    or old_maps[0].get(WORKFLOW) != baseline[2][0][WORKFLOW]):
+                return False
+            new, new_code, _, new_config, new_matrix = baseline
         legacy = old_maps[0].get(RUNNER) == RUNNER_TIMING_PAIR[0]
         reference = legacy_runner_bridge(commit, old, new_code) if legacy else None
-        if ((legacy and reference is None) or (not legacy and old_code != new_code)
-                or new['TARGETS'] != workflow.TARGETS or new['PRIMARY_CUTS'] != workflow.PRIMARY_CUTS):
+        if (legacy and reference is None) or (not legacy and old_code != new_code):
             return False
         if old_maps != (context['shared_inputs'], context['target_sources']):
             return False
@@ -979,38 +1113,19 @@ def committed_effective_config(context, owner, shard, head):
         new_settings = dict(new_config['stryker-config'])
         old_targets = old_settings.pop('mutate')
         new_targets = new_settings.pop('mutate')
-        if old_settings != new_settings or new_config != workflow.BASE_CONFIG:
+        expected_settings = {k: v for k, v in workflow.BASE_CONFIG['stryker-config'].items() if k != 'mutate'}
+        if old_settings != new_settings or new_settings != expected_settings:
             return False
         if [item for item in new_targets if item in old_targets] != old_targets:
             return False
-        old_parts = workflow.build_parts(old['TARGETS'], old['PRIMARY_CUTS'])
-        def physical(parts, declared):
-            result = {}
-            for name, part in parts.items():
-                members = [physical for physical, (logical, _) in workflow.COHORTS.items() if logical == name]
-                for member in members or [name]:
-                    result[member] = (declared[part[0]][0], part)
-            return result
-        old_physical = physical(old_parts, old['TARGETS'])
-        new_physical = physical(workflow.build_parts(new['TARGETS'], new['PRIMARY_CUTS']), new['TARGETS'])
-        if (old_matrix != {k: v[0] for k, v in old_physical.items()}
-                or new_matrix != {k: v[0] for k, v in new_physical.items()}
-                or old_physical.get(shard) != new_physical.get(shard)
-                or new_physical.get(shard, (None,))[0] != owner):
-            return False
-        key = new_physical[shard][1][0]
-        if old['TARGETS'].get(key) != new['TARGETS'].get(key) or old['PRIMARY_CUTS'].get(key) != new['PRIMARY_CUTS'].get(key):
+        if not same_selection(old, old_matrix, new, new_matrix, owner, shard):
             return False
         if shard in workflow.COHORTS:
             cohort_data = reference if legacy else old
             if (any(cohort_data[k] != new[k] for k in COHORT_LITERAL_NAMES)
                     or (legacy and cohort_data['COHORT_SOURCE_SHA256'] != context['target_sources'].get(owner))):
                 return False
-        # Same source, cuts, ownership, runner code and settings imply identical
-        # shard_config and every isolated_config for the same measured node plan.
-        source = blob(head, 'src/Parchwell.Verifier/' + owner)
-        workflow.shard_config(shard, source)
-        workflow.shard_static_regions(shard, source)
+        # Qualification separately checks the generated selection at the current head.
         return True
     except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
         return False
@@ -1020,6 +1135,9 @@ def provenance_errors(context, shared, targets, owner, shard=None, head=None):
     """Account for every difference without renewing the estimate's own target."""
     errors = set()
     current_maps = {'shared_inputs': shared, 'target_sources': targets}
+    derived = {RUNNER, CONFIG_PATH}
+    if COMPANION_WORKFLOW in shared and COMPANION_WORKFLOW not in context['shared_inputs']:
+        derived.update((*CAMPAIGN_LIMITS, CAMPAIGN_VALIDATOR))
     equivalent = None
     if context['target_sources'].get(owner) != targets.get(owner):
         errors.add('stale_inputs')
@@ -1032,7 +1150,7 @@ def provenance_errors(context, shared, targets, owner, shard=None, head=None):
         for path, item in changes.items():
             if path not in expected or item['current_sha256'] != current.get(path):
                 errors.add('unaccounted_inputs')
-            if key == 'shared_inputs' and path in {RUNNER, 'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json'} and measured.get(path) != current.get(path):
+            if key == 'shared_inputs' and path in derived and measured.get(path) != current.get(path):
                 if equivalent is None:
                     equivalent = committed_effective_config(context, owner, shard, head)
                 if equivalent:
@@ -1338,8 +1456,10 @@ def native_geometry_valid(path, record, source):
                      for name, target in workflow.SHARDS.items() if target == path}
         if digest(canonical(generated)) != geometry['layout_sha256']:
             return False
-        if path == CODEC_TARGET and (workflow.COHORTS != CODEC_COHORTS
-                                     or geometry['cohorts_sha256'] != digest(canonical(workflow.COHORTS))):
+        codec_cohorts = {shard: owners for shard, owners in workflow.COHORTS.items()
+                         if workflow.SHARDS.get(shard) == CODEC_TARGET}
+        if path == CODEC_TARGET and (codec_cohorts != CODEC_COHORTS
+                                     or geometry['cohorts_sha256'] != digest(canonical(codec_cohorts))):
             return False
         key = next(key for key, (target, _) in workflow.TARGETS.items() if target == path)
         spans = workflow.primary_spans(key, source)
@@ -1396,8 +1516,12 @@ def validate(config, shared, targets, source, matrix, head=None):
         reasons.add('missing_qualification')
     if config['shared_inputs'] != shared:
         reasons.add('stale_inputs')
-    if len(matrix) > 256 or len(workflow.SHARDS) > 256:
+    paired = COMPANION_WORKFLOW in shared and head is not None
+    limit = sum(CAMPAIGN_LIMITS.values()) if paired else 256
+    if len(matrix) > limit or len(workflow.SHARDS) > limit:
         reasons.add('matrix_over_capacity')
+    if paired and matrix != workflow_layout(head, paired=True):
+        reasons.add('layout_mismatch')
     if matrix != workflow.SHARDS:
         reasons.add('layout_mismatch')
     target_sources = {p: v['source_sha256'] for p, v in config['targets'].items()}
@@ -1434,7 +1558,8 @@ def validate(config, shared, targets, source, matrix, head=None):
                 reasons.add('stale_inputs')
             generated = {name: digest(canonical(workflow.shard_config(name, source[path])))
                          for name, target in workflow.SHARDS.items() if target == path}
-            if path == CODEC_TARGET and workflow.COHORTS != CODEC_COHORTS:
+            if path == CODEC_TARGET and {shard: owners for shard, owners in workflow.COHORTS.items()
+                                         if workflow.SHARDS.get(shard) == CODEC_TARGET} != CODEC_COHORTS:
                 reasons.add('layout_mismatch')
             if digest(canonical(generated)) != PROVISIONAL_LAYOUT_HASHES[path]:
                 reasons.add('layout_mismatch')
@@ -1558,12 +1683,14 @@ def check(base, head, qualification):
         except FileNotFoundError:
             pass
         shared, targets = input_maps(head)
-        matrix = workflow_matrix(blob(head, WORKFLOW))
+        matrix = workflow_layout(head, COMPANION_WORKFLOW in shared)
         if base:
             changed = set(git('diff', '--name-only', '-z', base, head).decode().rstrip('\0').split('\0'))
             try:
                 old_shared, old_targets = input_maps(base)
-                relevant = (shared != old_shared or targets != old_targets or RUNNER in changed or WORKFLOW in changed or 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json' in changed)
+                relevant = (shared != old_shared or targets != old_targets
+                            or bool(({RUNNER} | CAMPAIGN_LIMITS.keys()) & changed)
+                            or 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json' in changed)
             except (ValueError, subprocess.CalledProcessError):
                 # A newly introduced target or supported dependency cannot exist in the base.
                 relevant = True

@@ -535,6 +535,11 @@ class CommittedProvenanceTests(unittest.TestCase):
     def test_full_validation_accepts_fresh_pinned_measurements_and_rejects_tampering(self):
         for path in (runtime.RUNNER, runtime.CONFIG_PATH, runtime.WORKFLOW):
             self.blobs[(self.old, path)] = self.blobs[(self.head, path)]
+        # Both synthetic commits use the same paired matrix and inputs.
+        self.context['shared_inputs'][runtime.COMPANION_WORKFLOW] = runtime.digest(b'synthetic companion')
+        layout_patch = mock.patch.object(runtime, 'workflow_layout', return_value=runtime.workflow.SHARDS)
+        layout_patch.start()
+        self.addCleanup(layout_patch.stop)
         sources = {}
         for path in set(runtime.workflow.SHARDS.values()):
             source = (ROOT / 'src/Parchwell.Verifier' / path).read_bytes() + b'\n// fresh synthetic source\n'
@@ -1671,7 +1676,9 @@ class QualificationTests(unittest.TestCase):
 
     def test_execution_hash_separates_cuts(self):
         data = Path(runtime.workflow.__file__).read_bytes()
-        self.assertEqual(runtime.execution_runner(data), runtime.execution_runner(data.replace(b'(3600, 4517,', b'(3601, 4517,')))
+        changed = data.replace(b"'phase': (3694,", b"'phase': (3695,", 1)
+        self.assertNotEqual(data, changed)
+        self.assertEqual(runtime.execution_runner(data), runtime.execution_runner(changed))
         self.assertNotEqual(runtime.execution_runner(data), runtime.execution_runner(data.replace(b'REBALANCE_SECONDS = 1800', b'REBALANCE_SECONDS = 1801')))
 
     def test_runtime_profile_directory_membership(self):
@@ -1937,7 +1944,7 @@ class FinalReviewRegressionTests(AdditionalQualificationTests):
 
 class DependencyEndToEndTests(unittest.TestCase):
     def test_actual_discovery_addition_and_deletion(self):
-        names = runtime.files('HEAD')
+        names = runtime.files('HEAD') | {runtime.COMPANION_WORKFLOW, runtime.CAMPAIGN_VALIDATOR}
         actual_blob = runtime.blob
         cache = {}
         additions = ('tests/fixtures/verifier-v1/runtime-test.json', 'src/Directory.Build.props',
@@ -1945,6 +1952,8 @@ class DependencyEndToEndTests(unittest.TestCase):
         def blob(ref, path):
             if path == runtime.RUNNER:
                 return Path(runtime.workflow.__file__).read_bytes()
+            if path in {runtime.COMPANION_WORKFLOW, runtime.CAMPAIGN_VALIDATOR}:
+                return (ROOT / path).read_bytes()
             if path in additions:
                 return b'<Project />' if path.endswith('.props') else b'synthetic'
             if path not in cache:
@@ -1963,6 +1972,7 @@ class DependencyEndToEndTests(unittest.TestCase):
         with mock.patch.object(runtime, 'files', side_effect=files), mock.patch.object(runtime, 'blob', side_effect=blob), \
              mock.patch.object(runtime, 'git', side_effect=git), \
              mock.patch.object(runtime, 'workflow_matrix', return_value=runtime.workflow.SHARDS), \
+             mock.patch.object(runtime, 'workflow_layout', return_value=runtime.workflow.SHARDS), \
              mock.patch.object(runtime, 'SIX_TAIL_BINDINGS', {}), \
              mock.patch.object(runtime, 'CODEC_NEIGHBOR', {}):
             base_shared, targets = runtime.input_maps('base')

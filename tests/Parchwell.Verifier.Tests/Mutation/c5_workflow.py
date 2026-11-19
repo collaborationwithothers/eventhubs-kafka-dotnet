@@ -19,11 +19,12 @@ import subprocess
 import sys
 import time
 import tempfile
+from typing import TypedDict
 
 import c5_projection as projection
 
 
-TARGETS = {'phase': ('Judge/PhaseJudge.cs', 4),
+TARGETS = {'phase': ('Judge/PhaseJudge.cs', 6),
  'publication': ('VerifyRun/Publication/PublicationAcceptance.cs', 7),
  'a01': ('VerifyRun/A01/A01EvidenceRecorder.cs', 2),
  'workload': ('VerifyRun/A01/WorkloadRecorder.cs', 3),
@@ -40,22 +41,22 @@ TARGETS = {'phase': ('Judge/PhaseJudge.cs', 4),
  'b10-late-write': ('VerifyRun/Judgement/B10LateWriteChecks.cs', 2),
  'b10-sweep': ('VerifyRun/B10SweepHandler.cs', 1),
  'b10-sweep-judge': ('Judge/B10SweepChecks.cs', 2),
- 'b10-sweep-codec': ('Common/Phase/B10SweepEvidenceCodec.cs', 5),
+ 'b10-sweep-codec': ('Common/Phase/B10SweepEvidenceCodec.cs', 7),
  'b10-final-sweep-handler': ('VerifyRun/B10Final/B10FinalSweepHandler.cs', 4),
- 'b10-final-repeat-evidence': ('VerifyRun/B10Final/B10FinalRepeatEvidence.cs', 11),
- 'b10-final-classification': ('VerifyRun/B10Final/B10FinalClassification.cs', 7),
+ 'b10-final-repeat-evidence': ('VerifyRun/B10Final/B10FinalRepeatEvidence.cs', 22),
+ 'b10-final-classification': ('VerifyRun/B10Final/B10FinalClassification.cs', 12),
  'b10-final-projection': ('Common/Phase/B10FinalProjection.cs', 1),
- 'b10-final-projection-codec': ('Common/Phase/B10FinalProjectionCodec.cs', 10),
+ 'b10-final-projection-codec': ('Common/Phase/B10FinalProjectionCodec.cs', 15),
  'b10-final-registrations': ('Common/Phase/B10FinalRegistrationReader.cs', 17),
- 'b10-final-judge': ('Judge/B10FinalJudge.cs', 7),
+ 'b10-final-judge': ('Judge/B10FinalJudge.cs', 11),
  'duplicate-breakdown': ('Common/Results/DuplicateBreakdown.cs', 1),
  'duplicate-classifier': ('VerifyRun/Judgement/DuplicateClassifier.cs', 1),
  'outcome-classifier': ('VerifyRun/Judgement/OutcomeClassifier.cs', 1),
- 'abrupt-classification': ('VerifyRun/Abrupt/AbruptClassification.cs', 3),
- 'verifier-result-codec': ('Common/Results/VerifierResultCodec.cs', 18),
- 'phase-candidate-codec': ('Judge/PhaseCandidateCodec.cs', 16),
- 'verify-run-handler': ('VerifyRun/VerifyRunHandler.cs', 5)}
-PRIMARY_CUTS = {'phase': (4182, 5472, 6899),
+ 'abrupt-classification': ('VerifyRun/Abrupt/AbruptClassification.cs', 5),
+ 'verifier-result-codec': ('Common/Results/VerifierResultCodec.cs', 26),
+ 'phase-candidate-codec': ('Judge/PhaseCandidateCodec.cs', 32),
+ 'verify-run-handler': ('VerifyRun/VerifyRunHandler.cs', 7)}
+PRIMARY_CUTS = {'phase': (3694, 4477, 5226, 6577, 7631),
  'publication': (887, 2532, 3857, 5506, 7129, 8239),
  'a01': (3859,),
  'workload': (1418, 2624),
@@ -134,20 +135,54 @@ PRIMARY_CUTS = {'phase': (4182, 5472, 6899),
  'b10-phase-registrations': (2655,),
  'b10-late-write': (3695,),
  'b10-sweep-judge': (1946,),
- 'b10-sweep-codec': (3480, 6505, 9547, 12350),
+ 'b10-sweep-codec': (3480, 5470, 7627, 10309, 11888, 13828),
  'b10-final-sweep-handler': (4089, 8487, 10895),
- 'b10-final-repeat-evidence': (15376,
-                               17350,
-                               21858,
-                               26366,
-                               29754,
-                               33076,
-                               35855,
-                               40011,
-                               43055,
-                               45961),
- 'b10-final-classification': (5339, 9002, 14983, 17595, 20788, 23686),
- 'b10-final-projection-codec': (1109, 1747, 2198, 4651, 7159, 9610, 11788, 13671, 16256),
+ 'b10-final-repeat-evidence': (12311,
+                               15324,
+                               16296,
+                               17422,
+                               20361,
+                               22478,
+                               25224,
+                               26614,
+                               28409,
+                               29913,
+                               31154,
+                               32878,
+                               34482,
+                               35179,
+                               37216,
+                               39819,
+                               41395,
+                               43450,
+                               45863,
+                               48067,
+                               50303),
+ 'b10-final-classification': (3452,
+                              6096,
+                              8964,
+                              10957,
+                              14590,
+                              16234,
+                              17989,
+                              19241,
+                              21341,
+                              22864,
+                              25062),
+ 'b10-final-projection-codec': (1109,
+                                1747,
+                                2198,
+                                3611,
+                                4711,
+                                5979,
+                                7347,
+                                9523,
+                                11277,
+                                12605,
+                                13485,
+                                15177,
+                                16500,
+                                18414),
  'b10-final-registrations': (2583,
                              3605,
                              4457,
@@ -164,41 +199,65 @@ PRIMARY_CUTS = {'phase': (4182, 5472, 6899),
                              12180,
                              12745,
                              13162),
- 'b10-final-judge': (5991, 10776, 15366, 18523, 23357, 26368),
- 'abrupt-classification': (4361, 6148),
+ 'b10-final-judge': (4536, 5991, 8765, 11558, 14332, 16848, 20175, 23482, 25131, 27418),
+ 'abrupt-classification': (3807, 5153, 6193, 7969),
  'verifier-result-codec': (476,
                            807,
                            1133,
                            1376,
-                           7486,
-                           12396,
-                           18732,
-                           23655,
-                           27448,
-                           30561,
-                           34607,
-                           38868,
-                           43409,
-                           48256,
-                           52378,
-                           58054,
-                           63993),
- 'phase-candidate-codec': (3581,
-                           6046,
-                           9200,
-                           11513,
-                           14218,
-                           16750,
-                           20285,
-                           23587,
-                           26554,
-                           30789,
-                           33537,
-                           36496,
-                           39792,
-                           43346,
-                           46317),
- 'verify-run-handler': (6682, 13959, 19054, 24167)}
+                           4456,
+                           8349,
+                           11870,
+                           15867,
+                           19130,
+                           24612,
+                           26874,
+                           29010,
+                           30095,
+                           31698,
+                           33675,
+                           36075,
+                           39474,
+                           41632,
+                           45769,
+                           48953,
+                           52170,
+                           54174,
+                           58093,
+                           64646,
+                           67515),
+ 'phase-candidate-codec': (2101,
+                           3907,
+                           5928,
+                           8033,
+                           9316,
+                           10461,
+                           11379,
+                           12485,
+                           13813,
+                           15353,
+                           16570,
+                           17810,
+                           19087,
+                           21228,
+                           22888,
+                           24451,
+                           25778,
+                           27935,
+                           29996,
+                           31841,
+                           32762,
+                           34713,
+                           37002,
+                           39193,
+                           40654,
+                           42498,
+                           44343,
+                           45572,
+                           46398,
+                           47533,
+                           48862),
+ 'verify-run-handler': (6682, 11978, 15405, 19641, 23497, 30029)}
 def build_parts(targets: dict[str, tuple[str, int]],
                 primary_cuts: dict[str, tuple[int, ...]]) -> dict[str, tuple[str, int, int]]:
     """Reject singleton splits before their crossing entry can overwrite the primary."""
@@ -222,6 +281,9 @@ for index, groups in enumerate(((range(116, 122), range(122, 128)),
     owner = f"b10-final-projection-codec-p{index}"
     for suffix, identifiers in zip(("a", "b"), groups, strict=True):
         COHORTS[f"{owner}-{suffix}"] = (owner, tuple(map(str, identifiers)))
+for suffix, identifiers in zip(("a", "b"), (range(4093, 4098), range(4098, 4103)), strict=True):
+    COHORTS[f"verifier-result-codec-p2-{suffix}"] = (
+        "verifier-result-codec-p2", tuple(map(str, identifiers)))
 PARTS = {}
 for name, part in LOGICAL_PARTS.items():
     cohorts = [physical for physical, (owner, _) in COHORTS.items() if owner == name]
@@ -1054,20 +1116,69 @@ COHORT_IDENTITIES = {str(116 + index): {
 } for index, (a, b, c, d) in enumerate(COHORT_COORDINATES)}
 
 
+class CohortDefinition(TypedDict):
+    source_sha256: str
+    inventory_sha256: str
+    bootstrap: dict[str, tuple[tuple[int, int], tuple[tuple[int, int], ...]]]
+    identities: dict[str, dict]
+
+
+# Native inventory from the hosted timing report, tied to the projected source.
+RESULT_CODEC_COHORT: CohortDefinition = {
+    "source_sha256": "8526a0adbb9e5ac1cac4c92177377616d2768c003fa7d91338d231d99baa8dba",
+    "inventory_sha256": "2de7231096f99f3f1eba22eb71a3abe3ff816d95aad44c9096ba883419b57a56",
+    "bootstrap": {
+        "4093": ((547, 805), ((605, 621), (623, 633), (635, 652), (662, 696),
+                              (698, 727), (729, 737), (739, 754), (764, 784), (786, 799))),
+        "4098": ((698, 727), ()),
+    },
+    "identities": {
+        "4093": {"mutatorName": "Collection initializer mutation",
+                 "replacement": "new HashSet<string>(StringComparer.Ordinal)\n{}",
+                 "location": {"start": {"line": 14, "column": 71}, "end": {"line": 19, "column": 6}},
+                 "static": True},
+        "4094": {"mutatorName": "String mutation", "replacement": '""', "location": {"start": {"line": 16, "column": 9}, "end": {"line": 16, "column": 25}}, "static": True},
+        "4095": {"mutatorName": "String mutation", "replacement": '""', "location": {"start": {"line": 16, "column": 27}, "end": {"line": 16, "column": 37}}, "static": True},
+        "4096": {"mutatorName": "String mutation", "replacement": '""', "location": {"start": {"line": 16, "column": 39}, "end": {"line": 16, "column": 56}}, "static": True},
+        "4097": {"mutatorName": "String mutation", "replacement": '""', "location": {"start": {"line": 17, "column": 9}, "end": {"line": 17, "column": 43}}, "static": True},
+        "4098": {"mutatorName": "String mutation", "replacement": '""', "location": {"start": {"line": 17, "column": 45}, "end": {"line": 17, "column": 74}}, "static": True},
+        "4099": {"mutatorName": "String mutation", "replacement": '""', "location": {"start": {"line": 17, "column": 76}, "end": {"line": 17, "column": 84}}, "static": True},
+        "4100": {"mutatorName": "String mutation", "replacement": '""', "location": {"start": {"line": 17, "column": 86}, "end": {"line": 17, "column": 101}}, "static": True},
+        "4101": {"mutatorName": "String mutation", "replacement": '""', "location": {"start": {"line": 18, "column": 9}, "end": {"line": 18, "column": 29}}, "static": True},
+        "4102": {"mutatorName": "String mutation", "replacement": '""', "location": {"start": {"line": 18, "column": 31}, "end": {"line": 18, "column": 44}}, "static": True},
+    },
+}
+
+
+def cohort_definition(owner: str) -> CohortDefinition:
+    if owner == "verifier-result-codec-p2":
+        return RESULT_CODEC_COHORT
+    return {"source_sha256": COHORT_SOURCE_SHA256, "inventory_sha256": COHORT_INVENTORY_SHA256,
+            "bootstrap": {key: (span, ()) for key, span in COHORT_BOOTSTRAP_SPANS.items()},
+            "identities": COHORT_IDENTITIES}
+
+
+def cohort_bootstrap(owner: str, reference: str, actual: str | None = None) -> dict:
+    span, exclusions = cohort_definition(owner)["bootstrap"][reference]
+    return {"mutant_id": actual if actual is not None else reference,
+            "span": list(span), "exclusions": [list(item) for item in exclusions]}
+
+
 def identity_json(row: dict) -> str:
     return json.dumps({field: row.get(field) for field in (*IDENTITY, "static")},
                       sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
 
-def resolve_cohort(rows: list[dict], source: bytes) -> dict[str, str]:
-    require(hashlib.sha256(source).hexdigest() == COHORT_SOURCE_SHA256, "cohort source mismatch")
+def resolve_cohort(rows: list[dict], source: bytes, owner: str = "") -> dict[str, str]:
+    definition = cohort_definition(owner)
+    require(hashlib.sha256(source).hexdigest() == definition["source_sha256"], "cohort source mismatch")
     identities = sorted(identity_json(row) for row in rows)
     digest = hashlib.sha256(("[" + ",".join(identities) + "]").encode()).hexdigest()
-    require(digest == COHORT_INVENTORY_SHA256, "cohort native geometry mismatch")
+    require(digest == definition["inventory_sha256"], "cohort native geometry mismatch")
     require(len(identities) == len(set(identities)), "duplicate cohort identity")
     by_identity = {identity_json(row): row["id"] for row in rows}
     resolved = {}
-    for reference, identity in COHORT_IDENTITIES.items():
+    for reference, identity in definition["identities"].items():
         key = identity_json(identity)
         require(key in by_identity, "cohort identity missing")
         resolved[reference] = by_identity[key]
@@ -1089,7 +1200,7 @@ def isolated_directory(output: Path, entry: dict, shard: str | None = None) -> P
 def run_cohort(shard: str, target: str, source: bytes, regions: list[tuple[int, int]],
                output_dir: Path, prefix: list[str], cwd: Path, deadline: float) -> tuple[list[dict], str | None]:
     owner, ids = COHORTS[shard]
-    first = {"mutant_id": ids[0], "span": list(COHORT_BOOTSTRAP_SPANS[ids[0]]), "exclusions": []}
+    first = cohort_bootstrap(owner, ids[0])
     entries, error = run_isolation_plan(target, [first], output_dir, prefix, cwd, deadline,
                                         bootstrap_shard=shard)
     if error:
@@ -1098,7 +1209,7 @@ def run_cohort(shard: str, target: str, source: bytes, regions: list[tuple[int, 
         report = isolated_directory(output_dir, entries[0], shard) / REPORT_PATH
         rows = report_records(json.loads(report.read_bytes()), target,
                               source_sha256=hashlib.sha256(source).hexdigest(), allow_empty=True)
-        resolved = resolve_cohort(rows, source)
+        resolved = resolve_cohort(rows, source, owner)
         actual_first = resolved[ids[0]]
         baseline = copy.deepcopy(rows)
         selected = [row for row in baseline if row["id"] == actual_first]
@@ -1338,20 +1449,50 @@ def retained_span(directory: Path, target: str) -> list[int] | None:
 
 
 def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: str,
-              output_dir: Path) -> int:
+              output_dir: Path, campaign_manifest: Path | None = None) -> int:
     input_dir, output_dir = Path(input_dir), Path(output_dir)
     try:
         output_dir.mkdir(parents=True, exist_ok=False)
     except OSError as error:
         print(f"C5 aggregate preparation failed: {error}")
         return 1
-    prefix = f"c5-mutation-{run_id}-{run_attempt}-"
     reasons = []
-    expected = {prefix + shard for shard in SHARDS}
+    campaign_hash = None
+    expected_tree = None
+    origins = {shard: (run_id, run_attempt) for shard in SHARDS}
+    if campaign_manifest is not None:
+        import c5_campaign
+        import c5_runtime
+
+        try:
+            manifest_bytes = campaign_manifest.read_bytes()
+            manifest = c5_runtime.strict_json(manifest_bytes)
+            layout = c5_campaign.matrices()
+            assigned = c5_campaign.validate_manifest(
+                manifest, expected_commit, layout["coordinator"], layout["companion"])
+            caller = manifest["runs"]["coordinator"]
+            require(manifest["repository"] == os.environ.get("GITHUB_REPOSITORY")
+                    and str(caller["id"]) == run_id and str(caller["attempt"]) == run_attempt,
+                    "campaign repository or coordinator identity mismatch")
+            require(git(c5_campaign.ROOT, "rev-parse", "HEAD").decode().strip() == expected_commit,
+                    "aggregate checkout does not match campaign commit")
+            expected_tree = git(c5_campaign.ROOT, "rev-parse", "HEAD^{tree}").decode().strip()
+            with (output_dir / "campaign.json").open("xb") as stream:
+                stream.write(manifest_bytes)
+            origins = {shard: (assigned[shard]["run_id"], assigned[shard]["run_attempt"])
+                       for shard in SHARDS}
+            campaign_hash = hashlib.sha256(manifest_bytes).hexdigest()
+        except (OSError, ValueError, TypeError, KeyError, subprocess.SubprocessError) as error:
+            origins = {}
+            reasons.append(f"invalid campaign manifest: {error}")
+    directories = {shard: input_dir / f"c5-mutation-{origin_id}-{attempt}-{shard}"
+                   for shard, (origin_id, attempt) in origins.items()}
+    scope = (f"c5-mutation-{run_id}-{run_attempt}-" if campaign_manifest is None
+             else "c5-mutation-")
     try:
         if input_dir.exists():
             extras = {p.name for p in input_dir.iterdir()
-                      if p.is_dir() and p.name.startswith(prefix)} - expected
+                      if p.is_dir() and p.name.startswith(scope)} - {p.name for p in directories.values()}
             if extras:
                 reasons.append("unexpected shard directories: " + ", ".join(sorted(extras)))
     except OSError as error:
@@ -1364,9 +1505,10 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
     records = []
     part_records = {}
     cohort_records = {}
-    for shard, target in SHARDS.items():
+    for shard, directory in directories.items():
+        target = SHARDS[shard]
         key, index, count = PARTS[shard]
-        directory = input_dir / (prefix + shard)
+        origin_id, origin_attempt = origins[shard]
         try:
             receipt = json.loads((directory / "receipt.json").read_text())
             config_path = directory / "shard-config.json"
@@ -1381,7 +1523,7 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
                     and isinstance(receipt["cwd"], str), "malformed invocation receipt")
             require(all(receipt.get(key) == value for key, value in {
                 "shard": shard, "target": target, "commit": expected_commit,
-                "run_id": run_id, "run_attempt": run_attempt,
+                "run_id": origin_id, "run_attempt": origin_attempt,
                 "command_completed": True, "termination_reason": None,
                 "tracked_clean_before": True, "tracked_clean_after": True,
             }.items()), "receipt identity/completion mismatch")
@@ -1400,6 +1542,7 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
                     and sources == receipt.get("source_sha256_after"), "source drift")
             tree = receipt.get("tree")
             require(isinstance(tree, str) and tree, "missing source tree")
+            require(expected_tree is None or tree == expected_tree, "campaign source tree mismatch")
             if reference_sources is not None:
                 require(sources == reference_sources and tree == reference_tree,
                         "cross-shard source mismatch")
@@ -1430,7 +1573,7 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
             require(receipt["isolation_error"] is None, "static isolation incomplete")
             if shard in COHORTS:
                 references = COHORTS[shard][1]
-                resolved = resolve_cohort(rows, source)
+                resolved = resolve_cohort(rows, source, COHORTS[shard][0])
                 assigned = (resolved[references[0]], *sorted(
                     (resolved[reference] for reference in references[1:]), key=int))
                 require(assigned and isinstance(receipt["isolated"], list)
@@ -1455,8 +1598,8 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
                 by_id = {item["mutant_id"]: item for item in full_plan}
                 require(all(identifier in by_id for identifier in assigned), "cohort ID outside isolation plan")
                 plan = [by_id[identifier] for identifier in assigned]
-                require(plan[0] == {"mutant_id": first, "span": list(COHORT_BOOTSTRAP_SPANS[references[0]]),
-                                    "exclusions": []}, "bootstrap geometry mismatch")
+                require(plan[0] == cohort_bootstrap(COHORTS[shard][0], references[0], first),
+                        "bootstrap geometry mismatch")
                 outcomes = baseline
                 for index_in_cohort, (item, entry) in enumerate(zip(plan, receipt["isolated"], strict=True)):
                     require(index_in_cohort == 0 or "directory_id" not in entry,
@@ -1535,8 +1678,8 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
                         "no_mutants": not reconciled}
         records.extend(reconciled)
     rebalance = []
-    for shard, (_, part, parts) in PARTS.items():
-        directory = input_dir / (prefix + shard)
+    for shard, directory in directories.items():
+        _, part, parts = PARTS[shard]
         target = SHARDS[shard]
         try:
             elapsed = json.loads((directory / "receipt.json").read_text())["elapsed_seconds"]
@@ -1564,6 +1707,8 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
         "break_passed": passed,
         "rebalance_threshold_seconds": REBALANCE_SECONDS, "rebalance_needed": rebalance,
     }
+    if campaign_manifest is not None:
+        summary["campaign_manifest_sha256"] = campaign_hash
     write_json(output_dir / "summary.json", summary)
     if complete:
         text = (f"Complete C5 measurement {'passes' if passed else 'does not pass'} break 60.\n\n"
@@ -1697,6 +1842,7 @@ def main() -> int:
     combiner.add_argument("--run-id", required=True)
     combiner.add_argument("--run-attempt", required=True)
     combiner.add_argument("--output-dir", required=True, type=Path)
+    combiner.add_argument("--campaign-manifest", type=Path)
     checker = commands.add_parser("local-check")
     checker.add_argument("--target", required=True)
     checker.add_argument("--span", required=True)
@@ -1712,7 +1858,7 @@ def main() -> int:
     if args.command == "member-boundaries":
         return print_member_boundaries(args.target)
     return aggregate(args.input_dir, args.expected_commit, args.run_id,
-                     args.run_attempt, args.output_dir)
+                     args.run_attempt, args.output_dir, args.campaign_manifest)
 
 
 if __name__ == "__main__":
