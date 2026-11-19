@@ -126,12 +126,14 @@ internal sealed class RecordingRecordStore(List<string> calls) : IConsumerRecord
     internal List<JsonElement> Rows { get; } = [];
     internal Func<JsonElement, bool>? FailAppend { get; set; }
     internal bool FailRegistration { get; set; }
+    internal Exception? RegistrationException { get; set; }
     internal bool FailCompletion { get; set; }
     internal int AppendAttempts { get; private set; }
     internal IEnumerable<JsonElement> Processed => Rows.Where(row => row.GetProperty("kind").GetString() == "processed");
     public Task RegisterAsync(byte[] json, CancellationToken cancellationToken)
     {
         calls.Add("registration");
+        if (RegistrationException is not null) throw RegistrationException;
         if (FailRegistration) throw new InvalidOperationException("synthetic_registration_failure");
         Registration = Parse(json);
         return Task.CompletedTask;
