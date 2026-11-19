@@ -283,11 +283,6 @@
         "name": "scenarios/C03/expected.yaml",
         "source": "git show a1cf429dc7a57827c2a3d5bb658ae290f5ea9145:scenarios/C03/expected.yaml (the working tree equals it)",
         "sha256": "71ffd90fa84d837bfe173244341388bca0cd0cb2f86bfc963b4f5aaad860b68f"
-      },
-      {
-        "name": "scenarios/C03/scenario.yaml",
-        "source": "git show a1cf429dc7a57827c2a3d5bb658ae290f5ea9145:scenarios/C03/scenario.yaml",
-        "sha256": "2b6da0fff85d6ebf124e30fa5d341d4d88d1db8b02b30b6d7a29422dca5e9e31"
       }
     ]
   },

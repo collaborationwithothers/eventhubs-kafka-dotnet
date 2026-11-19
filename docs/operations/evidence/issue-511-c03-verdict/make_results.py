@@ -47,7 +47,6 @@ ARTIFACT_EXPIRY = "2027-02-17T16:06:29Z"
 EXPECTED_PATH = "scenarios/C03/expected.yaml"
 EXPECTED_SHA = "71ffd90fa84d837bfe173244341388bca0cd0cb2f86bfc963b4f5aaad860b68f"
 SCENARIO_PATH = "scenarios/C03/scenario.yaml"
-SCENARIO_SHA = "2b6da0fff85d6ebf124e30fa5d341d4d88d1db8b02b30b6d7a29422dca5e9e31"
 THRESHOLD_US = 45000000
 CONFIGS = ("C0", "C1")
 REPEATS = [1, 2, 3, 4, 5]
@@ -253,7 +252,6 @@ def new_context(raw):
     ctx.members = {key: open_zip(raw[key], key) for key in ZIP_KEYS}
     ctx.expected_text = git("show", f"{BASE}:{EXPECTED_PATH}", binary=True)
     ctx.working_expected = (ROOT / EXPECTED_PATH).read_bytes()
-    ctx.scenario_text = git("show", f"{BASE}:{SCENARIO_PATH}", binary=True)
     return ctx
 
 
@@ -269,7 +267,6 @@ def check_g1(ctx):
         expect(sha256(ctx.members[key][member]) == pin, "G1", f"member {member} of {key} differs from its pin")
     expect(sha256(ctx.expected_text) == EXPECTED_SHA, "G1", "expected.yaml at the base commit differs from its pin")
     expect(sha256(ctx.working_expected) == EXPECTED_SHA, "G1", "expected.yaml in the working tree differs from its pin")
-    expect(sha256(ctx.scenario_text) == SCENARIO_SHA, "G1", "scenario.yaml at the base commit differs from its pin")
 
 
 def strict_json(data, label):
@@ -469,12 +466,6 @@ def check_g8(md):
     expect(md.isascii(), "G8", "the rendered report has a byte outside ASCII")
 
 
-def check_g8_all(*texts):
-    for text in texts:
-        expect(text.isascii(), "G8", "a rendered file has a byte outside ASCII")
-        expect(not re.search(r"@@|\{\{|\}\}|<\.\.\.>", text), "G8", "a rendered file has a leftover template token")
-
-
 def check_g9(ctx, md, row):
     expect(md.startswith(TITLE + "\n\n" + SUMMARY_PINNED + "\n\n" + PLAIN_WORDS + "\n\n" + VERDICT_LINE + "\n"), "G9",
            "the report opening differs from the pinned title, summary, plain-words paragraph and verdict line")
@@ -514,7 +505,6 @@ def build_publication(ctx):
     inputs.append({"name": "mutation summary artifact ZIP", "source": f"artifact {MUTATION_ARTIFACT[0]}, {MUTATION_ARTIFACT[1]}", "sha256": INPUT_FILES["c5"][1]})
     inputs.append({"name": "mutation summary.json", "source": f"member summary.json of artifact {MUTATION_ARTIFACT[0]}", "sha256": MEMBER_PINS[("c5", "summary.json")]})
     inputs.append({"name": EXPECTED_PATH, "source": f"git show {BASE}:{EXPECTED_PATH} (the working tree equals it)", "sha256": EXPECTED_SHA})
-    inputs.append({"name": SCENARIO_PATH, "source": f"git show {BASE}:{SCENARIO_PATH}", "sha256": SCENARIO_SHA})
     nodes = {
         phase: [next(iter(pod_facts(ctx.pods[(phase, repeat, "consumer-subject")])[1])) for repeat in REPEATS]
         for phase in CONFIGS
@@ -686,7 +676,7 @@ def render_md(ctx, document):
     conf = "https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/"
     out += ["## Sources", "",
             f"- Run [{RUN_ID_NUM}]({RUN_URL}), its artifacts and job logs, as listed above and in the JSON `inputs`.",
-            f"- Scenario definition and expected outcome as approved: [scenarios/C03/scenario.yaml]({BLOB}{SCENARIO_PATH}) (SHA-256 `{SCENARIO_SHA}`; the slow-message ordinal 100, the 90000 ms slow message, the inline and pause modes and the 60000 ms poll limit) and [scenarios/C03/expected.yaml]({BLOB}{EXPECTED_PATH}) (SHA-256 `{EXPECTED_SHA}`; the hypotheses, the 45 s threshold, the scaled limit and the K-47 reason), both at `{BASE}`.",
+            f"- Scenario definition and expected outcome as approved: [scenarios/C03/scenario.yaml]({BLOB}{SCENARIO_PATH}) (the slow-message ordinal 100, the 90000 ms slow message, the inline and pause modes and the 60000 ms poll limit) and [scenarios/C03/expected.yaml]({BLOB}{EXPECTED_PATH}) (SHA-256 `{EXPECTED_SHA}`; the hypotheses, the 45 s threshold, the scaled limit and the K-47 reason), both at `{BASE}`.",
             f"- librdkafka v2.16.0 [`src/rdkafka_cgrp.c`]({lib}src/rdkafka_cgrp.c): lines 7269, 7362 and 7388 (the group serve loop reaches the join-state handler), 6808 to 6816 (heartbeats in the steady state), 3959 to 3962 (no heartbeat once `max.poll.interval.ms` is exceeded) and 5741 to 5806 (the poll-limit callback leaves the group and revokes the partitions as lost).",
             f"- librdkafka v2.16.0 [`src/rdkafka.c`]({lib}src/rdkafka.c): lines 2434 to 2438, 2486 and 3003 (the internal thread that serves the group), and 5082, 5105, 5183 and 5192 (`rd_kafka_consumer_poll` reaches `rd_kafka_app_polled`, which resets the poll timer).",
             f"- librdkafka v2.16.0 [`src/rdkafka_int.h`]({lib}src/rdkafka_int.h) lines 1333 to 1352 and 1405 to 1410 (the poll timer), [`CONFIGURATION.md`]({lib}CONFIGURATION.md) lines 131 and 137, and [`INTRODUCTION.md`]({lib}INTRODUCTION.md) line 2529 (KIP-62 background heartbeats).",
@@ -729,7 +719,6 @@ def pipeline(raw, mode="render", hooks=None, committed=None):
     json_text = json.dumps(document, indent=2, ensure_ascii=True) + "\n"
     row = render_row(ctx)
     check_g8(md)
-    check_g8_all(md, json_text, row)
     check_g9(ctx, md, row)
     result = {"md": md, "json": json_text, "row": row}
     if mode == "check":

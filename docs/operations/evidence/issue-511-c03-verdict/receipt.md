@@ -37,7 +37,7 @@ No data from these runs is used or published. Each fact below comes from `gh api
 
 ## Generator
 
-`make_results.py` runs G1 (every input and member hash, `expected.yaml` at the base commit and in the working tree, `scenario.yaml` at the base commit, and the shape of each pods-artifact Job folder), G2 (both candidates' identity, source commit, statuses, reasons and repeats 1 to 5, equal versions), G3 (every rule of `expected.yaml` recomputed from the candidates, the verdict, and the preconditions of the published sentences), G4 (root counts equal the sums of the repeats), G5 (archive receipts), G6 (phase-status files), G10 (mutation summary), G8 (ASCII and no leftover token), G9 (pinned title, summary, plain-words paragraph, H3 line, K-47 reason and the README sentence) and, with `--check`, G7 (byte equality with the committed files). It writes nothing unless every check passes.
+`make_results.py` runs G1 (every input and member hash, `expected.yaml` at the base commit and in the working tree, and the shape of each pods-artifact Job folder), G2 (both candidates' identity, source commit, statuses, reasons and repeats 1 to 5, equal versions), G3 (every rule of `expected.yaml` recomputed from the candidates, the verdict, and the preconditions of the published sentences), G4 (root counts equal the sums of the repeats), G5 (archive receipts), G6 (phase-status files), G10 (mutation summary), G8 (ASCII report), G9 (pinned title, summary, plain-words paragraph, H3 line, K-47 reason and the README sentence) and, with `--check`, G7 (byte equality with the committed files). It writes nothing unless every check passes.
 
 The takeover range in the summary, the H1 line and the README row is rendered from the C0 `witness_takeover_microseconds` values (rounded down to two decimals). The pinned summary of G9 holds the real-data range, so a changed takeover time fails G9 after G3.
 
@@ -62,10 +62,10 @@ The takeover range in the summary, the H1 line and the README row is rendered fr
 ## Source checks made in this session (2026-11-19)
 
 - Before the first edit: `origin/main` equalled the plan's base `a1cf429dc7a57827c2a3d5bb658ae290f5ea9145`, so the diff of the plan's changed files and external contracts between the base and current `main` is empty. Pull requests 545 and 547 are merged (merge commits `730581540a7225a3a27b27a626f03fe2ea78de83` and `e85e651af7e291ccdab240c46cdb89edc7ba4c63`).
-- `sha256sum` of `scenarios/C03/expected.yaml`, `scenarios/C03/scenario.yaml` (also pinned by G1) and `scenarios/profiles/c03-consumer.yaml` equals section 2 of the plan.
+- `sha256sum` of `scenarios/C03/expected.yaml`, `scenarios/C03/scenario.yaml` and `scenarios/profiles/c03-consumer.yaml` equals section 2 of the plan.
 - The Terraform plan lines the report cites: `probe.log` lines 1547, 1556 and 1562 read `capacity = 1`, `location = "uksouth"` and `sku = "Premium"` (colour escapes stripped); `full-C3.log` lines 1382, 1391 and 1397 read the same.
 - `git merge-base --is-ancestor e85e651af7e291ccdab240c46cdb89edc7ba4c63 a1cf429dc7a57827c2a3d5bb658ae290f5ea9145` exits 0, and `c5_runtime.py check --base e85e651af7e291ccdab240c46cdb89edc7ba4c63 --head a1cf429dc7a57827c2a3d5bb658ae290f5ea9145 --qualification <q.json from the head>` prints `{"reasons": [], "status": "not_applicable"}`.
-- librdkafka and Confluent.Kafka claims rest on plan section 4.6, which plan check 7022568885 verified against the pinned v2.16.0 sources; this session did not repeat that read.
+- librdkafka and Confluent.Kafka claims rest on plan section 4.6, which plan check 7022568885 verified against the pinned v2.16.0 sources. This session did not repeat that read, except that the report cites `rdkafka_cgrp.c` lines 6808 to 6816 where the plan cites 6810 to 6816: the `case RD_KAFKA_CGRP_JOIN_STATE_STEADY:` label is at line 6808 of the pinned file (SHA-256 `4929187b82e7c4baa5e5965bc41e9549d971c0879092959f38d2263b9d7881e1`), found by the cold review and confirmed by it against that file.
 
 ## Commands and results
 
