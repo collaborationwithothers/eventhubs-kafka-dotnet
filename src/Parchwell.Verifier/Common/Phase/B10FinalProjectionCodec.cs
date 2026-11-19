@@ -181,12 +181,13 @@ internal static class B10FinalProjectionCodec
                 !sameInstance && N("unconfirmed_count") == 0;
             if (arm.TryGetProperty("duplicate_breakdown", out JsonElement armBreakdown))
             {
-                Require(scan && firstInstance is not null);
+                long? originalCount = N("unconfirmed_count");
+                Require(scan && firstInstance is not null && originalCount.HasValue && N("resend_invoked") == originalCount);
                 Require(DuplicateBreakdown.TryRead(armBreakdown, out DuplicateBreakdown? breakdown));
                 if (emptyCross)
-                    Require(N("resend_invoked") == 0 && breakdown!.IsValid(0));
+                    Require(successorInstance is null && breakdown!.IsValid(0));
                 else
-                    Require(N("resend_invoked").HasValue && (sameInstance || successorInstance is not null));
+                    Require(sameInstance || successorInstance is not null);
             }
             if (!scan || localUnjoined)
                 foreach (string field in new[] { "originals_seen", "resends_seen", "pair_count", "unreported_seen", "unreported_unseen", "lost_resends", "witness" })

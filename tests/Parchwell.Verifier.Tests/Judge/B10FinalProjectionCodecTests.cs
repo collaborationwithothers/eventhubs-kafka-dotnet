@@ -100,15 +100,18 @@ public sealed class B10FinalProjectionCodecTests
     }
 
     [Theory]
-    [InlineData("first_instance_id", 0)]
-    [InlineData("successor_instance_id", 1)]
-    [InlineData("resend_invoked", 1)]
-    public void Given_UnavailableArmEvidence_When_BreakdownIsPresent_Then_ReadAndWriteReject(string field, int armIndex)
+    [InlineData("first_instance_id", 0, null)]
+    [InlineData("successor_instance_id", 1, null)]
+    [InlineData("resend_invoked", 1, null)]
+    [InlineData("resend_invoked", 1, 0)]
+    [InlineData("unconfirmed_count", 0, null)]
+    [InlineData("unconfirmed_count", 1, null)]
+    public void Given_UnavailableArmEvidence_When_BreakdownIsPresent_Then_ReadAndWriteReject(string field, int armIndex, int? count)
     {
         JsonObject root = LocalUnjoined();
         JsonNode restart = root["data"]!["repeats"]![0]!["restart"]!;
         JsonNode arm = restart["arms"]![armIndex]!;
-        if (field == "resend_invoked") arm[field] = null;
+        if (field is "resend_invoked" or "unconfirmed_count") arm[field] = count;
         else restart[field] = null;
         B10FinalProjection historical = Read(root);
         B10FinalRepeat[] repeats = historical.Data.Repeats.ToArray();
@@ -505,7 +508,14 @@ public sealed class B10FinalProjectionCodecTests
         Assert.Equal(0, Read(root).Data.Repeats[0].Restart!.Arms![1].LostResends);
         JsonNode cross = restart["arms"]![1]!;
         cross["duplicate_breakdown"] = new JsonObject { ["duplicate_same_attempt"] = 0, ["duplicate_different_attempt"] = 0 };
-        Assert.Equal(new DuplicateBreakdown(0, 0), Read(root).Data.Repeats[0].Restart!.Arms![1].DuplicateBreakdown);
+        B10FinalProjection present = Read(root);
+        Assert.Equal(new DuplicateBreakdown(0, 0), present.Data.Repeats[0].Restart!.Arms![1].DuplicateBreakdown);
+        restart["successor_instance_id"] = "unexpected-successor";
+        Assert.Throws<FormatException>(() => Read(root));
+        B10FinalRepeat[] repeats = present.Data.Repeats.ToArray();
+        repeats[0] = repeats[0] with { Restart = repeats[0].Restart! with { SuccessorInstanceId = "unexpected-successor" } };
+        Assert.Throws<FormatException>(() => B10FinalProjectionCodec.Write(present with { Data = present.Data with { Repeats = repeats } }));
+        restart["successor_instance_id"] = null;
         cross["duplicate_breakdown"]!["duplicate_same_attempt"] = 1;
         Assert.Throws<FormatException>(() => Read(root));
         cross["duplicate_breakdown"]!["duplicate_same_attempt"] = 0;
