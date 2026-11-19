@@ -16,7 +16,8 @@ ROOT = Path(__file__).resolve().parents[3]
 PATHS = {'coordinator': '.github/workflows/verifier-c5-mutation.yml',
          'companion': '.github/workflows/verifier-c5-mutation-companion.yml'}
 BUDGET = 3000
-POLL_SECONDS = 2400
+# Reserve ten minutes of the hosted job limit to retain aggregate evidence.
+POLL_SECONDS = 17_400
 
 
 def require(condition, message):
@@ -209,9 +210,14 @@ def prepare(repository, commit, coordinator_id, coordinator_attempt, companion_i
             reasons.append('companion polling timed out')
             break
         time.sleep(min(15, remaining))
-        runs['companion'] = api(repository, f'actions/runs/{companion_id}/attempts/{companion_attempt}')
-        require(validate_run(runs['companion'], 'companion', repository, commit, companion_id, companion_attempt)
-                == starts[1], 'companion creation time changed')
+        try:
+            updated = api(repository, f'actions/runs/{companion_id}/attempts/{companion_attempt}')
+            require(validate_run(updated, 'companion', repository, commit, companion_id, companion_attempt)
+                    == starts[1], 'companion creation time changed')
+        except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
+            reasons.append(f'companion status: {error}')
+            break
+        runs['companion'] = updated
     if runs['coordinator'].get('status') != 'in_progress':
         reasons.append('coordinator run is not in progress')
     for role, (rid, attempt) in ids.items():

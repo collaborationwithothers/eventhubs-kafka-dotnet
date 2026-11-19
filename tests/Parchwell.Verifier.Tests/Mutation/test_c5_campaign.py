@@ -118,7 +118,7 @@ class CampaignTests(unittest.TestCase):
             return self.document('coordinator' if run_id == 1 else 'companion')
         with tempfile.TemporaryDirectory() as directory, patch.object(campaign, 'matrices', return_value=self.layout), \
                 patch.object(campaign, 'api', side_effect=api), patch.object(campaign, 'jobs', side_effect=jobs), \
-                patch.object(campaign.subprocess, 'check_output', side_effect=[self.commit + '\n', b'workflow', b'workflow'] * 4), \
+                patch.object(campaign.subprocess, 'check_output', side_effect=[self.commit + '\n', b'workflow', b'workflow'] * 5), \
                 patch.object(Path, 'read_bytes', return_value=b'workflow'), \
                 patch.object(campaign.time, 'time', return_value=2_000_000_000), \
                 patch.object(campaign.time, 'monotonic', return_value=0):
@@ -141,6 +141,13 @@ class CampaignTests(unittest.TestCase):
                 output = Path(directory) / 'timeout.json'
                 campaign.prepare(self.repo, self.commit, 1, 1, 2, 1, output)
                 self.assertIn('companion polling timed out', json.loads(output.read_text())['incomplete_reasons'])
+            with patch.object(campaign.time, 'sleep'), patch.object(campaign, 'api', side_effect=[
+                    self.runs['coordinator'], self.runs['companion'], OSError('API unavailable')]):
+                output = Path(directory) / 'poll-failed.json'
+                campaign.prepare(self.repo, self.commit, 1, 1, 2, 1, output)
+                interrupted = json.loads(output.read_text())
+                self.assertIn('companion status: API unavailable', interrupted['incomplete_reasons'])
+                self.assertEqual({'target': 'B.cs', 'run_id': '2', 'run_attempt': '1'}, self.validate(interrupted)['b'])
 
     def test_prepare_rejects_unverifiable_metadata(self):
         self.runs['companion']['head_branch'] = 'other'

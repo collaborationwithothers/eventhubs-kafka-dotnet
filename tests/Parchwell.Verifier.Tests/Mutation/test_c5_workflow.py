@@ -44,6 +44,22 @@ MUTATE_FILTER = "Removed by mutate filter"
 STATIC_PHASE = b"    private static readonly int[] A=[1];\n    bool B() => true;\n"
 STATIC_PHASE_TWO = b"    private static readonly int[] A=[1];\n    private static readonly int[] C=[2];\n    bool B() => true;\n"
 RPC_BYTES = b"Synthetic assertion\nSynthetic stack\ntime.duration-ms: 55\n"
+EXPECTED_COMPANION_TARGETS = {
+    "Common/Phase/B10FinalRegistrationReader.cs",
+    "Judge/B10JudgeChecks.cs",
+    "VerifyRun/A01/A01EvidenceRecorder.cs",
+    "VerifyRun/A01/WorkloadRecorder.cs",
+    "VerifyRun/B10Final/B10FinalSweepHandler.cs",
+    "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
+    "VerifyRun/Input/B10PhaseRegistrationReader.cs",
+    "VerifyRun/Input/RestartManifestReader.cs",
+    "VerifyRun/Judgement/B10IntakeChecks.cs",
+    "VerifyRun/Judgement/B10RepeatChecks.cs",
+    "VerifyRun/LedgerBatch/BatchingEvidenceRecorder.cs",
+    "VerifyRun/Publication/PublicationAcceptance.cs",
+    "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+    "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs",
+}
 
 EXPECTED_PRIMARY_CUTS = {'phase': (3694, 4477, 5226, 6577, 7631),
  'publication': (887, 2532, 3857, 5506, 7129, 8239),
@@ -1083,8 +1099,10 @@ class CommittedContractTests(unittest.TestCase):
                     for path in (root / ".github/workflows/verifier-c5-mutation.yml",
                                  root / ".github/workflows/verifier-c5-mutation-companion.yml")]
         self.assertEqual([168, 146], list(map(len, matrices)))
-        self.assertCountEqual(list(shards.items()),
-                              [(row["shard"], row["target"]) for matrix in matrices for row in matrix])
+        for is_companion, matrix in enumerate(matrices):
+            expected = [(name, target) for name, target in shards.items()
+                        if (target in EXPECTED_COMPANION_TARGETS) == bool(is_companion)]
+            self.assertEqual(expected, [(row["shard"], row["target"]) for row in matrix])
         self.assertEqual(('b10-restart-manifest', 1, 5), workflow.PARTS['b10-restart-manifest-p1'])
         self.assertEqual(('b10-intake', 1, 4), workflow.PARTS['b10-intake-p1'])
         self.assertEqual(('b10-judge', 1, 4), workflow.PARTS['b10-judge-p1'])
@@ -3144,9 +3162,10 @@ class ProductionLayoutTests(unittest.TestCase):
         coordinator, companion = (yaml.safe_load(path.read_text())["jobs"]["mutation"]["strategy"]["matrix"]["include"]
                                   for path in (root / ".github/workflows/verifier-c5-mutation.yml",
                                                root / ".github/workflows/verifier-c5-mutation-companion.yml"))
-        self.assertCountEqual(EXPECTED_JOB_NAMES, [row["shard"] for row in coordinator + companion])
-        self.assertCountEqual(list(workflow.SHARDS.items()),
-                              [(row["shard"], row["target"]) for row in coordinator + companion])
+        for is_companion, matrix in enumerate((coordinator, companion)):
+            expected = [(name, workflow.SHARDS[name]) for name in EXPECTED_JOB_NAMES
+                        if (workflow.SHARDS[name] in EXPECTED_COMPANION_TARGETS) == bool(is_companion)]
+            self.assertEqual(expected, [(row["shard"], row["target"]) for row in matrix])
         for key, (target, count) in workflow.TARGETS.items():
             with self.subTest(target=key):
                 source = (root / "src/Parchwell.Verifier" / target).read_bytes()

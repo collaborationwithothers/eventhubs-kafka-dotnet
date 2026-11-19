@@ -401,7 +401,7 @@ jobs:
     needs: mutation
     if: always() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 50
+    timeout-minutes: 300
     permissions:
       actions: read
       contents: read
