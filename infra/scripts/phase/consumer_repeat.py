@@ -25,9 +25,9 @@ STORAGE_CHECK_INTERVAL_SECONDS = 60
 STORAGE_CHECK_CAP_SECONDS = 1800
 STORAGE_CHECK_MODE = "consumer-storage-check"
 STORAGE_CHECK_NOT_READY = "consumer_storage_access_not_ready"
+# The pod prints cause= from ExceptionSummary.Describe, which never copies an exception message; its characters are fixed.
 STORAGE_CHECK_RESULT = re.compile(
-    r"consumer_storage_check result=(ok|failed|probe_delete_failed|configuration_invalid)"
-    r"(?: (kind=http status=[0-9]{3}(?: code=[A-Za-z0-9]{1,64})?|kind=aadsts code=AADSTS[0-9]{1,8}|kind=socket code=[A-Za-z]{1,64}|kind=other))?")
+    r"consumer_storage_check result=(ok|failed|probe_delete_failed|configuration_invalid)(?: cause=([A-Za-z0-9._`+?>()= -]{1,1024}))?")
 TERMINATION_RESERVE = 5  # equals phase.py TERMINATION_RESERVE: Phase.run refuses a command with this many seconds or fewer left
 PARTITIONS = 32  # infra/ephemeral/eventhubs.tf, document-events partition_count
 RECORD_BLOB_MAXIMUM = 65536 * 40000  # the worker's row cap times rows per blob (ConsumerRecordLimits.cs)

@@ -240,10 +240,13 @@ def verify_storage_check(document, values):
     assert container['securityContext']['readOnlyRootFilesystem'] is True and container['securityContext']['allowPrivilegeEscalation'] is False
     env = {e['name']: e['value'] for e in container['env']}
     assert env == {'ConsumerStorageCheck__RunId': runtime['run_id'], 'ConsumerStorageCheck__Phase': runtime['phase'],
-                   'ConsumerStorageCheck__JobName': name, 'ConsumerStorageCheck__BlobEndpoint': runtime['blob']['account_url']}, env
-    # The worker reads exactly these names from the environment (ConsumerStorageCheck.cs, Options.Read).
+                   'ConsumerStorageCheck__JobName': name, 'ConsumerStorageCheck__BlobEndpoint': runtime['blob']['account_url'],
+                   'PARCHWELL_JOB_NAME': name}, env
+    # The worker binds every property of its Options class (unknown names are rejected) and cross-checks PARCHWELL_JOB_NAME.
     source = (ROOT / 'src/Parchwell.Enrichment/ConsumerProcessing/ConsumerStorageCheck.cs').read_text()
-    assert set(re.findall(r'"ConsumerStorageCheck:([A-Za-z]+)"', source)) == {key.split('__')[1] for key in env}
+    properties = set(re.findall(r'public string (\w+) \{ get; set; \}', source))
+    assert properties == {key.split('__')[1] for key in env if key.startswith('ConsumerStorageCheck__')}, properties
+    assert re.findall(r'configuration\["(PARCHWELL_\w+)"\]', source) == ['PARCHWELL_JOB_NAME']
     assert re.search(r'args is \["--consumer-storage-check"\]', (ROOT / PROGRAM_FILE).read_text())
 
 

@@ -14,7 +14,7 @@ Each attempt is one Job of the Enrichment image in the mode `--consumer-storage-
 - The check runs before the consumer phase clock starts, so it uses none of the 7200 s phase budget or the 5100 s repeat reserve.
 - The result is the object `consumer_storage_access` in `phase-status.json`: `outcome` (`ready` or `not_ready`), `attempts`, `elapsed_seconds`, `last_failure` and `probe_delete_failed`. It is not one of the six records of a repeat.
 - On exhaustion no member Job is applied. All five repeats are recorded with their six records `not_attempted` and reason `consumer_storage_access_not_ready`, the step exits 1 as for any `not_attempted` record, and the job goes on to its judge, archive and destroy steps. A safety stop wins over this reason.
-- `last_failure` is a fixed-grammar summary read from the pod's result line, never an exception message: `kind=http status=<code> code=<storage error code>`, `kind=aadsts code=AADSTS<number>`, `kind=socket code=<socket error name>` or `kind=other`. A pod log with no valid result line gives `wait_exit_<code>_no_result`.
+- `last_failure` is read from the pod's result line and never copies an exception message. For a failed write it is the pod's `cause=` text from `ExceptionSummary` (for example `Azure.RequestFailedException(status=403 error_code=AuthorizationPermissionMismatch)`, an `aadsts=AADSTS<number>` detail, or a `socket_error=<name>` detail). The step itself writes `render_failed` or `apply_failed` when the attempt's Job could not be rendered or applied, `wait_exit_<code>_no_result` when the pod log has no valid result line, and `configuration_invalid` when the pod rejected its own settings.
 
 ## Order of one repeat
 

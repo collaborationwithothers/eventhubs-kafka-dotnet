@@ -154,7 +154,7 @@ spec:
   parallelism: 1
   backoffLimit: 0
   podReplacementPolicy: Failed
-  {{- /* Policy value, not a measurement: one attempt must end well inside the 60 s retry interval of consumer_repeat.py plus pod start. */}}
+  {{- /* Policy value, not a measurement: the longest one attempt may take. It is not tied to the 60 s sleep that consumer_repeat.py adds after a failed attempt. */}}
   activeDeadlineSeconds: 120
   template:
     metadata:
@@ -198,6 +198,8 @@ spec:
             - name: {{ printf "ConsumerStorageCheck__%s" $key | quote }}
               value: {{ $value | quote }}
             {{- end }}
+            - name: PARCHWELL_JOB_NAME
+              value: {{ $job | quote }}
           volumeMounts:
             - name: tmp
               mountPath: /tmp

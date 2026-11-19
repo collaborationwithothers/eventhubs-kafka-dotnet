@@ -1,8 +1,10 @@
-using System.Net.Sockets;
-using System.Text.RegularExpressions;
 using Azure;
 using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 namespace Parchwell.Enrichment.ConsumerProcessing;
 
@@ -10,28 +12,28 @@ namespace Parchwell.Enrichment.ConsumerProcessing;
 // (infra/scripts/phase/consumer_repeat.py) to learn whether a fresh role assignment on consumer-record has
 // taken effect. It writes one probe blob and deletes it. The probe lives under <run>/<phase>/storage-check/,
 // outside every <run>/<phase>/r<n>/consumer/ prefix that the readiness poll, the archive and the verifier read.
-// The result line carries a status code, an error code or a socket error name, never an exception message.
-internal static partial class ConsumerStorageCheck
+// A failure is reported through ExceptionSummary, which never copies an exception message.
+internal static class ConsumerStorageCheck
 {
     public const string Container = "consumer-record";
     public const string ResultPrefix = "consumer_storage_check ";
 
-    internal sealed record Options(string RunId, string Phase, string JobName, string BlobEndpoint)
+    internal sealed class Options
     {
+        public const string SectionName = "ConsumerStorageCheck";
+        public string RunId { get; set; } = string.Empty;
+        public string Phase { get; set; } = string.Empty;
+        public string JobName { get; set; } = string.Empty;
+        public string BlobEndpoint { get; set; } = string.Empty;
         public string ProbeBlob => $"{RunId}/{Phase}/storage-check/{JobName}.probe";
 
-        public static Options Read(IConfiguration configuration)
+        public void Validate(IConfiguration configuration)
         {
-            var options = new Options(configuration["ConsumerStorageCheck:RunId"] ?? string.Empty,
-                configuration["ConsumerStorageCheck:Phase"] ?? string.Empty,
-                configuration["ConsumerStorageCheck:JobName"] ?? string.Empty,
-                configuration["ConsumerStorageCheck:BlobEndpoint"] ?? string.Empty);
-            if (!Label(options.RunId, 29) || options.Phase is not ("C0" or "C1") || !Label(options.JobName, 63) ||
-                !options.JobName.StartsWith(options.RunId + "-", StringComparison.Ordinal) ||
-                !Uri.TryCreate(options.BlobEndpoint, UriKind.Absolute, out Uri? endpoint) || endpoint.Scheme != Uri.UriSchemeHttps ||
-                !StringComparer.Ordinal.Equals(options.JobName, configuration["PARCHWELL_JOB_NAME"]))
+            if (!Label(RunId, 29) || Phase is not ("C0" or "C1") || !Label(JobName, 63) ||
+                !JobName.StartsWith(RunId + "-", StringComparison.Ordinal) ||
+                !Uri.TryCreate(BlobEndpoint, UriKind.Absolute, out Uri? endpoint) || endpoint.Scheme != Uri.UriSchemeHttps ||
+                !StringComparer.Ordinal.Equals(JobName, configuration["PARCHWELL_JOB_NAME"]))
                 throw new InvalidOperationException("consumer_storage_check_configuration_invalid");
-            return options;
         }
 
         private static bool Label(string value, int maximum) => value.Length > 0 && value.Length <= maximum &&
@@ -45,8 +47,18 @@ internal static partial class ConsumerStorageCheck
         TextWriter output, CancellationToken cancellationToken)
     {
         Options options;
-        try { options = Options.Read(configuration); }
-        catch (InvalidOperationException)
+        try
+        {
+            HostApplicationBuilder builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings());
+            builder.Configuration.AddConfiguration(configuration);
+            builder.Services.AddOptions<Options>()
+                .Bind(builder.Configuration.GetSection(Options.SectionName), binding => binding.ErrorOnUnknownConfiguration = true)
+                .Validate(value => { value.Validate(configuration); return true; }).ValidateOnStart();
+            using IHost host = builder.Build();
+            await host.StartAsync(cancellationToken).ConfigureAwait(false);
+            options = host.Services.GetRequiredService<IOptions<Options>>().Value;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
             await output.WriteLineAsync(ResultPrefix + "result=configuration_invalid").ConfigureAwait(false);
             return 2;
@@ -56,14 +68,14 @@ internal static partial class ConsumerStorageCheck
         {
             probe = containerFactory(options).GetBlobClient(options.ProbeBlob);
             using var content = new MemoryStream("storage-check\n"u8.ToArray(), writable: false);
-            await probe.UploadAsync(content, new Azure.Storage.Blobs.Models.BlobUploadOptions
+            await probe.UploadAsync(content, new BlobUploadOptions
             {
-                Conditions = new Azure.Storage.Blobs.Models.BlobRequestConditions { IfNoneMatch = ETag.All }
+                Conditions = new BlobRequestConditions { IfNoneMatch = ETag.All }
             }, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            await output.WriteLineAsync(ResultPrefix + "result=failed " + Summarize(exception)).ConfigureAwait(false);
+            await output.WriteLineAsync(ResultPrefix + "result=failed cause=" + ExceptionSummary.Describe(exception)).ConfigureAwait(false);
             return 1;
         }
         try
@@ -72,35 +84,10 @@ internal static partial class ConsumerStorageCheck
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            await output.WriteLineAsync(ResultPrefix + "result=probe_delete_failed " + Summarize(exception)).ConfigureAwait(false);
+            await output.WriteLineAsync(ResultPrefix + "result=probe_delete_failed cause=" + ExceptionSummary.Describe(exception)).ConfigureAwait(false);
             return 3;
         }
         await output.WriteLineAsync(ResultPrefix + "result=ok").ConfigureAwait(false);
         return 0;
     }
-
-    // kind=http with status and the storage error code; kind=aadsts with the AADSTS code; kind=socket with the
-    // socket error name; otherwise kind=other. Messages are never copied.
-    internal static string Summarize(Exception exception)
-    {
-        for (Exception? current = exception; current is not null; current = current.InnerException)
-        {
-            if (current is RequestFailedException failed && failed.Status != 0)
-                return $"kind=http status={failed.Status}" + (SafeCode(failed.ErrorCode) is { } code ? " code=" + code : string.Empty);
-            if (current is SocketException socket)
-                return "kind=socket code=" + socket.SocketErrorCode;
-        }
-        for (Exception? current = exception; current is not null; current = current.InnerException)
-        {
-            // Azure.Identity puts the AADSTS code in the message; only the code is kept.
-            Match match = AadstsCode().Match(current.Message);
-            if (match.Success) return "kind=aadsts code=" + match.Value;
-        }
-        return "kind=other";
-    }
-
-    private static string? SafeCode(string? value) => value is { Length: > 0 and <= 64 } && value.All(char.IsAsciiLetterOrDigit) ? value : null;
-
-    [GeneratedRegex("AADSTS[0-9]{1,8}", RegexOptions.CultureInvariant)]
-    private static partial Regex AadstsCode();
 }

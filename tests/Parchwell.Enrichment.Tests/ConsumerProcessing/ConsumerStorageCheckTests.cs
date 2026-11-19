@@ -1,9 +1,7 @@
 using System.Net;
-using System.Net.Sockets;
 using System.Text;
 using Azure;
 using Azure.Core.Pipeline;
-using Azure.Identity;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
 using Parchwell.Enrichment.ConsumerProcessing;
@@ -30,7 +28,7 @@ public sealed class ConsumerStorageCheckTests
     [Fact]
     public void Given_probe_name_When_built_Then_it_is_outside_every_repeat_consumer_prefix()
     {
-        var options = ConsumerStorageCheck.Options.Read(Configuration());
+        var options = new ConsumerStorageCheck.Options { RunId = "c03-1", Phase = "C0", JobName = Job };
         Assert.Equal("c03-1/C0/storage-check/" + Job + ".probe", options.ProbeBlob);
         Assert.DoesNotMatch("/r[1-5]/consumer/", options.ProbeBlob);
     }
@@ -41,7 +39,7 @@ public sealed class ConsumerStorageCheckTests
         using var handler = new Handler { PutStatus = HttpStatusCode.Forbidden, PutCode = "AuthorizationPermissionMismatch" };
         var (code, line) = await RunAsync(handler);
         Assert.Equal(1, code);
-        Assert.Equal("consumer_storage_check result=failed kind=http status=403 code=AuthorizationPermissionMismatch", line);
+        Assert.Equal("consumer_storage_check result=failed cause=Azure.RequestFailedException(status=403 error_code=AuthorizationPermissionMismatch)", line);
         Assert.DoesNotContain("synthetic-secret-message", line, StringComparison.Ordinal);
         Assert.Equal(["PUT /consumer-record/c03-1/C0/storage-check/" + Job + ".probe"], handler.Requests);
     }
@@ -52,7 +50,7 @@ public sealed class ConsumerStorageCheckTests
         using var handler = new Handler { DeleteStatus = HttpStatusCode.Forbidden, DeleteCode = "AuthorizationPermissionMismatch" };
         var (code, line) = await RunAsync(handler);
         Assert.Equal(3, code);
-        Assert.Equal("consumer_storage_check result=probe_delete_failed kind=http status=403 code=AuthorizationPermissionMismatch", line);
+        Assert.Equal("consumer_storage_check result=probe_delete_failed cause=Azure.RequestFailedException(status=403 error_code=AuthorizationPermissionMismatch)", line);
     }
 
     [Theory]
@@ -75,23 +73,13 @@ public sealed class ConsumerStorageCheckTests
     [InlineData("ConsumerStorageCheck:BlobEndpoint", "http://synthetic.blob.test/")]
     [InlineData("ConsumerStorageCheck:JobName", "other-job")]
     [InlineData("ConsumerStorageCheck:RunId", "C03-1")]
+    [InlineData("ConsumerStorageCheck:Unknown", "x")]
     public async Task Given_an_invalid_setting_When_checked_Then_no_request_is_made(string key, string value)
     {
         using var handler = new Handler();
         var (code, _) = await RunAsync(handler, Configuration(overrides: (key, value)));
         Assert.Equal(2, code);
         Assert.Empty(handler.Requests);
-    }
-
-    [Fact]
-    public void Given_exceptions_When_summarized_Then_only_codes_survive()
-    {
-        Assert.Equal("kind=aadsts code=AADSTS70011", ConsumerStorageCheck.Summarize(
-            new AuthenticationFailedException("AADSTS70011: The provided request must include a client_assertion secret-token-text")));
-        Assert.Equal("kind=socket code=HostNotFound", ConsumerStorageCheck.Summarize(
-            new HttpRequestException("name resolution failed for synthetic-host", new SocketException((int)SocketError.HostNotFound))));
-        Assert.Equal("kind=http status=409", ConsumerStorageCheck.Summarize(new RequestFailedException(409, "synthetic-secret-message")));
-        Assert.Equal("kind=other", ConsumerStorageCheck.Summarize(new InvalidOperationException("synthetic-secret-message")));
     }
 
     private static IConfiguration Configuration(string? missing = null, (string Key, string Value)? overrides = null)

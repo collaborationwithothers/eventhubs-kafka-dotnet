@@ -299,7 +299,7 @@ class ConsumerRepeatTests(unittest.TestCase):
     def check_calls(self, verb):
         return [call for call in self.fake.calls if call[0][:2] == verb]
 
-    def fail_attempts(self, count, line='consumer_storage_check result=failed kind=http status=403 code=AuthorizationPermissionMismatch\n'):
+    def fail_attempts(self, count, line='consumer_storage_check result=failed cause=Azure.RequestFailedException(status=403 error_code=AuthorizationPermissionMismatch)\n'):
         for attempt in range(1, count + 1):
             self.fake.responses[self.check_wait(attempt)] = (1, '')
             self.fake.logs[self.check_job(attempt)] = line
@@ -311,10 +311,11 @@ class ConsumerRepeatTests(unittest.TestCase):
         self.assertEqual(0, self.run_repeats())
         self.assertEqual(1, len(self.check_calls(('kubectl', 'logs'))))
         self.assertEqual({'outcome': 'ready', 'attempts': 1, 'elapsed_seconds': 0, 'last_failure': None, 'probe_delete_failed': False}, self.access())
-        sleeps = [call for call in self.fake.calls if call[0][:2] == ('kubectl', 'apply')]
         self.assertEqual(self.check_job(1), Path(self.check_calls(('kubectl', 'apply'))[0][0][3]).stem.removeprefix('rendered-'))
         self.assertEqual(30, len(self.records()))
-        self.assertTrue(sleeps)
+        first = next(started for args, _, started in self.fake.calls if args[:2] == ('kubectl', 'apply') and 'storage-check' in args[3])
+        second = next(started for args, _, started in self.fake.calls if args[:2] == ('kubectl', 'apply') and 'r1-consumer-subject' in args[3])
+        self.assertEqual(first, second)  # a first-attempt success adds no 60 s sleep before the repeats
 
     def test_storage_check_succeeds_after_failed_attempts_with_one_sleep_between_each(self):
         self.fail_attempts(3)
@@ -335,7 +336,7 @@ class ConsumerRepeatTests(unittest.TestCase):
         self.assertEqual(1, self.run_repeats())
         access = self.access()
         self.assertEqual(('not_ready', 30, 1800), (access['outcome'], access['attempts'], access['elapsed_seconds']))
-        self.assertEqual('kind=http status=403 code=AuthorizationPermissionMismatch', access['last_failure'])
+        self.assertEqual('Azure.RequestFailedException(status=403 error_code=AuthorizationPermissionMismatch)', access['last_failure'])
         applied = [Path(call[0][3]).stem for call in self.check_calls(('kubectl', 'apply'))]
         self.assertTrue(all('storage-check' in name for name in applied))
         records = self.records()
@@ -346,17 +347,29 @@ class ConsumerRepeatTests(unittest.TestCase):
         self.assertFalse([call for call in self.fake.calls if call[0][:4] == ('az', 'storage', 'blob', 'list')])
 
     def test_storage_check_time_is_not_counted_against_the_phase_clock(self):
-        self.fail_attempts(20)  # 20 failed attempts and a 21st that succeeds: 1200 s before the clock starts
+        """Each attempt takes 60 s and is followed by a 60 s sleep: 12 failed attempts and a 13th that succeeds take 1500 s.
+        Each of repeats 1 to 4 then takes 200 s. Counted from the start of the check, repeat 5 would begin at 2240 s,
+        after the 2100 s admission limit (7200 - 5100), and be skipped; counted from the end of the check it begins at 800 s."""
+        self.fail_attempts(12)
+        checks = {self.check_job(n) for n in range(1, 14)}
+
+        def hook(args):
+            if args[:3] == ['bash', 'infra/scripts/lifecycle/lifecycle.sh', 'wait-job'] and args[3] in checks:
+                self.now += 60
+        self.fake.hooks.append(hook)
+        self.repeat_takes({n: 200 for n in range(1, 5)})
         self.assertEqual(0, self.run_repeats())
-        self.assertEqual(21, self.access()['attempts'])
-        self.assertEqual(1200, self.access()['elapsed_seconds'])
+        self.assertEqual((13, 1500), (self.access()['attempts'], self.access()['elapsed_seconds']))
         self.assertEqual(30, len(self.records()))
         self.assertEqual(['complete'] * 5, [r['outcome'] for r in self.records() if r['mode'] == 'verify'])
 
     def test_storage_check_keeps_only_the_fixed_result_grammar(self):
-        for line, expected in (('consumer_storage_check result=failed kind=aadsts code=AADSTS70011\n', 'kind=aadsts code=AADSTS70011'),
-                               ('consumer_storage_check result=failed kind=socket code=HostNotFound\n', 'kind=socket code=HostNotFound'),
-                               ('consumer_storage_check result=failed kind=http status=403 message=secret\n', 'wait_exit_1_no_result'),
+        for line, expected in (('consumer_storage_check result=failed cause=Azure.Identity.AuthenticationFailedException(aadsts=AADSTS70011)\n',
+                                'Azure.Identity.AuthenticationFailedException(aadsts=AADSTS70011)'),
+                               ('consumer_storage_check result=failed cause=System.Net.Http.HttpRequestException>System.Net.Sockets.SocketException(socket_error=HostNotFound)\n',
+                                'System.Net.Http.HttpRequestException>System.Net.Sockets.SocketException(socket_error=HostNotFound)'),
+                               ('consumer_storage_check result=configuration_invalid\n', 'configuration_invalid'),
+                               ('consumer_storage_check result=failed cause=has"quote\n', 'wait_exit_1_no_result'),
                                ('', 'wait_exit_1_no_result')):
             with self.subTest(line=line):
                 self.setUp()
@@ -366,7 +379,7 @@ class ConsumerRepeatTests(unittest.TestCase):
 
     def test_storage_check_probe_delete_failure_still_counts_as_ready(self):
         self.fake.responses[self.check_wait(1)] = (1, '')
-        self.fake.logs[self.check_job(1)] = 'consumer_storage_check result=probe_delete_failed kind=http status=403 code=AuthorizationPermissionMismatch\n'
+        self.fake.logs[self.check_job(1)] = 'consumer_storage_check result=probe_delete_failed cause=Azure.RequestFailedException(status=403 error_code=AuthorizationPermissionMismatch)\n'
         self.assertEqual(0, self.run_repeats())
         self.assertEqual(('ready', True), (self.access()['outcome'], self.access()['probe_delete_failed']))
 
