@@ -168,6 +168,15 @@ def fixture(wall=20):
 
 
 class PerformanceTests(unittest.TestCase):
+    def test_historical_performance_reader_rejects_paired_campaigns(self):
+        from unittest.mock import patch
+
+        head = 'a' * 40
+        with patch.object(profile_module.subprocess, 'check_output',
+                          return_value=profile_module.COMPANION_WORKFLOW + '\n'):
+            with self.assertRaisesRegex(ValueError, 'c5_campaign.py terminal'):
+                profile_module.expected_layout_at_head(head, ROOT)
+
     def test_boundary(self):
         for wall, status in [(1799, 'met'), (1800, 'met'), (1801, 'met'), (2999, 'met'), (3000, 'met'), (3001, 'missed')]:
             with self.subTest(wall=wall):

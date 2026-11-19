@@ -178,12 +178,17 @@ def _timestamp(value):
 
 
 def expected_layout_at_head(head, repository):
-    """Read the production matrix from the measured revision without a network call."""
+    """Read a historical single-run matrix from the measured revision."""
     if not isinstance(head, str) or not re.fullmatch(r'[0-9a-f]{40}', head):
         raise ValueError('invalid head SHA')
     try:
+        companion = subprocess.check_output(
+            ['git', 'ls-tree', '--name-only', head, '--', COMPANION_WORKFLOW],
+            cwd=repository, text=True, stderr=subprocess.DEVNULL)
+        if companion:
+            raise ValueError('use c5_campaign.py terminal for coordinated C5 runs')
         text = subprocess.check_output(
-            ['git', 'show', f'{head}:.github/workflows/verifier-c5-mutation.yml'],
+            ['git', 'show', f'{head}:{WORKFLOW}'],
             cwd=repository, text=True, stderr=subprocess.DEVNULL)
     except (OSError, subprocess.CalledProcessError) as error:
         raise ValueError('measured workflow unavailable') from error
@@ -2298,7 +2303,8 @@ def main():
     try:
         run = json.loads(Path(args.run_json).read_text())
         expected = expected_layout_at_head(run['head_sha'], ROOT)
-    except (OSError, ValueError, TypeError, KeyError):
+    except (OSError, ValueError, TypeError, KeyError) as error:
+        print(str(error), file=sys.stderr)
         expected = None
     return write_performance(args.run_json, args.jobs_json, args.output_dir, expected)
 
