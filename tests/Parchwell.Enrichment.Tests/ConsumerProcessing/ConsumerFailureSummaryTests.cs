@@ -40,6 +40,42 @@ public class ConsumerFailureSummaryTests
     }
 
     [Fact]
+    public async Task Given_close_fails_When_executed_Then_close_exception_is_summarized()
+    {
+        using var harness = new ConsumerTestHarness();
+        harness.Recorded.OnClose = () => throw new RequestFailedException(503, "close-message", "ServerBusy", null);
+        Assert.Equal(1, await harness.RunAsync());
+        string output = harness.Error.ToString();
+        Assert.StartsWith("consumer_processing_failed reason=consumer_close_failed ", output, StringComparison.Ordinal);
+        Assert.Contains("status=503 error_code=ServerBusy", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("close-message", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Given_completion_fails_When_executed_Then_completion_exception_is_summarized()
+    {
+        using var harness = new ConsumerTestHarness();
+        harness.Store.FailCompletion = true;
+        Assert.Equal(1, await harness.RunAsync());
+        string output = harness.Error.ToString();
+        Assert.StartsWith("consumer_processing_failed reason=consumer_completion_failed ", output, StringComparison.Ordinal);
+        Assert.Contains("cause=System.InvalidOperationException", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("synthetic_completion_failure", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Given_a_failure_then_close_also_fails_When_executed_Then_the_first_exception_is_reported()
+    {
+        using var harness = new ConsumerTestHarness();
+        harness.Recorded.Polls.Enqueue(() => throw new RequestFailedException(500, "first-message", "FirstError", null));
+        harness.Recorded.OnClose = () => throw new RequestFailedException(503, "second-message", "SecondError", null);
+        Assert.Equal(1, await harness.RunAsync());
+        string output = harness.Error.ToString();
+        Assert.Contains("error_code=FirstError", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("SecondError", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Given_nested_chain_When_described_Then_every_type_appears_in_order()
     {
         var chain = new InvalidOperationException("outer-message",
