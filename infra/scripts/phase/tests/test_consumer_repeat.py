@@ -23,7 +23,7 @@ SPEC.loader.exec_module(consumer_repeat)
 RUN = 'c03-40121134428-1'
 MEMBER_MODES = ('consumer-subject', 'consumer-witness')
 SIX = ['consumer-subject', 'consumer-witness', 'consumer-readiness', 'start-line', 'loadgen', 'verify']
-DEADLINES = {'consumer-subject': 1800, 'consumer-witness': 1800, 'start-line': 150, 'loadgen': 1140, 'verify': 750, 'judge': 90}
+DEADLINES = {'consumer-storage-check': 120, 'consumer-subject': 1800, 'consumer-witness': 1800, 'start-line': 150, 'loadgen': 1140, 'verify': 750, 'judge': 90}
 START = 1000.0
 PODS = ('pod-a', 'pod-b')
 
@@ -47,6 +47,10 @@ class Fake:
         self.polls = {}
         self.blobs = {}
         self.hooks = []
+        self.logs = {}  # storage check job name -> pod log text; an attempt with no entry succeeds
+
+    def check_log(self, job):
+        return self.logs.get(job, 'consumer_storage_check result=ok\n')
 
     def __call__(self, instance, args, seconds, output=None, maximum=4 * 1024 * 1024):
         args = list(map(str, args))
@@ -59,6 +63,8 @@ class Fake:
             default = (0, f'kind: Job\nmetadata:\n  name: "{name}"\nspec:\n  activeDeadlineSeconds: {DEADLINES[runtime["mode"]]}\n')
         elif args[:3] == ['kubectl', 'get', 'pods']:
             default = (0, '{"items": []}')
+        elif args[:2] == ['kubectl', 'logs']:
+            default = (0, self.check_log(args[2].removeprefix('job/')))
         elif args[:4] == ['az', 'storage', 'blob', 'list']:
             prefix = args[args.index('--prefix') + 1]
             number = self.polls[prefix] = self.polls.get(prefix, 0) + 1
@@ -147,12 +153,12 @@ class ConsumerRepeatTests(unittest.TestCase):
 
     def labels(self, repeat):
         """The command sequence of one repeat as short labels. Blob downloads are left out; every list command is one poll."""
-        names = {self.name(mode, repeat): mode for mode in (*DEADLINES, *MEMBER_MODES)}
+        names = {self.name(mode, repeat): mode for mode in (*DEADLINES, *MEMBER_MODES) if mode != 'consumer-storage-check'}
         labels = []
         for args, _, _ in self.fake.calls:
             if args[0] == 'helm':
                 job = json.loads(Path(args[-1]).read_text())['runtime']
-                if job.get('repeat') == repeat:
+                if job.get('repeat') == repeat and job['mode'] != 'consumer-storage-check':
                     labels.append(('render', job['mode']))
             elif args[:2] == ('kubectl', 'apply') and Path(args[3]).stem.removeprefix('rendered-') in names:
                 labels.append(('apply', names[Path(args[3]).stem.removeprefix('rendered-')]))
@@ -282,6 +288,107 @@ class ConsumerRepeatTests(unittest.TestCase):
         self.assertEqual('unknown', records['consumer-witness']['outcome'])
         self.assertEqual(('not_attempted', 'consumer_wait_exhausted'), (records['verify']['outcome'], records['verify']['reason']))
         self.assertNotIn(('render', 'verify'), labels)
+
+    # Storage write check (issue 556)
+    def check_job(self, attempt):
+        return phase.job_name(self.run_id, 'C0', 'consumer-storage-check', attempt)
+
+    def check_wait(self, attempt):
+        return ('bash', 'infra/scripts/lifecycle/lifecycle.sh', 'wait-job', self.check_job(attempt), '120')
+
+    def check_calls(self, verb):
+        return [call for call in self.fake.calls if call[0][:2] == verb]
+
+    def fail_attempts(self, count, line='consumer_storage_check result=failed cause=Azure.RequestFailedException(status=403 error_code=AuthorizationPermissionMismatch)\n'):
+        for attempt in range(1, count + 1):
+            self.fake.responses[self.check_wait(attempt)] = (1, '')
+            self.fake.logs[self.check_job(attempt)] = line
+
+    def access(self):
+        return json.loads((self.artifacts / 'phase-status.json').read_text())['consumer_storage_access']
+
+    def test_storage_check_succeeds_on_the_first_attempt(self):
+        self.assertEqual(0, self.run_repeats())
+        self.assertEqual(1, len(self.check_calls(('kubectl', 'logs'))))
+        self.assertEqual({'outcome': 'ready', 'attempts': 1, 'elapsed_seconds': 0, 'last_failure': None, 'probe_delete_failed': False}, self.access())
+        self.assertEqual(self.check_job(1), Path(self.check_calls(('kubectl', 'apply'))[0][0][3]).stem.removeprefix('rendered-'))
+        self.assertEqual(30, len(self.records()))
+        first = next(started for args, _, started in self.fake.calls if args[:2] == ('kubectl', 'apply') and 'storage-check' in args[3])
+        second = next(started for args, _, started in self.fake.calls if args[:2] == ('kubectl', 'apply') and 'r1-consumer-subject' in args[3])
+        self.assertEqual(first, second)  # a first-attempt success adds no 60 s sleep before the repeats
+
+    def test_storage_check_succeeds_after_failed_attempts_with_one_sleep_between_each(self):
+        self.fail_attempts(3)
+        sleeps = []
+        with self.mocked():
+            with patch.object(phase.Phase, 'sleep', side_effect=lambda seconds: (sleeps.append(seconds), self.sleep(seconds))):
+                self.assertEqual(0, self.main('run-repeats'))
+        self.assertEqual(4, len(self.check_calls(('kubectl', 'logs'))))
+        self.assertEqual(3, len([s for s in sleeps if s == 60]))
+        starts = [started for args, _, started in self.fake.calls if args[:2] == ('kubectl', 'apply') and 'storage-check' in args[3]]
+        self.assertEqual([START, START + 60, START + 120, START + 180], starts)
+        self.assertEqual({'outcome': 'ready', 'attempts': 4, 'elapsed_seconds': 180, 'last_failure': None, 'probe_delete_failed': False}, self.access())
+        self.assertEqual(30, len(self.records()))
+        self.assertTrue(all(r['outcome'] == 'complete' for r in self.records() if r['mode'] != 'consumer-readiness'))
+
+    def test_storage_check_exhaustion_skips_every_repeat_without_a_member_job(self):
+        self.fail_attempts(40)
+        self.assertEqual(1, self.run_repeats())
+        access = self.access()
+        self.assertEqual(('not_ready', 30, 1800), (access['outcome'], access['attempts'], access['elapsed_seconds']))
+        self.assertEqual('Azure.RequestFailedException(status=403 error_code=AuthorizationPermissionMismatch)', access['last_failure'])
+        applied = [Path(call[0][3]).stem for call in self.check_calls(('kubectl', 'apply'))]
+        self.assertTrue(all('storage-check' in name for name in applied))
+        records = self.records()
+        self.assertEqual(30, len(records))
+        for repeat in range(1, 6):
+            self.assertEqual(SIX, [r['mode'] for r in self.records(repeat)])
+            self.assertEqual({('not_attempted', 'consumer_storage_access_not_ready')}, {(r['outcome'], r['reason']) for r in self.records(repeat)})
+        self.assertFalse([call for call in self.fake.calls if call[0][:4] == ('az', 'storage', 'blob', 'list')])
+
+    def test_storage_check_time_is_not_counted_against_the_phase_clock(self):
+        """Each attempt takes 60 s and is followed by a 60 s sleep: 12 failed attempts and a 13th that succeeds take 1500 s.
+        Each of repeats 1 to 4 then takes 200 s. Counted from the start of the check, repeat 5 would begin at 2300 s,
+        after the 2100 s admission limit (7200 - 5100), and be skipped; counted from the end of the check it begins at 800 s."""
+        self.fail_attempts(12)
+        checks = {self.check_job(n) for n in range(1, 14)}
+
+        def hook(args):
+            if args[:3] == ['bash', 'infra/scripts/lifecycle/lifecycle.sh', 'wait-job'] and args[3] in checks:
+                self.now += 60
+        self.fake.hooks.append(hook)
+        self.repeat_takes({n: 200 for n in range(1, 5)})
+        self.assertEqual(0, self.run_repeats())
+        self.assertEqual((13, 1500), (self.access()['attempts'], self.access()['elapsed_seconds']))
+        self.assertEqual(30, len(self.records()))
+        self.assertEqual(['complete'] * 5, [r['outcome'] for r in self.records() if r['mode'] == 'verify'])
+
+    def test_storage_check_keeps_only_the_fixed_result_grammar(self):
+        for line, expected in (('consumer_storage_check result=failed cause=Azure.Identity.AuthenticationFailedException(aadsts=AADSTS70011)\n',
+                                'Azure.Identity.AuthenticationFailedException(aadsts=AADSTS70011)'),
+                               ('consumer_storage_check result=failed cause=System.Net.Http.HttpRequestException>System.Net.Sockets.SocketException(socket_error=HostNotFound)\n',
+                                'System.Net.Http.HttpRequestException>System.Net.Sockets.SocketException(socket_error=HostNotFound)'),
+                               ('consumer_storage_check result=configuration_invalid\n', 'configuration_invalid'),
+                               ('consumer_storage_check result=failed cause=has"quote\n', 'wait_exit_1_no_result'),
+                               ('', 'wait_exit_1_no_result')):
+            with self.subTest(line=line):
+                self.setUp()
+                self.fail_attempts(40, line)
+                self.run_repeats()
+                self.assertEqual(expected, self.access()['last_failure'])
+
+    def test_storage_check_probe_delete_failure_still_counts_as_ready(self):
+        self.fake.responses[self.check_wait(1)] = (1, '')
+        self.fake.logs[self.check_job(1)] = 'consumer_storage_check result=probe_delete_failed cause=Azure.RequestFailedException(status=403 error_code=AuthorizationPermissionMismatch)\n'
+        self.assertEqual(0, self.run_repeats())
+        self.assertEqual(('ready', True), (self.access()['outcome'], self.access()['probe_delete_failed']))
+
+    def test_storage_check_job_that_cannot_be_deleted_sets_safety_stop(self):
+        self.fake.responses[('kubectl', 'delete', 'job', self.check_job(1), '-n', 'parchwell', '--ignore-not-found',
+                             '--cascade=foreground', '--wait=true', '--timeout=90s', '--request-timeout=30s')] = (1, '')
+        self.assertEqual(1, self.run_repeats())
+        for repeat in range(1, 6):
+            self.assertEqual({('not_attempted', 'safety_stop')}, {(r['outcome'], r['reason']) for r in self.records(repeat)})
 
     # T16
     def test_safety_stop_before_a_repeat_runs_nothing(self):
