@@ -112,6 +112,7 @@ public sealed class ScenarioPlanSourceTests
         }
         finally { Console.SetError(previous); }
         Assert.Contains("consumer_processing_failed reason=consumer_plan_invalid ", error.ToString(), StringComparison.Ordinal);
+        Assert.Contains(" cause=Microsoft.Extensions.Options.OptionsValidationException", error.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]

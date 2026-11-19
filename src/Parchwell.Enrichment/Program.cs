@@ -202,10 +202,10 @@ internal static class Program
             return await host.Services.GetRequiredService<ConsumerProcessingWorker>()
                 .ExecuteAsync(host.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping).ConfigureAwait(false);
         }
-        catch (Exception)
+        catch (Exception exception)
         {
             hostFailed = true;
-            await Console.Error.WriteLineAsync($"consumer_processing_failed reason={reason} scenario_id={ConsumerIdentity(options?.ScenarioId)} run_id={ConsumerIdentity(options?.RunId)} role={ConsumerIdentity(options?.Role)}").ConfigureAwait(false);
+            await Console.Error.WriteLineAsync($"consumer_processing_failed reason={reason} scenario_id={ConsumerIdentity(options?.ScenarioId)} run_id={ConsumerIdentity(options?.RunId)} role={ConsumerIdentity(options?.Role)} cause={ExceptionSummary.Describe(exception)}").ConfigureAwait(false);
             return 1;
         }
         finally

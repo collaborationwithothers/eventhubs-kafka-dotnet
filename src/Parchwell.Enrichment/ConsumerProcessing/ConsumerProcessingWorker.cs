@@ -17,6 +17,7 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
         IConsumerRecordStore? store = null;
         IConsumer<byte[], byte[]>? consumer = null;
         string? failure = null;
+        Exception? cause = null;
         bool appendFailed = false;
         bool watchdogFired = false;
         bool killFailed = false;
@@ -70,6 +71,7 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
         }
         catch (Exception exception)
         {
+            cause = exception;
             failure = appendFailed ? "consumer_record_append_failed" : exception.Message is
                 "consumer_identity_invalid" or "consumer_plan_invalid" or "consumer_setting_not_supported"
                     ? exception.Message : failure ?? "consumer_fatal_error";
@@ -85,7 +87,11 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
                     ThrowIfAppendFailed();
                     consumer.Dispose();
                 }
-                catch (Exception) { failure = appendFailed ? "consumer_record_append_failed" : failure ?? "consumer_close_failed"; }
+                catch (Exception exception)
+                {
+                    cause ??= exception;
+                    failure = appendFailed ? "consumer_record_append_failed" : failure ?? "consumer_close_failed";
+                }
                 monitoring?.Complete(failure is null);
                 recordOpen = false;
             }
@@ -98,13 +104,17 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
                 {
                     await store!.CompleteAsync(ConsumerRecordCodec.Completion(identity!, plan!, rows, processed, clock.GetUtcNow()), cancellationToken).ConfigureAwait(false);
                 }
-                catch (Exception) { failure = "consumer_completion_failed"; }
+                catch (Exception exception)
+                {
+                    cause ??= exception;
+                    failure = "consumer_completion_failed";
+                }
             }
         }
         finally { watchdog?.Dispose(); }
         if (watchdogFired) return 124;
         if (failure is null) return 0;
-        await (error ?? Console.Error).WriteLineAsync($"consumer_processing_failed reason={failure} scenario_id={Display(identity?.ScenarioId)} run_id={Display(identity?.RunId)} role={Display(identity?.Role)}").ConfigureAwait(false);
+        await (error ?? Console.Error).WriteLineAsync($"consumer_processing_failed reason={failure} scenario_id={Display(identity?.ScenarioId)} run_id={Display(identity?.RunId)} role={Display(identity?.Role)}{CauseSuffix(cause)}").ConfigureAwait(false);
         if (killFailed) exitProcess(1);
         return 1;
 
@@ -202,6 +212,8 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
                     await ProcessAsync(item.Message, item.Ordinal).ConfigureAwait(false);
         }
     }
+
+    private static string CauseSuffix(Exception? cause) => cause is null ? string.Empty : " cause=" + ExceptionSummary.Describe(cause);
 
     private static string Display(string? value) => string.IsNullOrEmpty(value) ? "unknown" : value;
 }
