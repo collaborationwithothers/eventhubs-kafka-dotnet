@@ -1128,7 +1128,7 @@ def capacity_bridge(head):
     return baseline, workflow_matrix(blob(head, COMPANION_WORKFLOW))
 
 
-def committed_effective_config(context, owner, shard, head):
+def _committed_effective_config(context, owner, shard, head):
     """Derive an unchanged shard invocation family from two committed trees."""
     try:
         commit = context['source_commit']
@@ -1181,6 +1181,55 @@ def committed_effective_config(context, owner, shard, head):
                 return False
         # Qualification separately checks the generated selection at the current head.
         return True
+    except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
+        return False
+
+
+# The owner accepted timing risk for unchanged selections across this correction.
+# https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739
+REVIEW_CORRECTION_PRIOR = 'e8fd9bbbe1a71098c957515b3058d60f1ddab361'
+REVIEW_CORRECTION = '8da2ebc675af3aaaf1370d8714b543500d5d4c73'
+REVIEW_CORRECTION_TARGET = 'Common/Phase/B10FinalProjectionCodec.cs'
+REVIEW_CORRECTION_SHARED = frozenset({
+    'tests/Parchwell.Verifier.Tests/Judge/B10FinalJudgeTests.cs',
+    'tests/Parchwell.Verifier.Tests/Judge/B10FinalProjectionCodecTests.cs',
+    'tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs',
+    'tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs',
+    'tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs',
+    'tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs',
+})
+
+
+def committed_effective_config(context, owner, shard, head):
+    """Retain the original proof except for the exact approved correction."""
+    if _committed_effective_config(context, owner, shard, head):
+        return True
+    try:
+        if not head or not shard or owner == REVIEW_CORRECTION_TARGET:
+            return False
+        prior = proof_tree(REVIEW_CORRECTION_PRIOR)
+        correction = proof_tree(REVIEW_CORRECTION)
+        current = proof_tree(head)
+        if current != correction:
+            return False
+        old_shared, old_targets = prior[2]
+        new_shared, new_targets = correction[2]
+        if ({p for p in old_shared.keys() | new_shared.keys() if old_shared.get(p) != new_shared.get(p)}
+                != REVIEW_CORRECTION_SHARED
+                or {p for p in old_targets.keys() | new_targets.keys() if old_targets.get(p) != new_targets.get(p)}
+                != {REVIEW_CORRECTION_TARGET}
+                or old_targets.get(owner) is None or old_targets.get(owner) != new_targets.get(owner)
+                or context['target_sources'].get(owner) != old_targets[owner]
+                or not same_selection(prior[0], prior[4], correction[0], correction[4], owner, shard)):
+            return False
+        # Require the same complete, path-specific assessments as normal provenance.
+        for key, actual in (('shared_inputs', new_shared), ('target_sources', new_targets)):
+            measured = context[key]
+            changes = context['assessments'][key]
+            expected = {p for p in measured.keys() | actual.keys() if measured.get(p) != actual.get(p)}
+            if set(changes) != expected or any(changes[p]['current_sha256'] != actual.get(p) for p in expected):
+                return False
+        return _committed_effective_config(context, owner, shard, REVIEW_CORRECTION_PRIOR)
     except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
         return False
 

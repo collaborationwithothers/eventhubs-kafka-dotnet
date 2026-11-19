@@ -644,6 +644,76 @@ class CommittedInputClassificationTests(unittest.TestCase):
         self.assertEqual(old_shared[source_path], current_targets[path])
 
 
+class ReviewCorrectionBridgeTests(unittest.TestCase):
+    OWNER = 'Judge/PhaseJudge.cs'
+    SHARD = 'phase-p1'
+
+    def setUp(self):
+        qualification = json.loads(runtime.blob(runtime.REVIEW_CORRECTION_PRIOR, runtime.HISTORICAL_QUALIFICATION_PATH))
+        item = qualification['targets'][self.OWNER]['shards'][self.SHARD]
+        self.context = copy.deepcopy(qualification['timing_inputs'][item['timing_inputs_sha256']])
+        shared, targets = runtime.proof_tree(runtime.REVIEW_CORRECTION)[2]
+        for key, actual in (('shared_inputs', shared), ('target_sources', targets)):
+            measured = self.context[key]
+            self.context['assessments'][key] = {
+                path: {'current_sha256': actual.get(path), 'basis': ['Approved correction timing risk']}
+                for path in measured.keys() | actual.keys() if measured.get(path) != actual.get(path)
+            }
+
+    def proof(self, context=None, owner=None, shard=None, head=None):
+        return runtime.committed_effective_config(
+            context if context is not None else self.context, owner or self.OWNER,
+            shard or self.SHARD, head or runtime.REVIEW_CORRECTION)
+
+    def test_retains_actual_predecessor_proof_for_unchanged_owner(self):
+        self.assertTrue(runtime._committed_effective_config(
+            self.context, self.OWNER, self.SHARD, runtime.REVIEW_CORRECTION_PRIOR))
+        self.assertFalse(runtime._committed_effective_config(
+            self.context, self.OWNER, self.SHARD, runtime.REVIEW_CORRECTION))
+        self.assertTrue(self.proof())
+
+    def test_rejects_changed_owner_and_incomplete_or_wrong_assessments(self):
+        self.assertFalse(self.proof(owner=runtime.REVIEW_CORRECTION_TARGET,
+                                    shard='b10-final-projection-codec-p1-a'))
+        for mutation in ('missing', 'hash', 'source', 'owner', 'selector'):
+            with self.subTest(mutation=mutation):
+                context = copy.deepcopy(self.context)
+                if mutation == 'missing':
+                    del context['assessments']['shared_inputs'][next(iter(runtime.REVIEW_CORRECTION_SHARED))]
+                elif mutation == 'hash':
+                    context['assessments']['target_sources'][runtime.REVIEW_CORRECTION_TARGET]['current_sha256'] = '0' * 64
+                elif mutation == 'source':
+                    context['source_commit'] = '0' * 40
+                elif mutation == 'owner':
+                    context['target_sources'][self.OWNER] = '0' * 64
+                self.assertFalse(self.proof(context, shard='unknown' if mutation == 'selector' else None))
+
+    def test_substantive_head_drift_and_missing_pins_refuse_bridge(self):
+        original = runtime.proof_tree
+        correction = original(runtime.REVIEW_CORRECTION)
+        synthetic_head = 'f' * 40
+        for field in range(len(correction)):
+            with self.subTest(field=field):
+                changed = list(copy.deepcopy(correction))
+                if field == 0:
+                    changed[field]['TARGETS'][next(iter(changed[field]['TARGETS']))] = ('changed.cs', 1)
+                elif field == 1:
+                    changed[field] += b' changed'
+                elif field == 2:
+                    changed[field][0]['drift'] = '0' * 64
+                elif field == 3:
+                    changed[field]['drift'] = True
+                else:
+                    changed[field]['drift'] = 'changed.cs'
+                with mock.patch.object(runtime, 'proof_tree', side_effect=lambda ref:
+                        tuple(changed) if ref == synthetic_head else original(ref)):
+                    self.assertFalse(self.proof(head=synthetic_head))
+        with mock.patch.object(runtime, 'proof_tree', side_effect=lambda ref:
+                (_ for _ in ()).throw(ValueError('missing commit'))
+                if ref == runtime.REVIEW_CORRECTION_PRIOR else original(ref)):
+            self.assertFalse(self.proof())
+
+
 class HistoricalRunnerBridgeTests(unittest.TestCase):
     OLD_CONTEXTS = (
         ('6c291d8832d0c722352ff979545a136e5ea2ddeb',
