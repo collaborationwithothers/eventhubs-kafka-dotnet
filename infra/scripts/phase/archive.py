@@ -5,7 +5,7 @@ from urllib.parse import urlsplit
 ArchiveMaxBytes = 17179869184
 ArchiveMaxObjectBytes = 268435456
 ArchiveMaxObjects = 1024
-ArchiveDeadlineSeconds = 600
+ArchiveDeadlineSeconds = 1800
 ArchiveTransferPasses = 1
 MetadataChunkMaxBytes = 134217728
 MetadataRowMaxBytes = 1048576
@@ -2016,7 +2016,14 @@ def collect_native_monitoring(collector, phase, status, units):
         obj = collector.source('native-monitoring', prefix + 'index.json', 'native_monitoring_index',
                                repeat=unit['repeat'], inspect_source=inspect, max_object=native.MAX_INDEX)
         if obj is None or not documents:
-            collector.gap('monitoring_incomplete', 'native index unavailable', unit=job)
+            # source() returns None for a failed object but leaves it in collector.objects.
+            # Name that object's own gap code; an absent index or a hit object limit has no failed object.
+            failed = next((item for item in collector.objects
+                           if item['kind'] == 'native_monitoring_index'
+                           and item['source']['name'] == prefix + 'index.json'
+                           and item['state'] == 'failed' and item['gap_code']), None)
+            boundary = f"native index failed: {failed['gap_code']}" if failed else 'native index unavailable'
+            collector.gap('monitoring_incomplete', boundary, unit=job)
             continue
         document = documents[0]
         if document['diagnostics_truncated']:

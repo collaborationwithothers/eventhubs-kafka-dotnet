@@ -999,6 +999,16 @@ class PhaseTests(unittest.TestCase):
             self.assertEqual(0o600, (directories[0] / name).stat().st_mode & 0o777)
         self.assertEqual({'phase': 'probe', 'run_id': 'a01-40121134428-1', 'modes': [], 'candidate': None, 'safety_stop': False}, json.loads((directories[2] / 'phase-status.json').read_text()))
 
+    def test_archive_deadline_is_start_plus_1800(self):
+        module = phase.Phase().archive_module()
+        calls = []
+        module.execute = lambda *args, **kwargs: calls.append((args, kwargs)) or 0
+        with patch.object(phase.Phase, 'archive_module', return_value=module), \
+                patch.object(phase.time, 'monotonic', return_value=1000.0):
+            phase.Phase().archive()
+        self.assertEqual(1, len(calls))
+        self.assertEqual(2800.0, calls[0][1]['deadline'])
+
     def test_archive_rejects_invalid_config_before_side_effects(self):
         invalid = [None, {}, {**PERSISTENT['evidence_archive']['value'], 'retention_days': True},
                    {**PERSISTENT['evidence_archive']['value'], 'blob_service_uri': 'https://archive123.blob.core.windows.net/?sig=secret'},

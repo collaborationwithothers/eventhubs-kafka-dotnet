@@ -85,6 +85,15 @@ class ControlTests(unittest.TestCase):
                 archive.validate_marker({**marker, **changed})
 
 
+class ArchiveDeadlineTests(unittest.TestCase):
+    def test_archive_deadline_is_1800_seconds(self):
+        values = (archive.ArchiveDeadlineSeconds, archive._common.DEADLINE, archive._common.POLICY['deadline_seconds'])
+        self.assertEqual((1800, 1800, 1800), values)
+        self.assertEqual([int, int, int], [type(value) for value in values])
+        self.assertEqual(['max_bytes', 'max_object_bytes', 'max_objects', 'deadline_seconds', 'transfer_passes',
+                          'metadata_chunk_bytes', 'metadata_row_bytes'], list(archive._common.POLICY))
+
+
 class CaptureInventoryTests(unittest.TestCase):
     def test_empty_capture_and_declared_chunk(self):
         import json
@@ -104,6 +113,26 @@ class CaptureInventoryTests(unittest.TestCase):
         with self.assertRaises(archive.InvalidArchiveConfig):
             archive.capture_inventory(json.dumps(value).encode(), prefix, identity, 'verify', 1, value['capture_id'])
 
+    def test_manifest_policy_deadline_boundary(self):
+        identity = {'github_run_id': '42', 'github_run_attempt': 1, 'run_id': 'a01-42-1', 'phase': 'C0', 'source_commit': 'a' * 40}
+        prefix = 'v1/' + 'a' * 40 + '/42/1/a01-42-1/C0/'
+        base = {'schema_version': 1, 'kind': 'run_evidence_archive', 'archive_complete': True,
+                'run': {**identity, 'scenario_id': 'A01', 'configuration_id': 'C0',
+                        'images': {'loadgen': None, 'verifier': None, 'probe': None},
+                        'run_kind': 'smoke', 'purpose': 'diagnostic', 'scientific_admissible': False},
+                'destination': {'account_host': 'archive123.blob.core.windows.net', 'container': 'run-evidence',
+                                'prefix': prefix, 'retention_days': 90},
+                'expected_units': [], 'objects': [], 'captures': [],
+                'totals': {'expected_objects': 0, 'verified_objects': 0, 'verified_bytes': 0}, 'gaps': [], 'completion': None}
+        for seconds in (1800, 600, 1799, 1801):
+            with self.subTest(deadline_seconds=seconds):
+                manifest = {**base, 'policy': {**archive._common.POLICY, 'deadline_seconds': seconds}}
+                if seconds == 1800:
+                    self.assertEqual(identity, archive.validate_manifest(manifest))
+                else:
+                    with self.assertRaises(archive.InvalidArchiveConfig):
+                        archive.validate_manifest(manifest)
+
     def test_manifest_zero_data_and_object_completion_rejected(self):
         identity = {'github_run_id': '42', 'github_run_attempt': 1, 'run_id': 'a01-42-1', 'phase': 'C0', 'source_commit': 'a' * 40}
         prefix = 'v1/' + 'a' * 40 + '/42/1/a01-42-1/C0/'
@@ -114,7 +143,7 @@ class CaptureInventoryTests(unittest.TestCase):
                     'destination': {'account_host': 'archive123.blob.core.windows.net', 'container': 'run-evidence',
                                     'prefix': prefix, 'retention_days': 90},
                     'policy': {'max_bytes': 17179869184, 'max_object_bytes': 268435456, 'max_objects': 1024,
-                               'deadline_seconds': 600, 'transfer_passes': 1, 'metadata_chunk_bytes': 134217728, 'metadata_row_bytes': 1048576},
+                               'deadline_seconds': 1800, 'transfer_passes': 1, 'metadata_chunk_bytes': 134217728, 'metadata_row_bytes': 1048576},
                     'expected_units': [], 'objects': [], 'captures': [],
                     'totals': {'expected_objects': 0, 'verified_objects': 0, 'verified_bytes': 0}, 'gaps': [], 'completion': None}
         self.assertEqual(identity, archive.validate_manifest(manifest))
@@ -240,15 +269,15 @@ class LiteralControlTests(unittest.TestCase):
     def test_literal_zero_data_bindings_and_mutations(self):
         import hashlib
         import json
-        manifest = b'{"schema_version":1,"kind":"run_evidence_archive","archive_complete":true,"run":{"github_run_id":"42","github_run_attempt":1,"run_id":"a01-42-1","scenario_id":"A01","configuration_id":"C0","phase":"C0","source_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","images":{"loadgen":null,"verifier":null,"probe":null},"run_kind":"smoke","purpose":"diagnostic","scientific_admissible":false},"destination":{"account_host":"archive123.blob.core.windows.net","container":"run-evidence","prefix":"v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/42/1/a01-42-1/C0/","retention_days":90},"policy":{"max_bytes":17179869184,"max_object_bytes":268435456,"max_objects":1024,"deadline_seconds":600,"transfer_passes":1,"metadata_chunk_bytes":134217728,"metadata_row_bytes":1048576},"expected_units":[],"objects":[],"captures":[],"totals":{"expected_objects":0,"verified_objects":0,"verified_bytes":0},"gaps":[],"completion":null}\n'
-        marker = b'{"schema_version":1,"kind":"run_evidence_archive_completion","identity":{"github_run_id":"42","github_run_attempt":1,"run_id":"a01-42-1","phase":"C0","source_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"manifest":{"name":"v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/42/1/a01-42-1/C0/archive-manifest.json","bytes":911,"sha256":"6c5fcc28afea6d49840fc75d06c28551a4a45afe119d822eb1b43b5872d0cbba"},"totals":{"expected_objects":0,"verified_objects":0,"verified_bytes":0},"archive_complete":true}\n'
-        self.assertEqual((911, '6c5fcc28afea6d49840fc75d06c28551a4a45afe119d822eb1b43b5872d0cbba'), (len(manifest), hashlib.sha256(manifest).hexdigest()))
-        self.assertEqual((500, 'f1500fcadd10261fc22bb92c056aa40f6560f7b8484928ffb6c3efa1666dae2e'), (len(marker), hashlib.sha256(marker).hexdigest()))
+        manifest = b'{"schema_version":1,"kind":"run_evidence_archive","archive_complete":true,"run":{"github_run_id":"42","github_run_attempt":1,"run_id":"a01-42-1","scenario_id":"A01","configuration_id":"C0","phase":"C0","source_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","images":{"loadgen":null,"verifier":null,"probe":null},"run_kind":"smoke","purpose":"diagnostic","scientific_admissible":false},"destination":{"account_host":"archive123.blob.core.windows.net","container":"run-evidence","prefix":"v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/42/1/a01-42-1/C0/","retention_days":90},"policy":{"max_bytes":17179869184,"max_object_bytes":268435456,"max_objects":1024,"deadline_seconds":1800,"transfer_passes":1,"metadata_chunk_bytes":134217728,"metadata_row_bytes":1048576},"expected_units":[],"objects":[],"captures":[],"totals":{"expected_objects":0,"verified_objects":0,"verified_bytes":0},"gaps":[],"completion":null}\n'
+        marker = b'{"schema_version":1,"kind":"run_evidence_archive_completion","identity":{"github_run_id":"42","github_run_attempt":1,"run_id":"a01-42-1","phase":"C0","source_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"manifest":{"name":"v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/42/1/a01-42-1/C0/archive-manifest.json","bytes":912,"sha256":"37041710d72f19bc31914711eaf10d78dcb8643e6cda98032ea375f1159471de"},"totals":{"expected_objects":0,"verified_objects":0,"verified_bytes":0},"archive_complete":true}\n'
+        self.assertEqual((912, '37041710d72f19bc31914711eaf10d78dcb8643e6cda98032ea375f1159471de'), (len(manifest), hashlib.sha256(manifest).hexdigest()))
+        self.assertEqual((500, '660f6115d897491a6116485e329c7a107c3f7238debbbc3bb5a8ff645bbc7461'), (len(marker), hashlib.sha256(marker).hexdigest()))
         identity = json.loads(marker)['identity']
         receipt = {'schema_version': 1, 'kind': 'run_evidence_archive_receipt', 'identity': identity,
                    'archive_complete': True, 'manifest': json.loads(marker)['manifest'],
                    'completion': {'name': 'v1/' + 'a' * 40 + '/42/1/a01-42-1/C0/archive-completion.json',
-                                  'bytes': 500, 'sha256': 'f1500fcadd10261fc22bb92c056aa40f6560f7b8484928ffb6c3efa1666dae2e'}, 'gaps': []}
+                                  'bytes': 500, 'sha256': '660f6115d897491a6116485e329c7a107c3f7238debbbc3bb5a8ff645bbc7461'}, 'gaps': []}
         receipt_bytes = json.dumps(receipt, separators=(',', ':')).encode()
         self.assertTrue(archive.verify_controls(manifest, marker, receipt_bytes)['archive_complete'])
         for invalid in (manifest.replace(b'"completion":null', b'"completion":{}'), manifest + b' '):
