@@ -66,6 +66,8 @@ jobs:
             target: Common/Phase/B10SweepEvidenceCodec.cs
           - shard: b10-sweep-codec-p7
             target: Common/Phase/B10SweepEvidenceCodec.cs
+          - shard: b10-sweep-codec-p8
+            target: Common/Phase/B10SweepEvidenceCodec.cs
           - shard: b10-sweep-codec-crossing
             target: Common/Phase/B10SweepEvidenceCodec.cs
           - shard: b10-final-repeat-evidence-p1
@@ -202,6 +204,8 @@ jobs:
             target: Judge/B10FinalJudge.cs
           - shard: b10-final-judge-p11
             target: Judge/B10FinalJudge.cs
+          - shard: b10-final-judge-p12
+            target: Judge/B10FinalJudge.cs
           - shard: b10-final-judge-crossing
             target: Judge/B10FinalJudge.cs
           - shard: duplicate-breakdown
@@ -230,7 +234,9 @@ jobs:
             target: Common/Results/VerifierResultCodec.cs
           - shard: verifier-result-codec-p3
             target: Common/Results/VerifierResultCodec.cs
-          - shard: verifier-result-codec-p4
+          - shard: verifier-result-codec-p4-a
+            target: Common/Results/VerifierResultCodec.cs
+          - shard: verifier-result-codec-p4-b
             target: Common/Results/VerifierResultCodec.cs
           - shard: verifier-result-codec-p5
             target: Common/Results/VerifierResultCodec.cs
@@ -341,6 +347,8 @@ jobs:
           - shard: phase-candidate-codec-p31
             target: Judge/PhaseCandidateCodec.cs
           - shard: phase-candidate-codec-p32
+            target: Judge/PhaseCandidateCodec.cs
+          - shard: phase-candidate-codec-p33
             target: Judge/PhaseCandidateCodec.cs
           - shard: phase-candidate-codec-crossing
             target: Judge/PhaseCandidateCodec.cs

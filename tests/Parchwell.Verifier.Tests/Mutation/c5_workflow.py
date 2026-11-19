@@ -41,22 +41,22 @@ TARGETS = {'phase': ('Judge/PhaseJudge.cs', 6),
  'b10-late-write': ('VerifyRun/Judgement/B10LateWriteChecks.cs', 2),
  'b10-sweep': ('VerifyRun/B10SweepHandler.cs', 1),
  'b10-sweep-judge': ('Judge/B10SweepChecks.cs', 2),
- 'b10-sweep-codec': ('Common/Phase/B10SweepEvidenceCodec.cs', 7),
+ 'b10-sweep-codec': ('Common/Phase/B10SweepEvidenceCodec.cs', 8),
  'b10-final-sweep-handler': ('VerifyRun/B10Final/B10FinalSweepHandler.cs', 4),
  'b10-final-repeat-evidence': ('VerifyRun/B10Final/B10FinalRepeatEvidence.cs', 22),
  'b10-final-classification': ('VerifyRun/B10Final/B10FinalClassification.cs', 12),
  'b10-final-projection': ('Common/Phase/B10FinalProjection.cs', 1),
  'b10-final-projection-codec': ('Common/Phase/B10FinalProjectionCodec.cs', 15),
  'b10-final-registrations': ('Common/Phase/B10FinalRegistrationReader.cs', 17),
- 'b10-final-judge': ('Judge/B10FinalJudge.cs', 11),
+ 'b10-final-judge': ('Judge/B10FinalJudge.cs', 12),
  'duplicate-breakdown': ('Common/Results/DuplicateBreakdown.cs', 1),
  'duplicate-classifier': ('VerifyRun/Judgement/DuplicateClassifier.cs', 1),
  'outcome-classifier': ('VerifyRun/Judgement/OutcomeClassifier.cs', 1),
  'abrupt-classification': ('VerifyRun/Abrupt/AbruptClassification.cs', 5),
  'verifier-result-codec': ('Common/Results/VerifierResultCodec.cs', 26),
- 'phase-candidate-codec': ('Judge/PhaseCandidateCodec.cs', 32),
+ 'phase-candidate-codec': ('Judge/PhaseCandidateCodec.cs', 33),
  'verify-run-handler': ('VerifyRun/VerifyRunHandler.cs', 7)}
-PRIMARY_CUTS = {'phase': (3694, 4477, 5226, 6577, 7631),
+PRIMARY_CUTS = {'phase': (3694, 4477, 5458, 6568, 7631),
  'publication': (887, 2532, 3857, 5506, 7129, 8239),
  'a01': (3859,),
  'workload': (1418, 2624),
@@ -135,7 +135,7 @@ PRIMARY_CUTS = {'phase': (3694, 4477, 5226, 6577, 7631),
  'b10-phase-registrations': (2655,),
  'b10-late-write': (3695,),
  'b10-sweep-judge': (1946,),
- 'b10-sweep-codec': (3480, 5470, 7627, 10309, 11888, 13828),
+ 'b10-sweep-codec': (1798, 4471, 6331, 7821, 10309, 11888, 13828),
  'b10-final-sweep-handler': (4089, 8487, 10895),
  'b10-final-repeat-evidence': (12311,
                                15324,
@@ -154,8 +154,8 @@ PRIMARY_CUTS = {'phase': (3694, 4477, 5226, 6577, 7631),
                                37216,
                                39819,
                                41395,
-                               43450,
-                               45863,
+                               43520,
+                               45595,
                                48067,
                                50303),
  'b10-final-classification': (3452,
@@ -199,7 +199,7 @@ PRIMARY_CUTS = {'phase': (3694, 4477, 5226, 6577, 7631),
                              12180,
                              12745,
                              13162),
- 'b10-final-judge': (4536, 5991, 8765, 11558, 14332, 16848, 20175, 23482, 25131, 27418),
+ 'b10-final-judge': (4536, 5991, 8765, 11491, 14337, 16142, 18633, 23088, 24238, 25481, 27418),
  'abrupt-classification': (3807, 5153, 6193, 7969),
  'verifier-result-codec': (476,
                            807,
@@ -208,8 +208,8 @@ PRIMARY_CUTS = {'phase': (3694, 4477, 5226, 6577, 7631),
                            4456,
                            8349,
                            11870,
-                           15867,
-                           19130,
+                           17284,
+                           20153,
                            24612,
                            26874,
                            29010,
@@ -219,8 +219,8 @@ PRIMARY_CUTS = {'phase': (3694, 4477, 5226, 6577, 7631),
                            36075,
                            39474,
                            41632,
-                           45769,
-                           48953,
+                           46112,
+                           48533,
                            52170,
                            54174,
                            58093,
@@ -246,9 +246,10 @@ PRIMARY_CUTS = {'phase': (3694, 4477, 5226, 6577, 7631),
                            27935,
                            29996,
                            31841,
-                           32762,
-                           34713,
-                           37002,
+                           33010,
+                           34509,
+                           35970,
+                           37319,
                            39193,
                            40654,
                            42498,
@@ -257,7 +258,7 @@ PRIMARY_CUTS = {'phase': (3694, 4477, 5226, 6577, 7631),
                            46398,
                            47533,
                            48862),
- 'verify-run-handler': (6682, 11978, 15405, 19641, 23497, 30029)}
+ 'verify-run-handler': (4393, 10512, 15405, 19641, 23497, 30029)}
 def build_parts(targets: dict[str, tuple[str, int]],
                 primary_cuts: dict[str, tuple[int, ...]]) -> dict[str, tuple[str, int, int]]:
     """Reject singleton splits before their crossing entry can overwrite the primary."""
@@ -284,6 +285,9 @@ for index, groups in enumerate(((range(116, 122), range(122, 128)),
 for suffix, identifiers in zip(("a", "b"), (range(4093, 4098), range(4098, 4103)), strict=True):
     COHORTS[f"verifier-result-codec-p2-{suffix}"] = (
         "verifier-result-codec-p2", tuple(map(str, identifiers)))
+for suffix, identifiers in zip(("a", "b"), (range(4110, 4115), range(4115, 4120)), strict=True):
+    COHORTS[f"verifier-result-codec-p4-{suffix}"] = (
+        "verifier-result-codec-p4", tuple(map(str, identifiers)))
 PARTS = {}
 for name, part in LOGICAL_PARTS.items():
     cohorts = [physical for physical, (owner, _) in COHORTS.items() if owner == name]
@@ -1150,9 +1154,37 @@ RESULT_CODEC_COHORT: CohortDefinition = {
 }
 
 
+# The p4 field is a separate logical cohort in the same source and native inventory.
+RESULT_CODEC_P4_COHORT: CohortDefinition = {
+    "source_sha256": "8526a0adbb9e5ac1cac4c92177377616d2768c003fa7d91338d231d99baa8dba",
+    "inventory_sha256": "2de7231096f99f3f1eba22eb71a3abe3ff816d95aad44c9096ba883419b57a56",
+    "bootstrap": {
+        "4110": ((1202, 1374), ((1260, 1274), (1276, 1288), (1290, 1303),
+                                (1305, 1321), (1323, 1333), (1335, 1340),
+                                (1342, 1349), (1351, 1357), (1359, 1368))),
+        "4115": ((1323, 1333), ()),
+    },
+    "identities": {
+        "4110": {"mutatorName": "Collection initializer mutation",
+                 "replacement": "new HashSet<string>(StringComparer.Ordinal)\n{}",
+                 "location": {"start": {"line": 28, "column": 69}, "end": {"line": 31, "column": 6}},
+                 "static": True},
+        **{str(identifier): {"mutatorName": "String mutation", "replacement": '""',
+                             "location": {"start": {"line": 30, "column": start},
+                                          "end": {"line": 30, "column": end}},
+                             "static": True}
+           for identifier, start, end in ((4111, 9, 23), (4112, 25, 37), (4113, 39, 52),
+                                          (4114, 54, 70), (4115, 72, 82), (4116, 84, 89),
+                                          (4117, 91, 98), (4118, 100, 106), (4119, 108, 117))},
+    },
+}
+
+
 def cohort_definition(owner: str) -> CohortDefinition:
     if owner == "verifier-result-codec-p2":
         return RESULT_CODEC_COHORT
+    if owner == "verifier-result-codec-p4":
+        return RESULT_CODEC_P4_COHORT
     return {"source_sha256": COHORT_SOURCE_SHA256, "inventory_sha256": COHORT_INVENTORY_SHA256,
             "bootstrap": {key: (span, ()) for key, span in COHORT_BOOTSTRAP_SPANS.items()},
             "identities": COHORT_IDENTITIES}

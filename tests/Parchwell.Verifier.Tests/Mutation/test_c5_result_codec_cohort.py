@@ -109,5 +109,72 @@ class ResultCodecCohortTests(unittest.TestCase):
                 self.assertIn('cohort inventory changed', error)
 
 
+class ResultCodecP4CohortTests(unittest.TestCase):
+    def setUp(self):
+        self.owner = 'verifier-result-codec-p4'
+        self.source = (ROOT / 'src/Parchwell.Verifier' / TARGET).read_bytes()
+        self.definition = copy.deepcopy(workflow.RESULT_CODEC_P4_COHORT)
+        self.rows = [{**copy.deepcopy(identity), 'id': str(9000 + index),
+                      'status': workflow.FILTERED[0], 'statusReason': workflow.FILTERED[1]}
+                     for index, identity in enumerate(self.definition['identities'].values())]
+
+    def test_native_identity_and_bootstrap_geometry(self):
+        self.assertEqual('8526a0adbb9e5ac1cac4c92177377616d2768c003fa7d91338d231d99baa8dba',
+                         hashlib.sha256(self.source).hexdigest())
+        self.assertEqual(hashlib.sha256(self.source).hexdigest(), self.definition['source_sha256'])
+        self.assertEqual('2de7231096f99f3f1eba22eb71a3abe3ff816d95aad44c9096ba883419b57a56',
+                         self.definition['inventory_sha256'])
+        self.assertIs(workflow.RESULT_CODEC_P4_COHORT, workflow.cohort_definition(self.owner))
+        left, right = [workflow.COHORTS[f'{self.owner}-{suffix}'][1] for suffix in ('a', 'b')]
+        self.assertEqual(tuple(map(str, range(4110, 4115))), left)
+        self.assertEqual(tuple(map(str, range(4115, 4120))), right)
+        self.assertEqual(set(self.definition['identities']), set(left) | set(right))
+        self.assertEqual(workflow.LOGICAL_PARTS[self.owner], workflow.PARTS[f'{self.owner}-a'])
+        self.assertEqual(workflow.PARTS[f'{self.owner}-a'], workflow.PARTS[f'{self.owner}-b'])
+        self.assertNotIn(self.owner, workflow.PARTS)
+        plan = workflow.isolation_plan(self.rows, self.source, [(1134, 1376)])
+        self.assertEqual(workflow.cohort_bootstrap(self.owner, '4110', '9000'), plan[0])
+        self.assertEqual(workflow.cohort_bootstrap(self.owner, '4115', '9005'), plan[5])
+        self.assertEqual([[1260, 1274], [1276, 1288], [1290, 1303], [1305, 1321],
+                          [1323, 1333], [1335, 1340], [1342, 1349], [1351, 1357],
+                          [1359, 1368]], plan[0]['exclusions'])
+
+    def test_both_physical_groups_resolve_and_run_their_assigned_ids(self):
+        identities = sorted(workflow.identity_json(row) for row in self.rows)
+        self.definition['inventory_sha256'] = hashlib.sha256(
+            ('[' + ','.join(identities) + ']').encode()).hexdigest()
+        for suffix, first_index in (('a', 0), ('b', 5)):
+            with self.subTest(suffix=suffix), tempfile.TemporaryDirectory() as temp:
+                report_rows = copy.deepcopy(self.rows)
+                report_rows[first_index].update(status='Killed', statusReason=None)
+                report = {'schemaVersion': '2', 'projectRoot': '/synthetic', 'files': {
+                    '/synthetic/' + TARGET: {'language': 'cs', 'source': self.source.decode(),
+                                              'mutants': report_rows}}}
+                calls = []
+                def execute(target, plan, output, prefix, cwd, deadline, *, bootstrap_shard=None):
+                    calls.append(copy.deepcopy(plan))
+                    entries = []
+                    for item in plan:
+                        entry = dict(item)
+                        if bootstrap_shard:
+                            entry['directory_id'] = 'bootstrap-' + item['mutant_id']
+                            path = workflow.isolated_directory(output, entry, bootstrap_shard) / workflow.REPORT_PATH
+                            path.parent.mkdir(parents=True)
+                            path.write_text(json.dumps(report))
+                        entries.append(entry)
+                    return entries, None
+                with patch.object(workflow, 'RESULT_CODEC_P4_COHORT', self.definition), \
+                     patch.object(workflow, 'run_isolation_plan', side_effect=execute):
+                    entries, error = workflow.run_cohort(f'{self.owner}-{suffix}', TARGET, self.source,
+                                                         [(1134, 1376)], Path(temp), [], Path(temp), 100)
+                    with self.assertRaisesRegex(ValueError, 'cohort source mismatch'):
+                        workflow.resolve_cohort(self.rows, self.source + b' ', self.owner)
+                self.assertIsNone(error)
+                self.assertEqual([str(9000 + i) for i in range(first_index, first_index + 5)],
+                                 [entry['mutant_id'] for entry in entries])
+                self.assertEqual(workflow.cohort_bootstrap(self.owner, str(4110 + first_index)), calls[0][0])
+                self.assertEqual(4, len(calls[1]))
+
+
 if __name__ == '__main__':
     unittest.main()

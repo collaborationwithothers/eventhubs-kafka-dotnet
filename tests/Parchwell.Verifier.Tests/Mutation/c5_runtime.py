@@ -864,6 +864,15 @@ CAPACITY_EXECUTION = {
     COMPANION_WORKFLOW: '1fade2b54ce8b20ed963ba5ebc5ff8cd0e6315f67b402cb46b1bfe695ffbebfb',
     CAMPAIGN_VALIDATOR: '1422960e78372e5ab3c0e605c161816434627cb20baab47cda43b703fef7d9e0',
 }
+FOLLOWUP_BASELINE = 'd28b1fc49ca53e48259101701d0fbb7e3271a0c5'
+FOLLOWUP_EXECUTION = {
+    **CAPACITY_EXECUTION,
+    RUNNER: '1fe507c5ea83fd87be906370a5623962a12f491e00c7d0d229901724697ff896',
+}
+RESULT_COHORTS = {
+    'RESULT_CODEC_COHORT': ('verifier-result-codec-p2', range(4093, 4103), {'4093', '4098'}),
+    'RESULT_CODEC_P4_COHORT': ('verifier-result-codec-p4', range(4110, 4120), {'4110', '4115'}),
+}
 
 
 def runner_literals(data, legacy=False):
@@ -871,17 +880,19 @@ def runner_literals(data, legacy=False):
     tree = ast.parse(data.decode('utf-8'))
     names = ({'COHORT_BOOTSTRAP_SPANS'} if legacy else COHORT_LITERAL_NAMES) | {'TARGETS', 'PRIMARY_CUTS'}
     assignments = {}
-    codec = None
+    codecs = {}
     for node in tree.body:
         if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) and node.targets[0].id in names:
             name = node.targets[0].id
             if name in assignments:
                 raise ValueError('duplicate runner declaration')
             assignments[name] = node
-        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == 'RESULT_CODEC_COHORT':
-            if codec is not None or not isinstance(node.annotation, ast.Name) or node.annotation.id != 'CohortDefinition' or node.value is None:
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id in RESULT_COHORTS:
+            name = node.target.id
+            if (name in codecs or not isinstance(node.annotation, ast.Name)
+                    or node.annotation.id != 'CohortDefinition' or node.value is None):
                 raise ValueError('invalid typed cohort declaration')
-            codec = node
+            codecs[name] = node
     if set(assignments) != names:
         raise ValueError('missing runner declaration')
     for node in ast.walk(tree):
@@ -889,10 +900,11 @@ def runner_literals(data, legacy=False):
             if not any(node is assignment.targets[0] for assignment in assignments.values()):
                 raise ValueError('runner declaration rebound')
         if (isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del))
-                and node.id == 'RESULT_CODEC_COHORT' and (codec is None or node is not codec.target)):
+                and node.id in RESULT_COHORTS
+                and (node.id not in codecs or node is not codecs[node.id].target)):
             raise ValueError('typed cohort declaration rebound')
     values = {name: ast.literal_eval(node.value) for name, node in assignments.items()}
-    if codec is not None:
+    for name, codec in codecs.items():
         # literal_eval accepts duplicate keys, including in nested dictionaries.
         for node in ast.walk(codec.value):
             if isinstance(node, ast.Dict):
@@ -906,8 +918,9 @@ def runner_literals(data, legacy=False):
                        for key in ('source_sha256', 'inventory_sha256'))):
             raise ValueError('invalid typed cohort declaration')
         identities, bootstrap = declaration['identities'], declaration['bootstrap']
-        if (not isinstance(identities, dict) or set(identities) != set(map(str, range(4093, 4103)))
-                or not isinstance(bootstrap, dict) or set(bootstrap) != {'4093', '4098'}):
+        _, references, first_members = RESULT_COHORTS[name]
+        if (not isinstance(identities, dict) or set(identities) != set(map(str, references))
+                or not isinstance(bootstrap, dict) or set(bootstrap) != first_members):
             raise ValueError('invalid typed cohort ownership')
         def valid_span(span):
             return (isinstance(span, tuple) and len(span) == 2
@@ -926,7 +939,7 @@ def runner_literals(data, legacy=False):
                 if (not isinstance(point, dict) or set(point) != {'line', 'column'}
                         or any(type(n) is not int or n < 1 for n in point.values())):
                     raise ValueError('invalid typed cohort location')
-        values['RESULT_CODEC_COHORT'] = declaration
+        values[name] = declaration
     targets, cuts = values['TARGETS'], values['PRIMARY_CUTS']
     if (not isinstance(targets, dict) or not targets or any(
             not isinstance(k, str) or not k or not isinstance(v, tuple) or len(v) != 2
@@ -975,9 +988,9 @@ def committed_physical_owners(declarations, matrix):
     for index in range(1, 4):
         owner = f'b10-final-projection-codec-p{index}'
         cohorts[owner] = tuple(f'{owner}-{suffix}' for suffix in ('a', 'b'))
-    if 'RESULT_CODEC_COHORT' in declarations:
-        owner = 'verifier-result-codec-p2'
-        cohorts[owner] = (f'{owner}-a', f'{owner}-b')
+    for declaration, (owner, _, _) in RESULT_COHORTS.items():
+        if declaration in declarations:
+            cohorts[owner] = (f'{owner}-a', f'{owner}-b')
     result = {}
     for name, part in parts.items():
         for physical in cohorts.get(name, (name,)):
@@ -1060,6 +1073,35 @@ def same_selection(old, old_matrix, new, new_matrix, owner, shard):
             and old['PRIMARY_CUTS'].get(key) == new['PRIMARY_CUTS'].get(key))
 
 
+def selected_invocation(declarations, matrix, shard):
+    """Describe the bounds passed to one physical owner by the pinned runner."""
+    physical = committed_physical_owners(declarations, matrix).get(shard)
+    if physical is None:
+        return None
+    target, (key, index, count) = physical
+    cuts = declarations['PRIMARY_CUTS'].get(key)
+    if cuts is None:
+        return target, key, 'member', index, count
+    bounds = (0, *cuts, workflow.SPAN_END)
+    if len(bounds) != count or any(left >= right for left, right in zip(bounds, bounds[1:])):
+        raise ValueError('invalid committed span layout')
+    if index == count:
+        return target, key, 'crossing', cuts
+    return target, key, 'primary', bounds[index - 1:index + 1]
+
+
+def followup_equivalent(old, old_maps, old_config, new, new_maps, new_config):
+    """Limit the paired runner change to the reviewed addition of the p4 cohort."""
+    old_shared, old_targets = old_maps
+    new_shared, new_targets = new_maps
+    return ({path: old_shared.get(path) for path in CAPACITY_EXECUTION} == CAPACITY_EXECUTION
+            and {path: new_shared.get(path) for path in FOLLOWUP_EXECUTION} == FOLLOWUP_EXECUTION
+            and {**old_shared, RUNNER: FOLLOWUP_EXECUTION[RUNNER]} == new_shared
+            and old_targets == new_targets and old_config == new_config
+            and all(old[name] == new[name] for name in (*COHORT_LITERAL_NAMES, 'RESULT_CODEC_COHORT'))
+            and 'RESULT_CODEC_P4_COHORT' not in old and 'RESULT_CODEC_P4_COHORT' in new)
+
+
 @functools.lru_cache(maxsize=8)
 def capacity_bridge(head):
     """Bind the one reviewed transition to identical worker templates and inputs."""
@@ -1068,7 +1110,8 @@ def capacity_bridge(head):
     old_shared, old_targets = baseline[2]
     new_shared, new_targets = current[2]
     if (old_shared.get(RUNNER) != CAPACITY_BASELINE_RUNNER
-            or {path: new_shared.get(path) for path in CAPACITY_EXECUTION} != CAPACITY_EXECUTION
+            or {path: new_shared.get(path) for path in CAPACITY_EXECUTION} not in (
+                CAPACITY_EXECUTION, FOLLOWUP_EXECUTION)
             or {p: h for p, h in old_shared.items() if p not in CAPACITY_EXECUTION}
             != {p: h for p, h in new_shared.items() if p not in CAPACITY_EXECUTION}
             or old_targets != new_targets or baseline[3] != current[3]
@@ -1093,6 +1136,8 @@ def committed_effective_config(context, owner, shard, head):
             return False
         old, old_code, old_maps, old_config, old_matrix = proof_tree(commit)
         new, new_code, new_maps, new_config, new_matrix = proof_tree(head)
+        followup = (commit == FOLLOWUP_BASELINE
+                    and followup_equivalent(old, old_maps, old_config, new, new_maps, new_config))
         if COMPANION_WORKFLOW in new_maps[0] and COMPANION_WORKFLOW not in old_maps[0]:
             baseline, retained = capacity_bridge(head)
             if (retained.get(shard) != owner or shard in workflow.COHORTS
@@ -1102,7 +1147,7 @@ def committed_effective_config(context, owner, shard, head):
             new, new_code, _, new_config, new_matrix = baseline
         legacy = old_maps[0].get(RUNNER) == RUNNER_TIMING_PAIR[0]
         reference = legacy_runner_bridge(commit, old, new_code) if legacy else None
-        if (legacy and reference is None) or (not legacy and old_code != new_code):
+        if (legacy and reference is None) or (not legacy and old_code != new_code and not followup):
             return False
         if old_maps != (context['shared_inputs'], context['target_sources']):
             return False
@@ -1123,7 +1168,11 @@ def committed_effective_config(context, owner, shard, head):
             return False
         if [item for item in new_targets if item in old_targets] != old_targets:
             return False
-        if not same_selection(old, old_matrix, new, new_matrix, owner, shard):
+        if followup:
+            selected = selected_invocation(new, new_matrix, shard)
+            if selected is None or selected[0] != owner or selected_invocation(old, old_matrix, shard) != selected:
+                return False
+        elif not same_selection(old, old_matrix, new, new_matrix, owner, shard):
             return False
         if shard in workflow.COHORTS:
             cohort_data = reference if legacy else old
