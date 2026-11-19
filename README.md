@@ -29,7 +29,7 @@ The workload is synthetic. It models Parchwell, a fictional UK legal SaaS compan
 | B11 | Claim-check ordering and retention | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | C01 | Session timeout configuration | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | C02 | Heartbeat interval configuration | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
-| C03 | Long processing and poll interval | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
+| C03 | Long processing and poll interval | A consumer that kept heartbeating but made no `Consume` call for 90 s lost its partitions in all five repeats: the other member took over 60.55 s to 62.99 s after the slow message started, after the 60 s poll limit and not at the 30 s session timeout, and the slow message was processed again. A consumer that paused for 90 s but kept calling `Consume` kept its partitions in all five repeats, with nothing processed twice. Heartbeats come from a librdkafka background thread and keep a member in the group against `session.timeout.ms` until `max.poll.interval.ms` is exceeded; `max.poll.interval.ms` is a separate limit that `Consume` calls reset. The poll limit was scaled to 60000 ms from 300000 ms. Consumer token refresh was not tested. Synthetic workload. | confirmed | [Report](results/C03/2026-11-19.md) |
 | C04 | Rebalancing without application errors | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | C05 | Fetch throttling | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
 | C06 | Static group membership | Unpublished. | - | [Inventory](docs/blueprint.md#frozen-inventory) |
