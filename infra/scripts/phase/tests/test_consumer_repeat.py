@@ -348,7 +348,7 @@ class ConsumerRepeatTests(unittest.TestCase):
 
     def test_storage_check_time_is_not_counted_against_the_phase_clock(self):
         """Each attempt takes 60 s and is followed by a 60 s sleep: 12 failed attempts and a 13th that succeeds take 1500 s.
-        Each of repeats 1 to 4 then takes 200 s. Counted from the start of the check, repeat 5 would begin at 2240 s,
+        Each of repeats 1 to 4 then takes 200 s. Counted from the start of the check, repeat 5 would begin at 2300 s,
         after the 2100 s admission limit (7200 - 5100), and be skipped; counted from the end of the check it begins at 800 s."""
         self.fail_attempts(12)
         checks = {self.check_job(n) for n in range(1, 14)}
