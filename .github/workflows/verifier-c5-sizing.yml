@@ -7,7 +7,7 @@ on:
         description: Full lowercase commit SHA containing the diagnostic helpers
         required: true
         type: string
-        default: 52a056fea353c9457f3c1ed7da689c62733d13a3
+        default: 51ad8d29110c26f1f4fedc1256e291ed9c34c9cb
 
 permissions:
   contents: read
@@ -21,36 +21,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - shard: b10-final-projection-codec-p1-a
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
-          - shard: b10-final-projection-codec-p1-b
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
-          - shard: b10-final-projection-codec-p2-a
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
-          - shard: b10-final-projection-codec-p2-b
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
-          - shard: b10-final-projection-codec-p3-a
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
-          - shard: b10-final-projection-codec-p3-b
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
-          - shard: b10-final-projection-codec-p4
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
-          - shard: b10-final-projection-codec-p5
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
-          - shard: b10-final-projection-codec-p6
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
-          - shard: b10-final-projection-codec-p7
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
           - shard: b10-final-projection-codec-p8
             target: Common/Phase/B10FinalProjectionCodec.cs
             target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
@@ -58,21 +28,6 @@ jobs:
             target: Common/Phase/B10FinalProjectionCodec.cs
             target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
           - shard: b10-final-projection-codec-p10
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
-          - shard: b10-final-projection-codec-p11
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
-          - shard: b10-final-projection-codec-p12
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
-          - shard: b10-final-projection-codec-p13
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
-          - shard: b10-final-projection-codec-p14
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
-          - shard: b10-final-projection-codec-p15
             target: Common/Phase/B10FinalProjectionCodec.cs
             target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
           - shard: b10-final-projection-codec-crossing
@@ -104,7 +59,7 @@ jobs:
             done
           } > "$DIAGNOSTIC_DIR/metadata.txt"
           [[ "$GITHUB_REF" == refs/heads/main ]]
-          [[ "$SOURCE_SHA" == 52a056fea353c9457f3c1ed7da689c62733d13a3 ]]
+          [[ "$SOURCE_SHA" == 51ad8d29110c26f1f4fedc1256e291ed9c34c9cb ]]
       - name: Check out diagnostic source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
