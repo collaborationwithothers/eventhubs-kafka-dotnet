@@ -1188,8 +1188,9 @@ def _committed_effective_config(context, owner, shard, head):
 # The owner accepted timing risk for unchanged selections across this correction.
 # https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739
 REVIEW_CORRECTION_PRIOR = 'e8fd9bbbe1a71098c957515b3058d60f1ddab361'
-REVIEW_CORRECTION = '8da2ebc675af3aaaf1370d8714b543500d5d4c73'
+REVIEW_CORRECTION = '52a056fea353c9457f3c1ed7da689c62733d13a3'
 REVIEW_CORRECTION_TARGET = 'Common/Phase/B10FinalProjectionCodec.cs'
+REVIEW_CORRECTION_COHORT_PINS = frozenset({'COHORT_SOURCE_SHA256', 'COHORT_INVENTORY_SHA256'})
 REVIEW_CORRECTION_SHARED = frozenset({
     'tests/Parchwell.Verifier.Tests/Judge/B10FinalJudgeTests.cs',
     'tests/Parchwell.Verifier.Tests/Judge/B10FinalProjectionCodecTests.cs',
@@ -1212,15 +1213,21 @@ def committed_effective_config(context, owner, shard, head):
         current = proof_tree(head)
         if current != correction:
             return False
-        old_shared, old_targets = prior[2]
-        new_shared, new_targets = correction[2]
-        if ({p for p in old_shared.keys() | new_shared.keys() if old_shared.get(p) != new_shared.get(p)}
-                != REVIEW_CORRECTION_SHARED
+        prior_tables, prior_code, (old_shared, old_targets), prior_config, prior_matrix = prior
+        new_tables, new_code, (new_shared, new_targets), new_config, new_matrix = correction
+        # The only runner change binds the changed target's own cohort inventory.
+        changed_tables = {name for name in prior_tables.keys() | new_tables.keys()
+                          if prior_tables.get(name) != new_tables.get(name)}
+        if ((prior_code, prior_config, prior_matrix) != (new_code, new_config, new_matrix)
+                or changed_tables != REVIEW_CORRECTION_COHORT_PINS
+                or new_tables['COHORT_SOURCE_SHA256'] != new_targets[REVIEW_CORRECTION_TARGET]
+                or {p for p in old_shared.keys() | new_shared.keys() if old_shared.get(p) != new_shared.get(p)}
+                != REVIEW_CORRECTION_SHARED | {RUNNER}
                 or {p for p in old_targets.keys() | new_targets.keys() if old_targets.get(p) != new_targets.get(p)}
                 != {REVIEW_CORRECTION_TARGET}
                 or old_targets.get(owner) is None or old_targets.get(owner) != new_targets.get(owner)
                 or context['target_sources'].get(owner) != old_targets[owner]
-                or not same_selection(prior[0], prior[4], correction[0], correction[4], owner, shard)):
+                or not same_selection(prior_tables, prior_matrix, new_tables, new_matrix, owner, shard)):
             return False
         # Require the same complete, path-specific assessments as normal provenance.
         for key, actual in (('shared_inputs', new_shared), ('target_sources', new_targets)):
