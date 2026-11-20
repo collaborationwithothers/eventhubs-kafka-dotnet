@@ -50,6 +50,12 @@ variables {
   }
 }
 
+override_resource {
+  target          = random_string.storage
+  override_during = plan
+  values          = { result = "x7k2q" }
+}
+
 override_data {
   target          = data.terraform_remote_state.persistent
   override_during = plan
@@ -160,11 +166,11 @@ override_resource {
   target          = module.storage.azapi_resource.this
   override_during = plan
   values = {
-    "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1"
+    "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q"
     "output" = {
       "properties" = {
         "primaryEndpoints" = {
-          "blob" = "https://stparchwelloffline1.blob.core.windows.net/"
+          "blob" = "https://stparchwelloffline1x7k2q.blob.core.windows.net/"
         }
         "secondaryEndpoints" = {
 
@@ -180,7 +186,7 @@ override_resource {
   target          = module.storage.module.containers["ledger"].azapi_resource.this
   override_during = plan
   values = {
-    "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/ledger"
+    "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/ledger"
     "output" = {
 
     }
@@ -191,7 +197,7 @@ override_resource {
   target          = module.storage.module.containers["verifier"].azapi_resource.this
   override_during = plan
   values = {
-    "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/verifier"
+    "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/verifier"
     "output" = {
 
     }
@@ -202,7 +208,7 @@ override_resource {
   target          = module.storage.module.containers["claim_check"].azapi_resource.this
   override_during = plan
   values = {
-    "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/claim-check"
+    "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/claim-check"
     "output" = {
 
     }
@@ -213,7 +219,7 @@ override_resource {
   target          = module.storage.module.containers["single_action"].azapi_resource.this
   override_during = plan
   values = {
-    "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/single-action"
+    "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/single-action"
     "output" = {
 
     }
@@ -223,14 +229,14 @@ override_resource {
 override_resource {
   target          = module.storage.module.containers["native_monitoring"].azapi_resource.this
   override_during = plan
-  values          = { id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring", output = {} }
+  values          = { id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/native-monitoring", output = {} }
 }
 
 override_resource {
   target          = module.storage.module.containers["consumer_record"].azapi_resource.this
   override_during = plan
   values = {
-    "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/consumer-record"
+    "id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/consumer-record"
     "output" = {
 
     }
@@ -280,6 +286,10 @@ override_data {
 run "foundation" {
   command = plan
   assert {
+    condition     = random_string.storage.length == 5 && random_string.storage.lower && !random_string.storage.upper && random_string.storage.numeric && !random_string.storage.special && random_string.storage.keepers == null
+    error_message = "Storage name random part must be 5 lowercase letters or digits without keepers."
+  }
+  assert {
     condition = toset(keys(azurerm_role_assignment.workflow_evidence_reader)) == toset(["ledger", "verifier", "single_action", "native_monitoring", "consumer_record"]) && alltrue([
       for name, grant in azurerm_role_assignment.workflow_evidence_reader :
       grant.role_definition_name == "Storage Blob Data Reader" && grant.principal_id == "00000000-0000-0000-0000-000000000009" && grant.principal_type == "ServicePrincipal" && grant.skip_service_principal_aad_check && grant.scope == module.storage.containers[name].id
@@ -308,10 +318,10 @@ run "foundation" {
 
   assert {
     condition = toset([for role in azurerm_role_assignment.native_monitoring : jsonencode([role.principal_id, role.role_definition_name, role.scope])]) == toset([
-      jsonencode(["00000000-0000-0000-0000-000000000004", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring"]),
-      jsonencode(["00000000-0000-0000-0000-000000000005", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring"]),
-      jsonencode(["00000000-0000-0000-0000-000000000006", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring"]),
-      jsonencode(["00000000-0000-0000-0000-000000000013", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring"])
+      jsonencode(["00000000-0000-0000-0000-000000000004", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/native-monitoring"]),
+      jsonencode(["00000000-0000-0000-0000-000000000005", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/native-monitoring"]),
+      jsonencode(["00000000-0000-0000-0000-000000000006", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/native-monitoring"]),
+      jsonencode(["00000000-0000-0000-0000-000000000013", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/native-monitoring"])
     ]) && length(azurerm_role_assignment.native_monitoring) == 4 && alltrue([for role in azurerm_role_assignment.native_monitoring : role.principal_type == "ServicePrincipal" && role.skip_service_principal_aad_check])
     error_message = "Native monitoring must grant exactly the four workload identities contributor access to its container only."
   }
@@ -333,7 +343,7 @@ run "foundation" {
 
   assert {
     condition = jsonencode(local.storage_config) == jsonencode({
-      "name"      = "stparchwelloffline1"
+      "name"      = "stparchwelloffline1x7k2q"
       "location"  = "uksouth"
       "parent_id" = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph"
       "tags" = {
@@ -429,27 +439,27 @@ run "foundation" {
   assert {
     condition = jsonencode(module.storage.containers) == jsonencode({
       "claim_check" = {
-        "id"   = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/claim-check"
+        "id"   = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/claim-check"
         "name" = "claim-check"
       }
       "native_monitoring" = {
-        "id"   = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/native-monitoring"
+        "id"   = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/native-monitoring"
         "name" = "native-monitoring"
       }
       "single_action" = {
-        "id"   = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/single-action"
+        "id"   = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/single-action"
         "name" = "single-action"
       }
       "ledger" = {
-        "id"   = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/ledger"
+        "id"   = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/ledger"
         "name" = "ledger"
       }
       "verifier" = {
-        "id"   = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/verifier"
+        "id"   = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/verifier"
         "name" = "verifier"
       }
       "consumer_record" = {
-        "id"   = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/consumer-record"
+        "id"   = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/consumer-record"
         "name" = "consumer-record"
       }
     })
@@ -518,12 +528,12 @@ run "foundation" {
   }
 
   assert {
-    condition     = toset([for role in azurerm_role_assignment.workload : jsonencode([role.principal_id, role.role_definition_name, role.scope])]) == toset([jsonencode(["00000000-0000-0000-0000-000000000004", "Azure Event Hubs Data Sender", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events"]), jsonencode(["00000000-0000-0000-0000-000000000004", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/ledger"]), jsonencode(["00000000-0000-0000-0000-000000000005", "Azure Event Hubs Data Receiver", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events"]), jsonencode(["00000000-0000-0000-0000-000000000005", "Azure Event Hubs Data Sender", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-state"]), jsonencode(["00000000-0000-0000-0000-000000000005", "Azure Event Hubs Data Sender", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events-dlq"]), jsonencode(["00000000-0000-0000-0000-000000000005", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/claim-check"]), jsonencode(["00000000-0000-0000-0000-000000000006", "Azure Event Hubs Data Receiver", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events"]), jsonencode(["00000000-0000-0000-0000-000000000006", "Storage Blob Data Reader", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/ledger"]), jsonencode(["00000000-0000-0000-0000-000000000006", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/verifier"]), jsonencode(["00000000-0000-0000-0000-000000000013", "Azure Event Hubs Data Receiver", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events"]), jsonencode(["00000000-0000-0000-0000-000000000013", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/single-action"]), jsonencode(["00000000-0000-0000-0000-000000000006", "Storage Blob Data Reader", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/single-action"])]) && length(azurerm_role_assignment.workload) == 12 && alltrue([for role in azurerm_role_assignment.workload : role.principal_type == "ServicePrincipal" && role.skip_service_principal_aad_check])
+    condition     = toset([for role in azurerm_role_assignment.workload : jsonencode([role.principal_id, role.role_definition_name, role.scope])]) == toset([jsonencode(["00000000-0000-0000-0000-000000000004", "Azure Event Hubs Data Sender", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events"]), jsonencode(["00000000-0000-0000-0000-000000000004", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/ledger"]), jsonencode(["00000000-0000-0000-0000-000000000005", "Azure Event Hubs Data Receiver", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events"]), jsonencode(["00000000-0000-0000-0000-000000000005", "Azure Event Hubs Data Sender", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-state"]), jsonencode(["00000000-0000-0000-0000-000000000005", "Azure Event Hubs Data Sender", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events-dlq"]), jsonencode(["00000000-0000-0000-0000-000000000005", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/claim-check"]), jsonencode(["00000000-0000-0000-0000-000000000006", "Azure Event Hubs Data Receiver", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events"]), jsonencode(["00000000-0000-0000-0000-000000000006", "Storage Blob Data Reader", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/ledger"]), jsonencode(["00000000-0000-0000-0000-000000000006", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/verifier"]), jsonencode(["00000000-0000-0000-0000-000000000013", "Azure Event Hubs Data Receiver", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events"]), jsonencode(["00000000-0000-0000-0000-000000000013", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/single-action"]), jsonencode(["00000000-0000-0000-0000-000000000006", "Storage Blob Data Reader", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/single-action"])]) && length(azurerm_role_assignment.workload) == 12 && alltrue([for role in azurerm_role_assignment.workload : role.principal_type == "ServicePrincipal" && role.skip_service_principal_aad_check])
     error_message = "The complete workload role set must equal the twelve approved topic/container grants, with no broader data role."
   }
 
   assert {
-    condition     = toset(keys(azurerm_role_assignment.consumer_record)) == toset(["enrichment_consumer_record_contributor", "verifier_consumer_record_reader"]) && toset([for role in azurerm_role_assignment.consumer_record : jsonencode([role.principal_id, role.role_definition_name, role.scope])]) == toset([jsonencode(["00000000-0000-0000-0000-000000000005", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/consumer-record"]), jsonencode(["00000000-0000-0000-0000-000000000006", "Storage Blob Data Reader", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/consumer-record"])]) && alltrue([for role in azurerm_role_assignment.consumer_record : role.principal_type == "ServicePrincipal" && role.skip_service_principal_aad_check])
+    condition     = toset(keys(azurerm_role_assignment.consumer_record)) == toset(["enrichment_consumer_record_contributor", "verifier_consumer_record_reader"]) && toset([for role in azurerm_role_assignment.consumer_record : jsonencode([role.principal_id, role.role_definition_name, role.scope])]) == toset([jsonencode(["00000000-0000-0000-0000-000000000005", "Storage Blob Data Contributor", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/consumer-record"]), jsonencode(["00000000-0000-0000-0000-000000000006", "Storage Blob Data Reader", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/consumer-record"])]) && alltrue([for role in azurerm_role_assignment.consumer_record : role.principal_type == "ServicePrincipal" && role.skip_service_principal_aad_check])
     error_message = "Only the enrichment-consumer Contributor and verifier Reader grants on the consumer-record container may exist outside the workload role set."
   }
 
@@ -563,7 +573,7 @@ run "foundation" {
 
   assert {
     condition = jsonencode(output.blob) == jsonencode({
-      "account_url" = "https://stparchwelloffline1.blob.core.windows.net"
+      "account_url" = "https://stparchwelloffline1x7k2q.blob.core.windows.net"
       "containers" = {
         "ledger"            = "ledger"
         "verifier"          = "verifier"
@@ -593,6 +603,19 @@ run "foundation" {
       "use_oidc"             = true
     })
     error_message = "Remote state must use exactly the supplied backend location and Entra/OIDC authentication flags."
+  }
+}
+
+run "storage_name_unknown_at_plan" {
+  command = plan
+  override_resource {
+    target          = random_string.storage
+    override_during = apply
+    values          = { result = "x7k2q" }
+  }
+  assert {
+    condition     = random_string.storage.length == 5 && !random_string.storage.upper && !random_string.storage.special
+    error_message = "The plan must succeed while the storage name is unknown."
   }
 }
 
@@ -692,17 +715,17 @@ run "probe_v2_roles_false" {
   assert {
     condition = jsonencode(output.probe_v2_role_scope.assignments) == jsonencode({
       probe_events_receiver              = { service_account = "probe", role_definition_name = "Azure Event Hubs Data Receiver", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events", principal_id = "00000000-0000-0000-0000-000000000013" }
-      probe_single_action_contributor    = { service_account = "probe", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/single-action", principal_id = "00000000-0000-0000-0000-000000000013" }
-      verifier_single_action_reader      = { service_account = "verifier", role_definition_name = "Storage Blob Data Reader", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/single-action", principal_id = "00000000-0000-0000-0000-000000000006" }
+      probe_single_action_contributor    = { service_account = "probe", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/single-action", principal_id = "00000000-0000-0000-0000-000000000013" }
+      verifier_single_action_reader      = { service_account = "verifier", role_definition_name = "Storage Blob Data Reader", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/single-action", principal_id = "00000000-0000-0000-0000-000000000006" }
       loadgen_events_sender              = { service_account = "loadgen", role_definition_name = "Azure Event Hubs Data Sender", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events", principal_id = "00000000-0000-0000-0000-000000000004" }
-      loadgen_ledger_contributor         = { service_account = "loadgen", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/ledger", principal_id = "00000000-0000-0000-0000-000000000004" }
+      loadgen_ledger_contributor         = { service_account = "loadgen", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/ledger", principal_id = "00000000-0000-0000-0000-000000000004" }
       enrichment_events_receiver         = { service_account = "enrichment-consumer", role_definition_name = "Azure Event Hubs Data Receiver", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events", principal_id = "00000000-0000-0000-0000-000000000005" }
       enrichment_state_sender            = { service_account = "enrichment-consumer", role_definition_name = "Azure Event Hubs Data Sender", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-state", principal_id = "00000000-0000-0000-0000-000000000005" }
       enrichment_dlq_sender              = { service_account = "enrichment-consumer", role_definition_name = "Azure Event Hubs Data Sender", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events-dlq", principal_id = "00000000-0000-0000-0000-000000000005" }
-      enrichment_claim_check_contributor = { service_account = "enrichment-consumer", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/claim-check", principal_id = "00000000-0000-0000-0000-000000000005" }
+      enrichment_claim_check_contributor = { service_account = "enrichment-consumer", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/claim-check", principal_id = "00000000-0000-0000-0000-000000000005" }
       verifier_events_receiver           = { service_account = "verifier", role_definition_name = "Azure Event Hubs Data Receiver", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.EventHub/namespaces/eh-parchwell-offline1/eventhubs/document-events", principal_id = "00000000-0000-0000-0000-000000000006" }
-      verifier_ledger_reader             = { service_account = "verifier", role_definition_name = "Storage Blob Data Reader", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/ledger", principal_id = "00000000-0000-0000-0000-000000000006" }
-      verifier_results_contributor       = { service_account = "verifier", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/verifier", principal_id = "00000000-0000-0000-0000-000000000006" }
+      verifier_ledger_reader             = { service_account = "verifier", role_definition_name = "Storage Blob Data Reader", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/ledger", principal_id = "00000000-0000-0000-0000-000000000006" }
+      verifier_results_contributor       = { service_account = "verifier", role_definition_name = "Storage Blob Data Contributor", scope = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/verifier", principal_id = "00000000-0000-0000-0000-000000000006" }
     })
     error_message = "Disabled V2 roles must preserve the complete twelve-entry scientific workload role map."
   }
@@ -801,14 +824,14 @@ run "archive_smoke_source" {
   override_resource {
     target          = module.storage.module.containers["archive_smoke_source"].azapi_resource.this
     override_during = plan
-    values          = { id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/archive-smoke-source", output = {} }
+    values          = { id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/archive-smoke-source", output = {} }
   }
   assert {
     condition     = jsonencode(local.storage_config.containers.archive_smoke_source) == jsonencode({ name = "archive-smoke-source", public_access = "None", role_assignments = { workflow = { role_definition_id_or_name = "Storage Blob Data Contributor", principal_id = "00000000-0000-0000-0000-000000000009", principal_type = "ServicePrincipal", skip_service_principal_aad_check = true } } }) && length(local.storage_config.containers) == 7 && length(local.storage_config.role_assignments) == 0 && output.blob.containers.archive_smoke_source == "archive-smoke-source" && length(output.blob.containers) == 6
     error_message = "Smoke adds exactly one nonpublic source container and its output without account grants."
   }
   assert {
-    condition     = module.storage.containers.archive_smoke_source.id == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1/blobServices/default/containers/archive-smoke-source" && jsonencode(output.probe_v2_role_scope.assignments) == jsonencode(run.foundation.probe_v2_role_scope.assignments)
+    condition     = module.storage.containers.archive_smoke_source.id == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-parchwell-eph/providers/Microsoft.Storage/storageAccounts/stparchwelloffline1x7k2q/blobServices/default/containers/archive-smoke-source" && jsonencode(output.probe_v2_role_scope.assignments) == jsonencode(run.foundation.probe_v2_role_scope.assignments)
     error_message = "Smoke grant is scoped to the source container and preserves workload roles."
   }
 }

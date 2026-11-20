@@ -225,6 +225,8 @@ def job_name(run, phase, mode, repeat=None, item=None, configuration=None, actio
         return f"{run}-{item.lower()}-{configuration.lower()}-{suffix}"
     if mode in ("judge", *B10_PHASE_MODES, B10_FINAL_MODE):
         return f"{run}-{phase.lower()}-{mode}"
+    if mode == "consumer-storage-check":  # `repeat` carries the attempt number (consumer_repeat.py)
+        return f"{run}-{phase.lower()}-storage-check-a{repeat}"
     return f"{run}-{phase.lower()}-r{repeat}-{mode}"
 
 

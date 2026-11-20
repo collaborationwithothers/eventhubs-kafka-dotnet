@@ -129,3 +129,81 @@ spec:
         - name: tmp
           emptyDir: {}
 {{- end -}}
+
+{{- /* One write check before the consumer repeats: the enrichment-consumer identity writes and deletes one probe blob in consumer-record. */ -}}
+{{- define "parchwell.consumerStorageCheckJob" -}}
+{{- $r := .Values.runtime -}}
+{{- $job := include "parchwell.jobName" . -}}
+{{- $account := index $r.service_accounts "enrichment-consumer" -}}
+{{- if not (include "parchwell.isConsumerScenario" .) }}{{ fail "the consumer storage check requires scenario C01, C03 or C10" }}{{ end -}}
+{{- if not (has .Values.configuration_id (list "C0" "C1")) }}{{ fail "the consumer storage check requires configuration C0 or C1" }}{{ end -}}
+{{- if ne $r.phase .Values.configuration_id }}{{ fail "phase must equal configuration for the consumer storage check" }}{{ end -}}
+{{- if not $r.enrichment_image }}{{ fail "the consumer storage check requires enrichment_image" }}{{ end -}}
+{{- if not $account }}{{ fail "the consumer storage check requires the enrichment-consumer service account" }}{{ end -}}
+{{- if or (contains " " $r.blob.account_url) (contains "\t" $r.blob.account_url) }}{{ fail "blob account URL must be an HTTPS account-root URI" }}{{ end -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $job | quote }}
+  namespace: parchwell
+  labels:
+    {{- include "parchwell.labels" . | nindent 4 }}
+    parchwell.io/role: "enrichment-consumer"
+spec:
+  completions: 1
+  parallelism: 1
+  backoffLimit: 0
+  podReplacementPolicy: Failed
+  {{- /* Policy value, not a measurement: the longest one attempt may take. It is not tied to the 60 s sleep that consumer_repeat.py adds after a failed attempt. */}}
+  activeDeadlineSeconds: 120
+  template:
+    metadata:
+      labels:
+        {{- include "parchwell.labels" . | nindent 8 }}
+        parchwell.io/role: "enrichment-consumer"
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: {{ $account.name | quote }}
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      terminationGracePeriodSeconds: {{ $r.bounds.execution.termination_grace_seconds }}
+      nodeSelector:
+        workload: "workload"
+      securityContext:
+        runAsUser: 1654
+        runAsGroup: 1654
+        fsGroup: 1654
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: "enrichment-consumer"
+          image: {{ $r.enrichment_image | quote }}
+          imagePullPolicy: IfNotPresent
+          args: ["--consumer-storage-check"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          env:
+            {{- range $key, $value := dict "RunId" $r.run_id "Phase" $r.phase "JobName" $job "BlobEndpoint" $r.blob.account_url }}
+            - name: {{ printf "ConsumerStorageCheck__%s" $key | quote }}
+              value: {{ $value | quote }}
+            {{- end }}
+            - name: PARCHWELL_JOB_NAME
+              value: {{ $job | quote }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end -}}
