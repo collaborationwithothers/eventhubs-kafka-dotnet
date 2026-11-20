@@ -38,6 +38,13 @@ internal static class Program
         }
         if (args is ["--consumer-processing"])
             return await RunConsumerProcessingAsync(configure, hostFactory).ConfigureAwait(false);
+        if (args is ["--consumer-storage-check"])
+        {
+            IConfiguration environment = new ConfigurationBuilder().AddEnvironmentVariables().Build();
+            return await ConsumerStorageCheck.RunAsync(environment, options => new BlobContainerClient(
+                new Uri(new Uri(options.BlobEndpoint), ConsumerStorageCheck.Container), new WorkloadIdentityCredential(), new BlobClientOptions()),
+                output, CancellationToken.None).ConfigureAwait(false);
+        }
         bool validation = args is ["--validate-seed-configuration"];
         if (!validation && args is not ["--single-action-seed"]) return 2;
         IHost? host = null;

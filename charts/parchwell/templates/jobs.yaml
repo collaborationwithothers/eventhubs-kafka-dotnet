@@ -6,6 +6,8 @@
 {{- include "parchwell.probeV2Job" . -}}
 {{- else if has .Values.runtime.mode (list "consumer-subject" "consumer-witness") -}}
 {{- include "parchwell.consumerJob" . -}}
+{{- else if eq .Values.runtime.mode "consumer-storage-check" -}}
+{{- include "parchwell.consumerStorageCheckJob" . -}}
 {{- else -}}
 {{- if has .Values.runtime.mode (list "single-action" "single-action-judge" "single-action-seed") -}}
 {{- include "parchwell.singleActionJob" . -}}

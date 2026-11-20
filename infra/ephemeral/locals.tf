@@ -3,7 +3,7 @@ locals {
   names = {
     resource_group             = "rg-parchwell-eph"
     eventhub_namespace         = var.eventhub_namespace_name
-    storage                    = "stparchwell${var.naming_suffix}"
+    storage                    = "stparchwell${var.naming_suffix}${random_string.storage.result}"
     eventhubs_private_endpoint = "pe-eventhubs-${var.naming_suffix}"
     blob_private_endpoint      = "pe-blob-${var.naming_suffix}"
     diagnostic                 = "diag-eventhubs-${var.naming_suffix}"

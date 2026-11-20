@@ -216,6 +216,58 @@ def worker_option_check():
     return {f'ConsumerProcessing__{name}' for name in properties} | deployment
 
 
+def storage_check_cases():
+    for item, configuration in PAIRS:
+        for attempt in (1, 31):
+            yield case(item, configuration, 'consumer-storage-check', attempt)
+
+
+def verify_storage_check(document, values):
+    """The check Job runs the Enrichment image under the enrichment-consumer account with the check argument and its own environment."""
+    runtime = values['runtime']
+    jobs = jobs_of(document)
+    assert len(jobs) == 1
+    job = jobs[0]
+    name = f"{runtime['run_id']}-{runtime['phase'].lower()}-storage-check-a{runtime['repeat']}"
+    assert job['metadata']['name'] == name and len(name) <= 63
+    assert job['spec']['activeDeadlineSeconds'] == 120 and job['spec']['backoffLimit'] == 0
+    pod = job['spec']['template']['spec']
+    assert pod['serviceAccountName'] == 'enrichment-consumer' and pod['automountServiceAccountToken'] is False
+    assert job['spec']['template']['metadata']['labels']['azure.workload.identity/use'] == 'true'
+    assert pod['restartPolicy'] == 'Never' and pod['nodeSelector'] == {'workload': 'workload'}
+    container, = pod['containers']
+    assert container['image'] == runtime['enrichment_image'] and container['args'] == ['--consumer-storage-check'] and 'command' not in container
+    assert container['securityContext']['readOnlyRootFilesystem'] is True and container['securityContext']['allowPrivilegeEscalation'] is False
+    env = {e['name']: e['value'] for e in container['env']}
+    assert env == {'ConsumerStorageCheck__RunId': runtime['run_id'], 'ConsumerStorageCheck__Phase': runtime['phase'],
+                   'ConsumerStorageCheck__JobName': name, 'ConsumerStorageCheck__BlobEndpoint': runtime['blob']['account_url'],
+                   'PARCHWELL_JOB_NAME': name}, env
+    # The worker binds every property of its Options class (unknown names are rejected) and cross-checks PARCHWELL_JOB_NAME.
+    source = (ROOT / 'src/Parchwell.Enrichment/ConsumerProcessing/ConsumerStorageCheck.cs').read_text()
+    properties = set(re.findall(r'public string (\w+) \{ get; set; \}', source))
+    assert properties == {key.split('__')[1] for key in env if key.startswith('ConsumerStorageCheck__')}, properties
+    assert re.findall(r'configuration\["(PARCHWELL_\w+)"\]', source) == ['PARCHWELL_JOB_NAME']
+    assert re.search(r'args is \["--consumer-storage-check"\]', (ROOT / PROGRAM_FILE).read_text())
+
+
+def storage_check_negatives():
+    good = case('C03', 'C0', 'consumer-storage-check', 2)
+
+    def mutate(change):
+        bad = deepcopy(good)
+        change(bad)
+        return bad
+    return [
+        mutate(lambda d: d['runtime'].pop('enrichment_image')),
+        mutate(lambda d: d['runtime']['service_accounts'].pop('enrichment-consumer')),
+        mutate(lambda d: d['runtime'].pop('repeat')),
+        mutate(lambda d: d['runtime'].update(phase='C1')),
+        mutate(lambda d: d.update(scenario_id='A01')),
+        mutate(lambda d: d.update(scenario_id='C02')),
+        mutate(lambda d: (d.update(configuration_id='C2'), d['runtime'].update(phase='C2'))),
+    ]
+
+
 def negatives():
     def mutate(base, change):
         bad = deepcopy(base)
@@ -292,7 +344,15 @@ def main():
             output.write_text(rendered.stdout)
             checked = run(['kubeconform', '-strict', '-summary', '-kubernetes-version', '1.35.0', str(output)])
             assert checked.returncode == 0, checked.stdout + checked.stderr
-        bad_cases = negatives()
+        for index, values in enumerate(storage_check_cases()):
+            rendered = render(directory, f'storage-check-{index}', values)
+            assert rendered.returncode == 0, (index, rendered.stderr)
+            verify_storage_check(rendered.stdout, values)
+            output = directory / f'storage-check-{index}.rendered.yaml'
+            output.write_text(rendered.stdout)
+            checked = run(['kubeconform', '-strict', '-summary', '-kubernetes-version', '1.35.0', str(output)])
+            assert checked.returncode == 0, checked.stdout + checked.stderr
+        bad_cases = negatives() + storage_check_negatives()
         for index, values in enumerate(bad_cases):
             rendered = render(directory, f'negative-{index}', values)
             assert rendered.returncode != 0, index
