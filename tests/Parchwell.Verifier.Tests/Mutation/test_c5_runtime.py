@@ -437,7 +437,9 @@ class CommittedProvenanceTests(unittest.TestCase):
         self.assertFalse(runtime.committed_effective_config(self.context, self.owner, self.shard, None))
         runner_key = (self.old, runtime.RUNNER)
         original_runner = self.blobs[runner_key]
-        self.blobs[runner_key] = original_runner.replace(b'3600', b'3601', 1)
+        changed_runner = original_runner.replace(b'REBALANCE_SECONDS = 1800', b'REBALANCE_SECONDS = 1801', 1)
+        self.assertNotEqual(original_runner, changed_runner)
+        self.blobs[runner_key] = changed_runner
         self.assertFalse(self.equivalent())
         self.blobs[runner_key] = original_runner
         self.blobs[runner_key] += b'\nsynthetic_executable = 1\n'
@@ -740,7 +742,7 @@ class HistoricalRunnerBridgeTests(unittest.TestCase):
         self.addCleanup(runtime.proof_tree.cache_clear)
 
     def context(self, commit):
-        shared, targets = runtime.input_maps(commit)
+        shared, targets = runtime.proof_tree(commit)[2]
         return {'source_commit': commit, 'shared_inputs': shared, 'target_sources': targets,
                 'assessments': {'shared_inputs': {}, 'target_sources': {}}}
 
@@ -756,7 +758,7 @@ class HistoricalRunnerBridgeTests(unittest.TestCase):
                 maps = {key: context[key] for key in ('shared_inputs', 'target_sources')}
                 self.assertEqual(expected_binding, runtime.digest(runtime.canonical(maps)))
                 self.assertEqual(runtime.RUNNER_TIMING_PAIR[0], context['shared_inputs'][runtime.RUNNER])
-                modern_shared, _ = runtime.input_maps(self.MODERN)
+                modern_shared, _ = runtime.proof_tree(self.MODERN)[2]
                 self.assertEqual(runtime.RUNNER_TIMING_PAIR[1], modern_shared[runtime.RUNNER])
                 self.assertTrue(self.proof(context))
                 runtime.proof_tree.cache_clear()
@@ -830,6 +832,7 @@ class HistoricalRunnerBridgeTests(unittest.TestCase):
                 changed = dict(timing, **{field: invalid})
                 self.assertFalse(runtime.timing_context_linked(context, self.SHARD, self.OWNER, record, item, changed, {}))
 
+    @historical_layout
     def test_historical_baseline_validates_through_real_legacy_bridge(self):
         baseline = runtime.historical_qualification()
         context = self.context(runtime.HISTORICAL_QUALIFICATION_COMMIT)
@@ -3163,9 +3166,9 @@ class RebalanceTimingProvenanceTests(unittest.TestCase):
     def receipt(self, shard):
         artifact, archive, selection, numbers, seconds = runtime.REBALANCED_RECEIPTS[shard]
         locator = ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/'
-                   '44686622095 artifact ' + artifact)
+                   '44686622095/artifacts/' + artifact)
         evidence = {'source_commit': runtime.REVIEW_CORRECTION, 'sha256': archive,
-                    'kind': 'hosted_complete', 'locator': locator}
+                    'kind': 'local_probe', 'locator': locator}
         record = {'source_sha256': runtime.digest(self.source), 'evidence': [evidence]}
         item = dict(zip(runtime.NUMERIC_FIELDS, numbers), selection_sha256=selection,
                     timing_inputs_sha256='b' * 64, basis=f'observed_workers={numbers[2]}')
@@ -3181,7 +3184,7 @@ class RebalanceTimingProvenanceTests(unittest.TestCase):
                     record or default_record, item, timing or default_timing, {}, head or self.head)
 
     def test_only_unchanged_selections_transfer_and_fresh_sources_link(self):
-        for shard in runtime.REBALANCED_RETAINED:
+        for shard in runtime.REBALANCED_RECEIPTS:
             with self.subTest(shard=shard):
                 self.assertTrue(self.link(shard))
         for suffix in ('p8', 'p9', 'p10', 'crossing', 'unknown'):
@@ -3234,12 +3237,11 @@ class RebalanceTimingProvenanceTests(unittest.TestCase):
                     tuple(changed) if ref == self.head else original(ref)):
                 self.assertFalse(self.link(shard))
 
-    def test_fresh_pinned_timing_accepts_retained_neighbor_receipts(self):
-        for suffix in ('p13', 'p14'):
+    def test_fresh_pinned_timing_accepts_retained_tail_receipts(self):
+        for suffix in ('p11', 'p12'):
             shard = 'b10-final-projection-codec-' + suffix
             record, item, timing = self.receipt(shard)
             config = {'schema_version': 2, 'timing_evidence': {shard: timing},
                       'timing_inputs': {item['timing_inputs_sha256']: self.context}}
-            with mock.patch.object(runtime, 'CODEC_NEIGHBOR', {shard: None}):
-                self.assertTrue(runtime.fresh_pinned_timing(config, runtime.CODEC_TARGET,
-                                record, shard, item, self.source, self.head))
+            self.assertTrue(runtime.fresh_pinned_timing(config, runtime.CODEC_TARGET,
+                            record, shard, item, self.source, self.head))

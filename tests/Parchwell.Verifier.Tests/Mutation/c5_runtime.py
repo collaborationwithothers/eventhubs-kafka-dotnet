@@ -1204,11 +1204,6 @@ REVIEW_CORRECTION_SHARED = frozenset({
 # Approved diagnostic receipts retain their own source across this exact rebalance.
 # https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7033829364
 REBALANCED_SOURCE = '51ad8d29110c26f1f4fedc1256e291ed9c34c9cb'
-REBALANCED_RETAINED = frozenset(
-    f'b10-final-projection-codec-{suffix}' for suffix in (
-        'p1-a', 'p1-b', 'p2-a', 'p2-b', 'p3-a', 'p3-b',
-        'p4', 'p5', 'p6', 'p7', 'p11', 'p12', 'p13', 'p14', 'p15'))
-
 REBALANCED_RECEIPTS = {'b10-final-projection-codec-p1-a': ('14607930859',
                                      '0c56bd10ffcfe70697c192eb39d43f03fc1affcb20cd4c09febaf3b65aabb7f4',
                                      '74a711c31e71438260353da9e5311a4d0698ad7a065135c8254ca31441d74588',
@@ -1309,18 +1304,18 @@ def rebalance_trees(head):
 
 def retained_rebalance_timing(context, shard, path, record, item, timing, head):
     try:
-        if (not head or path != CODEC_TARGET or shard not in REBALANCED_RETAINED
+        if (not head or path != CODEC_TARGET or shard not in REBALANCED_RECEIPTS
                 or context.get('source_commit') != REBALANCED_SOURCE
                 or timing.get('source_commit') != REVIEW_CORRECTION):
             return False
         artifact, archive, selection_hash, numbers, seconds = REBALANCED_RECEIPTS[shard]
         locator = ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/'
-                   '44686622095 artifact ' + artifact)
+                   '44686622095/artifacts/' + artifact)
         if (timing.get('artifact_sha256') != archive or timing.get('observed_seconds') != seconds
                 or timing.get('observed_workers') != numbers[2]
                 or item['selection_sha256'] != selection_hash
                 or tuple(item[k] for k in NUMERIC_FIELDS) != numbers
-                or not any(e['kind'] == 'hosted_complete' and e['source_commit'] == REVIEW_CORRECTION
+                or not any(e['kind'] == 'local_probe' and e['source_commit'] == REVIEW_CORRECTION
                            and e['locator'] == locator and e['sha256'] == archive
                            for e in record['evidence'])):
             return False
