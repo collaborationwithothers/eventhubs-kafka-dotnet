@@ -3159,7 +3159,7 @@ class RebalanceTimingProvenanceTests(unittest.TestCase):
                         'target_sources': targets,
                         'assessments': {'shared_inputs': {}, 'target_sources': {}}}
         self.source = runtime.blob(self.head, 'src/Parchwell.Verifier/' + runtime.CODEC_TARGET)
-        shard = 'b10-final-projection-codec-p13'
+        shard = 'b10-final-projection-codec-p1-a'
         self.record, self.item, self.timing = self.receipt(shard)
         self.evidence = self.record['evidence'][0]
 
@@ -3179,7 +3179,7 @@ class RebalanceTimingProvenanceTests(unittest.TestCase):
 
     def link(self, shard, context=None, timing=None, record=None, head=None):
         default_record, item, default_timing = self.receipt(
-            shard if shard in runtime.REBALANCED_RECEIPTS else 'b10-final-projection-codec-p13')
+            shard if shard in runtime.REBALANCED_RECEIPTS else 'b10-final-projection-codec-p1-a')
         return runtime.timing_context_linked(context or self.context, shard, runtime.CODEC_TARGET,
                     record or default_record, item, timing or default_timing, {}, head or self.head)
 
@@ -3187,15 +3187,16 @@ class RebalanceTimingProvenanceTests(unittest.TestCase):
         for shard in runtime.REBALANCED_RECEIPTS:
             with self.subTest(shard=shard):
                 self.assertTrue(self.link(shard))
-        for suffix in ('p8', 'p9', 'p10', 'crossing', 'unknown'):
+        for suffix in (*(f'p{i}' for i in range(4, 16)), 'crossing'):
             shard = 'b10-final-projection-codec-' + suffix
             self.assertFalse(self.link(shard))
             fresh = dict(self.timing, source_commit=self.head)
             record = dict(self.record, evidence=[dict(self.evidence, source_commit=self.head)])
             self.assertTrue(self.link(shard, timing=fresh, record=record))
+        self.assertFalse(self.link('b10-final-projection-codec-unknown'))
 
     def test_transfer_rejects_map_source_evidence_and_head_drift(self):
-        shard = 'b10-final-projection-codec-p13'
+        shard = 'b10-final-projection-codec-p1-a'
         context = copy.deepcopy(self.context)
         context['shared_inputs'][runtime.RUNNER] = '0' * 64
         self.assertFalse(self.link(shard, context=context))
@@ -3207,7 +3208,7 @@ class RebalanceTimingProvenanceTests(unittest.TestCase):
         self.assertFalse(self.link(shard, record=dict(self.record, source_sha256='0' * 64)))
         self.assertFalse(self.link(shard, head=runtime.REVIEW_CORRECTION))
         old_context = dict(self.context, source_commit=runtime.REVIEW_CORRECTION)
-        for suffix in ('p8', 'p9', 'p10', 'crossing', 'p13'):
+        for suffix in ('p8', 'p9', 'p10', 'crossing', 'p1-a'):
             self.assertFalse(self.link('b10-final-projection-codec-' + suffix, context=old_context))
         self.assertFalse(self.link(shard, timing=dict(self.timing, observed_seconds=1)))
         for key in (*runtime.NUMERIC_FIELDS, 'selection_sha256'):
@@ -3218,7 +3219,7 @@ class RebalanceTimingProvenanceTests(unittest.TestCase):
     def test_tree_and_boundary_drift_are_rejected(self):
         original = runtime.proof_tree
         pinned = original(self.head)
-        shard = 'b10-final-projection-codec-p13'
+        shard = 'b10-final-projection-codec-p1-a'
         for field in range(len(pinned)):
             changed = list(copy.deepcopy(pinned))
             if field == 0:
@@ -3237,11 +3238,19 @@ class RebalanceTimingProvenanceTests(unittest.TestCase):
                     tuple(changed) if ref == self.head else original(ref)):
                 self.assertFalse(self.link(shard))
 
-    def test_fresh_pinned_timing_accepts_retained_tail_receipts(self):
+    def test_fresh_pinned_timing_requires_measurement_on_the_new_tail_selection(self):
         for suffix in ('p11', 'p12'):
             shard = 'b10-final-projection-codec-' + suffix
-            record, item, timing = self.receipt(shard)
-            config = {'schema_version': 2, 'timing_evidence': {shard: timing},
+            self.assertIn(shard, runtime.SIX_TAIL_BINDINGS)
+            item = dict(self.item, selection_sha256=runtime.digest(runtime.canonical(
+                runtime.workflow.shard_config(shard, self.source))))
+            config = {'schema_version': 2, 'timing_evidence': {shard: self.timing},
                       'timing_inputs': {item['timing_inputs_sha256']: self.context}}
+            self.assertFalse(runtime.fresh_pinned_timing(config, runtime.CODEC_TARGET,
+                             self.record, shard, item, self.source, self.head))
+            fresh = dict(self.timing, source_commit=self.head, artifact_sha256='0' * 64)
+            evidence = dict(self.evidence, source_commit=self.head, sha256='0' * 64)
+            record = dict(self.record, evidence=[evidence])
+            config['timing_evidence'][shard] = fresh
             self.assertTrue(runtime.fresh_pinned_timing(config, runtime.CODEC_TARGET,
                             record, shard, item, self.source, self.head))

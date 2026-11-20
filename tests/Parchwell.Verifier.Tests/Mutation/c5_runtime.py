@@ -1202,8 +1202,9 @@ REVIEW_CORRECTION_SHARED = frozenset({
 
 
 # Approved diagnostic receipts retain their own source across this exact rebalance.
-# https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7033829364
-REBALANCED_SOURCE = '51ad8d29110c26f1f4fedc1256e291ed9c34c9cb'
+# https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7045193559
+REBALANCED_SOURCE = '06d999c33a33e0317af03e557b1048c4336f1bc8'
+REBALANCED_CODEC_CUTS = (1109, 1747, 2198, 3912, 5278, 6812, 8327, 9610, 10753, 11892, 13262, 14786, 16454, 18430)
 REBALANCED_RECEIPTS = {'b10-final-projection-codec-p1-a': ('14607930859',
                                      '0c56bd10ffcfe70697c192eb39d43f03fc1affcb20cd4c09febaf3b65aabb7f4',
                                      '74a711c31e71438260353da9e5311a4d0698ad7a065135c8254ca31441d74588',
@@ -1214,31 +1215,6 @@ REBALANCED_RECEIPTS = {'b10-final-projection-codec-p1-a': ('14607930859',
                                      '74a711c31e71438260353da9e5311a4d0698ad7a065135c8254ca31441d74588',
                                      (0, 0, 1, 4, 1253, 1257),
                                      1255.189522693),
- 'b10-final-projection-codec-p11': ('14607204407',
-                                    '04e398cd214a798382ad108756945738ca264ab8082c642759ac8dd2efffc48e',
-                                    '34107c8bc1a5d5ad4ed76b45a12890885326890bf8f6a3f96a87072a0c688b42',
-                                    (45, 2352, 2, 111, 0, 1287),
-                                    1285.9729361599998),
- 'b10-final-projection-codec-p12': ('14609071181',
-                                    '6d6c5cfdf9e2addce55ded0dd8b636952ce949779b33163a8effeff0ceb10879',
-                                    '0fb077e0001e313222af173f586901805f1c02171947b46b6923f5c2fcecf134',
-                                    (59, 4779, 2, 172, 0, 2562),
-                                    2561.1773012070003),
- 'b10-final-projection-codec-p13': ('14607982326',
-                                    '9e40c2807e6b9f99093c3148498c06b868d4c5bdf367a4d8662720eace5f86fe',
-                                    'cac765f3c22b804844a317353185bcf751578c4a5d61241f3c9a0bf24786c34f',
-                                    (42, 2737, 2, 131, 0, 1500),
-                                    1498.9549445970001),
- 'b10-final-projection-codec-p14': ('14607639679',
-                                    '97808af37967940c154ea74143b3d1e63630a88b7cb5c8a715d84136d606ae86',
-                                    '1abb83598daa93ccadfabf1832829b2f9372ddacea159ec5df46d250b3026a4e',
-                                    (55, 3799, 2, 142, 0, 2042),
-                                    2040.229918009),
- 'b10-final-projection-codec-p15': ('14608661126',
-                                    '181e2f579715850a027af926be17829cfe6592dc542a5cb39fc8907fa09734a7',
-                                    '5ea6042b6683b5c59bbdca0be28dc8b3eb4660df18c0c37e0b02c48f3a0895fd',
-                                    (43, 3464, 2, 172, 0, 1904),
-                                    1903.502955488),
  'b10-final-projection-codec-p2-a': ('14607309621',
                                      '2a2b6d24030126bc64facfd773352c90f33f1abd6b265715e253115d657487eb',
                                      '9620121f2c0cadaf7ff493b206547da5e9e4d1b89287250596b9b172ff6c9800',
@@ -1258,30 +1234,10 @@ REBALANCED_RECEIPTS = {'b10-final-projection-codec-p1-a': ('14607930859',
                                      '749d0189a32e8002edddd8f0d2276d3ab8f7d19bd41352283ff6ccc3fbadcd3a',
                                      '81b9a34ba3cb5d370256ec6a40ea43aea0410848dafcceb025d57b1257b98bdd',
                                      (0, 0, 1, 4, 1541, 1545),
-                                     1543.904961873),
- 'b10-final-projection-codec-p4': ('14607404769',
-                                   '6205b2295b77293365ae9f4e6c777603f4b6b40819f277a2af5dbbfe21c9f875',
-                                   '5e7fcbd32ae4d490d0bb412cea71bb88e0bc265784db1231c525170cc46bc96a',
-                                   (40, 2997, 2, 163, 0, 1662),
-                                   1660.6035446549997),
- 'b10-final-projection-codec-p5': ('14607773114',
-                                   '3a9045c0b311b08f86386f6eb649c7703b6da1819520b3765898e697ad99fa64',
-                                   'b1a82c9322139b3d7a15c25c49a164054275b8920421631884ae1300f35db67a',
-                                   (45, 2986, 2, 141, 0, 1634),
-                                   1632.994794882),
- 'b10-final-projection-codec-p6': ('14608375851',
-                                   'a475822c3fdbf1aa736905261c79beb5c1496a00da0c1fc866cf730dfa1875b9',
-                                   '00962e940f4ef678bdef73310109fa3c3b9d5eaf646effc155c4cc72033bcb0e',
-                                   (47, 2920, 2, 131, 0, 1591),
-                                   1590.3789734920001),
- 'b10-final-projection-codec-p7': ('14607898758',
-                                   '3bb9bb92112007c4173b26b936501d587c0ac340fd4531dbbd7c3f8a0ed8b4d0',
-                                   '6e29a4a111a29251311dbeb47f0c9aa51c431d4b714a29c3845df2789a8ee6cc',
-                                   (51, 4054, 2, 169, 0, 2196),
-                                   2195.787540967)}
+                                     1543.904961873)}
 
 def rebalance_trees(head):
-    """Prove the two literal cut changes and no other proof-tree changes."""
+    """Prove the approved codec cuts and retain the original static geometry."""
     old = proof_tree(REVIEW_CORRECTION)
     new = proof_tree(REBALANCED_SOURCE)
     if proof_tree(head) != new:
@@ -1290,11 +1246,11 @@ def rebalance_trees(head):
     new_tables, new_code, new_maps, new_config, new_matrix = new
     expected = dict(old_tables)
     cuts = dict(old_tables['PRIMARY_CUTS'])
-    codec_cuts = list(cuts['b10-final-projection-codec'])
-    if codec_cuts[7:9] != [9523, 11277]:
+    codec_cuts = cuts['b10-final-projection-codec']
+    if (len(codec_cuts) != len(REBALANCED_CODEC_CUTS)
+            or codec_cuts[:3] != REBALANCED_CODEC_CUTS[:3]):
         return None
-    codec_cuts[7:9] = [9582, 11066]
-    cuts['b10-final-projection-codec'] = tuple(codec_cuts)
+    cuts['b10-final-projection-codec'] = REBALANCED_CODEC_CUTS
     expected['PRIMARY_CUTS'] = cuts
     if (expected != new_tables or (old_code, old_maps, old_config, old_matrix)
             != (new_code, new_maps, new_config, new_matrix)):
