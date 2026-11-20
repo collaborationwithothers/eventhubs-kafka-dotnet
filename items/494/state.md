@@ -36,7 +36,7 @@ Decisions in force:
 - Continue PR 546 through the remaining review corrections and focused coverage under Hari's instruction to complete the PR. Correct the state index and existing collector input-bound regressions; native execution remains paused and protected merge remains required. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6971737490
 Open questions:
 - None
-Next action: collect timing for the 19 review-correction selections after the protected pin merges. Complete product qualification, review and hosted verification, then obtain the protected product merge. Run the paired C5 acceptance on main after merge. Sources: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 and https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7001549347
+Next action: collect timing for the four rebalanced selections after the protected pin merges. Complete product qualification, review and hosted verification, then obtain the protected product merge. Run the paired C5 acceptance on main after merge. Sources: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7033829364 and https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7001549347
 
 Current implementation:
 - Archive PR 528 is merged at 911c5a1eaaac55107271755f2aa9697ea7a8acf9. Its cumulative cold review is two comprehensive and eight focused rounds; no reset. Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/528
