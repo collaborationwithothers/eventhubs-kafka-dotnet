@@ -672,6 +672,16 @@ class ReviewCorrectionBridgeTests(unittest.TestCase):
             self.context, self.OWNER, self.SHARD, runtime.REVIEW_CORRECTION))
         self.assertTrue(self.proof())
 
+    def test_rebalanced_tree_retains_predecessor_for_unrelated_owner(self):
+        self.assertTrue(self.proof(head=runtime.REBALANCED_SOURCE))
+        self.assertFalse(self.proof(shard='unknown', head=runtime.REBALANCED_SOURCE))
+        self.assertFalse(self.proof(owner=runtime.CODEC_TARGET,
+                                    shard='b10-final-projection-codec-p1-a',
+                                    head=runtime.REBALANCED_SOURCE))
+        context = copy.deepcopy(self.context)
+        context['assessments']['target_sources'][runtime.CODEC_TARGET]['current_sha256'] = '0' * 64
+        self.assertFalse(self.proof(context, head=runtime.REBALANCED_SOURCE))
+
     def test_rejects_changed_owner_and_incomplete_or_wrong_assessments(self):
         self.assertFalse(self.proof(owner=runtime.REVIEW_CORRECTION_TARGET,
                                     shard='b10-final-projection-codec-p1-a'))
@@ -3136,3 +3146,100 @@ class SampleLauncherDeadlineTests(unittest.TestCase):
                 self.kill.assert_called_once_with(1234, runtime.signal.SIGKILL)
                 self.assertEqual([mock.call(timeout=10.0), mock.call()], self.process.wait.call_args_list)
                 self.assert_cleanup(1234)
+
+
+class RebalanceTimingProvenanceTests(unittest.TestCase):
+    def setUp(self):
+        self.head = runtime.REBALANCED_SOURCE
+        shared, targets = runtime.input_maps(self.head)
+        self.context = {'source_commit': self.head, 'shared_inputs': shared,
+                        'target_sources': targets,
+                        'assessments': {'shared_inputs': {}, 'target_sources': {}}}
+        self.source = runtime.blob(self.head, 'src/Parchwell.Verifier/' + runtime.CODEC_TARGET)
+        shard = 'b10-final-projection-codec-p13'
+        self.record, self.item, self.timing = self.receipt(shard)
+        self.evidence = self.record['evidence'][0]
+
+    def receipt(self, shard):
+        artifact, archive, selection, numbers, seconds = runtime.REBALANCED_RECEIPTS[shard]
+        locator = ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/'
+                   '44686622095 artifact ' + artifact)
+        evidence = {'source_commit': runtime.REVIEW_CORRECTION, 'sha256': archive,
+                    'kind': 'hosted_complete', 'locator': locator}
+        record = {'source_sha256': runtime.digest(self.source), 'evidence': [evidence]}
+        item = dict(zip(runtime.NUMERIC_FIELDS, numbers), selection_sha256=selection,
+                    timing_inputs_sha256='b' * 64, basis=f'observed_workers={numbers[2]}')
+        timing = {'kind': 'measured', 'source_commit': runtime.REVIEW_CORRECTION,
+                  'artifact_sha256': archive, 'timing_inputs_sha256': 'b' * 64,
+                  'observed_workers': numbers[2], 'observed_seconds': seconds, 'method': 'synthetic'}
+        return record, item, timing
+
+    def link(self, shard, context=None, timing=None, record=None, head=None):
+        default_record, item, default_timing = self.receipt(
+            shard if shard in runtime.REBALANCED_RECEIPTS else 'b10-final-projection-codec-p13')
+        return runtime.timing_context_linked(context or self.context, shard, runtime.CODEC_TARGET,
+                    record or default_record, item, timing or default_timing, {}, head or self.head)
+
+    def test_only_unchanged_selections_transfer_and_fresh_sources_link(self):
+        for shard in runtime.REBALANCED_RETAINED:
+            with self.subTest(shard=shard):
+                self.assertTrue(self.link(shard))
+        for suffix in ('p8', 'p9', 'p10', 'crossing', 'unknown'):
+            shard = 'b10-final-projection-codec-' + suffix
+            self.assertFalse(self.link(shard))
+            fresh = dict(self.timing, source_commit=self.head)
+            record = dict(self.record, evidence=[dict(self.evidence, source_commit=self.head)])
+            self.assertTrue(self.link(shard, timing=fresh, record=record))
+
+    def test_transfer_rejects_map_source_evidence_and_head_drift(self):
+        shard = 'b10-final-projection-codec-p13'
+        context = copy.deepcopy(self.context)
+        context['shared_inputs'][runtime.RUNNER] = '0' * 64
+        self.assertFalse(self.link(shard, context=context))
+        context = copy.deepcopy(self.context)
+        context['target_sources'][runtime.CODEC_TARGET] = '0' * 64
+        self.assertFalse(self.link(shard, context=context))
+        self.assertFalse(self.link(shard, timing=dict(self.timing, source_commit='0' * 40)))
+        self.assertFalse(self.link(shard, timing=dict(self.timing, artifact_sha256='0' * 64)))
+        self.assertFalse(self.link(shard, record=dict(self.record, source_sha256='0' * 64)))
+        self.assertFalse(self.link(shard, head=runtime.REVIEW_CORRECTION))
+        old_context = dict(self.context, source_commit=runtime.REVIEW_CORRECTION)
+        for suffix in ('p8', 'p9', 'p10', 'crossing', 'p13'):
+            self.assertFalse(self.link('b10-final-projection-codec-' + suffix, context=old_context))
+        self.assertFalse(self.link(shard, timing=dict(self.timing, observed_seconds=1)))
+        for key in (*runtime.NUMERIC_FIELDS, 'selection_sha256'):
+            changed = dict(self.item, **{key: '0' * 64 if key == 'selection_sha256' else self.item[key] + 1})
+            self.assertFalse(runtime.timing_context_linked(self.context, shard, runtime.CODEC_TARGET,
+                            self.record, changed, self.timing, {}, self.head))
+
+    def test_tree_and_boundary_drift_are_rejected(self):
+        original = runtime.proof_tree
+        pinned = original(self.head)
+        shard = 'b10-final-projection-codec-p13'
+        for field in range(len(pinned)):
+            changed = list(copy.deepcopy(pinned))
+            if field == 0:
+                cuts = list(changed[0]['PRIMARY_CUTS']['b10-final-projection-codec'])
+                cuts[7] += 1
+                changed[0]['PRIMARY_CUTS']['b10-final-projection-codec'] = tuple(cuts)
+            elif field == 1:
+                changed[1] += b'drift'
+            elif field == 2:
+                changed[2][0]['drift'] = '0' * 64
+            elif field == 3:
+                changed[3]['drift'] = True
+            else:
+                changed[4]['drift'] = 'other'
+            with self.subTest(field=field), mock.patch.object(runtime, 'proof_tree', side_effect=lambda ref:
+                    tuple(changed) if ref == self.head else original(ref)):
+                self.assertFalse(self.link(shard))
+
+    def test_fresh_pinned_timing_accepts_retained_neighbor_receipts(self):
+        for suffix in ('p13', 'p14'):
+            shard = 'b10-final-projection-codec-' + suffix
+            record, item, timing = self.receipt(shard)
+            config = {'schema_version': 2, 'timing_evidence': {shard: timing},
+                      'timing_inputs': {item['timing_inputs_sha256']: self.context}}
+            with mock.patch.object(runtime, 'CODEC_NEIGHBOR', {shard: None}):
+                self.assertTrue(runtime.fresh_pinned_timing(config, runtime.CODEC_TARGET,
+                                record, shard, item, self.source, self.head))
