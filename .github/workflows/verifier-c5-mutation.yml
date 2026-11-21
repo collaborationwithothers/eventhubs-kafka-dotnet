@@ -140,6 +140,18 @@ jobs:
             target: VerifyRun/B10Final/B10FinalClassification.cs
           - shard: b10-final-classification-p12
             target: VerifyRun/B10Final/B10FinalClassification.cs
+          - shard: b10-final-classification-p13
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+          - shard: b10-final-classification-p14
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+          - shard: b10-final-classification-p15
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+          - shard: b10-final-classification-p16
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+          - shard: b10-final-classification-p17
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+          - shard: b10-final-classification-p18
+            target: VerifyRun/B10Final/B10FinalClassification.cs
           - shard: b10-final-classification-crossing
             target: VerifyRun/B10Final/B10FinalClassification.cs
           - shard: b10-final-projection

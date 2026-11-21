@@ -163,17 +163,23 @@ EXPECTED_PRIMARY_CUTS = {'phase': (3694, 4477, 5458, 6568, 7631),
                                45595,
                                48067,
                                50303),
- 'b10-final-classification': (3452,
-                              6096,
-                              8964,
-                              10855,
-                              14488,
-                              15813,
-                              17035,
-                              19139,
-                              21239,
-                              23043,
-                              24910),
+ 'b10-final-classification': (2787,
+                              3812,
+                              5710,
+                              6809,
+                              8825,
+                              10881,
+                              13155,
+                              14771,
+                              15534,
+                              16298,
+                              17897,
+                              19056,
+                              21003,
+                              22106,
+                              23202,
+                              24579,
+                              25555),
  'b10-final-projection-codec': (1109,
                                 1747,
                                 2198,
@@ -450,6 +456,12 @@ EXPECTED_JOB_NAMES = ('phase-p1',
  'b10-final-classification-p10',
  'b10-final-classification-p11',
  'b10-final-classification-p12',
+ 'b10-final-classification-p13',
+ 'b10-final-classification-p14',
+ 'b10-final-classification-p15',
+ 'b10-final-classification-p16',
+ 'b10-final-classification-p17',
+ 'b10-final-classification-p18',
  'b10-final-classification-crossing',
  'b10-final-projection',
  'b10-final-projection-codec-p1-a',
@@ -766,7 +778,7 @@ class CommittedContractTests(unittest.TestCase):
          'b10-sweep-codec': ('Common/Phase/B10SweepEvidenceCodec.cs', 8),
          'b10-final-sweep-handler': ('VerifyRun/B10Final/B10FinalSweepHandler.cs', 4),
          'b10-final-repeat-evidence': ('VerifyRun/B10Final/B10FinalRepeatEvidence.cs', 22),
-         'b10-final-classification': ('VerifyRun/B10Final/B10FinalClassification.cs', 12),
+         'b10-final-classification': ('VerifyRun/B10Final/B10FinalClassification.cs', 18),
          'b10-final-projection': ('Common/Phase/B10FinalProjection.cs', 1),
          'b10-final-projection-codec': ('Common/Phase/B10FinalProjectionCodec.cs', 15),
          'b10-final-registrations': ('Common/Phase/B10FinalRegistrationReader.cs', 17),
@@ -964,6 +976,12 @@ class CommittedContractTests(unittest.TestCase):
          'b10-final-classification-p10': 'VerifyRun/B10Final/B10FinalClassification.cs',
          'b10-final-classification-p11': 'VerifyRun/B10Final/B10FinalClassification.cs',
          'b10-final-classification-p12': 'VerifyRun/B10Final/B10FinalClassification.cs',
+         'b10-final-classification-p13': 'VerifyRun/B10Final/B10FinalClassification.cs',
+         'b10-final-classification-p14': 'VerifyRun/B10Final/B10FinalClassification.cs',
+         'b10-final-classification-p15': 'VerifyRun/B10Final/B10FinalClassification.cs',
+         'b10-final-classification-p16': 'VerifyRun/B10Final/B10FinalClassification.cs',
+         'b10-final-classification-p17': 'VerifyRun/B10Final/B10FinalClassification.cs',
+         'b10-final-classification-p18': 'VerifyRun/B10Final/B10FinalClassification.cs',
          'b10-final-classification-crossing': 'VerifyRun/B10Final/B10FinalClassification.cs',
          'b10-final-projection': 'Common/Phase/B10FinalProjection.cs',
          'b10-final-projection-codec-p1-a': 'Common/Phase/B10FinalProjectionCodec.cs',
@@ -1107,7 +1125,7 @@ class CommittedContractTests(unittest.TestCase):
         matrices = [yaml.safe_load(path.read_text())["jobs"]["mutation"]["strategy"]["matrix"]["include"]
                     for path in (root / ".github/workflows/verifier-c5-mutation.yml",
                                  root / ".github/workflows/verifier-c5-mutation-companion.yml")]
-        self.assertEqual([172, 146], list(map(len, matrices)))
+        self.assertEqual([178, 146], list(map(len, matrices)))
         for is_companion, matrix in enumerate(matrices):
             expected = [(name, target) for name, target in shards.items()
                         if (target in EXPECTED_COMPANION_TARGETS) == bool(is_companion)]
@@ -3164,7 +3182,7 @@ class ProductionLayoutTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[3]
         self.assertEqual(EXPECTED_PRIMARY_CUTS, workflow.PRIMARY_CUTS)
         self.assertEqual(EXPECTED_JOB_NAMES, tuple(workflow.SHARDS))
-        self.assertEqual(318, len(set(EXPECTED_JOB_NAMES)))
+        self.assertEqual(324, len(set(EXPECTED_JOB_NAMES)))
         original_paths = workflow.BASE_CONFIG["stryker-config"]["mutate"]
         self.assertEqual(31, len(set(original_paths)))
         self.assertEqual(original_paths, [target for target, _ in workflow.TARGETS.values()])

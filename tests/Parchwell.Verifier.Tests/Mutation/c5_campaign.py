@@ -45,7 +45,8 @@ def validate_layout(layout):
     a, b = layout['coordinator'], layout['companion']
     require(isinstance(a, dict) and isinstance(b, dict) and a and b,
             'empty or invalid matrix')
-    require(len(a) <= 172 and len(b) <= 146 and not set(a) & set(b),
+    require(len(a) <= c5_runtime.CAMPAIGN_LIMITS[PATHS['coordinator']]
+            and len(b) <= c5_runtime.CAMPAIGN_LIMITS[PATHS['companion']] and not set(a) & set(b),
             'overlapping or oversized matrices')
     require({**a, **b} == c5_workflow.SHARDS, 'matrix does not cover C5 shards')
 

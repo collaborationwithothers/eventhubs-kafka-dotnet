@@ -323,7 +323,7 @@ import c5_workflow as workflow
 REPO = ROOT
 WORKFLOW = '.github/workflows/verifier-c5-mutation.yml'
 COMPANION_WORKFLOW = '.github/workflows/verifier-c5-mutation-companion.yml'
-CAMPAIGN_LIMITS = {WORKFLOW: 172, COMPANION_WORKFLOW: 146}
+CAMPAIGN_LIMITS = {WORKFLOW: 178, COMPANION_WORKFLOW: 146}
 RUNNER = 'tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py'
 CAMPAIGN_VALIDATOR = 'tests/Parchwell.Verifier.Tests/Mutation/c5_campaign.py'
 TEST_PROJECT = 'tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj'
