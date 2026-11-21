@@ -503,6 +503,131 @@ public sealed class ConsumerJudgementTests
         Assert.Equal(expected, Encoding.UTF8.GetByteCount(detail));
     }
 
+    private const string FullCoverage = """{"qualifying_partitions":[0],"uncovered_partitions":[]}""";
+    private const string NoCoverage = """{"qualifying_partitions":[0],"uncovered_partitions":[0]}""";
+
+    private static ConsumerJudgementRequest Relabel(ConsumerJudgementRequest request, string scenario)
+    {
+        request = request with { ScenarioId = scenario };
+        foreach (string role in MemberRoles)
+            request = F.SetMember(request, role, member => F.WithRows(member with { Registration = member.Registration! with { ScenarioId = scenario } }, member.Rows, member.Completion is not null));
+        return request;
+    }
+    private static string Coverage(ConsumerJudgementResult result) => result.Consumer.GetProperty("subject_commit_coverage").GetRawText();
+    private static ConsumerJudgementRequest SetSubjectCommit(ConsumerJudgementRequest request, Func<ConsumerRow, ConsumerRow>? change)
+        => F.SetMember(request, "subject", member => F.WithRows(member, member.Rows.SelectMany(row => row.Kind != "commit" ? [row] : change is null ? [] : new[] { change(row) }), false));
+
+    [Fact]
+    public void Given_C10KillBlockWithSubjectCommit_CV1_When_Judged_Then_PartitionIsQualifyingAndCovered()
+    {
+        ConsumerJudgementResult result = ConsumerJudgement.Evaluate(Relabel(KillFixture(2), "C10"), F.Read());
+        Complete(result);
+        Assert.Equal(FullCoverage, Coverage(result));
+        Assert.Equal(["schema_version", "status", "reasons", "group_id", "kill_count", "members", "offset_read", "partitions", "diagnostics", "counts", "reassignment", "subject_commit_coverage"],
+            result.Consumer.EnumerateObject().Select(p => p.Name));
+    }
+
+    [Fact]
+    public void Given_C10KillBlockWithoutSubjectCommit_CV2_When_Judged_Then_PartitionIsUncovered()
+    {
+        ConsumerJudgementResult result = ConsumerJudgement.Evaluate(SetSubjectCommit(Relabel(KillFixture(2), "C10"), null), F.Read());
+        Complete(result);
+        Assert.Equal(NoCoverage, Coverage(result));
+    }
+
+    [Theory]
+    [InlineData("row_error")]
+    [InlineData("entry_error")]
+    [InlineData("negative_offset")]
+    [InlineData("other_topic")]
+    public void Given_SubjectCommitThatDoesNotCount_CV3_When_Judged_Then_PartitionIsUncovered(string change)
+    {
+        ConsumerJudgementRequest request = Relabel(KillFixture(2), "C10");
+        request = SetSubjectCommit(request, row => change switch
+        {
+            "row_error" => F.Commit("subject", 110, rowError: 1),
+            "entry_error" => F.Commit("subject", 110, entryError: 1),
+            "negative_offset" => F.Commit("subject", -1001),
+            _ => row with { Offsets = [new ConsumerCommitOffset("other", 0, 110, 0)] }
+        });
+        ConsumerJudgementResult result = ConsumerJudgement.Evaluate(request, F.Read());
+        Complete(result);
+        Assert.Equal(NoCoverage, Coverage(result));
+    }
+
+    [Theory]
+    [InlineData("offset_0", true)]
+    [InlineData("offset_minus_1", false)]
+    [InlineData("row_error_negative", false)]
+    [InlineData("entry_error_negative", false)]
+    [InlineData("empty_offsets", false)]
+    public void Given_SubjectCommitAtTheBoundary_CV7_When_Judged_Then_OnlyASuccessfulEntryOfAtLeastZeroCovers(string change, bool covered)
+    {
+        ConsumerJudgementRequest request = SetSubjectCommit(Relabel(KillFixture(2), "C10"), row => change switch
+        {
+            "offset_0" => F.Commit("subject", 0),
+            "offset_minus_1" => F.Commit("subject", -1),
+            "row_error_negative" => F.Commit("subject", 110, rowError: -195),
+            "entry_error_negative" => F.Commit("subject", 110, entryError: -195),
+            _ => row with { Offsets = [] }
+        });
+        ConsumerJudgementResult result = ConsumerJudgement.Evaluate(request, F.Read());
+        Complete(result);
+        Assert.Equal(covered ? FullCoverage : NoCoverage, Coverage(result));
+    }
+
+    [Fact]
+    public void Given_SubjectCommitOnAnotherPartition_CV8_When_Judged_Then_PartitionZeroIsUncovered()
+    {
+        ConsumerJudgementRequest request = SetSubjectCommit(Relabel(KillFixture(2), "C10"), _ => F.Commit("subject", 110, partition: 1));
+        ConsumerJudgementResult result = ConsumerJudgement.Evaluate(request, F.Read());
+        Complete(result);
+        Assert.Equal(NoCoverage, Coverage(result));
+    }
+
+    [Fact]
+    public void Given_C10EmptyWindow_CV4_When_Judged_Then_NoPartitionQualifies()
+    {
+        ConsumerJudgementRequest request = Relabel(F.Empty(), "C10");
+        request = request with { Plan = request.Plan with { KillCount = 1 } };
+        request = F.SetMember(request, "subject", member => F.WithRows(member, [F.Assigned("subject", 0, [0]), F.Kill()], false));
+        ConsumerJudgementResult result = ConsumerJudgement.Evaluate(request, F.Read(-1001));
+        Complete(result);
+        Assert.Equal("""{"qualifying_partitions":[],"uncovered_partitions":[]}""", Coverage(result));
+    }
+
+    [Fact]
+    public void Given_SubjectRevokedItsPartitionBeforeTheStartLine_CV5_When_Judged_Then_TheReplayNotTheLastAssignedRowDecides()
+    {
+        ConsumerJudgementRequest request = Relabel(KillFixture(2), "C10");
+        request = F.SetMember(request, "subject", member => F.WithRows(member,
+            member.Rows.Where(row => row.Kind != "partition_event").Prepend(new ConsumerRow("partition_event", "subject", 1, F.Time, Event: "revoked", Partitions: [0])).Prepend(F.Assigned("subject", 0, [0])), false));
+        request = F.SetMember(request, "witness", member => F.WithRows(member, member.Rows.Where(row => row.Kind != "partition_event").Prepend(F.Assigned("witness", 0, [0]))));
+        request = request with { Snapshot = request.Snapshot! with { Members = [new("subject", "subject", 1, 1), new("witness", "witness", 0, 0)] } };
+        ConsumerJudgementResult result = ConsumerJudgement.Evaluate(request, F.Read());
+        Complete(result);
+        Assert.Equal("""{"qualifying_partitions":[],"uncovered_partitions":[]}""", Coverage(result));
+    }
+
+    [Theory]
+    [InlineData("C03")]
+    [InlineData("C01")]
+    [InlineData("C10_without_kill_count")]
+    [InlineData("C10_invalid_subject_record")]
+    public void Given_BlockThatIsNotACompleteC10KillBlock_CV6_When_Judged_Then_NoCoverageIsReported(string shape)
+    {
+        ConsumerJudgementRequest request = shape switch
+        {
+            "C03" => KillFixture(2),
+            "C01" => Relabel(KillFixture(2), "C01"),
+            "C10_without_kill_count" => Relabel(F.Create(), "C10"),
+            _ => F.SetMember(Relabel(KillFixture(2), "C10"), "subject", member => member with { RecordInvalid = true })
+        };
+        ConsumerJudgementResult result = ConsumerJudgement.Evaluate(request, F.Read());
+        if (shape == "C10_invalid_subject_record") Assert.Equal(VerifierResultStatus.Invalid, result.Status); else Complete(result);
+        Assert.False(result.Consumer.TryGetProperty("subject_commit_coverage", out _));
+    }
+
     private static ConsumerJudgementRequest KillFixture(int processed)
     {
         ConsumerJudgementRequest request = F.Create();

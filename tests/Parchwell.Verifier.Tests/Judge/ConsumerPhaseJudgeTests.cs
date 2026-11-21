@@ -324,6 +324,7 @@ public sealed class ConsumerPhaseJudgeTests
             {
                 result["consumer"]!["kill_count"] = 50;
                 result["consumer"]!["reassignment"] = reassignments[index].DeepClone();
+                result["consumer"]!["subject_commit_coverage"] = JsonNode.Parse(Coverage([0], []));
             });
         }
         (int exit, byte[] bytes) = await JudgeAsync(stores, "C10", "C1");
@@ -333,8 +334,104 @@ public sealed class ConsumerPhaseJudgeTests
         {
             Assert.Equal(reassignments[repeat - 1].ToJsonString(), Text(RepeatOf(candidate, repeat)["consumer"]!["reassignment"]));
             Assert.Equal(50, RepeatOf(candidate, repeat)["consumer"]!["kill_count"]!.GetValue<int>());
+            Assert.Equal(Coverage([0], []), Text(RepeatOf(candidate, repeat)["consumer"]!["subject_commit_coverage"]));
         }
         Assert.False(candidate["consumer"]!.AsObject().ContainsKey("reassignment"));
+    }
+
+    private static string Coverage(int[] qualifying, int[] uncovered) =>
+        $$"""{"qualifying_partitions":[{{string.Join(',', qualifying)}}],"uncovered_partitions":[{{string.Join(',', uncovered)}}]}""";
+
+    private static Stores KilledC10(Stores source, string? coverage)
+    {
+        Stores stores = source.Copy();
+        Apply(stores, "C1", 2, result =>
+        {
+            JsonObject block = result["consumer"]!.AsObject();
+            block["kill_count"] = 50;
+            block["reassignment"] = Reassignment(5, null);
+            if (coverage is not null) block["subject_commit_coverage"] = JsonNode.Parse(coverage);
+        });
+        return stores;
+    }
+    [Fact]
+    public async Task Given_ValidCommitCoverageOnACompleteC10KillBlock_CJ1_When_Judged_Then_J3PassesAndTheProjectionCarriesItUnchanged()
+    {
+        const string text = """{"qualifying_partitions":[0,1],"uncovered_partitions":[1]}""";
+        (_, byte[] bytes) = await JudgeAsync(KilledC10(await BaseC1.Value, text), "C10", "C1");
+        JsonNode second = RepeatOf(Parse(bytes), 2);
+        Assert.True(second["checks"]!["j3_verifier_receipt"]!.GetValue<bool>());
+        Assert.Equal(text, Text(second["consumer"]!["subject_commit_coverage"]));
+        Assert.False(Parse(bytes)["consumer"]!.AsObject().ContainsKey("subject_commit_coverage"));
+    }
+
+    [Theory]
+    [InlineData("""{"qualifying_partitions":[],"uncovered_partitions":[]}""")]
+    [InlineData("""{"qualifying_partitions":[0,2147483647],"uncovered_partitions":[2147483647]}""")]
+    public async Task Given_BoundaryCommitCoverage_CJ1_When_Judged_Then_J3PassesAndTheProjectionCarriesItUnchanged(string text)
+    {
+        (_, byte[] bytes) = await JudgeAsync(KilledC10(await BaseC1.Value, text), "C10", "C1");
+        JsonNode second = RepeatOf(Parse(bytes), 2);
+        Assert.True(second["checks"]!["j3_verifier_receipt"]!.GetValue<bool>());
+        Assert.Equal(text, Text(second["consumer"]!["subject_commit_coverage"]));
+    }
+
+    [Fact]
+    public async Task Given_CompleteC10KillBlockWithoutCommitCoverage_CJ2_When_Judged_Then_J3FailsForThatSlot()
+    {
+        (_, byte[] bytes) = await JudgeAsync(KilledC10(await BaseC1.Value, null), "C10", "C1");
+        JsonNode second = RepeatOf(Parse(bytes), 2);
+        Assert.False(second["checks"]!["j3_verifier_receipt"]!.GetValue<bool>());
+        Assert.Null(second["consumer"]);
+    }
+
+    [Theory]
+    [InlineData("""{"qualifying_partitions":[0],"uncovered_partitions":[],"x":1}""")]
+    [InlineData("""{"uncovered_partitions":[],"qualifying_partitions":[0]}""")]
+    [InlineData("""{"qualifying_partitions":[1,0],"uncovered_partitions":[]}""")]
+    [InlineData("""{"qualifying_partitions":[0,0],"uncovered_partitions":[]}""")]
+    [InlineData("""{"qualifying_partitions":[-1],"uncovered_partitions":[]}""")]
+    [InlineData("""{"qualifying_partitions":["0"],"uncovered_partitions":[]}""")]
+    [InlineData("""{"qualifying_partitions":[2147483648],"uncovered_partitions":[]}""")]
+    [InlineData("""{"qualifying_partitions":[0,1],"uncovered_partitions":[2]}""")]
+    [InlineData("""{"qualifying_partitions":0,"uncovered_partitions":[]}""")]
+    [InlineData("""{"qualifying_partitions":[0],"uncovered_partitions":null}""")]
+    [InlineData("null")]
+    public async Task Given_MalformedCommitCoverage_CJ3_When_Judged_Then_J3FailsForThatSlot(string coverage)
+    {
+        (_, byte[] bytes) = await JudgeAsync(KilledC10(await BaseC1.Value, coverage), "C10", "C1");
+        JsonNode second = RepeatOf(Parse(bytes), 2);
+        Assert.False(second["checks"]!["j3_verifier_receipt"]!.GetValue<bool>());
+        Assert.Null(second["consumer"]);
+    }
+
+    [Theory]
+    [InlineData("kill_count_null")]
+    [InlineData("invalid_status")]
+    [InlineData("C03_block")]
+    public async Task Given_CommitCoverageOnABlockThatMustNotHaveIt_CJ4_When_Judged_Then_J3FailsForThatSlot(string shape)
+    {
+        string coverage = Coverage([0], []);
+        Stores stores;
+        string scenario = "C10", phase = "C1";
+        if (shape == "C03_block")
+        {
+            stores = Mutated(await BaseC0.Value, 2, block => { block["kill_count"] = 5; block["reassignment"] = Reassignment(5, null); block["subject_commit_coverage"] = JsonNode.Parse(coverage); });
+            scenario = "C03"; phase = "C0";
+        }
+        else if (shape == "kill_count_null")
+            stores = Mutated(await BaseC1.Value, 2, block => block["subject_commit_coverage"] = JsonNode.Parse(coverage), phase: "C1");
+        else
+            stores = Mutated(await BaseC1.Value, 2, block =>
+            {
+                block["kill_count"] = 50;
+                block["status"] = "invalid"; block["reasons"] = new JsonArray("consumer_record_invalid"); block.Remove("counts");
+                block["subject_commit_coverage"] = JsonNode.Parse(coverage);
+            }, exit: 1, phase: "C1");
+        (_, byte[] bytes) = await JudgeAsync(stores, scenario, phase);
+        JsonNode second = RepeatOf(Parse(bytes), 2);
+        Assert.False(second["checks"]!["j3_verifier_receipt"]!.GetValue<bool>());
+        Assert.Null(second["consumer"]);
     }
 
     [Theory]
