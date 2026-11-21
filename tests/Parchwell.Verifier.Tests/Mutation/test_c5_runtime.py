@@ -705,21 +705,6 @@ class ReviewCorrectionBridgeTests(unittest.TestCase):
         context['source_commit'] = runtime.CI_REPAIR_PRIOR
         self.assertFalse(self.proof(context, head=head))
 
-    def test_ci_repair_rebalance_links_only_unchanged_measured_selectors(self):
-        head = runtime.CI_REPAIR_REBALANCE
-        shared, targets = runtime.proof_tree(head)[2]
-        context = {'source_commit': head, 'shared_inputs': shared, 'target_sources': targets}
-        timing = {'source_commit': runtime.CI_REPAIR_SOURCE}
-        for suffix in ('p6', 'p7', 'p8', 'p9', 'crossing'):
-            shard = 'b10-final-classification-' + suffix
-            with self.subTest(shard=shard):
-                self.assertEqual(suffix in ('p6', 'p9'), runtime.retained_ci_repair_measurement(
-                    context, shard, runtime.workflow.SHARDS[shard], timing, head))
-        shard = 'b10-final-judge-crossing'
-        owner = runtime.workflow.SHARDS[shard]
-        self.assertTrue(runtime.retained_ci_repair_measurement(context, shard, owner, timing, head))
-        self.assertFalse(runtime.retained_ci_repair_measurement(context, shard, owner, timing, runtime.CI_REPAIR_SOURCE))
-
     def test_classifier_capacity_retains_only_other_owners_on_exact_trees(self):
         head = runtime.CI_REPAIR_CAPACITY
         self.assertTrue(runtime.retained_classifier_capacity_selection(head, self.OWNER, self.SHARD))

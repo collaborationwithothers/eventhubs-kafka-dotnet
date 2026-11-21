@@ -1388,24 +1388,6 @@ def prior_ci_repair_qualification():
     return strict_json(blob(CI_REPAIR_PRIOR, HISTORICAL_QUALIFICATION_PATH))
 
 
-def retained_ci_repair_measurement(context, shard, owner, timing, head):
-    try:
-        if (not head or context.get('source_commit') != CI_REPAIR_REBALANCE
-                or timing.get('source_commit') != CI_REPAIR_SOURCE):
-            return False
-        trees = ci_repair_rebalanced_trees(head)
-        if trees is None:
-            return False
-        old, new = trees
-        selection = selected_invocation(old[0], old[4], shard)
-        return (selection is not None and selection[0] == owner
-                and owner in {old[0]['TARGETS'][key][0] for key in CI_REPAIR_OWNERS}
-                and old[2] == (context['shared_inputs'], context['target_sources'])
-                and selection == selected_invocation(new[0], new[4], shard))
-    except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
-        return False
-
-
 def retained_rebalance_timing(context, shard, path, record, item, timing, head):
     try:
         if (not head or path != CODEC_TARGET or shard not in REBALANCED_RECEIPTS
@@ -1870,8 +1852,7 @@ def timing_context_linked(context, shard, path, record, item, timing, baseline, 
             except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
                 return False
         return ((timing.get('source_commit') == commit
-                 or retained_rebalance_timing(context, shard, path, record, item, timing, head)
-                 or retained_ci_repair_measurement(context, shard, path, timing, head))
+                 or retained_rebalance_timing(context, shard, path, record, item, timing, head))
                 and has_shard_timing(shard, path, record, item, timing, baseline))
     if timing == {'kind': 'historical'}:
         return (commit == HISTORICAL_QUALIFICATION_COMMIT
