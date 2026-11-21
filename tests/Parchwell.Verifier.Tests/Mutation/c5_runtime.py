@@ -1267,10 +1267,19 @@ CI_REPAIR_TEST = 'tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificatio
 CI_REPAIR_REBALANCE = 'e9910d68f149be96da6ff921af89774526c95c94'
 CI_REPAIR_CAPACITY = '6982956ae1f6d14f8f2f4b53e8d6778b40216d56'
 CI_REPAIR_CLASSIFIER = 'b10-final-classification'
-# Only this shared-input change was accepted for the expanded layout.
+# Shared inputs already present on the expanded sizing source.
 # https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313
 CAPACITY_SHARED_MAIN = ('50a208b7f74bb0c149f7242b7e6f423417233b7c',
                         'd46720e62d79c363386c1f3b3f37791819fa9c7a')
+# Exact joined product input tree when PR 573 merged during sizing.
+# https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822
+CI_REPAIR_CAPACITY_COMBINED = '871b100e3c77033656e6f081360da5cf26cabb64'
+CAPACITY_COMBINED_SHARED = frozenset({
+    'src/Parchwell.Verifier/Judge/ConsumerPhaseEvidence.cs',
+    'src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs',
+    'tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs',
+    'tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs',
+})
 
 
 @functools.lru_cache(maxsize=4)
@@ -1278,8 +1287,14 @@ def classifier_capacity_trees(head):
     """Prove the expanded layout leaves other shards' executable selections intact."""
     prior = proof_tree(CI_REPAIR_REBALANCE)
     expanded = proof_tree(CI_REPAIR_CAPACITY)
-    if proof_tree(head) != expanded:
-        return None
+    current = proof_tree(head)
+    if current != expanded:
+        if ((current[:2], current[2][1], current[3:]) != (expanded[:2], expanded[2][1], expanded[3:])
+                or current != proof_tree(CI_REPAIR_CAPACITY_COMBINED)):
+            return None
+        sized, combined = expanded[2][0], current[2][0]
+        if {path for path in sized.keys() | combined.keys() if sized.get(path) != combined.get(path)} != CAPACITY_COMBINED_SHARED:
+            return None
     old, old_code, (old_shared, old_targets), old_config, _ = prior
     new, new_code, (new_shared, new_targets), new_config, _ = expanded
     key = CI_REPAIR_CLASSIFIER

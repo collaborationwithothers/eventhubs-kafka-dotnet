@@ -706,21 +706,22 @@ class ReviewCorrectionBridgeTests(unittest.TestCase):
         self.assertFalse(self.proof(context, head=head))
 
     def test_classifier_capacity_retains_only_other_owners_on_exact_trees(self):
-        head = runtime.CI_REPAIR_CAPACITY
-        self.assertTrue(runtime.retained_classifier_capacity_selection(head, self.OWNER, self.SHARD))
         judge = 'b10-final-judge-crossing'
-        self.assertTrue(runtime.retained_classifier_capacity_selection(head, runtime.workflow.SHARDS[judge], judge))
-        for suffix in ('p1', 'p7', 'p18', 'crossing'):
-            shard = 'b10-final-classification-' + suffix
-            self.assertFalse(runtime.retained_classifier_capacity_selection(head, runtime.workflow.SHARDS[shard], shard))
-        self.assertFalse(runtime.retained_classifier_capacity_selection(head, self.OWNER, 'unknown'))
+        for head in (runtime.CI_REPAIR_CAPACITY, runtime.CI_REPAIR_CAPACITY_COMBINED):
+            with self.subTest(head=head):
+                self.assertTrue(runtime.retained_classifier_capacity_selection(head, self.OWNER, self.SHARD))
+                self.assertTrue(runtime.retained_classifier_capacity_selection(head, runtime.workflow.SHARDS[judge], judge))
+                for suffix in ('p1', 'p7', 'p18', 'crossing'):
+                    shard = 'b10-final-classification-' + suffix
+                    self.assertFalse(runtime.retained_classifier_capacity_selection(head, runtime.workflow.SHARDS[shard], shard))
+                self.assertFalse(runtime.retained_classifier_capacity_selection(head, self.OWNER, 'unknown'))
         self.assertFalse(runtime.retained_classifier_capacity_selection(runtime.CI_REPAIR_REBALANCE, self.OWNER, self.SHARD))
 
     def test_classifier_capacity_accepts_only_the_pinned_validator_for_retained_timing(self):
         previous = runtime.prior_ci_repair_qualification()
         binding = previous['targets'][self.OWNER]['shards'][self.SHARD]['timing_inputs_sha256']
         context = copy.deepcopy(previous['timing_inputs'][binding])
-        head = runtime.CI_REPAIR_CAPACITY
+        head = runtime.CI_REPAIR_CAPACITY_COMBINED
         shared, targets = runtime.proof_tree(head)[2]
         for key, current in (('shared_inputs', shared), ('target_sources', targets)):
             measured = context[key]
