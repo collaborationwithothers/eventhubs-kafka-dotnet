@@ -178,11 +178,13 @@ class Harness:
                 spec = importlib.util.spec_from_file_location('archive_b10_real', FILE.with_name('b10_abrupt.py'))
                 module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
                 return module.Trial(self) if repeat is None else module.Scientific(self, ValueError, repeat, deadline, lifecycle_budget)
-        with patch.object(a._common, 'preflight'), patch.object(a._common, 'command', self.cli), patch.object(a.shutil, 'disk_usage') as disk:
+        with patch.object(a._common, 'preflight', return_value={'python': '/usr/bin/python3', 'azure_cli': '2.93.0', 'azure_storage_blob': '12.29.0b1'}), patch.object(a._common, 'command', self.cli), patch.object(a.shutil, 'disk_usage') as disk:
             disk.return_value.free = 2*a.ArchiveMaxObjectBytes + 1048576 + 65536
             code = a.execute(Phase(), self.env)
         public = self.artifacts/'archive'
-        return code, json.loads((public/'archive-manifest.json').read_bytes()), json.loads((public/'archive-receipt.json').read_bytes())
+        manifest = json.loads((public/'archive-manifest.json').read_bytes())
+        assert manifest['transport_versions'] == {'azure_cli': '2.93.0', 'azure_storage_blob': '12.29.0b1'}, manifest.get('transport_versions')
+        return code, manifest, json.loads((public/'archive-receipt.json').read_bytes())
 
     def close(self): self.tmp.cleanup()
 

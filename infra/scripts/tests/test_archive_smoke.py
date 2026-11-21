@@ -19,6 +19,13 @@ smoke = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(smoke)
 
 
+TRANSPORT_VERSIONS = {'azure_cli': '2.93.0', 'azure_storage_blob': '12.29.0b1'}
+
+
+def run_probe(*args, **kwargs):
+    return smoke.run_probe(*args, transport_versions=dict(TRANSPORT_VERSIONS), **kwargs)
+
+
 class ArchiveSmokeTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -57,7 +64,7 @@ class ArchiveSmokeTest(unittest.TestCase):
 
     def invoke(self):
         with patch.object(smoke, 'command', self.fake):
-            return smoke.run_probe(self.context, float('inf'))
+            return run_probe(self.context, float('inf'))
 
     def test_success_binds_literal_fixture_and_marker(self):
         self.assertEqual(self.invoke(), 0)
@@ -69,6 +76,9 @@ class ArchiveSmokeTest(unittest.TestCase):
         self.assertEqual(manifest['objects'][0]['sha256'], hashlib.sha256(literal).hexdigest())
         self.assertEqual(manifest['totals'], {'expected_objects': 1, 'verified_objects': 1, 'verified_bytes': len(literal)})
         self.assertIsNone(manifest['completion'])
+        self.assertEqual(manifest['transport_versions'], TRANSPORT_VERSIONS)
+        report = json.loads((folder / 'archive-smoke.json').read_bytes())
+        self.assertEqual((report['cli_version'], report['storage_sdk_version']), ('2.93.0', '12.29.0b1'))
         self.assertEqual(receipt['manifest']['sha256'], hashlib.sha256(canonical).hexdigest())
         marker_bytes = self.objects[('archive123', 'run-evidence', receipt['completion']['name'])]
         self.assertEqual(receipt['completion']['sha256'], hashlib.sha256(marker_bytes).hexdigest())
@@ -176,7 +186,7 @@ class ArchiveSmokeTest(unittest.TestCase):
                 return 1, b'', b'ErrorCode: AuthenticationFailed'
             return result
         with patch.object(smoke, 'command', wrong):
-            self.assertEqual(smoke.run_probe(self.context, float('inf')), 1)
+            self.assertEqual(run_probe(self.context, float('inf')), 1)
         receipt = json.loads((self.public / 'archive' / 'archive-receipt.json').read_bytes())
         self.assertFalse(receipt['archive_complete'])
         self.assertIsNone(receipt['completion'])
@@ -198,7 +208,7 @@ class ArchiveSmokeTest(unittest.TestCase):
                         path.write_bytes(bytes([data[0] ^ 1]) + data[1:])
                     return result
                 with patch.object(smoke, 'command', corrupt):
-                    self.assertEqual(smoke.run_probe(context, float('inf')), 1)
+                    self.assertEqual(run_probe(context, float('inf')), 1)
                 receipt = json.loads((public / 'archive' / 'archive-receipt.json').read_bytes())
                 self.assertIsNone(receipt['completion'])
                 self.assertEqual(receipt['gaps'][0]['code'], code)
@@ -219,7 +229,7 @@ class ArchiveSmokeTest(unittest.TestCase):
                         now[0] = when
                     return result
                 with patch.object(smoke, 'command', advance):
-                    self.assertEqual(smoke.run_probe(context, 10, clock=lambda: now[0]), expected)
+                    self.assertEqual(run_probe(context, 10, clock=lambda: now[0]), expected)
                 receipt = json.loads((public / 'archive' / 'archive-receipt.json').read_bytes())
                 self.assertEqual(receipt['archive_complete'], expected == 0)
                 if expected:
@@ -267,7 +277,7 @@ class ArchiveSmokeTest(unittest.TestCase):
                         path = Path(args[args.index('--file') + 1]); path.write_bytes(path.read_bytes()[:-1])
                     return result
                 with patch.object(smoke, 'command', short):
-                    self.assertEqual(smoke.run_probe((private, public, *self.context[2:]), float('inf')), 1)
+                    self.assertEqual(run_probe((private, public, *self.context[2:]), float('inf')), 1)
                 receipt = json.loads((public / 'archive' / 'archive-receipt.json').read_bytes())
                 self.assertEqual(receipt['gaps'][0]['code'], code)
                 self.assertIsNone(receipt['completion'])
@@ -279,7 +289,7 @@ class ArchiveSmokeTest(unittest.TestCase):
             if value.get('kind') == 'run_evidence_archive': return b'x' * (smoke.MIB + 1)
             return original(value)
         with patch.object(smoke, 'encoded', oversized), patch.object(smoke, 'command', self.fake):
-            self.assertEqual(smoke.run_probe(self.context, float('inf')), 1)
+            self.assertEqual(run_probe(self.context, float('inf')), 1)
         receipt = json.loads((self.public / 'archive' / 'archive-receipt.json').read_bytes())
         self.assertEqual(receipt['gaps'][0]['code'], 'manifest_too_large')
         self.assertIsNone(receipt['manifest']); self.assertIsNone(receipt['completion'])
@@ -330,7 +340,7 @@ class ArchiveSmokeTest(unittest.TestCase):
                 return 1, b'', b'Response status: 403\nErrorCode: AuthorizationFailure\nsecret-token'
             return original(args, deadline, cap)
         with patch.object(smoke, 'command', failed):
-            self.assertEqual(smoke.run_probe(self.context, float('inf')), 1)
+            self.assertEqual(run_probe(self.context, float('inf')), 1)
         report = json.loads((self.public / 'archive' / 'archive-smoke.json').read_bytes())
         self.assertFalse(report['archive_complete'])
         self.assertEqual([(d['object'], d['operation']) for d in report['diagnostics']],
@@ -346,7 +356,7 @@ class ArchiveSmokeTest(unittest.TestCase):
                 return 1, b'', b"ERROR: --only-show-errors can't be used together with --debug or --verbose\nsecret-token"
             return original(args, deadline, cap)
         with patch.object(smoke, 'command', failed):
-            self.assertEqual(smoke.run_probe(self.context, float('inf')), 1)
+            self.assertEqual(run_probe(self.context, float('inf')), 1)
         report = json.loads((self.public / 'archive' / 'archive-smoke.json').read_bytes())
         self.assertEqual(report['diagnostics'][0]['category'], 'arguments')
         self.assertNotIn('secret-token', json.dumps(report))
@@ -361,7 +371,7 @@ class ArchiveSmokeTest(unittest.TestCase):
                 public = Path(directory) / 'public'; public.mkdir()
                 def fail(*_args, **_kwargs): raise smoke.Gap(code, boundary)
                 with patch.object(smoke, 'command', fail):
-                    self.assertEqual(smoke.run_probe((private, public, *self.context[2:]), float('inf')), 1)
+                    self.assertEqual(run_probe((private, public, *self.context[2:]), float('inf')), 1)
                 report = json.loads((public / 'archive' / 'archive-smoke.json').read_bytes())
                 self.assertFalse(report['archive_complete'])
                 self.assertEqual(report['diagnostics'][0]['category'], boundary.replace(' ', '_'))
@@ -453,7 +463,7 @@ class ArchiveSmokeTest(unittest.TestCase):
                 def sdk(python, host, deadline, container):
                     seen.append((host, container)); return {'outcome': 'unavailable', 'token': None, 'read': None}
                 with patch.object(smoke, 'command', fail), patch.object(smoke, 'sdk_diagnostic', sdk), patch.object(smoke, 'network_diagnostic', return_value={'outcome': 'unavailable', 'observation': None}):
-                    self.assertEqual(smoke.run_probe((private, public, *self.context[2:]), float('inf')), 1)
+                    self.assertEqual(run_probe((private, public, *self.context[2:]), float('inf')), 1)
                 self.assertEqual(seen[0][0], self.context[3] if first == 'source' else self.context[2])
                 report = json.loads((public / 'archive' / 'archive-smoke.json').read_bytes())
                 self.assertEqual(set(report['sdk_diagnostic']), {'source', 'archive'})
@@ -473,7 +483,7 @@ class ArchiveSmokeTest(unittest.TestCase):
                     private = Path(directory) / 'private'; private.mkdir()
                     public = Path(directory) / 'public'; public.mkdir()
                     with patch.object(smoke, 'command', fail):
-                        self.assertEqual(smoke.run_probe((private, public, *self.context[2:]), float('inf')), 1)
+                        self.assertEqual(run_probe((private, public, *self.context[2:]), float('inf')), 1)
                     report = json.loads((public / 'archive' / 'archive-smoke.json').read_bytes())
                     first = report['diagnostics'][0]
                     self.assertEqual(first['wrapper_stages'][0]['stage'], 'authentication')
@@ -496,7 +506,7 @@ class ArchiveSmokeTest(unittest.TestCase):
             def sdk(python, host, deadline, container):
                 seen.append(host); return {'outcome': 'unavailable', 'token': None, 'read': None}
             with patch.object(smoke, 'command', fail), patch.object(smoke, 'sdk_diagnostic', sdk), patch.object(smoke, 'network_diagnostic', return_value={'outcome': 'unavailable', 'observation': None}):
-                self.assertEqual(smoke.run_probe((private, public, *self.context[2:]), float('inf')), 1)
+                self.assertEqual(run_probe((private, public, *self.context[2:]), float('inf')), 1)
             report = json.loads((public / 'archive' / 'archive-smoke.json').read_bytes())
             self.assertEqual(seen[0], self.context[3])
             self.assertIsNone(report['diagnostics'][0]['expected_negative'])
@@ -531,11 +541,28 @@ class ArchiveSmokeTest(unittest.TestCase):
         self.assertEqual(result['tls_failure_kind'], 'configuration')
 
     def test_unsupported_versions_fail_closed(self):
-        with patch.object(smoke, 'command', return_value=(0, b'{"azure-cli":"2.91.0"}', b'')):
-            with self.assertRaises(smoke.Invalid): smoke.preflight(float('inf'))
-        for document in (b'[]', b'null', b'true', b'3', b'"unsupported"'):
+        for document in (b'{"azure-cli":2.93}', b'{"azure-cli":"2.93.0\\u00e9"}', b'{}', b'[]', b'null', b'true', b'3', b'"unsupported"'):
             with self.subTest(document=document), patch.object(smoke, 'command', return_value=(0, document, b'')):
                 with self.assertRaises(smoke.Invalid): smoke.preflight(float('inf'))
         self.assertEqual(smoke.main(['run', 'extra']), 2)
+
+    def test_readable_versions_are_returned(self):
+        with tempfile.TemporaryDirectory() as directory:
+            python = Path(directory) / 'python'; python.write_text('#!/bin/sh\n'); python.chmod(0o700)
+            location = "Python location '{}'\n".format(python).encode()
+            def replies(interpreter_code):
+                return [(0, b'{"azure-cli":"2.91.0"}', b''), (0, location, b''), (interpreter_code, b'12.29.0b1\n', b'')]
+            with patch.object(smoke, 'command', side_effect=replies(0)):
+                self.assertEqual(smoke.preflight(float('inf')),
+                                 {'python': str(python), 'azure_cli': '2.91.0', 'azure_storage_blob': '12.29.0b1'})
+            with patch.object(smoke, 'command', side_effect=replies(1)):
+                with self.assertRaises(smoke.Invalid): smoke.preflight(float('inf'))
+
+    def test_failure_report_keeps_null_versions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            smoke.failure_report((None, Path(directory), None, None, {}), smoke.Gap('config_invalid', 'archive transport version'))
+            report = json.loads((Path(directory) / 'archive' / 'archive-smoke.json').read_bytes())
+        self.assertIsNone(report['cli_version'])
+        self.assertIsNone(report['storage_sdk_version'])
 
 if __name__ == '__main__': unittest.main()

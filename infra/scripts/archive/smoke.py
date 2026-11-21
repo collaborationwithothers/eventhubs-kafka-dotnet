@@ -256,12 +256,22 @@ def command(args, deadline, cap=MIB, input_data=None):
         if proc.stdin is not None: proc.stdin.close()
 
 
+VERSION_PATTERN = re.compile(r'[0-9]+\.[0-9]+\.[0-9]+[0-9A-Za-z.+-]{0,32}')
+
+
+def readable_version(value):
+    if not isinstance(value, str) or not value.isascii() or not VERSION_PATTERN.fullmatch(value):
+        raise Invalid()
+    return value
+
+
 def preflight(deadline):
     try:
         code, output, _ = command(['az', 'version', '--output', 'json'], deadline)
         version = json.loads(output, object_pairs_hook=pairs)
-        if code or not isinstance(version, dict) or version.get('azure-cli') != '2.92.0':
+        if code or not isinstance(version, dict):
             raise Invalid()
+        azure_cli = readable_version(version.get('azure-cli'))
         code, output, _ = command(['az', '--version'], deadline)
         matches = re.findall(rb"(?m)^Python location ['\"]([^'\"\r\n]+)['\"]\s*$", output)
         if code or len(matches) != 1:
@@ -270,9 +280,10 @@ def preflight(deadline):
         if not os.path.isabs(python) or not os.path.isfile(python) or not os.access(python, os.X_OK):
             raise Invalid()
         code, output, _ = command([python, '-c', 'import importlib.metadata; print(importlib.metadata.version("azure-storage-blob"))'], deadline)
-        if code or output.strip() != b'12.29.0b1':
+        if code:
             raise Invalid()
-        return python
+        azure_storage_blob = readable_version(output.strip(b' \t\r\n').decode('ascii'))
+        return {'python': python, 'azure_cli': azure_cli, 'azure_storage_blob': azure_storage_blob}
     except (OSError, ValueError, TypeError):
         raise Invalid() from None
 
@@ -474,7 +485,7 @@ def network_diagnostic(python, host, deadline):
         return {'outcome': 'unavailable', 'observation': None}
 
 
-def run_probe(c, deadline, clock=time.monotonic, diagnostic_python=None):
+def run_probe(c, deadline, clock=time.monotonic, diagnostic_python=None, *, transport_versions):
     private, artifacts, host, source, ident, scenario, configuration = c
     prefix = 'v1/{}/{}/{}/{}/{}/'.format(ident['source_commit'], ident['github_run_id'], ident['github_run_attempt'], ident['run_id'], ident['phase'])
     src_name = prefix + 'synthetic-fixture.txt'; dest_name = prefix + 'synthetic-fixture.txt'
@@ -595,7 +606,7 @@ def run_probe(c, deadline, clock=time.monotonic, diagnostic_python=None):
         for name in ('fixture', 'download', 'readback', 'control'):
             (spool / name).unlink(missing_ok=True)
     run = {**ident, 'scenario_id': scenario, 'configuration_id': configuration, 'images': {'loadgen': None, 'verifier': None, 'probe': None}, 'run_kind': 'smoke', 'purpose': 'archive-readiness', 'scientific_admissible': False}
-    manifest = {'schema_version': 1, 'kind': 'run_evidence_archive', 'archive_complete': not gaps, 'run': run, 'destination': {'account_host': host, 'container': 'run-evidence', 'prefix': prefix, 'retention_days': 90}, 'policy': POLICY, 'expected_units': [], 'objects': [obj], 'captures': [], 'totals': totals, 'gaps': list(gaps), 'completion': None}
+    manifest = {'schema_version': 1, 'kind': 'run_evidence_archive', 'archive_complete': not gaps, 'run': run, 'destination': {'account_host': host, 'container': 'run-evidence', 'prefix': prefix, 'retention_days': 90}, 'policy': POLICY, 'expected_units': [], 'objects': [obj], 'captures': [], 'totals': totals, 'gaps': list(gaps), 'completion': None, 'transport_versions': dict(transport_versions)}
     content = encoded(manifest)
     try:
         manifest_ref = verified_write(prefix + 'archive-manifest.json', content)
@@ -628,7 +639,7 @@ def run_probe(c, deadline, clock=time.monotonic, diagnostic_python=None):
         diagnostic_read[target] = sdk_diagnostic(diagnostic_python, hostname, deadline, container) if gaps else {'outcome': 'not_needed', 'token': None, 'read': None}
         diagnostic_network[target] = network_diagnostic(diagnostic_python, hostname, deadline) if gaps else {'outcome': 'not_needed', 'observation': None}
     receipt = {'schema_version': 1, 'kind': 'run_evidence_archive_receipt', 'identity': ident, 'archive_complete': not gaps and completion_ref is not None, 'manifest': manifest_ref, 'completion': completion_ref if not gaps else None, 'gaps': gaps}
-    report = {'schema_version': 1, 'kind': 'archive_smoke', 'synthetic': True, 'scientific_admissible': False, 'live_evidence': bool(checks), 'fresh_cli_connections': True, 'checks': checks, 'observed_bytes': totals['verified_bytes'], 'duration_seconds': round(clock() - start, 3), 'gaps': gaps, 'archive_complete': receipt['archive_complete'], 'cli_version': '2.92.0', 'storage_sdk_version': '12.29.0b1', 'diagnostics': diagnostics, 'sdk_diagnostic': diagnostic_read, 'network_diagnostic': diagnostic_network}
+    report = {'schema_version': 1, 'kind': 'archive_smoke', 'synthetic': True, 'scientific_admissible': False, 'live_evidence': bool(checks), 'fresh_cli_connections': True, 'checks': checks, 'observed_bytes': totals['verified_bytes'], 'duration_seconds': round(clock() - start, 3), 'gaps': gaps, 'archive_complete': receipt['archive_complete'], 'cli_version': transport_versions['azure_cli'], 'storage_sdk_version': transport_versions['azure_storage_blob'], 'diagnostics': diagnostics, 'sdk_diagnostic': diagnostic_read, 'network_diagnostic': diagnostic_network}
     safe_write(public / 'archive-smoke.json', encoded(report))
     safe_write(public / 'archive-receipt.json', encoded(receipt))
     try:
@@ -666,8 +677,8 @@ def main(argv):
         c = config(False)
         if argv[0] == 'run':
             c = config(True)
-        python = preflight(deadline)
-        return 0 if argv[0] == 'preflight' else run_probe(c, deadline, diagnostic_python=python)
+        found = preflight(deadline)
+        return 0 if argv[0] == 'preflight' else run_probe(c, deadline, diagnostic_python=found['python'], transport_versions=found)
     except Invalid:
         if c is not None:
             with contextlib.suppress(OSError, Invalid): failure_report(c, Gap('config_invalid', 'unsupported configuration'))

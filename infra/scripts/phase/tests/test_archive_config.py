@@ -1,5 +1,6 @@
 """Offline checks of the archive configuration boundary."""
 import copy
+import tempfile
 import importlib.util
 from pathlib import Path
 import unittest
@@ -132,6 +133,46 @@ class CaptureInventoryTests(unittest.TestCase):
                 else:
                     with self.assertRaises(archive.InvalidArchiveConfig):
                         archive.validate_manifest(manifest)
+
+    def _manifest_fixture(self):
+        identity = {'github_run_id': '42', 'github_run_attempt': 1, 'run_id': 'a01-42-1', 'phase': 'C0', 'source_commit': 'a' * 40}
+        prefix = 'v1/' + 'a' * 40 + '/42/1/a01-42-1/C0/'
+        manifest = {'schema_version': 1, 'kind': 'run_evidence_archive', 'archive_complete': True,
+                    'run': {**identity, 'scenario_id': 'A01', 'configuration_id': 'C0',
+                            'images': {'loadgen': None, 'verifier': None, 'probe': None},
+                            'run_kind': 'smoke', 'purpose': 'diagnostic', 'scientific_admissible': False},
+                    'destination': {'account_host': 'archive123.blob.core.windows.net', 'container': 'run-evidence',
+                                    'prefix': prefix, 'retention_days': 90},
+                    'policy': dict(archive._common.POLICY),
+                    'expected_units': [], 'objects': [], 'captures': [],
+                    'totals': {'expected_objects': 0, 'verified_objects': 0, 'verified_bytes': 0}, 'gaps': [], 'completion': None}
+        return identity, prefix, manifest
+
+    def test_manifest_transport_versions(self):
+        identity, _, manifest = self._manifest_fixture()
+        valid = {'azure_cli': '2.93.0', 'azure_storage_blob': '12.29.0b1'}
+        for versions in (None, valid):
+            candidate = manifest if versions is None else {**manifest, 'transport_versions': versions}
+            with self.subTest(accepted=versions):
+                self.assertEqual(identity, archive.validate_manifest(candidate))
+        rejected = (None, {}, {'azure_cli': '2.93.0'}, {**valid, 'python': '/x'},
+                    {'azure_cli': 2, 'azure_storage_blob': '12.29.0b1'},
+                    {'azure_cli': '2.93', 'azure_storage_blob': '12.29.0b1'})
+        for versions in rejected:
+            with self.subTest(rejected=versions), self.assertRaises(archive.InvalidArchiveConfig):
+                archive.validate_manifest({**manifest, 'transport_versions': versions})
+
+    def test_publish_requires_transport_versions(self):
+        identity, prefix, manifest = self._manifest_fixture()
+        class Controls:
+            deadline = float('inf')
+            writes = []
+            def write_control(self, name, data, cap):
+                self.writes.append(name)
+        controls = Controls()
+        with tempfile.TemporaryDirectory() as directory, self.assertRaises(archive.InvalidArchiveConfig):
+            archive.publish_controls(controls, manifest, identity, directory, prefix)
+        self.assertEqual([], controls.writes)
 
     def test_manifest_zero_data_and_object_completion_rejected(self):
         identity = {'github_run_id': '42', 'github_run_attempt': 1, 'run_id': 'a01-42-1', 'phase': 'C0', 'source_commit': 'a' * 40}
@@ -283,6 +324,15 @@ class LiteralControlTests(unittest.TestCase):
         for invalid in (manifest.replace(b'"completion":null', b'"completion":{}'), manifest + b' '):
             with self.assertRaises(archive.InvalidArchiveConfig):
                 archive.verify_controls(invalid, marker, receipt_bytes)
+        with_versions = manifest[:-2] + b',"transport_versions":{"azure_cli":"2.93.0","azure_storage_blob":"12.29.0b1"}}\n'
+        versioned_marker = json.loads(marker)
+        versioned_marker['manifest'] = {**versioned_marker['manifest'], 'bytes': len(with_versions), 'sha256': hashlib.sha256(with_versions).hexdigest()}
+        versioned_marker_bytes = json.dumps(versioned_marker, separators=(',', ':')).encode() + b'\n'
+        versioned_receipt = {**receipt, 'manifest': versioned_marker['manifest'],
+                             'completion': {**receipt['completion'], 'bytes': len(versioned_marker_bytes),
+                                            'sha256': hashlib.sha256(versioned_marker_bytes).hexdigest()}}
+        self.assertTrue(archive.verify_controls(with_versions, versioned_marker_bytes,
+                                                json.dumps(versioned_receipt, separators=(',', ':')).encode())['archive_complete'])
 
 
 class RunIdentityTests(unittest.TestCase):

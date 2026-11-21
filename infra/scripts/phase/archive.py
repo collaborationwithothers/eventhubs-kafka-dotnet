@@ -569,8 +569,13 @@ def ensure_canonical(path, content):
                 raise Gap('destination_conflict', 'local canonical mismatch')
 
 
+TRANSPORT_VERSION = re.compile(r'[0-9]+\.[0-9]+\.[0-9]+[0-9A-Za-z.+-]{0,32}')
+
+
 def publish_controls(transfer, manifest, identity, public, prefix):
     """Publish canonical bytes and then the marker; marker failure never rewrites them."""
+    if not isinstance(manifest, dict) or 'transport_versions' not in manifest:
+        raise InvalidArchiveConfig()
     if validate_manifest(manifest) != identity:
         raise InvalidArchiveConfig()
     if not safe_name(prefix.rstrip('/')) or not prefix.endswith('/') or manifest['destination']['prefix'] != prefix:
@@ -615,6 +620,13 @@ def publish_controls(transfer, manifest, identity, public, prefix):
 def validate_manifest(value):
     fields = {'schema_version', 'kind', 'archive_complete', 'run', 'destination', 'policy', 'expected_units',
               'objects', 'captures', 'totals', 'gaps', 'completion'}
+    if isinstance(value, dict) and 'transport_versions' in value:
+        versions = value['transport_versions']
+        if (not isinstance(versions, dict) or set(versions) != {'azure_cli', 'azure_storage_blob'}
+                or any(not isinstance(item, str) or not item.isascii() or not TRANSPORT_VERSION.fullmatch(item)
+                       for item in versions.values())):
+            raise InvalidArchiveConfig()
+        fields = fields | {'transport_versions'}
     if (not isinstance(value, dict) or set(value) != fields or type(value['schema_version']) is not int
             or value['schema_version'] != 1 or value['kind'] != 'run_evidence_archive'
             or type(value['archive_complete']) is not bool or value['completion'] is not None):
@@ -870,6 +882,13 @@ def publication_inventory(data, prefix, identity):
     value = strict_control(data, 1048576)
     fields = {'schema_version', 'identity', 'worker_status', 'bookkeeping_complete', 'worker_complete', 'publication_complete', 'artifacts'}
     names = ('ledger.jsonl', 'manifest.json', 'statistics.jsonl', 'request-lifecycle.jsonl', 'capabilities.json')
+    if isinstance(value, dict) and 'transport_versions' in value:
+        versions = value['transport_versions']
+        if (not isinstance(versions, dict) or set(versions) != {'azure_cli', 'azure_storage_blob'}
+                or any(not isinstance(item, str) or not item.isascii() or not TRANSPORT_VERSION.fullmatch(item)
+                       for item in versions.values())):
+            raise InvalidArchiveConfig()
+        fields = fields | {'transport_versions'}
     if (not isinstance(value, dict) or set(value) != fields or type(value['schema_version']) is not int
             or value['schema_version'] != 1 or value['identity'] != identity
             or not isinstance(value['worker_status'], str)
@@ -2244,7 +2263,8 @@ def execute(phase_instance, environ, deadline=None):
             try_record_archive(phase_instance, local_failure(public, manifest, identity, 'transport', 'ephemeral output unavailable'))
             return 1
         try:
-            _common.preflight(deadline)
+            found = _common.preflight(deadline)
+            manifest['transport_versions'] = {'azure_cli': found['azure_cli'], 'azure_storage_blob': found['azure_storage_blob']}
         except _common.Invalid:
             try_record_archive(phase_instance, local_failure(public, manifest, identity, 'config_invalid', 'archive transport version'))
             return 2
