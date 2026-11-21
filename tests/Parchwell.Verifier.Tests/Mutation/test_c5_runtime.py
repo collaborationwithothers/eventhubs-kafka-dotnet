@@ -18,6 +18,25 @@ APPROVED_RUNNER_PAIR = ('dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea1462
 RUNNER_PATH = 'tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py'
 
 
+class ExecutionWorkflowTests(unittest.TestCase):
+    def test_timing_fingerprint_ignores_only_the_reviewed_companion_action_upgrade(self):
+        step = (b"      - name: Download companion shard evidence\n"
+                b"        if: always() && steps.campaign.outputs.run-id != ''\n")
+        old = b'        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093\n'
+        new = b'        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2\n'
+        placement = (b'        include:\n          - shard: shard-a\n    env:\n'
+                     b'  aggregate:\n      - name: Download coordinator shard evidence\n')
+        baseline = placement + old + step + old
+        updated = placement + old + step + new
+        fingerprint = profile_module.execution_workflow(baseline)
+        self.assertEqual(fingerprint, profile_module.execution_workflow(updated))
+        for other in (placement + new + step + new,
+                      placement.replace(b'    env:\n', b'    env:\n      WORKER: changed\n') + old + step + new,
+                      updated.replace(b' # v8.0.2', b' # another action')):
+            with self.subTest(workflow=other):
+                self.assertNotEqual(fingerprint, profile_module.execution_workflow(other))
+
+
 class RequiredCheckIntegrationTests(unittest.TestCase):
     def invoke_step(self, event, fail_check, fail_discovery=False):
         import yaml
