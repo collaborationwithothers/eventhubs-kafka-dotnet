@@ -1,8 +1,8 @@
 # C5 hosted timing diagnostic
 
-`verifier-c5-sizing.yml` is a manual, CPU-only diagnostic. Dispatch it on `main` only, after the workflow change merges. For the issue 494 CI and review corrections, use the default source `0be50887eb42ba53fb9df934d2062c9e21a59850`. The workflow rejects other sources and verifies the checked-out commit and each matrix row's target SHA-256.
+`verifier-c5-sizing.yml` is a manual, CPU-only diagnostic. Dispatch it on `main` only, after the workflow change merges. For the issue 494 classification rebalance, use the default source `e9910d68f149be96da6ff921af89774526c95c94`. The workflow rejects other sources and verifies the checked-out commit and each matrix row's target SHA-256.
 
-The matrix contains 13 selectors each for `Judge/B10FinalJudge.cs` and `VerifyRun/B10Final/B10FinalClassification.cs`. The [approved repair](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317) calls for fresh measurements of both changed targets. The [previous 13-job diagnostic](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829) measured the rebalanced final projection codec, whose source and selectors match the corrected revision.
+The matrix contains `p7`, `p8` and `crossing` from `VerifyRun/B10Final/B10FinalClassification.cs`. The [26-job diagnostic](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44878841189) verified 25 receipts. The classification `p7` selection reached the inner deadline. The [approved rebalance](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7059649240) moves one boundary and measures the three changed selections.
 
 Each shard has a separate standard `ubuntu-24.04` job. `local-shard` uses the committed selector and required isolation for that physical shard. Its inner deadline is 2,650 seconds, the outer deadline including the termination grace is 2,700 seconds, and the job limit is 50 minutes. The diagnostic has no aggregate acceptance step.
 
