@@ -245,6 +245,27 @@ public sealed class B10FinalRestartAgreementTests
     }
 
     [Fact]
+    public async Task Given_OptionalNestedBreakdowns_When_ReadingArms_Then_AcceptsOmissionAndRejectsMalformedPresence()
+    {
+        (B10FinalInput input, JsonObject data) = await EvidenceAsync();
+        foreach (string path in new[] { "arms/0", "arms/0/members/0" })
+        {
+            JsonObject omitted = data.DeepClone().AsObject();
+            At(omitted, path).AsObject().Remove("duplicate_breakdown");
+            Assert.True(Accepts(input, omitted));
+            foreach (string literal in new[] { "null", "{}", "{\"duplicate_same_attempt\":0}",
+                "{\"duplicate_same_attempt\":-1,\"duplicate_different_attempt\":0}",
+                "{\"duplicate_same_attempt\":9223372036854775807,\"duplicate_different_attempt\":1}",
+                "{\"duplicate_same_attempt\":0,\"duplicate_different_attempt\":0,\"extra\":0}" })
+            {
+                JsonObject changed = data.DeepClone().AsObject();
+                At(changed, path)["duplicate_breakdown"] = JsonNode.Parse(literal);
+                Assert.False(Accepts(input, changed));
+            }
+        }
+    }
+
+    [Fact]
     public async Task Given_UnknownOrMissingMemberAtAnyNestedLevel_When_ReadingA3Arms_Then_ClosedShapeRejects()
     {
         (B10FinalInput input, JsonObject data) = await EvidenceAsync();
@@ -253,7 +274,7 @@ public sealed class B10FinalRestartAgreementTests
         {
             JsonObject unknown = data.DeepClone().AsObject(); At(unknown, path).AsObject()["unknown"] = true;
             Assert.False(Accepts(input, unknown));
-            foreach (string field in At(data, path).AsObject().Select(pair => pair.Key))
+            foreach (string field in At(data, path).AsObject().Select(pair => pair.Key).Where(field => field != "duplicate_breakdown"))
             {
                 JsonObject missing = data.DeepClone().AsObject(); At(missing, path).AsObject().Remove(field);
                 Assert.False(Accepts(input, missing));
@@ -332,6 +353,8 @@ public sealed class B10FinalRestartAgreementTests
                 foreach (long number in new[] { -1, 0, 1, maximum })
                 {
                     JsonObject changed = data.DeepClone().AsObject(); At(changed, path)[field] = number;
+                    if (path.EndsWith("/duplicate_breakdown", StringComparison.Ordinal))
+                        At(changed, path)[field == "duplicate_same_attempt" ? "duplicate_different_attempt" : "duplicate_same_attempt"] = 0;
                     Assert.Equal(signed || number >= 0, ShapeAccepts(changed));
                 }
                 if (maximum == int.MaxValue)

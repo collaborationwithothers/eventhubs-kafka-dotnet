@@ -8,7 +8,7 @@ namespace Parchwell.Verifier.VerifyRun.Judgement;
 
 internal sealed record B10SweepWindows(RunWindow Original, RunWindow Late);
 
-internal sealed record B10LateWriteJudgement(bool Valid, OutcomeCounts? Counts, IReadOnlyList<string> Reasons);
+internal sealed record B10LateWriteJudgement(bool Valid, OutcomeCounts? Counts, IReadOnlyList<string> Reasons, DuplicateBreakdown? DuplicateBreakdown = null);
 
 /// <summary>Validates immutable sweep boundaries and reconciles each repeat's complete observation union.</summary>
 internal static class B10LateWriteChecks
@@ -62,7 +62,7 @@ internal static class B10LateWriteChecks
             if(record.InstanceId is null||!owned.Contains(record.InstanceId)||record.Problems.Any(p=>p.Field=="instance-id"))continue;
             if(!Retain(record))return Invalid("b10_record_reconciliation_invalid");
         }
-        return new(true,OutcomeClassifier.Classify(rows,records),[]);
+        return new(true,OutcomeClassifier.Classify(rows,records),[],DuplicateClassifier.TryClassify(records));
 
         bool Retain(ConsumedRecord record)
         {

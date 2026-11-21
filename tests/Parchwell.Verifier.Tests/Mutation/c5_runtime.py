@@ -178,12 +178,17 @@ def _timestamp(value):
 
 
 def expected_layout_at_head(head, repository):
-    """Read the production matrix from the measured revision without a network call."""
+    """Read a historical single-run matrix from the measured revision."""
     if not isinstance(head, str) or not re.fullmatch(r'[0-9a-f]{40}', head):
         raise ValueError('invalid head SHA')
     try:
+        companion = subprocess.check_output(
+            ['git', 'ls-tree', '--name-only', head, '--', COMPANION_WORKFLOW],
+            cwd=repository, text=True, stderr=subprocess.DEVNULL)
+        if companion:
+            raise ValueError('use c5_campaign.py terminal for coordinated C5 runs')
         text = subprocess.check_output(
-            ['git', 'show', f'{head}:.github/workflows/verifier-c5-mutation.yml'],
+            ['git', 'show', f'{head}:{WORKFLOW}'],
             cwd=repository, text=True, stderr=subprocess.DEVNULL)
     except (OSError, subprocess.CalledProcessError) as error:
         raise ValueError('measured workflow unavailable') from error
@@ -317,7 +322,10 @@ import c5_workflow as workflow
 
 REPO = ROOT
 WORKFLOW = '.github/workflows/verifier-c5-mutation.yml'
+COMPANION_WORKFLOW = '.github/workflows/verifier-c5-mutation-companion.yml'
+CAMPAIGN_LIMITS = {WORKFLOW: 178, COMPANION_WORKFLOW: 146}
 RUNNER = 'tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py'
+CAMPAIGN_VALIDATOR = 'tests/Parchwell.Verifier.Tests/Mutation/c5_campaign.py'
 TEST_PROJECT = 'tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj'
 HEX = re.compile(r'^[0-9a-f]{64}$')
 PROJECTION = 'tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py'
@@ -325,7 +333,7 @@ PROJECTION_TIMING_PAIR = ('b1c9a96740111676caa0b9e95db90b4ff93f07ff2317710233558
                           '3771b676b8d5856eb34705dcaa3e9c34ffd8184dd514179a1bf85ee7535fb16f')
 RUNNER_TIMING_PAIR = ('dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea14629a0af4625',
                       'c147bb8000ef1273609052660e80b20c8da8bf33a77a0df65a94d32a5f7a1c40')
-NON_RENEWABLE = {RUNNER, WORKFLOW, PROJECTION,
+NON_RENEWABLE = {RUNNER, WORKFLOW, COMPANION_WORKFLOW, CAMPAIGN_VALIDATOR, PROJECTION,
                  'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json', '.config/dotnet-tools.json'}
 EXCLUDED = ('Component/', 'Support/ComponentEvidenceBuilder.cs', 'Host/VerifyRunHandlerTests.cs',
             'Host/VerifierHostTests.cs', 'Host/B10AbruptRejectionTests.cs')
@@ -388,6 +396,18 @@ def workflow_matrix(data):
     return dict(pairs)
 
 
+def workflow_layout(ref, paired):
+    coordinator = workflow_matrix(blob(ref, WORKFLOW))
+    if not paired:
+        return coordinator
+    companion = workflow_matrix(blob(ref, COMPANION_WORKFLOW))
+    if (not coordinator or not companion or coordinator.keys() & companion.keys()
+            or len(coordinator) > CAMPAIGN_LIMITS[WORKFLOW]
+            or len(companion) > CAMPAIGN_LIMITS[COMPANION_WORKFLOW]):
+        raise ValueError('overlapping or oversized C5 campaign matrices')
+    return coordinator | companion
+
+
 def project_closure(ref, names):
     projects = {TEST_PROJECT, 'src/Parchwell.Verifier/Parchwell.Verifier.csproj'}
     pending = list(projects)
@@ -446,6 +466,8 @@ def input_maps(ref, declared_targets=None):
         '.config/dotnet-tools.json', 'docs/operations/a01-runtime-limits.json', RUNNER, WORKFLOW,
         'tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py',
         'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json'}
+    if COMPANION_WORKFLOW in names:
+        selected.update((COMPANION_WORKFLOW, CAMPAIGN_VALIDATOR))
     ancestors = {str(parent) for project in projects for parent in PurePosixPath(project).parents}
     selected.update(p for p in names if (PurePosixPath(p).name in ('Directory.Build.props', 'Directory.Build.targets', 'Directory.Packages.props') and str(PurePosixPath(p).parent) in ancestors) or re.fullmatch(r'(?:NuGet\.[Cc]onfig|global\.json|.*?/packages\.lock\.json)', p))
     selected.update(p for p in names if re.fullmatch(r'scenarios/profiles/[^/]+\.yaml', p))
@@ -473,7 +495,7 @@ def input_maps(ref, declared_targets=None):
                 raise ValueError('unsupported build inclusion')
         if p == RUNNER:
             data = execution_runner(data)
-        elif p == WORKFLOW:
+        elif p in CAMPAIGN_LIMITS:
             data = execution_workflow(data)
         result[p] = digest(data)
     targets = {p: digest(blob(ref, 'src/Parchwell.Verifier/' + p)) for p, _ in declared_targets.values()}
@@ -832,6 +854,25 @@ COHORT_LITERAL_NAMES = {'COHORT_BOOTSTRAP_SPANS', 'COHORT_SOURCE_SHA256',
                         'COHORT_INVENTORY_SHA256', 'COHORT_COORDINATES'}
 CONFIG_PATH = 'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json'
 RUNNER_REFERENCE_COMMIT = '1e38605cceaf14c92ec9157e8eead43eedbf3a8d'
+# Reviewed transition for the retained owners in issue 494. These digests
+# exclude only the literal cuts/target tables and matrix rows.
+CAPACITY_BASELINE = '0f41390beadfbec7d0f7d7819bbd834744ca85df'
+CAPACITY_BASELINE_RUNNER = 'd4b1fb55e3e7dce9294d3914dc0c77f5b2cddc46c25132043eb9383025f1ee50'
+CAPACITY_EXECUTION = {
+    RUNNER: '66e6263885576b8b6c1078b935247b859dc00791d214a21c2fd1d989ab7a5933',
+    WORKFLOW: 'cda07e2545340ade8d658ccfcce1ae65a472c97690c35186ab5f804712a46569',
+    COMPANION_WORKFLOW: '1fade2b54ce8b20ed963ba5ebc5ff8cd0e6315f67b402cb46b1bfe695ffbebfb',
+    CAMPAIGN_VALIDATOR: '1422960e78372e5ab3c0e605c161816434627cb20baab47cda43b703fef7d9e0',
+}
+FOLLOWUP_BASELINE = 'd28b1fc49ca53e48259101701d0fbb7e3271a0c5'
+FOLLOWUP_EXECUTION = {
+    **CAPACITY_EXECUTION,
+    RUNNER: '9ba2b444dcd5e3c06e2e24bb2fe6b1bc6e6dcd67f9e7eaa3ad57c9047d9817b9',
+}
+RESULT_COHORTS = {
+    'RESULT_CODEC_COHORT': ('verifier-result-codec-p2', range(4093, 4103), {'4093', '4098'}),
+    'RESULT_CODEC_P4_COHORT': ('verifier-result-codec-p4', range(4110, 4120), {'4110', '4115'}),
+}
 
 
 def runner_literals(data, legacy=False):
@@ -839,19 +880,66 @@ def runner_literals(data, legacy=False):
     tree = ast.parse(data.decode('utf-8'))
     names = ({'COHORT_BOOTSTRAP_SPANS'} if legacy else COHORT_LITERAL_NAMES) | {'TARGETS', 'PRIMARY_CUTS'}
     assignments = {}
+    codecs = {}
     for node in tree.body:
         if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) and node.targets[0].id in names:
             name = node.targets[0].id
             if name in assignments:
                 raise ValueError('duplicate runner declaration')
             assignments[name] = node
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id in RESULT_COHORTS:
+            name = node.target.id
+            if (name in codecs or not isinstance(node.annotation, ast.Name)
+                    or node.annotation.id != 'CohortDefinition' or node.value is None):
+                raise ValueError('invalid typed cohort declaration')
+            codecs[name] = node
     if set(assignments) != names:
         raise ValueError('missing runner declaration')
     for node in ast.walk(tree):
         if isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)) and node.id in names:
             if not any(node is assignment.targets[0] for assignment in assignments.values()):
                 raise ValueError('runner declaration rebound')
+        if (isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del))
+                and node.id in RESULT_COHORTS
+                and (node.id not in codecs or node is not codecs[node.id].target)):
+            raise ValueError('typed cohort declaration rebound')
     values = {name: ast.literal_eval(node.value) for name, node in assignments.items()}
+    for name, codec in codecs.items():
+        # literal_eval accepts duplicate keys, including in nested dictionaries.
+        for node in ast.walk(codec.value):
+            if isinstance(node, ast.Dict):
+                keys = [ast.literal_eval(key) for key in node.keys]
+                if len(keys) != len(set(keys)):
+                    raise ValueError('duplicate typed cohort key')
+        declaration = ast.literal_eval(codec.value)
+        if (not isinstance(declaration, dict)
+                or set(declaration) != {'source_sha256', 'inventory_sha256', 'bootstrap', 'identities'}
+                or any(not isinstance(declaration[key], str) or not HEX.fullmatch(declaration[key])
+                       for key in ('source_sha256', 'inventory_sha256'))):
+            raise ValueError('invalid typed cohort declaration')
+        identities, bootstrap = declaration['identities'], declaration['bootstrap']
+        _, references, first_members = RESULT_COHORTS[name]
+        if (not isinstance(identities, dict) or set(identities) != set(map(str, references))
+                or not isinstance(bootstrap, dict) or set(bootstrap) != first_members):
+            raise ValueError('invalid typed cohort ownership')
+        def valid_span(span):
+            return (isinstance(span, tuple) and len(span) == 2
+                    and all(type(n) is int and n >= 0 for n in span) and span[0] < span[1])
+        if any(not isinstance(item, tuple) or len(item) != 2 or not valid_span(item[0])
+               or not isinstance(item[1], tuple) or any(not valid_span(span) for span in item[1])
+               for item in bootstrap.values()):
+            raise ValueError('invalid typed cohort bootstrap')
+        for identity in identities.values():
+            if (not isinstance(identity, dict) or set(identity) != {'mutatorName', 'replacement', 'location', 'static'}
+                    or not isinstance(identity['mutatorName'], str) or not identity['mutatorName']
+                    or not isinstance(identity['replacement'], str) or identity['static'] is not True
+                    or not isinstance(identity['location'], dict) or set(identity['location']) != {'start', 'end'}):
+                raise ValueError('invalid typed cohort identity')
+            for point in identity['location'].values():
+                if (not isinstance(point, dict) or set(point) != {'line', 'column'}
+                        or any(type(n) is not int or n < 1 for n in point.values())):
+                    raise ValueError('invalid typed cohort location')
+        values[name] = declaration
     targets, cuts = values['TARGETS'], values['PRIMARY_CUTS']
     if (not isinstance(targets, dict) or not targets or any(
             not isinstance(k, str) or not k or not isinstance(v, tuple) or len(v) != 2
@@ -893,6 +981,27 @@ def runner_literals(data, legacy=False):
     return values, masked
 
 
+def committed_physical_owners(declarations, matrix):
+    """Reconstruct the committed physical mapping and require exact matrix coverage."""
+    parts = workflow.build_parts(declarations['TARGETS'], declarations['PRIMARY_CUTS'])
+    cohorts = {}
+    for index in range(1, 4):
+        owner = f'b10-final-projection-codec-p{index}'
+        cohorts[owner] = tuple(f'{owner}-{suffix}' for suffix in ('a', 'b'))
+    for declaration, (owner, _, _) in RESULT_COHORTS.items():
+        if declaration in declarations:
+            cohorts[owner] = (f'{owner}-a', f'{owner}-b')
+    result = {}
+    for name, part in parts.items():
+        for physical in cohorts.get(name, (name,)):
+            if physical in result:
+                raise ValueError('duplicate physical owner')
+            result[physical] = (declarations['TARGETS'][part[0]][0], part)
+    if not isinstance(matrix, dict) or matrix != {name: value[0] for name, value in result.items()}:
+        raise ValueError('committed matrix ownership mismatch')
+    return result
+
+
 def strict_json(data):
     def unique(pairs):
         result = {}
@@ -912,8 +1021,9 @@ def proof_tree(ref):
     data = blob(ref, RUNNER)
     legacy = digest(execution_runner(data)) == RUNNER_TIMING_PAIR[0]
     declarations, code = runner_literals(data, legacy=legacy)
-    return (declarations, code, input_maps(ref, declarations['TARGETS']),
-            strict_json(blob(ref, CONFIG_PATH)), workflow_matrix(blob(ref, WORKFLOW)))
+    maps = input_maps(ref, declarations['TARGETS'])
+    return (declarations, code, maps, strict_json(blob(ref, CONFIG_PATH)),
+            workflow_layout(ref, COMPANION_WORKFLOW in maps[0]))
 
 
 def selector_ast(data):
@@ -952,18 +1062,92 @@ def legacy_runner_bridge(commit, old, new_code):
     return reference
 
 
-def committed_effective_config(context, owner, shard, head):
+def same_selection(old, old_matrix, new, new_matrix, owner, shard):
+    old_physical = committed_physical_owners(old, old_matrix)
+    new_physical = committed_physical_owners(new, new_matrix)
+    selection = new_physical.get(shard)
+    if selection is None or selection[0] != owner or old_physical.get(shard) != selection:
+        return False
+    key = selection[1][0]
+    return (old['TARGETS'][key] == new['TARGETS'][key]
+            and old['PRIMARY_CUTS'].get(key) == new['PRIMARY_CUTS'].get(key))
+
+
+def selected_invocation(declarations, matrix, shard):
+    """Describe the bounds passed to one physical owner by the pinned runner."""
+    physical = committed_physical_owners(declarations, matrix).get(shard)
+    if physical is None:
+        return None
+    target, (key, index, count) = physical
+    cuts = declarations['PRIMARY_CUTS'].get(key)
+    if cuts is None:
+        return target, key, 'member', index, count
+    bounds = (0, *cuts, workflow.SPAN_END)
+    if len(bounds) != count or any(left >= right for left, right in zip(bounds, bounds[1:])):
+        raise ValueError('invalid committed span layout')
+    if index == count:
+        return target, key, 'crossing', cuts
+    return target, key, 'primary', bounds[index - 1:index + 1]
+
+
+def followup_equivalent(old, old_maps, old_config, new, new_maps, new_config):
+    """Limit the paired runner change to the reviewed addition of the p4 cohort."""
+    old_shared, old_targets = old_maps
+    new_shared, new_targets = new_maps
+    return ({path: old_shared.get(path) for path in CAPACITY_EXECUTION} == CAPACITY_EXECUTION
+            and {path: new_shared.get(path) for path in FOLLOWUP_EXECUTION} == FOLLOWUP_EXECUTION
+            and {**old_shared, RUNNER: FOLLOWUP_EXECUTION[RUNNER]} == new_shared
+            and old_targets == new_targets and old_config == new_config
+            and all(old[name] == new[name] for name in (*COHORT_LITERAL_NAMES, 'RESULT_CODEC_COHORT'))
+            and 'RESULT_CODEC_P4_COHORT' not in old and 'RESULT_CODEC_P4_COHORT' in new)
+
+
+@functools.lru_cache(maxsize=8)
+def capacity_bridge(head):
+    """Bind the one reviewed transition to identical worker templates and inputs."""
+    baseline = proof_tree(CAPACITY_BASELINE)
+    current = proof_tree(head)
+    old_shared, old_targets = baseline[2]
+    new_shared, new_targets = current[2]
+    if (old_shared.get(RUNNER) != CAPACITY_BASELINE_RUNNER
+            or {path: new_shared.get(path) for path in CAPACITY_EXECUTION} not in (
+                CAPACITY_EXECUTION, FOLLOWUP_EXECUTION)
+            or {p: h for p, h in old_shared.items() if p not in CAPACITY_EXECUTION}
+            != {p: h for p, h in new_shared.items() if p not in CAPACITY_EXECUTION}
+            or old_targets != new_targets or baseline[3] != current[3]
+            or any(baseline[0][key] != current[0][key] for key in COHORT_LITERAL_NAMES)):
+        raise ValueError('capacity transition input mismatch')
+
+    def worker(ref, path):
+        content = execution_workflow(blob(ref, path))
+        return content.split(b'\njobs:\n', 1)[1].split(b'\n  aggregate:\n', 1)[0].rstrip()
+
+    prior_worker = worker(CAPACITY_BASELINE, WORKFLOW)
+    if any(worker(head, path) != prior_worker for path in CAMPAIGN_LIMITS):
+        raise ValueError('capacity transition worker mismatch')
+    return baseline, workflow_matrix(blob(head, COMPANION_WORKFLOW))
+
+
+def _committed_effective_config(context, owner, shard, head):
     """Derive an unchanged shard invocation family from two committed trees."""
     try:
         commit = context['source_commit']
         if not head or not shard or not re.fullmatch(r'[0-9a-f]{40}', commit):
             return False
         old, old_code, old_maps, old_config, old_matrix = proof_tree(commit)
-        new, new_code, _, new_config, new_matrix = proof_tree(head)
+        new, new_code, new_maps, new_config, new_matrix = proof_tree(head)
+        followup = (commit == FOLLOWUP_BASELINE
+                    and followup_equivalent(old, old_maps, old_config, new, new_maps, new_config))
+        if COMPANION_WORKFLOW in new_maps[0] and COMPANION_WORKFLOW not in old_maps[0]:
+            baseline, retained = capacity_bridge(head)
+            if (retained.get(shard) != owner or shard in workflow.COHORTS
+                    or not same_selection(baseline[0], baseline[4], new, new_matrix, owner, shard)
+                    or old_maps[0].get(WORKFLOW) != baseline[2][0][WORKFLOW]):
+                return False
+            new, new_code, _, new_config, new_matrix = baseline
         legacy = old_maps[0].get(RUNNER) == RUNNER_TIMING_PAIR[0]
         reference = legacy_runner_bridge(commit, old, new_code) if legacy else None
-        if ((legacy and reference is None) or (not legacy and old_code != new_code)
-                or new['TARGETS'] != workflow.TARGETS or new['PRIMARY_CUTS'] != workflow.PRIMARY_CUTS):
+        if (legacy and reference is None) or (not legacy and old_code != new_code and not followup):
             return False
         if old_maps != (context['shared_inputs'], context['target_sources']):
             return False
@@ -979,39 +1163,348 @@ def committed_effective_config(context, owner, shard, head):
         new_settings = dict(new_config['stryker-config'])
         old_targets = old_settings.pop('mutate')
         new_targets = new_settings.pop('mutate')
-        if old_settings != new_settings or new_config != workflow.BASE_CONFIG:
+        expected_settings = {k: v for k, v in workflow.BASE_CONFIG['stryker-config'].items() if k != 'mutate'}
+        if old_settings != new_settings or new_settings != expected_settings:
             return False
         if [item for item in new_targets if item in old_targets] != old_targets:
             return False
-        old_parts = workflow.build_parts(old['TARGETS'], old['PRIMARY_CUTS'])
-        def physical(parts, declared):
-            result = {}
-            for name, part in parts.items():
-                members = [physical for physical, (logical, _) in workflow.COHORTS.items() if logical == name]
-                for member in members or [name]:
-                    result[member] = (declared[part[0]][0], part)
-            return result
-        old_physical = physical(old_parts, old['TARGETS'])
-        new_physical = physical(workflow.build_parts(new['TARGETS'], new['PRIMARY_CUTS']), new['TARGETS'])
-        if (old_matrix != {k: v[0] for k, v in old_physical.items()}
-                or new_matrix != {k: v[0] for k, v in new_physical.items()}
-                or old_physical.get(shard) != new_physical.get(shard)
-                or new_physical.get(shard, (None,))[0] != owner):
-            return False
-        key = new_physical[shard][1][0]
-        if old['TARGETS'].get(key) != new['TARGETS'].get(key) or old['PRIMARY_CUTS'].get(key) != new['PRIMARY_CUTS'].get(key):
+        if followup:
+            selected = selected_invocation(new, new_matrix, shard)
+            if selected is None or selected[0] != owner or selected_invocation(old, old_matrix, shard) != selected:
+                return False
+        elif not same_selection(old, old_matrix, new, new_matrix, owner, shard):
             return False
         if shard in workflow.COHORTS:
             cohort_data = reference if legacy else old
             if (any(cohort_data[k] != new[k] for k in COHORT_LITERAL_NAMES)
                     or (legacy and cohort_data['COHORT_SOURCE_SHA256'] != context['target_sources'].get(owner))):
                 return False
-        # Same source, cuts, ownership, runner code and settings imply identical
-        # shard_config and every isolated_config for the same measured node plan.
-        source = blob(head, 'src/Parchwell.Verifier/' + owner)
-        workflow.shard_config(shard, source)
-        workflow.shard_static_regions(shard, source)
+        # Qualification separately checks the generated selection at the current head.
         return True
+    except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
+        return False
+
+
+# The owner accepted timing risk for unchanged selections across this correction.
+# https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739
+REVIEW_CORRECTION_PRIOR = 'e8fd9bbbe1a71098c957515b3058d60f1ddab361'
+REVIEW_CORRECTION = '52a056fea353c9457f3c1ed7da689c62733d13a3'
+REVIEW_CORRECTION_TARGET = 'Common/Phase/B10FinalProjectionCodec.cs'
+REVIEW_CORRECTION_COHORT_PINS = frozenset({'COHORT_SOURCE_SHA256', 'COHORT_INVENTORY_SHA256'})
+REVIEW_CORRECTION_SHARED = frozenset({
+    'tests/Parchwell.Verifier.Tests/Judge/B10FinalJudgeTests.cs',
+    'tests/Parchwell.Verifier.Tests/Judge/B10FinalProjectionCodecTests.cs',
+    'tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs',
+    'tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs',
+    'tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs',
+    'tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs',
+})
+
+
+# Approved diagnostic receipts retain their own source across this exact rebalance.
+# https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7045193559
+REBALANCED_SOURCE = '06d999c33a33e0317af03e557b1048c4336f1bc8'
+REBALANCED_CODEC_CUTS = (1109, 1747, 2198, 3912, 5278, 6812, 8327, 9610, 10753, 11892, 13262, 14786, 16454, 18430)
+REBALANCED_RECEIPTS = {'b10-final-projection-codec-p1-a': ('14607930859',
+                                     '0c56bd10ffcfe70697c192eb39d43f03fc1affcb20cd4c09febaf3b65aabb7f4',
+                                     '74a711c31e71438260353da9e5311a4d0698ad7a065135c8254ca31441d74588',
+                                     (0, 0, 1, 3, 1046, 1049),
+                                     1047.784846148),
+ 'b10-final-projection-codec-p1-b': ('14607742039',
+                                     '9c058ce96348ba1317a68a12bdaca52c2042dadbacf4c2af11245c73da5bd0f5',
+                                     '74a711c31e71438260353da9e5311a4d0698ad7a065135c8254ca31441d74588',
+                                     (0, 0, 1, 4, 1253, 1257),
+                                     1255.189522693),
+ 'b10-final-projection-codec-p2-a': ('14607309621',
+                                     '2a2b6d24030126bc64facfd773352c90f33f1abd6b265715e253115d657487eb',
+                                     '9620121f2c0cadaf7ff493b206547da5e9e4d1b89287250596b9b172ff6c9800',
+                                     (0, 0, 1, 4, 1544, 1548),
+                                     1546.675887856),
+ 'b10-final-projection-codec-p2-b': ('14607712890',
+                                     '31e10dc270349565ed1a7d18a1ad7c2373d26ab04f3bb7d2a4789c44c8776522',
+                                     '9620121f2c0cadaf7ff493b206547da5e9e4d1b89287250596b9b172ff6c9800',
+                                     (0, 0, 1, 3, 1476, 1479),
+                                     1478.456102636),
+ 'b10-final-projection-codec-p3-a': ('14607513063',
+                                     'e0443978318a38025426a1cbb930586d3f9af970600ca22ff75f16011c6de8da',
+                                     '81b9a34ba3cb5d370256ec6a40ea43aea0410848dafcceb025d57b1257b98bdd',
+                                     (0, 0, 1, 4, 1415, 1419),
+                                     1417.123127666),
+ 'b10-final-projection-codec-p3-b': ('14607304850',
+                                     '749d0189a32e8002edddd8f0d2276d3ab8f7d19bd41352283ff6ccc3fbadcd3a',
+                                     '81b9a34ba3cb5d370256ec6a40ea43aea0410848dafcceb025d57b1257b98bdd',
+                                     (0, 0, 1, 4, 1541, 1545),
+                                     1543.904961873)}
+
+def rebalance_trees(head):
+    """Prove the approved codec cuts and retain the original static geometry."""
+    old = proof_tree(REVIEW_CORRECTION)
+    new = proof_tree(REBALANCED_SOURCE)
+    if proof_tree(head) != new:
+        return None
+    old_tables, old_code, old_maps, old_config, old_matrix = old
+    new_tables, new_code, new_maps, new_config, new_matrix = new
+    expected = dict(old_tables)
+    cuts = dict(old_tables['PRIMARY_CUTS'])
+    codec_cuts = cuts['b10-final-projection-codec']
+    if (len(codec_cuts) != len(REBALANCED_CODEC_CUTS)
+            or codec_cuts[:3] != REBALANCED_CODEC_CUTS[:3]):
+        return None
+    cuts['b10-final-projection-codec'] = REBALANCED_CODEC_CUTS
+    expected['PRIMARY_CUTS'] = cuts
+    if (expected != new_tables or (old_code, old_maps, old_config, old_matrix)
+            != (new_code, new_maps, new_config, new_matrix)):
+        return None
+    return old, new
+
+
+# These exact corrections retain timing only for an unchanged target and selector.
+# https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317
+CI_REPAIR_PRIOR = '33f1d4618e22b0c125a1c097dc68db735a4db774'
+CI_REPAIR_SOURCE = '0be50887eb42ba53fb9df934d2062c9e21a59850'
+CI_REPAIR_OWNERS = frozenset({'b10-final-judge', 'b10-final-classification'})
+CI_REPAIR_TEST = 'tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs'
+CI_REPAIR_REBALANCE = 'e9910d68f149be96da6ff921af89774526c95c94'
+CI_REPAIR_CAPACITY = '6982956ae1f6d14f8f2f4b53e8d6778b40216d56'
+CI_REPAIR_CLASSIFIER = 'b10-final-classification'
+# Shared inputs already present on the expanded sizing source.
+# https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313
+CAPACITY_SHARED_MAIN = ('50a208b7f74bb0c149f7242b7e6f423417233b7c',
+                        'd46720e62d79c363386c1f3b3f37791819fa9c7a')
+# Exact joined product input tree when PR 573 merged during sizing.
+# https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822
+CI_REPAIR_CAPACITY_COMBINED = '871b100e3c77033656e6f081360da5cf26cabb64'
+CAPACITY_COMBINED_SHARED = frozenset({
+    'src/Parchwell.Verifier/Judge/ConsumerPhaseEvidence.cs',
+    'src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs',
+    'tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs',
+    'tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs',
+})
+# The hosted review correction requires fresh timing for the classifier.
+# https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061711703
+CI_REPAIR_OWNERSHIP_SOURCE = 'e520f829001dc1ea76b10df49b2277b26e815872'
+
+
+def classifier_ownership_matches(combined, current):
+    """Check the exact target, shared regression and relocated cut changes."""
+    if current != proof_tree(CI_REPAIR_OWNERSHIP_SOURCE):
+        return False
+    old, old_code, (old_shared, old_targets), old_config, old_matrix = combined
+    new, new_code, (new_shared, new_targets), new_config, new_matrix = current
+    key = CI_REPAIR_CLASSIFIER
+    target = old['TARGETS'][key][0]
+    cuts = {**old['PRIMARY_CUTS'], key: new['PRIMARY_CUTS'][key]}
+    return (new == {**old, 'PRIMARY_CUTS': cuts}
+            and (old_code, old_config, old_matrix) == (new_code, new_config, new_matrix)
+            and new_shared[CI_REPAIR_TEST] != old_shared[CI_REPAIR_TEST]
+            and new_shared == {**old_shared, CI_REPAIR_TEST: new_shared[CI_REPAIR_TEST]}
+            and new_targets[target] != old_targets[target]
+            and new_targets == {**old_targets, target: new_targets[target]})
+
+
+@functools.lru_cache(maxsize=4)
+def classifier_capacity_trees(head):
+    """Prove the expanded layout leaves other shards' executable selections intact."""
+    prior = proof_tree(CI_REPAIR_REBALANCE)
+    expanded = proof_tree(CI_REPAIR_CAPACITY)
+    current = proof_tree(head)
+    if current != expanded:
+        combined = proof_tree(CI_REPAIR_CAPACITY_COMBINED)
+        if (combined[:2], combined[2][1], combined[3:]) != (expanded[:2], expanded[2][1], expanded[3:]):
+            return None
+        sized, joined = expanded[2][0], combined[2][0]
+        if {path for path in sized.keys() | joined.keys() if sized.get(path) != joined.get(path)} != CAPACITY_COMBINED_SHARED:
+            return None
+        if current != combined and not classifier_ownership_matches(combined, current):
+            return None
+    old, old_code, (old_shared, old_targets), old_config, _ = prior
+    new, new_code, (new_shared, new_targets), new_config, _ = expanded
+    key = CI_REPAIR_CLASSIFIER
+    classifier = old['TARGETS'][key][0]
+    expected = {**old, 'TARGETS': {**old['TARGETS'], key: (classifier, 18)},
+                'PRIMARY_CUTS': {**old['PRIMARY_CUTS'], key: new['PRIMARY_CUTS'][key]}}
+    if (expected != new or len(new['PRIMARY_CUTS'][key]) != 17
+            or (old_code, old_targets, old_config) != (new_code, new_targets, new_config)):
+        return None
+    measured, approved = (proof_tree(ref)[2][0] for ref in CAPACITY_SHARED_MAIN)
+    changed = {path for path in measured.keys() | approved.keys() if measured.get(path) != approved.get(path)}
+    expected_shared = dict(old_shared)
+    for path in changed:
+        if path in NON_RENEWABLE or old_shared.get(path) != measured.get(path):
+            return None
+        if path in approved:
+            expected_shared[path] = approved[path]
+        else:
+            expected_shared.pop(path)
+    old_check = b'    require(len(a) <= 172 and len(b) <= 146 and not set(a) & set(b),\n'
+    new_check = (b"    require(len(a) <= c5_runtime.CAMPAIGN_LIMITS[PATHS['coordinator']]\n"
+                 b"            and len(b) <= c5_runtime.CAMPAIGN_LIMITS[PATHS['companion']] and not set(a) & set(b),\n")
+    old_validator = blob(CI_REPAIR_REBALANCE, CAMPAIGN_VALIDATOR)
+    if old_validator.count(old_check) != 1 or blob(CI_REPAIR_CAPACITY, CAMPAIGN_VALIDATOR) != old_validator.replace(
+            old_check, new_check):
+        return None
+    expected_shared[CAMPAIGN_VALIDATOR] = new_shared[CAMPAIGN_VALIDATOR]
+    if len(changed) != 12 or expected_shared != new_shared:
+        return None
+    for path in CAMPAIGN_LIMITS:
+        head_matrix = workflow_matrix(blob(head, path))
+        pinned = workflow_matrix(blob(CI_REPAIR_CAPACITY, path))
+        previous = workflow_matrix(blob(CI_REPAIR_REBALANCE, path))
+        if (head_matrix != pinned or len(head_matrix) != CAMPAIGN_LIMITS[path]
+                or {shard: owner for shard, owner in previous.items() if owner != classifier} != {
+                    shard: owner for shard, owner in head_matrix.items() if owner != classifier}):
+            return None
+    return prior, current
+
+
+def retained_classifier_capacity_selection(head, owner, shard):
+    if not head or not shard:
+        return False
+    try:
+        trees = classifier_capacity_trees(head)
+        if trees is None:
+            return False
+        old, new = trees
+        return (owner != new[0]['TARGETS'][CI_REPAIR_CLASSIFIER][0]
+                and same_selection(old[0], old[4], new[0], new[4], owner, shard))
+    except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
+        return False
+
+
+@functools.lru_cache(maxsize=4)
+def ci_repair_rebalanced_trees(head):
+    changed = proof_tree(CI_REPAIR_REBALANCE)
+    if proof_tree(head) != changed:
+        return None
+    original = proof_tree(CI_REPAIR_SOURCE)
+    expected = dict(original[0])
+    cuts = dict(expected['PRIMARY_CUTS'])
+    current = cuts['b10-final-classification']
+    if current[6] != 17887:
+        return None
+    cuts['b10-final-classification'] = current[:6] + (17035,) + current[7:]
+    expected['PRIMARY_CUTS'] = cuts
+    if (expected, *original[1:]) != changed:
+        return None
+    return original, changed
+
+
+@functools.lru_cache(maxsize=4)
+def ci_repair_trees(head):
+    repaired = proof_tree(CI_REPAIR_SOURCE)
+    if proof_tree(head) != repaired and ci_repair_rebalanced_trees(head) is None:
+        return None
+    previous = proof_tree(CI_REPAIR_PRIOR)
+    old, old_code, (old_shared, old_targets), old_config, old_matrix = previous
+    new, new_code, (new_shared, new_targets), new_config, new_matrix = repaired
+    expected = dict(old)
+    expected['PRIMARY_CUTS'] = {**old['PRIMARY_CUTS'], **{key: new['PRIMARY_CUTS'][key] for key in CI_REPAIR_OWNERS}}
+    changed_targets = {old['TARGETS'][key][0] for key in CI_REPAIR_OWNERS}
+    if (expected != new or (old_code, old_config, old_matrix) != (new_code, new_config, new_matrix)
+            or {path for path in old_shared.keys() | new_shared.keys() if old_shared.get(path) != new_shared.get(path)}
+            != {CI_REPAIR_TEST}
+            or {path for path in old_targets.keys() | new_targets.keys() if old_targets.get(path) != new_targets.get(path)}
+            != changed_targets):
+        return None
+    return previous, repaired
+
+
+def retained_ci_repair_selection(head, owner, shard):
+    if retained_classifier_capacity_selection(head, owner, shard):
+        head = CI_REPAIR_REBALANCE
+    trees = ci_repair_trees(head)
+    if trees is None:
+        return False
+    old, new = trees
+    return (owner in old[2][1] and old[2][1][owner] == new[2][1].get(owner)
+            and same_selection(old[0], old[4], new[0], new[4], owner, shard))
+
+
+@functools.lru_cache(maxsize=1)
+def prior_ci_repair_qualification():
+    return strict_json(blob(CI_REPAIR_PRIOR, HISTORICAL_QUALIFICATION_PATH))
+
+
+def retained_rebalance_timing(context, shard, path, record, item, timing, head):
+    try:
+        if (not head or path != CODEC_TARGET or shard not in REBALANCED_RECEIPTS
+                or context.get('source_commit') != REBALANCED_SOURCE
+                or timing.get('source_commit') != REVIEW_CORRECTION):
+            return False
+        artifact, archive, selection_hash, numbers, seconds = REBALANCED_RECEIPTS[shard]
+        locator = ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/'
+                   '44686622095/artifacts/' + artifact)
+        if (timing.get('artifact_sha256') != archive or timing.get('observed_seconds') != seconds
+                or timing.get('observed_workers') != numbers[2]
+                or item['selection_sha256'] != selection_hash
+                or tuple(item[k] for k in NUMERIC_FIELDS) != numbers
+                or not any(e['kind'] == 'local_probe' and e['source_commit'] == REVIEW_CORRECTION
+                           and e['locator'] == locator and e['sha256'] == archive
+                           for e in record['evidence'])):
+            return False
+        prior = CI_REPAIR_PRIOR if retained_ci_repair_selection(head, path, shard) else head
+        trees = rebalance_trees(prior)
+        if trees is None:
+            return False
+        old, new = trees
+        maps = (context['shared_inputs'], context['target_sources'])
+        if old[2] != maps or new[2] != maps:
+            return False
+        selection = selected_invocation(old[0], old[4], shard)
+        return (selection is not None and selection[0] == path
+                and selection == selected_invocation(new[0], new[4], shard))
+    except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
+        return False
+
+
+def committed_effective_config(context, owner, shard, head):
+    """Retain the original proof except for the exact approved correction."""
+    if retained_classifier_capacity_selection(head, owner, shard):
+        return committed_effective_config(context, owner, shard, CI_REPAIR_REBALANCE)
+    if _committed_effective_config(context, owner, shard, head):
+        return True
+    try:
+        if not head or not shard or owner == REVIEW_CORRECTION_TARGET:
+            return False
+        if retained_ci_repair_selection(head, owner, shard):
+            previous = prior_ci_repair_qualification()
+            binding = previous['targets'][owner]['shards'][shard]['timing_inputs_sha256']
+            prior = previous['timing_inputs'][binding]
+            if any(context.get(key) != prior.get(key) for key in ('source_commit', 'shared_inputs', 'target_sources')):
+                return False
+            return committed_effective_config(prior, owner, shard, CI_REPAIR_PRIOR)
+        prior = proof_tree(REVIEW_CORRECTION_PRIOR)
+        correction = proof_tree(REVIEW_CORRECTION)
+        current = proof_tree(head)
+        if current != correction:
+            trees = rebalance_trees(head)
+            if (trees is None or owner == CODEC_TARGET
+                    or not same_selection(trees[0][0], trees[0][4], trees[1][0], trees[1][4], owner, shard)):
+                return False
+        prior_tables, prior_code, (old_shared, old_targets), prior_config, prior_matrix = prior
+        new_tables, new_code, (new_shared, new_targets), new_config, new_matrix = correction
+        # The only runner change binds the changed target's own cohort inventory.
+        changed_tables = {name for name in prior_tables.keys() | new_tables.keys()
+                          if prior_tables.get(name) != new_tables.get(name)}
+        if ((prior_code, prior_config, prior_matrix) != (new_code, new_config, new_matrix)
+                or changed_tables != REVIEW_CORRECTION_COHORT_PINS
+                or new_tables['COHORT_SOURCE_SHA256'] != new_targets[REVIEW_CORRECTION_TARGET]
+                or {p for p in old_shared.keys() | new_shared.keys() if old_shared.get(p) != new_shared.get(p)}
+                != REVIEW_CORRECTION_SHARED | {RUNNER}
+                or {p for p in old_targets.keys() | new_targets.keys() if old_targets.get(p) != new_targets.get(p)}
+                != {REVIEW_CORRECTION_TARGET}
+                or old_targets.get(owner) is None or old_targets.get(owner) != new_targets.get(owner)
+                or context['target_sources'].get(owner) != old_targets[owner]
+                or not same_selection(prior_tables, prior_matrix, new_tables, new_matrix, owner, shard)):
+            return False
+        # Require the same complete, path-specific assessments as normal provenance.
+        for key, actual in (('shared_inputs', new_shared), ('target_sources', new_targets)):
+            measured = context[key]
+            changes = context['assessments'][key]
+            expected = {p for p in measured.keys() | actual.keys() if measured.get(p) != actual.get(p)}
+            if set(changes) != expected or any(changes[p]['current_sha256'] != actual.get(p) for p in expected):
+                return False
+        return _committed_effective_config(context, owner, shard, REVIEW_CORRECTION_PRIOR)
     except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
         return False
 
@@ -1020,6 +1513,9 @@ def provenance_errors(context, shared, targets, owner, shard=None, head=None):
     """Account for every difference without renewing the estimate's own target."""
     errors = set()
     current_maps = {'shared_inputs': shared, 'target_sources': targets}
+    derived = {RUNNER, CONFIG_PATH}
+    if COMPANION_WORKFLOW in shared and COMPANION_WORKFLOW not in context['shared_inputs']:
+        derived.update((*CAMPAIGN_LIMITS, CAMPAIGN_VALIDATOR))
     equivalent = None
     if context['target_sources'].get(owner) != targets.get(owner):
         errors.add('stale_inputs')
@@ -1032,7 +1528,9 @@ def provenance_errors(context, shared, targets, owner, shard=None, head=None):
         for path, item in changes.items():
             if path not in expected or item['current_sha256'] != current.get(path):
                 errors.add('unaccounted_inputs')
-            if key == 'shared_inputs' and path in {RUNNER, 'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json'} and measured.get(path) != current.get(path):
+            if key == 'shared_inputs' and measured.get(path) != current.get(path) and (
+                    path in derived or (path == CAMPAIGN_VALIDATOR
+                                        and retained_classifier_capacity_selection(head, owner, shard))):
                 if equivalent is None:
                     equivalent = committed_effective_config(context, owner, shard, head)
                 if equivalent:
@@ -1338,8 +1836,10 @@ def native_geometry_valid(path, record, source):
                      for name, target in workflow.SHARDS.items() if target == path}
         if digest(canonical(generated)) != geometry['layout_sha256']:
             return False
-        if path == CODEC_TARGET and (workflow.COHORTS != CODEC_COHORTS
-                                     or geometry['cohorts_sha256'] != digest(canonical(workflow.COHORTS))):
+        codec_cohorts = {shard: owners for shard, owners in workflow.COHORTS.items()
+                         if workflow.SHARDS.get(shard) == CODEC_TARGET}
+        if path == CODEC_TARGET and (codec_cohorts != CODEC_COHORTS
+                                     or geometry['cohorts_sha256'] != digest(canonical(codec_cohorts))):
             return False
         key = next(key for key, (target, _) in workflow.TARGETS.items() if target == path)
         spans = workflow.primary_spans(key, source)
@@ -1367,8 +1867,7 @@ def fresh_pinned_timing(config, path, record, shard, item, source, head):
     context = config['timing_inputs'].get(item['timing_inputs_sha256'], {})
     return (path == pinned_path and digest(source) != pinned_source
             and proof.get('kind') == 'measured'
-            and proof.get('source_commit') == context.get('source_commit')
-            and has_shard_timing(shard, path, record, item, proof, {})
+            and timing_context_linked(context, shard, path, record, item, proof, {}, head)
             and committed_effective_config(context, path, shard, head))
 
 
@@ -1380,10 +1879,18 @@ def committed_context_matches(context):
         return False
 
 
-def timing_context_linked(context, shard, path, record, item, timing, baseline):
+def timing_context_linked(context, shard, path, record, item, timing, baseline, head=None):
     commit = context.get('source_commit')
     if timing.get('kind') == 'measured':
-        return timing.get('source_commit') == commit and has_shard_timing(shard, path, record, item, timing, baseline)
+        if commit == REVIEW_CORRECTION and path == CODEC_TARGET and head:
+            try:
+                if proof_tree(head) != proof_tree(REVIEW_CORRECTION):
+                    return False
+            except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
+                return False
+        return ((timing.get('source_commit') == commit
+                 or retained_rebalance_timing(context, shard, path, record, item, timing, head))
+                and has_shard_timing(shard, path, record, item, timing, baseline))
     if timing == {'kind': 'historical'}:
         return (commit == HISTORICAL_QUALIFICATION_COMMIT
                 and has_shard_timing(shard, path, record, item, timing, baseline))
@@ -1396,8 +1903,12 @@ def validate(config, shared, targets, source, matrix, head=None):
         reasons.add('missing_qualification')
     if config['shared_inputs'] != shared:
         reasons.add('stale_inputs')
-    if len(matrix) > 256 or len(workflow.SHARDS) > 256:
+    paired = COMPANION_WORKFLOW in shared and head is not None
+    limit = sum(CAMPAIGN_LIMITS.values()) if paired else 256
+    if len(matrix) > limit or len(workflow.SHARDS) > limit:
         reasons.add('matrix_over_capacity')
+    if paired and matrix != workflow_layout(head, paired=True):
+        reasons.add('layout_mismatch')
     if matrix != workflow.SHARDS:
         reasons.add('layout_mismatch')
     target_sources = {p: v['source_sha256'] for p, v in config['targets'].items()}
@@ -1434,7 +1945,8 @@ def validate(config, shared, targets, source, matrix, head=None):
                 reasons.add('stale_inputs')
             generated = {name: digest(canonical(workflow.shard_config(name, source[path])))
                          for name, target in workflow.SHARDS.items() if target == path}
-            if path == CODEC_TARGET and workflow.COHORTS != CODEC_COHORTS:
+            if path == CODEC_TARGET and {shard: owners for shard, owners in workflow.COHORTS.items()
+                                         if workflow.SHARDS.get(shard) == CODEC_TARGET} != CODEC_COHORTS:
                 reasons.add('layout_mismatch')
             if digest(canonical(generated)) != PROVISIONAL_LAYOUT_HASHES[path]:
                 reasons.add('layout_mismatch')
@@ -1473,7 +1985,7 @@ def validate(config, shared, targets, source, matrix, head=None):
                         if not committed_context_matches(context):
                             reasons.add('stale_inputs')
                         timing = config['timing_evidence'].get(shard, {})
-                        if not timing_context_linked(context, shard, path, record, item, timing, baseline):
+                        if not timing_context_linked(context, shard, path, record, item, timing, baseline, head):
                             reasons.add('missing_measurement')
                 if provisional and binding != PROVISIONAL_TIMING_INPUTS_HASH:
                     reasons.add('stale_inputs')
@@ -1558,12 +2070,14 @@ def check(base, head, qualification):
         except FileNotFoundError:
             pass
         shared, targets = input_maps(head)
-        matrix = workflow_matrix(blob(head, WORKFLOW))
+        matrix = workflow_layout(head, COMPANION_WORKFLOW in shared)
         if base:
             changed = set(git('diff', '--name-only', '-z', base, head).decode().rstrip('\0').split('\0'))
             try:
                 old_shared, old_targets = input_maps(base)
-                relevant = (shared != old_shared or targets != old_targets or RUNNER in changed or WORKFLOW in changed or 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json' in changed)
+                relevant = (shared != old_shared or targets != old_targets
+                            or bool(({RUNNER} | CAMPAIGN_LIMITS.keys()) & changed)
+                            or 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json' in changed)
             except (ValueError, subprocess.CalledProcessError):
                 # A newly introduced target or supported dependency cannot exist in the base.
                 relevant = True
@@ -2171,7 +2685,8 @@ def main():
     try:
         run = json.loads(Path(args.run_json).read_text())
         expected = expected_layout_at_head(run['head_sha'], ROOT)
-    except (OSError, ValueError, TypeError, KeyError):
+    except (OSError, ValueError, TypeError, KeyError) as error:
+        print(str(error), file=sys.stderr)
         expected = None
     return write_performance(args.run_json, args.jobs_json, args.output_dir, expected)
 

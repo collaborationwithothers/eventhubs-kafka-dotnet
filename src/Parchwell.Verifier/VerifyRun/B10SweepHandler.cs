@@ -82,7 +82,7 @@ internal sealed class B10SweepHandler(IOptions<VerifierHostOptions> configured, 
                     B10LateWriteJudgement judgement=B10LateWriteChecks.Classify(repeat.Producers.Select(p=>p.Identity).ToArray(),
                         repeat.Ledgers,original,late,earlier);
                     repeat.Final=judgement.Valid;
-                    repeat.Counts=judgement.Counts;
+                    repeat.Counts=judgement.Counts;repeat.DuplicateBreakdown=judgement.DuplicateBreakdown;
                     repeat.Status=judgement.Valid?VerifierResultStatus.CompleteValid:VerifierResultStatus.Invalid;
                     repeat.Reasons=judgement.Reasons;
                     if(judgement.Valid&&logger is not null)
@@ -110,7 +110,7 @@ internal sealed class B10SweepHandler(IOptions<VerifierHostOptions> configured, 
             {
                 foreach(RepeatInput repeat in repeats)
                 {
-                    repeat.Final=false;repeat.Status=VerifierResultStatus.Invalid;repeat.Counts=null;repeat.Reasons=["b10_sweep_failed"];
+                    repeat.Final=false;repeat.Status=VerifierResultStatus.Invalid;repeat.Counts=null;repeat.DuplicateBreakdown=null;repeat.Reasons=["b10_sweep_failed"];
                 }
             }
         }
@@ -125,7 +125,7 @@ internal sealed class B10SweepHandler(IOptions<VerifierHostOptions> configured, 
         cancellationToken.ThrowIfCancellationRequested();
         var finalization=new B10Finalization(1,"B10",options.ConfigurationId!,options.RunId!,options.Phase!,options.SourceCommit!,
             sweepReference,scanComplete,B10SweepEvidence.ResidualRisk,repeats.Select(r=>new B10RepeatFinalization(r.Number,r.ResultReference,
-                r.ReceiptReference,r.Final,r.Status,r.Counts,r.Reasons)).ToArray());
+                r.ReceiptReference,r.Final,r.Status,r.Counts,r.Reasons,r.DuplicateBreakdown)).ToArray());
         byte[] finalBytes=B10SweepEvidenceCodec.WriteFinalization(finalization,outputLimits);
         string finalName=PhasePaths.B10Finalization(options.RunId!,options.Phase!);
         await Bounded(ct=>verifierStore.CreateAsync(finalName,finalBytes,ct),options.BlobIoTimeout!.Value,cancellationToken).ConfigureAwait(false);
@@ -333,6 +333,7 @@ internal sealed class B10SweepHandler(IOptions<VerifierHostOptions> configured, 
         internal bool Final { get; set; }
         internal VerifierResultStatus Status { get; set; }=VerifierResultStatus.Incomplete;
         internal OutcomeCounts? Counts { get; set; }
+        internal DuplicateBreakdown? DuplicateBreakdown { get; set; }
         internal B10LateObservation? Observation { get; set; }
         internal B10SweepWindows? ObservationWindows { get; set; }
         internal IReadOnlyList<ConsumedRecord>? LateRecords { get; set; }

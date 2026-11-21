@@ -57,6 +57,7 @@ public sealed class RunJudgementTests
         RunJudgementResult result = RunJudgement.Evaluate(RecordedEvidence.SyntheticRequest());
         Assert.Equal(VerifierResultStatus.CompleteValid, result.Status);
         Assert.Equal(new OutcomeCounts(1, 0, 0, 0, 0, 0), result.Counts);
+        Assert.Equal(new DuplicateBreakdown(0, 0), result.DuplicateBreakdown);
         Assert.Empty(result.FailedChecks);
         Assert.Equal(new BrokerConnectionCount("LoadGenProducer", "producer-1", 1, 1, true), result.BrokerCount);
         Assert.Equal(27, result.Assessments.Count);

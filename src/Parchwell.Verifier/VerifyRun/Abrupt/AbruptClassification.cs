@@ -1,4 +1,7 @@
+using System.Text.Json.Serialization;
+using Parchwell.Verifier.Common.Results;
 using Parchwell.Verifier.VerifyRun.Input;
+using Parchwell.Verifier.VerifyRun.Judgement;
 
 namespace Parchwell.Verifier.VerifyRun.Abrupt;
 
@@ -8,15 +11,18 @@ internal sealed record AbruptWitness(string OriginalAttemptId, string ResendAtte
     AbruptCoordinate Original, AbruptCoordinate Resend);
 internal sealed record AbruptMember(string OriginalAttemptId, long Sequence, string PayloadSha256,
     string? ResendAttemptId, AbruptTerminal? ResendTerminal, long? CopyCount, long? OriginalCopies,
-    long? ResendCopies, long? OtherCopies, long? PairCount, IReadOnlyList<AbruptCopy>? Copies, bool? CopiesTruncated, bool? ResendLost);
+    long? ResendCopies, long? OtherCopies, long? PairCount, IReadOnlyList<AbruptCopy>? Copies, bool? CopiesTruncated, bool? ResendLost,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DuplicateBreakdown? DuplicateBreakdown = null);
 internal sealed record AbruptArm(string Arm, string Key, long UnconfirmedCount, long? ResendInvoked,
     long? OriginalsSeen, long? ResendsSeen, long? PairCount, AbruptWitness? Witness, IReadOnlyList<AbruptMember> Members,
-    long UnreportedAttempts, long? UnreportedSeen, long? UnreportedUnseen, long? LostResends);
+    long UnreportedAttempts, long? UnreportedSeen, long? UnreportedUnseen, long? LostResends,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DuplicateBreakdown? DuplicateBreakdown = null);
 
 internal static class AbruptClassification
 {
     internal static IReadOnlyList<AbruptArm> Evaluate(AbruptFirstEvidence first, AbruptSuccessorEvidence? successor,
-        IReadOnlyList<ConsumedRecord> records, bool complete, int maximumCopies, bool lossVerified = true)
+        IReadOnlyList<ConsumedRecord> records, bool complete, int maximumCopies, bool lossVerified = true,
+        IReadOnlySet<string>? timeoutInstances = null)
     {
         return new[] { Arm("same_instance", first.Control), Arm("cross_restart", first.Kill) };
 
@@ -32,9 +38,9 @@ internal static class AbruptClassification
                 string? resend = arm == "same_instance" ? first.ControlResends[id] : successor?.Resends[id];
                 IReadOnlyDictionary<string, AbruptTerminal>? terminals = arm == "same_instance" ? first.Terminals : successor?.Terminals;
                 AbruptTerminal? terminal = resend is not null && terminals?.TryGetValue(resend, out AbruptTerminal? known) == true ? known : null;
-                AbruptCopy[] copies = complete ? records.Where(record => record.Key == original.Key &&
-                    record.Sequence == original.Sequence && record.ValueSha256 == original.PayloadSha256)
-                    .OrderBy(record => record.Partition).ThenBy(record => record.Offset)
+                ConsumedRecord[] matched = complete ? records.Where(record => record.Key == original.Key &&
+                    record.Sequence == original.Sequence && record.ValueSha256 == original.PayloadSha256).ToArray() : [];
+                AbruptCopy[] copies = complete ? matched.OrderBy(record => record.Partition).ThenBy(record => record.Offset)
                     .Select(record => new AbruptCopy(record.Partition, record.Offset, record.InstanceId, record.AttemptId,
                         record.InstanceId == first.Pod && record.AttemptId == id ? "original" :
                         resend is not null && record.InstanceId == (arm == "same_instance" ? first.Pod : successor!.Pod) &&
@@ -49,13 +55,40 @@ internal static class AbruptClassification
                     AbruptCopy firstOriginal = copies.First(copy => copy.Role == "original"), firstResend = copies.First(copy => copy.Role == "resend");
                     witnesses.Add(new(id, resend!, new(firstOriginal.Partition, firstOriginal.Offset), new(firstResend.Partition, firstResend.Offset)));
                 }
+                bool? resendLost = !complete || !authenticated || terminal is null ? null :
+                    terminal.Delivered && resendCopies == 0 ? lossVerified ? true : null : false;
+                ConsumedRecord[] cohort = matched.Where(record => !IsTimeout(record)).ToArray();
+                bool opaque = cohort.Any(record => !Authenticated(record));
+                bool ambiguous = records.Any(record => !IsTimeout(record) && record.Key is null &&
+                    !(record.InstanceId == first.Pod && record.AttemptId is not null &&
+                      (first.Attempts.ContainsKey(record.AttemptId) || first.Warmups.ContainsKey(record.AttemptId))) &&
+                    !(successor is not null && record.InstanceId == successor.Pod && record.AttemptId is not null &&
+                      successor.Resends.Values.Contains(record.AttemptId, StringComparer.Ordinal)));
+                bool malformed = records.Any(record => !IsTimeout(record) &&
+                    (record.Key == original.Key && (record.Sequence == original.Sequence || record.Sequence is null) ||
+                     record.InstanceId == first.Pod && record.AttemptId == id ||
+                     resend is not null && record.InstanceId == (arm == "same_instance" ? first.Pod : successor?.Pod) && record.AttemptId == resend) &&
+                    (record.Problems.Count != 0 || record.Key != original.Key || record.Sequence != original.Sequence ||
+                     record.ValueSha256 != original.PayloadSha256));
+                DuplicateBreakdown? breakdown = complete && authenticated && !opaque && !ambiguous && !malformed
+                    ? DuplicateClassifier.TryClassify(cohort) : null;
                 members.Add(new(id, original.Sequence, original.PayloadSha256, resend, terminal,
                     complete ? copies.LongLength : null, complete ? originalCopies : null,
                     complete && authenticated ? resendCopies : null, complete ? copies.LongCount(copy => copy.Role == "other") : null,
                     complete && authenticated ? pairCount : null, complete ? copies.Take(maximumCopies).ToArray() : null,
                     complete ? copies.Length > maximumCopies : null,
-                    !complete || !authenticated || terminal is null ? null :
-                    terminal.Delivered && resendCopies == 0 ? lossVerified ? true : null : false));
+                    resendLost, breakdown));
+
+                bool IsTimeout(ConsumedRecord record) => record.InstanceId is not null &&
+                    timeoutInstances?.Contains(record.InstanceId) == true;
+
+                bool Authenticated(ConsumedRecord record) =>
+                    record.InstanceId == first.Pod && record.AttemptId is not null &&
+                        first.Accepted.Contains(record.AttemptId) && !first.Rejected.Contains(record.AttemptId) &&
+                        first.Attempts.TryGetValue(record.AttemptId, out AbruptAttempt? attempt) &&
+                        attempt.Key == record.Key && attempt.Sequence == record.Sequence && attempt.PayloadSha256 == record.ValueSha256 ||
+                    successor is not null && record.InstanceId == successor.Pod && record.AttemptId is not null &&
+                        successor.Resends.TryGetValue(id, out string? successorAttempt) && successorAttempt == record.AttemptId;
             }
             AbruptWitness? witness = witnesses.OrderBy(item => item.OriginalAttemptId, StringComparer.Ordinal)
                 .ThenBy(item => item.ResendAttemptId, StringComparer.Ordinal).ThenBy(item => item.Original.Partition)
@@ -64,13 +97,16 @@ internal static class AbruptClassification
                 first.Accepted.Contains(attempt.Id) && !first.Terminals.ContainsKey(attempt.Id) && !first.Rejected.Contains(attempt.Id))
                 .Select(attempt => attempt.Id).ToArray();
             long unreportedSeen = unreported.LongCount(id => records.Any(record => record.InstanceId == first.Pod && record.AttemptId == id));
-            return new(arm, first.Attempts[originals[0]].Key, originals.Count,
-                authenticated ? originals.Count : null, complete ? originalsSeen : null,
+            return new(arm, first.Attempts[originals[0]].Key, CountOriginals(originals),
+                authenticated ? CountOriginals(originals) : null, complete ? originalsSeen : null,
                 complete && authenticated ? resendsSeen : null, complete && authenticated ? pairs : null,
                 complete && authenticated ? witness : null, members, unreported.LongLength,
                 complete ? unreportedSeen : null, complete ? unreported.LongLength - unreportedSeen : null,
                 complete && authenticated && members.All(member => member.ResendLost.HasValue)
-                    ? members.LongCount(member => member.ResendLost == true) : null);
+                    ? members.LongCount(member => member.ResendLost == true) : null,
+                complete && authenticated ? DuplicateBreakdown.Sum(members.Select(member => member.DuplicateBreakdown)) : null);
         }
     }
+
+    private static long CountOriginals(IReadOnlyList<string> originals) => originals.Count;
 }

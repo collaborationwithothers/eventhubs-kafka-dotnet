@@ -168,6 +168,15 @@ def fixture(wall=20):
 
 
 class PerformanceTests(unittest.TestCase):
+    def test_historical_performance_reader_rejects_paired_campaigns(self):
+        from unittest.mock import patch
+
+        head = 'a' * 40
+        with patch.object(profile_module.subprocess, 'check_output',
+                          return_value=profile_module.COMPANION_WORKFLOW + '\n'):
+            with self.assertRaisesRegex(ValueError, 'c5_campaign.py terminal'):
+                profile_module.expected_layout_at_head(head, ROOT)
+
     def test_boundary(self):
         for wall, status in [(1799, 'met'), (1800, 'met'), (1801, 'met'), (2999, 'met'), (3000, 'met'), (3001, 'missed')]:
             with self.subTest(wall=wall):
@@ -428,7 +437,9 @@ class CommittedProvenanceTests(unittest.TestCase):
         self.assertFalse(runtime.committed_effective_config(self.context, self.owner, self.shard, None))
         runner_key = (self.old, runtime.RUNNER)
         original_runner = self.blobs[runner_key]
-        self.blobs[runner_key] = original_runner.replace(b'3600', b'3601', 1)
+        changed_runner = original_runner.replace(b'REBALANCE_SECONDS = 1800', b'REBALANCE_SECONDS = 1801', 1)
+        self.assertNotEqual(original_runner, changed_runner)
+        self.blobs[runner_key] = changed_runner
         self.assertFalse(self.equivalent())
         self.blobs[runner_key] = original_runner
         self.blobs[runner_key] += b'\nsynthetic_executable = 1\n'
@@ -535,6 +546,11 @@ class CommittedProvenanceTests(unittest.TestCase):
     def test_full_validation_accepts_fresh_pinned_measurements_and_rejects_tampering(self):
         for path in (runtime.RUNNER, runtime.CONFIG_PATH, runtime.WORKFLOW):
             self.blobs[(self.old, path)] = self.blobs[(self.head, path)]
+        # Both synthetic commits use the same paired matrix and inputs.
+        self.context['shared_inputs'][runtime.COMPANION_WORKFLOW] = runtime.digest(b'synthetic companion')
+        layout_patch = mock.patch.object(runtime, 'workflow_layout', return_value=runtime.workflow.SHARDS)
+        layout_patch.start()
+        self.addCleanup(layout_patch.stop)
         sources = {}
         for path in set(runtime.workflow.SHARDS.values()):
             source = (ROOT / 'src/Parchwell.Verifier' / path).read_bytes() + b'\n// fresh synthetic source\n'
@@ -630,6 +646,143 @@ class CommittedInputClassificationTests(unittest.TestCase):
         self.assertEqual(old_shared[source_path], current_targets[path])
 
 
+class ReviewCorrectionBridgeTests(unittest.TestCase):
+    OWNER = 'Judge/PhaseJudge.cs'
+    SHARD = 'phase-p1'
+
+    def setUp(self):
+        qualification = json.loads(runtime.blob(runtime.REVIEW_CORRECTION_PRIOR, runtime.HISTORICAL_QUALIFICATION_PATH))
+        item = qualification['targets'][self.OWNER]['shards'][self.SHARD]
+        self.context = copy.deepcopy(qualification['timing_inputs'][item['timing_inputs_sha256']])
+        shared, targets = runtime.proof_tree(runtime.REVIEW_CORRECTION)[2]
+        for key, actual in (('shared_inputs', shared), ('target_sources', targets)):
+            measured = self.context[key]
+            self.context['assessments'][key] = {
+                path: {'current_sha256': actual.get(path), 'basis': ['Approved correction timing risk']}
+                for path in measured.keys() | actual.keys() if measured.get(path) != actual.get(path)
+            }
+
+    def proof(self, context=None, owner=None, shard=None, head=None):
+        return runtime.committed_effective_config(
+            context if context is not None else self.context, owner or self.OWNER,
+            shard or self.SHARD, head or runtime.REVIEW_CORRECTION)
+
+    def test_retains_actual_predecessor_proof_for_unchanged_owner(self):
+        self.assertTrue(runtime._committed_effective_config(
+            self.context, self.OWNER, self.SHARD, runtime.REVIEW_CORRECTION_PRIOR))
+        self.assertFalse(runtime._committed_effective_config(
+            self.context, self.OWNER, self.SHARD, runtime.REVIEW_CORRECTION))
+        self.assertTrue(self.proof())
+
+    def test_rebalanced_tree_retains_predecessor_for_unrelated_owner(self):
+        self.assertTrue(self.proof(head=runtime.REBALANCED_SOURCE))
+        self.assertFalse(self.proof(shard='unknown', head=runtime.REBALANCED_SOURCE))
+        self.assertFalse(self.proof(owner=runtime.CODEC_TARGET,
+                                    shard='b10-final-projection-codec-p1-a',
+                                    head=runtime.REBALANCED_SOURCE))
+        context = copy.deepcopy(self.context)
+        context['assessments']['target_sources'][runtime.CODEC_TARGET]['current_sha256'] = '0' * 64
+        self.assertFalse(self.proof(context, head=runtime.REBALANCED_SOURCE))
+
+    def test_ci_repair_links_only_retained_selections_to_their_prior_context(self):
+        head = runtime.CI_REPAIR_SOURCE
+        previous = runtime.prior_ci_repair_qualification()
+        binding = previous['targets'][self.OWNER]['shards'][self.SHARD]['timing_inputs_sha256']
+        context = copy.deepcopy(previous['timing_inputs'][binding])
+        shared, targets = runtime.proof_tree(head)[2]
+        for key, actual in (('shared_inputs', shared), ('target_sources', targets)):
+            measured = context[key]
+            context['assessments'][key] = {
+                path: {'current_sha256': actual.get(path), 'basis': ['Approved CI repair timing risk']}
+                for path in measured.keys() | actual.keys() if measured.get(path) != actual.get(path)
+            }
+        for candidate in (head, runtime.CI_REPAIR_REBALANCE):
+            self.assertTrue(self.proof(context, head=candidate))
+            self.assertEqual(set(), runtime.provenance_errors(context, shared, targets, self.OWNER, self.SHARD, candidate))
+        self.assertFalse(runtime.retained_ci_repair_selection(head, self.OWNER, 'unknown'))
+        for owner in runtime.CI_REPAIR_OWNERS:
+            self.assertFalse(runtime.retained_ci_repair_selection(head, runtime.workflow.TARGETS[owner][0], owner + '-p1'))
+        context['source_commit'] = runtime.CI_REPAIR_PRIOR
+        self.assertFalse(self.proof(context, head=head))
+
+    def test_classifier_capacity_retains_only_other_owners_on_exact_trees(self):
+        judge = 'b10-final-judge-crossing'
+        for head in (runtime.CI_REPAIR_CAPACITY, runtime.CI_REPAIR_CAPACITY_COMBINED, runtime.CI_REPAIR_OWNERSHIP_SOURCE):
+            with self.subTest(head=head):
+                self.assertTrue(runtime.retained_classifier_capacity_selection(head, self.OWNER, self.SHARD))
+                self.assertTrue(runtime.retained_classifier_capacity_selection(head, runtime.workflow.SHARDS[judge], judge))
+                for suffix in ('p1', 'p7', 'p18', 'crossing'):
+                    shard = 'b10-final-classification-' + suffix
+                    self.assertFalse(runtime.retained_classifier_capacity_selection(head, runtime.workflow.SHARDS[shard], shard))
+                self.assertFalse(runtime.retained_classifier_capacity_selection(head, self.OWNER, 'unknown'))
+        self.assertFalse(runtime.retained_classifier_capacity_selection(runtime.CI_REPAIR_REBALANCE, self.OWNER, self.SHARD))
+
+    def test_classifier_capacity_accepts_only_the_pinned_validator_for_retained_timing(self):
+        previous = runtime.prior_ci_repair_qualification()
+        binding = previous['targets'][self.OWNER]['shards'][self.SHARD]['timing_inputs_sha256']
+        context = copy.deepcopy(previous['timing_inputs'][binding])
+        head = runtime.CI_REPAIR_OWNERSHIP_SOURCE
+        shared, targets = runtime.proof_tree(head)[2]
+        for key, current in (('shared_inputs', shared), ('target_sources', targets)):
+            measured = context[key]
+            context['assessments'][key] = {
+                path: {'current_sha256': current.get(path), 'basis': ['Approved capacity timing scope']}
+                for path in measured.keys() | current.keys() if measured.get(path) != current.get(path)
+            }
+        self.assertEqual(set(), runtime.provenance_errors(context, shared, targets, self.OWNER, self.SHARD, head))
+
+        original = runtime.proof_tree
+        current_tree = original(head)
+        changed_head = 'c' * 40
+        changed_shared = {**shared, runtime.CAMPAIGN_VALIDATOR: '0' * 64}
+        changed_tree = (*current_tree[:2], (changed_shared, targets), *current_tree[3:])
+        context['assessments']['shared_inputs'][runtime.CAMPAIGN_VALIDATOR]['current_sha256'] = '0' * 64
+        with mock.patch.object(runtime, 'proof_tree', side_effect=lambda ref: changed_tree if ref == changed_head else original(ref)):
+            self.assertIn('invalid_renewal', runtime.provenance_errors(
+                context, changed_shared, targets, self.OWNER, self.SHARD, changed_head))
+
+    def test_rejects_changed_owner_and_incomplete_or_wrong_assessments(self):
+        self.assertFalse(self.proof(owner=runtime.REVIEW_CORRECTION_TARGET,
+                                    shard='b10-final-projection-codec-p1-a'))
+        for mutation in ('missing', 'hash', 'source', 'owner', 'selector'):
+            with self.subTest(mutation=mutation):
+                context = copy.deepcopy(self.context)
+                if mutation == 'missing':
+                    del context['assessments']['shared_inputs'][next(iter(runtime.REVIEW_CORRECTION_SHARED))]
+                elif mutation == 'hash':
+                    context['assessments']['target_sources'][runtime.REVIEW_CORRECTION_TARGET]['current_sha256'] = '0' * 64
+                elif mutation == 'source':
+                    context['source_commit'] = '0' * 40
+                elif mutation == 'owner':
+                    context['target_sources'][self.OWNER] = '0' * 64
+                self.assertFalse(self.proof(context, shard='unknown' if mutation == 'selector' else None))
+
+    def test_substantive_head_drift_and_missing_pins_refuse_bridge(self):
+        original = runtime.proof_tree
+        correction = original(runtime.REVIEW_CORRECTION)
+        synthetic_head = 'f' * 40
+        for field in range(len(correction)):
+            with self.subTest(field=field):
+                changed = list(copy.deepcopy(correction))
+                if field == 0:
+                    changed[field]['TARGETS'][next(iter(changed[field]['TARGETS']))] = ('changed.cs', 1)
+                elif field == 1:
+                    changed[field] += b' changed'
+                elif field == 2:
+                    changed[field][0]['drift'] = '0' * 64
+                elif field == 3:
+                    changed[field]['drift'] = True
+                else:
+                    changed[field]['drift'] = 'changed.cs'
+                with mock.patch.object(runtime, 'proof_tree', side_effect=lambda ref:
+                        tuple(changed) if ref == synthetic_head else original(ref)):
+                    self.assertFalse(self.proof(head=synthetic_head))
+        with mock.patch.object(runtime, 'proof_tree', side_effect=lambda ref:
+                (_ for _ in ()).throw(ValueError('missing commit'))
+                if ref == runtime.REVIEW_CORRECTION_PRIOR else original(ref)):
+            self.assertFalse(self.proof())
+
+
 class HistoricalRunnerBridgeTests(unittest.TestCase):
     OLD_CONTEXTS = (
         ('6c291d8832d0c722352ff979545a136e5ea2ddeb',
@@ -646,7 +799,7 @@ class HistoricalRunnerBridgeTests(unittest.TestCase):
         self.addCleanup(runtime.proof_tree.cache_clear)
 
     def context(self, commit):
-        shared, targets = runtime.input_maps(commit)
+        shared, targets = runtime.proof_tree(commit)[2]
         return {'source_commit': commit, 'shared_inputs': shared, 'target_sources': targets,
                 'assessments': {'shared_inputs': {}, 'target_sources': {}}}
 
@@ -662,7 +815,7 @@ class HistoricalRunnerBridgeTests(unittest.TestCase):
                 maps = {key: context[key] for key in ('shared_inputs', 'target_sources')}
                 self.assertEqual(expected_binding, runtime.digest(runtime.canonical(maps)))
                 self.assertEqual(runtime.RUNNER_TIMING_PAIR[0], context['shared_inputs'][runtime.RUNNER])
-                modern_shared, _ = runtime.input_maps(self.MODERN)
+                modern_shared, _ = runtime.proof_tree(self.MODERN)[2]
                 self.assertEqual(runtime.RUNNER_TIMING_PAIR[1], modern_shared[runtime.RUNNER])
                 self.assertTrue(self.proof(context))
                 runtime.proof_tree.cache_clear()
@@ -736,6 +889,7 @@ class HistoricalRunnerBridgeTests(unittest.TestCase):
                 changed = dict(timing, **{field: invalid})
                 self.assertFalse(runtime.timing_context_linked(context, self.SHARD, self.OWNER, record, item, changed, {}))
 
+    @historical_layout
     def test_historical_baseline_validates_through_real_legacy_bridge(self):
         baseline = runtime.historical_qualification()
         context = self.context(runtime.HISTORICAL_QUALIFICATION_COMMIT)
@@ -1671,7 +1825,9 @@ class QualificationTests(unittest.TestCase):
 
     def test_execution_hash_separates_cuts(self):
         data = Path(runtime.workflow.__file__).read_bytes()
-        self.assertEqual(runtime.execution_runner(data), runtime.execution_runner(data.replace(b'(3600, 4517,', b'(3601, 4517,')))
+        changed = data.replace(b"'phase': (3694,", b"'phase': (3695,", 1)
+        self.assertNotEqual(data, changed)
+        self.assertEqual(runtime.execution_runner(data), runtime.execution_runner(changed))
         self.assertNotEqual(runtime.execution_runner(data), runtime.execution_runner(data.replace(b'REBALANCE_SECONDS = 1800', b'REBALANCE_SECONDS = 1801')))
 
     def test_runtime_profile_directory_membership(self):
@@ -1937,7 +2093,7 @@ class FinalReviewRegressionTests(AdditionalQualificationTests):
 
 class DependencyEndToEndTests(unittest.TestCase):
     def test_actual_discovery_addition_and_deletion(self):
-        names = runtime.files('HEAD')
+        names = runtime.files('HEAD') | {runtime.COMPANION_WORKFLOW, runtime.CAMPAIGN_VALIDATOR}
         actual_blob = runtime.blob
         cache = {}
         additions = ('tests/fixtures/verifier-v1/runtime-test.json', 'src/Directory.Build.props',
@@ -1945,6 +2101,8 @@ class DependencyEndToEndTests(unittest.TestCase):
         def blob(ref, path):
             if path == runtime.RUNNER:
                 return Path(runtime.workflow.__file__).read_bytes()
+            if path in {runtime.COMPANION_WORKFLOW, runtime.CAMPAIGN_VALIDATOR}:
+                return (ROOT / path).read_bytes()
             if path in additions:
                 return b'<Project />' if path.endswith('.props') else b'synthetic'
             if path not in cache:
@@ -1963,6 +2121,7 @@ class DependencyEndToEndTests(unittest.TestCase):
         with mock.patch.object(runtime, 'files', side_effect=files), mock.patch.object(runtime, 'blob', side_effect=blob), \
              mock.patch.object(runtime, 'git', side_effect=git), \
              mock.patch.object(runtime, 'workflow_matrix', return_value=runtime.workflow.SHARDS), \
+             mock.patch.object(runtime, 'workflow_layout', return_value=runtime.workflow.SHARDS), \
              mock.patch.object(runtime, 'SIX_TAIL_BINDINGS', {}), \
              mock.patch.object(runtime, 'CODEC_NEIGHBOR', {}):
             base_shared, targets = runtime.input_maps('base')
@@ -3047,3 +3206,109 @@ class SampleLauncherDeadlineTests(unittest.TestCase):
                 self.kill.assert_called_once_with(1234, runtime.signal.SIGKILL)
                 self.assertEqual([mock.call(timeout=10.0), mock.call()], self.process.wait.call_args_list)
                 self.assert_cleanup(1234)
+
+
+class RebalanceTimingProvenanceTests(unittest.TestCase):
+    def setUp(self):
+        self.head = runtime.REBALANCED_SOURCE
+        shared, targets = runtime.input_maps(self.head)
+        self.context = {'source_commit': self.head, 'shared_inputs': shared,
+                        'target_sources': targets,
+                        'assessments': {'shared_inputs': {}, 'target_sources': {}}}
+        self.source = runtime.blob(self.head, 'src/Parchwell.Verifier/' + runtime.CODEC_TARGET)
+        shard = 'b10-final-projection-codec-p1-a'
+        self.record, self.item, self.timing = self.receipt(shard)
+        self.evidence = self.record['evidence'][0]
+
+    def receipt(self, shard):
+        artifact, archive, selection, numbers, seconds = runtime.REBALANCED_RECEIPTS[shard]
+        locator = ('https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/'
+                   '44686622095/artifacts/' + artifact)
+        evidence = {'source_commit': runtime.REVIEW_CORRECTION, 'sha256': archive,
+                    'kind': 'local_probe', 'locator': locator}
+        record = {'source_sha256': runtime.digest(self.source), 'evidence': [evidence]}
+        item = dict(zip(runtime.NUMERIC_FIELDS, numbers), selection_sha256=selection,
+                    timing_inputs_sha256='b' * 64, basis=f'observed_workers={numbers[2]}')
+        timing = {'kind': 'measured', 'source_commit': runtime.REVIEW_CORRECTION,
+                  'artifact_sha256': archive, 'timing_inputs_sha256': 'b' * 64,
+                  'observed_workers': numbers[2], 'observed_seconds': seconds, 'method': 'synthetic'}
+        return record, item, timing
+
+    def link(self, shard, context=None, timing=None, record=None, head=None):
+        default_record, item, default_timing = self.receipt(
+            shard if shard in runtime.REBALANCED_RECEIPTS else 'b10-final-projection-codec-p1-a')
+        return runtime.timing_context_linked(context or self.context, shard, runtime.CODEC_TARGET,
+                    record or default_record, item, timing or default_timing, {}, head or self.head)
+
+    def test_only_unchanged_selections_transfer_and_fresh_sources_link(self):
+        for shard in runtime.REBALANCED_RECEIPTS:
+            with self.subTest(shard=shard):
+                self.assertTrue(self.link(shard))
+                self.assertTrue(self.link(shard, head=runtime.CI_REPAIR_SOURCE))
+        for suffix in (*(f'p{i}' for i in range(4, 16)), 'crossing'):
+            shard = 'b10-final-projection-codec-' + suffix
+            self.assertFalse(self.link(shard))
+            fresh = dict(self.timing, source_commit=self.head)
+            record = dict(self.record, evidence=[dict(self.evidence, source_commit=self.head)])
+            self.assertTrue(self.link(shard, timing=fresh, record=record))
+        self.assertFalse(self.link('b10-final-projection-codec-unknown'))
+
+    def test_transfer_rejects_map_source_evidence_and_head_drift(self):
+        shard = 'b10-final-projection-codec-p1-a'
+        context = copy.deepcopy(self.context)
+        context['shared_inputs'][runtime.RUNNER] = '0' * 64
+        self.assertFalse(self.link(shard, context=context))
+        context = copy.deepcopy(self.context)
+        context['target_sources'][runtime.CODEC_TARGET] = '0' * 64
+        self.assertFalse(self.link(shard, context=context))
+        self.assertFalse(self.link(shard, timing=dict(self.timing, source_commit='0' * 40)))
+        self.assertFalse(self.link(shard, timing=dict(self.timing, artifact_sha256='0' * 64)))
+        self.assertFalse(self.link(shard, record=dict(self.record, source_sha256='0' * 64)))
+        self.assertFalse(self.link(shard, head=runtime.REVIEW_CORRECTION))
+        old_context = dict(self.context, source_commit=runtime.REVIEW_CORRECTION)
+        for suffix in ('p8', 'p9', 'p10', 'crossing', 'p1-a'):
+            self.assertFalse(self.link('b10-final-projection-codec-' + suffix, context=old_context))
+        self.assertFalse(self.link(shard, timing=dict(self.timing, observed_seconds=1)))
+        for key in (*runtime.NUMERIC_FIELDS, 'selection_sha256'):
+            changed = dict(self.item, **{key: '0' * 64 if key == 'selection_sha256' else self.item[key] + 1})
+            self.assertFalse(runtime.timing_context_linked(self.context, shard, runtime.CODEC_TARGET,
+                            self.record, changed, self.timing, {}, self.head))
+
+    def test_tree_and_boundary_drift_are_rejected(self):
+        original = runtime.proof_tree
+        pinned = original(self.head)
+        shard = 'b10-final-projection-codec-p1-a'
+        for field in range(len(pinned)):
+            changed = list(copy.deepcopy(pinned))
+            if field == 0:
+                cuts = list(changed[0]['PRIMARY_CUTS']['b10-final-projection-codec'])
+                cuts[7] += 1
+                changed[0]['PRIMARY_CUTS']['b10-final-projection-codec'] = tuple(cuts)
+            elif field == 1:
+                changed[1] += b'drift'
+            elif field == 2:
+                changed[2][0]['drift'] = '0' * 64
+            elif field == 3:
+                changed[3]['drift'] = True
+            else:
+                changed[4]['drift'] = 'other'
+            with self.subTest(field=field), mock.patch.object(runtime, 'proof_tree', side_effect=lambda ref:
+                    tuple(changed) if ref == self.head else original(ref)):
+                self.assertFalse(self.link(shard))
+
+    def test_fresh_pinned_timing_requires_measurement_on_the_new_tail_selection(self):
+        for suffix in ('p11', 'p12'):
+            shard = 'b10-final-projection-codec-' + suffix
+            self.assertIn(shard, runtime.SIX_TAIL_BINDINGS)
+            item = dict(self.item, selection_sha256=runtime.digest(runtime.canonical(
+                runtime.workflow.shard_config(shard, self.source))))
+            config = {'schema_version': 2, 'timing_evidence': {shard: self.timing},
+                      'timing_inputs': {item['timing_inputs_sha256']: self.context}}
+            self.assertFalse(runtime.fresh_pinned_timing(config, runtime.CODEC_TARGET,
+                             self.record, shard, item, self.source, self.head))
+            fresh = dict(self.timing, source_commit=self.head, artifact_sha256='0' * 64)
+            evidence = dict(self.evidence, source_commit=self.head, sha256='0' * 64)
+            record = dict(self.record, evidence=[evidence])
+            config['timing_evidence'][shard] = fresh
+            self.assertTrue(runtime.fresh_pinned_timing(config, runtime.CODEC_TARGET,
+                            record, shard, item, self.source, self.head))

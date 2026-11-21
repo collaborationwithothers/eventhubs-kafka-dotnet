@@ -24,7 +24,8 @@ public sealed class B10AbruptVerifyTests(B10AbruptVerifyKafkaFixture kafka) : IC
     private static readonly string[] OriginalAndOther = ["original", "other"];
     private static readonly string[] EnvelopeMembers = ["data", "dialect", "identity", "kind", "purpose", "schema_version", "scientific_admissible", "synthetic"];
     private static readonly string[] IdentityMembers = ["configuration_id", "image_reference", "instance_id", "job_name", "phase", "pod_name", "pod_uid", "predecessor_instance_id", "repeat", "run_id", "scenario_id", "source_commit"];
-    private static readonly string[] DataMembers = ["arms", "comparison", "eligibility", "eligibility_reasons", "end_line", "finality", "first_instance_id", "native_errors", "problem_details", "problems", "start_line", "successor_instance_id", "timeout", "timeout_instance_id", "window_complete", "window_limit"];
+    private static readonly string[] DataMembers = ["arms", "comparison", "duplicate_breakdown", "eligibility", "eligibility_reasons", "end_line", "finality", "first_instance_id", "native_errors", "problem_details", "problems", "start_line", "successor_instance_id", "timeout", "timeout_instance_id", "window_complete", "window_limit"];
+    private static readonly string[] BreakdownMembers = ["duplicate_different_attempt", "duplicate_same_attempt"];
     private static readonly string[] ArmMembers = ["arm", "key", "lost_resends", "members", "originals_seen", "pair_count", "resend_invoked", "resends_seen", "unconfirmed_count", "unreported_attempts", "unreported_seen", "unreported_unseen", "witness"];
     private static readonly string[] MemberFields = ["copies", "copies_truncated", "copy_count", "original_attempt_id", "original_copies", "other_copies", "pair_count", "payload_sha256", "resend_attempt_id", "resend_copies", "resend_lost", "resend_terminal", "sequence"];
     private static readonly string[] CopyFields = ["attempt_id", "instance_id", "offset", "partition", "role"];
@@ -300,6 +301,7 @@ public sealed class B10AbruptVerifyTests(B10AbruptVerifyKafkaFixture kafka) : IC
         Assert.Equal("synthetic-verifier", Text(root["identity"]!["instance_id"])); Assert.Null(root["identity"]!["predecessor_instance_id"]);
         JsonObject identity = root["identity"]!.AsObject();
         Assert.Equal(IdentityMembers, Names(identity)); Assert.Equal(DataMembers, Names(run.Data));
+        AssertZeroBreakdown(run.Data);
         Assert.Equal("synthetic", Text(identity["run_id"])); Assert.Equal("B10", Text(identity["scenario_id"]));
         Assert.Equal("C1", Text(identity["configuration_id"])); Assert.Equal("C1", Text(identity["phase"])); Assert.Equal(1, Count(identity, "repeat"));
         Assert.Equal(B10AbruptVerifyEvidence.Commit, Text(identity["source_commit"])); Assert.Equal("synthetic-c1-r1-b10-abrupt-verify", Text(identity["job_name"]));
@@ -309,9 +311,16 @@ public sealed class B10AbruptVerifyTests(B10AbruptVerifyKafkaFixture kafka) : IC
         Assert.Empty(run.Data["problem_details"]!.AsArray());
         foreach (JsonNode? arm in run.Data["arms"]!.AsArray())
         {
-            Assert.Equal(ArmMembers, Names(arm!.AsObject())); Assert.Equal(B10AbruptVerifyEvidence.Key(Text(arm["arm"])!), Text(arm["key"]));
+            bool sameInstance = Text(arm!["arm"]) == "same_instance";
+            Assert.Equal(sameInstance ? ArmMembers.Append("duplicate_breakdown").Order(StringComparer.Ordinal).ToArray() : ArmMembers,
+                Names(arm.AsObject()));
+            Assert.Equal(B10AbruptVerifyEvidence.Key(Text(arm["arm"])!), Text(arm["key"]));
             Assert.Equal(1, Count(arm, "unconfirmed_count")); Assert.Equal(1, Count(arm, "resend_invoked"));
-            JsonObject member = Member(arm.AsObject()); Assert.Equal(MemberFields, Names(member)); Assert.Equal(4, Count(member, "sequence"));
+            JsonObject member = Member(arm.AsObject());
+            Assert.Equal(sameInstance ? MemberFields.Append("duplicate_breakdown").Order(StringComparer.Ordinal).ToArray() : MemberFields,
+                Names(member));
+            if (sameInstance) { AssertZeroBreakdown(arm); AssertZeroBreakdown(member); }
+            Assert.Equal(4, Count(member, "sequence"));
             Assert.Equal(B10AbruptVerifyEvidence.Hash(B10AbruptVerifyEvidence.Payload), Text(member["payload_sha256"]));
             JsonObject terminal = member["resend_terminal"]!.AsObject(); Assert.Equal(TerminalFields, Names(terminal));
             Assert.True(terminal["delivered"]!.GetValue<bool>()); Assert.Equal(0, Count(terminal, "error_code")); Assert.Equal(2, Count(terminal, "persistence_status"));
@@ -373,6 +382,13 @@ public sealed class B10AbruptVerifyTests(B10AbruptVerifyKafkaFixture kafka) : IC
     private static JsonObject Arm(B10AbruptVerifyHarness run, string name) => run.Data["arms"]!.AsArray().Single(arm => Text(arm!["arm"]) == name)!.AsObject();
     private static JsonObject Member(JsonObject arm) => Assert.Single(arm["members"]!.AsArray())!.AsObject();
     private static long Count(JsonNode node, string field) => node[field]!.GetValue<long>();
+    private static void AssertZeroBreakdown(JsonNode parent)
+    {
+        JsonObject breakdown = Assert.IsType<JsonObject>(parent["duplicate_breakdown"]);
+        Assert.Equal(BreakdownMembers, Names(breakdown));
+        Assert.Equal(0, Count(breakdown, "duplicate_same_attempt"));
+        Assert.Equal(0, Count(breakdown, "duplicate_different_attempt"));
+    }
     private static string? Text(JsonNode? node) => node?.GetValue<string>();
     private static IEnumerable<string?> Strings(JsonNode node) => node.AsArray().Select(Text);
     private static string[] Names(JsonObject root) => root.Select(pair => pair.Key).Order(StringComparer.Ordinal).ToArray();

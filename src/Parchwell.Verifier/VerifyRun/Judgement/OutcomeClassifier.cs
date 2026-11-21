@@ -25,7 +25,7 @@ internal static class OutcomeClassifier
                 else reportedFailure++;
             }
         }
-        long duplicates = records.GroupBy(r => (r.Key, r.Sequence)).Sum(g => g.LongCount() - 1);
+        long duplicates = DuplicateClassifier.TryClassify(records)?.Total ?? 0;
         long reorder = 0;
         foreach (var partitionKey in records.GroupBy(r => (r.Topic, r.Partition, r.Key)))
         {
