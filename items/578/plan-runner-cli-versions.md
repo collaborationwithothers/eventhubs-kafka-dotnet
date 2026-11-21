@@ -1,12 +1,12 @@
 # Runner CLI versions: contract-grade plan for issue #578
 
-Revision: r3. Base commit: `main` at 8c39cba25c912a94699b79002b7afcd5582f3dab.
+Revision: r4. Base commit: `main` at b31928a2ed22a634e8e1a66edb953311eaa9ca87. Revisions r1 to r3 were written against 8c39cba25c912a94699b79002b7afcd5582f3dab; `git diff 8c39cba..b31928a` changes none of the files this plan changes or cites, so every line reference below holds at both commits.
 
 The archive preflight will accept whatever Azure CLI and `azure-storage-blob` versions the runner has, as long as it can read them, and every archive manifest and smoke report will record them. This removes the `archive transport version` failure that has blocked every archive since the runner image moved to Azure CLI 2.93.0. One pull request covers it. Manifests archived before this change still verify, and Hari accepted the runner CLI output assumption by name ([decision 7065588872](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/578#issuecomment-7065588872)).
 
 ## Goal and authority
 
-- Authority, in creation order: the issue body of #578 as rewritten (`updated_at` 2026-11-21T16:04:46Z); decision [7065282362](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/578#issuecomment-7065282362) (pinned install), replaced by decision [7065364080](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/578#issuecomment-7065364080): "just use whatever is there in the runner", accepting by name the risk that newer CLI and storage library versions change retries, CLI debug output or token hand-off without a recheck. The later decision wins. Decision 7065588872 ([decision 7065588872](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/578#issuecomment-7065588872)) answers this plan's open questions: option (A) for manifests archived before this change, acceptance of D1 by name, and `docs/operations/archive-smoke.md` line 40 left unchanged. There is no item state file, parent issue or item plan; the issue body is the specification.
+- Authority, in creation order: the issue body of #578 as rewritten (`updated_at` 2026-11-21T16:04:46Z); decision [7065282362](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/578#issuecomment-7065282362) (pinned install), replaced by decision [7065364080](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/578#issuecomment-7065364080): "just use whatever is there in the runner", accepting by name the risk that newer CLI and storage library versions change retries, CLI debug output or token hand-off without a recheck. The later decision wins. Decision 7065588872 ([decision 7065588872](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/578#issuecomment-7065588872)) answers this plan's open questions: option (A) for manifests archived before this change, acceptance of D1 by name, and `docs/operations/archive-smoke.md` line 40 left unchanged. There is no parent issue or item plan; the issue body is the specification. Since the pull request for issue #472 merged (b31928a2ed22a634e8e1a66edb953311eaa9ca87), no session writes an item state file (docs/agents/factory.md "Decision log").
 - Goal: issue requirements 1 to 5. The archive's copy and verification logic, workflows, pinned installs, scenarios and dispatches are out of scope (issue "Out of scope").
 - Candidate selection (docs/agents/factory.md "Item lifecycle" step 3): no split and no plan comment exist, so the candidate is the whole issue as one pull request, named **runner-cli-versions**. An earlier draft for the replaced pinned-install scope was pushed to this plan branch (commit 92dbc5dedcdb16ca30e9c38cacac9cbc32271761) before decision 7065364080 was read; it was never posted, checked or approved, and this commit deletes it.
 - docs/agents/factory.md "Item lifecycle" step 1's live-smoke rule covers plans that change live infrastructure. This plan changes Python scripts and one document, not infrastructure, so the rule does not apply.
@@ -22,7 +22,6 @@ Files allowed to change:
 3. `infra/scripts/tests/test_archive_smoke.py` (the tests of `infra/scripts/archive/smoke.py`; `infra/scripts/archive/` has no test directory, so issue requirement 5's "tests in `infra/scripts/archive/`" is read as this file).
 4. `infra/scripts/phase/tests/test_archive_transfer.py`, `infra/scripts/phase/tests/test_archive_config.py`, `infra/scripts/phase/tests/test_archive_inventory_integration.py`, and any other test under `infra/scripts/phase/tests/` or `infra/scripts/tests/` only under the standing fixture rule below.
 5. `docs/operations/archive-smoke.md` lines 15, 52, 62, 64 and 68.
-6. `items/578/state.md` (new; written by the implementing session under docs/agents/factory.md "Item state file").
 
 Paths that must not change: `.github/workflows/`, `docs/operations/workflows/`, `scripts/azure-cli-session/`, the archive's copy and verification logic (`Transfer`, `Collector`, hashing and size checks), the receipt and completion-marker formats, `POLICY`, `docs/operations/evidence/` (historical evidence), `scenarios/`, `results/`.
 
@@ -151,7 +150,7 @@ None. Both questions of r2 are answered in [decision 7065588872](https://github.
 
 ## Size estimate
 
-Estimate, by the planning session on 2026-11-21, from the base-commit code read above; not measured: 9 files; about 15 changed lines in `smoke.py`, about 15 in `archive.py`, 5 changed lines in `docs/operations/archive-smoke.md`, about 100 to 150 added or changed test lines across the five test files (including fixture changes in `infra/scripts/phase/tests/test_archive_boundaries.py`, which calls `publish_controls` on its `manifest()` fixture), and about 15 lines for `items/578/state.md`. Size is reported, not enforced.
+Estimate, by the planning session on 2026-11-21, from the base-commit code read above; not measured: 8 files; about 15 changed lines in `smoke.py`, about 15 in `archive.py`, 5 changed lines in `docs/operations/archive-smoke.md`, about 100 to 150 added or changed test lines across the five test files (including fixture changes in `infra/scripts/phase/tests/test_archive_boundaries.py`, which calls `publish_controls` on its `manifest()` fixture). Size is reported, not enforced.
 
 ## Stop rule
 
