@@ -853,7 +853,7 @@ class B10AbruptWorkflowTests(unittest.TestCase):
     BASE_WORKFLOWS = {
         '.github/workflows/cluster-smoke.yml': 'e9266d30ff356782918f5fc5b048963265c58a48a3ea6c4733496374f30e3196',
         '.github/workflows/docs-advisory.yml': '39bea63dea8fb37d330e2be1b74782bdc33b3d2655e804ee6b78a231263475ec',
-        '.github/workflows/dotnet-verification.yml': '894bd2a0506a6f8f42e3fbf4fa336713a63fb12c1f85cdc9f9973da694da0bfa',
+        '.github/workflows/dotnet-verification.yml': 'ee5d6dee5cd7782b679ac31ee22c0688d615cd3533fdfbc7db0fddd7accd74b2',
         '.github/workflows/scenario.yml': 'b42c2e7d21e42a50ed64a46fd31b596673e82a82a038ee85d407c119c3470148',
         '.github/workflows/sweeper.yml': 'fdff4a41ab1df0ade1c8e6d216adaeba6aba13dc6415b0b184de1101d7dc2234',
         '.github/workflows/verifier-c5-mutation.yml': '688b9a671074267689c5b7624621d0429c852a0fcb0e901bfe9d9f9ea2a4fad6',

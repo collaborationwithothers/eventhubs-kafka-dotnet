@@ -130,6 +130,8 @@ jobs:
           fetch-depth: 0
       - name: Test the aggregate checker
         run: python3 -m unittest discover -s scripts/tests -p test_check_dotnet_matrix.py -v
+      - name: Test the decision log
+        run: python3 -m unittest discover -s scripts/tests -p test_decision_log.py -v
       - name: Install pinned offline tools
         run: |
           bash infra/scripts/lifecycle/install-tools.sh "$RUNNER_TEMP/parchwell-qualification-tools" ci
