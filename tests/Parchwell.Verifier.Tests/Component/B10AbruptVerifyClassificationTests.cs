@@ -256,15 +256,18 @@ public sealed class B10AbruptVerifyClassificationTests(B10AbruptVerifyKafkaFixtu
         byte[] bytes = run.Verifier[B10AbruptVerifyHarness.Output];
         AssertNames(run.Result, "data", "dialect", "identity", "kind", "purpose", "schema_version", "scientific_admissible", "synthetic");
         AssertNames(run.Result["identity"]!, "configuration_id", "image_reference", "instance_id", "job_name", "phase", "pod_name", "pod_uid", "predecessor_instance_id", "repeat", "run_id", "scenario_id", "source_commit");
-        AssertNames(run.Data, "arms", "comparison", "eligibility", "eligibility_reasons", "end_line", "finality", "first_instance_id", "native_errors", "problem_details", "problems", "start_line", "successor_instance_id", "timeout", "timeout_instance_id", "window_complete", "window_limit");
+        AssertNames(run.Data, "arms", "comparison", "duplicate_breakdown", "eligibility", "eligibility_reasons", "end_line", "finality", "first_instance_id", "native_errors", "problem_details", "problems", "start_line", "successor_instance_id", "timeout", "timeout_instance_id", "window_complete", "window_limit");
+        AssertBreakdown(run.Data, differentAttempt: 1);
         AssertNames(run.Data["timeout"]!, TimeoutFields);
         AssertNames(run.Data["native_errors"]!, "count", "fatal_count", "tail");
         foreach (JsonNode? arm in run.Data["arms"]!.AsArray())
         {
-            AssertNames(arm!, "arm", "key", "lost_resends", "members", "originals_seen", "pair_count", "resend_invoked", "resends_seen", "unconfirmed_count", "unreported_attempts", "unreported_seen", "unreported_unseen", "witness");
+            AssertNames(arm!, "arm", "duplicate_breakdown", "key", "lost_resends", "members", "originals_seen", "pair_count", "resend_invoked", "resends_seen", "unconfirmed_count", "unreported_attempts", "unreported_seen", "unreported_unseen", "witness");
+            AssertBreakdown(arm!, differentAttempt: 0);
             foreach (JsonNode? member in arm!["members"]!.AsArray())
             {
-                AssertNames(member!, "copies", "copies_truncated", "copy_count", "original_attempt_id", "original_copies", "other_copies", "pair_count", "payload_sha256", "resend_attempt_id", "resend_copies", "resend_lost", "resend_terminal", "sequence");
+                AssertNames(member!, "copies", "copies_truncated", "copy_count", "duplicate_breakdown", "original_attempt_id", "original_copies", "other_copies", "pair_count", "payload_sha256", "resend_attempt_id", "resend_copies", "resend_lost", "resend_terminal", "sequence");
+                AssertBreakdown(member!, differentAttempt: 0);
                 AssertNames(member!["resend_terminal"]!, "delivered", "error_code", "persistence_status");
                 foreach (JsonNode? copy in member["copies"]!.AsArray()) AssertNames(copy!, "attempt_id", "instance_id", "offset", "partition", "role");
             }
@@ -322,6 +325,13 @@ public sealed class B10AbruptVerifyClassificationTests(B10AbruptVerifyKafkaFixtu
         await run.ProduceAsync(1, 1, instance: B10AbruptVerifyEvidence.Timeout, attempt: "t3", key: "k2", sequence: 0);
     }
     private static void AssertT2Counts(B10AbruptVerifyHarness run) => Assert.Equal(new long[] { 2, 0, 1, 0, 1, 0 }, TimeoutFields.Select(field => Number(run.Data["timeout"]!, field)));
+    private static void AssertBreakdown(JsonNode parent, long differentAttempt)
+    {
+        JsonNode breakdown = Assert.IsType<JsonObject>(parent["duplicate_breakdown"]);
+        AssertNames(breakdown, "duplicate_same_attempt", "duplicate_different_attempt");
+        Assert.Equal(0, Number(breakdown, "duplicate_same_attempt"));
+        Assert.Equal(differentAttempt, Number(breakdown, "duplicate_different_attempt"));
+    }
     private static void AssertNames(JsonNode node, params string[] names) => Assert.Equal(names.Order(StringComparer.Ordinal), node.AsObject().Select(pair => pair.Key).Order(StringComparer.Ordinal));
     private B10AbruptVerifyHarness NewRun(B10AbruptVerifyEvidence? evidence = null) => new(kafka.Bootstrap, (evidence ?? new()).Files);
     private static async Task AssertResult(B10AbruptVerifyHarness run, int[] problems, int[] reasons)

@@ -116,9 +116,9 @@ internal static class B10FinalClassification
                     "b10_restart_timeout_bookkeeping_unavailable" or "b10_restart_sweep_unavailable" or "b10_restart_late_record_unjoined"));
                 if (!emptyKillBad)
                 {
-                    IReadOnlyList<ConsumedRecord> population = input.Starts is null ? [] : records
-                        .Where(record => record.Offset >= input.Starts.GetValueOrDefault(record.Partition, long.MaxValue) &&
-                            (record.InstanceId is null || !earlier.Contains(record.InstanceId)))
+                    IReadOnlyList<ConsumedRecord> population = original
+                        .Where(record => record.InstanceId is null || !earlier.Contains(record.InstanceId))
+                        .Concat(union)
                         .DistinctBy(record => (record.Topic, record.Partition, record.Offset)).ToArray();
                     IReadOnlyList<AbruptArm>? observations = EvaluateArms(input, population, globalFailure is null && input.Starts is not null, options.MaxDiagnosticsPerCheck.Value);
                     arms = evaluated?.Select(arm => ProjectArm(input.First, arm, complete) with

@@ -1,9 +1,11 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Microsoft.Extensions.Options;
 using Parchwell.Verifier.Common.Phase;
 using Parchwell.Verifier.Common.Results;
 using Parchwell.Verifier.VerifyRun.Abrupt;
 using Parchwell.Verifier.VerifyRun.B10Final;
+using Parchwell.Verifier.VerifyRun.Configuration;
 using Parchwell.Verifier.VerifyRun.Input;
 using Xunit;
 
@@ -71,6 +73,31 @@ public sealed class B10FinalClassificationDuplicateTests
             Assert.Null(arms[0].DuplicateBreakdown);
             Assert.Equal(new DuplicateBreakdown(0, 0), arms[1].DuplicateBreakdown);
         }
+    }
+
+    [Theory]
+    [InlineData(19L, false)]
+    [InlineData(20L, true)]
+    [InlineData(21L, true)]
+    public void Given_MalformedRecordFromAnotherRepeat_When_Classified_Then_OnlyOriginalWindowAffectsObservation(
+        long offset, bool hasBreakdown)
+    {
+        B10FinalInput input = Input();
+        input.Started = true;
+        input.FirstInstance = "first";
+        input.Starts = new() { [0] = 10 };
+        input.Ends = new() { [0] = 20 };
+        input.Instances.Add("first");
+        var later = new B10FinalInput(2) { Started = true, Starts = new() { [0] = 20 }, Ends = new() { [0] = 30 } };
+        later.Instances.Add("later");
+        var options = new VerifierHostOptions { Phase = "C1", RunId = "run", MaxDiagnosticsPerCheck = 2 };
+        var resolver = new RegisteredProducerConfigurationResolver(Options.Create(options));
+        ConsumedRecord[] records = [Record(10, "first", "original"), Record(31, "first", "original"),
+            Record(offset, "later", "later-attempt") with { Key = null }];
+
+        B10FinalRepeat repeat = B10FinalClassification.Classify(input, [input, later], records, null, options, null, resolver);
+
+        Assert.Equal(hasBreakdown ? new DuplicateBreakdown(1, 0) : null, repeat.Restart!.Arms![0].DuplicateBreakdown);
     }
 
     [Theory]
