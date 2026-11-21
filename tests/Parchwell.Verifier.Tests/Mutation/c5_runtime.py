@@ -1280,6 +1280,26 @@ CAPACITY_COMBINED_SHARED = frozenset({
     'tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs',
     'tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs',
 })
+# The hosted review correction requires fresh timing for the classifier.
+# https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061711703
+CI_REPAIR_OWNERSHIP_SOURCE = 'e520f829001dc1ea76b10df49b2277b26e815872'
+
+
+def classifier_ownership_matches(combined, current):
+    """Check the exact target, shared regression and relocated cut changes."""
+    if current != proof_tree(CI_REPAIR_OWNERSHIP_SOURCE):
+        return False
+    old, old_code, (old_shared, old_targets), old_config, old_matrix = combined
+    new, new_code, (new_shared, new_targets), new_config, new_matrix = current
+    key = CI_REPAIR_CLASSIFIER
+    target = old['TARGETS'][key][0]
+    cuts = {**old['PRIMARY_CUTS'], key: new['PRIMARY_CUTS'][key]}
+    return (new == {**old, 'PRIMARY_CUTS': cuts}
+            and (old_code, old_config, old_matrix) == (new_code, new_config, new_matrix)
+            and new_shared[CI_REPAIR_TEST] != old_shared[CI_REPAIR_TEST]
+            and new_shared == {**old_shared, CI_REPAIR_TEST: new_shared[CI_REPAIR_TEST]}
+            and new_targets[target] != old_targets[target]
+            and new_targets == {**old_targets, target: new_targets[target]})
 
 
 @functools.lru_cache(maxsize=4)
@@ -1289,11 +1309,13 @@ def classifier_capacity_trees(head):
     expanded = proof_tree(CI_REPAIR_CAPACITY)
     current = proof_tree(head)
     if current != expanded:
-        if ((current[:2], current[2][1], current[3:]) != (expanded[:2], expanded[2][1], expanded[3:])
-                or current != proof_tree(CI_REPAIR_CAPACITY_COMBINED)):
+        combined = proof_tree(CI_REPAIR_CAPACITY_COMBINED)
+        if (combined[:2], combined[2][1], combined[3:]) != (expanded[:2], expanded[2][1], expanded[3:]):
             return None
-        sized, combined = expanded[2][0], current[2][0]
-        if {path for path in sized.keys() | combined.keys() if sized.get(path) != combined.get(path)} != CAPACITY_COMBINED_SHARED:
+        sized, joined = expanded[2][0], combined[2][0]
+        if {path for path in sized.keys() | joined.keys() if sized.get(path) != joined.get(path)} != CAPACITY_COMBINED_SHARED:
+            return None
+        if current != combined and not classifier_ownership_matches(combined, current):
             return None
     old, old_code, (old_shared, old_targets), old_config, _ = prior
     new, new_code, (new_shared, new_targets), new_config, _ = expanded
@@ -1325,14 +1347,14 @@ def classifier_capacity_trees(head):
     if len(changed) != 12 or expected_shared != new_shared:
         return None
     for path in CAMPAIGN_LIMITS:
-        current = workflow_matrix(blob(head, path))
+        head_matrix = workflow_matrix(blob(head, path))
         pinned = workflow_matrix(blob(CI_REPAIR_CAPACITY, path))
         previous = workflow_matrix(blob(CI_REPAIR_REBALANCE, path))
-        if (current != pinned or len(current) != CAMPAIGN_LIMITS[path]
+        if (head_matrix != pinned or len(head_matrix) != CAMPAIGN_LIMITS[path]
                 or {shard: owner for shard, owner in previous.items() if owner != classifier} != {
-                    shard: owner for shard, owner in current.items() if owner != classifier}):
+                    shard: owner for shard, owner in head_matrix.items() if owner != classifier}):
             return None
-    return prior, expanded
+    return prior, current
 
 
 def retained_classifier_capacity_selection(head, owner, shard):
