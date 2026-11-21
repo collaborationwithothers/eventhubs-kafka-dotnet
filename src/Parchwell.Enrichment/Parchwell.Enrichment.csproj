@@ -10,6 +10,9 @@
   <ItemGroup>
     <Content Include="../../scenarios/C03/scenario.yaml" Link="scenarios/C03/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../scenarios/profiles/c03-consumer.yaml" Link="scenarios/profiles/c03-consumer.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../scenarios/C10/scenario.yaml" Link="scenarios/C10/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../scenarios/C01/scenario.yaml" Link="scenarios/C01/scenario.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../scenarios/profiles/c01-consumer.yaml" Link="scenarios/profiles/c01-consumer.yaml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Confluent.Kafka" />

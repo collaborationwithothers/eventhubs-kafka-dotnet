@@ -1,0 +1,117 @@
+schema_version: 1
+id: C01
+subject: >-
+  librdkafka v2.16.0 documents that the broker removes a group member when it
+  receives no heartbeat within session.timeout.ms (default 45000). Microsoft
+  recommends 30000 for Event Hubs, within 6000 to 300000.
+
+assessment_rules:
+  counted_repeats: complete_valid only; H1 and H2 also require reassignment.microseconds not null
+  repeats_per_configuration: 5
+  replacements: 0
+  evidence: >-
+    The verifier consumer block of each repeat: status, counts and
+    reassignment (docs/operations/verifier-contract.md). Reassignment runs
+    from the subject's kill-intent row to the witness's assigned row that
+    holds the subject's partitions. It is null when the members ran on
+    different nodes.
+  kill_point: >-
+    The subject sends SIGKILL to itself when Consume returns its first
+    message, before processing it, so it has committed nothing (ADR-022).
+    heartbeat.interval.ms stays 3000. The witness runs the baseline.
+  window_policy: >-
+    The lower bound is session.timeout.ms minus heartbeat.interval.ms, because
+    the last heartbeat can precede the kill by up to 3000 ms. The upper bound
+    adds 15000 ms for rebalance time, a policy value, not a measurement.
+
+configurations:
+  C0:
+    H1_removal_follows_30000:
+      question: >-
+        With session.timeout.ms 30000, how long after the subject is killed
+        does the witness hold its partitions?
+      holds_when: >-
+        All 5 repeats complete_valid, and in each reassignment.microseconds is
+        not null, >= 27000000 and < 45000000.
+      contradicted_when: >-
+        All 5 repeats counted, and in at least one reassignment.microseconds is
+        >= 45000000.
+      otherwise: inconclusive
+    early_removal:
+      mode: finding
+      when: >-
+        In at least one counted repeat, reassignment.microseconds < 27000000.
+      text: >-
+        The witness held the subject's partitions sooner than session.timeout.ms
+        minus heartbeat.interval.ms after the kill, so the session timeout did
+        not decide the removal. One possible cause is that Event Hubs removes a
+        member when its connection closes; that cause is not verified. It is
+        reported on its own line and does not contradict H1.
+    H3_k57_latest_reset_skips_messages:
+      question: >-
+        Killed before its first auto-commit, with auto.offset.reset at its
+        baseline latest, are messages on the subject's partitions committed
+        but never processed (K-57)?
+      holds_when: >-
+        All 5 repeats complete_valid, and in each:
+        counts.committed_never_processed >= 1.
+      contradicted_when: >-
+        All 5 repeats complete_valid, and in at least one:
+        counts.committed_never_processed = 0.
+      otherwise: inconclusive
+    reassignment:
+      mode: recorded_only
+      value: reassignment.microseconds per repeat
+  C1:
+    H2_removal_follows_45000:
+      question: >-
+        With session.timeout.ms 45000 on the subject, how long after it is
+        killed does the witness hold its partitions?
+      holds_when: >-
+        All 5 repeats complete_valid, and in each reassignment.microseconds is
+        not null, >= 42000000 and < 60000000.
+      contradicted_when: >-
+        All 5 repeats counted, and in at least one reassignment.microseconds is
+        >= 60000000.
+      otherwise: inconclusive
+    early_removal:
+      mode: finding
+      when: >-
+        In at least one counted repeat, reassignment.microseconds < 42000000.
+      text: >-
+        The witness held the subject's partitions sooner than session.timeout.ms
+        minus heartbeat.interval.ms after the kill, so the session timeout did
+        not decide the removal. One possible cause is that Event Hubs removes a
+        member when its connection closes; that cause is not verified. It is
+        reported on its own line and does not contradict H2.
+    H3_k57_latest_reset_skips_messages:
+      question: >-
+        As in C0, with session.timeout.ms 45000 on the subject.
+      holds_when: >-
+        All 5 repeats complete_valid, and in each:
+        counts.committed_never_processed >= 1.
+      contradicted_when: >-
+        All 5 repeats complete_valid, and in at least one:
+        counts.committed_never_processed = 0.
+      otherwise: inconclusive
+    reassignment:
+      mode: recorded_only
+      value: reassignment.microseconds per repeat
+
+verdict:
+  confirmed_when: H1 holds and H2 holds.
+  contradicted_when: H1 is contradicted or H2 is contradicted.
+  no_verdict_when: neither of the above; the run is investigated, not published.
+  smoke_run: never published as a result; it gives no verdict.
+  separate_lines: H3 in each configuration, early_removal in each configuration and the recorded reassignment values are published on their own lines and do not change the verdict.
+  text_must_state:
+    - The kill point and window policy in assessment_rules.
+    - The workload is synthetic and its load lasts 150 s.
+    - K-57 is tested here because C10's two phases compare offset-store modes.
+    - Each counted repeat with an early_removal finding, with its reassignment value.
+    - The subject has no native-monitoring evidence; the archive records its
+      missing index as configured_self_kill.
+
+sources:
+  - https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md
+  - https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations

@@ -77,8 +77,8 @@ public sealed class ScenarioVerificationPlanSourceTests
     }
 
     [Theory]
-    [InlineData("C10", "C0")]
-    [InlineData("C01", "C1")]
+    [InlineData("C10", "C2")]
+    [InlineData("C01", "C2")]
     [InlineData("C03", "C2")]
     [InlineData("B04", "C0")]
     public void Given_any_other_pair_When_the_production_source_is_asked_Then_it_returns_false(string scenario, string phase)

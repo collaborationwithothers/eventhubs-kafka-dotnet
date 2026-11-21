@@ -1,0 +1,22 @@
+schema_version: 1
+id: c01-consumer
+seed: 1402
+tenants:
+  - {id: tenant01, weight: 1}
+documents_per_burst: 2000
+payloads:
+  uploaded:
+    - {size_bytes: 1024, weight: 1}
+  ocr-started:
+    - {size_bytes: 1024, weight: 1}
+  ocr-finished:
+    - {size_bytes: 150000, weight: 99}
+    - {size_bytes: 900000, weight: 1}
+  classified:
+    - {size_bytes: 1024, weight: 1}
+  indexed:
+    - {size_bytes: 1024, weight: 1}
+stages:
+  - {id: steady4, offered_attempts_per_second: 4, duration_seconds: 150}
+consumer:
+  processing_delay_ms: 200
