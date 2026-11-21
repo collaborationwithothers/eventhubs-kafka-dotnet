@@ -181,7 +181,7 @@ public sealed class ConsumerProcessingDefinitionTests
     [Fact]
     public void Given_ApprovedExpectedOutcomes_When_ReadingTheCommittedFile_Then_BytesEqualTheApprovedText()
     {
-        // The only test that reads expected.yaml (ADR-014). The hash is of the text in the approved plan, LF endings and a final newline.
+        // With tests X1 and X2 of the #510 plan, the only tests that read an expected.yaml (ADR-014). The hash is of the text in the approved plan, LF endings and a final newline.
         var bytes = File.ReadAllBytes(Path.Combine(Root(), "scenarios", "C03", "expected.yaml"));
         Assert.DoesNotContain((byte)'\r', bytes);
         Assert.Equal((byte)'\n', bytes[^1]);

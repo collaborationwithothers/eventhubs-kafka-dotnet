@@ -64,10 +64,10 @@ internal sealed class HostEvidenceBuilder : IDisposable, ILedgerArtifactSource, 
         Resolver = new ScenarioResolver(services.GetRequiredService<KafkaConfigurationFactory>());
         string root = RepositoryRoot();
         string scenarioPath = "scenarios/" + scenarioId + "/scenario.yaml";
-        // C03 always reads the committed C03 definition: its declaration checks reject another item's text relabelled C03, so scenarioSourceId does not apply to it.
+        // C03, C10 and C01 always read their committed definitions: their declaration checks reject another item's text relabelled as one of them, so scenarioSourceId does not apply to them (standing fixture rule (a)).
         scenarioDocuments = new(StringComparer.Ordinal)
         {
-            [scenarioPath] = File.ReadAllText(Path.Combine(root, "scenarios", scenarioId == "C03" ? "C03" : scenarioSourceId ?? scenarioId, "scenario.yaml"))
+            [scenarioPath] = File.ReadAllText(Path.Combine(root, "scenarios", scenarioId is "C03" or "C10" or "C01" ? scenarioId : scenarioSourceId ?? scenarioId, "scenario.yaml"))
                 .Replace("id: " + (scenarioSourceId ?? scenarioId) + "\n", "id: " + scenarioId + "\n", StringComparison.Ordinal),
             ["scenarios/profiles/lifecycle-1k.yaml"] = ""
         };

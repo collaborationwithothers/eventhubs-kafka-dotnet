@@ -1,4 +1,4 @@
-The shared scenario workflow runs the consumer scenarios C03, C10 and C01 when its scenario input is one of them. Each phase runs five repeats, and each repeat starts a subject and a witness consumer member Job before the start line, load generator and verifier. This page records workflow behaviour, not a result, and C03 has its scenario, plan sources and load generator input; C10 and C01 do not run live until the child issue that supplies theirs merges.
+The shared scenario workflow runs the consumer scenarios C03, C10 and C01 when its scenario input is one of them. Each phase runs five repeats, and each repeat starts a subject and a witness consumer member Job before the start line, load generator and verifier. This page records workflow behaviour, not a result, and C03, C10 and C01 have their scenarios, plan sources and load generator input.
 
 ## Route
 

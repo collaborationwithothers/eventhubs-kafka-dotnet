@@ -16,4 +16,4 @@ Decisions in force:
 - Approves plan revision 6 at the commit above; check P2-1 to P2-3 are `apply in implementation`. Source: [7034786418](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034786418)
 Open questions:
 - None
-Next action: Codex review and merge of the `self-kill-archive` pull request. The set is `c10-c01-inputs`, `self-kill-archive`, `c10-commit-coverage`; the plan allows any order, and all three merge before the smoke runs.
+Next action: Codex review and merge of the `c10-c01-inputs` pull request (Hari merges; protected paths); then one `verifier-c5-mutation.yml` dispatch on `main` (plan section 9). `self-kill-archive` has merged; `c10-commit-coverage` remains. All three merge before the smoke runs.
