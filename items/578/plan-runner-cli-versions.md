@@ -1,6 +1,6 @@
 # Runner CLI versions: contract-grade plan for issue #578
 
-Revision: r1. Base commit: `main` at 8c39cba25c912a94699b79002b7afcd5582f3dab.
+Revision: r2. Base commit: `main` at 8c39cba25c912a94699b79002b7afcd5582f3dab.
 
 The archive preflight will accept whatever Azure CLI and `azure-storage-blob` versions the runner has, as long as it can read them, and every archive manifest and smoke report will record them. This removes the `archive transport version` failure that has blocked every archive since the runner image moved to Azure CLI 2.93.0. One pull request covers it; one open question asks Hari how manifests archived before this change are treated, and one asks him to accept a named assumption about the runner's CLI output.
 
@@ -142,7 +142,7 @@ Tools used, all on 2026-11-21: `grep` over the repository at the base commit; th
 ## Plan-check questions
 
 - (a) Steps whose effort scales with a number unknown at planning time: none. The places that fix the versions were found by one repository `grep` on the base commit (R4).
-- (b) Stricter than the parent: there is no parent plan. Against the issue body, the plan defines "readable" with the C1 pattern and a 32-character suffix bound, so the version string written into the manifest is bounded ASCII the validator can check; and it requires `transport_versions` in every manifest `publish_controls` publishes, so a writer that omits the versions cannot publish. The issue asks that every archive record the versions; this makes that a failing check rather than a convention.
+- (b) Stricter than the parent: there is no parent plan. Against the issue body, the plan defines "readable" with the C1 pattern and a 32-character suffix bound, so the version string written into the manifest is ASCII of a fixed form the validator can check (the suffix is bounded at 32 characters; the three numeric parts are not); and it requires `transport_versions` in every manifest `publish_controls` publishes, so a writer that omits the versions cannot publish. The issue asks that every archive record the versions; this makes that a failing check rather than a convention.
 - (c) Behaviour neither on `main` nor in the pull request: the runner's CLI output, D1. Checked against a recorded run log and the CLI source at its tag; the deployed binary itself is unchecked.
 
 ## Open questions for Hari
@@ -152,7 +152,7 @@ Tools used, all on 2026-11-21: `grep` over the repository at the base commit; th
 
 ## Size estimate
 
-Estimate, by the planning session on 2026-11-21, from the base-commit code read above; not measured: 8 files; about 15 changed lines in `smoke.py`, about 15 in `archive.py`, 5 changed lines in `docs/operations/archive-smoke.md`, about 100 to 150 added or changed test lines across the four test files, and about 15 lines for `items/578/state.md`. Size is reported, not enforced.
+Estimate, by the planning session on 2026-11-21, from the base-commit code read above; not measured: 9 files; about 15 changed lines in `smoke.py`, about 15 in `archive.py`, 5 changed lines in `docs/operations/archive-smoke.md`, about 100 to 150 added or changed test lines across the five test files (including fixture changes in `infra/scripts/phase/tests/test_archive_boundaries.py`, which calls `publish_controls` on its `manifest()` fixture), and about 15 lines for `items/578/state.md`. Size is reported, not enforced.
 
 ## Stop rule
 
