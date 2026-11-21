@@ -25,6 +25,7 @@ public sealed class B10AbruptVerifyTests(B10AbruptVerifyKafkaFixture kafka) : IC
     private static readonly string[] EnvelopeMembers = ["data", "dialect", "identity", "kind", "purpose", "schema_version", "scientific_admissible", "synthetic"];
     private static readonly string[] IdentityMembers = ["configuration_id", "image_reference", "instance_id", "job_name", "phase", "pod_name", "pod_uid", "predecessor_instance_id", "repeat", "run_id", "scenario_id", "source_commit"];
     private static readonly string[] DataMembers = ["arms", "comparison", "duplicate_breakdown", "eligibility", "eligibility_reasons", "end_line", "finality", "first_instance_id", "native_errors", "problem_details", "problems", "start_line", "successor_instance_id", "timeout", "timeout_instance_id", "window_complete", "window_limit"];
+    private static readonly string[] BreakdownMembers = ["duplicate_different_attempt", "duplicate_same_attempt"];
     private static readonly string[] ArmMembers = ["arm", "key", "lost_resends", "members", "originals_seen", "pair_count", "resend_invoked", "resends_seen", "unconfirmed_count", "unreported_attempts", "unreported_seen", "unreported_unseen", "witness"];
     private static readonly string[] MemberFields = ["copies", "copies_truncated", "copy_count", "original_attempt_id", "original_copies", "other_copies", "pair_count", "payload_sha256", "resend_attempt_id", "resend_copies", "resend_lost", "resend_terminal", "sequence"];
     private static readonly string[] CopyFields = ["attempt_id", "instance_id", "offset", "partition", "role"];
@@ -384,7 +385,7 @@ public sealed class B10AbruptVerifyTests(B10AbruptVerifyKafkaFixture kafka) : IC
     private static void AssertZeroBreakdown(JsonNode parent)
     {
         JsonObject breakdown = Assert.IsType<JsonObject>(parent["duplicate_breakdown"]);
-        Assert.Equal(new[] { "duplicate_different_attempt", "duplicate_same_attempt" }, Names(breakdown));
+        Assert.Equal(BreakdownMembers, Names(breakdown));
         Assert.Equal(0, Count(breakdown, "duplicate_same_attempt"));
         Assert.Equal(0, Count(breakdown, "duplicate_different_attempt"));
     }

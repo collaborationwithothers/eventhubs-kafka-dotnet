@@ -97,9 +97,10 @@ internal static class B10FinalClassification
                     AbruptRecordJoin.HasUnjoined(input.First, input.Successor, union,
                     input.TimeoutInstance is null ? new HashSet<string>() : new HashSet<string>([input.TimeoutInstance], StringComparer.Ordinal), input.SuccessorInstance)))
                 { restartReasons.Add("b10_restart_late_record_unjoined"); complete = false; }
+                var restartOriginal = original.Where(record => record.InstanceId is null || !earlier.Contains(record.InstanceId));
                 if (input.Nonfinal is { } nonfinal && evaluated is not null && globalFailure is null &&
                     !AgreeArms(nonfinal.GetProperty("arms"), EvaluateArms(input, union.Where(record => Inside(record, input.Starts!, input.Ends!)).ToArray(), true, options.MaxDiagnosticsPerCheck.Value),
-                        EvaluateArms(input, original.DistinctBy(record => (record.Topic, record.Partition, record.Offset)).ToArray(), true, options.MaxDiagnosticsPerCheck.Value)))
+                        EvaluateArms(input, restartOriginal.DistinctBy(record => (record.Topic, record.Partition, record.Offset)).ToArray(), true, options.MaxDiagnosticsPerCheck.Value)))
                 { restartReasons.Add("b10_restart_late_record_unjoined"); complete = false; }
                 if (!input.KillTooLate && scenario is not null && input.Start is not null && globalFailure is null)
                 {
@@ -116,9 +117,7 @@ internal static class B10FinalClassification
                     "b10_restart_timeout_bookkeeping_unavailable" or "b10_restart_sweep_unavailable" or "b10_restart_late_record_unjoined"));
                 if (!emptyKillBad)
                 {
-                    IReadOnlyList<ConsumedRecord> population = original
-                        .Where(record => record.InstanceId is null || !earlier.Contains(record.InstanceId))
-                        .Concat(union)
+                    IReadOnlyList<ConsumedRecord> population = restartOriginal.Concat(union)
                         .DistinctBy(record => (record.Topic, record.Partition, record.Offset)).ToArray();
                     IReadOnlyList<AbruptArm>? observations = EvaluateArms(input, population, globalFailure is null && input.Starts is not null, options.MaxDiagnosticsPerCheck.Value);
                     arms = evaluated?.Select(arm => ProjectArm(input.First, arm, complete) with

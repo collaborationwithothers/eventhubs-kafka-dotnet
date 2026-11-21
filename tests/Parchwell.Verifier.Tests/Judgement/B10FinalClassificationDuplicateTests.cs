@@ -101,6 +101,50 @@ public sealed class B10FinalClassificationDuplicateTests
     }
 
     [Theory]
+    [InlineData("earlier", 19L, true)]
+    [InlineData(null, 9L, true)]
+    [InlineData(null, 10L, false)]
+    [InlineData(null, 19L, false)]
+    [InlineData(null, 20L, true)]
+    [InlineData("first", 19L, false)]
+    public void Given_MalformedRecordNearRepeatWindow_When_AgreeingNonfinalArms_Then_OnlyRelevantRecordsAffectRestart(
+        string? owner, long offset, bool agrees)
+    {
+        B10FinalInput input = Input(number: 2);
+        input.Started = true;
+        input.InputValid = true;
+        input.FirstInstance = "first";
+        input.Starts = new() { [0] = 10 };
+        input.Ends = new() { [0] = 20 };
+        input.Instances.Add("first");
+        var earlier = new B10FinalInput(1);
+        earlier.Instances.Add("earlier");
+        var options = new VerifierHostOptions { Phase = "C1", RunId = "run", MaxDiagnosticsPerCheck = 2 };
+        var resolver = new RegisteredProducerConfigurationResolver(Options.Create(options));
+        ConsumedRecord[] own = [Record(11, "first", "original"), Record(12, "first", "resend")];
+        using JsonDocument stored = JsonDocument.Parse(new JsonObject
+        {
+            ["arms"] = JsonSerializer.SerializeToNode(B10FinalClassification.EvaluateArms(input, own, true, 2),
+                B10FinalProjectionCodec.JsonOptions),
+            ["eligibility"] = "pending_sweep",
+            ["eligibility_reasons"] = new JsonArray(),
+            ["problems"] = new JsonArray()
+        }.ToJsonString());
+        input.Nonfinal = stored.RootElement;
+        ConsumedRecord malformed = Record(offset, owner, "malformed") with { Key = null };
+
+        B10FinalRepeat repeat = B10FinalClassification.Classify(input, [earlier, input], [..own, malformed], null, options, null, resolver);
+
+        B10FinalRestart restart = Assert.IsType<B10FinalRestart>(repeat.Restart);
+        Assert.Equal(agrees ? "same_instance_only" : "unavailable", restart.Comparison);
+        if (agrees)
+            Assert.Empty(restart.EligibilityReasons);
+        else
+            Assert.Equal("b10_restart_late_record_unjoined", Assert.Single(restart.EligibilityReasons));
+        Assert.Equal(agrees ? new DuplicateBreakdown(0, 1) : null, restart.Arms![0].DuplicateBreakdown);
+    }
+
+    [Theory]
     [MemberData(nameof(Results.DuplicateBreakdownTests.MalformedWireObjects), MemberType = typeof(Results.DuplicateBreakdownTests))]
     public void Given_NonfinalArmOrMemberBreakdown_When_Validated_Then_RejectsMalformedPresence(string literal)
     {
@@ -155,7 +199,7 @@ public sealed class B10FinalClassificationDuplicateTests
         }
     }
 
-    private static B10FinalInput Input()
+    private static B10FinalInput Input(int number = 1)
     {
         var attempts = new Dictionary<string, AbruptAttempt>(StringComparer.Ordinal)
         {
@@ -166,7 +210,7 @@ public sealed class B10FinalClassificationDuplicateTests
             new Dictionary<string, string> { ["original"] = "resend" },
             new Dictionary<string, AbruptTerminal> { ["resend"] = new(true, 0, null) }, [], [])
         { Accepted = new HashSet<string>(StringComparer.Ordinal) { "original", "resend" } };
-        return new B10FinalInput(1) { First = first, KillTooLate = true, Options = new() { RunId = "run" } };
+        return new B10FinalInput(number) { First = first, KillTooLate = true, Options = new() { RunId = "run" } };
     }
 
     private static ConsumedRecord Record(long offset, string? instance, string? attempt) =>
