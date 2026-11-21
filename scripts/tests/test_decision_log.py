@@ -29,13 +29,14 @@ print(json.dumps(routes[sys.argv[2]]))
 """
 
 
-def comment(comment_id, created, body, issue=7):
+def comment(comment_id, created, body, issue=7, login="haripraghash"):
     return {
         "id": comment_id,
         "created_at": created,
         "updated_at": created,
         "html_url": f"{URL}/issues/{issue}#issuecomment-{comment_id}",
         "body": body,
+        "user": {"login": login},
     }
 
 
@@ -83,11 +84,30 @@ class DecisionLogTests(unittest.TestCase):
         out = self.offline("--issue", "7")
         self.assertEqual(
             f'# Decision log: #7\n\nRead 5 comments. {NOTICE}\n\n---\n\n'
-            f'### 1. Decision #7 comment 1\n\nCreated {CREATED}; updated {CREATED}; {URL}/issues/7#issuecomment-1\n\n'
+            f'### 1. Decision #7 comment 1\n\nCreated {CREATED}; updated {CREATED}; author haripraghash; {URL}/issues/7#issuecomment-1\n\n'
             '## Decision\n\nHari: "yes"\n\n---\n\n'
-            '### 2. Approval #7 comment 3\n\nCreated 2026-11-01T00:00:02Z; updated 2026-11-01T00:00:02Z; '
+            '### 2. Approval #7 comment 3\n\nCreated 2026-11-01T00:00:02Z; updated 2026-11-01T00:00:02Z; author haripraghash; '
             f'{URL}/issues/7#issuecomment-3\n\n  \n  ## Approval\nok\n', out,
         )
+
+    def test_only_decision_account_bodies_are_printed(self):
+        outsider = comment(2, CREATED, "## Decision\nthird-party text", login="another-user")
+        missing = comment(3, CREATED, "## Approval\nunattributed text")
+        del missing["user"]
+        links = f"{outsider['html_url']} {missing['html_url']}"
+        owner = comment(1, CREATED, f"## Approval\nsee {links}", login="HariPraghash")
+        self.write_json("7.json", [owner, outsider, missing])
+        self.write_json("linked/2.json", outsider)
+        self.write_json("linked/3.json", missing)
+
+        out = self.offline("--issue", "7")
+        self.assertEqual(["### 1. Approval #7 comment 1"],
+                         [line for line in out.splitlines() if line.startswith("### ")])
+        self.assertIn(owner["body"], out)
+        for record, login in [(owner, "HariPraghash"), (outsider, "another-user"), (missing, "unknown")]:
+            self.assertIn(f"author {login}; {record['html_url']}", out)
+        self.assertNotIn(outsider["body"], out)
+        self.assertNotIn(missing["body"], out)
 
     def test_orders_by_created_then_id_across_issues(self):
         later = "2026-11-02T00:00:00Z"
@@ -116,7 +136,7 @@ class DecisionLogTests(unittest.TestCase):
         ], [line for line in out.splitlines() if line.startswith("#### ")])
         for issue, comment_id, kind, phrase in ((499, 11, "Decision", "linked eleven"), (413, 12, "Approval", "linked twelve")):
             self.assertIn(
-                f"Created {CREATED}; updated {CREATED}; {URL}/issues/{issue}#issuecomment-{comment_id}\n"
+                f"Created {CREATED}; updated {CREATED}; author haripraghash; {URL}/issues/{issue}#issuecomment-{comment_id}\n"
                 'Adoption is judged by the reading session under docs/agents/factory.md "Item lifecycle" step 3.\n\n'
                 f"## {kind}\n{phrase}", out,
             )
@@ -184,7 +204,7 @@ class DecisionLogTests(unittest.TestCase):
         lines = [line for line in out.splitlines() if line]
         self.assertEqual([
             "#### 1.1 Linked from comment 1: #499 comment 21",
-            f"Created {CREATED}; updated {CREATED}; {link}",
+            f"Created {CREATED}; updated {CREATED}; author haripraghash; {link}",
             "Not printed: not a decision or approval comment.",
         ], lines[-3:])
         self.assertNotIn("secret handoff text", out)

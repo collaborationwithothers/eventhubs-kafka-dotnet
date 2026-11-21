@@ -11,6 +11,7 @@ import sys
 
 
 REPOSITORY = "collaborationwithothers/eventhubs-kafka-dotnet"
+DECISION_ACCOUNT = "haripraghash"
 API = f"repos/{REPOSITORY}/issues"
 COMMENT_URL = re.compile(
     rf"https://github\.com/{REPOSITORY}/(?:issues|pull)/(\d+)#issuecomment-(\d+)"
@@ -26,6 +27,7 @@ class Comment:
     updated_at: str
     html_url: str
     body: str
+    author: str
 
     @classmethod
     def parse(cls, data):
@@ -39,10 +41,14 @@ class Comment:
         url = COMMENT_URL.fullmatch(data["html_url"])
         if not url or url[2] != str(data["id"]):
             raise ValueError("expected a repository issue comment URL")
+        user = data.get("user")
+        login = user.get("login") if isinstance(user, dict) else None
         return cls(data["id"], url[1], data["created_at"], data["updated_at"],
-                   data["html_url"], data["body"] or "")
+                   data["html_url"], data["body"] or "", login if isinstance(login, str) else "")
 
     def kind(self):
+        if not self.author.isascii() or self.author.lower() != DECISION_ACCOUNT:
+            return None
         heading = next((line.lstrip(" ") for line in self.body.splitlines() if line.strip()), "")
         for kind in ("Decision", "Approval"):
             if heading.startswith(f"## {kind}"):
@@ -50,7 +56,7 @@ class Comment:
         return None
 
     def metadata(self):
-        return f"Created {self.created_at}; updated {self.updated_at}; {self.html_url}"
+        return f"Created {self.created_at}; updated {self.updated_at}; author {self.author or 'unknown'}; {self.html_url}"
 
 
 def get_json(route):
