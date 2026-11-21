@@ -1,6 +1,8 @@
 # C5 tail acceptance
 
-Revision R1. Main base `b31928a2ed22a634e8e1a66edb953311eaa9ca87`.
+Revision R2. Main base `b31928a2ed22a634e8e1a66edb953311eaa9ca87`.
+
+R2 spells out the exhaustion action for the fixed diagnostic, evidence intake and paired attempt. The candidate and checks are the same as R1.
 
 ## Goal and authority
 
@@ -57,9 +59,9 @@ The exact primary and crossing reports and command logs came from the loaded, st
 
 ## Acceptance and bounds
 
-- Before dispatch, require exact preflight under requirement 1 and reviewed protected merge of the sizing pin. Dispatch `verifier-c5-sizing.yml` on `main` once with the pinned source. At most 43 jobs, one intake of 43 receipts, no automatic retry.
+- Before dispatch, require exact preflight under requirement 1 and reviewed protected merge of the sizing pin. Dispatch `verifier-c5-sizing.yml` on `main` once with the pinned source. At most 43 jobs and one intake of 43 receipts. On exhaustion, preserve the evidence, push -wip and hand off to the next session under AGENTS.md rule 11. No automatic retry.
 - Publish qualification only after all source, geometry, artifact, receipt and arithmetic checks pass on the pinned diagnostic. Hosted CI invokes `c5_runtime.py check` on the final PR head with the committed qualification. Protected merge and final-head review remain required.
-- After both repairs merge, compare exact `main` against the pinned candidate and accepted action fix. Dispatch one paired main attempt under the existing campaign rules. Use `c5_campaign.py terminal` with the measured SHA, hosted manifest, hosted summary and both exact run attempts. Retain the definitive result and close #494 only once every existing issue gate is satisfied.
+- After both repairs merge, compare exact `main` against the pinned candidate and accepted action fix. Dispatch one paired main attempt under the existing campaign rules. Use `c5_campaign.py terminal` with the measured SHA, hosted manifest, hosted summary and both exact run attempts. Retain the definitive result and close #494 only once every existing issue gate is satisfied. If the one-attempt bound is exhausted without acceptance, preserve the evidence, push -wip and hand off to the next session under AGENTS.md rule 11.
 
 ## Sources
 
@@ -67,7 +69,7 @@ Pinned bases above, and `c5_workflow.py`, `c5_runtime.py`, `c5_campaign.py`, `ve
 
 ## Independent plan check questions
 
-1. The only new workload is the fixed 43-job diagnostic and its 43 receipts, followed by one paired 324-job attempt. No work count is discovered at runtime. Exhaustion preserves evidence and blocks the associated gate.
+1. The only new workload is the fixed 43-job diagnostic and its 43 receipts, followed by one paired 324-job attempt. No work count is discovered at runtime. Exhaustion preserves evidence and blocks the associated gate. The escalation action for both limits is specified under Acceptance and bounds.
 2. The accepted mutation requirements, score and 3,000-second limit stay the same. The diagnostic scope is exactly the changed configurations from an observed failure and its exposed late neighbors.
 3. The source-pinned candidate is available as a local Git object for this plan check and must be reachable before dispatch. Provider inventory and job metadata and the native reports are from the cited pair. The later hosted transport fix and fresh runner performance are exercised at the designated steps. Candidate timing estimates are not treated as qualification evidence.
 
