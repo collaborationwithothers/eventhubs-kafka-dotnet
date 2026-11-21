@@ -7,7 +7,7 @@ on:
         description: Full lowercase commit SHA containing the diagnostic helpers
         required: true
         type: string
-        default: 0be50887eb42ba53fb9df934d2062c9e21a59850
+        default: e9910d68f149be96da6ff921af89774526c95c94
 
 permissions:
   contents: read
@@ -21,82 +21,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - shard: b10-final-judge-p1
-            target: Judge/B10FinalJudge.cs
-            target_sha256: e37f0604e2483e2c54f73006dca1e6fc68f5ee5e422a660ecd18f94f0240967a
-          - shard: b10-final-judge-p2
-            target: Judge/B10FinalJudge.cs
-            target_sha256: e37f0604e2483e2c54f73006dca1e6fc68f5ee5e422a660ecd18f94f0240967a
-          - shard: b10-final-judge-p3
-            target: Judge/B10FinalJudge.cs
-            target_sha256: e37f0604e2483e2c54f73006dca1e6fc68f5ee5e422a660ecd18f94f0240967a
-          - shard: b10-final-judge-p4
-            target: Judge/B10FinalJudge.cs
-            target_sha256: e37f0604e2483e2c54f73006dca1e6fc68f5ee5e422a660ecd18f94f0240967a
-          - shard: b10-final-judge-p5
-            target: Judge/B10FinalJudge.cs
-            target_sha256: e37f0604e2483e2c54f73006dca1e6fc68f5ee5e422a660ecd18f94f0240967a
-          - shard: b10-final-judge-p6
-            target: Judge/B10FinalJudge.cs
-            target_sha256: e37f0604e2483e2c54f73006dca1e6fc68f5ee5e422a660ecd18f94f0240967a
-          - shard: b10-final-judge-p7
-            target: Judge/B10FinalJudge.cs
-            target_sha256: e37f0604e2483e2c54f73006dca1e6fc68f5ee5e422a660ecd18f94f0240967a
-          - shard: b10-final-judge-p8
-            target: Judge/B10FinalJudge.cs
-            target_sha256: e37f0604e2483e2c54f73006dca1e6fc68f5ee5e422a660ecd18f94f0240967a
-          - shard: b10-final-judge-p9
-            target: Judge/B10FinalJudge.cs
-            target_sha256: e37f0604e2483e2c54f73006dca1e6fc68f5ee5e422a660ecd18f94f0240967a
-          - shard: b10-final-judge-p10
-            target: Judge/B10FinalJudge.cs
-            target_sha256: e37f0604e2483e2c54f73006dca1e6fc68f5ee5e422a660ecd18f94f0240967a
-          - shard: b10-final-judge-p11
-            target: Judge/B10FinalJudge.cs
-            target_sha256: e37f0604e2483e2c54f73006dca1e6fc68f5ee5e422a660ecd18f94f0240967a
-          - shard: b10-final-judge-p12
-            target: Judge/B10FinalJudge.cs
-            target_sha256: e37f0604e2483e2c54f73006dca1e6fc68f5ee5e422a660ecd18f94f0240967a
-          - shard: b10-final-judge-crossing
-            target: Judge/B10FinalJudge.cs
-            target_sha256: e37f0604e2483e2c54f73006dca1e6fc68f5ee5e422a660ecd18f94f0240967a
-          - shard: b10-final-classification-p1
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
-          - shard: b10-final-classification-p2
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
-          - shard: b10-final-classification-p3
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
-          - shard: b10-final-classification-p4
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
-          - shard: b10-final-classification-p5
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
-          - shard: b10-final-classification-p6
+          - shard: b10-final-classification-crossing
             target: VerifyRun/B10Final/B10FinalClassification.cs
             target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
           - shard: b10-final-classification-p7
             target: VerifyRun/B10Final/B10FinalClassification.cs
             target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
           - shard: b10-final-classification-p8
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
-          - shard: b10-final-classification-p9
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
-          - shard: b10-final-classification-p10
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
-          - shard: b10-final-classification-p11
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
-          - shard: b10-final-classification-p12
-            target: VerifyRun/B10Final/B10FinalClassification.cs
-            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
-          - shard: b10-final-classification-crossing
             target: VerifyRun/B10Final/B10FinalClassification.cs
             target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
     env:
@@ -125,7 +56,7 @@ jobs:
             done
           } > "$DIAGNOSTIC_DIR/metadata.txt"
           [[ "$GITHUB_REF" == refs/heads/main ]]
-          [[ "$SOURCE_SHA" == 0be50887eb42ba53fb9df934d2062c9e21a59850 ]]
+          [[ "$SOURCE_SHA" == e9910d68f149be96da6ff921af89774526c95c94 ]]
       - name: Check out diagnostic source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
