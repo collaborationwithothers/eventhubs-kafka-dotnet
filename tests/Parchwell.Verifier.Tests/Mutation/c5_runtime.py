@@ -1264,12 +1264,31 @@ CI_REPAIR_PRIOR = '33f1d4618e22b0c125a1c097dc68db735a4db774'
 CI_REPAIR_SOURCE = '0be50887eb42ba53fb9df934d2062c9e21a59850'
 CI_REPAIR_OWNERS = frozenset({'b10-final-judge', 'b10-final-classification'})
 CI_REPAIR_TEST = 'tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs'
+CI_REPAIR_REBALANCE = 'e9910d68f149be96da6ff921af89774526c95c94'
+
+
+@functools.lru_cache(maxsize=4)
+def ci_repair_rebalanced_trees(head):
+    changed = proof_tree(CI_REPAIR_REBALANCE)
+    if proof_tree(head) != changed:
+        return None
+    original = proof_tree(CI_REPAIR_SOURCE)
+    expected = dict(original[0])
+    cuts = dict(expected['PRIMARY_CUTS'])
+    current = cuts['b10-final-classification']
+    if current[6] != 17887:
+        return None
+    cuts['b10-final-classification'] = current[:6] + (17035,) + current[7:]
+    expected['PRIMARY_CUTS'] = cuts
+    if (expected, *original[1:]) != changed:
+        return None
+    return original, changed
 
 
 @functools.lru_cache(maxsize=4)
 def ci_repair_trees(head):
     repaired = proof_tree(CI_REPAIR_SOURCE)
-    if proof_tree(head) != repaired:
+    if proof_tree(head) != repaired and ci_repair_rebalanced_trees(head) is None:
         return None
     previous = proof_tree(CI_REPAIR_PRIOR)
     old, old_code, (old_shared, old_targets), old_config, old_matrix = previous
@@ -1298,6 +1317,24 @@ def retained_ci_repair_selection(head, owner, shard):
 @functools.lru_cache(maxsize=1)
 def prior_ci_repair_qualification():
     return strict_json(blob(CI_REPAIR_PRIOR, HISTORICAL_QUALIFICATION_PATH))
+
+
+def retained_ci_repair_measurement(context, shard, owner, timing, head):
+    try:
+        if (not head or context.get('source_commit') != CI_REPAIR_REBALANCE
+                or timing.get('source_commit') != CI_REPAIR_SOURCE):
+            return False
+        trees = ci_repair_rebalanced_trees(head)
+        if trees is None:
+            return False
+        old, new = trees
+        selection = selected_invocation(old[0], old[4], shard)
+        return (selection is not None and selection[0] == owner
+                and owner in {old[0]['TARGETS'][key][0] for key in CI_REPAIR_OWNERS}
+                and old[2] == (context['shared_inputs'], context['target_sources'])
+                and selection == selected_invocation(new[0], new[4], shard))
+    except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
+        return False
 
 
 def retained_rebalance_timing(context, shard, path, record, item, timing, head):
@@ -1760,7 +1797,8 @@ def timing_context_linked(context, shard, path, record, item, timing, baseline, 
             except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
                 return False
         return ((timing.get('source_commit') == commit
-                 or retained_rebalance_timing(context, shard, path, record, item, timing, head))
+                 or retained_rebalance_timing(context, shard, path, record, item, timing, head)
+                 or retained_ci_repair_measurement(context, shard, path, timing, head))
                 and has_shard_timing(shard, path, record, item, timing, baseline))
     if timing == {'kind': 'historical'}:
         return (commit == HISTORICAL_QUALIFICATION_COMMIT

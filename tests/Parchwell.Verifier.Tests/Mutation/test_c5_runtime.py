@@ -696,13 +696,29 @@ class ReviewCorrectionBridgeTests(unittest.TestCase):
                 path: {'current_sha256': actual.get(path), 'basis': ['Approved CI repair timing risk']}
                 for path in measured.keys() | actual.keys() if measured.get(path) != actual.get(path)
             }
-        self.assertTrue(self.proof(context, head=head))
-        self.assertEqual(set(), runtime.provenance_errors(context, shared, targets, self.OWNER, self.SHARD, head))
+        for candidate in (head, runtime.CI_REPAIR_REBALANCE):
+            self.assertTrue(self.proof(context, head=candidate))
+            self.assertEqual(set(), runtime.provenance_errors(context, shared, targets, self.OWNER, self.SHARD, candidate))
         self.assertFalse(runtime.retained_ci_repair_selection(head, self.OWNER, 'unknown'))
         for owner in runtime.CI_REPAIR_OWNERS:
             self.assertFalse(runtime.retained_ci_repair_selection(head, runtime.workflow.TARGETS[owner][0], owner + '-p1'))
         context['source_commit'] = runtime.CI_REPAIR_PRIOR
         self.assertFalse(self.proof(context, head=head))
+
+    def test_ci_repair_rebalance_links_only_unchanged_measured_selectors(self):
+        head = runtime.CI_REPAIR_REBALANCE
+        shared, targets = runtime.proof_tree(head)[2]
+        context = {'source_commit': head, 'shared_inputs': shared, 'target_sources': targets}
+        timing = {'source_commit': runtime.CI_REPAIR_SOURCE}
+        for suffix in ('p6', 'p7', 'p8', 'p9', 'crossing'):
+            shard = 'b10-final-classification-' + suffix
+            with self.subTest(shard=shard):
+                self.assertEqual(suffix in ('p6', 'p9'), runtime.retained_ci_repair_measurement(
+                    context, shard, runtime.workflow.SHARDS[shard], timing, head))
+        shard = 'b10-final-judge-crossing'
+        owner = runtime.workflow.SHARDS[shard]
+        self.assertTrue(runtime.retained_ci_repair_measurement(context, shard, owner, timing, head))
+        self.assertFalse(runtime.retained_ci_repair_measurement(context, shard, owner, timing, runtime.CI_REPAIR_SOURCE))
 
     def test_rejects_changed_owner_and_incomplete_or_wrong_assessments(self):
         self.assertFalse(self.proof(owner=runtime.REVIEW_CORRECTION_TARGET,
