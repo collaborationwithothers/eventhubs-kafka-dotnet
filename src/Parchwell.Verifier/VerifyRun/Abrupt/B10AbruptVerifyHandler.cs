@@ -58,6 +58,7 @@ internal sealed class B10AbruptVerifyHandler(IOptions<VerifierHostOptions> confi
         TimeoutRegistration? timeoutRegistration = null;
         TimeoutEvidence? timeoutEvidence = null;
         OutcomeCounts? timeout = null;
+        DuplicateBreakdown? timeoutBreakdown = null;
         string? successorDirectory = null;
         bool lossVerified = true;
         bool drainedWindow = false;
@@ -211,7 +212,8 @@ internal sealed class B10AbruptVerifyHandler(IOptions<VerifierHostOptions> confi
                 if (complete && first is not null && !problems.Contains(1))
                 {
                     IReadOnlyList<AbruptArm> preliminary = AbruptClassification.Evaluate(first,
-                        problems.Contains(3) ? null : successor, records, true, options.MaxDiagnosticsPerCheck!.Value);
+                        problems.Contains(3) ? null : successor, records, true, options.MaxDiagnosticsPerCheck!.Value,
+                        timeoutInstances: timeoutReader.DirectoryInstanceIds);
                     if (preliminary.Any(arm => arm.Members.Any(member => member.ResendLost == true)))
                     {
                         try
@@ -248,7 +250,9 @@ internal sealed class B10AbruptVerifyHandler(IOptions<VerifierHostOptions> confi
                     scenario = await Timed(ct => scenarioLoader.LoadAsync(options.ScenarioId!, ct).AsTask(), options.IoTimeout!.Value, cancellationToken).ConfigureAwait(false);
                     ResolvedRoleConfiguration expected = configurationResolver.Resolve(scenario, timeoutEvidence.Registered.Registration)
                         .Configurations["C1"].Roles[KafkaClientRole.LoadGenProducer];
-                    timeout = TimeoutEvidenceReader.Judge(timeoutEvidence, joined.Records, expected, expectedBrokers, outputLimits);
+                    TimeoutJudgement? judged = TimeoutEvidenceReader.JudgeWithBreakdown(timeoutEvidence, joined.Records, expected, expectedBrokers, outputLimits);
+                    timeout = judged?.Counts;
+                    timeoutBreakdown = joined.Unjoined ? null : judged?.DuplicateBreakdown;
                     if (timeout is null) Problem(6, "timeout_judgement");
                 }
             }
@@ -269,7 +273,7 @@ internal sealed class B10AbruptVerifyHandler(IOptions<VerifierHostOptions> confi
         }
         IReadOnlyList<AbruptArm>? arms = first is null || problems.Contains(1) ? null :
             AbruptClassification.Evaluate(first, problems.Contains(3) ? null : successor, records, complete,
-                options.MaxDiagnosticsPerCheck!.Value, lossVerified);
+                options.MaxDiagnosticsPerCheck!.Value, lossVerified, timeoutReader.DirectoryInstanceIds);
         string comparison = AbruptDiagnostics.Comparison(arms, reasons);
         JsonObject resultObject = JsonSerializer.SerializeToNode(new
         {
@@ -296,6 +300,8 @@ internal sealed class B10AbruptVerifyHandler(IOptions<VerifierHostOptions> confi
                 problems = problems.Order().Select(index => ProblemNames[index]).ToArray(), problem_details = details, finality = "nonfinal"
             }
         }, JsonOptions)!.AsObject();
+        if (timeoutBreakdown is not null)
+            resultObject["data"]!["duplicate_breakdown"] = JsonSerializer.SerializeToNode(timeoutBreakdown, JsonOptions);
         if (scientific) resultObject["data"]!["earlier_repeat_records"] = earlierRepeatRecords;
         byte[] result = JsonSerializer.SerializeToUtf8Bytes(resultObject, JsonOptions);
         if (result.LongLength > options.MaxOutputBytes!.Value) throw new InvalidDataException("Diagnostic result exceeds MaxOutputBytes.");

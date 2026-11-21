@@ -42,7 +42,8 @@ internal sealed record VerifierResult(
     bool? ClassificationFinal = null,
     bool? B10WindowChecksComplete = null,
     IReadOnlyList<B10ProducerObservation>? B10ProducerObservations = null,
-    JsonElement? Consumer = null);
+    JsonElement? Consumer = null,
+    DuplicateBreakdown? DuplicateBreakdown = null);
 
 /// <summary>Retains one B10 producer's own provenance and checked broker measurements.</summary>
 internal sealed record B10ProducerObservation(

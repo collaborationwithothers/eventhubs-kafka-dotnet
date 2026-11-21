@@ -181,7 +181,8 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
                     Milliseconds(drain?.DrainDuration),Milliseconds(drain?.StopDuration),judgement.Counts,judgement.BrokerCount,judgement.ConfigurationFidelity,a01.ProbeObservation,a01.RecordedEvidence,hashes,
                     judgement.Diagnostics.Concat(a01.Diagnostics).Concat(b04.Diagnostics).Concat(batching.Diagnostics).ToArray(),
                     a01.WorkloadObservation??b04.WorkloadObservation??batching.WorkloadObservation,
-                    b04.Evidence,batching.Evidence,b10Intake,b10?false:null,b10?oneProducer?oneProducerComplete:b10Evaluation!.InWindowCounts is not null:null,observations);
+                    b04.Evidence,batching.Evidence,b10Intake,b10?false:null,b10?oneProducer?oneProducerComplete:b10Evaluation!.InWindowCounts is not null:null,observations,
+                    DuplicateBreakdown: b10 ? null : judgement.DuplicateBreakdown);
                 if(extension is not null)
                 {
                     RepeatResultExtension extended=await extension.EvaluateAsync(new RepeatResultContext(status,window,
@@ -348,6 +349,7 @@ internal sealed class VerifyRunHandler(IOptions<VerifierHostOptions> configured,
         {
             Status=status,
             Counts=null,
+            DuplicateBreakdown=null,
             Diagnostics=judgement.Diagnostics.Append(new ResultDiagnostic(0,"publication_unaccepted","index.json",null,"artifacts",null)).ToArray()
         };
     }

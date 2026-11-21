@@ -1408,6 +1408,72 @@ public sealed class VerifierResultCodecTests
         return VerifierResultCodec.Read(Encoding.UTF8.GetBytes(root[..^1] + "," + projection + "}"), "result.json", inputLimits??RecordedEvidence.SmallLimits, 8);
     }
 
+    [Fact]
+    public void Given_DuplicateBreakdown_When_RoundTripped_Then_PresenceAndHistoricalAbsenceArePreserved()
+    {
+        VerifierResult historical = Result(VerifierResultStatus.CompleteValid, new(1, 0, 0, 0, 4, 0));
+        Assert.Null(RoundTrip(historical).DuplicateBreakdown);
+        VerifierResult present = historical with { DuplicateBreakdown = new(3, 1) };
+        Assert.Equal(new DuplicateBreakdown(3, 1), RoundTrip(present).DuplicateBreakdown);
+        Assert.Equal(new DuplicateBreakdown(0, 0), RoundTrip(historical with
+        { Counts = new(1, 0, 0, 0, 0, 0), DuplicateBreakdown = new(0, 0) }).DuplicateBreakdown);
+        Assert.Equal(new DuplicateBreakdown(long.MaxValue, 0), RoundTrip(historical with
+        { Counts = new(1, 0, 0, 0, long.MaxValue, 0), DuplicateBreakdown = new(long.MaxValue, 0) }).DuplicateBreakdown);
+    }
+
+    [Theory]
+    [MemberData(nameof(DuplicateBreakdownTests.MalformedWireObjects), MemberType = typeof(DuplicateBreakdownTests))]
+    [InlineData("{\"duplicate_same_attempt\":3}")]
+    [InlineData("{\"duplicate_different_attempt\":1}")]
+    [InlineData("{\"duplicate_same_attempt\":3,\"duplicate_different_attempt\":0}")]
+    [InlineData("{\"duplicate_same_attempt\":3,\"duplicate_different_attempt\":2}")]
+    public void Given_InvalidDuplicateBreakdown_When_Read_Then_Rejected(string value)
+    {
+        JsonObject json = JsonNode.Parse(VerifierResultCodec.Write(Result(VerifierResultStatus.CompleteValid,
+            new(1, 0, 0, 0, 4, 0)), OutputLimits))!.AsObject();
+        json["duplicate_breakdown"] = "fixture";
+        string payload = json.ToJsonString().Replace("\"duplicate_breakdown\":\"fixture\"", "\"duplicate_breakdown\":" + value, StringComparison.Ordinal);
+        Assert.False(VerifierResultCodec.Read(Encoding.UTF8.GetBytes(payload), "result.json",
+            RecordedEvidence.SmallLimits, 8).IsSuccess);
+    }
+
+    [Fact]
+    public void Given_InvalidDuplicateBreakdown_When_Written_Then_Rejected()
+    {
+        VerifierResult valid = Result(VerifierResultStatus.CompleteValid, new(1, 0, 0, 0, 4, 0));
+        Assert.Throws<ArgumentException>(() => VerifierResultCodec.Write(valid with { DuplicateBreakdown = new(3, 0) }, OutputLimits));
+        Assert.Throws<ArgumentException>(() => VerifierResultCodec.Write(valid with { DuplicateBreakdown = new(3, 2) }, OutputLimits));
+        Assert.Throws<ArgumentException>(() => VerifierResultCodec.Write(valid with { DuplicateBreakdown = new(-1, 5) }, OutputLimits));
+        Assert.Throws<ArgumentException>(() => VerifierResultCodec.Write(valid with { DuplicateBreakdown = new(5, -1) }, OutputLimits));
+        Assert.Throws<ArgumentException>(() => VerifierResultCodec.Write(valid with { DuplicateBreakdown = new(long.MaxValue, 1) }, OutputLimits));
+        Assert.Throws<ArgumentException>(() => VerifierResultCodec.Write(Result(VerifierResultStatus.Invalid) with { DuplicateBreakdown = new(0, 0) }, OutputLimits));
+    }
+
+    [Theory]
+    [InlineData(-1)] [InlineData(0)] [InlineData(1)]
+    public void Given_DuplicateBreakdown_When_Budgeted_Then_ItConsumesBytesAndEntries(int allowance)
+    {
+        VerifierResult result = Result(VerifierResultStatus.CompleteValid, new(1, 0, 0, 0, 4, 0)) with { DuplicateBreakdown = new(3, 1) };
+        byte[] bytes = VerifierResultCodec.Write(result, OutputLimits);
+        using JsonDocument document = JsonDocument.Parse(bytes);
+        long entries = EntryCount(document.RootElement);
+        InputLimits byteLimits = RecordedEvidence.SmallLimits with { MaxArtifactBytes = bytes.Length + allowance };
+        InputLimits entryLimits = RecordedEvidence.SmallLimits with { MaxEntries = entries + allowance };
+        OutputLimits output = OutputLimits with { MaxOutputBytes = bytes.Length + allowance };
+        if (allowance < 0)
+        {
+            Assert.Throws<InputLimitExceededException>(() => VerifierResultCodec.Write(result, output));
+            Assert.Throws<InputLimitExceededException>(() => VerifierResultCodec.Read(bytes, "result.json", byteLimits, 8));
+            Assert.Throws<InputLimitExceededException>(() => VerifierResultCodec.Read(bytes, "result.json", entryLimits, 8));
+        }
+        else
+        {
+            Assert.Equal(bytes, VerifierResultCodec.Write(result, output));
+            Assert.Equal(result.DuplicateBreakdown, Read(bytes, byteLimits).DuplicateBreakdown);
+            Assert.Equal(result.DuplicateBreakdown, Read(bytes, entryLimits).DuplicateBreakdown);
+        }
+    }
+
     private static VerifierResult Result(
         VerifierResultStatus status,
         OutcomeCounts? counts = null,

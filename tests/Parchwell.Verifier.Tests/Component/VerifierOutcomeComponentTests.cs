@@ -179,6 +179,9 @@ public sealed class VerifierOutcomeComponentTests
             var records = observed.Select(record => new ConsumedRecord(record.Topic, record.Partition, record.Offset,
                 Encoding.UTF8.GetString(record.Key), record.InstanceId, record.AttemptId, 1, [])).ToArray();
             diagnosticCounts = OutcomeClassifier.Classify([ledger], records);
+            DuplicateBreakdown? diagnosticBreakdown = DuplicateClassifier.TryClassify(records);
+            Assert.NotNull(diagnosticBreakdown);
+            Assert.Equal(diagnosticCounts.Duplicate, diagnosticBreakdown.Total);
             diagnostics = producer.SnapshotDiagnostics();
             var actualRow = fullRun.Row(target.AttemptId, Encoding.UTF8.GetString(target.Key), !callback.IsError,
                 (int)Enum.Parse<Confluent.Kafka.PersistenceStatus>(callback.PersistenceStatus));
@@ -191,6 +194,8 @@ public sealed class VerifierOutcomeComponentTests
             VerifierWindowComponentTests.AssertFailed(fullRun,
                 recipe == "native-retry-duplicate-revised" ? 15 : 12);
             fullResult = fullRun.Outputs[fullRun.Options.ResultOutputName!];
+            using (JsonDocument resultDocument = JsonDocument.Parse(fullResult))
+                Assert.False(resultDocument.RootElement.TryGetProperty("duplicate_breakdown", out _));
             var handlerDirectory = Path.Combine(directory, "synthetic-handler-inputs");
             Directory.CreateDirectory(handlerDirectory);
             foreach (var input in fullRun.Inputs)

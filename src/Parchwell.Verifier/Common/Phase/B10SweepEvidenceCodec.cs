@@ -72,6 +72,7 @@ internal static class B10SweepEvidenceCodec
                 if (repeat.Counts is not { } c) w.WriteNullValue();
                 else { w.WriteStartObject(); long[] counts = [c.Ok, c.Loss, c.Phantom, c.ReportedFailure, c.Duplicate, c.Reorder];
                     for (int i = 0; i < counts.Length; i++) w.WriteNumber(CountNames[i], counts[i]); w.WriteEndObject(); }
+                if (repeat.DuplicateBreakdown is { } breakdown) { w.WritePropertyName("duplicate_breakdown"); w.WriteStartObject(); w.WriteNumber("duplicate_same_attempt", breakdown.DuplicateSameAttempt); w.WriteNumber("duplicate_different_attempt", breakdown.DuplicateDifferentAttempt); w.WriteEndObject(); }
                 w.WritePropertyName("reasons"); w.WriteStartArray(); foreach (string reason in repeat.Reasons) w.WriteStringValue(reason);
                 w.WriteEndArray(); w.WriteEndObject();
             }
@@ -87,14 +88,16 @@ internal static class B10SweepEvidenceCodec
         var repeats = new List<B10RepeatFinalization>();
         foreach (JsonElement p in a.EnumerateArray())
         {
-            Exact(p, ["repeat", "result", "verify_receipt", "classification_final", "status", "counts", "reasons"]);
+            Exact(p, p.TryGetProperty("duplicate_breakdown", out _) ? ["repeat", "result", "verify_receipt", "classification_final", "status", "counts", "reasons", "duplicate_breakdown"] : ["repeat", "result", "verify_receipt", "classification_final", "status", "counts", "reasons"]);
+            DuplicateBreakdown? breakdown = null;
+            if (p.TryGetProperty("duplicate_breakdown", out JsonElement observation) && !DuplicateBreakdown.TryRead(observation, out breakdown)) throw new FormatException("Invalid duplicate breakdown.");
             OutcomeCounts? counts = null;
             if (p.GetProperty("counts") is { ValueKind: not JsonValueKind.Null } c)
             { Exact(c, CountNames); counts = new(Long(c, "ok"), Long(c, "loss"), Long(c, "phantom"), Long(c, "reported_failure"), Long(c, "duplicate"), Long(c, "reorder")); }
             string[] reasons = Array(p, "reasons").EnumerateArray().Select(x => x.ValueKind == JsonValueKind.String ? x.GetString()! : throw new FormatException("Reason must be text.")).ToArray();
             repeats.Add(new(Int(p, "repeat"), Reference(p, "result"), Reference(p, "verify_receipt"), Bool(p, "classification_final"),
                 Str(p, "status") switch { "complete_valid" => VerifierResultStatus.CompleteValid, "invalid" => VerifierResultStatus.Invalid,
-                    "incomplete" => VerifierResultStatus.Incomplete, _ => throw new FormatException("Unknown B10 status.") }, counts, reasons));
+                    "incomplete" => VerifierResultStatus.Incomplete, _ => throw new FormatException("Unknown B10 status.") }, counts, reasons, breakdown));
         }
         var value = new B10Finalization(Int(r, "schema_version"), Str(r, "scenario_id"), Str(r, "configuration_id"), Str(r, "run_id"),
             Str(r, "phase"), Str(r, "source_commit"), Reference(r, "sweep_line"), Bool(r, "scan_complete"), Str(r, "residual_risk"), repeats);
@@ -126,6 +129,7 @@ internal static class B10SweepEvidenceCodec
             if (r.Repeat != i + 1 || !Enum.IsDefined(r.Status) || r.ClassificationFinal != (r.Status == VerifierResultStatus.CompleteValid) ||
                 r.ClassificationFinal != (r.Counts is not null) || r.ClassificationFinal && (r.Result is null || r.VerifyReceipt is null) ||
                 !value.ScanComplete && (r.Status != VerifierResultStatus.Invalid || r.ClassificationFinal || r.Counts is not null) ||
+                r.DuplicateBreakdown is { } breakdown && (r.Counts is null || !breakdown.IsValid(r.Counts.Duplicate)) ||
                 r.Counts is { } c && new[] { c.Ok, c.Loss, c.Phantom, c.ReportedFailure, c.Duplicate, c.Reorder }.Any(n => n < 0) ||
                 r.Reasons.Count > 100 || r.Reasons.Any(s => s.Length > 256 || s.Any(c => !char.IsAscii(c))) ||
                 !r.Reasons.SequenceEqual(r.Reasons.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)))

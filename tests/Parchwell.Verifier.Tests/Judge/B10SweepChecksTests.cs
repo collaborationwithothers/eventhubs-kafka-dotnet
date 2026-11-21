@@ -46,6 +46,9 @@ public sealed class B10SweepChecksTests
     [InlineData("swapped-repeat",false)]
     [InlineData("missing-counts",false)]
     [InlineData("false-finality",false)]
+    [InlineData("breakdown-valid",true)]
+    [InlineData("breakdown-mismatch",false)]
+    [InlineData("breakdown-without-counts",false)]
     public void Given_SweepEvidence_When_Accepted_Then_RequiresEveryBindingAndKeepsPartialScanDistinct(string change,bool expected)
     {
         VerifierHostOptions options=Options();
@@ -98,6 +101,9 @@ public sealed class B10SweepChecksTests
             case "swapped-repeat":(repeats[0],repeats[1])=(repeats[1],repeats[0]);break;
             case "missing-counts":repeats[2]=repeats[2] with{Counts=null};break;
             case "false-finality":repeats[2]=repeats[2] with{ClassificationFinal=false};break;
+            case "breakdown-valid":repeats[2]=repeats[2] with{DuplicateBreakdown=new(1,1)};break;
+            case "breakdown-mismatch":repeats[2]=repeats[2] with{DuplicateBreakdown=new(1,0)};break;
+            case "breakdown-without-counts":repeats[2]=repeats[2] with{Status=VerifierResultStatus.Invalid,ClassificationFinal=false,Counts=null,DuplicateBreakdown=new(0,0)};receipt=receipt with{HandlerExitCode=1};break;
         }
         Assert.Equal(expected,B10SweepChecks.Accept(options,finalization,receipt,result,note,noteReference,originals));
     }

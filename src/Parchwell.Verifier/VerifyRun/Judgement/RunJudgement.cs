@@ -56,7 +56,8 @@ internal sealed record RunJudgementResult(
     OutcomeCounts? Counts,
     BrokerConnectionCount? BrokerCount,
     ConfigurationFidelityResult ConfigurationFidelity,
-    IReadOnlyList<ResultDiagnostic> Diagnostics);
+    IReadOnlyList<ResultDiagnostic> Diagnostics,
+    DuplicateBreakdown? DuplicateBreakdown = null);
 
 /// <summary>Combines the approved recorded-input checks without performing window operations.</summary>
 internal static class RunJudgement
@@ -117,7 +118,8 @@ internal static class RunJudgement
         };
         return new(status, failed, assessments,
             status == VerifierResultStatus.CompleteValid ? OutcomeClassifier.Classify(request.Ledger.Value!, request.Records) : null,
-            BrokerCountRecorder.Record(request, assessments), fidelity, retained);
+            BrokerCountRecorder.Record(request, assessments), fidelity, retained,
+            status == VerifierResultStatus.CompleteValid ? DuplicateClassifier.TryClassify(request.Records) : null);
     }
 
     private static void ThrowIfExecutionFailure(bool executionFailure)

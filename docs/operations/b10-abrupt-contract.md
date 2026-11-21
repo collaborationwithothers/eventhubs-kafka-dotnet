@@ -265,6 +265,7 @@ The output envelope has exactly `schema_version: 3`, `dialect: "b10_abrupt"`, `p
 - `finality`: `"nonfinal"`.
 - `timeout_instance_id`: string, or null when check 16 fails.
 - `timeout`: `{ok, loss, phantom, reported_failure, duplicate, reorder}`, classified from timeout ledger rows and records that passed check 19; null under problems 1, 5 or 7. Problem 2 does not null it.
+- Optional `duplicate_breakdown`, beside `timeout`, when that timeout classification has an available authenticated observation; its two fields and reconciliation follow [Duplicate observations](#duplicate-observations).
 - `comparison`: `both`, `cross_restart_only`, `same_instance_only`, `neither` or `unavailable`.
 - `native_errors`: `{count, fatal_count, tail}`, or null under problem 2.
 - `eligibility`: `ineligible` if the ordered `eligibility_reasons` list is nonempty, otherwise `pending_sweep`. Never `eligible`.
@@ -282,6 +283,7 @@ An arm object has exactly these members:
 - `unreported_attempts`: accepted journaled probe attempts, including control resends, with no terminal anywhere in the journal.
 - `unreported_seen`: those attempts with at least one in-window record having their instance and attempt headers; `unreported_unseen`: the rest. Their sum equals `unreported_attempts`.
 - `lost_resends`: members with `resend_lost` true.
+- Optional `duplicate_breakdown`, computed over the arm's full authenticated member population before diagnostic truncation.
 
 Each member has exactly these members:
 
@@ -293,12 +295,27 @@ Each member has exactly these members:
 - `copies`: at most `MaxDiagnosticsPerCheck` entries sorted by `(partition, offset)`; each entry has exactly `{partition, offset, instance_id, attempt_id, role}`.
 - `copies_truncated`: boolean, or null when `copies` is null.
 - `resend_lost`: true when a known resend terminal has `delivered` true and `resend_copies` is 0, false when either is otherwise known, and null when either is null or check 29 makes the loss unknown.
+- Optional `duplicate_breakdown`, computed from the full authenticated matched records, independently of the bounded `copies` list and loss diagnosis.
 
 A copy is a window record with the member's key, sequence header and value hash equal to its `payload_sha256`. Warm-up sequence -1 never matches. Its role is `original` when the instance/attempt headers equal the first pod and original attempt; `resend` when they equal the authenticated resend's instance/attempt; otherwise `other`, retaining header values or null. The resend instance is the first pod for `same_instance` and the successor for `cross_restart`.
 
 The witness is the smallest `(original_attempt_id, resend_attempt_id, original coordinate, resend coordinate)` over all original/resend copy pairs, as `{original_attempt_id, resend_attempt_id, original: {partition, offset}, resend: {partition, offset}}`, or null. Counts are JSON integers from 0 to 9223372036854775807. Unknown counts and copies are null under the rules below, never zero.
 
 When more than `MaxDiagnosticsPerCheck` copies match a member, retain the first that many by `(partition, offset)` and set `copies_truncated=true`; every count remains complete. The per-member copy details and diagnostic extras belong only to this nonfinal object. The later final sweep projection must drop them and test that exclusion under the approved diagnostic-only contract and [decision 6816117386, point 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/404#issuecomment-6816117386).
+
+### Duplicate observations
+
+The [approved observability plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6899146479) adds optional `duplicate_breakdown` objects to timeout, arm and member projections. Each has exactly the nonnegative Int64 fields `duplicate_same_attempt` and `duplicate_different_attempt`. The [shared verifier contract](verifier-contract.md#duplicate-breakdown) defines physical-coordinate deduplication, full attempt identity, checked arithmetic and strict malformed-presence rejection. Existing schemas, six-count objects, witness selection, comparison, eligibility, outcome classes and scientific rules are unchanged. These identity categories do not establish retry or resend causation.
+
+Compute each observation only inside its authorized repeat and cohort, excluding warm-up and earlier-repeat records. Do not combine timeout, `same_instance` and `cross_restart`. For one logical probe member with three original copies and two resend copies at distinct coordinates, the existing pair count is six, excess duplicates are four, and the breakdown is three same-attempt and one different-attempt. This is a synthetic arithmetic example, not a measured scenario outcome. Neither pair counts, witnesses, role-presence counts nor truncated diagnostic copy arrays can supply the new observation.
+
+Timeout availability follows its existing complete-valid, finality, scan and successful join prerequisites. An arm needs a complete scan and a complete authenticated, reconciled contributing population for that arm; it does not depend on successful classification of another cohort or resolution of loss diagnosis. Authorized journaled originals without terminal callbacks retain `unreported_seen` or `unreported_unseen` and can contribute the observation. An opaque or malformed contributing identity makes its member observation absent, and an arm with such a member has no arm observation. Retain all existing copy/other diagnostics. An incomplete scan, unresolved required successor or unknown population cannot become zero; a known empty authorized population, including the kill-too-late empty cross arm, has zero components.
+
+Nonfinal paths are `$.data.duplicate_breakdown` beside `timeout`, `$.data.arms[j].duplicate_breakdown` and `$.data.arms[j].members[k].duplicate_breakdown`. Final projection paths are `$.data.repeats[i].duplicate_breakdown` beside `timeout` and `$.data.repeats[i].restart.arms[j].duplicate_breakdown`. The scientific candidate embeds those repeat and arm objects under `$.b10_final.repeats[i]`; its public repeat observations and root observation mirror timeout values and their checked sum only. The final projection continues to omit member and copy tables.
+
+The final reader validates any present nonfinal observation and agrees it against the original observation window. Final classification then recomputes over the owned original-plus-late union, deduplicating permitted repeated coordinates, rather than copying the earlier value. Late copies can therefore change a final breakdown without changing the stored nonfinal object. Any accompanying existing duplicate total must equal the checked component sum. Arm and member sums are excess-duplicate observations, not pair counts.
+
+Historical absence remains readable and round-trips as absence. It never means zero. Future publication requires the observation where the existing path authorizes message counts. An unresolved restart observation leaves scientific status unchanged and must be disclosed as a publication-completeness gap; it does not add a verdict, validity gate or sidecar. Old strict readers cannot consume the new optional key, so all current readers ship with the writers. Frozen historical evidence and its reproduction script remain unchanged.
 
 ### Problems and unavailable fields
 
@@ -508,12 +525,13 @@ Each repeat has exactly these fields:
 | `classification_final` | True exactly for a complete-valid final timeout cohort |
 | `status` | `complete_valid`, `invalid` or `incomplete` |
 | `timeout` | `{ok,loss,phantom,reported_failure,duplicate,reorder}` only for `complete_valid`; otherwise null |
+| `duplicate_breakdown` | Optional two-field timeout observation, only with final complete-valid timeout counts; absent for unavailable historical observations |
 | `reasons` | Sorted distinct permitted reason literals, at most 100, each at most 256 ASCII bytes |
 | `restart` | Null for C0; the closed C1 object below |
 
 C1 `restart` has exactly `eligibility`, `eligibility_reasons`, `termination`, `first_instance_id`, `successor_instance_id`, `timeout_instance_id`, `comparison`, `native_errors` and `arms`. Eligibility is `eligible` or `ineligible`. Termination is `{class,outcome}` from the authenticated receipt, or both null; classes are `intended_self_kill`, `no_kill`, `unexpected_exit` and `unknown`. Instance IDs may be null. Comparison is `both`, `cross_restart_only`, `same_instance_only`, `neither` or `unavailable`. Native errors are null or `{count,fatal_count,tail}`.
 
-`arms` is null or exactly `same_instance` followed by `cross_restart`. Each arm has exactly `arm`, `cut_attempt_id`, `unconfirmed_attempt_ids`, `unconfirmed_count`, `resend_invoked`, `originals_seen`, `resends_seen`, `pair_count`, `unreported_attempts`, `unreported_seen`, `unreported_unseen`, `lost_resends` and `witness`. The cut and unconfirmed sets come from the authenticated journal/termination, not the per-repeat classification. Counts are nonnegative Int64 values or null for unknown. Witness is null or `{original_attempt_id,resend_attempt_id,original,resend}`, with each coordinate `{partition,offset}`.
+`arms` is null or exactly `same_instance` followed by `cross_restart`. Each arm has exactly `arm`, `cut_attempt_id`, `unconfirmed_attempt_ids`, `unconfirmed_count`, `resend_invoked`, `originals_seen`, `resends_seen`, `pair_count`, `unreported_attempts`, `unreported_seen`, `unreported_unseen`, `lost_resends` and `witness`, plus optional `duplicate_breakdown` under [Duplicate observations](#duplicate-observations). The cut and unconfirmed sets come from the authenticated journal/termination, not the per-repeat classification. Counts are nonnegative Int64 values or null for unknown. Witness is null or `{original_attempt_id,resend_attempt_id,original,resend}`, with each coordinate `{partition,offset}`.
 
 The projection drops `members`, every member's copy table and counts (`copies`, `copies_truncated`, `copy_count`, `original_copies`, `resend_copies`, `other_copies`, `resend_terminal`), `problems`, `problem_details`, `window_limit`, `start_line`, `end_line`, `window_complete`, `earlier_repeat_records` and `finality`. These diagnostic fields remain in the per-repeat nonfinal contract only.
 

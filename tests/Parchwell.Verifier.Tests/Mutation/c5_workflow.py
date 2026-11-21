@@ -19,6 +19,7 @@ import subprocess
 import sys
 import time
 import tempfile
+from typing import TypedDict
 
 import c5_projection as projection
 
@@ -28,7 +29,8 @@ TARGETS = {'phase': ('Judge/PhaseJudge.cs', 6),
  'a01': ('VerifyRun/A01/A01EvidenceRecorder.cs', 2),
  'workload': ('VerifyRun/A01/WorkloadRecorder.cs', 3),
  'single-action-repeat': ('VerifyRun/SingleAction/SingleActionRepeatJudgement.cs', 19),
- 'single-action-configuration': ('VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs', 49),
+ 'single-action-configuration': ('VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs',
+                                 49),
  'idle-observation': ('VerifyRun/IdleObservation/IdleObservationJudgement.cs', 12),
  'batching': ('VerifyRun/LedgerBatch/BatchingEvidenceRecorder.cs', 2),
  'b10-restart-manifest': ('VerifyRun/Input/RestartManifestReader.cs', 4),
@@ -38,16 +40,23 @@ TARGETS = {'phase': ('Judge/PhaseJudge.cs', 6),
  'b10-phase-registrations': ('VerifyRun/Input/B10PhaseRegistrationReader.cs', 2),
  'b10-late-write': ('VerifyRun/Judgement/B10LateWriteChecks.cs', 2),
  'b10-sweep': ('VerifyRun/B10SweepHandler.cs', 1),
- 'b10-sweep-judge': ('Judge/B10SweepChecks.cs', 3),
- 'b10-sweep-codec': ('Common/Phase/B10SweepEvidenceCodec.cs', 9),
+ 'b10-sweep-judge': ('Judge/B10SweepChecks.cs', 2),
+ 'b10-sweep-codec': ('Common/Phase/B10SweepEvidenceCodec.cs', 8),
  'b10-final-sweep-handler': ('VerifyRun/B10Final/B10FinalSweepHandler.cs', 4),
- 'b10-final-repeat-evidence': ('VerifyRun/B10Final/B10FinalRepeatEvidence.cs', 25),
- 'b10-final-classification': ('VerifyRun/B10Final/B10FinalClassification.cs', 22),
+ 'b10-final-repeat-evidence': ('VerifyRun/B10Final/B10FinalRepeatEvidence.cs', 22),
+ 'b10-final-classification': ('VerifyRun/B10Final/B10FinalClassification.cs', 18),
  'b10-final-projection': ('Common/Phase/B10FinalProjection.cs', 1),
- 'b10-final-projection-codec': ('Common/Phase/B10FinalProjectionCodec.cs', 17),
+ 'b10-final-projection-codec': ('Common/Phase/B10FinalProjectionCodec.cs', 15),
  'b10-final-registrations': ('Common/Phase/B10FinalRegistrationReader.cs', 17),
- 'b10-final-judge': ('Judge/B10FinalJudge.cs', 13)}
-PRIMARY_CUTS = {'phase': (3600, 4517, 5582, 6493, 7173),
+ 'b10-final-judge': ('Judge/B10FinalJudge.cs', 12),
+ 'duplicate-breakdown': ('Common/Results/DuplicateBreakdown.cs', 1),
+ 'duplicate-classifier': ('VerifyRun/Judgement/DuplicateClassifier.cs', 1),
+ 'outcome-classifier': ('VerifyRun/Judgement/OutcomeClassifier.cs', 1),
+ 'abrupt-classification': ('VerifyRun/Abrupt/AbruptClassification.cs', 5),
+ 'verifier-result-codec': ('Common/Results/VerifierResultCodec.cs', 26),
+ 'phase-candidate-codec': ('Judge/PhaseCandidateCodec.cs', 33),
+ 'verify-run-handler': ('VerifyRun/VerifyRunHandler.cs', 7)}
+PRIMARY_CUTS = {'phase': (3694, 4477, 5458, 6568, 7631),
  'publication': (887, 2532, 3857, 5506, 7129, 8239),
  'a01': (3859,),
  'workload': (1418, 2624),
@@ -124,71 +133,62 @@ PRIMARY_CUTS = {'phase': (3600, 4517, 5582, 6493, 7173),
  'b10-judge': (2599, 4113),
  'b10-repeat': (2712, 6191, 8313, 10971),
  'b10-phase-registrations': (2655,),
- 'b10-late-write': (3765,),
- 'b10-sweep-judge': (1549, 3044),
- 'b10-sweep-codec': (1715, 4176, 5682, 7602, 9482, 10639, 12098, 15210),
+ 'b10-late-write': (3695,),
+ 'b10-sweep-judge': (1946,),
+ 'b10-sweep-codec': (1798, 4471, 6331, 7821, 10309, 11888, 13828),
  'b10-final-sweep-handler': (4089, 8487, 10895),
- 'b10-final-repeat-evidence': (5565,
-                               13837,
-                               15226,
-                               15987,
-                               16734,
-                               19438,
-                               20874,
-                               22199,
-                               24938,
-                               26076,
-                               27770,
-                               29405,
-                               30526,
-                               32095,
-                               33263,
-                               34548,
-                               36006,
-                               38775,
-                               39686,
-                               40468,
-                               41582,
-                               42920,
-                               44372,
-                               47016),
- 'b10-final-classification': (2322,
-                              3531,
-                              5405,
-                              6286,
-                              6898,
-                              8359,
-                              9673,
-                              11368,
-                              12817,
-                              13576,
-                              14000,
-                              14752,
-                              15359,
-                              15805,
-                              16416,
-                              17808,
-                              18376,
-                              19172,
-                              19906,
-                              20931,
-                              21475),
- 'b10-final-projection-codec': (1068,
-                                1706,
-                                2158,
-                                3002,
-                                4553,
-                                5970,
-                                7493,
-                                8585,
-                                9410,
-                                10482,
-                                11253,
-                                11973,
-                                12732,
-                                13486,
-                                15085,
-                                16526),
+ 'b10-final-repeat-evidence': (12311,
+                               15324,
+                               16296,
+                               17422,
+                               20361,
+                               22478,
+                               25224,
+                               26614,
+                               28409,
+                               29913,
+                               31154,
+                               32878,
+                               34482,
+                               35179,
+                               37216,
+                               39819,
+                               41395,
+                               43520,
+                               45595,
+                               48067,
+                               50303),
+ 'b10-final-classification': (2787,
+                              3812,
+                              5710,
+                              6809,
+                              8963,
+                              10893,
+                              13167,
+                              14783,
+                              15546,
+                              16310,
+                              17909,
+                              19068,
+                              21015,
+                              22118,
+                              23214,
+                              24591,
+                              25567),
+ 'b10-final-projection-codec': (1109,
+                                1747,
+                                2198,
+                                3912,
+                                5278,
+                                6812,
+                                8327,
+                                9610,
+                                10753,
+                                11892,
+                                13262,
+                                14786,
+                                16454,
+                                18430),
  'b10-final-registrations': (2583,
                              3605,
                              4457,
@@ -205,7 +205,66 @@ PRIMARY_CUTS = {'phase': (3600, 4517, 5582, 6493, 7173),
                              12180,
                              12745,
                              13162),
- 'b10-final-judge': (2699, 5334, 7878, 10499, 13082, 15717, 16784, 18431, 21930, 23505, 24790, 26262)}
+ 'b10-final-judge': (4491, 5946, 8720, 11446, 14292, 16097, 18588, 23043, 24193, 25421, 27743),
+ 'abrupt-classification': (3807, 5153, 6193, 7969),
+ 'verifier-result-codec': (476,
+                           807,
+                           1133,
+                           1376,
+                           4456,
+                           8349,
+                           11870,
+                           17284,
+                           20153,
+                           24612,
+                           26874,
+                           29010,
+                           30095,
+                           31698,
+                           33675,
+                           36075,
+                           39474,
+                           41632,
+                           46112,
+                           48533,
+                           52170,
+                           54174,
+                           58093,
+                           64646,
+                           67515),
+ 'phase-candidate-codec': (2101,
+                           3907,
+                           5928,
+                           8033,
+                           9316,
+                           10461,
+                           11379,
+                           12485,
+                           13813,
+                           15353,
+                           16570,
+                           17810,
+                           19087,
+                           21228,
+                           22888,
+                           24451,
+                           25778,
+                           27935,
+                           29996,
+                           31841,
+                           33010,
+                           34509,
+                           35970,
+                           37319,
+                           39193,
+                           40654,
+                           42498,
+                           44343,
+                           45572,
+                           46398,
+                           47533,
+                           48862),
+ 'verify-run-handler': (4393, 10512, 15405, 19641, 23497, 30029)}
 def build_parts(targets: dict[str, tuple[str, int]],
                 primary_cuts: dict[str, tuple[int, ...]]) -> dict[str, tuple[str, int, int]]:
     """Reject singleton splits before their crossing entry can overwrite the primary."""
@@ -229,6 +288,12 @@ for index, groups in enumerate(((range(116, 122), range(122, 128)),
     owner = f"b10-final-projection-codec-p{index}"
     for suffix, identifiers in zip(("a", "b"), groups, strict=True):
         COHORTS[f"{owner}-{suffix}"] = (owner, tuple(map(str, identifiers)))
+for suffix, identifiers in zip(("a", "b"), (range(4093, 4098), range(4098, 4103)), strict=True):
+    COHORTS[f"verifier-result-codec-p2-{suffix}"] = (
+        "verifier-result-codec-p2", tuple(map(str, identifiers)))
+for suffix, identifiers in zip(("a", "b"), (range(4110, 4115), range(4115, 4120)), strict=True):
+    COHORTS[f"verifier-result-codec-p4-{suffix}"] = (
+        "verifier-result-codec-p4", tuple(map(str, identifiers)))
 PARTS = {}
 for name, part in LOGICAL_PARTS.items():
     cohorts = [physical for physical, (owner, _) in COHORTS.items() if owner == name]
@@ -1003,54 +1068,57 @@ def run_isolation_plan(target: str, plan: list[dict], output_dir: Path, prefix: 
 
 # Bootstrap geometry was observed in complete native reports. Every run verifies it
 # against its own full inventory before executing the remaining assigned IDs.
-COHORT_BOOTSTRAP_SPANS = {"116": (668, 698), "122": (866, 898),
-                          "128": (1128, 1163), "135": (1415, 1446),
-                          "143": (1755, 1789), "149": (1934, 1960)}
+COHORT_BOOTSTRAP_SPANS = {'116': (709, 739),
+ '122': (907, 939),
+ '128': (1169, 1204),
+ '135': (1456, 1487),
+ '143': (1796, 1830),
+ '149': (1975, 2001)}
 
 
 # Identities from the verified historical report, bound to this exact target source.
-COHORT_SOURCE_SHA256 = "c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5"
-COHORT_INVENTORY_SHA256 = "e2a7e4cad2a119bcd37e51eb602e950433be3dfe9d5c365042ffabab1914f0ee"
-COHORT_COORDINATES = ((17, 55, 17, 85),
- (17, 87, 17, 119),
- (18, 9, 18, 38),
- (18, 40, 18, 66),
- (18, 68, 18, 96),
- (18, 98, 18, 123),
- (19, 9, 19, 41),
- (19, 43, 19, 70),
- (19, 72, 19, 108),
- (20, 9, 20, 35),
- (20, 37, 20, 67),
- (20, 69, 20, 99),
- (22, 60, 22, 95),
- (22, 97, 22, 137),
- (23, 9, 23, 47),
- (23, 49, 23, 85),
- (23, 87, 23, 122),
- (24, 9, 24, 37),
- (24, 39, 24, 84),
- (24, 86, 24, 117),
- (25, 9, 25, 53),
- (25, 55, 25, 89),
- (25, 91, 25, 118),
- (26, 9, 26, 40),
- (26, 42, 26, 68),
- (26, 70, 26, 101),
- (26, 103, 26, 137),
- (27, 50, 27, 84),
- (27, 86, 27, 117),
- (27, 119, 27, 135),
- (28, 9, 28, 34),
- (28, 36, 28, 63),
- (28, 65, 28, 91),
- (28, 93, 28, 119),
- (29, 9, 29, 44),
- (29, 46, 29, 71),
- (29, 73, 29, 109),
- (30, 9, 30, 40),
- (30, 42, 30, 66),
- (30, 68, 30, 83))
+COHORT_SOURCE_SHA256 = '43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f'
+COHORT_INVENTORY_SHA256 = 'f4851ade2c7de3f35cad9fa3ec670f6fcbdfd4dd67a0a879d8edb0f72988f41e'
+COHORT_COORDINATES = ((18, 55, 18, 85),
+ (18, 87, 18, 119),
+ (19, 9, 19, 38),
+ (19, 40, 19, 66),
+ (19, 68, 19, 96),
+ (19, 98, 19, 123),
+ (20, 9, 20, 41),
+ (20, 43, 20, 70),
+ (20, 72, 20, 108),
+ (21, 9, 21, 35),
+ (21, 37, 21, 67),
+ (21, 69, 21, 99),
+ (23, 60, 23, 95),
+ (23, 97, 23, 137),
+ (24, 9, 24, 47),
+ (24, 49, 24, 85),
+ (24, 87, 24, 122),
+ (25, 9, 25, 37),
+ (25, 39, 25, 84),
+ (25, 86, 25, 117),
+ (26, 9, 26, 53),
+ (26, 55, 26, 89),
+ (26, 91, 26, 118),
+ (27, 9, 27, 40),
+ (27, 42, 27, 68),
+ (27, 70, 27, 101),
+ (27, 103, 27, 137),
+ (28, 50, 28, 84),
+ (28, 86, 28, 117),
+ (28, 119, 28, 135),
+ (29, 9, 29, 34),
+ (29, 36, 29, 63),
+ (29, 65, 29, 91),
+ (29, 93, 29, 119),
+ (30, 9, 30, 44),
+ (30, 46, 30, 71),
+ (30, 73, 30, 109),
+ (31, 9, 31, 40),
+ (31, 42, 31, 66),
+ (31, 68, 31, 83))
 COHORT_IDENTITIES = {str(116 + index): {
     "mutatorName": "String mutation", "replacement": '""',
     "location": {"start": {"line": a, "column": b}, "end": {"line": c, "column": d}},
@@ -1058,20 +1126,117 @@ COHORT_IDENTITIES = {str(116 + index): {
 } for index, (a, b, c, d) in enumerate(COHORT_COORDINATES)}
 
 
+class CohortDefinition(TypedDict):
+    source_sha256: str
+    inventory_sha256: str
+    bootstrap: dict[str, tuple[tuple[int, int], tuple[tuple[int, int], ...]]]
+    identities: dict[str, dict]
+
+
+# Native inventory from the hosted timing report, tied to the projected source.
+RESULT_CODEC_COHORT: CohortDefinition = {
+    "source_sha256": "8526a0adbb9e5ac1cac4c92177377616d2768c003fa7d91338d231d99baa8dba",
+    "inventory_sha256": "2de7231096f99f3f1eba22eb71a3abe3ff816d95aad44c9096ba883419b57a56",
+    "bootstrap": {
+        "4093": ((547, 805), ((605, 621), (623, 633), (635, 652), (662, 696),
+                              (698, 727), (729, 737), (739, 754), (764, 784), (786, 799))),
+        "4098": ((698, 727), ()),
+    },
+    "identities": {
+        "4093": {"mutatorName": "Collection initializer mutation",
+                 "replacement": "new HashSet<string>(StringComparer.Ordinal)\n{}",
+                 "location": {"start": {"line": 14, "column": 71}, "end": {"line": 19, "column": 6}},
+                 "static": True},
+        "4094": {"mutatorName": "String mutation", "replacement": '""', "location": {"start": {"line": 16, "column": 9}, "end": {"line": 16, "column": 25}}, "static": True},
+        "4095": {"mutatorName": "String mutation", "replacement": '""', "location": {"start": {"line": 16, "column": 27}, "end": {"line": 16, "column": 37}}, "static": True},
+        "4096": {"mutatorName": "String mutation", "replacement": '""', "location": {"start": {"line": 16, "column": 39}, "end": {"line": 16, "column": 56}}, "static": True},
+        "4097": {"mutatorName": "String mutation", "replacement": '""', "location": {"start": {"line": 17, "column": 9}, "end": {"line": 17, "column": 43}}, "static": True},
+        "4098": {"mutatorName": "String mutation", "replacement": '""', "location": {"start": {"line": 17, "column": 45}, "end": {"line": 17, "column": 74}}, "static": True},
+        "4099": {"mutatorName": "String mutation", "replacement": '""', "location": {"start": {"line": 17, "column": 76}, "end": {"line": 17, "column": 84}}, "static": True},
+        "4100": {"mutatorName": "String mutation", "replacement": '""', "location": {"start": {"line": 17, "column": 86}, "end": {"line": 17, "column": 101}}, "static": True},
+        "4101": {"mutatorName": "String mutation", "replacement": '""', "location": {"start": {"line": 18, "column": 9}, "end": {"line": 18, "column": 29}}, "static": True},
+        "4102": {"mutatorName": "String mutation", "replacement": '""', "location": {"start": {"line": 18, "column": 31}, "end": {"line": 18, "column": 44}}, "static": True},
+    },
+}
+
+
+# The p4 field is a separate logical cohort in the same source and native inventory.
+RESULT_CODEC_P4_COHORT: CohortDefinition = {
+    "source_sha256": "8526a0adbb9e5ac1cac4c92177377616d2768c003fa7d91338d231d99baa8dba",
+    "inventory_sha256": "2de7231096f99f3f1eba22eb71a3abe3ff816d95aad44c9096ba883419b57a56",
+    "bootstrap": {
+        "4110": ((1202, 1374), ((1260, 1274), (1276, 1288), (1290, 1303),
+                                (1305, 1321), (1323, 1333), (1335, 1340),
+                                (1342, 1349), (1351, 1357), (1359, 1368))),
+        "4115": ((1323, 1333), ()),
+    },
+    "identities": {
+        "4110": {"mutatorName": "Collection initializer mutation",
+                 "replacement": "new HashSet<string>(StringComparer.Ordinal)\n{}",
+                 "location": {"start": {"line": 28, "column": 69}, "end": {"line": 31, "column": 6}},
+                 "static": True},
+        "4111": {"mutatorName": "String mutation", "replacement": '""',
+                 "location": {"start": {"line": 30, "column": 9}, "end": {"line": 30, "column": 23}},
+                 "static": True},
+        "4112": {"mutatorName": "String mutation", "replacement": '""',
+                 "location": {"start": {"line": 30, "column": 25}, "end": {"line": 30, "column": 37}},
+                 "static": True},
+        "4113": {"mutatorName": "String mutation", "replacement": '""',
+                 "location": {"start": {"line": 30, "column": 39}, "end": {"line": 30, "column": 52}},
+                 "static": True},
+        "4114": {"mutatorName": "String mutation", "replacement": '""',
+                 "location": {"start": {"line": 30, "column": 54}, "end": {"line": 30, "column": 70}},
+                 "static": True},
+        "4115": {"mutatorName": "String mutation", "replacement": '""',
+                 "location": {"start": {"line": 30, "column": 72}, "end": {"line": 30, "column": 82}},
+                 "static": True},
+        "4116": {"mutatorName": "String mutation", "replacement": '""',
+                 "location": {"start": {"line": 30, "column": 84}, "end": {"line": 30, "column": 89}},
+                 "static": True},
+        "4117": {"mutatorName": "String mutation", "replacement": '""',
+                 "location": {"start": {"line": 30, "column": 91}, "end": {"line": 30, "column": 98}},
+                 "static": True},
+        "4118": {"mutatorName": "String mutation", "replacement": '""',
+                 "location": {"start": {"line": 30, "column": 100}, "end": {"line": 30, "column": 106}},
+                 "static": True},
+        "4119": {"mutatorName": "String mutation", "replacement": '""',
+                 "location": {"start": {"line": 30, "column": 108}, "end": {"line": 30, "column": 117}},
+                 "static": True},
+    },
+}
+
+
+def cohort_definition(owner: str) -> CohortDefinition:
+    if owner == "verifier-result-codec-p2":
+        return RESULT_CODEC_COHORT
+    if owner == "verifier-result-codec-p4":
+        return RESULT_CODEC_P4_COHORT
+    return {"source_sha256": COHORT_SOURCE_SHA256, "inventory_sha256": COHORT_INVENTORY_SHA256,
+            "bootstrap": {key: (span, ()) for key, span in COHORT_BOOTSTRAP_SPANS.items()},
+            "identities": COHORT_IDENTITIES}
+
+
+def cohort_bootstrap(owner: str, reference: str, actual: str | None = None) -> dict:
+    span, exclusions = cohort_definition(owner)["bootstrap"][reference]
+    return {"mutant_id": actual if actual is not None else reference,
+            "span": list(span), "exclusions": [list(item) for item in exclusions]}
+
+
 def identity_json(row: dict) -> str:
     return json.dumps({field: row.get(field) for field in (*IDENTITY, "static")},
                       sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
 
-def resolve_cohort(rows: list[dict], source: bytes) -> dict[str, str]:
-    require(hashlib.sha256(source).hexdigest() == COHORT_SOURCE_SHA256, "cohort source mismatch")
+def resolve_cohort(rows: list[dict], source: bytes, owner: str = "") -> dict[str, str]:
+    definition = cohort_definition(owner)
+    require(hashlib.sha256(source).hexdigest() == definition["source_sha256"], "cohort source mismatch")
     identities = sorted(identity_json(row) for row in rows)
     digest = hashlib.sha256(("[" + ",".join(identities) + "]").encode()).hexdigest()
-    require(digest == COHORT_INVENTORY_SHA256, "cohort native geometry mismatch")
+    require(digest == definition["inventory_sha256"], "cohort native geometry mismatch")
     require(len(identities) == len(set(identities)), "duplicate cohort identity")
     by_identity = {identity_json(row): row["id"] for row in rows}
     resolved = {}
-    for reference, identity in COHORT_IDENTITIES.items():
+    for reference, identity in definition["identities"].items():
         key = identity_json(identity)
         require(key in by_identity, "cohort identity missing")
         resolved[reference] = by_identity[key]
@@ -1093,7 +1258,7 @@ def isolated_directory(output: Path, entry: dict, shard: str | None = None) -> P
 def run_cohort(shard: str, target: str, source: bytes, regions: list[tuple[int, int]],
                output_dir: Path, prefix: list[str], cwd: Path, deadline: float) -> tuple[list[dict], str | None]:
     owner, ids = COHORTS[shard]
-    first = {"mutant_id": ids[0], "span": list(COHORT_BOOTSTRAP_SPANS[ids[0]]), "exclusions": []}
+    first = cohort_bootstrap(owner, ids[0])
     entries, error = run_isolation_plan(target, [first], output_dir, prefix, cwd, deadline,
                                         bootstrap_shard=shard)
     if error:
@@ -1102,7 +1267,7 @@ def run_cohort(shard: str, target: str, source: bytes, regions: list[tuple[int, 
         report = isolated_directory(output_dir, entries[0], shard) / REPORT_PATH
         rows = report_records(json.loads(report.read_bytes()), target,
                               source_sha256=hashlib.sha256(source).hexdigest(), allow_empty=True)
-        resolved = resolve_cohort(rows, source)
+        resolved = resolve_cohort(rows, source, owner)
         actual_first = resolved[ids[0]]
         baseline = copy.deepcopy(rows)
         selected = [row for row in baseline if row["id"] == actual_first]
@@ -1342,20 +1507,54 @@ def retained_span(directory: Path, target: str) -> list[int] | None:
 
 
 def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: str,
-              output_dir: Path) -> int:
+              output_dir: Path, campaign_manifest: Path | None = None) -> int:
     input_dir, output_dir = Path(input_dir), Path(output_dir)
     try:
         output_dir.mkdir(parents=True, exist_ok=False)
     except OSError as error:
         print(f"C5 aggregate preparation failed: {error}")
         return 1
-    prefix = f"c5-mutation-{run_id}-{run_attempt}-"
     reasons = []
-    expected = {prefix + shard for shard in SHARDS}
+    campaign_hash = None
+    expected_tree = None
+    origins = {shard: (run_id, run_attempt) for shard in SHARDS}
+    if campaign_manifest is not None:
+        import c5_campaign
+        import c5_runtime
+
+        origins = {}
+        try:
+            require(git(c5_campaign.ROOT, "rev-parse", "HEAD").decode().strip() == expected_commit,
+                    "aggregate checkout does not match campaign commit")
+            expected_tree = git(c5_campaign.ROOT, "rev-parse", "HEAD^{tree}").decode().strip()
+            layout = c5_campaign.matrices()
+            c5_campaign.validate_layout(layout)
+            # Keep the coordinator's verifiable receipts if the peer cannot be bound.
+            origins = {shard: (run_id, run_attempt) for shard in layout["coordinator"]}
+            manifest_bytes = campaign_manifest.read_bytes()
+            manifest = c5_runtime.strict_json(manifest_bytes)
+            assigned = c5_campaign.validate_manifest(
+                manifest, expected_commit, layout["coordinator"], layout["companion"])
+            caller = manifest["runs"]["coordinator"]
+            require(manifest["repository"] == os.environ.get("GITHUB_REPOSITORY")
+                    and str(caller["id"]) == run_id and str(caller["attempt"]) == run_attempt,
+                    "campaign repository or coordinator identity mismatch")
+            with (output_dir / "campaign.json").open("xb") as stream:
+                stream.write(manifest_bytes)
+            origins = {shard: (assigned[shard]["run_id"], assigned[shard]["run_attempt"])
+                       for shard in SHARDS}
+            campaign_hash = hashlib.sha256(manifest_bytes).hexdigest()
+            reasons.extend(manifest["incomplete_reasons"])
+        except (OSError, ValueError, TypeError, KeyError, subprocess.SubprocessError) as error:
+            reasons.append(f"invalid campaign manifest: {error}")
+    directories = {shard: input_dir / f"c5-mutation-{origin_id}-{attempt}-{shard}"
+                   for shard, (origin_id, attempt) in origins.items()}
+    scope = (f"c5-mutation-{run_id}-{run_attempt}-" if campaign_manifest is None
+             else "c5-mutation-")
     try:
         if input_dir.exists():
             extras = {p.name for p in input_dir.iterdir()
-                      if p.is_dir() and p.name.startswith(prefix)} - expected
+                      if p.is_dir() and p.name.startswith(scope)} - {p.name for p in directories.values()}
             if extras:
                 reasons.append("unexpected shard directories: " + ", ".join(sorted(extras)))
     except OSError as error:
@@ -1368,9 +1567,10 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
     records = []
     part_records = {}
     cohort_records = {}
-    for shard, target in SHARDS.items():
+    for shard, directory in directories.items():
+        target = SHARDS[shard]
         key, index, count = PARTS[shard]
-        directory = input_dir / (prefix + shard)
+        origin_id, origin_attempt = origins[shard]
         try:
             receipt = json.loads((directory / "receipt.json").read_text())
             config_path = directory / "shard-config.json"
@@ -1385,7 +1585,7 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
                     and isinstance(receipt["cwd"], str), "malformed invocation receipt")
             require(all(receipt.get(key) == value for key, value in {
                 "shard": shard, "target": target, "commit": expected_commit,
-                "run_id": run_id, "run_attempt": run_attempt,
+                "run_id": origin_id, "run_attempt": origin_attempt,
                 "command_completed": True, "termination_reason": None,
                 "tracked_clean_before": True, "tracked_clean_after": True,
             }.items()), "receipt identity/completion mismatch")
@@ -1404,6 +1604,7 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
                     and sources == receipt.get("source_sha256_after"), "source drift")
             tree = receipt.get("tree")
             require(isinstance(tree, str) and tree, "missing source tree")
+            require(expected_tree is None or tree == expected_tree, "campaign source tree mismatch")
             if reference_sources is not None:
                 require(sources == reference_sources and tree == reference_tree,
                         "cross-shard source mismatch")
@@ -1434,7 +1635,7 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
             require(receipt["isolation_error"] is None, "static isolation incomplete")
             if shard in COHORTS:
                 references = COHORTS[shard][1]
-                resolved = resolve_cohort(rows, source)
+                resolved = resolve_cohort(rows, source, COHORTS[shard][0])
                 assigned = (resolved[references[0]], *sorted(
                     (resolved[reference] for reference in references[1:]), key=int))
                 require(assigned and isinstance(receipt["isolated"], list)
@@ -1459,8 +1660,8 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
                 by_id = {item["mutant_id"]: item for item in full_plan}
                 require(all(identifier in by_id for identifier in assigned), "cohort ID outside isolation plan")
                 plan = [by_id[identifier] for identifier in assigned]
-                require(plan[0] == {"mutant_id": first, "span": list(COHORT_BOOTSTRAP_SPANS[references[0]]),
-                                    "exclusions": []}, "bootstrap geometry mismatch")
+                require(plan[0] == cohort_bootstrap(COHORTS[shard][0], references[0], first),
+                        "bootstrap geometry mismatch")
                 outcomes = baseline
                 for index_in_cohort, (item, entry) in enumerate(zip(plan, receipt["isolated"], strict=True)):
                     require(index_in_cohort == 0 or "directory_id" not in entry,
@@ -1539,8 +1740,8 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
                         "no_mutants": not reconciled}
         records.extend(reconciled)
     rebalance = []
-    for shard, (_, part, parts) in PARTS.items():
-        directory = input_dir / (prefix + shard)
+    for shard, directory in directories.items():
+        _, part, parts = PARTS[shard]
         target = SHARDS[shard]
         try:
             elapsed = json.loads((directory / "receipt.json").read_text())["elapsed_seconds"]
@@ -1568,6 +1769,8 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
         "break_passed": passed,
         "rebalance_threshold_seconds": REBALANCE_SECONDS, "rebalance_needed": rebalance,
     }
+    if campaign_manifest is not None:
+        summary["campaign_manifest_sha256"] = campaign_hash
     write_json(output_dir / "summary.json", summary)
     if complete:
         text = (f"Complete C5 measurement {'passes' if passed else 'does not pass'} break 60.\n\n"
@@ -1701,6 +1904,7 @@ def main() -> int:
     combiner.add_argument("--run-id", required=True)
     combiner.add_argument("--run-attempt", required=True)
     combiner.add_argument("--output-dir", required=True, type=Path)
+    combiner.add_argument("--campaign-manifest", type=Path)
     checker = commands.add_parser("local-check")
     checker.add_argument("--target", required=True)
     checker.add_argument("--span", required=True)
@@ -1716,7 +1920,7 @@ def main() -> int:
     if args.command == "member-boundaries":
         return print_member_boundaries(args.target)
     return aggregate(args.input_dir, args.expected_commit, args.run_id,
-                     args.run_attempt, args.output_dir)
+                     args.run_attempt, args.output_dir, args.campaign_manifest)
 
 
 if __name__ == "__main__":

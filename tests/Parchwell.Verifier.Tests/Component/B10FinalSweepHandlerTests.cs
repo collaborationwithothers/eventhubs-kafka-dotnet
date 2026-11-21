@@ -31,6 +31,13 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
             Assert.Equal(1, Arm(item, "cross_restart")["pair_count"]!.GetValue<long>());
             Assert.Equal(0, Arm(item, "cross_restart")["lost_resends"]!.GetValue<long>());
             Assert.Equal(0, item["timeout"]!["duplicate"]!.GetValue<long>());
+            Assert.Equal(0, item["duplicate_breakdown"]!["duplicate_same_attempt"]!.GetValue<long>());
+            Assert.Equal(0, item["duplicate_breakdown"]!["duplicate_different_attempt"]!.GetValue<long>());
+            foreach (string name in new[] { "same_instance", "cross_restart" })
+            {
+                Assert.Equal(0, Arm(item, name)["duplicate_breakdown"]!["duplicate_same_attempt"]!.GetValue<long>());
+                Assert.Equal(1, Arm(item, name)["duplicate_breakdown"]!["duplicate_different_attempt"]!.GetValue<long>());
+            }
         }
         string output = PhasePaths.B10FinalSweep(B10FinalSweepHarness.Run, "C1");
         Assert.Contains(output, run.Verifier.Keys);
@@ -48,6 +55,43 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
         Assert.Equal(5, rule["eligible_repeats"]!.GetValue<int>());
         Assert.Equal(Enumerable.Range(1, 5), rule["qualifying_pair_repeats"]!.AsArray().Select(item => item!.GetValue<int>()));
         Assert.Equal("confirmed", Text(rule["rule_selection"])); Assert.Equal(Parchwell.Verifier.Tests.Judge.B10FinalJudgeFixture.ExpectedRestartSubject, Text(rule["subject"]));
+    }
+
+    [Fact]
+    public async Task Given_LateCopies_When_FinalSweepRuns_Then_UsesFullArmPopulation()
+    {
+        using var run = await B10FinalSweepHarness.CreateAsync(kafka);
+        await run.AddRecordAsync(2, B10FinalSweepHarness.First(2), "c4", "cross_restart", 4);
+        await run.AddRecordAsync(2, B10FinalSweepHarness.First(2), "c4", "cross_restart", 4);
+        await run.AddRecordAsync(2, B10FinalSweepHarness.Second(2), "r4", "cross_restart", 4);
+        run.CaptureSweep();
+        Assert.Equal(0, await run.RunAsync());
+        JsonObject repeat = run.Repeat(2); AssertComplete(repeat);
+        JsonObject arm = Arm(repeat, "cross_restart");
+        Assert.Equal(6, arm["pair_count"]!.GetValue<long>());
+        Assert.Equal(3, arm["duplicate_breakdown"]!["duplicate_same_attempt"]!.GetValue<long>());
+        Assert.Equal(1, arm["duplicate_breakdown"]!["duplicate_different_attempt"]!.GetValue<long>());
+        Assert.Equal(0, repeat["duplicate_breakdown"]!["duplicate_same_attempt"]!.GetValue<long>());
+        Assert.Equal(0, await run.JudgeAsync());
+        Assert.Equal(3, run.Candidate["b10_final"]!["repeats"]![1]!["restart"]!["arms"]![1]!["duplicate_breakdown"]!["duplicate_same_attempt"]!.GetValue<long>());
+        Assert.Equal(0, run.Candidate["repeats"]![1]!["duplicate_breakdown"]!["duplicate_same_attempt"]!.GetValue<long>());
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public async Task Given_NonfinalBreakdownDisagreesWithOriginalWindow_When_Finalized_Then_OnlyRestartIsRejected(bool member)
+    {
+        using var run = await B10FinalSweepHarness.CreateAsync(kafka);
+        run.RewriteA3(3, root =>
+        {
+            JsonNode arm = root["data"]!["arms"]![0]!;
+            JsonNode target = member ? arm["members"]![0]! : arm;
+            target["duplicate_breakdown"] = new JsonObject { ["duplicate_same_attempt"] = 1, ["duplicate_different_attempt"] = 0 };
+        });
+        Assert.Equal(0, await run.RunAsync());
+        JsonObject repeat = run.Repeat(3); AssertComplete(repeat);
+        Assert.Equal(["b10_restart_late_record_unjoined"], Strings(repeat["restart"]!["eligibility_reasons"]));
+        Assert.Equal(0, repeat["duplicate_breakdown"]!["duplicate_same_attempt"]!.GetValue<long>());
     }
 
     [Theory]
@@ -94,6 +138,8 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
         Assert.Equal(0, await run.RunAsync());
         Assert.Equal(1, run.Repeat(2)["timeout"]!["duplicate"]!.GetValue<long>());
         Assert.Equal(0, run.Repeat(3)["timeout"]!["duplicate"]!.GetValue<long>());
+        Assert.Equal(1, run.Repeat(2)["duplicate_breakdown"]!["duplicate_same_attempt"]!.GetValue<long>());
+        Assert.Equal(0, run.Repeat(3)["duplicate_breakdown"]!["duplicate_same_attempt"]!.GetValue<long>());
     }
 
     [Theory]
@@ -107,6 +153,8 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
         if (timeout)
         {
             Assert.Equal("invalid", Text(item["status"])); Assert.Null(item["timeout"]);
+            Assert.False(item.ContainsKey("duplicate_breakdown"));
+            Assert.Equal(1, Arm(item, "same_instance")["duplicate_breakdown"]!["duplicate_different_attempt"]!.GetValue<long>());
             Assert.Equal(["b10_final_late_record_unjoined"], Strings(item["reasons"]));
             Assert.Equal("eligible", Text(item["restart"]!["eligibility"]));
         }
@@ -147,7 +195,11 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
         using var run = await B10FinalSweepHarness.CreateAsync(kafka);
         run.RewriteA3(3, root =>
         {
-            if (timeout) root["data"]!["timeout"]!["duplicate"] = 1;
+            if (timeout)
+            {
+                root["data"]!["timeout"]!["duplicate"] = 1;
+                root["data"]!.AsObject().Remove("duplicate_breakdown");
+            }
             else root["data"]!["arms"]![0]!["members"]![0]!["original_copies"] = 2;
         });
         Assert.Equal(0, await run.RunAsync()); JsonObject item = run.Repeat(3);
@@ -729,6 +781,8 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
         {
             Assert.Equal(1, Arm(item, "same_instance")["lost_resends"]!.GetValue<long>());
             Assert.Equal(0, Arm(item, "cross_restart")["unconfirmed_count"]!.GetValue<long>());
+            Assert.Equal(0, Arm(item, "cross_restart")["duplicate_breakdown"]!["duplicate_same_attempt"]!.GetValue<long>());
+            Assert.Equal(0, Arm(item, "cross_restart")["duplicate_breakdown"]!["duplicate_different_attempt"]!.GetValue<long>());
         }
         Assert.Equal(0, await run.JudgeAsync());
         JsonNode rule = run.Candidate["b10_final"]!["restart_rule"]!;
@@ -756,6 +810,8 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
             JsonObject item = run.Repeat(repeat);
             Assert.True(Text(item["status"]) == "complete_valid", item.ToJsonString()); Assert.True(item["classification_final"]!.GetValue<bool>());
             Assert.Equal(repeat == 3 ? 1 : 0, item["timeout"]!["duplicate"]!.GetValue<long>());
+            Assert.Equal(repeat == 3 ? 1 : 0, item["duplicate_breakdown"]!["duplicate_same_attempt"]!.GetValue<long>());
+            Assert.Equal(0, item["duplicate_breakdown"]!["duplicate_different_attempt"]!.GetValue<long>());
             Assert.Null(item["restart"]);
         }
     }
@@ -843,6 +899,8 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
             JsonObject item = run.Repeat(repeat); Assert.Equal("complete_valid", Text(item["status"]));
             Assert.True(item["classification_final"]!.GetValue<bool>());
             Assert.All(item["timeout"]!.AsObject(), count => Assert.Equal(0, count.Value!.GetValue<long>()));
+            Assert.Equal(0, item["duplicate_breakdown"]!["duplicate_same_attempt"]!.GetValue<long>());
+            Assert.Equal(0, item["duplicate_breakdown"]!["duplicate_different_attempt"]!.GetValue<long>());
         }
     }
 
@@ -883,6 +941,8 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
         Assert.Equal("s4", Text(control["witness"]!["original_attempt_id"]));
         Assert.Equal("t4", Text(control["witness"]!["resend_attempt_id"]));
         Assert.Equal(0, control["lost_resends"]!.GetValue<long>());
+        Assert.Equal(0, control["duplicate_breakdown"]!["duplicate_same_attempt"]!.GetValue<long>());
+        Assert.Equal(1, control["duplicate_breakdown"]!["duplicate_different_attempt"]!.GetValue<long>());
     }
 
     [Fact]
@@ -948,11 +1008,15 @@ public sealed class B10FinalSweepHandlerTests(B10AbruptVerifyKafkaFixture kafka)
         {
             JsonObject item = run.Repeat(repeat); Assert.Equal("invalid", Text(item["status"]));
             Assert.False(item["classification_final"]!.GetValue<bool>()); Assert.Null(item["timeout"]);
+            Assert.False(item.ContainsKey("duplicate_breakdown"));
             Assert.Equal([reason], Strings(item["reasons"]));
             Assert.Contains("b10_restart_sweep_unavailable", Strings(item["restart"]!["eligibility_reasons"]));
             if (item["restart"]!["arms"] is JsonArray arms)
                 foreach (JsonNode? arm in arms)
+                {
                     foreach (string field in new[] { "originals_seen", "resends_seen", "pair_count", "unreported_seen", "unreported_unseen", "lost_resends", "witness" }) Assert.Null(arm![field]);
+                    Assert.False(arm!.AsObject().ContainsKey("duplicate_breakdown"));
+                }
         }
     }
 }

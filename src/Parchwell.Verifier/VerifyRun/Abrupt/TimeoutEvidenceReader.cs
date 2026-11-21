@@ -22,6 +22,8 @@ internal sealed record TimeoutEvidence(TimeoutRegistration Registered,
     internal string InstanceId => Registered.InstanceId;
 }
 
+internal sealed record TimeoutJudgement(OutcomeCounts Counts, DuplicateBreakdown? DuplicateBreakdown = null);
+
 internal sealed record TimeoutRecordJoin(IReadOnlyList<ConsumedRecord> Records, bool Unjoined);
 
 /// <summary>Reads and judges the ordinary timeout instance independently of abrupt probe evidence.</summary>
@@ -132,6 +134,10 @@ internal sealed class TimeoutEvidenceReader(VerifierHostOptions options,
 
     internal static OutcomeCounts? Judge(TimeoutEvidence evidence, IReadOnlyList<ConsumedRecord> records,
         ResolvedRoleConfiguration configuration, IReadOnlyList<string> expectedBrokerNames, OutputLimits outputLimits)
+        => JudgeWithBreakdown(evidence, records, configuration, expectedBrokerNames, outputLimits)?.Counts;
+
+    internal static TimeoutJudgement? JudgeWithBreakdown(TimeoutEvidence evidence, IReadOnlyList<ConsumedRecord> records,
+        ResolvedRoleConfiguration configuration, IReadOnlyList<string> expectedBrokerNames, OutputLimits outputLimits)
     {
         // The caller has established this mode's start-line and drain checks.
         // The timeout instance retains its independent per-instance checks.
@@ -150,7 +156,7 @@ internal sealed class TimeoutEvidenceReader(VerifierHostOptions options,
                 return null;
             latest[key] = rows[(attempt.InstanceId, attempt.AttemptId)];
         }
-        return OutcomeClassifier.Classify(evidence.Ledger.Value!, records);
+        return new(OutcomeClassifier.Classify(evidence.Ledger.Value!, records), DuplicateClassifier.TryClassify(records));
     }
 
     private async Task<byte[]> ReadRequired(string name, CancellationToken cancellationToken) =>

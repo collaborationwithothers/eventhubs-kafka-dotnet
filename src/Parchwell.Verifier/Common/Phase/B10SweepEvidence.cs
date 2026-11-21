@@ -20,4 +20,4 @@ internal sealed record B10Finalization(int SchemaVersion, string ScenarioId, str
     IReadOnlyList<B10RepeatFinalization> Repeats);
 
 internal sealed record B10RepeatFinalization(int Repeat, ArtifactReference? Result, ArtifactReference? VerifyReceipt,
-    bool ClassificationFinal, VerifierResultStatus Status, OutcomeCounts? Counts, IReadOnlyList<string> Reasons);
+    bool ClassificationFinal, VerifierResultStatus Status, OutcomeCounts? Counts, IReadOnlyList<string> Reasons, DuplicateBreakdown? DuplicateBreakdown = null);
