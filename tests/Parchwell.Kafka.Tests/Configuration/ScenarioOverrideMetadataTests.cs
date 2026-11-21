@@ -15,7 +15,7 @@ public sealed class ScenarioOverrideMetadataTests
     {
         var settings = KafkaScenarioOverridePolicy.Settings;
 
-        Assert.Equal(22, settings.Length);
+        Assert.Equal(23, settings.Length);
         Assert.Collection(settings,
             setting => { AssertPolicyEntry(setting, "request.timeout.ms", 1, 900_000, "A01"); Assert.Equal(KafkaScenarioOverrideValueKind.Integer, setting.ValueKind); },
             setting => { AssertPolicyEntry(setting, "socket.timeout.ms", 10, 300_000, "A01"); Assert.Equal(KafkaScenarioOverrideValueKind.Integer, setting.ValueKind); },
@@ -28,10 +28,15 @@ public sealed class ScenarioOverrideMetadataTests
             setting => AssertNewEntry(setting, "transactional.id", KafkaScenarioOverrideValueKind.String, KafkaClientRole.LoadGenProducer, "B05", 0, 0, [], true, true),
             setting => AssertNewEntry(setting, "group.protocol", KafkaScenarioOverrideValueKind.String, KafkaClientRole.EnrichmentConsumer, "C08", 0, 0, ["classic", "consumer"]),
             setting => AssertNewEntry(setting, "group.id", KafkaScenarioOverrideValueKind.String, KafkaClientRole.EnrichmentConsumer, "C12", 0, 0, [], true),
-            setting => AssertNewEntry(setting, "session.timeout.ms", KafkaScenarioOverrideValueKind.Omission, KafkaClientRole.EnrichmentConsumer, "C08", 0, 0),
+            setting =>
+            {
+                AssertNewEntry(setting, "session.timeout.ms", KafkaScenarioOverrideValueKind.Integer, KafkaClientRole.EnrichmentConsumer, "C01", 1, 3_600_000, inventories: ["C01", "C08"]);
+                Assert.Equal(["C08"], setting.OmissionInventoryIds);
+            },
             setting => AssertNewEntry(setting, "heartbeat.interval.ms", KafkaScenarioOverrideValueKind.Omission, KafkaClientRole.EnrichmentConsumer, "C08", 0, 0),
             setting => AssertNewEntry(setting, "partition.assignment.strategy", KafkaScenarioOverrideValueKind.Omission, KafkaClientRole.EnrichmentConsumer, "C08", 0, 0),
             setting => AssertNewEntry(setting, "max.poll.interval.ms", KafkaScenarioOverrideValueKind.Integer, KafkaClientRole.EnrichmentConsumer, "C03", 1, 86_400_000),
+            setting => AssertNewEntry(setting, "enable.auto.offset.store", KafkaScenarioOverrideValueKind.Boolean, KafkaClientRole.EnrichmentConsumer, "C10", 0, 1),
             setting =>
             {
                 Assert.Equal("debug", setting.Key);
@@ -58,7 +63,7 @@ public sealed class ScenarioOverrideMetadataTests
             },
             setting => AssertNewEntry(setting, "acks", KafkaScenarioOverrideValueKind.Integer, KafkaClientRole.LoadGenProducer, "B06", -1, 1000),
             setting => AssertNewEntry(setting, "linger.ms", KafkaScenarioOverrideValueKind.Integer, KafkaClientRole.LoadGenProducer, "B07", 0, 900_000));
-        Assert.All(settings.Where(setting => setting.Key != "connections.max.idle.ms"), setting => Assert.Empty(setting.OmissionInventoryIds));
+        Assert.All(settings.Where(setting => setting.Key is not ("connections.max.idle.ms" or "session.timeout.ms")), setting => Assert.Empty(setting.OmissionInventoryIds));
     }
 
     [Theory]
