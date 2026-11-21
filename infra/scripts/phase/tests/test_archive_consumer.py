@@ -660,7 +660,9 @@ class SelfKillArchiveTests(unittest.TestCase):
         self.kill(fixture, 1, KILL_INTENT + PROCESSED, PROCESSED + KILL_INTENT)
         code, manifest, receipt = fixture.run_archive()
         self.assertEqual(0, code)
+        self.assertTrue(manifest['archive_complete'])
         self.assertEqual([], manifest['gaps'])
+        self.assertEqual(manifest['totals']['expected_objects'], manifest['totals']['verified_objects'])
         for repeat in range(1, 6):
             self.assert_absence(fixture, manifest, repeat)
 

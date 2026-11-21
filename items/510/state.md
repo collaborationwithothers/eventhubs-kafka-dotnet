@@ -5,7 +5,7 @@ Item plan: [#499 proposal revision 2](https://github.com/collaborationwithothers
 Implementing tool: Claude Code. Source: [Tool: Claude comment 7057936867](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7057936867), created 9 seconds before `ready-for-agent` was applied
 Approved plan: [c10-c01-scenarios plan, revision 6](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7000962800), `items/510/plan-c10-c01-scenarios.md` at 975b93ba0aa3221027c9c69c543880e93e5b7436; three pull requests, this one is `self-kill-archive` (section 16)
 Decisions in force:
-- The issue body (scope and read-first list; its K-57-under-C10 line and "Implementation: Codex" line are superseded by the decisions below). Source: [issue body](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510)
+- The issue body (scope and read-first list; its K-57-under-C10 line is amended by decision 7031523104 below, and its "Implementation: Codex" line is overridden by the tool-naming comment on line 5). Source: [issue body](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510)
 - Adopts the #499 consumer-processing grilling answers and the standing decision. Source: [6895329362](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-6895329362), [6895344271](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-6895344271), [6895538516](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-6895538516)
 - Adopts the settings-source answer and the consumer phase judge entry. Source: [6899940730](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-6899940730)
 - Agents merge by merge commit. Source: [6958522754](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-6958522754)
@@ -16,4 +16,4 @@ Decisions in force:
 - Approves plan revision 6 at the commit above; check P2-1 to P2-3 are `apply in implementation`. Source: [7034786418](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034786418)
 Open questions:
 - None
-Next action: Codex review and merge of the `self-kill-archive` pull request; then the `c10-commit-coverage` and `c10-c01-inputs` pull requests, all before the smoke runs.
+Next action: Codex review and merge of the `self-kill-archive` pull request. The set is `c10-c01-inputs`, `self-kill-archive`, `c10-commit-coverage`; the plan allows any order, and all three merge before the smoke runs.
