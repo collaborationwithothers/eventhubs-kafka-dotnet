@@ -1097,6 +1097,44 @@ def selected_invocation(declarations, matrix, shard):
     return target, key, 'primary', bounds[index - 1:index + 1]
 
 
+PAIRED_TAIL_PRIOR = 'b31928a2ed22a634e8e1a66edb953311eaa9ca87'
+PAIRED_TAIL_SOURCE = '3c65a2fa52f16378c3815159cd07f8237e3346bf'
+PAIRED_TAIL_COUNTS = {'verifier-result-codec': 17, 'b10-final-judge': 13, 'b10-final-projection-codec': 13}
+
+
+@functools.lru_cache(maxsize=4)
+def paired_tail_changes(head):
+    """Find changed invocations only on the reviewed paired-run tail layout."""
+    if not head:
+        return frozenset()
+    try:
+        git('merge-base', '--is-ancestor', PAIRED_TAIL_SOURCE, head)
+        prior = proof_tree(PAIRED_TAIL_PRIOR)
+        measured = proof_tree(PAIRED_TAIL_SOURCE)
+        if proof_tree(head) != measured or prior[1:] != measured[1:]:
+            return frozenset()
+        old, new = prior[0], measured[0]
+        cuts = dict(old['PRIMARY_CUTS'])
+        for target in PAIRED_TAIL_COUNTS:
+            if len(cuts[target]) != len(new['PRIMARY_CUTS'][target]):
+                return frozenset()
+            cuts[target] = new['PRIMARY_CUTS'][target]
+        if new != {**old, 'PRIMARY_CUTS': cuts} or any(
+                workflow_matrix(blob(head, path)) != workflow_matrix(blob(PAIRED_TAIL_PRIOR, path))
+                for path in CAMPAIGN_LIMITS):
+            return frozenset()
+        matrix = measured[4]
+        changed = frozenset(shard for shard in matrix
+                            if selected_invocation(old, matrix, shard) != selected_invocation(new, matrix, shard))
+        counts = {target: sum(matrix[shard] == new['TARGETS'][target][0] for shard in changed)
+                  for target in PAIRED_TAIL_COUNTS}
+        if counts != PAIRED_TAIL_COUNTS or sum(counts.values()) != len(changed):
+            return frozenset()
+        return changed
+    except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
+        return frozenset()
+
+
 def followup_equivalent(old, old_maps, old_config, new, new_maps, new_config):
     """Limit the paired runner change to the reviewed addition of the p4 cohort."""
     old_shared, old_targets = old_maps
@@ -1872,6 +1910,8 @@ def fresh_pinned_timing(config, path, record, shard, item, source, head):
         return False
     proof = config['timing_evidence'].get(shard, {})
     context = config['timing_inputs'].get(item['timing_inputs_sha256'], {})
+    if shard in paired_tail_changes(head):
+        return path == pinned_path and timing_context_linked(context, shard, path, record, item, proof, {}, head)
     return (path == pinned_path and digest(source) != pinned_source
             and proof.get('kind') == 'measured'
             and timing_context_linked(context, shard, path, record, item, proof, {}, head)
@@ -1888,6 +1928,18 @@ def committed_context_matches(context):
 
 def timing_context_linked(context, shard, path, record, item, timing, baseline, head=None):
     commit = context.get('source_commit')
+    changed_tail = shard in paired_tail_changes(head)
+    if changed_tail or timing.get('source_commit') == PAIRED_TAIL_SOURCE:
+        if not changed_tail:
+            return False
+        source = proof_tree(PAIRED_TAIL_SOURCE)
+        return (timing.get('kind') == 'measured' and timing.get('source_commit') == PAIRED_TAIL_SOURCE
+                and source[4].get(shard) == path
+                and source[2] == (context.get('shared_inputs'), context.get('target_sources'))
+                and committed_context_matches(context)
+                and 0 < timing['observed_seconds'] <= min(2650, item['estimated_seconds'])
+                and 1 <= timing['observed_workers'] <= 2
+                and has_shard_timing(shard, path, record, item, timing, baseline))
     if timing.get('kind') == 'measured':
         if commit == REVIEW_CORRECTION and path == CODEC_TARGET and head:
             try:
@@ -1934,6 +1986,10 @@ def validate(config, shared, targets, source, matrix, head=None):
     used_contexts = set()
     baseline = historical_qualification() if config['schema_version'] == 2 and any(
         p['kind'] == 'historical' for p in config['timing_evidence'].values()) else {}
+    tail_changes = paired_tail_changes(head)
+    if tail_changes and config['schema_version'] != 2:
+        reasons.add('missing_measurement')
+    tail_prior = strict_json(blob(PAIRED_TAIL_PRIOR, HISTORICAL_QUALIFICATION_PATH)) if tail_changes else None
     shard_fields = {'selection_sha256', 'timing_inputs_sha256', 'main_mutants', 'main_work_seconds',
                     'parallelism', 'setup_seconds', 'isolated_seconds', 'estimated_seconds', 'basis'}
     for path, record in config['targets'].items():
@@ -1971,6 +2027,8 @@ def validate(config, shared, targets, source, matrix, head=None):
                     for field in ('hardware', 'calibration')):
                 reasons.add('missing_measurement')
         for shard, item in record['shards'].items():
+            retained_tail = tail_prior is not None and shard not in tail_changes
+            proof_head = PAIRED_TAIL_PRIOR if retained_tail else head
             if shard in all_shards:
                 reasons.add('layout_mismatch')
             all_shards[shard] = path
@@ -1987,12 +2045,20 @@ def validate(config, shared, targets, source, matrix, head=None):
                     reasons.add('missing_measurement')
                 else:
                     used_contexts.add(binding)
-                    reasons.update(provenance_errors(context, shared, targets, path, shard, head))
-                    if 'source_commit' in context:
+                    timing = config['timing_evidence'].get(shard, {})
+                    if retained_tail:
+                        prior_record = tail_prior['targets'][path]
+                        prior_evidence = prior_record['evidence']
+                        if (item != prior_record['shards'].get(shard)
+                                or timing != tail_prior['timing_evidence'].get(shard)
+                                or context != tail_prior['timing_inputs'].get(binding)
+                                or record['evidence'][:len(prior_evidence)] != prior_evidence):
+                            reasons.add('missing_measurement')
+                    reasons.update(provenance_errors(context, shared, targets, path, shard, proof_head))
+                    if 'source_commit' in context or shard in tail_changes:
                         if not committed_context_matches(context):
                             reasons.add('stale_inputs')
-                        timing = config['timing_evidence'].get(shard, {})
-                        if not timing_context_linked(context, shard, path, record, item, timing, baseline, head):
+                        if not timing_context_linked(context, shard, path, record, item, timing, baseline, proof_head):
                             reasons.add('missing_measurement')
                 if provisional and binding != PROVISIONAL_TIMING_INPUTS_HASH:
                     reasons.add('stale_inputs')
@@ -2015,10 +2081,10 @@ def validate(config, shared, targets, source, matrix, head=None):
                                     or approved_six_tail(path, record, shard, item, source[path])):
                 reasons.add('invalid_estimate')
             if (shard in CODEC_NEIGHBOR and not approved_codec_neighbor(path, record, shard, item, source[path])
-                    and not fresh_pinned_timing(config, path, record, shard, item, source[path], head)):
+                    and not fresh_pinned_timing(config, path, record, shard, item, source[path], proof_head)):
                 reasons.add('invalid_estimate')
             if (shard in SIX_TAIL_BINDINGS and not approved_six_tail(path, record, shard, item, source[path])
-                    and not fresh_pinned_timing(config, path, record, shard, item, source[path], head)):
+                    and not fresh_pinned_timing(config, path, record, shard, item, source[path], proof_head)):
                 reasons.add('invalid_estimate')
             numeric = ('main_work_seconds', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')
             valid = (type(item['main_mutants']) is int and item['main_mutants'] >= 0
