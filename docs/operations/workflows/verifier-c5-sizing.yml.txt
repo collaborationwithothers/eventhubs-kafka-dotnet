@@ -7,7 +7,7 @@ on:
         description: Full lowercase commit SHA containing the diagnostic helpers
         required: true
         type: string
-        default: e9910d68f149be96da6ff921af89774526c95c94
+        default: 6982956ae1f6d14f8f2f4b53e8d6778b40216d56
 
 permissions:
   contents: read
@@ -21,13 +21,61 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - shard: b10-final-classification-crossing
+          - shard: b10-final-classification-p1
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
+          - shard: b10-final-classification-p2
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
+          - shard: b10-final-classification-p3
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
+          - shard: b10-final-classification-p4
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
+          - shard: b10-final-classification-p5
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
+          - shard: b10-final-classification-p6
             target: VerifyRun/B10Final/B10FinalClassification.cs
             target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
           - shard: b10-final-classification-p7
             target: VerifyRun/B10Final/B10FinalClassification.cs
             target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
           - shard: b10-final-classification-p8
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
+          - shard: b10-final-classification-p9
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
+          - shard: b10-final-classification-p10
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
+          - shard: b10-final-classification-p11
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
+          - shard: b10-final-classification-p12
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
+          - shard: b10-final-classification-p13
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
+          - shard: b10-final-classification-p14
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
+          - shard: b10-final-classification-p15
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
+          - shard: b10-final-classification-p16
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
+          - shard: b10-final-classification-p17
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
+          - shard: b10-final-classification-p18
+            target: VerifyRun/B10Final/B10FinalClassification.cs
+            target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
+          - shard: b10-final-classification-crossing
             target: VerifyRun/B10Final/B10FinalClassification.cs
             target_sha256: 051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573
     env:
@@ -56,7 +104,7 @@ jobs:
             done
           } > "$DIAGNOSTIC_DIR/metadata.txt"
           [[ "$GITHUB_REF" == refs/heads/main ]]
-          [[ "$SOURCE_SHA" == e9910d68f149be96da6ff921af89774526c95c94 ]]
+          [[ "$SOURCE_SHA" == 6982956ae1f6d14f8f2f4b53e8d6778b40216d56 ]]
       - name: Check out diagnostic source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
