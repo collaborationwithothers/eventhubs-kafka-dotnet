@@ -95,6 +95,7 @@ internal static class ConsumerJudgement
             block["counts"]=new {ProcessedOnce=once,ProcessedAgain=again,ProcessedAgainExtraRows=extra,CommittedNeverProcessed=never};
             if(request.Plan.SlowMessageMode is not null)block["membership"]=Membership(request,members);
             if(request.Plan.KillCount is not null)block["reassignment"]=Reassignment(members);
+            if(request.Plan.KillCount is not null&&request.ScenarioId=="C10")block["subject_commit_coverage"]=SubjectCommitCoverage(request,members);
         }
         return new(status,JsonSerializer.SerializeToElement(block,JsonOptions),!skip);
         void Add(string reason,ConsumerMember member,ConsumerRow? row=null){invalid.Add(reason);diagnostics.Add(new(reason,member.Registration!.InstanceId,member.Prefix,row?.RowSequence));}
@@ -165,6 +166,21 @@ internal static class ConsumerJudgement
         ConsumerRow last=subject.Rows[^1];IReadOnlySet<int> held=Held(subject,last.RowSequence);
         ConsumerRow? assigned=witness.Rows.Where(r=>r.Kind=="partition_event"&&r.Event=="assigned"&&r.Time>=last.Time&&held.All(p=>(r.Partitions??[]).Contains(p))).MinBy(r=>r.Time);
         return new {Microseconds=assigned is null?(long?)null:(assigned.Time-last.Time).Ticks/10,UnavailableReason=assigned is null?"no_reassignment":(string?)null};
+    }
+    /// <summary>
+    /// The partitions the subject held at the start line that have messages in the run window, and which of them the subject never committed
+    /// before its kill-intent row. A commit counts when its row and its entry for the run topic and the partition both have error code 0 and the offset is at least 0.
+    /// </summary>
+    private static object SubjectCommitCoverage(ConsumerJudgementRequest request,IReadOnlyList<ConsumerMember> members)
+    {
+        ConsumerMember subject=members.Single(m=>m.Registration!.Role=="subject");
+        long start=request.Snapshot!.Members.Single(s=>s.InstanceId==subject.Registration!.InstanceId).FirstReadLastRowSequence;
+        IReadOnlySet<int> held=Held(subject,start);
+        long kill=subject.Rows.Single(r=>r.Kind=="kill_intent").RowSequence;
+        int[] qualifying=request.Window.Partitions.Where(p=>p.Start<p.End&&held.Contains(p.Partition)).Select(p=>p.Partition).Distinct().Order().ToArray();
+        int[] uncovered=qualifying.Where(partition=>!subject.Rows.Any(r=>r.Kind=="commit"&&r.ErrorCode==0&&r.RowSequence<kill&&
+            (r.Offsets??[]).Any(o=>o.Topic==RunWindow.Topic&&o.Partition==partition&&o.Offset>=0&&o.ErrorCode==0))).ToArray();
+        return new {QualifyingPartitions=qualifying,UncoveredPartitions=uncovered};
     }
     private static string Status(VerifierResultStatus status)=>status switch{VerifierResultStatus.CompleteValid=>"complete_valid",VerifierResultStatus.Invalid=>"invalid",_=>"incomplete"};
     private static string? Stamp(DateTimeOffset? time)=>time?.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fffffff'Z'",System.Globalization.CultureInfo.InvariantCulture);

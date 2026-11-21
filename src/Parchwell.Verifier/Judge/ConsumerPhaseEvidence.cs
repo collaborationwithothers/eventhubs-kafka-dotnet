@@ -35,7 +35,7 @@ internal static partial class ConsumerEvidenceRules
         "consumer_slow_message_invalid"
     ];
 
-    private static readonly string[] ProjectedNames = ["status", "reasons", "group_id", "kill_count", "offset_read", "counts", "membership", "reassignment"];
+    private static readonly string[] ProjectedNames = ["status", "reasons", "group_id", "kill_count", "offset_read", "counts", "membership", "reassignment", "subject_commit_coverage"];
 
     private static readonly string[] MembershipNames =
     [
@@ -45,6 +45,9 @@ internal static partial class ConsumerEvidenceRules
 
     /// <summary>True for a scenario whose consumer blocks carry the <c>membership</c> object of C03.</summary>
     internal static bool CarriesMembership(string? scenarioId) => scenarioId == "C03";
+
+    /// <summary>True for a scenario whose complete kill blocks carry <c>subject_commit_coverage</c>.</summary>
+    internal static bool CarriesCommitCoverage(string? scenarioId) => scenarioId == "C10";
 
     [GeneratedRegex(@"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{7}Z$")]
     private static partial Regex TimestampRegex();
@@ -87,6 +90,7 @@ internal static partial class ConsumerEvidenceRules
         if (complete) expected.Add("counts");
         if (complete && CarriesMembership(scenarioId)) expected.Add("membership");
         if (complete && hasKill) expected.Add("reassignment");
+        if (complete && hasKill && CarriesCommitCoverage(scenarioId)) expected.Add("subject_commit_coverage");
         if (!HasExactly(e, expected.ToArray())) return null;
         if (fullBlock)
         {
@@ -107,6 +111,7 @@ internal static partial class ConsumerEvidenceRules
             if (counts is null) return null;
             if (CarriesMembership(scenarioId) && !ValidMembership(e.GetProperty("membership"))) return null;
             if (hasKill && !ValidReassignment(e.GetProperty("reassignment"))) return null;
+            if (hasKill && CarriesCommitCoverage(scenarioId) && !ValidCommitCoverage(e.GetProperty("subject_commit_coverage"))) return null;
         }
         if (!ValidOffsetRead(e.GetProperty("offset_read"))) return null;
         return new(status, reasons, counts, Project(e));
@@ -150,6 +155,29 @@ internal static partial class ConsumerEvidenceRules
         if (hasMicroseconds == hasReason) return false;
         if (hasMicroseconds) return microseconds.ValueKind == JsonValueKind.Number && microseconds.TryGetInt64(out long value) && value >= 0;
         return reason.ValueKind == JsonValueKind.String && reason.GetString() is "different_nodes" or "no_reassignment";
+    }
+
+    private static bool ValidCommitCoverage(JsonElement e)
+    {
+        if (e.ValueKind != JsonValueKind.Object || !e.EnumerateObject().Select(property => property.Name).SequenceEqual(["qualifying_partitions", "uncovered_partitions"])) return false;
+        if (!TryReadPartitions(e.GetProperty("qualifying_partitions"), out int[]? qualifying) ||
+            !TryReadPartitions(e.GetProperty("uncovered_partitions"), out int[]? uncovered)) return false;
+        return uncovered!.All(partition => qualifying!.Contains(partition));
+    }
+
+    private static bool TryReadPartitions(JsonElement element, out int[]? partitions)
+    {
+        partitions = null;
+        if (element.ValueKind != JsonValueKind.Array) return false;
+        var values = new List<int>();
+        foreach (JsonElement item in element.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Number || !item.TryGetInt32(out int value) || value < 0) return false;
+            if (values.Count > 0 && value <= values[^1]) return false;
+            values.Add(value);
+        }
+        partitions = values.ToArray();
+        return true;
     }
 
     private static bool ValidOffsetRead(JsonElement e)
