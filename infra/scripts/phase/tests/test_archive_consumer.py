@@ -574,5 +574,216 @@ class ConsumerArchiveTests(unittest.TestCase):
         self.assertEqual(4, len(unstarted))
 
 
+PROCESSED = b'{"schema_version":1,"kind":"processed","row_sequence":0}\n'
+KILL_INTENT = b'{"schema_version":1,"kind":"kill_intent","row_sequence":1,"partition":0,"offset":0}\n'
+
+
+class SelfKillArchiveTests(unittest.TestCase):
+    """Issue 510 plan, section 16: the expected absence of a self-killed subject's native-monitoring index."""
+
+    def phase(self, *args, **kwargs):
+        fixture = Phase(*args, **kwargs)
+        self.addCleanup(fixture.close)
+        return fixture
+
+    def kill(self, fixture, repeat, *blobs, index=False):
+        """Rewrite one repeat's subject as a killed member: no completion, the given record blobs, no native index."""
+        subject = 'consumer-subject'
+        fixture.member(repeat, subject, blobs=0, completion=False)
+        stored = fixture.h.cli.blobs
+        for name in [key for key in stored if key[1] == 'consumer-record'
+                     and key[2].startswith(fixture.root(repeat, subject) + 'record/')]:
+            del stored[name]
+        for number, body in enumerate(blobs):
+            stored[('source123', 'consumer-record', fixture.blob_name(repeat, subject, number))] = body
+        stored.pop(('source123', 'consumer-record', fixture.root(repeat, subject) + 'completion.json'), None)
+        if not index:
+            stored.pop(('source123', 'native-monitoring', self.index_name(fixture, repeat, subject)), None)
+
+    def index_name(self, fixture, repeat, mode):
+        return f'{fixture.run}/{fixture.phase}/{fixture.job(repeat, mode)}/uid/native-monitoring/index.json'
+
+    def kill_all(self, fixture, *blobs):
+        for repeat in range(1, 6):
+            self.kill(fixture, repeat, *(blobs or (PROCESSED + KILL_INTENT,)))
+
+    def gap_set(self, manifest):
+        return {(g['code'], g['boundary'], g['object_name'], g['expected_unit']) for g in manifest['gaps']}
+
+    def index_of(self, manifest, name):
+        return next(o for o in manifest['objects'] if o['source']['name'] == name)
+
+    def assert_absence(self, fixture, manifest, repeat):
+        name = self.index_name(fixture, repeat, 'consumer-subject')
+        self.assertEqual({
+            'kind': 'native_monitoring_index',
+            'source': {'container': 'native-monitoring', 'name': name, 'etag': None},
+            'destination_name': f'v1/{"a" * 40}/42/1/{fixture.run}/{fixture.phase}/objects/native-monitoring/{name}',
+            'required': False, 'repeat': repeat, 'capture_id': None, 'bytes': None, 'sha256': None,
+            'destination_etag': None, 'state': 'missing', 'gap_code': 'configured_self_kill'}, self.index_of(manifest, name))
+
+    def assert_two_gaps(self, fixture, manifest, repeat):
+        name = self.index_name(fixture, repeat, 'consumer-subject')
+        job = fixture.job(repeat, 'consumer-subject')
+        self.assertEqual({('source_missing', 'source properties', name, None),
+                          ('monitoring_incomplete', 'native index unavailable', None, job)},
+                         {g for g in self.gap_set(manifest) if g[2] == name or g[3] == job})
+
+    def test_c10_expected_absence(self):
+        # T20
+        fixture = self.phase('C10', 'C0')
+        self.kill_all(fixture)
+        code, manifest, receipt = fixture.run_archive()
+        self.assertEqual(0, code)
+        self.assertTrue(manifest['archive_complete'])
+        self.assertEqual([], manifest['gaps'])
+        for repeat in range(1, 6):
+            self.assert_absence(fixture, manifest, repeat)
+        self.assertEqual(manifest['totals']['expected_objects'], manifest['totals']['verified_objects'])
+
+    def test_c01_expected_absence(self):
+        # T21
+        fixture = self.phase('C01', 'C1')
+        self.kill_all(fixture)
+        code, manifest, receipt = fixture.run_archive()
+        self.assertEqual(0, code)
+        self.assertTrue(manifest['archive_complete'])
+        self.assertEqual([], manifest['gaps'])
+        for repeat in range(1, 6):
+            self.assert_absence(fixture, manifest, repeat)
+        self.assertEqual(manifest['totals']['expected_objects'], manifest['totals']['verified_objects'])
+
+    def test_last_row_of_last_blob_decides(self):
+        # T22
+        fixture = self.phase('C10', 'C0')
+        self.kill_all(fixture)
+        self.kill(fixture, 1, KILL_INTENT + PROCESSED, PROCESSED + KILL_INTENT)
+        code, manifest, receipt = fixture.run_archive()
+        self.assertEqual(0, code)
+        self.assertEqual([], manifest['gaps'])
+        for repeat in range(1, 6):
+            self.assert_absence(fixture, manifest, repeat)
+
+    def test_kill_intent_not_last_row_is_a_gap(self):
+        # T23
+        fixture = self.phase('C10', 'C0')
+        self.kill_all(fixture)
+        self.kill(fixture, 1, KILL_INTENT + PROCESSED)
+        code, manifest, receipt = fixture.run_archive()
+        self.assertEqual(1, code)
+        self.assert_two_gaps(fixture, manifest, 1)
+        self.assertEqual(2, len(manifest['gaps']))
+        index = self.index_of(manifest, self.index_name(fixture, 1, 'consumer-subject'))
+        self.assertEqual((True, 'missing', 'source_missing'), (index['required'], index['state'], index['gap_code']))
+
+    def test_unparsable_last_row_is_a_gap(self):
+        # T24
+        fixture = self.phase('C10', 'C0')
+        self.kill_all(fixture)
+        self.kill(fixture, 1, b'not json\n')
+        code, manifest, receipt = fixture.run_archive()
+        self.assertEqual(1, code)
+        self.assert_two_gaps(fixture, manifest, 1)
+        self.assertEqual(2, len(manifest['gaps']))
+        index = self.index_of(manifest, self.index_name(fixture, 1, 'consumer-subject'))
+        self.assertEqual((True, 'missing', 'source_missing'), (index['required'], index['state'], index['gap_code']))
+
+    def test_subject_with_completion_is_a_gap(self):
+        # T25
+        fixture = self.phase('C10', 'C0')
+        self.kill_all(fixture)
+        self.kill(fixture, 1, PROCESSED + KILL_INTENT)
+        identity = fixture.identity(1, 'consumer-subject')
+        fixture.h.cli.put('consumer-record', fixture.root(1, 'consumer-subject') + 'completion.json',
+                          {'schema_version': 1, 'kind': 'consumer_completion', **identity, 'rows': 2, 'record_blobs': 1,
+                           'messages_processed': 1, 'closed_utc': '2026-11-17T00:00:01Z'})
+        code, manifest, receipt = fixture.run_archive()
+        self.assertEqual(1, code)
+        self.assert_two_gaps(fixture, manifest, 1)
+        self.assertEqual(2, len(manifest['gaps']))
+        index = self.index_of(manifest, self.index_name(fixture, 1, 'consumer-subject'))
+        self.assertEqual((True, 'missing', 'source_missing'), (index['required'], index['state'], index['gap_code']))
+
+    def test_witness_index_stays_a_gap(self):
+        # T26
+        fixture = self.phase('C10', 'C0')
+        self.kill_all(fixture)
+        del fixture.h.cli.blobs[('source123', 'native-monitoring', self.index_name(fixture, 2, 'consumer-witness'))]
+        code, manifest, receipt = fixture.run_archive()
+        self.assertEqual(1, code)
+        name, job = self.index_name(fixture, 2, 'consumer-witness'), fixture.job(2, 'consumer-witness')
+        self.assertEqual({('source_missing', 'source properties', name, None),
+                          ('monitoring_incomplete', 'native index unavailable', None, job)}, self.gap_set(manifest))
+
+    def test_registration_identity_gap_keeps_the_index_gap(self):
+        # T27
+        fixture = self.phase('C10', 'C0')
+        self.kill_all(fixture)
+        key = ('source123', 'consumer-record', fixture.root(4, 'consumer-subject') + 'registration.json')
+        document = json.loads(fixture.h.cli.blobs[key])
+        document['instance_id'] = 'other'
+        fixture.h.cli.blobs[key] = encoded(document)
+        code, manifest, receipt = fixture.run_archive()
+        self.assertEqual(1, code)
+        self.assertIn(('monitoring_incomplete', 'consumer registration identity', key[2], None), self.gap_set(manifest))
+        self.assert_two_gaps(fixture, manifest, 4)
+        self.assertEqual(3, len(manifest['gaps']))
+
+    def test_index_transport_failure_stays_the_base_gap(self):
+        # T28
+        fixture = self.phase('C10', 'C0')
+        self.kill_all(fixture)
+        name, job = self.index_name(fixture, 3, 'consumer-subject'), fixture.job(3, 'consumer-subject')
+        real = fixture.h.cli
+
+        def failing(args, deadline):
+            if args[3] == 'show' and args[args.index('--name') + 1] == name:
+                return 1, b'', b'AuthorizationPermissionMismatch'
+            return real(args, deadline)
+
+        fixture.h.cli = failing
+        code, manifest, receipt = fixture.run_archive()
+        self.assertEqual(1, code)
+        self.assertEqual({('transport', 'properties', name, None),
+                          ('monitoring_incomplete', 'native index failed: transport', None, job)}, self.gap_set(manifest))
+
+    def test_present_index_is_retained(self):
+        # T29
+        fixture = self.phase('C10', 'C0')
+        for repeat in range(1, 5):
+            self.kill(fixture, repeat, PROCESSED + KILL_INTENT)
+        self.kill(fixture, 5, PROCESSED + KILL_INTENT, index=True)
+        name = self.index_name(fixture, 5, 'consumer-subject')
+        code, manifest, receipt = fixture.run_archive()
+        self.assertEqual(0, code)
+        self.assertEqual('verified', self.index_of(manifest, name)['state'])
+        self.assertEqual([], [o for o in manifest['objects'] if o['source']['name'] == name and o['gap_code'] == 'configured_self_kill'])
+        for repeat in range(1, 5):
+            self.assert_absence(fixture, manifest, repeat)
+
+    def test_validator_accepts_only_the_expected_absence(self):
+        # T30
+        fixture = self.phase('C10', 'C0')
+        self.kill_all(fixture)
+        code, manifest, receipt = fixture.run_archive()
+        self.assertEqual(0, code)
+        self.assertEqual(receipt['identity'], archive.validate_manifest(copy.deepcopy(manifest)))
+        name = self.index_name(fixture, 1, 'consumer-subject')
+        changes = (lambda o: o.update(kind='consumer_record'), lambda o: o.update(required=True),
+                   lambda o: o.update(state='failed'), lambda o: o.update(bytes=0),
+                   lambda o: o['source'].update(etag='"x"'))
+        for number, change in enumerate(changes):
+            with self.subTest(change=number):
+                variant = copy.deepcopy(manifest)
+                change(next(o for o in variant['objects'] if o['source']['name'] == name))
+                with self.assertRaises(archive.InvalidArchiveConfig):
+                    archive.validate_manifest(variant)
+        variant = copy.deepcopy(manifest)
+        variant['gaps'].append({'code': 'configured_self_kill', 'boundary': 'native index unavailable',
+                                'object_name': None, 'expected_unit': fixture.job(1, 'consumer-subject')})
+        with self.assertRaises(archive.InvalidArchiveConfig):
+            archive.validate_manifest(variant)
+
+
 if __name__ == '__main__':
     unittest.main()
