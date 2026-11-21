@@ -44,8 +44,24 @@ MUTATE_FILTER = "Removed by mutate filter"
 STATIC_PHASE = b"    private static readonly int[] A=[1];\n    bool B() => true;\n"
 STATIC_PHASE_TWO = b"    private static readonly int[] A=[1];\n    private static readonly int[] C=[2];\n    bool B() => true;\n"
 RPC_BYTES = b"Synthetic assertion\nSynthetic stack\ntime.duration-ms: 55\n"
+EXPECTED_COMPANION_TARGETS = {
+    "Common/Phase/B10FinalRegistrationReader.cs",
+    "Judge/B10JudgeChecks.cs",
+    "VerifyRun/A01/A01EvidenceRecorder.cs",
+    "VerifyRun/A01/WorkloadRecorder.cs",
+    "VerifyRun/B10Final/B10FinalSweepHandler.cs",
+    "VerifyRun/IdleObservation/IdleObservationJudgement.cs",
+    "VerifyRun/Input/B10PhaseRegistrationReader.cs",
+    "VerifyRun/Input/RestartManifestReader.cs",
+    "VerifyRun/Judgement/B10IntakeChecks.cs",
+    "VerifyRun/Judgement/B10RepeatChecks.cs",
+    "VerifyRun/LedgerBatch/BatchingEvidenceRecorder.cs",
+    "VerifyRun/Publication/PublicationAcceptance.cs",
+    "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs",
+    "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs",
+}
 
-EXPECTED_PRIMARY_CUTS = {'phase': (3600, 4517, 5582, 6493, 7173),
+EXPECTED_PRIMARY_CUTS = {'phase': (3694, 4477, 5458, 6568, 7631),
  'publication': (887, 2532, 3857, 5506, 7129, 8239),
  'a01': (3859,),
  'workload': (1418, 2624),
@@ -122,71 +138,62 @@ EXPECTED_PRIMARY_CUTS = {'phase': (3600, 4517, 5582, 6493, 7173),
  'b10-judge': (2599, 4113),
  'b10-repeat': (2712, 6191, 8313, 10971),
  'b10-phase-registrations': (2655,),
- 'b10-late-write': (3765,),
- 'b10-sweep-judge': (1549, 3044),
- 'b10-sweep-codec': (1715, 4176, 5682, 7602, 9482, 10639, 12098, 15210),
+ 'b10-late-write': (3695,),
+ 'b10-sweep-judge': (1946,),
+ 'b10-sweep-codec': (1798, 4471, 6331, 7821, 10309, 11888, 13828),
  'b10-final-sweep-handler': (4089, 8487, 10895),
- 'b10-final-repeat-evidence': (5565,
-                               13837,
-                               15226,
-                               15987,
-                               16734,
-                               19438,
-                               20874,
-                               22199,
-                               24938,
-                               26076,
-                               27770,
-                               29405,
-                               30526,
-                               32095,
-                               33263,
-                               34548,
-                               36006,
-                               38775,
-                               39686,
-                               40468,
-                               41582,
-                               42920,
-                               44372,
-                               47016),
- 'b10-final-classification': (2322,
-                              3531,
-                              5405,
-                              6286,
-                              6898,
-                              8359,
-                              9673,
-                              11368,
-                              12817,
-                              13576,
-                              14000,
-                              14752,
-                              15359,
-                              15805,
-                              16416,
-                              17808,
-                              18376,
-                              19172,
-                              19906,
-                              20931,
-                              21475),
- 'b10-final-projection-codec': (1068,
-                                1706,
-                                2158,
-                                3002,
-                                4553,
-                                5970,
-                                7493,
-                                8585,
-                                9410,
-                                10482,
-                                11253,
-                                11973,
-                                12732,
-                                13486,
-                                15085,
-                                16526),
+ 'b10-final-repeat-evidence': (12311,
+                               15324,
+                               16296,
+                               17422,
+                               20361,
+                               22478,
+                               25224,
+                               26614,
+                               28409,
+                               29913,
+                               31154,
+                               32878,
+                               34482,
+                               35179,
+                               37216,
+                               39819,
+                               41395,
+                               43520,
+                               45595,
+                               48067,
+                               50303),
+ 'b10-final-classification': (2787,
+                              3812,
+                              5710,
+                              6809,
+                              8963,
+                              10893,
+                              13167,
+                              14783,
+                              15546,
+                              16310,
+                              17909,
+                              19068,
+                              21015,
+                              22118,
+                              23214,
+                              24591,
+                              25567),
+ 'b10-final-projection-codec': (1109,
+                                1747,
+                                2198,
+                                3912,
+                                5278,
+                                6812,
+                                8327,
+                                9610,
+                                10753,
+                                11892,
+                                13262,
+                                14786,
+                                16454,
+                                18430),
  'b10-final-registrations': (2583,
                              3605,
                              4457,
@@ -203,7 +210,66 @@ EXPECTED_PRIMARY_CUTS = {'phase': (3600, 4517, 5582, 6493, 7173),
                              12180,
                              12745,
                              13162),
- 'b10-final-judge': (2699, 5334, 7878, 10499, 13082, 15717, 16784, 18431, 21930, 23505, 24790, 26262)}
+ 'b10-final-judge': (4491, 5946, 8720, 11446, 14292, 16097, 18588, 23043, 24193, 25421, 27743),
+ 'abrupt-classification': (3807, 5153, 6193, 7969),
+ 'verifier-result-codec': (476,
+                           807,
+                           1133,
+                           1376,
+                           4456,
+                           8349,
+                           11870,
+                           17284,
+                           20153,
+                           24612,
+                           26874,
+                           29010,
+                           30095,
+                           31698,
+                           33675,
+                           36075,
+                           39474,
+                           41632,
+                           46112,
+                           48533,
+                           52170,
+                           54174,
+                           58093,
+                           64646,
+                           67515),
+ 'phase-candidate-codec': (2101,
+                           3907,
+                           5928,
+                           8033,
+                           9316,
+                           10461,
+                           11379,
+                           12485,
+                           13813,
+                           15353,
+                           16570,
+                           17810,
+                           19087,
+                           21228,
+                           22888,
+                           24451,
+                           25778,
+                           27935,
+                           29996,
+                           31841,
+                           33010,
+                           34509,
+                           35970,
+                           37319,
+                           39193,
+                           40654,
+                           42498,
+                           44343,
+                           45572,
+                           46398,
+                           47533,
+                           48862),
+ 'verify-run-handler': (4393, 10512, 15405, 19641, 23497, 30029)}
 EXPECTED_JOB_NAMES = ('phase-p1',
  'phase-p2',
  'phase-p3',
@@ -340,7 +406,6 @@ EXPECTED_JOB_NAMES = ('phase-p1',
  'b10-sweep',
  'b10-sweep-judge-p1',
  'b10-sweep-judge-p2',
- 'b10-sweep-judge-p3',
  'b10-sweep-judge-crossing',
  'b10-sweep-codec-p1',
  'b10-sweep-codec-p2',
@@ -350,7 +415,6 @@ EXPECTED_JOB_NAMES = ('phase-p1',
  'b10-sweep-codec-p6',
  'b10-sweep-codec-p7',
  'b10-sweep-codec-p8',
- 'b10-sweep-codec-p9',
  'b10-sweep-codec-crossing',
  'b10-final-sweep-handler-p1',
  'b10-final-sweep-handler-p2',
@@ -379,9 +443,6 @@ EXPECTED_JOB_NAMES = ('phase-p1',
  'b10-final-repeat-evidence-p20',
  'b10-final-repeat-evidence-p21',
  'b10-final-repeat-evidence-p22',
- 'b10-final-repeat-evidence-p23',
- 'b10-final-repeat-evidence-p24',
- 'b10-final-repeat-evidence-p25',
  'b10-final-repeat-evidence-crossing',
  'b10-final-classification-p1',
  'b10-final-classification-p2',
@@ -401,10 +462,6 @@ EXPECTED_JOB_NAMES = ('phase-p1',
  'b10-final-classification-p16',
  'b10-final-classification-p17',
  'b10-final-classification-p18',
- 'b10-final-classification-p19',
- 'b10-final-classification-p20',
- 'b10-final-classification-p21',
- 'b10-final-classification-p22',
  'b10-final-classification-crossing',
  'b10-final-projection',
  'b10-final-projection-codec-p1-a',
@@ -425,8 +482,6 @@ EXPECTED_JOB_NAMES = ('phase-p1',
  'b10-final-projection-codec-p13',
  'b10-final-projection-codec-p14',
  'b10-final-projection-codec-p15',
- 'b10-final-projection-codec-p16',
- 'b10-final-projection-codec-p17',
  'b10-final-projection-codec-crossing',
  'b10-final-registrations-p1',
  'b10-final-registrations-p2',
@@ -458,8 +513,87 @@ EXPECTED_JOB_NAMES = ('phase-p1',
  'b10-final-judge-p10',
  'b10-final-judge-p11',
  'b10-final-judge-p12',
- 'b10-final-judge-p13',
- 'b10-final-judge-crossing')
+ 'b10-final-judge-crossing',
+ 'duplicate-breakdown',
+ 'duplicate-classifier',
+ 'outcome-classifier',
+ 'abrupt-classification-p1',
+ 'abrupt-classification-p2',
+ 'abrupt-classification-p3',
+ 'abrupt-classification-p4',
+ 'abrupt-classification-p5',
+ 'abrupt-classification-crossing',
+ 'verifier-result-codec-p1',
+ 'verifier-result-codec-p2-a',
+ 'verifier-result-codec-p2-b',
+ 'verifier-result-codec-p3',
+ 'verifier-result-codec-p4-a',
+ 'verifier-result-codec-p4-b',
+ 'verifier-result-codec-p5',
+ 'verifier-result-codec-p6',
+ 'verifier-result-codec-p7',
+ 'verifier-result-codec-p8',
+ 'verifier-result-codec-p9',
+ 'verifier-result-codec-p10',
+ 'verifier-result-codec-p11',
+ 'verifier-result-codec-p12',
+ 'verifier-result-codec-p13',
+ 'verifier-result-codec-p14',
+ 'verifier-result-codec-p15',
+ 'verifier-result-codec-p16',
+ 'verifier-result-codec-p17',
+ 'verifier-result-codec-p18',
+ 'verifier-result-codec-p19',
+ 'verifier-result-codec-p20',
+ 'verifier-result-codec-p21',
+ 'verifier-result-codec-p22',
+ 'verifier-result-codec-p23',
+ 'verifier-result-codec-p24',
+ 'verifier-result-codec-p25',
+ 'verifier-result-codec-p26',
+ 'verifier-result-codec-crossing',
+ 'phase-candidate-codec-p1',
+ 'phase-candidate-codec-p2',
+ 'phase-candidate-codec-p3',
+ 'phase-candidate-codec-p4',
+ 'phase-candidate-codec-p5',
+ 'phase-candidate-codec-p6',
+ 'phase-candidate-codec-p7',
+ 'phase-candidate-codec-p8',
+ 'phase-candidate-codec-p9',
+ 'phase-candidate-codec-p10',
+ 'phase-candidate-codec-p11',
+ 'phase-candidate-codec-p12',
+ 'phase-candidate-codec-p13',
+ 'phase-candidate-codec-p14',
+ 'phase-candidate-codec-p15',
+ 'phase-candidate-codec-p16',
+ 'phase-candidate-codec-p17',
+ 'phase-candidate-codec-p18',
+ 'phase-candidate-codec-p19',
+ 'phase-candidate-codec-p20',
+ 'phase-candidate-codec-p21',
+ 'phase-candidate-codec-p22',
+ 'phase-candidate-codec-p23',
+ 'phase-candidate-codec-p24',
+ 'phase-candidate-codec-p25',
+ 'phase-candidate-codec-p26',
+ 'phase-candidate-codec-p27',
+ 'phase-candidate-codec-p28',
+ 'phase-candidate-codec-p29',
+ 'phase-candidate-codec-p30',
+ 'phase-candidate-codec-p31',
+ 'phase-candidate-codec-p32',
+ 'phase-candidate-codec-p33',
+ 'phase-candidate-codec-crossing',
+ 'verify-run-handler-p1',
+ 'verify-run-handler-p2',
+ 'verify-run-handler-p3',
+ 'verify-run-handler-p4',
+ 'verify-run-handler-p5',
+ 'verify-run-handler-p6',
+ 'verify-run-handler-p7',
+ 'verify-run-handler-crossing')
 
 def legacy_layout(test_case):
     counts = (1, 1, 1, 1, 3, 8, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
@@ -629,7 +763,8 @@ class CommittedContractTests(unittest.TestCase):
          'a01': ('VerifyRun/A01/A01EvidenceRecorder.cs', 2),
          'workload': ('VerifyRun/A01/WorkloadRecorder.cs', 3),
          'single-action-repeat': ('VerifyRun/SingleAction/SingleActionRepeatJudgement.cs', 19),
-         'single-action-configuration': ('VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs', 49),
+         'single-action-configuration': ('VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs',
+                                         49),
          'idle-observation': ('VerifyRun/IdleObservation/IdleObservationJudgement.cs', 12),
          'batching': ('VerifyRun/LedgerBatch/BatchingEvidenceRecorder.cs', 2),
          'b10-restart-manifest': ('VerifyRun/Input/RestartManifestReader.cs', 4),
@@ -639,15 +774,22 @@ class CommittedContractTests(unittest.TestCase):
          'b10-phase-registrations': ('VerifyRun/Input/B10PhaseRegistrationReader.cs', 2),
          'b10-late-write': ('VerifyRun/Judgement/B10LateWriteChecks.cs', 2),
          'b10-sweep': ('VerifyRun/B10SweepHandler.cs', 1),
-         'b10-sweep-judge': ('Judge/B10SweepChecks.cs', 3),
-         'b10-sweep-codec': ('Common/Phase/B10SweepEvidenceCodec.cs', 9),
+         'b10-sweep-judge': ('Judge/B10SweepChecks.cs', 2),
+         'b10-sweep-codec': ('Common/Phase/B10SweepEvidenceCodec.cs', 8),
          'b10-final-sweep-handler': ('VerifyRun/B10Final/B10FinalSweepHandler.cs', 4),
-         'b10-final-repeat-evidence': ('VerifyRun/B10Final/B10FinalRepeatEvidence.cs', 25),
-         'b10-final-classification': ('VerifyRun/B10Final/B10FinalClassification.cs', 22),
+         'b10-final-repeat-evidence': ('VerifyRun/B10Final/B10FinalRepeatEvidence.cs', 22),
+         'b10-final-classification': ('VerifyRun/B10Final/B10FinalClassification.cs', 18),
          'b10-final-projection': ('Common/Phase/B10FinalProjection.cs', 1),
-         'b10-final-projection-codec': ('Common/Phase/B10FinalProjectionCodec.cs', 17),
+         'b10-final-projection-codec': ('Common/Phase/B10FinalProjectionCodec.cs', 15),
          'b10-final-registrations': ('Common/Phase/B10FinalRegistrationReader.cs', 17),
-         'b10-final-judge': ('Judge/B10FinalJudge.cs', 13)}
+         'b10-final-judge': ('Judge/B10FinalJudge.cs', 12),
+         'duplicate-breakdown': ('Common/Results/DuplicateBreakdown.cs', 1),
+         'duplicate-classifier': ('VerifyRun/Judgement/DuplicateClassifier.cs', 1),
+         'outcome-classifier': ('VerifyRun/Judgement/OutcomeClassifier.cs', 1),
+         'abrupt-classification': ('VerifyRun/Abrupt/AbruptClassification.cs', 5),
+         'verifier-result-codec': ('Common/Results/VerifierResultCodec.cs', 26),
+         'phase-candidate-codec': ('Judge/PhaseCandidateCodec.cs', 33),
+         'verify-run-handler': ('VerifyRun/VerifyRunHandler.cs', 7)}
         shards = {'phase-p1': 'Judge/PhaseJudge.cs',
          'phase-p2': 'Judge/PhaseJudge.cs',
          'phase-p3': 'Judge/PhaseJudge.cs',
@@ -784,7 +926,6 @@ class CommittedContractTests(unittest.TestCase):
          'b10-sweep': 'VerifyRun/B10SweepHandler.cs',
          'b10-sweep-judge-p1': 'Judge/B10SweepChecks.cs',
          'b10-sweep-judge-p2': 'Judge/B10SweepChecks.cs',
-         'b10-sweep-judge-p3': 'Judge/B10SweepChecks.cs',
          'b10-sweep-judge-crossing': 'Judge/B10SweepChecks.cs',
          'b10-sweep-codec-p1': 'Common/Phase/B10SweepEvidenceCodec.cs',
          'b10-sweep-codec-p2': 'Common/Phase/B10SweepEvidenceCodec.cs',
@@ -794,7 +935,6 @@ class CommittedContractTests(unittest.TestCase):
          'b10-sweep-codec-p6': 'Common/Phase/B10SweepEvidenceCodec.cs',
          'b10-sweep-codec-p7': 'Common/Phase/B10SweepEvidenceCodec.cs',
          'b10-sweep-codec-p8': 'Common/Phase/B10SweepEvidenceCodec.cs',
-         'b10-sweep-codec-p9': 'Common/Phase/B10SweepEvidenceCodec.cs',
          'b10-sweep-codec-crossing': 'Common/Phase/B10SweepEvidenceCodec.cs',
          'b10-final-sweep-handler-p1': 'VerifyRun/B10Final/B10FinalSweepHandler.cs',
          'b10-final-sweep-handler-p2': 'VerifyRun/B10Final/B10FinalSweepHandler.cs',
@@ -823,9 +963,6 @@ class CommittedContractTests(unittest.TestCase):
          'b10-final-repeat-evidence-p20': 'VerifyRun/B10Final/B10FinalRepeatEvidence.cs',
          'b10-final-repeat-evidence-p21': 'VerifyRun/B10Final/B10FinalRepeatEvidence.cs',
          'b10-final-repeat-evidence-p22': 'VerifyRun/B10Final/B10FinalRepeatEvidence.cs',
-         'b10-final-repeat-evidence-p23': 'VerifyRun/B10Final/B10FinalRepeatEvidence.cs',
-         'b10-final-repeat-evidence-p24': 'VerifyRun/B10Final/B10FinalRepeatEvidence.cs',
-         'b10-final-repeat-evidence-p25': 'VerifyRun/B10Final/B10FinalRepeatEvidence.cs',
          'b10-final-repeat-evidence-crossing': 'VerifyRun/B10Final/B10FinalRepeatEvidence.cs',
          'b10-final-classification-p1': 'VerifyRun/B10Final/B10FinalClassification.cs',
          'b10-final-classification-p2': 'VerifyRun/B10Final/B10FinalClassification.cs',
@@ -845,10 +982,6 @@ class CommittedContractTests(unittest.TestCase):
          'b10-final-classification-p16': 'VerifyRun/B10Final/B10FinalClassification.cs',
          'b10-final-classification-p17': 'VerifyRun/B10Final/B10FinalClassification.cs',
          'b10-final-classification-p18': 'VerifyRun/B10Final/B10FinalClassification.cs',
-         'b10-final-classification-p19': 'VerifyRun/B10Final/B10FinalClassification.cs',
-         'b10-final-classification-p20': 'VerifyRun/B10Final/B10FinalClassification.cs',
-         'b10-final-classification-p21': 'VerifyRun/B10Final/B10FinalClassification.cs',
-         'b10-final-classification-p22': 'VerifyRun/B10Final/B10FinalClassification.cs',
          'b10-final-classification-crossing': 'VerifyRun/B10Final/B10FinalClassification.cs',
          'b10-final-projection': 'Common/Phase/B10FinalProjection.cs',
          'b10-final-projection-codec-p1-a': 'Common/Phase/B10FinalProjectionCodec.cs',
@@ -869,8 +1002,6 @@ class CommittedContractTests(unittest.TestCase):
          'b10-final-projection-codec-p13': 'Common/Phase/B10FinalProjectionCodec.cs',
          'b10-final-projection-codec-p14': 'Common/Phase/B10FinalProjectionCodec.cs',
          'b10-final-projection-codec-p15': 'Common/Phase/B10FinalProjectionCodec.cs',
-         'b10-final-projection-codec-p16': 'Common/Phase/B10FinalProjectionCodec.cs',
-         'b10-final-projection-codec-p17': 'Common/Phase/B10FinalProjectionCodec.cs',
          'b10-final-projection-codec-crossing': 'Common/Phase/B10FinalProjectionCodec.cs',
          'b10-final-registrations-p1': 'Common/Phase/B10FinalRegistrationReader.cs',
          'b10-final-registrations-p2': 'Common/Phase/B10FinalRegistrationReader.cs',
@@ -902,8 +1033,87 @@ class CommittedContractTests(unittest.TestCase):
          'b10-final-judge-p10': 'Judge/B10FinalJudge.cs',
          'b10-final-judge-p11': 'Judge/B10FinalJudge.cs',
          'b10-final-judge-p12': 'Judge/B10FinalJudge.cs',
-         'b10-final-judge-p13': 'Judge/B10FinalJudge.cs',
-         'b10-final-judge-crossing': 'Judge/B10FinalJudge.cs'}
+         'b10-final-judge-crossing': 'Judge/B10FinalJudge.cs',
+         'duplicate-breakdown': 'Common/Results/DuplicateBreakdown.cs',
+         'duplicate-classifier': 'VerifyRun/Judgement/DuplicateClassifier.cs',
+         'outcome-classifier': 'VerifyRun/Judgement/OutcomeClassifier.cs',
+         'abrupt-classification-p1': 'VerifyRun/Abrupt/AbruptClassification.cs',
+         'abrupt-classification-p2': 'VerifyRun/Abrupt/AbruptClassification.cs',
+         'abrupt-classification-p3': 'VerifyRun/Abrupt/AbruptClassification.cs',
+         'abrupt-classification-p4': 'VerifyRun/Abrupt/AbruptClassification.cs',
+         'abrupt-classification-p5': 'VerifyRun/Abrupt/AbruptClassification.cs',
+         'abrupt-classification-crossing': 'VerifyRun/Abrupt/AbruptClassification.cs',
+         'verifier-result-codec-p1': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p2-a': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p2-b': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p3': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p4-a': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p4-b': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p5': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p6': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p7': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p8': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p9': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p10': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p11': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p12': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p13': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p14': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p15': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p16': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p17': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p18': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p19': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p20': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p21': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p22': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p23': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p24': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p25': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-p26': 'Common/Results/VerifierResultCodec.cs',
+         'verifier-result-codec-crossing': 'Common/Results/VerifierResultCodec.cs',
+         'phase-candidate-codec-p1': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p2': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p3': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p4': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p5': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p6': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p7': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p8': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p9': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p10': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p11': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p12': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p13': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p14': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p15': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p16': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p17': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p18': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p19': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p20': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p21': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p22': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p23': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p24': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p25': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p26': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p27': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p28': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p29': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p30': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p31': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p32': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-p33': 'Judge/PhaseCandidateCodec.cs',
+         'phase-candidate-codec-crossing': 'Judge/PhaseCandidateCodec.cs',
+         'verify-run-handler-p1': 'VerifyRun/VerifyRunHandler.cs',
+         'verify-run-handler-p2': 'VerifyRun/VerifyRunHandler.cs',
+         'verify-run-handler-p3': 'VerifyRun/VerifyRunHandler.cs',
+         'verify-run-handler-p4': 'VerifyRun/VerifyRunHandler.cs',
+         'verify-run-handler-p5': 'VerifyRun/VerifyRunHandler.cs',
+         'verify-run-handler-p6': 'VerifyRun/VerifyRunHandler.cs',
+         'verify-run-handler-p7': 'VerifyRun/VerifyRunHandler.cs',
+         'verify-run-handler-crossing': 'VerifyRun/VerifyRunHandler.cs'}
         root = Path(__file__).resolve().parents[3]
         self.assertEqual(targets, workflow.TARGETS)
         self.assertEqual(shards, workflow.SHARDS)
@@ -912,9 +1122,14 @@ class CommittedContractTests(unittest.TestCase):
         self.assertEqual(workflow.BASE_CONFIG, committed)
         # PyYAML is supplied by the pinned lifecycle tooling; this checks actual matrix data.
         import yaml
-        matrix = yaml.safe_load((root / ".github/workflows/verifier-c5-mutation.yml").read_text())["jobs"]["mutation"]["strategy"]["matrix"]["include"]
-        self.assertEqual(list(shards.items()), [(row["shard"], row["target"]) for row in matrix])
-        self.assertEqual(256, len(matrix))
+        matrices = [yaml.safe_load(path.read_text())["jobs"]["mutation"]["strategy"]["matrix"]["include"]
+                    for path in (root / ".github/workflows/verifier-c5-mutation.yml",
+                                 root / ".github/workflows/verifier-c5-mutation-companion.yml")]
+        self.assertEqual([178, 146], list(map(len, matrices)))
+        for is_companion, matrix in enumerate(matrices):
+            expected = [(name, target) for name, target in shards.items()
+                        if (target in EXPECTED_COMPANION_TARGETS) == bool(is_companion)]
+            self.assertEqual(expected, [(row["shard"], row["target"]) for row in matrix])
         self.assertEqual(('b10-restart-manifest', 1, 5), workflow.PARTS['b10-restart-manifest-p1'])
         self.assertEqual(('b10-intake', 1, 4), workflow.PARTS['b10-intake-p1'])
         self.assertEqual(('b10-judge', 1, 4), workflow.PARTS['b10-judge-p1'])
@@ -923,8 +1138,8 @@ class CommittedContractTests(unittest.TestCase):
         self.assertEqual(('b10-phase-registrations', 3, 3), workflow.PARTS['b10-phase-registrations-crossing'])
         self.assertEqual(('b10-late-write', 1, 3), workflow.PARTS['b10-late-write-p1'])
         self.assertEqual(('b10-sweep', 1, 1), workflow.PARTS['b10-sweep'])
-        self.assertEqual(('b10-sweep-judge', 1, 4), workflow.PARTS['b10-sweep-judge-p1'])
-        self.assertEqual(('b10-sweep-codec', 1, 10), workflow.PARTS['b10-sweep-codec-p1'])
+        self.assertEqual(('b10-sweep-judge', 1, 3), workflow.PARTS['b10-sweep-judge-p1'])
+        self.assertEqual(('b10-sweep-codec', 1, 9), workflow.PARTS['b10-sweep-codec-p1'])
 
         self.assertEqual(('phase', 7, 7), workflow.PARTS['phase-crossing'])
         self.assertEqual(('publication', 8, 8), workflow.PARTS['publication-crossing'])
@@ -933,13 +1148,16 @@ class CommittedContractTests(unittest.TestCase):
         self.assertEqual(('idle-observation', 13, 13), workflow.PARTS['idle-observation-crossing'])
         self.assertEqual(('b10-restart-manifest', 5, 5), workflow.PARTS['b10-restart-manifest-crossing'])
         self.assertEqual(('b10-repeat', 6, 6), workflow.PARTS['b10-repeat-crossing'])
-        self.assertEqual(('b10-sweep-codec', 10, 10), workflow.PARTS['b10-sweep-codec-crossing'])
+        self.assertEqual(('b10-sweep-codec', 9, 9), workflow.PARTS['b10-sweep-codec-crossing'])
 
     def test_workflow_keeps_stryker_logs_out_of_aggregate_input(self):
         import yaml
         root = Path(__file__).resolve().parents[3]
         jobs = yaml.safe_load((root / ".github/workflows/verifier-c5-mutation.yml").read_text())["jobs"]
+        companion = yaml.safe_load((root / ".github/workflows/verifier-c5-mutation-companion.yml").read_text())["jobs"]
+        self.assertEqual({"mutation"}, set(companion))
         mutation_steps = jobs["mutation"]["steps"]
+        self.assertEqual(mutation_steps, companion["mutation"]["steps"])
         steps = {step["name"]: step for step in mutation_steps}
         upload = "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02"
         evidence, logs = steps["Retain shard evidence"], steps["Retain shard Stryker logs"]
@@ -955,8 +1173,14 @@ class CommittedContractTests(unittest.TestCase):
             self.assertEqual("always()", step["if"])
             self.assertEqual(upload, step["uses"])
         self.assertEqual(mutation_steps.index(evidence) + 1, mutation_steps.index(logs))
-        download = {step["name"]: step for step in jobs["aggregate"]["steps"]}["Download shard evidence"]
+        downloads = {step["name"]: step for step in jobs["aggregate"]["steps"]}
+        download = downloads["Download coordinator shard evidence"]
         self.assertEqual("c5-mutation-${{ github.run_id }}-${{ github.run_attempt }}-*", download["with"]["pattern"])
+        peer = downloads["Download companion shard evidence"]["with"]
+        self.assertEqual("${{ steps.campaign.outputs.run-id }}", peer["run-id"])
+        self.assertEqual("c5-mutation-${{ steps.campaign.outputs.run-id }}-${{ steps.campaign.outputs.attempt }}-*",
+                         peer["pattern"])
+        self.assertIs(peer["merge-multiple"], False)
 
     def test_committed_primary_spans_match_layout(self):
         root = Path(__file__).resolve().parents[3]
@@ -1273,6 +1497,65 @@ class AggregationTests(unittest.TestCase):
         self.assertTrue(summary["incomplete_reasons"])
         self.assertTrue((fixture.output / "summary.md").is_file())
         self.assertTrue((fixture.output / "survivors.json").is_file())
+
+    def test_coordinated_receipts_bind_each_shard_to_its_run_and_attempt(self):
+        import c5_campaign
+
+        companion_id, companion_attempt = "67890", "1"
+        companion_shard = "phase"
+        repository = "owner/repo"
+        layout = {
+            "coordinator": {name: path for name, path in workflow.SHARDS.items() if name != companion_shard},
+            "companion": {companion_shard: workflow.SHARDS[companion_shard]},
+        }
+        runs = {
+            role: {"id": int(run_id), "attempt": int(attempt), "path": c5_campaign.PATHS[role],
+                   "created_at": "2026-10-25T17:59:00Z"}
+            for role, run_id, attempt in (("coordinator", RUN_ID, ATTEMPT),
+                                          ("companion", companion_id, companion_attempt))
+        }
+        manifest = {
+            "schema": 1, "repository": repository, "commit": COMMIT, "runs": runs,
+            "incomplete_reasons": [],
+            "shards": {name: {"target": path, "run_id": str(runs[role]["id"]),
+                             "run_attempt": str(runs[role]["attempt"])}
+                       for role, entries in layout.items() for name, path in entries.items()},
+        }
+        for variant in ("complete", "wrong attempt", "wrong tree", "duplicate", "missing",
+                        "failed job", "missing manifest"):
+            with self.subTest(variant=variant), tempfile.TemporaryDirectory(dir=self.directory) as temporary:
+                directory = Path(temporary)
+                fixture = AggregateFixture(directory)
+                original = fixture.paths[companion_shard]
+                artifact = fixture.input / f"c5-mutation-{companion_id}-{companion_attempt}-{companion_shard}"
+                fixture.paths[companion_shard] = original.rename(artifact)
+                fixture.receipts[companion_shard].update(
+                    run_id=companion_id, run_attempt=ATTEMPT if variant == "wrong attempt" else companion_attempt,
+                    tree="3" * 40 if variant == "wrong tree" else TREE)
+                fixture.save(companion_shard)
+                if variant == "duplicate":
+                    shutil.copytree(artifact, original)
+                elif variant == "missing":
+                    shutil.rmtree(artifact)
+                manifest_path = directory / "campaign.json"
+                if variant != "missing manifest":
+                    reasons = ["companion job failed"] if variant == "failed job" else []
+                    write_json(manifest_path, {**manifest, "incomplete_reasons": reasons})
+                with (patch.object(c5_campaign, "matrices", return_value=layout),
+                      patch.object(workflow, "git", side_effect=[COMMIT.encode(), TREE.encode()]),
+                      patch.dict(os.environ, {"GITHUB_REPOSITORY": repository})):
+                    result = workflow.aggregate(fixture.input, COMMIT, RUN_ID, ATTEMPT,
+                                                fixture.output, manifest_path)
+                summary = json.loads((fixture.output / "summary.json").read_bytes())
+                self.assertEqual(variant != "complete", result == 1)
+                self.assertIs(summary["measurement_complete"], variant == "complete")
+                if variant == "missing manifest":
+                    self.assertIsNone(summary["campaign_manifest_sha256"])
+                    self.assertIn("publication", summary["shards"])
+                    self.assertNotIn(companion_shard, summary["shards"])
+                else:
+                    self.assertEqual(digest(manifest_path), summary["campaign_manifest_sha256"])
+                    self.assertEqual(manifest_path.read_bytes(), (fixture.output / "campaign.json").read_bytes())
 
     def test_combined_threshold_keeps_below_threshold_shards(self):
         populations = [["Survived"], ["Killed"] * 3, ["Killed"], ["Killed"] * 2 + ["Survived"] * 3, ["Killed"], ["Killed"], ["Killed"], ["Killed"]] + [["Killed"], ["Killed"], ["Killed"], ["Killed"]] + [["Killed"], ["Killed"], ["Killed"], ["Killed"], ["Killed"]]
@@ -2899,13 +3182,17 @@ class ProductionLayoutTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[3]
         self.assertEqual(EXPECTED_PRIMARY_CUTS, workflow.PRIMARY_CUTS)
         self.assertEqual(EXPECTED_JOB_NAMES, tuple(workflow.SHARDS))
-        self.assertEqual(256, len(set(EXPECTED_JOB_NAMES)))
+        self.assertEqual(324, len(set(EXPECTED_JOB_NAMES)))
         original_paths = workflow.BASE_CONFIG["stryker-config"]["mutate"]
-        self.assertEqual(24, len(set(original_paths)))
+        self.assertEqual(31, len(set(original_paths)))
         self.assertEqual(original_paths, [target for target, _ in workflow.TARGETS.values()])
-        matrix = yaml.safe_load((root / ".github/workflows/verifier-c5-mutation.yml").read_text())["jobs"]["mutation"]["strategy"]["matrix"]["include"]
-        self.assertEqual(EXPECTED_JOB_NAMES, tuple(row["shard"] for row in matrix))
-        self.assertEqual(list(workflow.SHARDS.items()), [(row["shard"], row["target"]) for row in matrix])
+        coordinator, companion = (yaml.safe_load(path.read_text())["jobs"]["mutation"]["strategy"]["matrix"]["include"]
+                                  for path in (root / ".github/workflows/verifier-c5-mutation.yml",
+                                               root / ".github/workflows/verifier-c5-mutation-companion.yml"))
+        for is_companion, matrix in enumerate((coordinator, companion)):
+            expected = [(name, workflow.SHARDS[name]) for name in EXPECTED_JOB_NAMES
+                        if (workflow.SHARDS[name] in EXPECTED_COMPANION_TARGETS) == bool(is_companion)]
+            self.assertEqual(expected, [(row["shard"], row["target"]) for row in matrix])
         for key, (target, count) in workflow.TARGETS.items():
             with self.subTest(target=key):
                 source = (root / "src/Parchwell.Verifier" / target).read_bytes()
@@ -2925,7 +3212,9 @@ class ProductionLayoutTests(unittest.TestCase):
                     config = workflow.shard_config(name, source)
                     actual = config["stryker-config"]["mutate"]
                     self.assertEqual(target, workflow.SHARDS[name])
-                    self.assertIs(reference_reporter(actual, target)[0], True)
+                    # Physical cohorts run isolated bootstrap configurations. Their unused primary can be entirely static.
+                    if name not in workflow.COHORTS:
+                        self.assertIs(reference_reporter(actual, target)[0], True, name)
                     if name.endswith("-crossing"):
                         self.assertEqual([target, *(f"!{target}{{{low}..{min(high, length)}}}" for low, high in expected)], actual)
                         self.assertEqual((True, [(length, SPAN_END)]), reference_reporter(actual, target))

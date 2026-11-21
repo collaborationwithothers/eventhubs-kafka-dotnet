@@ -22,15 +22,15 @@ internal sealed record PhaseRepeatEvidence(
     BrokerConnectionCount? BrokerCount = null,
     B04RecordedEvidence? B04Evidence = null,
     BatchingRecordedEvidence? BatchingEvidence = null, B10IntakeEvidence? B10Intake = null, B10RepeatFinality? B10Finality = null,
-    IReadOnlyList<B10ProducerObservation>? B10ProducerObservations = null);
+    IReadOnlyList<B10ProducerObservation>? B10ProducerObservations = null, DuplicateBreakdown? DuplicateBreakdown = null);
 
 internal sealed record PhaseRepeatChecks(bool J1, bool J2, bool J3, bool J4, bool J5, bool J6, bool J8);
 internal sealed record PhaseRepeatResult(int Repeat, string Status, IReadOnlyList<string> Reasons, PhaseRepeatChecks Checks,
     OutcomeCounts? Counts, ProbeRepeatObservation? ProbeObservation, string? Identity, WorkloadObservation? WorkloadObservation = null,
     BrokerConnectionCount? BrokerCount = null, B04RecordedEvidence? B04Evidence = null, BatchingRecordedEvidence? BatchingEvidence = null, B10IntakeEvidence? B10Intake = null, bool? ClassificationFinal = null,
-    IReadOnlyList<B10ProducerObservation>? B10ProducerObservations = null);
+    IReadOnlyList<B10ProducerObservation>? B10ProducerObservations = null, DuplicateBreakdown? DuplicateBreakdown = null);
 internal sealed record PhaseJudgement(string Status, string? Gate, OutcomeCounts? Counts,
-    IReadOnlyList<PhaseRepeatResult> Repeats, IReadOnlyList<string> Reasons);
+    IReadOnlyList<PhaseRepeatResult> Repeats, IReadOnlyList<string> Reasons, DuplicateBreakdown? DuplicateBreakdown = null);
 
 /// <summary>Aggregates exactly five repeat slots and keeps message and probe decisions independent.</summary>
 internal static class PhaseJudge
@@ -84,7 +84,8 @@ internal static class PhaseJudge
                 scenarioId != "B10" && e is { StartLineAccepted:true, PublicationAccepted:true, VerifierReceiptValid:true, JobBindingPass:true,
                     RegistrationCountPass:true, InventoryCoveragePass:true } ? e.BatchingEvidence : null,
                 scenarioId == "B10" && j2 && j3 && j4 && j5 && j6 ? e?.B10Intake : null, scenarioId == "B10" && e?.B10Finality is not null ? complete && finalized : null,
-                scenarioId == "B10" && j2 && j3 && j4 && j5 && j6 ? e?.B10ProducerObservations : null));
+                scenarioId == "B10" && j2 && j3 && j4 && j5 && j6 ? e?.B10ProducerObservations : null,
+                complete ? scenarioId == "B10" ? finalization?.DuplicateBreakdown : e?.DuplicateBreakdown : null));
             reasons.AddRange(rr);
         }
         if (extra || evidence.GroupBy(x => x.Repeat).Any(g => g.Count() > 1)) reasons.Add("j1_repeat_slots");
@@ -111,6 +112,12 @@ internal static class PhaseJudge
             if(gate=="inconclusive") reasons.Add("j8_probe_inconclusive");
         }
         string[] sorted=reasons.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Take(100).ToArray();
-        return new(statusAll,gate,totals,repeats,sorted);
+        DuplicateBreakdown? breakdown = null;
+        if (totals is not null && repeats.All(r => r.DuplicateBreakdown is { } d && r.Counts is { } c && d.IsValid(c.Duplicate)))
+        {
+            try { breakdown = DuplicateBreakdown.Sum(repeats.Select(r => r.DuplicateBreakdown)); }
+            catch (OverflowException) { }
+        }
+        return new(statusAll,gate,totals,repeats,sorted,breakdown);
     }
 }

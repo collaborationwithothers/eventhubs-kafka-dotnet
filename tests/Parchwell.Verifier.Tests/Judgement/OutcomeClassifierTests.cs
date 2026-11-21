@@ -28,7 +28,15 @@ public sealed class OutcomeClassifierTests
     {
         ConsumedRecord record = Record("a1", "k", 1, 0);
         Assert.Equal(new OutcomeCounts(1, 0, 0, 0, 2, 0), OutcomeClassifier.Classify(
-            [RecordedEvidence.LedgerRow()], [record, record, record]));
+            [RecordedEvidence.LedgerRow()], [record, record with { Offset = 1 }, record with { Offset = 2 }]));
+    }
+
+    [Fact]
+    public void Given_RereadCoordinate_When_Classifying_Then_ItIsOnePhysicalCopy()
+    {
+        ConsumedRecord record = Record("a1", "k", 1, 0);
+        Assert.Equal(new OutcomeCounts(1, 0, 0, 0, 0, 0), OutcomeClassifier.Classify(
+            [RecordedEvidence.LedgerRow()], [record, record]));
     }
 
     [Fact]

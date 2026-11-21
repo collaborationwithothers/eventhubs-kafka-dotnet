@@ -209,10 +209,11 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
                 Text(identity, "pod_name") == Text(identity, "instance_id") && NullableText(identity, "predecessor_instance_id") is null, "nonfinal_identity");
             _ = Text(identity, "pod_uid");
             JsonElement data = envelope.GetProperty("data");
-            Exact(data, "first_instance_id", "successor_instance_id", "timeout_instance_id", "timeout", "comparison", "native_errors", "eligibility", "eligibility_reasons", "start_line", "end_line", "window_complete", "window_limit", "arms", "problems", "problem_details", "finality", "earlier_repeat_records");
+            B10FinalProjectionCodec.ExactOptional(data, "duplicate_breakdown", "first_instance_id", "successor_instance_id", "timeout_instance_id", "timeout", "comparison", "native_errors", "eligibility", "eligibility_reasons", "start_line", "end_line", "window_complete", "window_limit", "arms", "problems", "problem_details", "finality", "earlier_repeat_records");
             Require(Text(data, "finality") == "nonfinal" && Text(data, "eligibility") is "pending_sweep" or "ineligible", "nonfinal_finality");
             ValidateArms(data.GetProperty("arms"));
             ValidateTimeout(data.GetProperty("timeout"));
+            ValidateBreakdown(data, data.GetProperty("timeout").ValueKind == JsonValueKind.Null ? null : data.GetProperty("timeout").GetProperty("duplicate").GetInt64(), data.GetProperty("timeout").ValueKind != JsonValueKind.Null);
             _ = AbruptEvidenceCodec.Strings(data.GetProperty("problems"));
             Dictionary<int, long>? starts = JsonVector(data.GetProperty("start_line")), ends = JsonVector(data.GetProperty("end_line"));
             // Validate everything before keeping anything: a rejected object must not install vectors, timeout counts or eligibility reasons.
@@ -515,6 +516,12 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
         }
     }
 
+    internal static void ValidateBreakdown(JsonElement parent, long? expected = null, bool permitted = true)
+    {
+        if (parent.TryGetProperty("duplicate_breakdown", out JsonElement value))
+            Require(permitted && DuplicateBreakdown.TryRead(value, out DuplicateBreakdown? breakdown) && breakdown!.IsValid(expected), "nonfinal_duplicate_breakdown");
+    }
+
     internal static void ValidateArms(JsonElement arms)
     {
         if (arms.ValueKind == JsonValueKind.Null) return;
@@ -522,8 +529,9 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
         int index = 0;
         foreach (JsonElement arm in arms.EnumerateArray())
         {
-            Exact(arm, "arm", "key", "unconfirmed_count", "resend_invoked", "originals_seen", "resends_seen", "pair_count", "witness", "members",
+            B10FinalProjectionCodec.ExactOptional(arm, "duplicate_breakdown", "arm", "key", "unconfirmed_count", "resend_invoked", "originals_seen", "resends_seen", "pair_count", "witness", "members",
                 "unreported_attempts", "unreported_seen", "unreported_unseen", "lost_resends");
+            ValidateBreakdown(arm);
             Require(Text(arm, "arm") == (index++ == 0 ? "same_instance" : "cross_restart"), "nonfinal_arm_order");
             _ = Text(arm, "key");
             Count(arm.GetProperty("unconfirmed_count"), false);
@@ -541,8 +549,9 @@ internal sealed class B10FinalRepeatEvidence(VerifierHostOptions options, InputL
             }
             foreach (JsonElement member in arm.GetProperty("members").EnumerateArray())
             {
-                Exact(member, "original_attempt_id", "sequence", "payload_sha256", "resend_attempt_id", "resend_terminal", "copy_count", "original_copies",
+                B10FinalProjectionCodec.ExactOptional(member, "duplicate_breakdown", "original_attempt_id", "sequence", "payload_sha256", "resend_attempt_id", "resend_terminal", "copy_count", "original_copies",
                     "resend_copies", "other_copies", "pair_count", "copies", "copies_truncated", "resend_lost");
+                ValidateBreakdown(member);
                 _ = Text(member, "original_attempt_id");
                 Count(member.GetProperty("sequence"), false);
                 _ = Text(member, "payload_sha256");
