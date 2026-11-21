@@ -86,9 +86,13 @@ public sealed class ScenarioKillPlanSourceTests
             builder.Configuration.AddInMemoryCollection(values);
         });
         ConsumerProcessingPlan plan = host.Services.GetRequiredService<IConsumerProcessingPlanSource>().GetPlan(scenario, phase)!;
+        Assert.Equal(phase, plan.ConfigurationId);
+        Assert.Null(plan.SlowMessage);
         Assert.Equal(killCount, plan.KillCount);
         Assert.Equal(200, plan.ProcessingDelayMs);
         Assert.Equal(360000, plan.WindowMs);
+        // The E1 plan of the subject: C10 C0 and C01 C0 replace nothing; C01 C1 replaces session.timeout.ms.
+        Assert.Equal(scenario == "C01" && phase == "C1" ? [KeyValuePair.Create("session.timeout.ms", "45000")] : [], plan.ConsumerSettings);
     }
 
     [Theory]
