@@ -1,8 +1,10 @@
 # C5 tail acceptance
 
-Revision R2. Main base `b31928a2ed22a634e8e1a66edb953311eaa9ca87`.
+Revision R3. Main base `b31928a2ed22a634e8e1a66edb953311eaa9ca87`.
 
 R2 spells out the exhaustion action for the fixed diagnostic, evidence intake and paired attempt. The candidate and checks are the same as R1.
+
+R3 applies the independent check’s wording about observed primary and crossing overhead. The candidate, requirements and limits are the same as R2. [Applied R2 plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7067238699)
 
 ## Goal and authority
 
@@ -55,7 +57,7 @@ If a new check rejects an existing fixture, repair that fixture while retaining 
 
 ## Runtime basis and deployment assumptions
 
-The exact primary and crossing reports and command logs came from the loaded, standard hosted jobs in the failed paired workflow. The model sums two-worker per-mutant durations at their full spans, uses the greatest measured command overhead per family, and assigns crossing work to its own shard. It projects maxima for the reviewed candidate of 2,121.0, 2,182.8 and 2,142.1 seconds for result codec, judge and projection codec respectively, at the observed work rate. A sensitivity calculation inflating measured work by 30% projects 2,673.1, 2,771.6 and 2,716.6 seconds respectively. These are estimates from the November 21 run, without launch or final aggregation time, and cannot establish that a particular hosted runner meets a bound. The latest pair added 105 seconds for its aggregate job, with only part of the companion input. Test the diagnostic selection on fresh hosted runner allocations under the existing limits. The subsequent genuine paired run measures all overhead under load with all artifacts. No deployment proceeds on the modeled result alone. [Result codec p21](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44928264518/job/136919052914) · [Result codec p24](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44928264518/job/136919052876) · [Aggregate](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44928264518/job/136934088935)
+The exact primary and crossing reports and command logs came from the loaded, standard hosted jobs in the failed paired workflow. The model sums two-worker per-mutant durations at their full spans. For primary shards it adds the greatest family primary elapsed time less half its observed mutant work. For crossing it adds the corresponding crossing value and assigns crossing work to its own shard. It projects maxima for the reviewed candidate of 2,121.0, 2,182.8 and 2,142.1 seconds for result codec, judge and projection codec respectively, at the observed work rate. A sensitivity calculation inflating measured work by 30% projects 2,673.1, 2,771.6 and 2,716.6 seconds respectively. These are estimates from the November 21 run, without launch or final aggregation time, and cannot establish that a particular hosted runner meets a bound. The latest pair added 105 seconds for its aggregate job, with only part of the companion input. Test the diagnostic selection on fresh hosted runner allocations under the existing limits. The subsequent genuine paired run measures all overhead under load with all artifacts. No deployment proceeds on the modeled result alone. [Result codec p21](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44928264518/job/136919052914) · [Result codec p24](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44928264518/job/136919052876) · [Aggregate](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44928264518/job/136934088935)
 
 ## Acceptance and bounds
 
