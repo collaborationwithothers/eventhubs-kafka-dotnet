@@ -94,7 +94,7 @@ Skills live in `.agents/skills/` (Codex) and `.claude/skills/` (Claude Code, sym
 
 Five skills are owned by this repository. They are not in `skills-lock.json` and change only through a pull request to Hari.
 
-- `repo-review` is the rubric for the cold review that "Before opening a pull request" rule 8 defines.
+- `repo-review` is the rubric for the cold review that "Before opening a pull request" rule 8 defines. Codex's hosted pull request review does not apply it; that review follows "Code Review Rules". Whether Codex keeps to this is not tested.
 - `plan-pr`, `plan-check` and `implement-plan` run the planning, plan-check and implementing sessions of docs/agents/factory.md "Item lifecycle", or one session under its step 3 "Standing approval". The prompt that starts a session names the skill and the issue number.
 - `control-session` runs the control session of docs/agents/factory.md "Control session". The prompt that starts it names the skill and the issue number only.
 
@@ -124,7 +124,7 @@ Rules 11 to 13 stay here because they bind sessions that open no pull request to
 
 These rules apply when Codex reviews a pull request in this repository, and in the cold review ("Before opening a pull request", rule 8).
 
-- Flag as P0 any change that edits an expected outcome, a verdict, or a file under `results/`, outside a pull request labelled `verdict`.
+- Flag as P0 any change that edits an expected outcome, a verdict, or a file under `results/`, outside a pull request labelled `verdict`. One exception: a pull request that adds a scenario's first `scenarios/<ID>/expected.yaml`, with no earlier version of that file on `main`, and whose description links the approved plan that names the file in its "Expected outcome file" field (docs/agents/factory.md, plan template). Do not flag that file for being added. Flag as P0 any difference between it and that plan's hypotheses and decision rules. Any change to an existing `expected.yaml` stays P0.
 - Flag as P0 any change that weakens identity scope, network exposure, or private endpoint configuration.
 - Flag as P0 any workflow change that adds a `pull_request` or `pull_request_target` trigger to a job that uses Azure credentials.
 - Flag as P1 any test whose assertion was loosened, deleted or skipped in the same pull request as the code it tests.
