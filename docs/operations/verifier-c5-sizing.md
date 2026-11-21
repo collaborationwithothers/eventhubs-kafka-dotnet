@@ -1,8 +1,8 @@
 # C5 hosted timing diagnostic
 
-`verifier-c5-sizing.yml` is a manual, CPU-only diagnostic. Dispatch it on `main` only, after the workflow change merges. For the issue 494 classifier capacity change, use the default source `e520f829001dc1ea76b10df49b2277b26e815872`. The workflow rejects other sources and verifies the checked-out commit and each matrix row's target SHA-256.
+`verifier-c5-sizing.yml` is a manual, CPU-only diagnostic. Dispatch it on `main` only, after the workflow change merges. For the issue 494 paired-run timing repair, use the default source `3c65a2fa52f16378c3815159cd07f8237e3346bf`. The workflow rejects other sources and verifies the checked-out commit and each matrix row's target SHA-256.
 
-The matrix contains 18 primary selectors and the crossing selector for `VerifyRun/B10Final/B10FinalClassification.cs`. The [prior 19-job sizing run](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914) completed on the preceding classifier source. The [ownership correction](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/569#discussion_r4652148948) changes that target. The [replacement decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061711703) measures the same 19 selectors on the corrected source.
+The matrix measures the 43 selections changed by redistributing work in the verifier result codec, B10 final judge and B10 final projection codec. It includes each affected crossing selection. [Paired run outcome](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7067076568) and [Selection and intake plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7067192975)
 
 Each shard has a separate standard `ubuntu-24.04` job. `local-shard` uses the committed selector and required isolation for that physical shard. Its inner deadline is 2,650 seconds, the outer deadline including the termination grace is 2,700 seconds, and the job limit is 50 minutes. The diagnostic has no aggregate acceptance step.
 
