@@ -1,8 +1,8 @@
 # C5 hosted timing diagnostic
 
-`verifier-c5-sizing.yml` is a manual, CPU-only diagnostic. Dispatch it on `main` only, after the workflow change merges. For the issue 494 classification rebalance, use the default source `e9910d68f149be96da6ff921af89774526c95c94`. The workflow rejects other sources and verifies the checked-out commit and each matrix row's target SHA-256.
+`verifier-c5-sizing.yml` is a manual, CPU-only diagnostic. Dispatch it on `main` only, after the workflow change merges. For the issue 494 classifier capacity change, use the default source `6982956ae1f6d14f8f2f4b53e8d6778b40216d56`. The workflow rejects other sources and verifies the checked-out commit and each matrix row's target SHA-256.
 
-The matrix contains `p7`, `p8` and `crossing` from `VerifyRun/B10Final/B10FinalClassification.cs`. The [26-job diagnostic](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44878841189) verified 25 receipts. The classification `p7` selection reached the inner deadline. The [approved rebalance](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7059649240) moves one boundary and measures the three changed selections.
+The matrix contains 18 primary selectors and the crossing selector for `VerifyRun/B10Final/B10FinalClassification.cs`. The [three-job sizing run](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44885622797) verified two receipts and reached the inner deadline on `p8`. The [approved capacity change](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313) sizes the entire classifier using fresh measurements on the combined product source.
 
 Each shard has a separate standard `ubuntu-24.04` job. `local-shard` uses the committed selector and required isolation for that physical shard. Its inner deadline is 2,650 seconds, the outer deadline including the termination grace is 2,700 seconds, and the job limit is 50 minutes. The diagnostic has no aggregate acceptance step.
 
