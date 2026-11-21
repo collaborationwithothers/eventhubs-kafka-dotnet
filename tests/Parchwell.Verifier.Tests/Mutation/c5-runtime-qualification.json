@@ -21,13 +21,16 @@
     "scenarios/B07/scenario.yaml": "637f850154562fa85d33b7e8d2d2bc1ec527ecbcf7be0a844f6b090d0de5f53d",
     "scenarios/B08/scenario.yaml": "e4869d401bd366e8922043baa3bfa0a53a1fe1d406ee40f2077405bdc9b7bef4",
     "scenarios/B10/scenario.yaml": "762b1a540e8975129652358b0c91bb8a8c867b007dae162b00b78ad2dcc8569c",
+    "scenarios/C01/scenario.yaml": "555cb0be7f37c6e5d6a6e94f899875f0616fcafca49be34fab4ad70fda59efd2",
     "scenarios/C03/scenario.yaml": "2b6da0fff85d6ebf124e30fa5d341d4d88d1db8b02b30b6d7a29422dca5e9e31",
     "scenarios/C08/scenario.yaml": "061416216f9acbac792d61f85df0d5be90043b67e1bb4fdddc055bac5fcfcd47",
+    "scenarios/C10/scenario.yaml": "d72b4ab55fb1c05b7ef3312ced62e2ae95a65903a8c9266bda785fcf5647d290",
     "scenarios/C12/scenario.yaml": "32dc43a8a5166ad9de7823164d17345b313fe26ff7948ba67e75e1c94013c561",
     "scenarios/E01/scenario.yaml": "75d3810adbafd61b7cda676842cef70f86532c88e88516a78c1bcb2854533c07",
     "scenarios/F04/scenario.yaml": "11409c59fd070b08473522d80ccee73a0c76fc9d83e0d4d79d2e2104ac9ceedb",
     "scenarios/F06/scenario.yaml": "3ca313515ec897c487a71c86e7e6bb2d3dbfdc6c63577726929b3509428133b0",
     "scenarios/profiles/b10-timeout.yaml": "39daef3f0b5df87fd8de5efc17304d249bc6eb1df281e76686bf0d637d0ee802",
+    "scenarios/profiles/c01-consumer.yaml": "d36530d2cf026b1c7519241f9d613878b9506e20eaecb0d54f36a2be0da67b02",
     "scenarios/profiles/c03-consumer.yaml": "721d5f2fec07a066581ffa21ad3925dfba824457e805f59a3a1b6a0d7483fa65",
     "scenarios/profiles/saturation-ramp.yaml": "20627a8282fd81730867fb2d10bca8a6d4198cb59d6dc70aab8eebd22528c215",
     "src/Parchwell.Enrichment/packages.lock.json": "c9c2f3096cba8a0c3dc705fd2c9c5f0404ebf5a173837b5ffd9c0f73ba7d4e26",
@@ -55,7 +58,7 @@
     "src/Parchwell.Kafka/Configuration/KafkaConfigurationFactory.cs": "3a075caeb23a21cd84cc57632e7dd35ceae9952121f0e5fcd02482040c07a0e3",
     "src/Parchwell.Kafka/Configuration/KafkaRequiredInput.cs": "0cf52b4ba6e6947583b2f4786b01ce2cd1baaa457210a3f8597d05f964d65ddb",
     "src/Parchwell.Kafka/Configuration/KafkaRoleRegistration.cs": "0c484f79729d905350feceb54fa5225f7e63b8783d18957d546417fd5a34e846",
-    "src/Parchwell.Kafka/Configuration/KafkaScenarioOverrideSetting.cs": "9a28b77f0008ea0ff2bffe8512ce54759e1fa9e14c4e83ea4936d39f04a61ba0",
+    "src/Parchwell.Kafka/Configuration/KafkaScenarioOverrideSetting.cs": "7d3fd0e91733766fbb4aab95762cd20742c7f8773416feba3ddfacdec1a0f730",
     "src/Parchwell.Kafka/Configuration/KafkaScenarioOverrideValueKind.cs": "7a4bc90b98d2a0e7defae8650f3ebe283e4f630d6891346525cc34f5a799df4f",
     "src/Parchwell.Kafka/Configuration/KafkaServiceCollectionExtensions.cs": "221e5d692b5bf1e0e820b405a797bf1f30337fc8c9465645f6cc27db6bb37072",
     "src/Parchwell.Kafka/Configuration/KafkaSettingDefinition.cs": "055c11dbab67403e2a06fbeb4f71e8840b8690bf7b5226596a9752a06d78bc6d",
@@ -95,11 +98,11 @@
     "src/Parchwell.Scenarios/Contracts/IScenarioSource.cs": "35fa8562d38f5fce099455619d3df22c361915ad0adba899f558abe484b75098",
     "src/Parchwell.Scenarios/Contracts/InputNodes.cs": "8ae64bb0353a415e7bf9fc679395b803dc5a8880c0ed584f987ef42898f7146c",
     "src/Parchwell.Scenarios/Contracts/MeasurementCatalog.cs": "2ff7f3595a5d97d6141c0c8201ca01c147c92688b8aabcf9b040a185d460a4d8",
-    "src/Parchwell.Scenarios/Contracts/ScenarioContracts.cs": "9d7ffa1172ee8ae4b669499f95459f1068256918834cc6fe10b1044305164a0a",
+    "src/Parchwell.Scenarios/Contracts/ScenarioContracts.cs": "719da4f0a01bceb8dc46d8d19d69aea8e0679d82251db2bcc42cc769b2c59c08",
     "src/Parchwell.Scenarios/Contracts/ScenarioLoadOptions.cs": "8fbd29e1439f2b7f01fe8cb82e43435bf71bce29dddc690f36050fa70680ab29",
     "src/Parchwell.Scenarios/Contracts/ScenarioPhases.cs": "60f7da34292fa587bb9ff8b8e44775b59cea04b7fdf33682955357a57aa82adf",
     "src/Parchwell.Scenarios/Contracts/ScenarioValidationException.cs": "9fef8c2801eb8891732bed8c325308588259c9b122e2f47f6b9e59da3b61d69b",
-    "src/Parchwell.Scenarios/Loading/ConsumerProcessingDefinitionReader.cs": "199cbe554161183ddf8a28f4dc6858385fad41a47e9191ddde021ae5b6b02c50",
+    "src/Parchwell.Scenarios/Loading/ConsumerProcessingDefinitionReader.cs": "1810cafe68b848a81b77e1906a81052f0034c307d4cae7fd64f5d7cae8c5a589",
     "src/Parchwell.Scenarios/Loading/DefinitionReader.cs": "1e8e2155891196a0bd05e720465236b5a8d6eb76c4bab454d9c082f2d795e50e",
     "src/Parchwell.Scenarios/Loading/IdleObservationDefinitionReader.cs": "f287a76f0c2bbc2bd752d789782a472a732bca3f3ba713dbf7a6cff9c88ef22f",
     "src/Parchwell.Scenarios/Loading/NodeValidation.cs": "15d18dcf5cb50a819af9b2d05abbfb288de44c31dac89c07779a4f00212ee4d4",
@@ -119,7 +122,7 @@
     "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifacts.cs": "ab9e5c90b886c8fd07bda7fa85956f5d0b235a38c285a3f1f304ace6879a13dc",
     "src/Parchwell.Verifier/Common/Consumer/ConsumerRecordLimits.cs": "7e772a07fcc98dc19a3524d82f7e3bd37467009d7f46fa9b05b503311d78a16c",
     "src/Parchwell.Verifier/Common/Consumer/ConsumerVerificationPlan.cs": "8f09b23fab1ddeb2d1b33e2857357877fa3eba6fc67ca333c04c612a3896c3dd",
-    "src/Parchwell.Verifier/Common/Consumer/ScenarioConsumerVerificationPlanSource.cs": "af8cf61cbe37e54fc5aaadfb684be01d2626d4807cf410388ee6422300db17c6",
+    "src/Parchwell.Verifier/Common/Consumer/ScenarioConsumerVerificationPlanSource.cs": "cce81c4345c69af4ad72a25e3c09077c9ee4155008928fd44c7ee98210bf50e2",
     "src/Parchwell.Verifier/Common/Contracts/CheckAssessment.cs": "954935825eb8acf1f92c912c19afdbc0e140b272504d63d2c71fcc4b4e193edc",
     "src/Parchwell.Verifier/Common/Contracts/RunIdentity.cs": "53b552ed4a123fbcb128a20715225a4efc778e464df52e2fb951bd4bf76cd019",
     "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSession.cs": "77aa05942c72fd527ad74685c011dbddc7d1a60494b464a7990f8c7eeb3d523a",
@@ -153,7 +156,7 @@
     "src/Parchwell.Verifier/Judge/JudgeHandler.cs": "1de8bd77733f3d42ce9cf80aac718d02db7e25917cac4e51753e4bb61ac04da4",
     "src/Parchwell.Verifier/Judge/PhaseCandidate.cs": "866fe754d3fcf821674e916a343fa69922f927cd3b0a8872f17745b06d07202e",
     "src/Parchwell.Verifier/Judge/PhaseCandidateCodec.cs": "b743748788b2bcf3610dc6f0a60389ca4e008926eb04d669b3e1b40d42f5e032",
-    "src/Parchwell.Verifier/Parchwell.Verifier.csproj": "044e7d99ceac19ae3dc8c6ea45e82d2322c4f2f7d19b4d50a556b1686f918535",
+    "src/Parchwell.Verifier/Parchwell.Verifier.csproj": "7794a1001a0ba5e52aed2fa4a95051bf6079b72de9fdebaf653feaa88f8d39c4",
     "src/Parchwell.Verifier/ProbeGate/IProbeGateFileStore.cs": "7b0b302f3603dee035bb377eabc59d5a6299d3e96764df7a41b1e154789d3f0b",
     "src/Parchwell.Verifier/ProbeGate/LocalProbeGateFileStore.cs": "2e24e4d97767d598f227bc71ceb369351535668e9008f0b21dd61b6e45a03e1a",
     "src/Parchwell.Verifier/ProbeGate/ProbeGateEvaluator.cs": "f86cf11307e7e80c11733b391a764b72b6611a2482bc4db1774a9465ebba2d5e",
@@ -249,7 +252,7 @@
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRegistrationPathTests.cs": "475284527c17705e17ee53f53c698a625bbfcb68199fe13d8d40f9ce469d7fb7",
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotBoundaryTests.cs": "0ce940f1d58a7069cfa48b2cf251b4c3f3bd4ebd912c282a5d23e7cbd6c06a43",
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerWireFixture.cs": "3eb6be4374b4b9b7a4f724cd95d8a5d09a3bf3c885f1478c1879cbe0b71fe1a9",
-    "tests/Parchwell.Verifier.Tests/Consumer/HostOptionsTests.cs": "93b261737022d95819f124c1be330df61f5330023b3ae85b63140c4edfb2c4b7",
+    "tests/Parchwell.Verifier.Tests/Consumer/HostOptionsTests.cs": "4654f81a454a1c24a64fbd41f06c1ae840616c0a7a8531c1ef372dd18f9adef8",
     "tests/Parchwell.Verifier.Tests/Consumer/IntegrationB04BaseFixtures.cs": "18155738be160a48c88d36aa00c24fd765c71f8667b079a7d70f7b8c74d06311",
     "tests/Parchwell.Verifier.Tests/Consumer/IntegrationConsumerHostTests.cs": "9c9778d93f17b3954d131e1f1f0af6cc6fdee8dfa88f2ac8d752769517f0481b",
     "tests/Parchwell.Verifier.Tests/Consumer/MalformedRecordPublicationTests.cs": "302b81bdaa39f91a681353d37e823e529fde3073d9c559ad3f4a39fc304a7a77",
@@ -258,7 +261,8 @@
     "tests/Parchwell.Verifier.Tests/Consumer/OffsetSetupDeadlineTests.cs": "759ca209a9b45ec9a0c6a22741eb319ca2faf6b1d6d3e5eb83f6ed1e4a635515",
     "tests/Parchwell.Verifier.Tests/Consumer/PhaseWireBaseFixtures.cs": "f98cd76eb2b6fbb4c54db0e8977265d2fb7a4f1acfc9725333d70fb611c13b6e",
     "tests/Parchwell.Verifier.Tests/Consumer/PhaseWireConsumerTests.cs": "8fa808762a51298af56b079acd810135814e9f66f5e97f25be6696bc285e3630",
-    "tests/Parchwell.Verifier.Tests/Consumer/ScenarioVerificationPlanSourceTests.cs": "240174159c9cf94da835ccbdf14e9f2e7c76936b08b6709a311b2e5a6052c5bb",
+    "tests/Parchwell.Verifier.Tests/Consumer/ScenarioKillVerificationPlanSourceTests.cs": "7cd5823d93641a69749442472b45f409d39d01fefd60cd7c00a5f7e7efae9a51",
+    "tests/Parchwell.Verifier.Tests/Consumer/ScenarioVerificationPlanSourceTests.cs": "9fa59549b29a2d4f520cec886580b5771e349f2570829f7f1e3eef6c9d9d069e",
     "tests/Parchwell.Verifier.Tests/Consumer/StartSnapshotTests.cs": "1fda577ec439430c8b010c40c54c0517adb9b7e9e9ad9bf1bb08b8f470a62369",
     "tests/Parchwell.Verifier.Tests/Host/B10EarlierRepeatExclusionTests.cs": "48c8e18f0b6ca5b0f4d1c50f38e797f85dfff58b6546b261d24b4661ccd448ff",
     "tests/Parchwell.Verifier.Tests/Host/B10ExpectedProducerJobsTests.cs": "46cdbfea42d395729283a2f9c403269ba10eb0256c350ca73d3d6adcfc5a582a",
@@ -359,7 +363,7 @@
     "tests/Parchwell.Verifier.Tests/Support/B10AbruptVerifyEvidence.cs": "527c3e9d22c1aec8b72fe0a1175a8b57f1cddda895dc175c337c86c1da49f29d",
     "tests/Parchwell.Verifier.Tests/Support/B10AbruptVerifyFixtureBuilder.cs": "cfd95435aeebc095073093200360c0ba8efa8740a1e8c067ec1ffcaaf91bfa7b",
     "tests/Parchwell.Verifier.Tests/Support/B10SweepFixture.cs": "f648d74ab97161049394b6fa6fe3b8a26c4d094df942864d1ab9d10b2ba6fc2a",
-    "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": "e43917ae78b23e63ba64be838121dc3a688b4b614f3a152cfb5e252534789023",
+    "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": "66d344ecda579ea25cb72a6e824b0fefe520692da394f83d02e1787df0b67ed0",
     "tests/Parchwell.Verifier.Tests/Support/KafkaSessionTestSupport.cs": "d4b4b06c096c80ad6b4cdbdb5f16df5639ea53912b276f827e80850752e5c7d3",
     "tests/Parchwell.Verifier.Tests/Support/NativeMonitoringTestSupport.cs": "0f35c3c71bb7ed4efac0804b6738d599e29ff7738eb445e3413dfabafcd98115",
     "tests/Parchwell.Verifier.Tests/Support/ProbeGateEvidenceBuilder.cs": "45acec2e62becd32a7b3e4f9349a3d366dc824d216fab847eafb708c92adb278",
@@ -5244,12 +5248,30 @@
     "d700bd7823eba6654556c98af0e44bf1541adb877ee4d19bda63fdcb78959dd5": {
       "assessments": {
         "shared_inputs": {
+          "scenarios/C01/scenario.yaml": {
+            "basis": [
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
+            ],
+            "current_sha256": "555cb0be7f37c6e5d6a6e94f899875f0616fcafca49be34fab4ad70fda59efd2"
+          },
           "scenarios/C03/scenario.yaml": {
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: the committed C03 scenario input, a data file that the scenario loader reads at run time. No C5 target source changed.",
               "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision)."
             ],
             "current_sha256": "2b6da0fff85d6ebf124e30fa5d341d4d88d1db8b02b30b6d7a29422dca5e9e31"
+          },
+          "scenarios/C10/scenario.yaml": {
+            "basis": [
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
+            ],
+            "current_sha256": "d72b4ab55fb1c05b7ef3312ced62e2ae95a65903a8c9266bda785fcf5647d290"
+          },
+          "scenarios/profiles/c01-consumer.yaml": {
+            "basis": [
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
+            ],
+            "current_sha256": "d36530d2cf026b1c7519241f9d613878b9506e20eaecb0d54f36a2be0da67b02"
           },
           "scenarios/profiles/c03-consumer.yaml": {
             "basis": [
@@ -5278,9 +5300,10 @@
           "src/Parchwell.Kafka/Configuration/KafkaScenarioOverrideSetting.cs": {
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a source file changed or added for the C03 inputs of issue 508 (scenario schema, override entry, verifier plan source or resolver registration). No C5 target source changed.",
-              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision)."
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
             ],
-            "current_sha256": "9a28b77f0008ea0ff2bffe8512ce54759e1fa9e14c4e83ea4936d39f04a61ba0"
+            "current_sha256": "7d3fd0e91733766fbb4aab95762cd20742c7f8773416feba3ddfacdec1a0f730"
           },
           "src/Parchwell.Kafka/Statistics/IKafkaNativeMonitoringStore.cs": {
             "basis": [
@@ -5370,16 +5393,18 @@
           "src/Parchwell.Scenarios/Contracts/ScenarioContracts.cs": {
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a source file changed or added for the C03 inputs of issue 508 (scenario schema, override entry, verifier plan source or resolver registration). No C5 target source changed.",
-              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision)."
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
             ],
-            "current_sha256": "9d7ffa1172ee8ae4b669499f95459f1068256918834cc6fe10b1044305164a0a"
+            "current_sha256": "719da4f0a01bceb8dc46d8d19d69aea8e0679d82251db2bcc42cc769b2c59c08"
           },
           "src/Parchwell.Scenarios/Loading/ConsumerProcessingDefinitionReader.cs": {
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a source file changed or added for the C03 inputs of issue 508 (scenario schema, override entry, verifier plan source or resolver registration). No C5 target source changed.",
-              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision)."
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
             ],
-            "current_sha256": "199cbe554161183ddf8a28f4dc6858385fad41a47e9191ddde021ae5b6b02c50"
+            "current_sha256": "1810cafe68b848a81b77e1906a81052f0034c307d4cae7fd64f5d7cae8c5a589"
           },
           "src/Parchwell.Scenarios/Loading/DefinitionReader.cs": {
             "basis": [
@@ -5451,9 +5476,10 @@
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a source file changed or added for the C03 inputs of issue 508 (scenario schema, override entry, verifier plan source or resolver registration). No C5 target source changed.",
               "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
               "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
-              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9).",
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
             ],
-            "current_sha256": "af8cf61cbe37e54fc5aaadfb684be01d2626d4807cf410388ee6422300db17c6"
+            "current_sha256": "cce81c4345c69af4ad72a25e3c09077c9ee4155008928fd44c7ee98210bf50e2"
           },
           "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSession.cs": {
             "basis": [
@@ -5534,9 +5560,10 @@
           "src/Parchwell.Verifier/Parchwell.Verifier.csproj": {
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a source file changed or added for the C03 inputs of issue 508 (scenario schema, override entry, verifier plan source or resolver registration). No C5 target source changed.",
-              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision)."
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
             ],
-            "current_sha256": "044e7d99ceac19ae3dc8c6ea45e82d2322c4f2f7d19b4d50a556b1686f918535"
+            "current_sha256": "7794a1001a0ba5e52aed2fa4a95051bf6079b72de9fdebaf653feaa88f8d39c4"
           },
           "src/Parchwell.Verifier/Program.cs": {
             "basis": [
@@ -5761,9 +5788,10 @@
               "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes.",
               "No C5 target source changed. Cold-review corrections preserve malformed-record diagnostics and add boundary tests to each mutant full test population. Shared-input runtime risk remains accepted pending post-merge mutation acceptance; consumer evidence publication remains blocked until that run passes.",
               "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted.",
-              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision)."
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
             ],
-            "current_sha256": "93b261737022d95819f124c1be330df61f5330023b3ae85b63140c4edfb2c4b7"
+            "current_sha256": "4654f81a454a1c24a64fbd41f06c1ae840616c0a7a8531c1ef372dd18f9adef8"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/IntegrationB04BaseFixtures.cs": {
             "basis": [
@@ -5834,14 +5862,21 @@
             ],
             "current_sha256": "8fa808762a51298af56b079acd810135814e9f66f5e97f25be6696bc285e3630"
           },
+          "tests/Parchwell.Verifier.Tests/Consumer/ScenarioKillVerificationPlanSourceTests.cs": {
+            "basis": [
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
+            ],
+            "current_sha256": "7cd5823d93641a69749442472b45f409d39d01fefd60cd7c00a5f7e7efae9a51"
+          },
           "tests/Parchwell.Verifier.Tests/Consumer/ScenarioVerificationPlanSourceTests.cs": {
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a test or test fixture file changed or added for the C03 inputs of issue 508. No C5 target source changed.",
               "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
               "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
-              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9).",
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
             ],
-            "current_sha256": "240174159c9cf94da835ccbdf14e9f2e7c76936b08b6709a311b2e5a6052c5bb"
+            "current_sha256": "9fa59549b29a2d4f520cec886580b5771e349f2570829f7f1e3eef6c9d9d069e"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/StartSnapshotTests.cs": {
             "basis": [
@@ -5938,9 +5973,10 @@
           "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": {
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a test or test fixture file changed or added for the C03 inputs of issue 508. No C5 target source changed.",
-              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision)."
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
             ],
-            "current_sha256": "e43917ae78b23e63ba64be838121dc3a688b4b614f3a152cfb5e252534789023"
+            "current_sha256": "66d344ecda579ea25cb72a6e824b0fefe520692da394f83d02e1787df0b67ed0"
           },
           "tests/Parchwell.Verifier.Tests/Support/NativeMonitoringTestSupport.cs": {
             "basis": [
@@ -6320,12 +6356,30 @@
     "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463": {
       "assessments": {
         "shared_inputs": {
+          "scenarios/C01/scenario.yaml": {
+            "basis": [
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
+            ],
+            "current_sha256": "555cb0be7f37c6e5d6a6e94f899875f0616fcafca49be34fab4ad70fda59efd2"
+          },
           "scenarios/C03/scenario.yaml": {
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: the committed C03 scenario input, a data file that the scenario loader reads at run time. No C5 target source changed.",
               "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision)."
             ],
             "current_sha256": "2b6da0fff85d6ebf124e30fa5d341d4d88d1db8b02b30b6d7a29422dca5e9e31"
+          },
+          "scenarios/C10/scenario.yaml": {
+            "basis": [
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
+            ],
+            "current_sha256": "d72b4ab55fb1c05b7ef3312ced62e2ae95a65903a8c9266bda785fcf5647d290"
+          },
+          "scenarios/profiles/c01-consumer.yaml": {
+            "basis": [
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
+            ],
+            "current_sha256": "d36530d2cf026b1c7519241f9d613878b9506e20eaecb0d54f36a2be0da67b02"
           },
           "scenarios/profiles/c03-consumer.yaml": {
             "basis": [
@@ -6354,9 +6408,10 @@
           "src/Parchwell.Kafka/Configuration/KafkaScenarioOverrideSetting.cs": {
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a source file changed or added for the C03 inputs of issue 508 (scenario schema, override entry, verifier plan source or resolver registration). No C5 target source changed.",
-              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision)."
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
             ],
-            "current_sha256": "9a28b77f0008ea0ff2bffe8512ce54759e1fa9e14c4e83ea4936d39f04a61ba0"
+            "current_sha256": "7d3fd0e91733766fbb4aab95762cd20742c7f8773416feba3ddfacdec1a0f730"
           },
           "src/Parchwell.Kafka/Statistics/IKafkaNativeMonitoringStore.cs": {
             "basis": [
@@ -6446,16 +6501,18 @@
           "src/Parchwell.Scenarios/Contracts/ScenarioContracts.cs": {
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a source file changed or added for the C03 inputs of issue 508 (scenario schema, override entry, verifier plan source or resolver registration). No C5 target source changed.",
-              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision)."
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
             ],
-            "current_sha256": "9d7ffa1172ee8ae4b669499f95459f1068256918834cc6fe10b1044305164a0a"
+            "current_sha256": "719da4f0a01bceb8dc46d8d19d69aea8e0679d82251db2bcc42cc769b2c59c08"
           },
           "src/Parchwell.Scenarios/Loading/ConsumerProcessingDefinitionReader.cs": {
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a source file changed or added for the C03 inputs of issue 508 (scenario schema, override entry, verifier plan source or resolver registration). No C5 target source changed.",
-              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision)."
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
             ],
-            "current_sha256": "199cbe554161183ddf8a28f4dc6858385fad41a47e9191ddde021ae5b6b02c50"
+            "current_sha256": "1810cafe68b848a81b77e1906a81052f0034c307d4cae7fd64f5d7cae8c5a589"
           },
           "src/Parchwell.Scenarios/Loading/DefinitionReader.cs": {
             "basis": [
@@ -6527,9 +6584,10 @@
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a source file changed or added for the C03 inputs of issue 508 (scenario schema, override entry, verifier plan source or resolver registration). No C5 target source changed.",
               "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
               "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
-              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9).",
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
             ],
-            "current_sha256": "af8cf61cbe37e54fc5aaadfb684be01d2626d4807cf410388ee6422300db17c6"
+            "current_sha256": "cce81c4345c69af4ad72a25e3c09077c9ee4155008928fd44c7ee98210bf50e2"
           },
           "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSession.cs": {
             "basis": [
@@ -6634,9 +6692,10 @@
           "src/Parchwell.Verifier/Parchwell.Verifier.csproj": {
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a source file changed or added for the C03 inputs of issue 508 (scenario schema, override entry, verifier plan source or resolver registration). No C5 target source changed.",
-              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision)."
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
             ],
-            "current_sha256": "044e7d99ceac19ae3dc8c6ea45e82d2322c4f2f7d19b4d50a556b1686f918535"
+            "current_sha256": "7794a1001a0ba5e52aed2fa4a95051bf6079b72de9fdebaf653feaa88f8d39c4"
           },
           "src/Parchwell.Verifier/Program.cs": {
             "basis": [
@@ -6894,9 +6953,10 @@
               "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes.",
               "No C5 target source changed. Cold-review corrections preserve malformed-record diagnostics and add boundary tests to each mutant full test population. Shared-input runtime risk remains accepted pending post-merge mutation acceptance; consumer evidence publication remains blocked until that run passes.",
               "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted.",
-              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision)."
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
             ],
-            "current_sha256": "93b261737022d95819f124c1be330df61f5330023b3ae85b63140c4edfb2c4b7"
+            "current_sha256": "4654f81a454a1c24a64fbd41f06c1ae840616c0a7a8531c1ef372dd18f9adef8"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/IntegrationB04BaseFixtures.cs": {
             "basis": [
@@ -6967,14 +7027,21 @@
             ],
             "current_sha256": "8fa808762a51298af56b079acd810135814e9f66f5e97f25be6696bc285e3630"
           },
+          "tests/Parchwell.Verifier.Tests/Consumer/ScenarioKillVerificationPlanSourceTests.cs": {
+            "basis": [
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
+            ],
+            "current_sha256": "7cd5823d93641a69749442472b45f409d39d01fefd60cd7c00a5f7e7efae9a51"
+          },
           "tests/Parchwell.Verifier.Tests/Consumer/ScenarioVerificationPlanSourceTests.cs": {
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a test or test fixture file changed or added for the C03 inputs of issue 508. No C5 target source changed.",
               "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
               "Pull request c03-observation of issue 508 (plan items/508/plan-c03-scenario.md revision 5, section 2.2) changes this shared input: a verifier source or test file changed or added for the C03 membership observation (verification plan fields, the consumer_slow_message_invalid reason, the membership object, the judge's membership rules, and the tests that pin them). No C5 target source changed.",
-              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9)."
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557, which extends decision 6969598217 and replaces the renew run (R2.9) for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after both merges remains required (plan section 9).",
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
             ],
-            "current_sha256": "240174159c9cf94da835ccbdf14e9f2e7c76936b08b6709a311b2e5a6052c5bb"
+            "current_sha256": "9fa59549b29a2d4f520cec886580b5771e349f2570829f7f1e3eef6c9d9d069e"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/StartSnapshotTests.cs": {
             "basis": [
@@ -7122,9 +7189,10 @@
               "Change-specific assessment: Enables capture in a shared fixture and adds streaming and metadata-object storage. Fixture users may incur work; per-shard effects are not isolated.",
               "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
               "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance.",
-              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision)."
+              "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
+              "Pull request c10-c01-inputs of issue 510 (plan items/510/plan-c10-c01-scenarios.md revision 6) changes this shared input. Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7034587780, which replaces the renew run for this pull request. This is not a measurement; the old estimates may understate the run time. The mutation acceptance run on main after the merge remains required."
             ],
-            "current_sha256": "e43917ae78b23e63ba64be838121dc3a688b4b614f3a152cfb5e252534789023"
+            "current_sha256": "66d344ecda579ea25cb72a6e824b0fefe520692da394f83d02e1787df0b67ed0"
           },
           "tests/Parchwell.Verifier.Tests/Support/NativeMonitoringTestSupport.cs": {
             "basis": [

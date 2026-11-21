@@ -151,8 +151,13 @@ public sealed record ProbeV2Configuration(string Action, KafkaClientRole Role, s
 /// <summary>The validated idle-observation declaration of A02, A03 or A04, with its fixed timing literals; owning checks are in scenario-contract.md, "Idle observation declarations".</summary>
 public sealed record IdleObservationDefinition(string Action, KafkaClientRole Role, int IdleSeconds, int StatisticsIntervalMs, int MaxStatisticsReports);
 
-/// <summary>The validated consumer-processing declaration of C03, with its fixed literals; owning checks are in scenario-contract.md, "Consumer processing declarations".</summary>
-public sealed record ConsumerProcessingDefinition(int WindowMs, int CompletionDeadlineMs, ImmutableDictionary<string, ConsumerSlowMessageDeclaration> Configurations);
+/// <summary>
+/// The validated consumer-processing declaration of C03, C10 or C01, with its fixed literals; owning checks are in
+/// scenario-contract.md, "Consumer processing declarations". <c>Configurations</c> holds C03's slow messages and is empty
+/// for C10 and C01; <c>KillCounts</c> holds the subject's kill count of each configuration of C10 and C01 and is empty for C03.
+/// </summary>
+public sealed record ConsumerProcessingDefinition(int WindowMs, int CompletionDeadlineMs, ImmutableDictionary<string, ConsumerSlowMessageDeclaration> Configurations,
+    ImmutableDictionary<string, int> KillCounts);
 
 /// <summary>The one slow message of a configuration: its ordinal in the subject's processing order, how long it takes, and whether the subject keeps calling Consume (<c>pause</c>) or not (<c>inline</c>).</summary>
 public sealed record ConsumerSlowMessageDeclaration(int Ordinal, int DurationMs, string Mode);

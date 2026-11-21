@@ -33,8 +33,6 @@ public sealed class HostOptionsTests
     public async Task Given_ConsumerPlanBoundary_U15_When_Starting_Then_RejectsInvalidPlanBeforeClients(string input, bool valid)
     {
         VerifierHostOptions options = ConsumerOptions();
-        // The production source now serves C03, so the case with no usable source uses C10, which it rejects (standing fixture rule (a)).
-        if (input == "no-source") options.ScenarioId = "C10";
         ConsumerVerificationPlan plan = Plan();
         switch (input)
         {
@@ -71,7 +69,8 @@ public sealed class HostOptionsTests
         void Configure(IServiceCollection services)
         {
             services.RemoveAll<IConsumerVerificationPlanSource>();
-            if (input != "no-source") services.AddSingleton<IConsumerVerificationPlanSource>(new TestPlanSource(input == "no-plan" ? null : plan));
+            if (input == "no-source") services.AddSingleton<IConsumerVerificationPlanSource>(_ => null!);
+            else services.AddSingleton<IConsumerVerificationPlanSource>(new TestPlanSource(input == "no-plan" ? null : plan));
             GuardClients(services, () => constructed++);
         }
         string[] args = Arguments(options);
@@ -155,9 +154,9 @@ public sealed class HostOptionsTests
     }
 
     [Theory]
-    [InlineData("C10", "C0")]
-    [InlineData("C01", "C1")]
-    public async Task Given_C10_or_C01_with_no_registered_plan_source_When_starting_Then_the_production_source_fails_with_consumer_plan_invalid(string scenario, string phase)
+    [InlineData("C10", "C0", 110)]
+    [InlineData("C01", "C1", 1)]
+    public void Given_C10_or_C01_with_no_test_plan_source_When_building_the_host_Then_the_production_source_supplies_the_plan(string scenario, string phase, int killCount)
     {
         VerifierHostOptions options = ConsumerOptions();
         options.ScenarioId = scenario; options.Phase = phase; options.ConfigurationId = phase;
@@ -171,9 +170,10 @@ public sealed class HostOptionsTests
         options.ResultOutputName = $"run-1/{phase}/r1/result.json";
         var constructed = 0;
         void Configure(IServiceCollection services) => GuardClients(services, () => constructed++);
-        OptionsValidationException failure = Assert.Throws<OptionsValidationException>(() => Program.BuildHost(Arguments(options), Configure));
-        Assert.Contains("consumer_plan_invalid", failure.Failures);
-        Assert.Equal(1, await Program.RunAsync(Arguments(options), Configure));
+        using IHost host = Program.BuildHost(Arguments(options), Configure);
+        ConsumerVerificationPlan plan = host.Services.GetRequiredService<ConsumerVerificationPlan>();
+        Assert.Equal(killCount, plan.KillCount);
+        Assert.Equal(30000, plan.CompletionDeadlineMs);
         Assert.Equal(0, constructed);
     }
 

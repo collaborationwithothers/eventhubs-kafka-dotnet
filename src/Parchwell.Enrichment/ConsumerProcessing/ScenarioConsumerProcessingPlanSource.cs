@@ -7,8 +7,8 @@ using Parchwell.Scenarios;
 namespace Parchwell.Enrichment.ConsumerProcessing;
 
 /// <summary>
-/// Builds the worker's plan for C03 from the packaged scenario files. The subject gets the slow message and the
-/// configuration's one replaced setting; the witness gets the same window and delay and runs the baseline.
+/// Builds the worker's plan for C03, C10 or C01 from the packaged scenario files. The subject gets C03's slow message or the
+/// kill count of C10 and C01, and the configuration's one replaced setting; the witness gets the same window and delay and runs the baseline.
 /// </summary>
 internal sealed class ScenarioConsumerProcessingPlanSource(IOptions<ConsumerProcessingOptions> options, string root) : IConsumerProcessingPlanSource
 {
@@ -21,7 +21,7 @@ internal sealed class ScenarioConsumerProcessingPlanSource(IOptions<ConsumerProc
 
     public ConsumerProcessingPlan? GetPlan(string scenarioId, string configurationId)
     {
-        if (scenarioId != "C03" || configurationId is not ("C0" or "C1")) return null;
+        if (scenarioId is not ("C03" or "C10" or "C01") || configurationId is not ("C0" or "C1")) return null;
         try
         {
             ConsumerProcessingOptions identity = options.Value;
@@ -31,15 +31,16 @@ internal sealed class ScenarioConsumerProcessingPlanSource(IOptions<ConsumerProc
             ConsumerProcessingDefinition processing = scenario.Definition.ConsumerProcessing!;
             ConsumerProfile consumer = scenario.Profile.Consumer!;
             bool subject = identity.Role == "subject";
-            ConsumerSlowMessageDeclaration slow = processing.Configurations[configurationId];
+            ConsumerSlowMessageDeclaration? slow = processing.Configurations.GetValueOrDefault(configurationId);
+            int? killCount = processing.KillCounts.TryGetValue(configurationId, out int declaredKillCount) ? declaredKillCount : null;
             ImmutableDictionary<string, ResolvedSetting> settings = resolved.Configurations[configurationId].Roles[KafkaClientRole.EnrichmentConsumer].Settings;
             return new ConsumerProcessingPlan
             {
                 ConfigurationId = configurationId,
                 ProcessingDelayMs = consumer.ProcessingDelayMs,
                 WindowMs = processing.WindowMs,
-                SlowMessage = subject ? new ConsumerSlowMessage(slow.Ordinal, slow.DurationMs, slow.Mode) : null,
-                KillCount = null,
+                SlowMessage = subject && slow is not null ? new ConsumerSlowMessage(slow.Ordinal, slow.DurationMs, slow.Mode) : null,
+                KillCount = subject ? killCount : null,
                 ConsumerSettings = subject
                     ? settings.Where(pair => pair.Value.Override is not null).ToDictionary(pair => pair.Key, pair => pair.Value.Value, StringComparer.Ordinal)
                     : new Dictionary<string, string>(StringComparer.Ordinal)
