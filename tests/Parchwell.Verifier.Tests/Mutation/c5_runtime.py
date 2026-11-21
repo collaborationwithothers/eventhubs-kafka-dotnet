@@ -1265,6 +1265,73 @@ CI_REPAIR_SOURCE = '0be50887eb42ba53fb9df934d2062c9e21a59850'
 CI_REPAIR_OWNERS = frozenset({'b10-final-judge', 'b10-final-classification'})
 CI_REPAIR_TEST = 'tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs'
 CI_REPAIR_REBALANCE = 'e9910d68f149be96da6ff921af89774526c95c94'
+CI_REPAIR_CAPACITY = '6982956ae1f6d14f8f2f4b53e8d6778b40216d56'
+CI_REPAIR_CLASSIFIER = 'b10-final-classification'
+# Only this shared-input change was accepted for the expanded layout.
+# https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313
+CAPACITY_SHARED_MAIN = ('50a208b7f74bb0c149f7242b7e6f423417233b7c',
+                        'd46720e62d79c363386c1f3b3f37791819fa9c7a')
+
+
+@functools.lru_cache(maxsize=4)
+def classifier_capacity_trees(head):
+    """Prove the expanded layout leaves other shards' executable selections intact."""
+    prior = proof_tree(CI_REPAIR_REBALANCE)
+    expanded = proof_tree(CI_REPAIR_CAPACITY)
+    if proof_tree(head) != expanded:
+        return None
+    old, old_code, (old_shared, old_targets), old_config, _ = prior
+    new, new_code, (new_shared, new_targets), new_config, _ = expanded
+    key = CI_REPAIR_CLASSIFIER
+    classifier = old['TARGETS'][key][0]
+    expected = {**old, 'TARGETS': {**old['TARGETS'], key: (classifier, 18)},
+                'PRIMARY_CUTS': {**old['PRIMARY_CUTS'], key: new['PRIMARY_CUTS'][key]}}
+    if (expected != new or len(new['PRIMARY_CUTS'][key]) != 17
+            or (old_code, old_targets, old_config) != (new_code, new_targets, new_config)):
+        return None
+    measured, approved = (proof_tree(ref)[2][0] for ref in CAPACITY_SHARED_MAIN)
+    changed = {path for path in measured.keys() | approved.keys() if measured.get(path) != approved.get(path)}
+    expected_shared = dict(old_shared)
+    for path in changed:
+        if path in NON_RENEWABLE or old_shared.get(path) != measured.get(path):
+            return None
+        if path in approved:
+            expected_shared[path] = approved[path]
+        else:
+            expected_shared.pop(path)
+    old_check = b'    require(len(a) <= 172 and len(b) <= 146 and not set(a) & set(b),\n'
+    new_check = (b"    require(len(a) <= c5_runtime.CAMPAIGN_LIMITS[PATHS['coordinator']]\n"
+                 b"            and len(b) <= c5_runtime.CAMPAIGN_LIMITS[PATHS['companion']] and not set(a) & set(b),\n")
+    old_validator = blob(CI_REPAIR_REBALANCE, CAMPAIGN_VALIDATOR)
+    if old_validator.count(old_check) != 1 or blob(CI_REPAIR_CAPACITY, CAMPAIGN_VALIDATOR) != old_validator.replace(
+            old_check, new_check):
+        return None
+    expected_shared[CAMPAIGN_VALIDATOR] = new_shared[CAMPAIGN_VALIDATOR]
+    if len(changed) != 12 or expected_shared != new_shared:
+        return None
+    for path in CAMPAIGN_LIMITS:
+        current = workflow_matrix(blob(head, path))
+        pinned = workflow_matrix(blob(CI_REPAIR_CAPACITY, path))
+        previous = workflow_matrix(blob(CI_REPAIR_REBALANCE, path))
+        if (current != pinned or len(current) != CAMPAIGN_LIMITS[path]
+                or {shard: owner for shard, owner in previous.items() if owner != classifier} != {
+                    shard: owner for shard, owner in current.items() if owner != classifier}):
+            return None
+    return prior, expanded
+
+
+def retained_classifier_capacity_selection(head, owner, shard):
+    if not head or not shard:
+        return False
+    try:
+        trees = classifier_capacity_trees(head)
+        if trees is None:
+            return False
+        old, new = trees
+        return (owner != new[0]['TARGETS'][CI_REPAIR_CLASSIFIER][0]
+                and same_selection(old[0], old[4], new[0], new[4], owner, shard))
+    except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
+        return False
 
 
 @functools.lru_cache(maxsize=4)
@@ -1306,6 +1373,8 @@ def ci_repair_trees(head):
 
 
 def retained_ci_repair_selection(head, owner, shard):
+    if retained_classifier_capacity_selection(head, owner, shard):
+        head = CI_REPAIR_REBALANCE
     trees = ci_repair_trees(head)
     if trees is None:
         return False
@@ -1371,6 +1440,8 @@ def retained_rebalance_timing(context, shard, path, record, item, timing, head):
 
 def committed_effective_config(context, owner, shard, head):
     """Retain the original proof except for the exact approved correction."""
+    if retained_classifier_capacity_selection(head, owner, shard):
+        return committed_effective_config(context, owner, shard, CI_REPAIR_REBALANCE)
     if _committed_effective_config(context, owner, shard, head):
         return True
     try:
@@ -1438,7 +1509,9 @@ def provenance_errors(context, shared, targets, owner, shard=None, head=None):
         for path, item in changes.items():
             if path not in expected or item['current_sha256'] != current.get(path):
                 errors.add('unaccounted_inputs')
-            if key == 'shared_inputs' and path in derived and measured.get(path) != current.get(path):
+            if key == 'shared_inputs' and measured.get(path) != current.get(path) and (
+                    path in derived or (path == CAMPAIGN_VALIDATOR
+                                        and retained_classifier_capacity_selection(head, owner, shard))):
                 if equivalent is None:
                     equivalent = committed_effective_config(context, owner, shard, head)
                 if equivalent:

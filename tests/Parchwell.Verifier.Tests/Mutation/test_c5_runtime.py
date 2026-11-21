@@ -720,6 +720,41 @@ class ReviewCorrectionBridgeTests(unittest.TestCase):
         self.assertTrue(runtime.retained_ci_repair_measurement(context, shard, owner, timing, head))
         self.assertFalse(runtime.retained_ci_repair_measurement(context, shard, owner, timing, runtime.CI_REPAIR_SOURCE))
 
+    def test_classifier_capacity_retains_only_other_owners_on_exact_trees(self):
+        head = runtime.CI_REPAIR_CAPACITY
+        self.assertTrue(runtime.retained_classifier_capacity_selection(head, self.OWNER, self.SHARD))
+        judge = 'b10-final-judge-crossing'
+        self.assertTrue(runtime.retained_classifier_capacity_selection(head, runtime.workflow.SHARDS[judge], judge))
+        for suffix in ('p1', 'p7', 'p18', 'crossing'):
+            shard = 'b10-final-classification-' + suffix
+            self.assertFalse(runtime.retained_classifier_capacity_selection(head, runtime.workflow.SHARDS[shard], shard))
+        self.assertFalse(runtime.retained_classifier_capacity_selection(head, self.OWNER, 'unknown'))
+        self.assertFalse(runtime.retained_classifier_capacity_selection(runtime.CI_REPAIR_REBALANCE, self.OWNER, self.SHARD))
+
+    def test_classifier_capacity_accepts_only_the_pinned_validator_for_retained_timing(self):
+        previous = runtime.prior_ci_repair_qualification()
+        binding = previous['targets'][self.OWNER]['shards'][self.SHARD]['timing_inputs_sha256']
+        context = copy.deepcopy(previous['timing_inputs'][binding])
+        head = runtime.CI_REPAIR_CAPACITY
+        shared, targets = runtime.proof_tree(head)[2]
+        for key, current in (('shared_inputs', shared), ('target_sources', targets)):
+            measured = context[key]
+            context['assessments'][key] = {
+                path: {'current_sha256': current.get(path), 'basis': ['Approved capacity timing scope']}
+                for path in measured.keys() | current.keys() if measured.get(path) != current.get(path)
+            }
+        self.assertEqual(set(), runtime.provenance_errors(context, shared, targets, self.OWNER, self.SHARD, head))
+
+        original = runtime.proof_tree
+        current_tree = original(head)
+        changed_head = 'c' * 40
+        changed_shared = {**shared, runtime.CAMPAIGN_VALIDATOR: '0' * 64}
+        changed_tree = (*current_tree[:2], (changed_shared, targets), *current_tree[3:])
+        context['assessments']['shared_inputs'][runtime.CAMPAIGN_VALIDATOR]['current_sha256'] = '0' * 64
+        with mock.patch.object(runtime, 'proof_tree', side_effect=lambda ref: changed_tree if ref == changed_head else original(ref)):
+            self.assertIn('invalid_renewal', runtime.provenance_errors(
+                context, changed_shared, targets, self.OWNER, self.SHARD, changed_head))
+
     def test_rejects_changed_owner_and_incomplete_or_wrong_assessments(self):
         self.assertFalse(self.proof(owner=runtime.REVIEW_CORRECTION_TARGET,
                                     shard='b10-final-projection-codec-p1-a'))
