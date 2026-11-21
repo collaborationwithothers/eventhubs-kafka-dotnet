@@ -37,7 +37,7 @@ class Comment:
         if "body" not in data or not isinstance(data["body"], (str, type(None))):
             raise ValueError("expected a comment body")
         url = COMMENT_URL.fullmatch(data["html_url"])
-        if not url or int(url[2]) != data["id"]:
+        if not url or url[2] != str(data["id"]):
             raise ValueError("expected a repository issue comment URL")
         return cls(data["id"], url[1], data["created_at"], data["updated_at"],
                    data["html_url"], data["body"] or "")
@@ -80,14 +80,14 @@ def read_linked(comment_id, offline):
     else:
         data = json.loads((offline / "linked" / f"{comment_id}.json").read_bytes())
     comment = Comment.parse(data)
-    if comment.id != comment_id:
+    if str(comment.id) != comment_id:
         raise ValueError("linked comment ID does not match")
     return comment
 
 
 def render(issues, comments, offline):
     entries = sorted((c for c in comments if c.kind()), key=lambda c: (c.created_at, c.id))
-    listed = {c.id: i for i, c in enumerate(entries, 1)}
+    listed = {str(c.id): i for i, c in enumerate(entries, 1)}
     linked = {}
     unavailable = set()
     issue_list = ", ".join(f"#{issue}" for issue in issues)
@@ -102,7 +102,7 @@ def render(issues, comments, offline):
                       "", comment.metadata(), "", comment.body])
         links = {}
         for issue, comment_id in COMMENT_URL.findall(comment.body):
-            links.setdefault(int(comment_id), issue)
+            links.setdefault(comment_id.lstrip("0") or "0", issue)
         for k, (comment_id, issue) in enumerate(links.items(), 1):
             if comment_id not in linked and (offline is None or comment_id not in listed):
                 try:

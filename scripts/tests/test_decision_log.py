@@ -132,11 +132,16 @@ class DecisionLogTests(unittest.TestCase):
         self.assertEqual(1, out.count("## Decision\nfirst"))
 
     def test_missing_link_exits_3(self):
-        body = f"## Decision\n{URL}/issues/499#issuecomment-99"
-        self.write_json("7.json", [comment(1, CREATED, body)])
-        out = self.offline("--issue", "7", status=3, stderr="decision-log: 1 linked comment(s) not available\n")
-        self.assertIn(body, out)
-        self.assertTrue(out.endswith("#### 1.1 Linked from comment 1: #499 comment 99\nNot available.\n"))
+        for linked_id in ("99", "9" * 5000):
+            with self.subTest(length=len(linked_id)):
+                body = f"## Decision\n{URL}/issues/499#issuecomment-{linked_id}"
+                self.write_json("7.json", [comment(1, CREATED, body)])
+                out = self.offline("--issue", "7", status=3,
+                                   stderr="decision-log: 1 linked comment(s) not available\n")
+                self.assertIn(body, out)
+                self.assertTrue(out.endswith(
+                    f"#### 1.1 Linked from comment 1: #499 comment {linked_id}\nNot available.\n"
+                ))
 
     def test_unreadable_issue_exits_1(self):
         out = self.offline("--issue", "7", status=1, stderr="decision-log: cannot read comments of #7\n")
