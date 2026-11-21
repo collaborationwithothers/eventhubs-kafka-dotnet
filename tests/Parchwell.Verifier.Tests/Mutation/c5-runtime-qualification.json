@@ -290,17 +290,17 @@
     "tests/Parchwell.Verifier.Tests/Input/RestartManifestReaderTests.cs": "37bcd07eb5f3377c97220ce4a7602ca62c28c9b30ce6ab59742ec50fb694db62",
     "tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs": "02a6958674319949d17d81791cfcc9c561ef52f4d9b249c0d8a499d4e2e91c11",
     "tests/Parchwell.Verifier.Tests/Judge/B04BaseCandidate.cs": "630d021ef0210d0591cb72bd776b8464d6fa6ce4a795e3b9d1c2e1f6f0b6f18e",
-    "tests/Parchwell.Verifier.Tests/Judge/B10FinalJudgeTests.cs": "5f4cc4d89ca1ff89413b7809dd72320460f37bfb51beeecda0c24c38e5f9d649",
-    "tests/Parchwell.Verifier.Tests/Judge/B10FinalProjectionCodecTests.cs": "4d61dcdd6d4a715447677269bb6f4f336a8a1abc0803fd146d188c4469b61551",
+    "tests/Parchwell.Verifier.Tests/Judge/B10FinalJudgeTests.cs": "002731ebb70398b9ae0f61ccd4f748c93185e74f5e6ff1194a4e315253158463",
+    "tests/Parchwell.Verifier.Tests/Judge/B10FinalProjectionCodecTests.cs": "8952edd137efaf1aa186b986d57d5ffed5f0c15fd636ed40d437027779d67ca9",
     "tests/Parchwell.Verifier.Tests/Judge/B10JudgeChecksTests.cs": "2d3d34d268659aa4c036127dcdb855a93afdb31093613dc1d8a7617a6c7114e2",
     "tests/Parchwell.Verifier.Tests/Judge/B10SweepChecksTests.cs": "dc01315c1ab165c4ee0927481fe5dacb1506603c8c3e2b354326eff742349739",
     "tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs": "f35c243ff6765fbee3b2fe1bb0295e62c45ce52322f19eab0a8aa365c306fe6a",
     "tests/Parchwell.Verifier.Tests/Judge/JudgeHandlerTests.cs": "b008e9ae2993b2701413e6a363a9f247c81f5456b9cbb38435198af93ebff115",
-    "tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs": "1814812adb2cbd18acefdb8042812f823b1a4a3eacb9affb54b65e35393f16b1",
+    "tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs": "b0c4abb2fd21de8d3af442119709af238834b6de8aa172082673d7f8e33f1638",
     "tests/Parchwell.Verifier.Tests/Judge/PhaseJudgeTests.cs": "91e652585a67723c588b424b237449257345864f4898cfd64bc50c4fc0d73833",
     "tests/Parchwell.Verifier.Tests/Judge/PublicationAcceptanceTests.cs": "49f69c36053b1b4df84ea16c741ea5e0f0333ba5d5c28395495e8f4fbacf992c",
     "tests/Parchwell.Verifier.Tests/Judgement/AbruptClassificationDuplicateTests.cs": "3b74b9e8f1a02e259b9ae5c2289dcd062178611ba27d08aa34a403b2d080bcc3",
-    "tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs": "c63ed9d2e01565e958398afc60a9485eeb614ac94949e20d174e9afe4306b445",
+    "tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs": "8524484b7a634663d8b9a3e9c426789e225f614e141defed86bd0799beb05c15",
     "tests/Parchwell.Verifier.Tests/Judgement/B10IntakeChecksTests.cs": "5eef5f215344ae456cfeb0ca7ac606325de059c3b10c95c8d8dc28ad12b9333e",
     "tests/Parchwell.Verifier.Tests/Judgement/B10LateWriteChecksTests.cs": "56de4c4f6058f293ebffc79aea7c82cbd74016fc0cebd7a760facc2848c356f6",
     "tests/Parchwell.Verifier.Tests/Judgement/B10RepeatChecksTests.cs": "eaa5890a747696c464e0f9dc546016210670847552d01f70abb530800a12018c",
@@ -315,7 +315,7 @@
     "tests/Parchwell.Verifier.Tests/LedgerBatch/BatchingEvidenceRecorderTests.cs": "6294256abac200355df5fe228a5fd7578d3fffdcd251f31031228366ea27a244",
     "tests/Parchwell.Verifier.Tests/Mutation/c5_campaign.py": "1422960e78372e5ab3c0e605c161816434627cb20baab47cda43b703fef7d9e0",
     "tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py": "3771b676b8d5856eb34705dcaa3e9c34ffd8184dd514179a1bf85ee7535fb16f",
-    "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": "9ba2b444dcd5e3c06e2e24bb2fe6b1bc6e6dcd67f9e7eaa3ad57c9047d9817b9",
+    "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": "5e123dc8552d72e9e424f292ebcc5b4b695ff39fed026470f2879d8b5a234552",
     "tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json": "9b67e2dfcad56280254a430497c34e340754646ad4f2f0525391f303550c83d6",
     "tests/Parchwell.Verifier.Tests/NativeMonitoring/VerifierNativeMonitoringTests.cs": "4d907495debffed9b44a282f817286b63bf0a8882330f3453717a11679e30221",
     "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj": "a3d7fe4824fb1f4c11d5bdca6438d04c92eec1c3614e9db02df27f232468721a",
@@ -329,8 +329,8 @@
     "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs": "a8c65916866ed4e5aec13753be1df94ff296d3ede9151df67131b5991bf06087",
     "tests/Parchwell.Verifier.Tests/Results/B10OneJobC0CodecTests.cs": "116ab54d5187bb2032d59ff4aa761d3aa5cce19121b81d0208f90f754b540072",
     "tests/Parchwell.Verifier.Tests/Results/B10ProducerObservationsCodecTests.cs": "08656a6c728f871d717b66a4c95f66b711a124ac13e318b61ce77b981d3f6a88",
-    "tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs": "c766e795d3d456822c23cdb3aa822ffac77fb150c02c2291a6e27cbddf96c629",
-    "tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs": "dd20e3a7e48a84c0cf6a2d93e4d96fe5147a9edf4cf48b0c5b1acd5bd3be212c",
+    "tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs": "118397b15974d96dd16098088ef775b11cd9d734050d8e6653028b82fdb6d7d1",
+    "tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs": "2206b3a4b381e3a5c2656c080bf21c180fa9a86410bfe893009b9e5b8440392b",
     "tests/Parchwell.Verifier.Tests/Scenario/FileSystemScenarioSourceTests.cs": "fb5f5f07f47516400233ae22049f4a6164d6572020a650b6631f18314399ab19",
     "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2AccessEvidenceAuditTests.cs": "ed38cd23f589458a6c76312e89ad553ce8a9b6938d030846a013c1f456a149ed",
     "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2AccessEvidenceTests.cs": "57308194a60467a714da8049f403b5576e27cfd804c77ee3b7c0e6218fd3e29b",
@@ -416,350 +416,350 @@
       "evidence": [
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14510839550",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14693609938",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "b66edeaba6ba37f439f1af869d9db2b77151b3c47896a2209395ceb7d65b7937",
-          "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5"
+          "sha256": "54326671f4aea93f99b8cd683c719488131fd21c65ab433d247bf176c550fdc7",
+          "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14511569321",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44686622095/artifacts/14607930859",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "e67e7713593c31c5ac2bfa1053077a7df958736f4f8d4202f447c678769109c3",
-          "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5"
+          "sha256": "0c56bd10ffcfe70697c192eb39d43f03fc1affcb20cd4c09febaf3b65aabb7f4",
+          "source_commit": "52a056fea353c9457f3c1ed7da689c62733d13a3"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513080064",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44686622095/artifacts/14607742039",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "6258b13710ed259a3df99c25a86b27cff05db132e8b973a2b88e7e15c6cefad2",
-          "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5"
+          "sha256": "9c058ce96348ba1317a68a12bdaca52c2042dadbacf4c2af11245c73da5bd0f5",
+          "source_commit": "52a056fea353c9457f3c1ed7da689c62733d13a3"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14514110959",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14694388351",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "2081a55be7d3386356d22bfd659552f3c5a3b3e9712d7a8896ff08ec91697efb",
-          "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5"
+          "sha256": "016060e233a0ecd0e674186a9859d68a10e39f892e8fb58d80abca8cf97fc23c",
+          "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14511872190",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14695142989",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "1d37fb9dd17d689ee18b183f7c6a98afba4e991db9c34c2eb71055eed81946ad",
-          "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5"
+          "sha256": "8daa04c3fa5acbe006ae75418c6f260f1197ec18b8b5eb35f17d572fe993722c",
+          "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512824310",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14694812507",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "289826a1b1d997845b112e6a5f737be9e78197e5b5b395c5d13c7a899700e219",
-          "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5"
+          "sha256": "e60ab74c217bfa2d91ef797fa0dee3c91e86a596db7bc8e27eb2488af253037a",
+          "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513300881",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14694733966",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "2de67469aa55fb5a72ced71eed6e66456b7c7adbaf24fef7a32f37b9f25fe398",
-          "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5"
+          "sha256": "70804dfd0e83e0b384f5c59014576d0aa814d6dad03fef100fb9e5dde178d78b",
+          "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14511913173",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14695540989",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "f98cd2f5b397e59250f6f7cee88164e46373bed14f2620bb1430f886acc2b4ce",
-          "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5"
+          "sha256": "d17bf07a4012d6c0aa30e040c43d3e2b4906bb4e6452e1f7289f3a889678dba6",
+          "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512531759",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14694548136",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "1982c671e2481839a6a70f2026cd655f97a2148e42bf22855bccc27780956b20",
-          "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5"
+          "sha256": "a76fdc57ba36c8115c5541e7431e9d6d52802d94a2353e080d6df24fc22b8bf7",
+          "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14511079578",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44686622095/artifacts/14607309621",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "b30f4035cb528b5153360631cb8d32a743b3fa9ef825a1be394659c7dba5683f",
-          "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5"
+          "sha256": "2a2b6d24030126bc64facfd773352c90f33f1abd6b265715e253115d657487eb",
+          "source_commit": "52a056fea353c9457f3c1ed7da689c62733d13a3"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14511969693",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44686622095/artifacts/14607712890",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "2b41b2b2ab784cb42e4185653dfd75128d2eb1192061b7ae4bb04eee0575defa",
-          "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5"
+          "sha256": "31e10dc270349565ed1a7d18a1ad7c2373d26ab04f3bb7d2a4789c44c8776522",
+          "source_commit": "52a056fea353c9457f3c1ed7da689c62733d13a3"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512011726",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44686622095/artifacts/14607513063",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "b9392023dace593b7b819019c07986a8534a8c256fdea4661533400b969c0a39",
-          "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5"
+          "sha256": "e0443978318a38025426a1cbb930586d3f9af970600ca22ff75f16011c6de8da",
+          "source_commit": "52a056fea353c9457f3c1ed7da689c62733d13a3"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512018116",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44686622095/artifacts/14607304850",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "e64f05eeb9f234a59a455b2053a1bfb88e87ca205b6949802f08c9459fd43a40",
-          "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5"
+          "sha256": "749d0189a32e8002edddd8f0d2276d3ab8f7d19bd41352283ff6ccc3fbadcd3a",
+          "source_commit": "52a056fea353c9457f3c1ed7da689c62733d13a3"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513105008",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14695395731",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "ccd70b1d73f9f1ea652db851fda41a7b40c00405bbdeaa00c5979b72761b4691",
-          "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5"
+          "sha256": "ffdc7b1173f96150f4d8a96bbbc076714967dbbbeba7b65443abb0bb60fb8a04",
+          "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512129748",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14695530100",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "65fc8f1f2353806cba315c6e7609dd7252a0188f2a5ec08a996a308f2a9afd29",
-          "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5"
+          "sha256": "6d9aee8dc3e9dfef8049b8196874a9e3f8f01d9adac940c1ca00baf60ae1d3cd",
+          "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513040287",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14695245253",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "92544b451087d07682d4e6d0155c2200a1fc23a0a15833d01ed268821213a657",
-          "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5"
+          "sha256": "800bc38709ee95619017d42e793c3ef5154b33dd7767850f2b303057a0fd233a",
+          "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513360737",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14694411735",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "143e8eaa2c2bd41e223880785e858c0f0ff414d273ce49946ff9fd14b05a2ed8",
-          "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5"
+          "sha256": "befe9e7978d5565f3e0ae9c6d6432e4c6aadf54edaa59fe00469869408516ad2",
+          "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512967863",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14695490673",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "b38ff51793bcc9150935a2069bb86bb9c855daa6770aa1ea8d4df2bd540f573d",
-          "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5"
+          "sha256": "247839b8b3ed83aa5d77f38098090e13253adcc1492525696a68667e646a04dc",
+          "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513408255",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14694886103",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "f2415f18c33abf7600f8c1266f64a2937e5ba502edaa03a9c13fdaaf9d80e8eb",
-          "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5"
+          "sha256": "457f26e979512f1412afc235eac0c3ffcad3d01a52d63773ec3a55a20ffd6ec0",
+          "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8"
         }
       ],
       "shards": {
         "b10-final-projection-codec-crossing": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14510839550 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 595,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14693609938 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 431,
           "isolated_seconds": 0,
-          "main_mutants": 14,
-          "main_work_seconds": 920,
+          "main_mutants": 5,
+          "main_work_seconds": 514,
           "parallelism": 2,
-          "selection_sha256": "65c71afd32e1a3a4ca2e8d92bdc9247b391b243a09a2e508b2bf7d79928bce73",
-          "setup_seconds": 135,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "75db6b6bcdbcbb58c879d21eb299eb48d4aa38b411cc90c60f8b779cbff5ba0f",
+          "setup_seconds": 174,
+          "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
         },
         "b10-final-projection-codec-p1-a": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14511569321 observed_workers=1. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 1295,
-          "isolated_seconds": 1291,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44686622095/artifacts/14607930859 observed_workers=1. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1049,
+          "isolated_seconds": 1046,
           "main_mutants": 0,
           "main_work_seconds": 0,
           "parallelism": 1,
           "selection_sha256": "74a711c31e71438260353da9e5311a4d0698ad7a065135c8254ca31441d74588",
-          "setup_seconds": 4,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "setup_seconds": 3,
+          "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
         },
         "b10-final-projection-codec-p1-b": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513080064 observed_workers=1. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 1388,
-          "isolated_seconds": 1385,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44686622095/artifacts/14607742039 observed_workers=1. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1257,
+          "isolated_seconds": 1253,
           "main_mutants": 0,
           "main_work_seconds": 0,
           "parallelism": 1,
           "selection_sha256": "74a711c31e71438260353da9e5311a4d0698ad7a065135c8254ca31441d74588",
-          "setup_seconds": 3,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "setup_seconds": 4,
+          "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
         },
         "b10-final-projection-codec-p10": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14514110959 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 2567,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14694388351 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 2465,
           "isolated_seconds": 0,
-          "main_mutants": 57,
-          "main_work_seconds": 4768,
+          "main_mutants": 53,
+          "main_work_seconds": 4576,
           "parallelism": 2,
-          "selection_sha256": "23ca476768d18e6033042f9ab0ba3b2870e9fca89bceae9c828add56c6f461f4",
-          "setup_seconds": 183,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "c9f07b446011a8b7f5f3e01b7162cecb76c03cf1dd2a47b3bc4c8f7be629642d",
+          "setup_seconds": 177,
+          "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
         },
         "b10-final-projection-codec-p11": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14511872190 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 1177,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14695142989 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 2609,
           "isolated_seconds": 0,
-          "main_mutants": 43,
-          "main_work_seconds": 2152,
+          "main_mutants": 64,
+          "main_work_seconds": 4891,
           "parallelism": 2,
-          "selection_sha256": "34107c8bc1a5d5ad4ed76b45a12890885326890bf8f6a3f96a87072a0c688b42",
-          "setup_seconds": 101,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "260ccc0cae7716be4b309a304018deec270b0353a44e8030513e474746612d07",
+          "setup_seconds": 163,
+          "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
         },
         "b10-final-projection-codec-p12": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512824310 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 2565,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14694812507 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 2536,
           "isolated_seconds": 0,
-          "main_mutants": 57,
-          "main_work_seconds": 4771,
+          "main_mutants": 55,
+          "main_work_seconds": 4721,
           "parallelism": 2,
-          "selection_sha256": "0fb077e0001e313222af173f586901805f1c02171947b46b6923f5c2fcecf134",
-          "setup_seconds": 179,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "6045db7b510ce5894ef953638ec0b04da7099f4997378710611b542984ac741c",
+          "setup_seconds": 175,
+          "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
         },
         "b10-final-projection-codec-p13": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513300881 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 1761,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14694733966 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 2385,
           "isolated_seconds": 0,
-          "main_mutants": 52,
-          "main_work_seconds": 3247,
+          "main_mutants": 56,
+          "main_work_seconds": 4429,
           "parallelism": 2,
-          "selection_sha256": "cac765f3c22b804844a317353185bcf751578c4a5d61241f3c9a0bf24786c34f",
-          "setup_seconds": 137,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "df1777dd20fb7e47ddf17a86f77d6c23ce0be57b143d980b65f65e462b86c589",
+          "setup_seconds": 170,
+          "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
         },
         "b10-final-projection-codec-p14": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14511913173 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 1569,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14695540989 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 2502,
           "isolated_seconds": 0,
-          "main_mutants": 42,
-          "main_work_seconds": 2854,
+          "main_mutants": 57,
+          "main_work_seconds": 4654,
           "parallelism": 2,
-          "selection_sha256": "1abb83598daa93ccadfabf1832829b2f9372ddacea159ec5df46d250b3026a4e",
-          "setup_seconds": 142,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "dfbeca5eb9d543e33a16e327624a2772d661a32c98ec390b9526c4c543e52ef7",
+          "setup_seconds": 175,
+          "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
         },
         "b10-final-projection-codec-p15": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512531759 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 1298,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14694548136 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1794,
           "isolated_seconds": 0,
-          "main_mutants": 33,
-          "main_work_seconds": 2317,
+          "main_mutants": 43,
+          "main_work_seconds": 3272,
           "parallelism": 2,
-          "selection_sha256": "5ea6042b6683b5c59bbdca0be28dc8b3eb4660df18c0c37e0b02c48f3a0895fd",
-          "setup_seconds": 139,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "dcbd0b92abfac590e53a64d9db93eacf06c45be98c9f66c933b4c00f4c9481aa",
+          "setup_seconds": 158,
+          "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
         },
         "b10-final-projection-codec-p2-a": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14511079578 observed_workers=1. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 1253,
-          "isolated_seconds": 1250,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44686622095/artifacts/14607309621 observed_workers=1. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1548,
+          "isolated_seconds": 1544,
           "main_mutants": 0,
           "main_work_seconds": 0,
           "parallelism": 1,
           "selection_sha256": "9620121f2c0cadaf7ff493b206547da5e9e4d1b89287250596b9b172ff6c9800",
-          "setup_seconds": 3,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "setup_seconds": 4,
+          "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
         },
         "b10-final-projection-codec-p2-b": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14511969693 observed_workers=1. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 1728,
-          "isolated_seconds": 1724,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44686622095/artifacts/14607712890 observed_workers=1. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1479,
+          "isolated_seconds": 1476,
           "main_mutants": 0,
           "main_work_seconds": 0,
           "parallelism": 1,
           "selection_sha256": "9620121f2c0cadaf7ff493b206547da5e9e4d1b89287250596b9b172ff6c9800",
-          "setup_seconds": 4,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "setup_seconds": 3,
+          "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
         },
         "b10-final-projection-codec-p3-a": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512011726 observed_workers=1. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 942,
-          "isolated_seconds": 939,
-          "main_mutants": 0,
-          "main_work_seconds": 0,
-          "parallelism": 1,
-          "selection_sha256": "81b9a34ba3cb5d370256ec6a40ea43aea0410848dafcceb025d57b1257b98bdd",
-          "setup_seconds": 3,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
-        },
-        "b10-final-projection-codec-p3-b": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512018116 observed_workers=1. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 1578,
-          "isolated_seconds": 1574,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44686622095/artifacts/14607513063 observed_workers=1. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1419,
+          "isolated_seconds": 1415,
           "main_mutants": 0,
           "main_work_seconds": 0,
           "parallelism": 1,
           "selection_sha256": "81b9a34ba3cb5d370256ec6a40ea43aea0410848dafcceb025d57b1257b98bdd",
           "setup_seconds": 4,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
+        },
+        "b10-final-projection-codec-p3-b": {
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44686622095/artifacts/14607304850 observed_workers=1. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1545,
+          "isolated_seconds": 1541,
+          "main_mutants": 0,
+          "main_work_seconds": 0,
+          "parallelism": 1,
+          "selection_sha256": "81b9a34ba3cb5d370256ec6a40ea43aea0410848dafcceb025d57b1257b98bdd",
+          "setup_seconds": 4,
+          "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
         },
         "b10-final-projection-codec-p4": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513105008 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 1424,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14695395731 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 2185,
           "isolated_seconds": 0,
-          "main_mutants": 40,
-          "main_work_seconds": 2581,
+          "main_mutants": 53,
+          "main_work_seconds": 4029,
           "parallelism": 2,
-          "selection_sha256": "5e7fcbd32ae4d490d0bb412cea71bb88e0bc265784db1231c525170cc46bc96a",
-          "setup_seconds": 133,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "cf6d2d3fa3a3653c8cf9089b3c4216a6b6b921f1fcc54c7e54f21cfae732c42e",
+          "setup_seconds": 170,
+          "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
         },
         "b10-final-projection-codec-p5": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512129748 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 1980,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14695530100 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 2148,
           "isolated_seconds": 0,
-          "main_mutants": 45,
-          "main_work_seconds": 3615,
+          "main_mutants": 66,
+          "main_work_seconds": 4032,
           "parallelism": 2,
-          "selection_sha256": "b1a82c9322139b3d7a15c25c49a164054275b8920421631884ae1300f35db67a",
-          "setup_seconds": 172,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "1984562423d16cfb593e11c91390a72df96bc42d8fd40efc805581c772ef79fa",
+          "setup_seconds": 132,
+          "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
         },
         "b10-final-projection-codec-p6": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513040287 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 1554,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14695245253 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1925,
           "isolated_seconds": 0,
-          "main_mutants": 47,
-          "main_work_seconds": 2848,
+          "main_mutants": 54,
+          "main_work_seconds": 3581,
           "parallelism": 2,
-          "selection_sha256": "00962e940f4ef678bdef73310109fa3c3b9d5eaf646effc155c4cc72033bcb0e",
-          "setup_seconds": 130,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "79e3f0d7f46cbd8e02b32ef8d4eb6d899e3e0c9875c169d070a97e6ca504043e",
+          "setup_seconds": 134,
+          "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
         },
         "b10-final-projection-codec-p7": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513360737 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 1786,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14694411735 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1062,
           "isolated_seconds": 0,
-          "main_mutants": 51,
-          "main_work_seconds": 3306,
+          "main_mutants": 44,
+          "main_work_seconds": 1930,
           "parallelism": 2,
-          "selection_sha256": "6e29a4a111a29251311dbeb47f0c9aa51c431d4b714a29c3845df2789a8ee6cc",
-          "setup_seconds": 133,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "7c2ed634ec724de5b01b5b4ea91f6b943ab651aae4fc609229f124642489f407",
+          "setup_seconds": 97,
+          "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
         },
         "b10-final-projection-codec-p8": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512967863 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 2488,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14695490673 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 2329,
           "isolated_seconds": 0,
-          "main_mutants": 74,
-          "main_work_seconds": 4704,
+          "main_mutants": 55,
+          "main_work_seconds": 4315,
           "parallelism": 2,
-          "selection_sha256": "c972223e7082912200fb916a313a89229802236b41dac8ce5a815b226821aed6",
-          "setup_seconds": 136,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "67f857cbdc327596c1db095d361786b623060783382b978a8247fe539b2cb1aa",
+          "setup_seconds": 171,
+          "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
         },
         "b10-final-projection-codec-p9": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513408255 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 2638,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44870911829/artifacts/14694886103 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1736,
           "isolated_seconds": 0,
-          "main_mutants": 77,
-          "main_work_seconds": 5007,
+          "main_mutants": 42,
+          "main_work_seconds": 3140,
           "parallelism": 2,
-          "selection_sha256": "a04d34c088afa133d4f47f95aa0a1c5f328a80a7a1f1045e95e9f86164ec770d",
-          "setup_seconds": 134,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "d0c21eb7f639d281d3a395659cd4ebb519bc5103b642790d0df38d2dc66011f7",
+          "setup_seconds": 166,
+          "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
         }
       },
-      "source_sha256": "661a986f99eb0a6280582c1f55b0c232ee8f44382f04acaa4bbdc6e6c618b524"
+      "source_sha256": "43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f"
     },
     "Common/Phase/B10FinalRegistrationReader.cs": {
       "evidence": [
@@ -6084,175 +6084,175 @@
       "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
     },
     "b10-final-projection-codec-crossing": {
-      "artifact_sha256": "b66edeaba6ba37f439f1af869d9db2b77151b3c47896a2209395ceb7d65b7937",
+      "artifact_sha256": "54326671f4aea93f99b8cd683c719488131fd21c65ab433d247bf176c550fdc7",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 593.9075193150001,
+      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+      "observed_seconds": 430.1911556289999,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8",
+      "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
     },
     "b10-final-projection-codec-p1-a": {
-      "artifact_sha256": "e67e7713593c31c5ac2bfa1053077a7df958736f4f8d4202f447c678769109c3",
+      "artifact_sha256": "0c56bd10ffcfe70697c192eb39d43f03fc1affcb20cd4c09febaf3b65aabb7f4",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 1293.986181741,
+      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+      "observed_seconds": 1047.784846148,
       "observed_workers": 1,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "52a056fea353c9457f3c1ed7da689c62733d13a3",
+      "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
     },
     "b10-final-projection-codec-p1-b": {
-      "artifact_sha256": "6258b13710ed259a3df99c25a86b27cff05db132e8b973a2b88e7e15c6cefad2",
+      "artifact_sha256": "9c058ce96348ba1317a68a12bdaca52c2042dadbacf4c2af11245c73da5bd0f5",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 1386.7848954610001,
+      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+      "observed_seconds": 1255.189522693,
       "observed_workers": 1,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "52a056fea353c9457f3c1ed7da689c62733d13a3",
+      "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
     },
     "b10-final-projection-codec-p10": {
-      "artifact_sha256": "2081a55be7d3386356d22bfd659552f3c5a3b3e9712d7a8896ff08ec91697efb",
+      "artifact_sha256": "016060e233a0ecd0e674186a9859d68a10e39f892e8fb58d80abca8cf97fc23c",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 2566.344920486,
+      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+      "observed_seconds": 2463.7535619679998,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8",
+      "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
     },
     "b10-final-projection-codec-p11": {
-      "artifact_sha256": "1d37fb9dd17d689ee18b183f7c6a98afba4e991db9c34c2eb71055eed81946ad",
+      "artifact_sha256": "8daa04c3fa5acbe006ae75418c6f260f1197ec18b8b5eb35f17d572fe993722c",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 1175.745044446,
+      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+      "observed_seconds": 2607.930297125,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8",
+      "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
     },
     "b10-final-projection-codec-p12": {
-      "artifact_sha256": "289826a1b1d997845b112e6a5f737be9e78197e5b5b395c5d13c7a899700e219",
+      "artifact_sha256": "e60ab74c217bfa2d91ef797fa0dee3c91e86a596db7bc8e27eb2488af253037a",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 2563.93859942,
+      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+      "observed_seconds": 2534.9600284149997,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8",
+      "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
     },
     "b10-final-projection-codec-p13": {
-      "artifact_sha256": "2de67469aa55fb5a72ced71eed6e66456b7c7adbaf24fef7a32f37b9f25fe398",
+      "artifact_sha256": "70804dfd0e83e0b384f5c59014576d0aa814d6dad03fef100fb9e5dde178d78b",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 1760.28625814,
+      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+      "observed_seconds": 2384.003825878,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8",
+      "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
     },
     "b10-final-projection-codec-p14": {
-      "artifact_sha256": "f98cd2f5b397e59250f6f7cee88164e46373bed14f2620bb1430f886acc2b4ce",
+      "artifact_sha256": "d17bf07a4012d6c0aa30e040c43d3e2b4906bb4e6452e1f7289f3a889678dba6",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 1567.784082718,
+      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+      "observed_seconds": 2500.9028442970002,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8",
+      "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
     },
     "b10-final-projection-codec-p15": {
-      "artifact_sha256": "1982c671e2481839a6a70f2026cd655f97a2148e42bf22855bccc27780956b20",
+      "artifact_sha256": "a76fdc57ba36c8115c5541e7431e9d6d52802d94a2353e080d6df24fc22b8bf7",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 1296.4119977609998,
+      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+      "observed_seconds": 1793.0584525919999,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8",
+      "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
     },
     "b10-final-projection-codec-p2-a": {
-      "artifact_sha256": "b30f4035cb528b5153360631cb8d32a743b3fa9ef825a1be394659c7dba5683f",
+      "artifact_sha256": "2a2b6d24030126bc64facfd773352c90f33f1abd6b265715e253115d657487eb",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 1251.983599102,
+      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+      "observed_seconds": 1546.675887856,
       "observed_workers": 1,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "52a056fea353c9457f3c1ed7da689c62733d13a3",
+      "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
     },
     "b10-final-projection-codec-p2-b": {
-      "artifact_sha256": "2b41b2b2ab784cb42e4185653dfd75128d2eb1192061b7ae4bb04eee0575defa",
+      "artifact_sha256": "31e10dc270349565ed1a7d18a1ad7c2373d26ab04f3bb7d2a4789c44c8776522",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 1726.571103088,
+      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+      "observed_seconds": 1478.456102636,
       "observed_workers": 1,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "52a056fea353c9457f3c1ed7da689c62733d13a3",
+      "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
     },
     "b10-final-projection-codec-p3-a": {
-      "artifact_sha256": "b9392023dace593b7b819019c07986a8534a8c256fdea4661533400b969c0a39",
+      "artifact_sha256": "e0443978318a38025426a1cbb930586d3f9af970600ca22ff75f16011c6de8da",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 941.37998244,
+      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+      "observed_seconds": 1417.123127666,
       "observed_workers": 1,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "52a056fea353c9457f3c1ed7da689c62733d13a3",
+      "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
     },
     "b10-final-projection-codec-p3-b": {
-      "artifact_sha256": "e64f05eeb9f234a59a455b2053a1bfb88e87ca205b6949802f08c9459fd43a40",
+      "artifact_sha256": "749d0189a32e8002edddd8f0d2276d3ab8f7d19bd41352283ff6ccc3fbadcd3a",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 1576.342809079,
+      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+      "observed_seconds": 1543.904961873,
       "observed_workers": 1,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "52a056fea353c9457f3c1ed7da689c62733d13a3",
+      "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
     },
     "b10-final-projection-codec-p4": {
-      "artifact_sha256": "ccd70b1d73f9f1ea652db851fda41a7b40c00405bbdeaa00c5979b72761b4691",
+      "artifact_sha256": "ffdc7b1173f96150f4d8a96bbbc076714967dbbbeba7b65443abb0bb60fb8a04",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 1422.715396867,
+      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+      "observed_seconds": 2183.908378965,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8",
+      "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
     },
     "b10-final-projection-codec-p5": {
-      "artifact_sha256": "65fc8f1f2353806cba315c6e7609dd7252a0188f2a5ec08a996a308f2a9afd29",
+      "artifact_sha256": "6d9aee8dc3e9dfef8049b8196874a9e3f8f01d9adac940c1ca00baf60ae1d3cd",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 1978.364050381,
+      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+      "observed_seconds": 2147.54214336,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8",
+      "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
     },
     "b10-final-projection-codec-p6": {
-      "artifact_sha256": "92544b451087d07682d4e6d0155c2200a1fc23a0a15833d01ed268821213a657",
+      "artifact_sha256": "800bc38709ee95619017d42e793c3ef5154b33dd7767850f2b303057a0fd233a",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 1553.0011094929998,
+      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+      "observed_seconds": 1923.419376573,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8",
+      "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
     },
     "b10-final-projection-codec-p7": {
-      "artifact_sha256": "143e8eaa2c2bd41e223880785e858c0f0ff414d273ce49946ff9fd14b05a2ed8",
+      "artifact_sha256": "befe9e7978d5565f3e0ae9c6d6432e4c6aadf54edaa59fe00469869408516ad2",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 1785.33647636,
+      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+      "observed_seconds": 1061.2429281089999,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8",
+      "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
     },
     "b10-final-projection-codec-p8": {
-      "artifact_sha256": "b38ff51793bcc9150935a2069bb86bb9c855daa6770aa1ea8d4df2bd540f573d",
+      "artifact_sha256": "247839b8b3ed83aa5d77f38098090e13253adcc1492525696a68667e646a04dc",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 2487.633783179,
+      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+      "observed_seconds": 2327.6341750489996,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8",
+      "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
     },
     "b10-final-projection-codec-p9": {
-      "artifact_sha256": "f2415f18c33abf7600f8c1266f64a2937e5ba502edaa03a9c13fdaaf9d80e8eb",
+      "artifact_sha256": "457f26e979512f1412afc235eac0c3ffcad3d01a52d63773ec3a55a20ffd6ec0",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 2636.936928637,
+      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+      "observed_seconds": 1735.5181608950002,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8",
+      "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
     },
     "b10-final-registrations-crossing": {
       "kind": "historical"
@@ -7798,14 +7798,58 @@
     "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c": {
       "assessments": {
         "shared_inputs": {
+          "tests/Parchwell.Verifier.Tests/Judge/B10FinalJudgeTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Judge/B10FinalJudgeTests.cs changes from 5f4cc4d89ca1ff89413b7809dd72320460f37bfb51beeecda0c24c38e5f9d649 to 002731ebb70398b9ae0f61ccd4f748c93185e74f5e6ff1194a4e315253158463. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
+            ],
+            "current_sha256": "002731ebb70398b9ae0f61ccd4f748c93185e74f5e6ff1194a4e315253158463"
+          },
+          "tests/Parchwell.Verifier.Tests/Judge/B10FinalProjectionCodecTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Judge/B10FinalProjectionCodecTests.cs changes from 4d61dcdd6d4a715447677269bb6f4f336a8a1abc0803fd146d188c4469b61551 to 8952edd137efaf1aa186b986d57d5ffed5f0c15fd636ed40d437027779d67ca9. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
+            ],
+            "current_sha256": "8952edd137efaf1aa186b986d57d5ffed5f0c15fd636ed40d437027779d67ca9"
+          },
+          "tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs changes from 1814812adb2cbd18acefdb8042812f823b1a4a3eacb9affb54b65e35393f16b1 to b0c4abb2fd21de8d3af442119709af238834b6de8aa172082673d7f8e33f1638. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
+            ],
+            "current_sha256": "b0c4abb2fd21de8d3af442119709af238834b6de8aa172082673d7f8e33f1638"
+          },
+          "tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs changes from c63ed9d2e01565e958398afc60a9485eeb614ac94949e20d174e9afe4306b445 to 8524484b7a634663d8b9a3e9c426789e225f614e141defed86bd0799beb05c15. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
+            ],
+            "current_sha256": "8524484b7a634663d8b9a3e9c426789e225f614e141defed86bd0799beb05c15"
+          },
           "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7007989967 permits reuse only when committed inputs and the effective physical selection match. The runner transition adds one source-bound static cohort for the previously timed-out p4 owner. The retained owner keeps its prior invocation; the original measured maps and timing record remain pinned."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7007989967 permits reuse only when committed inputs and the effective physical selection match. The runner transition adds one source-bound static cohort for the previously timed-out p4 owner. The retained owner keeps its prior invocation; the original measured maps and timing record remain pinned.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7030994225 records the scoped inventory verification. The runner change updates only the pinned B10 final projection codec source and full native inventory hashes. Other selections and executable code match the prior committed proof. Fresh timing is required for all 19 selections of that codec."
             ],
-            "current_sha256": "9ba2b444dcd5e3c06e2e24bb2fe6b1bc6e6dcd67f9e7eaa3ad57c9047d9817b9"
+            "current_sha256": "5e123dc8552d72e9e424f292ebcc5b4b695ff39fed026470f2879d8b5a234552"
+          },
+          "tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs changes from c766e795d3d456822c23cdb3aa822ffac77fb150c02c2291a6e27cbddf96c629 to 118397b15974d96dd16098088ef775b11cd9d734050d8e6653028b82fdb6d7d1. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
+            ],
+            "current_sha256": "118397b15974d96dd16098088ef775b11cd9d734050d8e6653028b82fdb6d7d1"
+          },
+          "tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs changes from dd20e3a7e48a84c0cf6a2d93e4d96fe5147a9edf4cf48b0c5b1acd5bd3be212c to 2206b3a4b381e3a5c2656c080bf21c180fa9a86410bfe893009b9e5b8440392b. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
+            ],
+            "current_sha256": "2206b3a4b381e3a5c2656c080bf21c180fa9a86410bfe893009b9e5b8440392b"
           }
         },
-        "target_sources": {}
+        "target_sources": {
+          "Common/Phase/B10FinalProjectionCodec.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. Common/Phase/B10FinalProjectionCodec.cs changes from 661a986f99eb0a6280582c1f55b0c232ee8f44382f04acaa4bbdc6e6c618b524 to 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
+            ],
+            "current_sha256": "43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f"
+          }
+        }
       },
       "shared_inputs": {
         ".config/dotnet-tools.json": "50249a8f3a7134b08b4409c485dfe67afb17910e5a2329bf65810c3338231244",
@@ -8227,10 +8271,485 @@
         "VerifyRun/VerifyRunHandler.cs": "2a9d721f3b7f55e6aa4b7c19f4871278712dacba0549ac27dfe2a5f70a632c8e"
       }
     },
-    "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4": {
+    "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145": {
       "assessments": {
         "shared_inputs": {},
         "target_sources": {}
+      },
+      "shared_inputs": {
+        ".config/dotnet-tools.json": "50249a8f3a7134b08b4409c485dfe67afb17910e5a2329bf65810c3338231244",
+        ".github/workflows/verifier-c5-mutation-companion.yml": "1fade2b54ce8b20ed963ba5ebc5ff8cd0e6315f67b402cb46b1bfe695ffbebfb",
+        ".github/workflows/verifier-c5-mutation.yml": "cda07e2545340ade8d658ccfcce1ae65a472c97690c35186ab5f804712a46569",
+        "Directory.Build.props": "da23174e8d1ba562fc1e5fe99518e2bc54473c4c48b7744b84da1232588b8cb1",
+        "Directory.Packages.props": "9b61ecb44bf2297db16699cbac097f4576ba34d0ae624edff4d34f1d48caca05",
+        "docs/operations/a01-runtime-limits.json": "246f5b871bbc1a07209998a2e162b2d1593de9146fb3cae5a613ac8709950437",
+        "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/packages.lock.json": "a29c6aa8cfb81874ff8bb78dc369d7416f28c9b8cc47e99592bfc019b20c41eb",
+        "global.json": "ab4eed8da9aaee0671a10b49fe4ff1b27b3341b264f317ee88785607c0711e9a",
+        "scenarios/A01/scenario.yaml": "00b54054031ec6f80e864616852e2a96ef817effeefa17556093bf11a900fcfc",
+        "scenarios/A02/scenario.yaml": "739b96191574afff8edd89edbb9b09452185d636afa6add915888de8c3e70493",
+        "scenarios/A03/scenario.yaml": "083e21240d442078d2c3383249a5539aa8fc309ee5697513656916005eddb7dc",
+        "scenarios/A04/scenario.yaml": "ffc06a71e84d2af3f1b27242643cec5b1e9a953f2b17e54b826d79ca0bdc4abd",
+        "scenarios/B01/scenario.yaml": "878bbbe969dbc9feedf54d4e935c1a5f994cdde28852ae628096a90654b60e64",
+        "scenarios/B03/scenario.yaml": "ccca55e7e270e1b2504e54d0535db4061195da8d1c32e26cd116d634fbc50841",
+        "scenarios/B04/scenario.yaml": "c894fde26a1e201940cdd67e6b299f13c8754a821bed3a1f14006aebbf93689c",
+        "scenarios/B05/scenario.yaml": "2856fcfdfab4e1bee32c407666fc3ebec4eaa3f8e9b73f888fc370add4dee406",
+        "scenarios/B06/scenario.yaml": "20698b93ae365ca2ff688a489c974356a495c6b51f7e03dc73545d0814209400",
+        "scenarios/B07/scenario.yaml": "637f850154562fa85d33b7e8d2d2bc1ec527ecbcf7be0a844f6b090d0de5f53d",
+        "scenarios/B08/scenario.yaml": "e4869d401bd366e8922043baa3bfa0a53a1fe1d406ee40f2077405bdc9b7bef4",
+        "scenarios/B10/scenario.yaml": "762b1a540e8975129652358b0c91bb8a8c867b007dae162b00b78ad2dcc8569c",
+        "scenarios/C03/scenario.yaml": "2b6da0fff85d6ebf124e30fa5d341d4d88d1db8b02b30b6d7a29422dca5e9e31",
+        "scenarios/C08/scenario.yaml": "061416216f9acbac792d61f85df0d5be90043b67e1bb4fdddc055bac5fcfcd47",
+        "scenarios/C12/scenario.yaml": "32dc43a8a5166ad9de7823164d17345b313fe26ff7948ba67e75e1c94013c561",
+        "scenarios/E01/scenario.yaml": "75d3810adbafd61b7cda676842cef70f86532c88e88516a78c1bcb2854533c07",
+        "scenarios/F04/scenario.yaml": "11409c59fd070b08473522d80ccee73a0c76fc9d83e0d4d79d2e2104ac9ceedb",
+        "scenarios/F06/scenario.yaml": "3ca313515ec897c487a71c86e7e6bb2d3dbfdc6c63577726929b3509428133b0",
+        "scenarios/profiles/b10-timeout.yaml": "39daef3f0b5df87fd8de5efc17304d249bc6eb1df281e76686bf0d637d0ee802",
+        "scenarios/profiles/c03-consumer.yaml": "721d5f2fec07a066581ffa21ad3925dfba824457e805f59a3a1b6a0d7483fa65",
+        "scenarios/profiles/saturation-ramp.yaml": "20627a8282fd81730867fb2d10bca8a6d4198cb59d6dc70aab8eebd22528c215",
+        "src/Parchwell.Enrichment/packages.lock.json": "c9c2f3096cba8a0c3dc705fd2c9c5f0404ebf5a173837b5ffd9c0f73ba7d4e26",
+        "src/Parchwell.Kafka/Authentication/IKafkaTokenProvider.cs": "ac09c1464f9df6c704dd70a9e56ce8a35377abe51c30339dc4568802f6081325",
+        "src/Parchwell.Kafka/Authentication/IObservedKafkaTokenProvider.cs": "7ac8afe8bc16f35d2a8c60e0fc6bdf0758463b9fd9bec58ac0ede4f1350c8862",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationConfiguration.cs": "70a441daf0648bd73b6c632a37396d762808ac9c1346115d3b943386c874ec17",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationFactory.cs": "c723338944cd92593386c869c915dc894c093c097575aeba718105eb556c63c1",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationFailure.cs": "ade2e461ed1abb1533f2853288731011048b8e8080a0e66678823316040883cd",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationIdentity.cs": "8a59b91bf696fe38e5be37322afd3dc05134df049c134193bc93458a9f906773",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationLifecycleObservation.cs": "857f1027a09344c0bfc371c293fcd241dc398c865d4838fac7b4d4540bda8296",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationMetrics.cs": "6b4b6366028f3e0e7982a856384a38c762d887eab166f816f4d1df4390ffe56f",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationServiceCollectionExtensions.cs": "c5c1cbc9bb588d52cf040b86ad9b389fa2cbbadb8246ce8c76834cbe1fb45902",
+        "src/Parchwell.Kafka/Authentication/KafkaOAuthBearerSession.cs": "82f91ef61374177bd31bae7606bfcee687ca01b8761d4354947c1d140b2fecf1",
+        "src/Parchwell.Kafka/Authentication/KafkaWorkloadIdentityOptions.cs": "4269992f4f9262a00fd77f09daa8d328480bbc7314f0849a21b8366382e848f8",
+        "src/Parchwell.Kafka/Authentication/KafkaWorkloadIdentityOptionsValidator.cs": "715c1cd555c3c63f0523565e5831cfe74912cbb98ff009f932bbdbe2fd7c28ec",
+        "src/Parchwell.Kafka/Authentication/ProjectedTokenFileObserver.cs": "35fc8d2908d4c15cdac6a9a7e6896ba3ee30ae38a8f5c1fdfc65305954686c6c",
+        "src/Parchwell.Kafka/Authentication/ProjectedTokenPathResolver.cs": "83a4ba4f5a090c1e990e5c31ca274cee3d517c01a0d25a63c5f3c2bdfa098574",
+        "src/Parchwell.Kafka/Authentication/WorkloadIdentityTokenProvider.cs": "b5a0897b450a8b91b38a2faaaba9b60b3f84de2aa3b037da183ffac5b84f4655",
+        "src/Parchwell.Kafka/Configuration/BaselineSettingsCatalog.cs": "a1395a1ab548ec97c42a04af73051987da114bc921d08babc2a2d6a91fe51420",
+        "src/Parchwell.Kafka/Configuration/FrozenInventory.cs": "5416a103a29c8f8e65581e734bf499510c543446f7a20575c3763262ea9f5619",
+        "src/Parchwell.Kafka/Configuration/KafkaBaseline.cs": "e8a1de90b0742b2de9ecd15dde1e38337022b0d79cfa9f31a341c19f7c054982",
+        "src/Parchwell.Kafka/Configuration/KafkaBaselineOptions.cs": "17994d170d095cc2f583234189fb58abbe8a87e3d924f2cee84494524c3a64b1",
+        "src/Parchwell.Kafka/Configuration/KafkaBaselineOptionsValidator.cs": "eadbd4b70b42611cebe5daeb36f458f538e504ffeb97b94dc8014b1606a1092d",
+        "src/Parchwell.Kafka/Configuration/KafkaClientRole.cs": "fc8b0772bba663ee627dc9aba0152737b29b1a8633fc2d759e1db9ea90ae8953",
+        "src/Parchwell.Kafka/Configuration/KafkaConfigurationFactory.cs": "3a075caeb23a21cd84cc57632e7dd35ceae9952121f0e5fcd02482040c07a0e3",
+        "src/Parchwell.Kafka/Configuration/KafkaRequiredInput.cs": "0cf52b4ba6e6947583b2f4786b01ce2cd1baaa457210a3f8597d05f964d65ddb",
+        "src/Parchwell.Kafka/Configuration/KafkaRoleRegistration.cs": "0c484f79729d905350feceb54fa5225f7e63b8783d18957d546417fd5a34e846",
+        "src/Parchwell.Kafka/Configuration/KafkaScenarioOverrideSetting.cs": "9a28b77f0008ea0ff2bffe8512ce54759e1fa9e14c4e83ea4936d39f04a61ba0",
+        "src/Parchwell.Kafka/Configuration/KafkaScenarioOverrideValueKind.cs": "7a4bc90b98d2a0e7defae8650f3ebe283e4f630d6891346525cc34f5a799df4f",
+        "src/Parchwell.Kafka/Configuration/KafkaServiceCollectionExtensions.cs": "221e5d692b5bf1e0e820b405a797bf1f30337fc8c9465645f6cc27db6bb37072",
+        "src/Parchwell.Kafka/Configuration/KafkaSettingDefinition.cs": "055c11dbab67403e2a06fbeb4f71e8840b8690bf7b5226596a9752a06d78bc6d",
+        "src/Parchwell.Kafka/Configuration/KafkaSettingDisposition.cs": "eba8f58bf6e32353c9ef9ddd694c66b168e298a9a6ea1b72ca90500345c9e043",
+        "src/Parchwell.Kafka/Configuration/KafkaSettingKeys.cs": "abd90edc2d89aea517ea50a1b914a3cf7cb3946c9405ad0f1465536d82c898eb",
+        "src/Parchwell.Kafka/Configuration/KafkaSettingMetadata.cs": "021ec6d57d49d9e2e71729b085c14b6bfa5e53a93293a12f64c6d322205c3fa0",
+        "src/Parchwell.Kafka/Configuration/KafkaSettingSource.cs": "f3cae18c354ff2018614a1f9422bc36bf914cf7d2916c4f7cb478c4bd74d101c",
+        "src/Parchwell.Kafka/Parchwell.Kafka.csproj": "d2e21020adf42f67b06bf5033335afb6233638cab9a6e9445bded30062788484",
+        "src/Parchwell.Kafka/Properties/AssemblyInfo.cs": "4ccad28f774ce15722c8e82708237331c4e2c8820d8768be83375346a297fcae",
+        "src/Parchwell.Kafka/Statistics/IKafkaNativeMonitoringStore.cs": "2710df9ce00117075d346d9726a0b4f2068603b26a7c98c7c5bb3859e3a6f04c",
+        "src/Parchwell.Kafka/Statistics/IKafkaStatisticsEvidenceSink.cs": "28f2951695f500cdf06bf7e8fc9db484616c4ec451ce65aae7e863f3e6a8ae19",
+        "src/Parchwell.Kafka/Statistics/KafkaBrokerStatistics.cs": "371903009a832a327cb8acdeee5c27b817686182bff6f480381e44b0eef01adf",
+        "src/Parchwell.Kafka/Statistics/KafkaNativeMetricCatalogue.cs": "10c182835956ad85316caccfded68e7f643f92e5d49c34b95b4331ebf452614a",
+        "src/Parchwell.Kafka/Statistics/KafkaNativeMetricParser.cs": "6b8370d5d838e6691e399640c2f033575033ca9fe23cc6750555a4211221a340",
+        "src/Parchwell.Kafka/Statistics/KafkaNativeMetricProjection.cs": "e36c2c08e397e72243fcd9d84dc1270b6526ea8b51d3eead5ff09a9360752def",
+        "src/Parchwell.Kafka/Statistics/KafkaNativeMetricState.cs": "e51f3d85dacf1b953ab6de064ef60b8cc8e0e24b4705739f7f05c592f3073039",
+        "src/Parchwell.Kafka/Statistics/KafkaNativeMonitoringCapture.cs": "2c0d14face9ff856cfbf88d3bca6d0023647b3533fa743739f8f023cdfe87352",
+        "src/Parchwell.Kafka/Statistics/KafkaNativeMonitoringOptions.cs": "a78620d18c20097cca22a16f8991e8566f5a5a64349f00379c1ca067a002fd03",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsBridgeFactory.cs": "d708a7be90890a2065132693456c3c817f4ef2bbd08aea046e80b7e9bbd50143",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsCompletion.cs": "229ced2c2bc03d275d5fcbb8f4b698abbb20328e45d0f8aea1dc7e08349508fe",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsDiagnostic.cs": "fa6685f3e17c6beca4467dcc2f5622f85937f28a15def0388bd0d98ea86bde3a",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsIdentity.cs": "eac73d15879541de0e0e540aae00823ef7043b9ea4afd8b015affafc4ad7c0e2",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsMetrics.cs": "2fc513da909f34e45d5786723da4d21741dda81b9050446c50d4720654eab038",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsMonitoringStatus.cs": "0d630f447685cf575e780350cb697143cd250c3bb13a44336c1eb2f50d455505",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsOptions.cs": "d13b61ef181795e251d6ea4feb7e03db83344d097ad29b5d9c4df5c986d49e75",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsParser.cs": "53f8792b9985397c74091d22c85b1b2da627ec03b0f7c8fb6d97ae88521763af",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsReport.cs": "9d5528dab7dd12a509e221c19b63f25e2b825d2b762eea5d2f568578a26f3eb1",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsServiceCollectionExtensions.cs": "12b010c131c3867054127b9b1b1d8945c98d484f134c09b3a98b68e38df81cd6",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsSession.cs": "1288e8f5655c5797fc0f959be40d370846ee5b47b184142063b641068b9d4908",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsSnapshot.cs": "70237ee71214b6ba2881081ca750b50a1e033835cc12293f6aad9fa46467c0f2",
+        "src/Parchwell.Kafka/Statistics/KafkaWindowStatistics.cs": "4441980563ca945a5a6a4b39c02afb9adf28ec58a37e789da80c9e01f302b49b",
+        "src/Parchwell.Kafka/Telemetry/ParchwellTelemetryOptions.cs": "bb515629199189d2ea4be682c395fa80ddc42c315f1c5e4bbde4d32dbfa6f576",
+        "src/Parchwell.Kafka/Telemetry/ParchwellTelemetryServiceCollectionExtensions.cs": "112270d3cd426c8f091cd10d776c1635f71d41d7712742d2fba8cd777164d991",
+        "src/Parchwell.Kafka/Telemetry/ParchwellTelemetrySources.cs": "2fd20d5f737c0d476427535d8a6c90a4aa97c81ab45b267ab882a64341d4fbcc",
+        "src/Parchwell.Kafka/packages.lock.json": "c59708b937db00f9e3aec0ef5a7fde689a6218645a4158fb49d6a5bddc717f98",
+        "src/Parchwell.LoadGen/packages.lock.json": "c9c2f3096cba8a0c3dc705fd2c9c5f0404ebf5a173837b5ffd9c0f73ba7d4e26",
+        "src/Parchwell.Scenarios/Contracts/IScenarioSource.cs": "35fa8562d38f5fce099455619d3df22c361915ad0adba899f558abe484b75098",
+        "src/Parchwell.Scenarios/Contracts/InputNodes.cs": "8ae64bb0353a415e7bf9fc679395b803dc5a8880c0ed584f987ef42898f7146c",
+        "src/Parchwell.Scenarios/Contracts/MeasurementCatalog.cs": "2ff7f3595a5d97d6141c0c8201ca01c147c92688b8aabcf9b040a185d460a4d8",
+        "src/Parchwell.Scenarios/Contracts/ScenarioContracts.cs": "9d7ffa1172ee8ae4b669499f95459f1068256918834cc6fe10b1044305164a0a",
+        "src/Parchwell.Scenarios/Contracts/ScenarioLoadOptions.cs": "8fbd29e1439f2b7f01fe8cb82e43435bf71bce29dddc690f36050fa70680ab29",
+        "src/Parchwell.Scenarios/Contracts/ScenarioPhases.cs": "60f7da34292fa587bb9ff8b8e44775b59cea04b7fdf33682955357a57aa82adf",
+        "src/Parchwell.Scenarios/Contracts/ScenarioValidationException.cs": "9fef8c2801eb8891732bed8c325308588259c9b122e2f47f6b9e59da3b61d69b",
+        "src/Parchwell.Scenarios/Loading/ConsumerProcessingDefinitionReader.cs": "199cbe554161183ddf8a28f4dc6858385fad41a47e9191ddde021ae5b6b02c50",
+        "src/Parchwell.Scenarios/Loading/DefinitionReader.cs": "1e8e2155891196a0bd05e720465236b5a8d6eb76c4bab454d9c082f2d795e50e",
+        "src/Parchwell.Scenarios/Loading/IdleObservationDefinitionReader.cs": "f287a76f0c2bbc2bd752d789782a472a732bca3f3ba713dbf7a6cff9c88ef22f",
+        "src/Parchwell.Scenarios/Loading/NodeValidation.cs": "15d18dcf5cb50a819af9b2d05abbfb288de44c31dac89c07779a4f00212ee4d4",
+        "src/Parchwell.Scenarios/Loading/ProbeV2DefinitionReader.cs": "1ca197c92283c960c0dc30084caec8cb96d33993468140315028f5ffa9ab2ed6",
+        "src/Parchwell.Scenarios/Loading/ProfileReader.cs": "6d64f24a6e063d98531b7d819521e2be5250bb2c2e4c46ef5ecd5fc536525a49",
+        "src/Parchwell.Scenarios/Loading/ScenarioLoader.cs": "0397b71d9bf22327ee0d4babf6360dad31cda60d286c69a3b3747c12f5cb8acc",
+        "src/Parchwell.Scenarios/Loading/SingleActionDefinitionReader.cs": "6398490b00cb855877de3a53437d348468327e0d66c5a85d6400c492dc8f0958",
+        "src/Parchwell.Scenarios/Loading/YamlInput.cs": "5d71b5c818ded0211f2eb841d65954e970ac6655d8ed9305b1d30d73528be79a",
+        "src/Parchwell.Scenarios/Parchwell.Scenarios.csproj": "2430b704445cd856081232b12b34bdd40edca0c8d4602ba130497a8bcc522f8e",
+        "src/Parchwell.Scenarios/Properties/AssemblyInfo.cs": "7f00132f475aaacbda4e45214cf7b25e577b9b183f61ff9b6c42460beb022f53",
+        "src/Parchwell.Scenarios/Resolution/ScenarioResolver.cs": "bf7a89e93d59e276c0827e9f41ab3f238f8623859182765f7266211169ebb827",
+        "src/Parchwell.Scenarios/ScenarioServiceCollectionExtensions.cs": "549ad00e7882df296c8110016f6b4d4c7a1ffb3e72730362f1d079276f40155b",
+        "src/Parchwell.Scenarios/packages.lock.json": "dfa542e0f44824734c5a13615d1afbdc34a69da040edaeb9d9bec9e7a16533b4",
+        "src/Parchwell.Verifier/AssemblyInfo.cs": "6e4b9fa6a51796a8cfbf259852e73263bf241b124c1cd504344c023f2a392978",
+        "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifactCodec.cs": "0b61f41ad55754a1342ce837aae7e8e7296dfce4181a163395b2a7e27d0b0f68",
+        "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifactReader.cs": "20e12e34b4502625aa0f9f82a096f035b25a1eba442f42c56e2d1d3158e87760",
+        "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifacts.cs": "ab9e5c90b886c8fd07bda7fa85956f5d0b235a38c285a3f1f304ace6879a13dc",
+        "src/Parchwell.Verifier/Common/Consumer/ConsumerRecordLimits.cs": "7e772a07fcc98dc19a3524d82f7e3bd37467009d7f46fa9b05b503311d78a16c",
+        "src/Parchwell.Verifier/Common/Consumer/ConsumerVerificationPlan.cs": "8f09b23fab1ddeb2d1b33e2857357877fa3eba6fc67ca333c04c612a3896c3dd",
+        "src/Parchwell.Verifier/Common/Consumer/ScenarioConsumerVerificationPlanSource.cs": "af8cf61cbe37e54fc5aaadfb684be01d2626d4807cf410388ee6422300db17c6",
+        "src/Parchwell.Verifier/Common/Contracts/CheckAssessment.cs": "954935825eb8acf1f92c912c19afdbc0e140b272504d63d2c71fcc4b4e193edc",
+        "src/Parchwell.Verifier/Common/Contracts/RunIdentity.cs": "53b552ed4a123fbcb128a20715225a4efc778e464df52e2fb951bd4bf76cd019",
+        "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSession.cs": "77aa05942c72fd527ad74685c011dbddc7d1a60494b464a7990f8c7eeb3d523a",
+        "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSessionFactory.cs": "ba6d6b90e29f8176890a2e9b76656628e15ff81dd51d5e115dd5c03b7907b530",
+        "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaTokenProvider.cs": "ece4f51e384b5e83bc913d3cefe08ac542b5480e0e223e251deec103723f36d2",
+        "src/Parchwell.Verifier/Common/NativeMonitoring/BlobNativeMonitoringStore.cs": "e6a6f4f8f9ac2f8c050a63c7e4867d353cdef75424f2914918c80f7c54444ab5",
+        "src/Parchwell.Verifier/Common/Phase/B10SweepEvidence.cs": "e5a4fb09fc63ec53cbb08694d3d38b3d26b59377d894505aad238ee45b356b80",
+        "src/Parchwell.Verifier/Common/Phase/PhaseIdentity.cs": "f9a5baf696556088f72d8891a8da83348eb72a4fa944c5d7c61b3c4d6d06941b",
+        "src/Parchwell.Verifier/Common/Phase/PhasePaths.cs": "4d22f738676b82048a4b1b9feccfeceb01427a2802c1e6f147102861551e93c1",
+        "src/Parchwell.Verifier/Common/Phase/PhaseWireCodec.cs": "32bcf51577b8aa1c0234dad10d9b9b692e6824b55f314e3a5c2107749670bf21",
+        "src/Parchwell.Verifier/Common/Phase/ProducerRegistration.cs": "2a4dda01365845fd94ae48aa3d77f0561e6aebf81957a5b26c530571855b3068",
+        "src/Parchwell.Verifier/Common/Results/B10ProducerObservationsCodec.cs": "173cec5ddafd634b54270548fd8b7127ff12f6c1d8ae3c6bd1d9831f4dc998ff",
+        "src/Parchwell.Verifier/Common/Results/VerifierResult.cs": "f7015c332757eddc2522a1f443bb2e299ef149fa165441cff5bb82b1f097e298",
+        "src/Parchwell.Verifier/Common/Scenario/FileSystemScenarioSource.cs": "eba56bc542517e3f609c496dbf8de16b3a873cec79144047afadcc0e4da56373",
+        "src/Parchwell.Verifier/Common/Serialization/DeploymentJson.cs": "a4063de459234656d6d250b1a5e57fca959bb7ae8e52446286dac2f483704dec",
+        "src/Parchwell.Verifier/Common/Serialization/StrictJson.cs": "0db8159e387ecb3466c1cda72dcd129974740f78faa42542b0aff0fb97bfad4d",
+        "src/Parchwell.Verifier/Common/SingleAction/SingleActionLimits.cs": "8bed22307d3b3c144cc93745bb5aa3e9f63b44b1b759250005be01f4dc77b968",
+        "src/Parchwell.Verifier/Common/SingleAction/SingleActionWire.cs": "171c02eb80722e38056c304b1ab149dc6a9431289dc2acdf0e0bad3b4f1b5158",
+        "src/Parchwell.Verifier/Common/Storage/BlobProducerArtifactStore.cs": "e820f20ad43a2d85a5958ff7f01b31a223fdb25b35e5253a828374f2a479d56e",
+        "src/Parchwell.Verifier/Common/Storage/BlobVerifierArtifactStore.cs": "02f27feb7551ebdab83b33e5465af160c90f63cc24a29a24e1e6b79b7ce8494c",
+        "src/Parchwell.Verifier/Common/Storage/ICompletionReceiptPublisher.cs": "5a633d5c492d30139cf2ae2b520f6bb593cd957082f086be1b6866fe5885a662",
+        "src/Parchwell.Verifier/Common/Storage/IProducerArtifactStore.cs": "989abefbbc37d6fc769d8756e88b6a70244b23fa7b8767e4c77a1f321c538452",
+        "src/Parchwell.Verifier/Common/Storage/IVerifierArtifactStore.cs": "260b2f7d7013771a89216e6bed987eab4b5de474b98f2cb82e5b4c6c0fa5fa4f",
+        "src/Parchwell.Verifier/Common/Window/BrokerInventory.cs": "4dd0d92e52227a27a0bee068216ab5780457afd2044aff0193923c563d257964",
+        "src/Parchwell.Verifier/Common/Window/BrokerInventoryReader.cs": "84fad19b214dab36bf40dd9b318f6b9bfb3b8a34aaf1105eeddea41a6b632edf",
+        "src/Parchwell.Verifier/Common/Window/StartLineNote.cs": "249dca8c9c1ce896f9275a7c2766eeb788805a8a5bfa3ec8738baf45cd25a0aa",
+        "src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs": "50183e73c15874dfec6785f00bdfb2852c78a9536583bfdd7b2f4d52ca85118f",
+        "src/Parchwell.Verifier/ImageSmoke.cs": "d70b8871232ece0c670491906054a4937d27f3dcc9267d93b80c6a49e5ac60ac",
+        "src/Parchwell.Verifier/Judge/ConsumerPhaseEvidence.cs": "8c52a60dcad7133a452f2c9ec68ece3df022986020189ad7cbc5024362e968ab",
+        "src/Parchwell.Verifier/Judge/JudgeHandler.cs": "e35e56943e28a70db4e5db2ed0296cae527977af65743a2b9558216988a3fad8",
+        "src/Parchwell.Verifier/Judge/PhaseCandidate.cs": "c62b6c53761eed23ebcbd14803cc563437d2b80c6386b7cdb82274c8c5ff639d",
+        "src/Parchwell.Verifier/Parchwell.Verifier.csproj": "044e7d99ceac19ae3dc8c6ea45e82d2322c4f2f7d19b4d50a556b1686f918535",
+        "src/Parchwell.Verifier/ProbeGate/IProbeGateFileStore.cs": "7b0b302f3603dee035bb377eabc59d5a6299d3e96764df7a41b1e154789d3f0b",
+        "src/Parchwell.Verifier/ProbeGate/LocalProbeGateFileStore.cs": "2e24e4d97767d598f227bc71ceb369351535668e9008f0b21dd61b6e45a03e1a",
+        "src/Parchwell.Verifier/ProbeGate/ProbeGateEvaluator.cs": "f86cf11307e7e80c11733b391a764b72b6611a2482bc4db1774a9465ebba2d5e",
+        "src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs": "6a4872672703e12d6368a8e027b7fe8accf38630731da74fa610b21d9b0ae939",
+        "src/Parchwell.Verifier/ProbeGate/ProbeGateRequest.cs": "e3199ed7633543e25d1a4b2c8d4fa839382035eb750f24b57dadb6b4ff2049f2",
+        "src/Parchwell.Verifier/ProbeGate/ProbeGateResult.cs": "26f62dc09a9af721e47df90a353e638cf117aa52cf9e05da726876c4bc310fc6",
+        "src/Parchwell.Verifier/Program.cs": "465e8d1bbd7d72c88b5b34f589a68a52448c0b5479b012968e76eb33406e75fb",
+        "src/Parchwell.Verifier/StartLine/B10SweepLineHandler.cs": "0ec9027a631af6f0646b4fbe5079580f22b71c69f2939a9be1bffd55a0a09caf",
+        "src/Parchwell.Verifier/StartLine/BrokerInventoryCodec.cs": "4d3095eba706234f73739afb2c6b4b5d4b4a67b3a42e619b4f3476c0c1092041",
+        "src/Parchwell.Verifier/StartLine/StartLineHandler.cs": "d9b11257f06b305d3397a3899af365ee18c1038b577d72ca9667bbed03e285d7",
+        "src/Parchwell.Verifier/VerifierCompletionState.cs": "87bb1a0cf9c156777c5cab123dd09e8a95b494e9040954797b68ee37010a6ad6",
+        "src/Parchwell.Verifier/VerifierHostOptions.cs": "e57a7a834324f4c7ae3625b2cace55782900cca696ba989ec153ce6726d3ab2c",
+        "src/Parchwell.Verifier/VerifierHostOptionsValidator.cs": "2e3e9b0396291c8133462b8ccaf52e0f752205a8697ad650a64b56f8900229b9",
+        "src/Parchwell.Verifier/VerifierWorker.cs": "1ad54c9ff68f5cc35a28076cfd075098c0521854074db7107bdc282f4e3a47cc",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptDiagnostics.cs": "a3c787c0101ead81ceef9099d4af2f482a10d9740a818bb5d23ff8e4fa5ab146",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptEvidenceCodec.cs": "0645267ceaffa9a173fdaaf3d29c73ac72e78f856d8e75d45a01b32899a6d9cf",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptEvidenceReader.cs": "bdfddc4c2acf7f1227ba861f75e6361a5350ba3ab74ec5e803cb936ffed643e3",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptGuard.cs": "11a37566cb8f4e7f89b44ca62053aabeca104c3981d0f910119ff03bfd38c125",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptGuardConfiguration.cs": "4d197708fe9ad8f1f71bb9c1b92c0d904cbe3b6a7ffdc3487996bdde73b52df0",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptReconciliation.cs": "d500af3b52e6ca9f056a4ea3a95ad0d629a475124cad2c96f1d48f0828349db8",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/B10AbruptVerifyHandler.cs": "af7d9093b4595018b52d1b4bc8b2befe72fa9815ede03e6a4cb1d9b07fec9ce6",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/EarlierRepeatEvidenceReader.cs": "312865b5fb2ec95761dc8fbacc041ebeab94571dd5f18d459e19187123d02c34",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/StartLineEvidenceReader.cs": "04640f3fcbd6352a54a2f01ced057e50eb3ff3ec1c433cfaaf9a34796f68baa9",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/TimeoutEvidenceReader.cs": "caf53bdabf6c8e58a4400d35b7a1878449485ee5823246147a83eaec9a7d0c18",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/TimeoutPublicationAcceptance.cs": "4dc3b713a8d890e7bfaece31c693b6722a7362859b8d94c71905af00ebfafabe",
+        "src/Parchwell.Verifier/VerifyRun/B04/B04EvidenceRecorder.cs": "1fd4571c9d4e33df692115e7c36ea5fff253a1aef35dabfec967266ee18bcfa6",
+        "src/Parchwell.Verifier/VerifyRun/B10LateObservationDiagnostics.cs": "79e54486c7f8a9d1983563a7e46caa6f93994a2a67ea3d4c6850733408078210",
+        "src/Parchwell.Verifier/VerifyRun/Configuration/RegisteredProducerConfigurationResolver.cs": "6b5040db8285f7ebf9ee12a553c0644e4bcd5e431634d8a32373f99f5a002b7d",
+        "src/Parchwell.Verifier/VerifyRun/Consumer/ConsumerRepeatExtension.cs": "6d564c03b57b02c2ac6ab280107bce2aaa8c477ac4a592044dc0c9159682c114",
+        "src/Parchwell.Verifier/VerifyRun/Consumer/IRepeatResultExtension.cs": "a7549004b04f7d80171cd7366674abc15ca6bedb09786106318fd6c052d3ba7b",
+        "src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs": "64eefc613cd6331b5e34fd7d867a7aafd24ad20132585ec3d1831681bb1de20a",
+        "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerCommittedOffsetReader.cs": "f8e28f746f4af593d1cc6cd62409ce669bbcfec03f03b3a3c9183b3828e8855e",
+        "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerOffsetRead.cs": "cfadc39c9393d8c6c78f7a920490b17f6f5c29d220d44b67b0b88c580f2691fc",
+        "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationJudgeHandler.cs": "7d9329fec7609b5238f7f01f65d15948bdb52ad5cca44abb97c80c9e460c529f",
+        "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationJudgeHost.cs": "e36235d5999d47a7966e71f56c61d1505232cb3232b88e0fed2cf9a123466462",
+        "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationJudgeOptions.cs": "30ebf6c5e0f8674d29ba1ecd2c00ef71adbd8528c43db53445ebd1246bc7a11d",
+        "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationWire.cs": "53c9a12513a324c9a28233a0b8e7d067f1ce27da378006dd25ed99a8cb34da0c",
+        "src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs": "47ea5d201901581f238987150704432044096e3bdc4af10c963a1ab60c76985e",
+        "src/Parchwell.Verifier/VerifyRun/Input/CapturedArtifacts.cs": "fd73f098b907f227de04ba43b67cf6842842e7b92d3438558925b6a3968ba1a9",
+        "src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs": "d185b76fd498532fcf33985abf5cb6be972cb8d342d3ed1f1a37b006c4a5393f",
+        "src/Parchwell.Verifier/VerifyRun/Input/ConsumedRecord.cs": "67b6524ddd818d1a5e7f2142313407cc99f6a85977ded99860846478a43464d3",
+        "src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs": "9a0652de60a50e2a33bfa51c121d9be735256d435204742ec10e8399409a8905",
+        "src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs": "de7085d4e73a312ae8e4d75e44d71d91cc8963078794a14493e084b1113df8b5",
+        "src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs": "3b7278ed1d948d269534b63ac1de254ce184d005d958f3939adf6284d1f9abb4",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/B10OneProducerChecks.cs": "0fec291c542db3dc4760f2822e644669831da5e8f054497f513097fae3b46e64",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs": "286e35ff4129f589fd5d97344db34bd49de77774421fc0744a6c4b72996138c4",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/BrokerCountRecorder.cs": "9518932dbfbb1896d76c850fbe60fc161b121037561b2a43fc56c55c20b48108",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs": "b832a639de1e053a5abeefc0c6f48aa27b99dba4420593f1cf542adea72ad2d4",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs": "d40a9a5209ac476798d19f7af8cb33cfcb685a55fc5ec3dc41ae34eaaf6621b9",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs": "723139f45dac31ef63a44040180459bb7f5b3814a17a6e68d5d880b2291a013d",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs": "e5ada0f0548be096ffe3dccb5a9f84c9597e12a84f007be9fa20658c383756d9",
+        "src/Parchwell.Verifier/VerifyRun/Publication/DiagnosticPublicationReader.cs": "fd8745d244e0e04d4d5ac843163d3334e6d2b99d6a6c60e2581523d8a81260e0",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Candidate.cs": "2fa5346b8ef8800ddc70e447ec3d89554bf2c7d29e6bb1c58a3004855c5d99a8",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Handler.cs": "aee2a473313198d9930a94cb23263558c79c6449d9aa15a293ebe6af08689a37",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Host.cs": "4f8034abe31f52c3e1c8a419e43f074867f54b21ac480b1c202f2ad14d8b743f",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Matrix.cs": "9f56f28aa82981bbfbd1120c0ecd96ace3c8d3b31d6a4d3a6713b23b4cfaca2b",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Options.cs": "d6de5dcd71f09f4f29fcd36caf83f32c80e259d51e0b0433729e3489c2811d58",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Wire.cs": "641817e4563801d95cc6f95ad3f167db27e0331fb7b4b7d3a417957c250f9597",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/SingleActionCandidate.cs": "70d99b2aa0d3a57d6a80a1e79be7d0be20c142e1fadfe26034ae90615e9594c1",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/SingleActionCandidateCodec.cs": "7a32874f9c4bfad3447116158bec46e8225f683eccbc5ebc12deba338ee6b529",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/SingleActionHandler.cs": "5e1169f92d57ff78587f9e20f1b1a2f6750bbae673a1b80721fd77d830a12dda",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/SingleActionScenarioResolver.cs": "3c3ee661f083232f05a4bd4d4dad2eb870c7f1cb6a57b1f9537e6cb022bbb77e",
+        "src/Parchwell.Verifier/VerifyRun/Storage/BlobLedgerArtifactSource.cs": "33a412d197586445cb00f9a9b19e2d3efd91cac8727df96cc313296109402957",
+        "src/Parchwell.Verifier/VerifyRun/Storage/ILedgerArtifactSource.cs": "fe80ebf52231a21f79bfe34530dfd8faa4400e5f4c3108c764c10403c2dd7c78",
+        "src/Parchwell.Verifier/VerifyRun/Window/ConsumedMetadataCapture.cs": "361308efb4718c12fca1863d661380c82f2a167fbe1c97f37924957e1bb2d8b5",
+        "src/Parchwell.Verifier/VerifyRun/Window/ConsumedRecordBudget.cs": "7d7376af1ca61985e716fd949159b3218fcee967cfd22c4278104e368747f1b8",
+        "src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs": "b2012594b326ea2afd577d123867af37e0078e0f1da961a9dda5d2555aaefcca",
+        "src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs": "87d5e8057535d0a2895d19c0a45fdc90df491787869ade1dfb08a2c6c0695c98",
+        "src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs": "51482cfcf3e471552d374c2fe237476204ca39f5a3efaa9e9a9cdd52bf14a1a7",
+        "src/Parchwell.Verifier/packages.lock.json": "c9c2f3096cba8a0c3dc705fd2c9c5f0404ebf5a173837b5ffd9c0f73ba7d4e26",
+        "tests/Parchwell.ArchitectureTests/packages.lock.json": "34a6ea41cfff3aef85ef7748fd20fdac0a8480a53d1047c34de5683fd927ecfe",
+        "tests/Parchwell.Enrichment.Tests/packages.lock.json": "1378e0c4323a993d167d1fd3d3c30b65539d46bcdf8e1fd352622da80c9e7e8a",
+        "tests/Parchwell.Kafka.Tests/packages.lock.json": "55d6914e6eeaeb987f0db833e3366f57820aa0b8ff3411660828c90131ef0327",
+        "tests/Parchwell.LoadGen.Tests/packages.lock.json": "d15af1ddbb1f8fad55a20f7804e4c849cd03028c2de09df424b3b72e4c5bd26d",
+        "tests/Parchwell.Scenarios.Tests/packages.lock.json": "be591ff559bdfccfb49704ebaa0a726650b5e7ad31346b5d77e88f7d046181f4",
+        "tests/Parchwell.Verifier.Tests/A01/A01C3EvidenceRecorderTests.cs": "cf850b729c3889a7d6e1ddfde08d3ffd2411126973df581f04690d4ecd0d7e15",
+        "tests/Parchwell.Verifier.Tests/A01/A01EvidenceRecorderTests.cs": "87f2be41c3a1b95ad17fb1cbe375d4fc18e4fda8597da07d3a22e9a6a9f60e04",
+        "tests/Parchwell.Verifier.Tests/A01/WorkloadRecorderTests.cs": "e4555eeba7bee230f47f4e1ddb97338d81bf9fee640db453a082db3fac198e43",
+        "tests/Parchwell.Verifier.Tests/Authentication/VerifierKafkaTokenProviderRetryTests.cs": "a0e7bb8f7bab5f2f8324a7dbe266bdd5a28bacfabb3e6233c32fbf93f996a4c3",
+        "tests/Parchwell.Verifier.Tests/B04/B04EvidenceRecorderTests.cs": "a2cca43cd9a7b5a7affde0597fdfa4f3e85e4d8a2a876d132492f47174d3f741",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerArtifactTests.cs": "28cf665ef89eb08ac3f3e06cac26893e330a5077a26112d8a1e640f8bcf0665d",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerExtensionTests.cs": "c2aecccb15fc0132729bc6ad118dbba1bf55e7120603faac254fd4aff2de79fb",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerHeldSetBoundaryTests.cs": "14cf1137a57b7133348d8b70deab5bb94ef2d9fc6bcc3fa032c97f2d073cd27a",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerIoBoundaryTests.cs": "f6398f1657e628057c9d27182cb4575158299e67d99110ffe036fa261c518e3f",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementFixture.cs": "6f508fa7a0ca17e66d10f32ae15cefb2ed19a67162c4dcfc9847509b1f2294db",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": "e9afd69a5e20cd35d3b028fdbf8a08f49495eabbb1a8885a7052c1e2901df7bc",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerMembershipTests.cs": "e8c6f1db046d51fd238fcbd14090e81cb57b6432bc2dae440978315c16ce7c3e",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerNumericBoundaryTests.cs": "e2947d57cea08d8cf59a1c3274869673dbbf2506436e45e8f858ab16dca9132e",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRecordNameTests.cs": "1cbfadee609abe30add6ced5b5c27a989f6fc157da6f09055457edab3124dbcd",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRegistrationPathTests.cs": "475284527c17705e17ee53f53c698a625bbfcb68199fe13d8d40f9ce469d7fb7",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotBoundaryTests.cs": "0ce940f1d58a7069cfa48b2cf251b4c3f3bd4ebd912c282a5d23e7cbd6c06a43",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerWireFixture.cs": "3eb6be4374b4b9b7a4f724cd95d8a5d09a3bf3c885f1478c1879cbe0b71fe1a9",
+        "tests/Parchwell.Verifier.Tests/Consumer/HostOptionsTests.cs": "93b261737022d95819f124c1be330df61f5330023b3ae85b63140c4edfb2c4b7",
+        "tests/Parchwell.Verifier.Tests/Consumer/IntegrationB04BaseFixtures.cs": "99592df6b0f7ff05dda41faa8d3cb3f1f6eb6b0a83d183af0512f0cb0ceb8d02",
+        "tests/Parchwell.Verifier.Tests/Consumer/IntegrationConsumerHostTests.cs": "9c9778d93f17b3954d131e1f1f0af6cc6fdee8dfa88f2ac8d752769517f0481b",
+        "tests/Parchwell.Verifier.Tests/Consumer/MalformedRecordPublicationTests.cs": "302b81bdaa39f91a681353d37e823e529fde3073d9c559ad3f4a39fc304a7a77",
+        "tests/Parchwell.Verifier.Tests/Consumer/OffsetAuthenticationTests.cs": "a2e7e35192bfe38a580530f2871108b1f8881940c0cc5f0c54de956aa760a3d2",
+        "tests/Parchwell.Verifier.Tests/Consumer/OffsetReaderTests.cs": "c0fa74c0345d036f3f2be9bec030929f0aa729a6204d21e43944372d9c147fba",
+        "tests/Parchwell.Verifier.Tests/Consumer/OffsetSetupDeadlineTests.cs": "759ca209a9b45ec9a0c6a22741eb319ca2faf6b1d6d3e5eb83f6ed1e4a635515",
+        "tests/Parchwell.Verifier.Tests/Consumer/PhaseWireBaseFixtures.cs": "f98cd76eb2b6fbb4c54db0e8977265d2fb7a4f1acfc9725333d70fb611c13b6e",
+        "tests/Parchwell.Verifier.Tests/Consumer/PhaseWireConsumerTests.cs": "8fa808762a51298af56b079acd810135814e9f66f5e97f25be6696bc285e3630",
+        "tests/Parchwell.Verifier.Tests/Consumer/ScenarioVerificationPlanSourceTests.cs": "240174159c9cf94da835ccbdf14e9f2e7c76936b08b6709a311b2e5a6052c5bb",
+        "tests/Parchwell.Verifier.Tests/Consumer/StartSnapshotTests.cs": "1fda577ec439430c8b010c40c54c0517adb9b7e9e9ad9bf1bb08b8f470a62369",
+        "tests/Parchwell.Verifier.Tests/Host/B10EarlierRepeatExclusionTests.cs": "48c8e18f0b6ca5b0f4d1c50f38e797f85dfff58b6546b261d24b4661ccd448ff",
+        "tests/Parchwell.Verifier.Tests/Host/B10ExpectedProducerJobsTests.cs": "46cdbfea42d395729283a2f9c403269ba10eb0256c350ca73d3d6adcfc5a582a",
+        "tests/Parchwell.Verifier.Tests/Host/B10FinalHostTests.cs": "f5186aacb65df2dadc86eec4c514f1b1a533880733df39e5c3b19ff7fd46a321",
+        "tests/Parchwell.Verifier.Tests/Host/B10FinalSweepUnitTests.cs": "45fd88227d7d1fdc97f4ed6674b7a90bae54bed7352f54dca6a5d3e09c939f6e",
+        "tests/Parchwell.Verifier.Tests/Host/B10LateObservationDiagnosticsTests.cs": "69096977206e0c7a28f4d5becca94e2a7e06061c4608922eab3d96a5dc564ccb",
+        "tests/Parchwell.Verifier.Tests/Host/B10OneJobC0VerifyTests.cs": "517588e82c60148f117391efd629bbf2e218920d8857694601716d968f2b5872",
+        "tests/Parchwell.Verifier.Tests/Host/B10RepeatVerifyTests.cs": "f4f613f02a059203ac4f98bc9c7fd4ce7460788e82a59243cb95c72c2354aa27",
+        "tests/Parchwell.Verifier.Tests/Host/B10ScientificThreeJobLegacyReaderTests.cs": "e5febabc6ff4cff4409b45b7d1eea4140537a8a50ece2513997c6ac5a037b4f8",
+        "tests/Parchwell.Verifier.Tests/Host/B10ScientificThreeJobOptionsTests.cs": "c5902b41f4aa867e92a438330321b4378500a21c72aee768e43a4b89516cf87d",
+        "tests/Parchwell.Verifier.Tests/Host/B10SweepHandlerTests.cs": "a22aac994165638c1825ddff184051fdf25919211e2dac0a058beb9374028e15",
+        "tests/Parchwell.Verifier.Tests/Host/B10SweepLineHandlerTests.cs": "e13fd5d23258c7e2a8cde6c4ce832f1755e0fd9fe59056a0dd911943b0796bea",
+        "tests/Parchwell.Verifier.Tests/Host/B10SweepLineOptionsTests.cs": "68552e06ce74768e517d6c83f84d7b4310205f3f3007cb53c10b6595753d920d",
+        "tests/Parchwell.Verifier.Tests/Host/B10SweepOptionsTests.cs": "881823cf46b1e7517a367b66022faddf127133458960e4f20f0920d810921211",
+        "tests/Parchwell.Verifier.Tests/Host/B10TrialStartLineOptionsTests.cs": "383a2553cdb4f58b20be06f74572ce8397f7d4c6a07eb099aac1634d4e792d73",
+        "tests/Parchwell.Verifier.Tests/Host/B10TwoInstanceVerifyTests.cs": "ccca452e11a55689a736a1acbb268300381b72ffa277508f613723beee44819d",
+        "tests/Parchwell.Verifier.Tests/Host/BrokerInventoryTests.cs": "e2ec290b2450ec05986765f7995df6703e1ba1aea0d31f72bb9282056099bc92",
+        "tests/Parchwell.Verifier.Tests/Host/C3HandlerTests.cs": "cc7daabb792a37e7da99a05d32768fd83815be2fa227e094fa38c4b3d40f26b8",
+        "tests/Parchwell.Verifier.Tests/Host/ChartEnvironmentVerifierHostTests.cs": "48e4ff2bc0a7692c57ad50c1af881f5f3cb4d427f9aa1c4610577c762430b040",
+        "tests/Parchwell.Verifier.Tests/Host/ConsumerJudgeOptionsTests.cs": "64bd336ead19b4ea1c36e0a9a96c13f2e76dce2fd205eca02bbdc8688d22a37a",
+        "tests/Parchwell.Verifier.Tests/Host/ImageSmokeTests.cs": "be613a4b55103a0538dddee591e47c26b10033fc972c0b56710ca18eb4a101e4",
+        "tests/Parchwell.Verifier.Tests/Host/StartLineHandlerTests.cs": "0255aff534a2ae853ae813dfa1f424d69b6ea82752da1d65bf1b114f3264741a",
+        "tests/Parchwell.Verifier.Tests/Host/TelemetryWiringTests.cs": "ecfc325e82f9b8c787a158eede69ebb44188082d2ddcd29e3d7465568d474262",
+        "tests/Parchwell.Verifier.Tests/Host/VerifierCompletionTests.cs": "9efb7c7121808be4879fc18556869aa1733bb5ff1ba2c930b26aa540ca1b009c",
+        "tests/Parchwell.Verifier.Tests/Host/VerifierKafkaTokenProviderHostTests.cs": "9a301d3232e73ce0b1a634607a12fbee18b5da43b060909717e91147b0cfc061",
+        "tests/Parchwell.Verifier.Tests/Host/VerifyInputCapacityTests.cs": "1a4cfa11b8b6d7f1dcd7dbe494bc683c818dec4e23d94595fff3483823095d97",
+        "tests/Parchwell.Verifier.Tests/Host/VerifyRunDiagnosticTests.cs": "3d98c0a523717ff8fc4f544e6e405a870ad4a9646025f03eff7e2eb04081734e",
+        "tests/Parchwell.Verifier.Tests/IdleObservation/IdleFixture.cs": "94b64bce8181ab4ed28be480db2f4facb217a4142dbe2b03ffece99ef217cdd8",
+        "tests/Parchwell.Verifier.Tests/IdleObservation/IdleObservationJudgeHandlerTests.cs": "07546cd59da494d2684c67d8eb19a7fb64fd1f2250f8e87f7f32824ba2d149d6",
+        "tests/Parchwell.Verifier.Tests/IdleObservation/IdleObservationJudgeOptionsTests.cs": "0cc1959bc4dd8d4be9accc088128d6cda89c5f20243ca4edfa105cca69cd1bb5",
+        "tests/Parchwell.Verifier.Tests/IdleObservation/IdleObservationJudgementTests.cs": "ec3a3a5c5d9e8179c75457ffa30ff7d5725bc75a174290277480af52d1d63dd4",
+        "tests/Parchwell.Verifier.Tests/Input/GoldenArtifactReaderTests.cs": "c5acda17fa39847db871f7d0ae22d209d57ac8fe88e3e3aade561e00ea76f45e",
+        "tests/Parchwell.Verifier.Tests/Input/RestartManifestReaderTests.cs": "37bcd07eb5f3377c97220ce4a7602ca62c28c9b30ce6ab59742ec50fb694db62",
+        "tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs": "02a6958674319949d17d81791cfcc9c561ef52f4d9b249c0d8a499d4e2e91c11",
+        "tests/Parchwell.Verifier.Tests/Judge/B04BaseCandidate.cs": "630d021ef0210d0591cb72bd776b8464d6fa6ce4a795e3b9d1c2e1f6f0b6f18e",
+        "tests/Parchwell.Verifier.Tests/Judge/B10FinalJudgeTests.cs": "002731ebb70398b9ae0f61ccd4f748c93185e74f5e6ff1194a4e315253158463",
+        "tests/Parchwell.Verifier.Tests/Judge/B10FinalProjectionCodecTests.cs": "8952edd137efaf1aa186b986d57d5ffed5f0c15fd636ed40d437027779d67ca9",
+        "tests/Parchwell.Verifier.Tests/Judge/B10JudgeChecksTests.cs": "2d3d34d268659aa4c036127dcdb855a93afdb31093613dc1d8a7617a6c7114e2",
+        "tests/Parchwell.Verifier.Tests/Judge/B10SweepChecksTests.cs": "dc01315c1ab165c4ee0927481fe5dacb1506603c8c3e2b354326eff742349739",
+        "tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs": "f35c243ff6765fbee3b2fe1bb0295e62c45ce52322f19eab0a8aa365c306fe6a",
+        "tests/Parchwell.Verifier.Tests/Judge/JudgeHandlerTests.cs": "b008e9ae2993b2701413e6a363a9f247c81f5456b9cbb38435198af93ebff115",
+        "tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs": "b0c4abb2fd21de8d3af442119709af238834b6de8aa172082673d7f8e33f1638",
+        "tests/Parchwell.Verifier.Tests/Judge/PhaseJudgeTests.cs": "91e652585a67723c588b424b237449257345864f4898cfd64bc50c4fc0d73833",
+        "tests/Parchwell.Verifier.Tests/Judge/PublicationAcceptanceTests.cs": "49f69c36053b1b4df84ea16c741ea5e0f0333ba5d5c28395495e8f4fbacf992c",
+        "tests/Parchwell.Verifier.Tests/Judgement/AbruptClassificationDuplicateTests.cs": "3b74b9e8f1a02e259b9ae5c2289dcd062178611ba27d08aa34a403b2d080bcc3",
+        "tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs": "8524484b7a634663d8b9a3e9c426789e225f614e141defed86bd0799beb05c15",
+        "tests/Parchwell.Verifier.Tests/Judgement/B10IntakeChecksTests.cs": "5eef5f215344ae456cfeb0ca7ac606325de059c3b10c95c8d8dc28ad12b9333e",
+        "tests/Parchwell.Verifier.Tests/Judgement/B10LateWriteChecksTests.cs": "56de4c4f6058f293ebffc79aea7c82cbd74016fc0cebd7a760facc2848c356f6",
+        "tests/Parchwell.Verifier.Tests/Judgement/B10RepeatChecksTests.cs": "eaa5890a747696c464e0f9dc546016210670847552d01f70abb530800a12018c",
+        "tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs": "1fa73d65386b32656a67e8439373b0e5ffe376aa1fec3ef89c1605d2957c422e",
+        "tests/Parchwell.Verifier.Tests/Judgement/BrokerCountTests.cs": "dfc40cbefb86fff388f8e5783b0aad1ba7168515dac23b5a94427457c4784824",
+        "tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs": "3a600de24ed58068c837700c19e382a63dae2179e85b63bc10c04afeca5598d0",
+        "tests/Parchwell.Verifier.Tests/Judgement/DuplicateClassifierTests.cs": "b53e0fa8b9e4d9fa39f3f0159cb365b53cffcabf98631fd271128e6af4e98704",
+        "tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs": "9523390ba70369f7473e0ab52373de42d59098655cfa4a791f424d917e08f236",
+        "tests/Parchwell.Verifier.Tests/Judgement/OutcomeClassifierTests.cs": "77d1a1affabb283f31c0dd77af348d4c808b707bf4da45e87494e647b4bc3b41",
+        "tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs": "6363c4024ed1f62028e79404b0510d7ef0500a7a6239c65a4e34aff63fbf1e61",
+        "tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs": "b61b9a63f22447c5c2caef0a6778198ed3f2bb493603f315554a9c73f17d2cd7",
+        "tests/Parchwell.Verifier.Tests/LedgerBatch/BatchingEvidenceRecorderTests.cs": "6294256abac200355df5fe228a5fd7578d3fffdcd251f31031228366ea27a244",
+        "tests/Parchwell.Verifier.Tests/Mutation/c5_campaign.py": "1422960e78372e5ab3c0e605c161816434627cb20baab47cda43b703fef7d9e0",
+        "tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py": "3771b676b8d5856eb34705dcaa3e9c34ffd8184dd514179a1bf85ee7535fb16f",
+        "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": "5e123dc8552d72e9e424f292ebcc5b4b695ff39fed026470f2879d8b5a234552",
+        "tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json": "9b67e2dfcad56280254a430497c34e340754646ad4f2f0525391f303550c83d6",
+        "tests/Parchwell.Verifier.Tests/NativeMonitoring/VerifierNativeMonitoringTests.cs": "4d907495debffed9b44a282f817286b63bf0a8882330f3453717a11679e30221",
+        "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj": "a3d7fe4824fb1f4c11d5bdca6438d04c92eec1c3614e9db02df27f232468721a",
+        "tests/Parchwell.Verifier.Tests/Phase/B10IntakeWireTests.cs": "7c4e96508b3d2ad28ca613e8bb33570b41d50082a95855cb7e57fc240743a315",
+        "tests/Parchwell.Verifier.Tests/Phase/B10RegistrationTests.cs": "9027fe0c884e57baf8f46b88427af682621deebf71f34ecc76b34d0f762e6553",
+        "tests/Parchwell.Verifier.Tests/Phase/B10ScientificThreeJobReceiptCodecTests.cs": "d5126ebcb07ccde23365fd8a701cec5567eeeba54b0e5d5aea5500f00bfbcb87",
+        "tests/Parchwell.Verifier.Tests/Phase/B10SweepEvidenceCodecDuplicateTests.cs": "f8bf4d6a7772032ad474c27cc5fee03bb38c2917e38a286c2c0e88f217c320ab",
+        "tests/Parchwell.Verifier.Tests/Phase/B10SweepEvidenceTests.cs": "cbb3b90fce2f3abb7cc90cbc72ad3dcf4f1eaf438b9b41ca352cfb35fbebb5c4",
+        "tests/Parchwell.Verifier.Tests/Phase/PhaseWireCodecTests.cs": "2665e7f8b45a71ce7feb376eab80671f6386d0706033d20b6b4b603dcce7b2c5",
+        "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs": "d4c79c03d019ccf4c66105c19c8fd612ae991ea731682635c9c9638bcae91d11",
+        "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs": "a8c65916866ed4e5aec13753be1df94ff296d3ede9151df67131b5991bf06087",
+        "tests/Parchwell.Verifier.Tests/Results/B10OneJobC0CodecTests.cs": "116ab54d5187bb2032d59ff4aa761d3aa5cce19121b81d0208f90f754b540072",
+        "tests/Parchwell.Verifier.Tests/Results/B10ProducerObservationsCodecTests.cs": "08656a6c728f871d717b66a4c95f66b711a124ac13e318b61ce77b981d3f6a88",
+        "tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs": "118397b15974d96dd16098088ef775b11cd9d734050d8e6653028b82fdb6d7d1",
+        "tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs": "2206b3a4b381e3a5c2656c080bf21c180fa9a86410bfe893009b9e5b8440392b",
+        "tests/Parchwell.Verifier.Tests/Scenario/FileSystemScenarioSourceTests.cs": "fb5f5f07f47516400233ae22049f4a6164d6572020a650b6631f18314399ab19",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2AccessEvidenceAuditTests.cs": "ed38cd23f589458a6c76312e89ad553ce8a9b6938d030846a013c1f456a149ed",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2AccessEvidenceTests.cs": "57308194a60467a714da8049f403b5576e27cfd804c77ee3b7c0e6218fd3e29b",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2BoundaryTests.cs": "bd6274225f1cf7e16c08a9e58e8b8902336fd5263739dc63cc351c6b5f264eb5",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2CandidateProjectionAuditTests.cs": "43c9f0461e7bdc3ad065f261c07f37daafa83220d683a1c6eb871245c7951118",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2ComparatorAuditTests.cs": "0232751ceac5680f22c8519bc277f5e6dfdc6706b41ed4565116ff94b975b98a",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2EvidenceGapTests.cs": "302ed191893054609c6c16be03464843fc6fec3f34b5a40a8cb8f0b85000eb8c",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2Fixture.cs": "3c42ad118558cb6f73ac226b61425a0e914961f6e4af8c9686e1e96dab8afb03",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2HandlerTests.cs": "f7c8350f55f7fd14d13c3d083ce8cd45bd4dff5572bb9cddd2bb3f93ac56d249",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2InputFileBoundaryTests.cs": "5b7c36ff7bdd65b4b1a06587cfabdc29d540873d88a2fb15ace4cae287b614c3",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2ItemJudgementAuditTests.cs": "5d39d132be8159f6000dea6e1b620a4609ad780ca426dbd95585787000d36740",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2JudgementTests.cs": "4b903dd077e955a16c31b8a3328f526c75d6b57cfa2989d4eda5857460f14e0b",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2MultipartInputTests.cs": "174aae24036d2aff453396fe74077b6515436f69028c47223282c74f44cef706",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2OptionsTests.cs": "a99fd638b5cf4e702f883d69ddc8f012f039627bb8ad93e6055148149d7ccce9",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2ScientificAssessmentTests.cs": "160312786e9d02dc94aef6a18f8a139e97610b33c5b2b9f800bf9e75e7a07441",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2SmokeControlTests.cs": "a1a996a613a89654f1a9cc06e0f428cf09477bfa5fb601f0951155a8fef6dd9c",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2StatisticsBudgetTests.cs": "cd6e70b18d7a322a28b5efff61f89caa17167df13f1f05f5849b4d3ada96d074",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionConfigurationJudgementTests.cs": "188a85e867716b20d510c8f975cebf59788ed24081b70f6146daebbaf124242b",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionFixture.cs": "582489eda6d7141aa704809aa87d6b15f32f5fb8848a54d64e1e2b5161a78819",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionHandlerTests.cs": "d5e22d6e01afe5d84980198371f2190302d15028b73b9adbf628dfcf3060b68f",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionHostOptionsTests.cs": "a9ebce86a294115f9f4b5c84929352a485f2f45e2b5c84e454cf63cf773b4753",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionJudgementBoundaryAuditTests.cs": "a8d185d54289797e8a520ae364cfd7445b15c69b498d438f0b7fb4ad4fb71915",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionRepeatJudgementTests.cs": "a6fef5bf6a8251dacf1316ada0db7defc6d394ccde95502b0350e5b894ec5f29",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionSeedAndItemTests.cs": "6739c564362a7564a34d705643845d9e8deec3d69b6df2979357db3b02aa39af",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionTerminalRuleJudgementTests.cs": "fcc5cec9d559e89b1432b7b42d62e231b8fe3725d100858e1b29fc366cae9ee7",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionWireAndBoundaryTests.cs": "110149cd94b1bb22276638a46924e1de613ee94772a01c2836d41a7f860e833c",
+        "tests/Parchwell.Verifier.Tests/Storage/BlobArtifactStoreTests.cs": "4b081dfc8ebc4eaa52ef9442fda07229fb289bcb90a4fa46f48f86721d2c95a5",
+        "tests/Parchwell.Verifier.Tests/Support/B10AbruptVerifyEvidence.cs": "527c3e9d22c1aec8b72fe0a1175a8b57f1cddda895dc175c337c86c1da49f29d",
+        "tests/Parchwell.Verifier.Tests/Support/B10AbruptVerifyFixtureBuilder.cs": "cfd95435aeebc095073093200360c0ba8efa8740a1e8c067ec1ffcaaf91bfa7b",
+        "tests/Parchwell.Verifier.Tests/Support/B10SweepFixture.cs": "f648d74ab97161049394b6fa6fe3b8a26c4d094df942864d1ab9d10b2ba6fc2a",
+        "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": "e43917ae78b23e63ba64be838121dc3a688b4b614f3a152cfb5e252534789023",
+        "tests/Parchwell.Verifier.Tests/Support/KafkaSessionTestSupport.cs": "d4b4b06c096c80ad6b4cdbdb5f16df5639ea53912b276f827e80850752e5c7d3",
+        "tests/Parchwell.Verifier.Tests/Support/NativeMonitoringTestSupport.cs": "0f35c3c71bb7ed4efac0804b6738d599e29ff7738eb445e3413dfabafcd98115",
+        "tests/Parchwell.Verifier.Tests/Support/ProbeGateEvidenceBuilder.cs": "45acec2e62becd32a7b3e4f9349a3d366dc824d216fab847eafb708c92adb278",
+        "tests/Parchwell.Verifier.Tests/Support/RecordedEvidence.cs": "428e8f4dcd5e9b160b1daa60d6ff04e4e292d1b2493f1b9b7fed62b341b4a7b7",
+        "tests/Parchwell.Verifier.Tests/Support/VerifierHostTestOptions.cs": "5fb1bb8e31baf1d0c3045bb756abf49bc5bde65bd0042cbf03432434eb1d7d9b",
+        "tests/Parchwell.Verifier.Tests/Window/B10RunWindowTests.cs": "bcead6b4e5318a2b1b0a28e8aa01d3a94f5cdb9d2068c1da728a0bd6d7df029a",
+        "tests/Parchwell.Verifier.Tests/Window/B10ScientificThreeJobStartLineCodecTests.cs": "91543ad9a424770553838dc4e9ffb91dc68f680ba281e38a4392255473d8e0d2",
+        "tests/Parchwell.Verifier.Tests/Window/B10TrialStartLineCodecTests.cs": "b326978264d5bb953fdfb3f4db32871de86cc98ba7c14d5a04b1fa5d2defec06",
+        "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": "c4ae6838205ff88b2568ced00a3e0b874d24ecb3ead55898b15d44a365dc3b95",
+        "tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs": "b7ea0fe4e83e3da2dc34790fb637cfa04d10fc1dd77cdc9b4dc03719b3ca2d4e",
+        "tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs": "aa7bef8c9e41ac307fc9724e33381d4c33ccc6b7bcae8560429c0202a7d51710",
+        "tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs": "c571be0a01efd0f523a727774ba5a6e517719dfb0d6c42c620cdb2be5a97d508",
+        "tests/Parchwell.Verifier.Tests/Window/TokenPumpTests.cs": "44b672baffc7ee86dd2eefd45d515d3489301fe1e2dd659bf80555a9b5080b2f",
+        "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": "e8e5761f0db2e6426b7a8330453853bd1ff9f0c4a8f0429d2f0d1b79bd92c4ce",
+        "tests/Parchwell.Verifier.Tests/packages.lock.json": "6b08c8d420de3207678ae7338e89831ee55696be7e963c80b76c4e1a538fc335",
+        "tests/fixtures/ProbeV2MockCluster.cs": "9acd4b0f66c3e4fd51f1c8ec4f79c1f5d644fff61512d6f9caadddb975d62c2d",
+        "tests/fixtures/verifier-v1/README.md": "583e9275404bc839a0a27cfaa4545fd1f6db2a3dd68804d10904391e94f43b80",
+        "tests/fixtures/verifier-v1/captured-run/capabilities.json": "38d8a1044a1d5e8042799e138d899f23bea011a8b9e1c37fea69364af1b3319a",
+        "tests/fixtures/verifier-v1/captured-run/index.json": "7f01ddd43037fba50e3004eba401d75e62bd4b2a570c690a295204ed00e5e54f",
+        "tests/fixtures/verifier-v1/captured-run/ledger.jsonl": "bf5fdb1cec62fe6b5976b64a6dbad1eb968201355babb03e8aa76dd7e1fb52b1",
+        "tests/fixtures/verifier-v1/captured-run/manifest.json": "c760166e7b45f5448439c5673dfa601000c64419e8348dfa38f63fe43b519d66",
+        "tests/fixtures/verifier-v1/captured-run/request-lifecycle.jsonl": "d63c6cc78d2b49be59975bd3c61e53bd660c8f5b7c2981a79f5cd2b1c5bf1db2",
+        "tests/fixtures/verifier-v1/captured-run/statistics.jsonl": "b50c6a5688dba643f47e2aff4fb44a2ff4159c2b65d130aa752ba6674ac34988"
+      },
+      "source_commit": "06d999c33a33e0317af03e557b1048c4336f1bc8",
+      "target_sources": {
+        "Common/Phase/B10FinalProjection.cs": "5dace8b426012e1db4d91471c38a7dc38d1b6efbfd8a68f3e14dd8c67365741c",
+        "Common/Phase/B10FinalProjectionCodec.cs": "43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f",
+        "Common/Phase/B10FinalRegistrationReader.cs": "7a28b10054c4620b8a84f0513244da2b96b89fbe748a157eb491bfcce6d755ba",
+        "Common/Phase/B10SweepEvidenceCodec.cs": "57f91765198e1cb0ae6ee05d466b0a3a6f40fd02e6dfba25ce5665241d4afe91",
+        "Common/Results/DuplicateBreakdown.cs": "7547c2a3d43949ab6f006e90ed5c3393bdc40b112bb0c86c6f5d446528493629",
+        "Common/Results/VerifierResultCodec.cs": "8526a0adbb9e5ac1cac4c92177377616d2768c003fa7d91338d231d99baa8dba",
+        "Judge/B10FinalJudge.cs": "cb7d4fd5367bba9549af0f73e4c0776e8705dac6943da19424ca06903bb847d5",
+        "Judge/B10JudgeChecks.cs": "b365656c412f8415f760af8256bcb23c755d340cff843e288d730c18f07c44da",
+        "Judge/B10SweepChecks.cs": "04e7a081d442d0990bb66e112ed4c6643a4689ad35c8dfd30b79194fdd1aacaa",
+        "Judge/PhaseCandidateCodec.cs": "02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905",
+        "Judge/PhaseJudge.cs": "2630e0ac839f97a9cfd33e24c06ed6f85c1383beba925739cac45177166fffc9",
+        "VerifyRun/A01/A01EvidenceRecorder.cs": "d01f8995692a84cd8bfd908b9874bd72eba08d2f737529c05c1a5d8973780806",
+        "VerifyRun/A01/WorkloadRecorder.cs": "065cde4de7cd27b41946b665121589f9e5b333f0d6c4814346fd4a2cc082f808",
+        "VerifyRun/Abrupt/AbruptClassification.cs": "2bd71be88483f1080fee3e4acc23bd3a4d5608f8e427351b4a120a5efd2eeead",
+        "VerifyRun/B10Final/B10FinalClassification.cs": "2144b3e612b1bb62d19770bf6eeb66a25b3d99a30d52ba3ff52aa764744264bb",
+        "VerifyRun/B10Final/B10FinalRepeatEvidence.cs": "b14f190b6aa6c705a03647b4dc09edb5ba8ca6cea193f76c64a09d089278cfc1",
+        "VerifyRun/B10Final/B10FinalSweepHandler.cs": "cb14b6e7c68fe38a9fafa54ce89fae68b35c8f26917b4b49d74a38f3b740e5a3",
+        "VerifyRun/B10SweepHandler.cs": "cdce9430f112c04311cb524a8a95a10ef91c304ef6228c878e428ec84fcca4ba",
+        "VerifyRun/IdleObservation/IdleObservationJudgement.cs": "53f985dbeb9664775180d8b12bf3b42c6c0895ace9e1990d3b56bf3dc280e475",
+        "VerifyRun/Input/B10PhaseRegistrationReader.cs": "e73faee335b336fb7d06590fa6d0c7f22f0c188dbcce3495b673c839fbe1c5c0",
+        "VerifyRun/Input/RestartManifestReader.cs": "d48a59bcbe7af3a60b00555b2b34f0faf40c671dbbfbce951ad835cc17000598",
+        "VerifyRun/Judgement/B10IntakeChecks.cs": "ade1802b795c9313ded04dbf1332752a0bc8c594473854519aecd54c6145b8ab",
+        "VerifyRun/Judgement/B10LateWriteChecks.cs": "0e6d61fe636cf7686cf88bb6d3d5e49bce09b0b6fec2fc8a142f248d5db5ddca",
+        "VerifyRun/Judgement/B10RepeatChecks.cs": "c34be5717c08a3b5757d750eeccaebcf92755870aefa041b08eb85142068089b",
+        "VerifyRun/Judgement/DuplicateClassifier.cs": "aadb29b13d9180e4f59e82051bc86181bdeaf8887a7e5429bec6e59f5b73c854",
+        "VerifyRun/Judgement/OutcomeClassifier.cs": "756aebdbba77298dd444f7f919c2f2de076fc5b27381f4e01e443c8802cf818f",
+        "VerifyRun/LedgerBatch/BatchingEvidenceRecorder.cs": "b2e9391b5b0d324b6e65f281bcb356dc0c8d8ae1d06fe039f57ad90d362adf5b",
+        "VerifyRun/Publication/PublicationAcceptance.cs": "780e2109d7b1a0f261d06eb12a8ba856c90f15aaefd189646bb1b96f1c6232e2",
+        "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs": "e266b1d73da52fe84fbb583bac42e8bd5e2118af445d8a2f3c4bf7c4ff67f661",
+        "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs": "5c0788ac841b4397610f602435cd7ef923b1b4caa36d701c454891f79b2706a8",
+        "VerifyRun/VerifyRunHandler.cs": "2a9d721f3b7f55e6aa4b7c19f4871278712dacba0549ac27dfe2a5f70a632c8e"
+      }
+    },
+    "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4": {
+      "assessments": {
+        "shared_inputs": {
+          "tests/Parchwell.Verifier.Tests/Judge/B10FinalJudgeTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Judge/B10FinalJudgeTests.cs changes from 5f4cc4d89ca1ff89413b7809dd72320460f37bfb51beeecda0c24c38e5f9d649 to 002731ebb70398b9ae0f61ccd4f748c93185e74f5e6ff1194a4e315253158463. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
+            ],
+            "current_sha256": "002731ebb70398b9ae0f61ccd4f748c93185e74f5e6ff1194a4e315253158463"
+          },
+          "tests/Parchwell.Verifier.Tests/Judge/B10FinalProjectionCodecTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Judge/B10FinalProjectionCodecTests.cs changes from 4d61dcdd6d4a715447677269bb6f4f336a8a1abc0803fd146d188c4469b61551 to 8952edd137efaf1aa186b986d57d5ffed5f0c15fd636ed40d437027779d67ca9. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
+            ],
+            "current_sha256": "8952edd137efaf1aa186b986d57d5ffed5f0c15fd636ed40d437027779d67ca9"
+          },
+          "tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs changes from 1814812adb2cbd18acefdb8042812f823b1a4a3eacb9affb54b65e35393f16b1 to b0c4abb2fd21de8d3af442119709af238834b6de8aa172082673d7f8e33f1638. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
+            ],
+            "current_sha256": "b0c4abb2fd21de8d3af442119709af238834b6de8aa172082673d7f8e33f1638"
+          },
+          "tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs changes from c63ed9d2e01565e958398afc60a9485eeb614ac94949e20d174e9afe4306b445 to 8524484b7a634663d8b9a3e9c426789e225f614e141defed86bd0799beb05c15. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
+            ],
+            "current_sha256": "8524484b7a634663d8b9a3e9c426789e225f614e141defed86bd0799beb05c15"
+          },
+          "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7030994225 records the scoped inventory verification. The runner change updates only the pinned B10 final projection codec source and full native inventory hashes. Other selections and executable code match the prior committed proof. Fresh timing is required for all 19 selections of that codec."
+            ],
+            "current_sha256": "5e123dc8552d72e9e424f292ebcc5b4b695ff39fed026470f2879d8b5a234552"
+          },
+          "tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs changes from c766e795d3d456822c23cdb3aa822ffac77fb150c02c2291a6e27cbddf96c629 to 118397b15974d96dd16098088ef775b11cd9d734050d8e6653028b82fdb6d7d1. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
+            ],
+            "current_sha256": "118397b15974d96dd16098088ef775b11cd9d734050d8e6653028b82fdb6d7d1"
+          },
+          "tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs changes from dd20e3a7e48a84c0cf6a2d93e4d96fe5147a9edf4cf48b0c5b1acd5bd3be212c to 2206b3a4b381e3a5c2656c080bf21c180fa9a86410bfe893009b9e5b8440392b. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
+            ],
+            "current_sha256": "2206b3a4b381e3a5c2656c080bf21c180fa9a86410bfe893009b9e5b8440392b"
+          }
+        },
+        "target_sources": {
+          "Common/Phase/B10FinalProjectionCodec.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. Common/Phase/B10FinalProjectionCodec.cs changes from 661a986f99eb0a6280582c1f55b0c232ee8f44382f04acaa4bbdc6e6c618b524 to 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
+            ],
+            "current_sha256": "43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f"
+          }
+        }
       },
       "shared_inputs": {
         ".config/dotnet-tools.json": "50249a8f3a7134b08b4409c485dfe67afb17910e5a2329bf65810c3338231244",
@@ -9356,15 +9875,17 @@
           "tests/Parchwell.Verifier.Tests/Judge/B10FinalJudgeTests.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 c6f6e80be4b90f4c0c49b5848f3448185e38ff9b6594f3f7f6fc8f6406bf77bf; current SHA-256 5f4cc4d89ca1ff89413b7809dd72320460f37bfb51beeecda0c24c38e5f9d649. The retained estimates apply to unchanged owners only and can understate their runtime.",
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6976227348 accepts this exact change for the unchanged source and selectors only. Previous audited SHA-256 096cbd626584294652239d6c5c1098c12900abd235cc6ceb3800a6e8fa273df4; current SHA-256 5f4cc4d89ca1ff89413b7809dd72320460f37bfb51beeecda0c24c38e5f9d649. The old timings may understate current runtime."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6976227348 accepts this exact change for the unchanged source and selectors only. Previous audited SHA-256 096cbd626584294652239d6c5c1098c12900abd235cc6ceb3800a6e8fa273df4; current SHA-256 5f4cc4d89ca1ff89413b7809dd72320460f37bfb51beeecda0c24c38e5f9d649. The old timings may understate current runtime.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Judge/B10FinalJudgeTests.cs changes from 5f4cc4d89ca1ff89413b7809dd72320460f37bfb51beeecda0c24c38e5f9d649 to 002731ebb70398b9ae0f61ccd4f748c93185e74f5e6ff1194a4e315253158463. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
             ],
-            "current_sha256": "5f4cc4d89ca1ff89413b7809dd72320460f37bfb51beeecda0c24c38e5f9d649"
+            "current_sha256": "002731ebb70398b9ae0f61ccd4f748c93185e74f5e6ff1194a4e315253158463"
           },
           "tests/Parchwell.Verifier.Tests/Judge/B10FinalProjectionCodecTests.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 939714db1761e60ac52e24072b517f20dda8eb18180b5c10db9c779db12b55e4; current SHA-256 4d61dcdd6d4a715447677269bb6f4f336a8a1abc0803fd146d188c4469b61551. The retained estimates apply to unchanged owners only and can understate their runtime."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 939714db1761e60ac52e24072b517f20dda8eb18180b5c10db9c779db12b55e4; current SHA-256 4d61dcdd6d4a715447677269bb6f4f336a8a1abc0803fd146d188c4469b61551. The retained estimates apply to unchanged owners only and can understate their runtime.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Judge/B10FinalProjectionCodecTests.cs changes from 4d61dcdd6d4a715447677269bb6f4f336a8a1abc0803fd146d188c4469b61551 to 8952edd137efaf1aa186b986d57d5ffed5f0c15fd636ed40d437027779d67ca9. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
             ],
-            "current_sha256": "4d61dcdd6d4a715447677269bb6f4f336a8a1abc0803fd146d188c4469b61551"
+            "current_sha256": "8952edd137efaf1aa186b986d57d5ffed5f0c15fd636ed40d437027779d67ca9"
           },
           "tests/Parchwell.Verifier.Tests/Judge/B10SweepChecksTests.cs": {
             "basis": [
@@ -9381,9 +9902,10 @@
           },
           "tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6969607168 The exact fixture correction is covered by the accepted timing risk. Original measured SHA-256 8433b902feb0c34c4108081fe741b9a6d4c48b6a7caba6ba9692ae4f284ace7b; current SHA-256 1814812adb2cbd18acefdb8042812f823b1a4a3eacb9affb54b65e35393f16b1. The retained estimates apply to unchanged owners only and can understate their runtime."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6969607168 The exact fixture correction is covered by the accepted timing risk. Original measured SHA-256 8433b902feb0c34c4108081fe741b9a6d4c48b6a7caba6ba9692ae4f284ace7b; current SHA-256 1814812adb2cbd18acefdb8042812f823b1a4a3eacb9affb54b65e35393f16b1. The retained estimates apply to unchanged owners only and can understate their runtime.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs changes from 1814812adb2cbd18acefdb8042812f823b1a4a3eacb9affb54b65e35393f16b1 to b0c4abb2fd21de8d3af442119709af238834b6de8aa172082673d7f8e33f1638. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
             ],
-            "current_sha256": "1814812adb2cbd18acefdb8042812f823b1a4a3eacb9affb54b65e35393f16b1"
+            "current_sha256": "b0c4abb2fd21de8d3af442119709af238834b6de8aa172082673d7f8e33f1638"
           },
           "tests/Parchwell.Verifier.Tests/Judge/PhaseJudgeTests.cs": {
             "basis": [
@@ -9399,9 +9921,10 @@
           },
           "tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 None; current SHA-256 c63ed9d2e01565e958398afc60a9485eeb614ac94949e20d174e9afe4306b445. The retained estimates apply to unchanged owners only and can understate their runtime."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 None; current SHA-256 c63ed9d2e01565e958398afc60a9485eeb614ac94949e20d174e9afe4306b445. The retained estimates apply to unchanged owners only and can understate their runtime.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs changes from c63ed9d2e01565e958398afc60a9485eeb614ac94949e20d174e9afe4306b445 to 8524484b7a634663d8b9a3e9c426789e225f614e141defed86bd0799beb05c15. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
             ],
-            "current_sha256": "c63ed9d2e01565e958398afc60a9485eeb614ac94949e20d174e9afe4306b445"
+            "current_sha256": "8524484b7a634663d8b9a3e9c426789e225f614e141defed86bd0799beb05c15"
           },
           "tests/Parchwell.Verifier.Tests/Judgement/B10LateWriteChecksTests.cs": {
             "basis": [
@@ -9443,9 +9966,10 @@
             "basis": [
               "Configuration equivalence uses the committed trees and exact unchanged physical selectors under https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637. Measured SHA-256 dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea14629a0af4625; current SHA-256 d4b1fb55e3e7dce9294d3914dc0c77f5b2cddc46c25132043eb9383025f1ee50.",
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7001549347 permits an exact committed-tree comparison for unchanged companion shards. Observed dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea14629a0af4625; last combined candidate d4b1fb55e3e7dce9294d3914dc0c77f5b2cddc46c25132043eb9383025f1ee50; paired execution 66e6263885576b8b6c1078b935247b859dc00791d214a21c2fd1d989ab7a5933. The acceptance worker template, build and test inputs and the selected owner invocation are identical under the pinned transition. Earlier accepted input timing risks continue to apply.",
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7007989967 permits reuse only when committed inputs and the effective physical selection match. The runner transition adds one source-bound static cohort for the previously timed-out p4 owner. The retained owner keeps its prior invocation; the original measured maps and timing record remain pinned."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7007989967 permits reuse only when committed inputs and the effective physical selection match. The runner transition adds one source-bound static cohort for the previously timed-out p4 owner. The retained owner keeps its prior invocation; the original measured maps and timing record remain pinned.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7030994225 records the scoped inventory verification. The runner change updates only the pinned B10 final projection codec source and full native inventory hashes. Other selections and executable code match the prior committed proof. Fresh timing is required for all 19 selections of that codec."
             ],
-            "current_sha256": "9ba2b444dcd5e3c06e2e24bb2fe6b1bc6e6dcd67f9e7eaa3ad57c9047d9817b9"
+            "current_sha256": "5e123dc8552d72e9e424f292ebcc5b4b695ff39fed026470f2879d8b5a234552"
           },
           "tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json": {
             "basis": [
@@ -9469,15 +9993,17 @@
           },
           "tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 None; current SHA-256 c766e795d3d456822c23cdb3aa822ffac77fb150c02c2291a6e27cbddf96c629. The retained estimates apply to unchanged owners only and can understate their runtime."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 None; current SHA-256 c766e795d3d456822c23cdb3aa822ffac77fb150c02c2291a6e27cbddf96c629. The retained estimates apply to unchanged owners only and can understate their runtime.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs changes from c766e795d3d456822c23cdb3aa822ffac77fb150c02c2291a6e27cbddf96c629 to 118397b15974d96dd16098088ef775b11cd9d734050d8e6653028b82fdb6d7d1. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
             ],
-            "current_sha256": "c766e795d3d456822c23cdb3aa822ffac77fb150c02c2291a6e27cbddf96c629"
+            "current_sha256": "118397b15974d96dd16098088ef775b11cd9d734050d8e6653028b82fdb6d7d1"
           },
           "tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 d83303dd4a017c4668904575d5b29f6b72fe0c5e13de1e15f2304cbb6ea2541e; current SHA-256 dd20e3a7e48a84c0cf6a2d93e4d96fe5147a9edf4cf48b0c5b1acd5bd3be212c. The retained estimates apply to unchanged owners only and can understate their runtime."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 d83303dd4a017c4668904575d5b29f6b72fe0c5e13de1e15f2304cbb6ea2541e; current SHA-256 dd20e3a7e48a84c0cf6a2d93e4d96fe5147a9edf4cf48b0c5b1acd5bd3be212c. The retained estimates apply to unchanged owners only and can understate their runtime.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs changes from dd20e3a7e48a84c0cf6a2d93e4d96fe5147a9edf4cf48b0c5b1acd5bd3be212c to 2206b3a4b381e3a5c2656c080bf21c180fa9a86410bfe893009b9e5b8440392b. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
             ],
-            "current_sha256": "dd20e3a7e48a84c0cf6a2d93e4d96fe5147a9edf4cf48b0c5b1acd5bd3be212c"
+            "current_sha256": "2206b3a4b381e3a5c2656c080bf21c180fa9a86410bfe893009b9e5b8440392b"
           },
           "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": {
             "basis": [
@@ -9510,9 +10036,10 @@
           },
           "Common/Phase/B10FinalProjectionCodec.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5; current SHA-256 661a986f99eb0a6280582c1f55b0c232ee8f44382f04acaa4bbdc6e6c618b524. The retained estimates apply to unchanged owners only and can understate their runtime."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5; current SHA-256 661a986f99eb0a6280582c1f55b0c232ee8f44382f04acaa4bbdc6e6c618b524. The retained estimates apply to unchanged owners only and can understate their runtime.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. Common/Phase/B10FinalProjectionCodec.cs changes from 661a986f99eb0a6280582c1f55b0c232ee8f44382f04acaa4bbdc6e6c618b524 to 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
             ],
-            "current_sha256": "661a986f99eb0a6280582c1f55b0c232ee8f44382f04acaa4bbdc6e6c618b524"
+            "current_sha256": "43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f"
           },
           "Common/Phase/B10SweepEvidenceCodec.cs": {
             "basis": [
@@ -10767,15 +11294,17 @@
           "tests/Parchwell.Verifier.Tests/Judge/B10FinalJudgeTests.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 c6f6e80be4b90f4c0c49b5848f3448185e38ff9b6594f3f7f6fc8f6406bf77bf; current SHA-256 5f4cc4d89ca1ff89413b7809dd72320460f37bfb51beeecda0c24c38e5f9d649. The retained estimates apply to unchanged owners only and can understate their runtime.",
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6976227348 accepts this exact change for the unchanged source and selectors only. Previous audited SHA-256 096cbd626584294652239d6c5c1098c12900abd235cc6ceb3800a6e8fa273df4; current SHA-256 5f4cc4d89ca1ff89413b7809dd72320460f37bfb51beeecda0c24c38e5f9d649. The old timings may understate current runtime."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6976227348 accepts this exact change for the unchanged source and selectors only. Previous audited SHA-256 096cbd626584294652239d6c5c1098c12900abd235cc6ceb3800a6e8fa273df4; current SHA-256 5f4cc4d89ca1ff89413b7809dd72320460f37bfb51beeecda0c24c38e5f9d649. The old timings may understate current runtime.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Judge/B10FinalJudgeTests.cs changes from 5f4cc4d89ca1ff89413b7809dd72320460f37bfb51beeecda0c24c38e5f9d649 to 002731ebb70398b9ae0f61ccd4f748c93185e74f5e6ff1194a4e315253158463. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
             ],
-            "current_sha256": "5f4cc4d89ca1ff89413b7809dd72320460f37bfb51beeecda0c24c38e5f9d649"
+            "current_sha256": "002731ebb70398b9ae0f61ccd4f748c93185e74f5e6ff1194a4e315253158463"
           },
           "tests/Parchwell.Verifier.Tests/Judge/B10FinalProjectionCodecTests.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 939714db1761e60ac52e24072b517f20dda8eb18180b5c10db9c779db12b55e4; current SHA-256 4d61dcdd6d4a715447677269bb6f4f336a8a1abc0803fd146d188c4469b61551. The retained estimates apply to unchanged owners only and can understate their runtime."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 939714db1761e60ac52e24072b517f20dda8eb18180b5c10db9c779db12b55e4; current SHA-256 4d61dcdd6d4a715447677269bb6f4f336a8a1abc0803fd146d188c4469b61551. The retained estimates apply to unchanged owners only and can understate their runtime.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Judge/B10FinalProjectionCodecTests.cs changes from 4d61dcdd6d4a715447677269bb6f4f336a8a1abc0803fd146d188c4469b61551 to 8952edd137efaf1aa186b986d57d5ffed5f0c15fd636ed40d437027779d67ca9. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
             ],
-            "current_sha256": "4d61dcdd6d4a715447677269bb6f4f336a8a1abc0803fd146d188c4469b61551"
+            "current_sha256": "8952edd137efaf1aa186b986d57d5ffed5f0c15fd636ed40d437027779d67ca9"
           },
           "tests/Parchwell.Verifier.Tests/Judge/B10SweepChecksTests.cs": {
             "basis": [
@@ -10792,9 +11321,10 @@
           },
           "tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6969607168 The exact fixture correction is covered by the accepted timing risk. Original measured SHA-256 8433b902feb0c34c4108081fe741b9a6d4c48b6a7caba6ba9692ae4f284ace7b; current SHA-256 1814812adb2cbd18acefdb8042812f823b1a4a3eacb9affb54b65e35393f16b1. The retained estimates apply to unchanged owners only and can understate their runtime."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6969607168 The exact fixture correction is covered by the accepted timing risk. Original measured SHA-256 8433b902feb0c34c4108081fe741b9a6d4c48b6a7caba6ba9692ae4f284ace7b; current SHA-256 1814812adb2cbd18acefdb8042812f823b1a4a3eacb9affb54b65e35393f16b1. The retained estimates apply to unchanged owners only and can understate their runtime.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs changes from 1814812adb2cbd18acefdb8042812f823b1a4a3eacb9affb54b65e35393f16b1 to b0c4abb2fd21de8d3af442119709af238834b6de8aa172082673d7f8e33f1638. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
             ],
-            "current_sha256": "1814812adb2cbd18acefdb8042812f823b1a4a3eacb9affb54b65e35393f16b1"
+            "current_sha256": "b0c4abb2fd21de8d3af442119709af238834b6de8aa172082673d7f8e33f1638"
           },
           "tests/Parchwell.Verifier.Tests/Judge/PhaseJudgeTests.cs": {
             "basis": [
@@ -10810,9 +11340,10 @@
           },
           "tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 None; current SHA-256 c63ed9d2e01565e958398afc60a9485eeb614ac94949e20d174e9afe4306b445. The retained estimates apply to unchanged owners only and can understate their runtime."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 None; current SHA-256 c63ed9d2e01565e958398afc60a9485eeb614ac94949e20d174e9afe4306b445. The retained estimates apply to unchanged owners only and can understate their runtime.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs changes from c63ed9d2e01565e958398afc60a9485eeb614ac94949e20d174e9afe4306b445 to 8524484b7a634663d8b9a3e9c426789e225f614e141defed86bd0799beb05c15. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
             ],
-            "current_sha256": "c63ed9d2e01565e958398afc60a9485eeb614ac94949e20d174e9afe4306b445"
+            "current_sha256": "8524484b7a634663d8b9a3e9c426789e225f614e141defed86bd0799beb05c15"
           },
           "tests/Parchwell.Verifier.Tests/Judgement/B10LateWriteChecksTests.cs": {
             "basis": [
@@ -10854,9 +11385,10 @@
             "basis": [
               "Configuration equivalence uses the committed trees and exact unchanged physical selectors under https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637. Measured SHA-256 dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea14629a0af4625; current SHA-256 d4b1fb55e3e7dce9294d3914dc0c77f5b2cddc46c25132043eb9383025f1ee50.",
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7001549347 permits an exact committed-tree comparison for unchanged companion shards. Observed dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea14629a0af4625; last combined candidate d4b1fb55e3e7dce9294d3914dc0c77f5b2cddc46c25132043eb9383025f1ee50; paired execution 66e6263885576b8b6c1078b935247b859dc00791d214a21c2fd1d989ab7a5933. The acceptance worker template, build and test inputs and the selected owner invocation are identical under the pinned transition. Earlier accepted input timing risks continue to apply.",
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7007989967 permits reuse only when committed inputs and the effective physical selection match. The runner transition adds one source-bound static cohort for the previously timed-out p4 owner. The retained owner keeps its prior invocation; the original measured maps and timing record remain pinned."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7007989967 permits reuse only when committed inputs and the effective physical selection match. The runner transition adds one source-bound static cohort for the previously timed-out p4 owner. The retained owner keeps its prior invocation; the original measured maps and timing record remain pinned.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7030994225 records the scoped inventory verification. The runner change updates only the pinned B10 final projection codec source and full native inventory hashes. Other selections and executable code match the prior committed proof. Fresh timing is required for all 19 selections of that codec."
             ],
-            "current_sha256": "9ba2b444dcd5e3c06e2e24bb2fe6b1bc6e6dcd67f9e7eaa3ad57c9047d9817b9"
+            "current_sha256": "5e123dc8552d72e9e424f292ebcc5b4b695ff39fed026470f2879d8b5a234552"
           },
           "tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json": {
             "basis": [
@@ -10880,15 +11412,17 @@
           },
           "tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 None; current SHA-256 c766e795d3d456822c23cdb3aa822ffac77fb150c02c2291a6e27cbddf96c629. The retained estimates apply to unchanged owners only and can understate their runtime."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 None; current SHA-256 c766e795d3d456822c23cdb3aa822ffac77fb150c02c2291a6e27cbddf96c629. The retained estimates apply to unchanged owners only and can understate their runtime.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs changes from c766e795d3d456822c23cdb3aa822ffac77fb150c02c2291a6e27cbddf96c629 to 118397b15974d96dd16098088ef775b11cd9d734050d8e6653028b82fdb6d7d1. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
             ],
-            "current_sha256": "c766e795d3d456822c23cdb3aa822ffac77fb150c02c2291a6e27cbddf96c629"
+            "current_sha256": "118397b15974d96dd16098088ef775b11cd9d734050d8e6653028b82fdb6d7d1"
           },
           "tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 d83303dd4a017c4668904575d5b29f6b72fe0c5e13de1e15f2304cbb6ea2541e; current SHA-256 dd20e3a7e48a84c0cf6a2d93e4d96fe5147a9edf4cf48b0c5b1acd5bd3be212c. The retained estimates apply to unchanged owners only and can understate their runtime."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 d83303dd4a017c4668904575d5b29f6b72fe0c5e13de1e15f2304cbb6ea2541e; current SHA-256 dd20e3a7e48a84c0cf6a2d93e4d96fe5147a9edf4cf48b0c5b1acd5bd3be212c. The retained estimates apply to unchanged owners only and can understate their runtime.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs changes from dd20e3a7e48a84c0cf6a2d93e4d96fe5147a9edf4cf48b0c5b1acd5bd3be212c to 2206b3a4b381e3a5c2656c080bf21c180fa9a86410bfe893009b9e5b8440392b. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
             ],
-            "current_sha256": "dd20e3a7e48a84c0cf6a2d93e4d96fe5147a9edf4cf48b0c5b1acd5bd3be212c"
+            "current_sha256": "2206b3a4b381e3a5c2656c080bf21c180fa9a86410bfe893009b9e5b8440392b"
           },
           "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": {
             "basis": [
@@ -10942,9 +11476,10 @@
           },
           "Common/Phase/B10FinalProjectionCodec.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5; current SHA-256 661a986f99eb0a6280582c1f55b0c232ee8f44382f04acaa4bbdc6e6c618b524. The retained estimates apply to unchanged owners only and can understate their runtime."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 c92b0d32b3246a41ef4fc3b3f4607b3397161782c99c03d5774a1def895a1dc5; current SHA-256 661a986f99eb0a6280582c1f55b0c232ee8f44382f04acaa4bbdc6e6c618b524. The retained estimates apply to unchanged owners only and can understate their runtime.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. Common/Phase/B10FinalProjectionCodec.cs changes from 661a986f99eb0a6280582c1f55b0c232ee8f44382f04acaa4bbdc6e6c618b524 to 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
             ],
-            "current_sha256": "661a986f99eb0a6280582c1f55b0c232ee8f44382f04acaa4bbdc6e6c618b524"
+            "current_sha256": "43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f"
           },
           "Common/Phase/B10SweepEvidenceCodec.cs": {
             "basis": [
