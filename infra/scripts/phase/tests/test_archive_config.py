@@ -151,13 +151,14 @@ class CaptureInventoryTests(unittest.TestCase):
     def test_manifest_transport_versions(self):
         identity, _, manifest = self._manifest_fixture()
         valid = {'azure_cli': '2.93.0', 'azure_storage_blob': '12.29.0b1'}
-        for versions in (None, valid):
+        for versions in (None, valid, {**valid, 'azure_cli': '2.93.0' + 'a' * 32}):
             candidate = manifest if versions is None else {**manifest, 'transport_versions': versions}
             with self.subTest(accepted=versions):
                 self.assertEqual(identity, archive.validate_manifest(candidate))
         rejected = (None, {}, {'azure_cli': '2.93.0'}, {**valid, 'python': '/x'},
                     {'azure_cli': 2, 'azure_storage_blob': '12.29.0b1'},
-                    {'azure_cli': '2.93', 'azure_storage_blob': '12.29.0b1'})
+                    {'azure_cli': '2.93', 'azure_storage_blob': '12.29.0b1'},
+                    {**valid, 'azure_cli': '2.93.0' + 'a' * 33}, {**valid, 'azure_storage_blob': '12.29.0\u00e9'})
         for versions in rejected:
             with self.subTest(rejected=versions), self.assertRaises(archive.InvalidArchiveConfig):
                 archive.validate_manifest({**manifest, 'transport_versions': versions})

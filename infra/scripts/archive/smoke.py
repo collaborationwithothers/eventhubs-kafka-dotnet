@@ -282,7 +282,7 @@ def preflight(deadline):
         code, output, _ = command([python, '-c', 'import importlib.metadata; print(importlib.metadata.version("azure-storage-blob"))'], deadline)
         if code:
             raise Invalid()
-        azure_storage_blob = readable_version(output.strip(b' \t\r\n').decode('ascii'))
+        azure_storage_blob = readable_version(output.strip().decode('ascii'))
         return {'python': python, 'azure_cli': azure_cli, 'azure_storage_blob': azure_storage_blob}
     except (OSError, ValueError, TypeError):
         raise Invalid() from None
@@ -678,7 +678,7 @@ def main(argv):
         if argv[0] == 'run':
             c = config(True)
         found = preflight(deadline)
-        return 0 if argv[0] == 'preflight' else run_probe(c, deadline, diagnostic_python=found['python'], transport_versions=found)
+        return 0 if argv[0] == 'preflight' else run_probe(c, deadline, diagnostic_python=found['python'], transport_versions={'azure_cli': found['azure_cli'], 'azure_storage_blob': found['azure_storage_blob']})
     except Invalid:
         if c is not None:
             with contextlib.suppress(OSError, Invalid): failure_report(c, Gap('config_invalid', 'unsupported configuration'))

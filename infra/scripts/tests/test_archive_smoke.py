@@ -558,6 +558,14 @@ class ArchiveSmokeTest(unittest.TestCase):
             with patch.object(smoke, 'command', side_effect=replies(1)):
                 with self.assertRaises(smoke.Invalid): smoke.preflight(float('inf'))
 
+    def test_main_passes_only_version_keys_to_probe(self):
+        found = {'python': '/opt/az/bin/python3', 'azure_cli': '2.93.0', 'azure_storage_blob': '12.29.0b1'}
+        with patch.object(smoke, 'config', return_value=(None,) * 7), patch.object(smoke, 'preflight', return_value=found), \
+                patch.object(smoke, 'run_probe', return_value=0) as probe:
+            self.assertEqual(smoke.main(['run']), 0)
+        self.assertEqual(probe.call_args.kwargs['transport_versions'], TRANSPORT_VERSIONS)
+        self.assertEqual(probe.call_args.kwargs['diagnostic_python'], '/opt/az/bin/python3')
+
     def test_failure_report_keeps_null_versions(self):
         with tempfile.TemporaryDirectory() as directory:
             smoke.failure_report((None, Path(directory), None, None, {}), smoke.Gap('config_invalid', 'archive transport version'))

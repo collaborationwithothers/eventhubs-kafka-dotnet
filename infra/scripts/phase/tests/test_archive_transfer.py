@@ -568,7 +568,7 @@ class TransferTests(unittest.TestCase):
         session = Path(self.tmp.name) / 'preflight-session'; session.mkdir(mode=0o700)
         (session / 'freshness.json').write_text(json.dumps({'request_started_monotonic': time.monotonic(), 'assertion_exp': int(time.time()) + 600}))
         python = Path(self.tmp.name) / 'cli-python'
-        python.write_text('#!/usr/bin/python3\nimport os\nimport sys\nprint(os.environ.get("ARCHIVE_TEST_SDK", "12.29.0b1"))\nsys.exit(int(os.environ.get("ARCHIVE_TEST_SDK_EXIT", "0")))\n'); python.chmod(0o700)
+        python.write_text('#!/usr/bin/python3\nimport os\nimport sys\nprint(os.environ.get("ARCHIVE_TEST_SDK", "12.29.0b1"))\nsys.stderr.write(os.environ.get("ARCHIVE_TEST_SDK_ERR", ""))\nsys.exit(int(os.environ.get("ARCHIVE_TEST_SDK_EXIT", "0")))\n'); python.chmod(0o700)
         fake = Path(self.tmp.name) / 'az-real-version'
         fake.write_text('#!/usr/bin/python3\nimport json,os,sys\nif sys.argv[1] == "version": print(json.dumps({"azure-cli": os.environ.get("ARCHIVE_TEST_CLI", "2.92.0")}))\nelse: print(os.environ.get("ARCHIVE_TEST_LOCATION", ""))\n'); fake.chmod(0o700)
         wrapper_dir = Path(__file__).resolve().parents[4] / 'scripts/azure-cli-session'
@@ -593,7 +593,7 @@ class TransferTests(unittest.TestCase):
             cases = ({'ARCHIVE_TEST_CLI': '2.93'}, {'ARCHIVE_TEST_CLI': 'v2.93.0'}, {'ARCHIVE_TEST_CLI': '2.93.0 '},
                      {'ARCHIVE_TEST_CLI': '2.93.0' + 'a' * 33}, {'ARCHIVE_TEST_CLI': ''},
                      {'ARCHIVE_TEST_SDK': ''}, {'ARCHIVE_TEST_SDK': 'not-a-version'}, {'ARCHIVE_TEST_SDK': '12.29'},
-                     {'ARCHIVE_TEST_SDK': 'PackageNotFoundError', 'ARCHIVE_TEST_SDK_EXIT': '1'},
+                     {'ARCHIVE_TEST_SDK_ERR': 'PackageNotFoundError', 'ARCHIVE_TEST_SDK_EXIT': '1'},
                      {'ARCHIVE_TEST_LOCATION': ''}, {'ARCHIVE_TEST_LOCATION': "Python location 'relative/python'"},
                      {'ARCHIVE_TEST_LOCATION': env['ARCHIVE_TEST_LOCATION'] + '\n' + env['ARCHIVE_TEST_LOCATION']},
                      {'ARCHIVE_TEST_LOCATION': 'Python location /not-quoted'},

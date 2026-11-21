@@ -882,13 +882,6 @@ def publication_inventory(data, prefix, identity):
     value = strict_control(data, 1048576)
     fields = {'schema_version', 'identity', 'worker_status', 'bookkeeping_complete', 'worker_complete', 'publication_complete', 'artifacts'}
     names = ('ledger.jsonl', 'manifest.json', 'statistics.jsonl', 'request-lifecycle.jsonl', 'capabilities.json')
-    if isinstance(value, dict) and 'transport_versions' in value:
-        versions = value['transport_versions']
-        if (not isinstance(versions, dict) or set(versions) != {'azure_cli', 'azure_storage_blob'}
-                or any(not isinstance(item, str) or not item.isascii() or not TRANSPORT_VERSION.fullmatch(item)
-                       for item in versions.values())):
-            raise InvalidArchiveConfig()
-        fields = fields | {'transport_versions'}
     if (not isinstance(value, dict) or set(value) != fields or type(value['schema_version']) is not int
             or value['schema_version'] != 1 or value['identity'] != identity
             or not isinstance(value['worker_status'], str)
