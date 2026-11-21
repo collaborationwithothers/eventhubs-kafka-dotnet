@@ -304,7 +304,7 @@
     "tests/Parchwell.Verifier.Tests/Judge/PhaseJudgeTests.cs": "91e652585a67723c588b424b237449257345864f4898cfd64bc50c4fc0d73833",
     "tests/Parchwell.Verifier.Tests/Judge/PublicationAcceptanceTests.cs": "49f69c36053b1b4df84ea16c741ea5e0f0333ba5d5c28395495e8f4fbacf992c",
     "tests/Parchwell.Verifier.Tests/Judgement/AbruptClassificationDuplicateTests.cs": "3b74b9e8f1a02e259b9ae5c2289dcd062178611ba27d08aa34a403b2d080bcc3",
-    "tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs": "c20d9e80a731ae33938d479459c8e5375101a5b3eae72b282000017dcea5eeaf",
+    "tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs": "381acc092771adf027b0f3fe58e246e76c32fe05811de0397760f96ebb6af586",
     "tests/Parchwell.Verifier.Tests/Judgement/B10IntakeChecksTests.cs": "5eef5f215344ae456cfeb0ca7ac606325de059c3b10c95c8d8dc28ad12b9333e",
     "tests/Parchwell.Verifier.Tests/Judgement/B10LateWriteChecksTests.cs": "56de4c4f6058f293ebffc79aea7c82cbd74016fc0cebd7a760facc2848c356f6",
     "tests/Parchwell.Verifier.Tests/Judgement/B10RepeatChecksTests.cs": "eaa5890a747696c464e0f9dc546016210670847552d01f70abb530800a12018c",
@@ -3071,350 +3071,350 @@
       "evidence": [
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14704435153",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14705894011",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "67f989990e80be669a3a19ab81f0ec9457a72b3c28efb7fa4142d313aded8680",
-          "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56"
+          "sha256": "488a49d4ce77c008473ebb22dcfeceb386f4c8b14a939cd46841d6b0160a46f7",
+          "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14703603270",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706268067",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "373abd1764f0ddf0678f244fd7d24eb1726d2a6c61cbdb7f93c760ba74c4ad5c",
-          "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56"
+          "sha256": "7bb9f85dbb53e859fa889e77bdd65d9f7c8aa8c45ce90ac22b33a40e199bd3a2",
+          "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14703756492",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706516504",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "e1a50ab2d6d15041323abe7d76419cd9fa5e4c380b8dee1315d44ae0b749ad21",
-          "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56"
+          "sha256": "be30d79a440de03291d7943053ed56a7d05cea74ce19f1254a11e5e0e37ac69f",
+          "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14704655846",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706092502",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "75786a0320ea18044975c781ffc2cb1b02c9b01b6b40eb58cc8181b412f58fe5",
-          "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56"
+          "sha256": "26c0d9fdc452a2d92fd77eeb7b1b7939a13cfc915a6ef2e6559800c8287c4461",
+          "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14703653458",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706522174",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "a7a5285cad30359c01089ae2e1d3f6258449bc5c22997ff7da17b2168c72a9c7",
-          "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56"
+          "sha256": "f3f829823905121c18893779fc19a74dd833e3ecb622da7eb1b27562d9c0b792",
+          "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14703602947",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14705924874",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "f4be14e0ba2b630137c72b04a7be8eabf4496fb79cd598083ed00b8a0bb69626",
-          "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56"
+          "sha256": "100eb8570b4a8c183a53bdd15b309d33d00d410f59d02a8e48792c796bd67a7e",
+          "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14703603321",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706671949",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "f0e113db518171c17e5f44b4ad9f9d2e3ce7b3f97e708472581aec9411ceb56d",
-          "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56"
+          "sha256": "ed2ebd427bb116faa94589daa614a6cb1d73cf1be42d24608651accc3031edda",
+          "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14704635170",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706896059",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "2565af90486383b4e838157e7e01608a8d2ae41ffd5a00f39f8a8dfb973cbe15",
-          "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56"
+          "sha256": "f6aa29d097923fcafd7e3327b10789f0eb41e63fe80e5b155c35e111db2f60e5",
+          "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14704331944",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706397979",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "aa7200377c1b566c036b7c87bb3905dd2739619b2adaf67a79dc3118c1d719b6",
-          "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56"
+          "sha256": "3d027eb95c8267f5d7d635526a46913177e4c4558e596d7faada567ee0ceb90d",
+          "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14704016756",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14705993450",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "bac916024c6b298a5754e7846dab97557da6fed5737936a2f0dad9869fce10b9",
-          "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56"
+          "sha256": "cde055ef67ecc7b0e94fb01c9a22dcde4d688158b01cc5e3999c2b529a957c77",
+          "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14704120346",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706396597",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "100c439dbba09816805fa9993c986a5e9a580e055297c53f6c6187d211258a17",
-          "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56"
+          "sha256": "3eae68b2aeeca6ae82797208fe0b868f9cf917cac84b0e81bb8c4a071c0a7c57",
+          "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14704455795",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706153784",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "faae38faf51a4a087e8c7dc12d3308a35cd0b9a761192401198ff948729804e1",
-          "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56"
+          "sha256": "ad4906be1c2d86df6e185c07dffaf0441dd3fbeefacff3af956ddb4ff01fd3b1",
+          "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14703976049",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706571610",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "21529ddb4bcb4ffbe186d43754e7d5b8244a8e79108a693722bbae516d0b252c",
-          "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56"
+          "sha256": "5673380352e013f4caf75ddf45cf5a60d7f6a27ea47b4fba96f315e56289707b",
+          "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14703682505",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706865713",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "9007cedd3a8fd24cce8e4e4138e6ee6bf6056acbcb285b9d820a50a076e2a250",
-          "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56"
+          "sha256": "b9c877f3cfab8aeef93d36d3a27b88fd7a387a2654a64d1f3ee85d10d5021011",
+          "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14704062159",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14705604229",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "03e1b9481ab2fb5e83c8b78625375879eb9e29afb3f91887eeea5bc3ae7a066f",
-          "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56"
+          "sha256": "95f7209d83a3668283e6a76acb8bab08558b9f251aaa81b78367bce75803c919",
+          "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14704515349",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706103876",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "758b964974a42cbeb25c12482a0d74c1378113c40c625a4229351fa5145681c1",
-          "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56"
+          "sha256": "41769564e9b8d30e36c8060959e33b322b7da66e8753558598cbbd505d49ae39",
+          "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14704440188",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706069636",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "103bdb41f21f911a056485882d183ad4ecb9010631aba6054f87634b8b493766",
-          "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56"
+          "sha256": "0de4dcd219e1447bdae1b83fc8538544e93d0e37dbb4a7d00c1e78793950456b",
+          "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14703848053",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706650493",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "799bdda178c7bb35b97121dee893a87335a7fd5fbea7008eda3e9f1707658348",
-          "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56"
+          "sha256": "150d75dd21b92e870a8fdee289a55e410590d006656e168a8d07e345d8d2cd43",
+          "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872"
         },
         {
           "kind": "local_probe",
-          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14703847694",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706411876",
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Complete retained timing and selector evidence.",
-          "sha256": "0ef983fa4314fb0471c0040a3ac802034bc502a9b0c678579e3e683ca97485fa",
-          "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56"
+          "sha256": "2e5f01209c374937d9eb43d480fd0ce5eef250d03ca221599d1edb0c8699a0ef",
+          "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872"
         }
       ],
       "shards": {
         "b10-final-classification-crossing": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14704435153 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 1077,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14705894011 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 702,
           "isolated_seconds": 0,
           "main_mutants": 22,
-          "main_work_seconds": 1797,
+          "main_work_seconds": 1173,
           "parallelism": 2,
-          "selection_sha256": "91b73cf0c5e9df7b95e1d6424876792a88d7839fc141c158e9caefb04bee531c",
-          "setup_seconds": 178,
-          "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+          "selection_sha256": "29d57abe97bddfb443e921d4ece83d5ad0492a4434857db998f59eecf021f42e",
+          "setup_seconds": 115,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "b10-final-classification-p1": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14703603270 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 1653,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706268067 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1355,
           "isolated_seconds": 0,
           "main_mutants": 37,
-          "main_work_seconds": 2974,
-          "parallelism": 2,
-          "selection_sha256": "c1f6d094e591c563e8eba85c88213bab5c860662d9faab433c9e42657590f004",
-          "setup_seconds": 166,
-          "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
-        },
-        "b10-final-classification-p10": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14703756492 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 988,
-          "isolated_seconds": 0,
-          "main_mutants": 37,
-          "main_work_seconds": 1760,
-          "parallelism": 2,
-          "selection_sha256": "99390ca3d3d2b0d77f3b748d4ba3f829e3f442a885ab6b472d55fe302f06b632",
-          "setup_seconds": 108,
-          "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
-        },
-        "b10-final-classification-p11": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14704655846 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 1646,
-          "isolated_seconds": 0,
-          "main_mutants": 44,
-          "main_work_seconds": 3008,
-          "parallelism": 2,
-          "selection_sha256": "fa5a03351692541681d23b0b1bc1571179b5f9127498cec4fa5e46ca2c7baedc",
-          "setup_seconds": 142,
-          "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
-        },
-        "b10-final-classification-p12": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14703653458 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 1925,
-          "isolated_seconds": 0,
-          "main_mutants": 43,
-          "main_work_seconds": 3495,
-          "parallelism": 2,
-          "selection_sha256": "42be9112fd70e963c673c2c280054a6a798fba5a6552daaa732f296ed9b4cad6",
-          "setup_seconds": 177,
-          "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
-        },
-        "b10-final-classification-p13": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14703602947 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 1440,
-          "isolated_seconds": 0,
-          "main_mutants": 43,
-          "main_work_seconds": 2612,
-          "parallelism": 2,
-          "selection_sha256": "64ec6f2a9ec87ec09df680b0581f8a202b6b1d6a1f50e1804a59851e3b4867b4",
-          "setup_seconds": 134,
-          "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
-        },
-        "b10-final-classification-p14": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14703603321 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 1673,
-          "isolated_seconds": 0,
-          "main_mutants": 37,
-          "main_work_seconds": 2983,
-          "parallelism": 2,
-          "selection_sha256": "c112e3be81c4cb2acc7f4cacdb415b33de0c647104686af257a47bbad81285b6",
-          "setup_seconds": 181,
-          "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
-        },
-        "b10-final-classification-p15": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14704635170 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 1307,
-          "isolated_seconds": 0,
-          "main_mutants": 37,
-          "main_work_seconds": 2355,
-          "parallelism": 2,
-          "selection_sha256": "5e9de4bd971829c96f57c511008ca41442aa85f5061772e8a2f463ae4a5864ca",
-          "setup_seconds": 129,
-          "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
-        },
-        "b10-final-classification-p16": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14704331944 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 1774,
-          "isolated_seconds": 0,
-          "main_mutants": 40,
-          "main_work_seconds": 3207,
-          "parallelism": 2,
-          "selection_sha256": "0b23a58686e35a34cdc972aad9039f58e41d708c0afbb1dd39478505f1e8d382",
-          "setup_seconds": 170,
-          "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
-        },
-        "b10-final-classification-p17": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14704016756 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 1152,
-          "isolated_seconds": 0,
-          "main_mutants": 31,
-          "main_work_seconds": 2015,
-          "parallelism": 2,
-          "selection_sha256": "437215f11dd7057dde454db60f4bc3652e25a914c1afbb94e11e943fc0ec8366",
-          "setup_seconds": 144,
-          "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
-        },
-        "b10-final-classification-p18": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14704120346 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 772,
-          "isolated_seconds": 0,
-          "main_mutants": 29,
-          "main_work_seconds": 1338,
-          "parallelism": 2,
-          "selection_sha256": "6cd9a9c47ae2e883f80e0820ea5c7d0b15d71bc322b0a493308de3b3311047d0",
-          "setup_seconds": 103,
-          "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
-        },
-        "b10-final-classification-p2": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14704455795 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 1382,
-          "isolated_seconds": 0,
-          "main_mutants": 32,
           "main_work_seconds": 2427,
           "parallelism": 2,
+          "selection_sha256": "c1f6d094e591c563e8eba85c88213bab5c860662d9faab433c9e42657590f004",
+          "setup_seconds": 141,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+        },
+        "b10-final-classification-p10": {
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706516504 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1271,
+          "isolated_seconds": 0,
+          "main_mutants": 37,
+          "main_work_seconds": 2277,
+          "parallelism": 2,
+          "selection_sha256": "e3412ab2e8dad05a5b15ce0d0593c3ff4896de99cc1937e3dce30deaafef545a",
+          "setup_seconds": 132,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+        },
+        "b10-final-classification-p11": {
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706092502 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1074,
+          "isolated_seconds": 0,
+          "main_mutants": 44,
+          "main_work_seconds": 1945,
+          "parallelism": 2,
+          "selection_sha256": "76c3bd6c449a97ff3f6b9c31ac47c32d1f4ee9893c1d7223728b848dd43acb4e",
+          "setup_seconds": 101,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+        },
+        "b10-final-classification-p12": {
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706522174 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1575,
+          "isolated_seconds": 0,
+          "main_mutants": 43,
+          "main_work_seconds": 2883,
+          "parallelism": 2,
+          "selection_sha256": "d770e1b775637f0a4651dd30dbbfed802e04a6abe4bd21d9ffe2d94ed75d658d",
+          "setup_seconds": 133,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+        },
+        "b10-final-classification-p13": {
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14705924874 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 2082,
+          "isolated_seconds": 0,
+          "main_mutants": 43,
+          "main_work_seconds": 3778,
+          "parallelism": 2,
+          "selection_sha256": "294b1546762eacc244dd0bc8e60388d5cdc7675f06928393402e150eb8f51ef4",
+          "setup_seconds": 193,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+        },
+        "b10-final-classification-p14": {
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706671949 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1744,
+          "isolated_seconds": 0,
+          "main_mutants": 37,
+          "main_work_seconds": 3117,
+          "parallelism": 2,
+          "selection_sha256": "3a453fd30d2d2cd7594074e27e5af731e5a2cb4b453c327942dc52dac475bbf0",
+          "setup_seconds": 185,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+        },
+        "b10-final-classification-p15": {
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706896059 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1623,
+          "isolated_seconds": 0,
+          "main_mutants": 37,
+          "main_work_seconds": 2893,
+          "parallelism": 2,
+          "selection_sha256": "2c5839c0bbcfedc3a34a412117850f7a6dc9dceca4ab4f8c50731c28e4145c9e",
+          "setup_seconds": 176,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+        },
+        "b10-final-classification-p16": {
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706397979 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1702,
+          "isolated_seconds": 0,
+          "main_mutants": 40,
+          "main_work_seconds": 3059,
+          "parallelism": 2,
+          "selection_sha256": "e0940d068e05aac823ce5795c26f96f2101cf5db0e49cdea6d7399990abf6f55",
+          "setup_seconds": 172,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+        },
+        "b10-final-classification-p17": {
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14705993450 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1447,
+          "isolated_seconds": 0,
+          "main_mutants": 31,
+          "main_work_seconds": 2555,
+          "parallelism": 2,
+          "selection_sha256": "71c63e4b79fec953105091a754f35f76edf2e8d5478d7c1a49c211e11344e11f",
+          "setup_seconds": 169,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+        },
+        "b10-final-classification-p18": {
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706396597 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1109,
+          "isolated_seconds": 0,
+          "main_mutants": 29,
+          "main_work_seconds": 1937,
+          "parallelism": 2,
+          "selection_sha256": "12c0324be9d994709ec36e3a62971e771bb375ba34e9d84e49bfbdc6fc9f9279",
+          "setup_seconds": 140,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+        },
+        "b10-final-classification-p2": {
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706153784 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1451,
+          "isolated_seconds": 0,
+          "main_mutants": 32,
+          "main_work_seconds": 2560,
+          "parallelism": 2,
           "selection_sha256": "70cb8417ea3321db422c264d09668c3b2079e98b20345b4902700494004d9d91",
-          "setup_seconds": 168,
-          "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+          "setup_seconds": 171,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "b10-final-classification-p3": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14703976049 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 817,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706571610 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1393,
           "isolated_seconds": 0,
           "main_mutants": 30,
-          "main_work_seconds": 1415,
+          "main_work_seconds": 2442,
           "parallelism": 2,
           "selection_sha256": "487da6245bc43654b80441b2c48ca6c9d2f2f254196858ad16eb24ffade64bfb",
-          "setup_seconds": 109,
-          "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+          "setup_seconds": 172,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "b10-final-classification-p4": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14703682505 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 1462,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706865713 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1489,
           "isolated_seconds": 0,
           "main_mutants": 32,
-          "main_work_seconds": 2585,
+          "main_work_seconds": 2621,
           "parallelism": 2,
           "selection_sha256": "6e7441c8aea0f0b38181ee03294fd19c0b90813464bcf19f909a32d8fca39428",
-          "setup_seconds": 169,
-          "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+          "setup_seconds": 178,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "b10-final-classification-p5": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14704062159 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 1446,
-          "isolated_seconds": 0,
-          "main_mutants": 32,
-          "main_work_seconds": 2548,
-          "parallelism": 2,
-          "selection_sha256": "12dc7446dd83cd24544df246854a0e11ff6b99211a3ce145997feb42d075f57b",
-          "setup_seconds": 172,
-          "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
-        },
-        "b10-final-classification-p6": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14704515349 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 1230,
-          "isolated_seconds": 0,
-          "main_mutants": 34,
-          "main_work_seconds": 2181,
-          "parallelism": 2,
-          "selection_sha256": "3342fdd3572ab36f719cb0037e1acad2168af48a1e5192246cabdd5bdb210fe6",
-          "setup_seconds": 139,
-          "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
-        },
-        "b10-final-classification-p7": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14704440188 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 1266,
-          "isolated_seconds": 0,
-          "main_mutants": 28,
-          "main_work_seconds": 2190,
-          "parallelism": 2,
-          "selection_sha256": "c9f37c6b0b4d789d319721ca1d58b5458c5f309612f7c7634c540a164a697a72",
-          "setup_seconds": 171,
-          "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
-        },
-        "b10-final-classification-p8": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14703848053 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 1439,
-          "isolated_seconds": 0,
-          "main_mutants": 32,
-          "main_work_seconds": 2533,
-          "parallelism": 2,
-          "selection_sha256": "4baf2a6b59354e8152239aea01765daef92141b92d85c8df7a16a00b3bac5c61",
-          "setup_seconds": 172,
-          "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
-        },
-        "b10-final-classification-p9": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44894298914/artifacts/14703847694 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14705604229 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
           "estimated_seconds": 1279,
           "isolated_seconds": 0,
-          "main_mutants": 27,
-          "main_work_seconds": 2211,
+          "main_mutants": 35,
+          "main_work_seconds": 2284,
           "parallelism": 2,
-          "selection_sha256": "648bed156b3a0f169c9c869fb48988b4bb5af29deabf4e089f848041ac41e938",
-          "setup_seconds": 173,
-          "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+          "selection_sha256": "22c108d6eb4ce60c8ca7d8f6ef31d59b11d33bd381919505e0526d29a1741659",
+          "setup_seconds": 137,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+        },
+        "b10-final-classification-p6": {
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706103876 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1115,
+          "isolated_seconds": 0,
+          "main_mutants": 31,
+          "main_work_seconds": 1953,
+          "parallelism": 2,
+          "selection_sha256": "8bdf89bb5fc31669a4e027dcf33b6f0f9f3105391d77fbbf033b8b6ecd1c4d46",
+          "setup_seconds": 138,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+        },
+        "b10-final-classification-p7": {
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706069636 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1308,
+          "isolated_seconds": 0,
+          "main_mutants": 28,
+          "main_work_seconds": 2265,
+          "parallelism": 2,
+          "selection_sha256": "684181a2db1877315e0d666721d673df0c06799bc886232ba2e7763789478ccd",
+          "setup_seconds": 175,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+        },
+        "b10-final-classification-p8": {
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706650493 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1123,
+          "isolated_seconds": 0,
+          "main_mutants": 32,
+          "main_work_seconds": 1982,
+          "parallelism": 2,
+          "selection_sha256": "da4d48c0bcc010758512b56327e52915a169b3f79a5d8c01e143f9ab91cddd9f",
+          "setup_seconds": 132,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+        },
+        "b10-final-classification-p9": {
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44900458665/artifacts/14706411876 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
+          "estimated_seconds": 1292,
+          "isolated_seconds": 0,
+          "main_mutants": 27,
+          "main_work_seconds": 2239,
+          "parallelism": 2,
+          "selection_sha256": "f839eb9ec3bba71b2934fc1b68228741bc4c56c72982af76ca3855465cc96e08",
+          "setup_seconds": 172,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         }
       },
-      "source_sha256": "051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573"
+      "source_sha256": "9755cfa0f4a538835702f81fdda26fae6d2ef2f586def9c30db63e2e53d96643"
     },
     "VerifyRun/B10Final/B10FinalRepeatEvidence.cs": {
       "evidence": [
@@ -5953,175 +5953,175 @@
       "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
     },
     "b10-final-classification-crossing": {
-      "artifact_sha256": "67f989990e80be669a3a19ab81f0ec9457a72b3c28efb7fa4142d313aded8680",
+      "artifact_sha256": "488a49d4ce77c008473ebb22dcfeceb386f4c8b14a939cd46841d6b0160a46f7",
       "kind": "measured",
       "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 1075.863504426,
+      "observed_seconds": 701.233037703,
       "observed_workers": 2,
-      "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56",
-      "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+      "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-classification-p1": {
-      "artifact_sha256": "373abd1764f0ddf0678f244fd7d24eb1726d2a6c61cbdb7f93c760ba74c4ad5c",
+      "artifact_sha256": "7bb9f85dbb53e859fa889e77bdd65d9f7c8aa8c45ce90ac22b33a40e199bd3a2",
       "kind": "measured",
       "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 1652.298503679,
+      "observed_seconds": 1353.349536222,
       "observed_workers": 2,
-      "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56",
-      "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+      "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-classification-p10": {
-      "artifact_sha256": "e1a50ab2d6d15041323abe7d76419cd9fa5e4c380b8dee1315d44ae0b749ad21",
+      "artifact_sha256": "be30d79a440de03291d7943053ed56a7d05cea74ce19f1254a11e5e0e37ac69f",
       "kind": "measured",
       "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 987.0534116370001,
+      "observed_seconds": 1270.373548499,
       "observed_workers": 2,
-      "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56",
-      "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+      "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-classification-p11": {
-      "artifact_sha256": "75786a0320ea18044975c781ffc2cb1b02c9b01b6b40eb58cc8181b412f58fe5",
+      "artifact_sha256": "26c0d9fdc452a2d92fd77eeb7b1b7939a13cfc915a6ef2e6559800c8287c4461",
       "kind": "measured",
       "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 1645.3278555749998,
+      "observed_seconds": 1072.471408777,
       "observed_workers": 2,
-      "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56",
-      "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+      "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-classification-p12": {
-      "artifact_sha256": "a7a5285cad30359c01089ae2e1d3f6258449bc5c22997ff7da17b2168c72a9c7",
+      "artifact_sha256": "f3f829823905121c18893779fc19a74dd833e3ecb622da7eb1b27562d9c0b792",
       "kind": "measured",
       "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 1923.880356916,
+      "observed_seconds": 1574.113845123,
       "observed_workers": 2,
-      "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56",
-      "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+      "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-classification-p13": {
-      "artifact_sha256": "f4be14e0ba2b630137c72b04a7be8eabf4496fb79cd598083ed00b8a0bb69626",
+      "artifact_sha256": "100eb8570b4a8c183a53bdd15b309d33d00d410f59d02a8e48792c796bd67a7e",
       "kind": "measured",
       "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 1439.228972499,
+      "observed_seconds": 2081.93776427,
       "observed_workers": 2,
-      "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56",
-      "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+      "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-classification-p14": {
-      "artifact_sha256": "f0e113db518171c17e5f44b4ad9f9d2e3ce7b3f97e708472581aec9411ceb56d",
+      "artifact_sha256": "ed2ebd427bb116faa94589daa614a6cb1d73cf1be42d24608651accc3031edda",
       "kind": "measured",
       "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 1672.155319633,
+      "observed_seconds": 1742.785520002,
       "observed_workers": 2,
-      "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56",
-      "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+      "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-classification-p15": {
-      "artifact_sha256": "2565af90486383b4e838157e7e01608a8d2ae41ffd5a00f39f8a8dfb973cbe15",
+      "artifact_sha256": "f6aa29d097923fcafd7e3327b10789f0eb41e63fe80e5b155c35e111db2f60e5",
       "kind": "measured",
       "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 1305.748750821,
+      "observed_seconds": 1622.031562039,
       "observed_workers": 2,
-      "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56",
-      "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+      "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-classification-p16": {
-      "artifact_sha256": "aa7200377c1b566c036b7c87bb3905dd2739619b2adaf67a79dc3118c1d719b6",
+      "artifact_sha256": "3d027eb95c8267f5d7d635526a46913177e4c4558e596d7faada567ee0ceb90d",
       "kind": "measured",
       "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 1772.6924515560002,
+      "observed_seconds": 1700.3522504069997,
       "observed_workers": 2,
-      "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56",
-      "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+      "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-classification-p17": {
-      "artifact_sha256": "bac916024c6b298a5754e7846dab97557da6fed5737936a2f0dad9869fce10b9",
+      "artifact_sha256": "cde055ef67ecc7b0e94fb01c9a22dcde4d688158b01cc5e3999c2b529a957c77",
       "kind": "measured",
       "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 1150.328054977,
+      "observed_seconds": 1446.004208392,
       "observed_workers": 2,
-      "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56",
-      "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+      "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-classification-p18": {
-      "artifact_sha256": "100c439dbba09816805fa9993c986a5e9a580e055297c53f6c6187d211258a17",
+      "artifact_sha256": "3eae68b2aeeca6ae82797208fe0b868f9cf917cac84b0e81bb8c4a071c0a7c57",
       "kind": "measured",
       "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 770.829745515,
+      "observed_seconds": 1107.544758279,
       "observed_workers": 2,
-      "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56",
-      "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+      "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-classification-p2": {
-      "artifact_sha256": "faae38faf51a4a087e8c7dc12d3308a35cd0b9a761192401198ff948729804e1",
+      "artifact_sha256": "ad4906be1c2d86df6e185c07dffaf0441dd3fbeefacff3af956ddb4ff01fd3b1",
       "kind": "measured",
       "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 1380.5765438439998,
+      "observed_seconds": 1450.809019256,
       "observed_workers": 2,
-      "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56",
-      "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+      "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-classification-p3": {
-      "artifact_sha256": "21529ddb4bcb4ffbe186d43754e7d5b8244a8e79108a693722bbae516d0b252c",
+      "artifact_sha256": "5673380352e013f4caf75ddf45cf5a60d7f6a27ea47b4fba96f315e56289707b",
       "kind": "measured",
       "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 815.596469051,
+      "observed_seconds": 1392.632567849,
       "observed_workers": 2,
-      "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56",
-      "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+      "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-classification-p4": {
-      "artifact_sha256": "9007cedd3a8fd24cce8e4e4138e6ee6bf6056acbcb285b9d820a50a076e2a250",
+      "artifact_sha256": "b9c877f3cfab8aeef93d36d3a27b88fd7a387a2654a64d1f3ee85d10d5021011",
       "kind": "measured",
       "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 1461.245161418,
+      "observed_seconds": 1487.7942497850001,
       "observed_workers": 2,
-      "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56",
-      "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+      "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-classification-p5": {
-      "artifact_sha256": "03e1b9481ab2fb5e83c8b78625375879eb9e29afb3f91887eeea5bc3ae7a066f",
+      "artifact_sha256": "95f7209d83a3668283e6a76acb8bab08558b9f251aaa81b78367bce75803c919",
       "kind": "measured",
       "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 1444.896223179,
+      "observed_seconds": 1277.989113513,
       "observed_workers": 2,
-      "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56",
-      "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+      "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-classification-p6": {
-      "artifact_sha256": "758b964974a42cbeb25c12482a0d74c1378113c40c625a4229351fa5145681c1",
+      "artifact_sha256": "41769564e9b8d30e36c8060959e33b322b7da66e8753558598cbbd505d49ae39",
       "kind": "measured",
       "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 1229.106902362,
+      "observed_seconds": 1113.365602515,
       "observed_workers": 2,
-      "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56",
-      "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+      "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-classification-p7": {
-      "artifact_sha256": "103bdb41f21f911a056485882d183ad4ecb9010631aba6054f87634b8b493766",
+      "artifact_sha256": "0de4dcd219e1447bdae1b83fc8538544e93d0e37dbb4a7d00c1e78793950456b",
       "kind": "measured",
       "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 1265.416140215,
+      "observed_seconds": 1306.955580578,
       "observed_workers": 2,
-      "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56",
-      "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+      "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-classification-p8": {
-      "artifact_sha256": "799bdda178c7bb35b97121dee893a87335a7fd5fbea7008eda3e9f1707658348",
+      "artifact_sha256": "150d75dd21b92e870a8fdee289a55e410590d006656e168a8d07e345d8d2cd43",
       "kind": "measured",
       "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 1437.479373225,
+      "observed_seconds": 1122.6023197109998,
       "observed_workers": 2,
-      "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56",
-      "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+      "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-classification-p9": {
-      "artifact_sha256": "0ef983fa4314fb0471c0040a3ac802034bc502a9b0c678579e3e683ca97485fa",
+      "artifact_sha256": "2e5f01209c374937d9eb43d480fd0ce5eef250d03ca221599d1edb0c8699a0ef",
       "kind": "measured",
       "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 1277.063357373,
+      "observed_seconds": 1290.9943973489999,
       "observed_workers": 2,
-      "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56",
-      "timing_inputs_sha256": "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d"
+      "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-judge-crossing": {
       "artifact_sha256": "8dff3d8169806d2fa960a4887ccc7f53df31254ce2a1725d1135221b718594f0",
@@ -8074,9 +8074,10 @@
           },
           "tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317 accepted timing reuse only for an identical measured target and effective selection across the committed CI and repeat-ownership corrections at 0be50887eb42ba53fb9df934d2062c9e21a59850."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317 accepted timing reuse only for an identical measured target and effective selection across the committed CI and repeat-ownership corrections at 0be50887eb42ba53fb9df934d2062c9e21a59850.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061711703 accepts the timing uncertainty for the exact ownership correction, with records retained only for unchanged target and selector."
             ],
-            "current_sha256": "c20d9e80a731ae33938d479459c8e5375101a5b3eae72b282000017dcea5eeaf"
+            "current_sha256": "381acc092771adf027b0f3fe58e246e76c32fe05811de0397760f96ebb6af586"
           },
           "tests/Parchwell.Verifier.Tests/Mutation/c5_campaign.py": {
             "basis": [
@@ -8125,9 +8126,10 @@
           },
           "VerifyRun/B10Final/B10FinalClassification.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317 accepted timing reuse only for an identical measured target and effective selection across the committed CI and repeat-ownership corrections at 0be50887eb42ba53fb9df934d2062c9e21a59850."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317 accepted timing reuse only for an identical measured target and effective selection across the committed CI and repeat-ownership corrections at 0be50887eb42ba53fb9df934d2062c9e21a59850.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061711703 accepts the timing uncertainty for the exact ownership correction, with records retained only for unchanged target and selector."
             ],
-            "current_sha256": "051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573"
+            "current_sha256": "9755cfa0f4a538835702f81fdda26fae6d2ef2f586def9c30db63e2e53d96643"
           }
         }
       },
@@ -8646,9 +8648,10 @@
           },
           "tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317 accepted timing reuse only for an identical measured target and effective selection across the committed CI and repeat-ownership corrections at 0be50887eb42ba53fb9df934d2062c9e21a59850."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317 accepted timing reuse only for an identical measured target and effective selection across the committed CI and repeat-ownership corrections at 0be50887eb42ba53fb9df934d2062c9e21a59850.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061711703 accepts the timing uncertainty for the exact ownership correction, with records retained only for unchanged target and selector."
             ],
-            "current_sha256": "c20d9e80a731ae33938d479459c8e5375101a5b3eae72b282000017dcea5eeaf"
+            "current_sha256": "381acc092771adf027b0f3fe58e246e76c32fe05811de0397760f96ebb6af586"
           },
           "tests/Parchwell.Verifier.Tests/Mutation/c5_campaign.py": {
             "basis": [
@@ -8672,9 +8675,10 @@
           },
           "VerifyRun/B10Final/B10FinalClassification.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317 accepted timing reuse only for an identical measured target and effective selection across the committed CI and repeat-ownership corrections at 0be50887eb42ba53fb9df934d2062c9e21a59850."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317 accepted timing reuse only for an identical measured target and effective selection across the committed CI and repeat-ownership corrections at 0be50887eb42ba53fb9df934d2062c9e21a59850.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061711703 accepts the timing uncertainty for the exact ownership correction, with records retained only for unchanged target and selector."
             ],
-            "current_sha256": "051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573"
+            "current_sha256": "9755cfa0f4a538835702f81fdda26fae6d2ef2f586def9c30db63e2e53d96643"
           }
         }
       },
@@ -9211,9 +9215,10 @@
           },
           "tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317 accepted timing reuse only for an identical measured target and effective selection across the committed CI and repeat-ownership corrections at 0be50887eb42ba53fb9df934d2062c9e21a59850."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317 accepted timing reuse only for an identical measured target and effective selection across the committed CI and repeat-ownership corrections at 0be50887eb42ba53fb9df934d2062c9e21a59850.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061711703 accepts the timing uncertainty for the exact ownership correction, with records retained only for unchanged target and selector."
             ],
-            "current_sha256": "c20d9e80a731ae33938d479459c8e5375101a5b3eae72b282000017dcea5eeaf"
+            "current_sha256": "381acc092771adf027b0f3fe58e246e76c32fe05811de0397760f96ebb6af586"
           },
           "tests/Parchwell.Verifier.Tests/Mutation/c5_campaign.py": {
             "basis": [
@@ -9261,9 +9266,10 @@
           },
           "VerifyRun/B10Final/B10FinalClassification.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317 accepted timing reuse only for an identical measured target and effective selection across the committed CI and repeat-ownership corrections at 0be50887eb42ba53fb9df934d2062c9e21a59850."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317 accepted timing reuse only for an identical measured target and effective selection across the committed CI and repeat-ownership corrections at 0be50887eb42ba53fb9df934d2062c9e21a59850.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061711703 accepts the timing uncertainty for the exact ownership correction, with records retained only for unchanged target and selector."
             ],
-            "current_sha256": "051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573"
+            "current_sha256": "9755cfa0f4a538835702f81fdda26fae6d2ef2f586def9c30db63e2e53d96643"
           }
         }
       },
@@ -9780,6 +9786,12 @@
             ],
             "current_sha256": "700149eb85bc42e54ea7c71965db0504f5f13898aa3cdaf8f59257347a9336c2"
           },
+          "tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061711703 accepts the timing uncertainty for the exact ownership correction, with records retained only for unchanged target and selector."
+            ],
+            "current_sha256": "381acc092771adf027b0f3fe58e246e76c32fe05811de0397760f96ebb6af586"
+          },
           "tests/Parchwell.Verifier.Tests/Mutation/c5_campaign.py": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 expands the campaign capacity. The committed validator delta only reads the campaign layout capacities from c5_runtime. The original receipt used the same local-shard selection and task; the paired run will exercise the expanded layout."
@@ -9793,7 +9805,14 @@
             "current_sha256": "66d344ecda579ea25cb72a6e824b0fefe520692da394f83d02e1787df0b67ed0"
           }
         },
-        "target_sources": {}
+        "target_sources": {
+          "VerifyRun/B10Final/B10FinalClassification.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061711703 accepts the timing uncertainty for the exact ownership correction, with records retained only for unchanged target and selector."
+            ],
+            "current_sha256": "9755cfa0f4a538835702f81fdda26fae6d2ef2f586def9c30db63e2e53d96643"
+          }
+        }
       },
       "shared_inputs": {
         ".config/dotnet-tools.json": "50249a8f3a7134b08b4409c485dfe67afb17910e5a2329bf65810c3338231244",
@@ -10215,34 +10234,9 @@
         "VerifyRun/VerifyRunHandler.cs": "2a9d721f3b7f55e6aa4b7c19f4871278712dacba0549ac27dfe2a5f70a632c8e"
       }
     },
-    "d313b6eefbfe6a37ec2bc0789adf8fde9d8780c47da3368ef6f0e45cd0d0bc6d": {
+    "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997": {
       "assessments": {
-        "shared_inputs": {
-          "src/Parchwell.Verifier/Judge/ConsumerPhaseEvidence.cs": {
-            "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
-            ],
-            "current_sha256": "bcb02c31cc31592525fd3220f07e638c439817290d95b817265ddc46a3046a66"
-          },
-          "src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs": {
-            "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
-            ],
-            "current_sha256": "356f46a620b984a19c7cefe21fb5d874f097f797aca22464513c98d32fa845c2"
-          },
-          "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": {
-            "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
-            ],
-            "current_sha256": "1e1d549b0d772e57aa0c3eea342ae40ec12b0ac3c50239c076ca5c4ea27b008b"
-          },
-          "tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs": {
-            "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
-            ],
-            "current_sha256": "700149eb85bc42e54ea7c71965db0504f5f13898aa3cdaf8f59257347a9336c2"
-          }
-        },
+        "shared_inputs": {},
         "target_sources": {}
       },
       "shared_inputs": {
@@ -10396,7 +10390,7 @@
         "src/Parchwell.Verifier/Common/Window/StartLineNote.cs": "249dca8c9c1ce896f9275a7c2766eeb788805a8a5bfa3ec8738baf45cd25a0aa",
         "src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs": "50183e73c15874dfec6785f00bdfb2852c78a9536583bfdd7b2f4d52ca85118f",
         "src/Parchwell.Verifier/ImageSmoke.cs": "d70b8871232ece0c670491906054a4937d27f3dcc9267d93b80c6a49e5ac60ac",
-        "src/Parchwell.Verifier/Judge/ConsumerPhaseEvidence.cs": "8c52a60dcad7133a452f2c9ec68ece3df022986020189ad7cbc5024362e968ab",
+        "src/Parchwell.Verifier/Judge/ConsumerPhaseEvidence.cs": "bcb02c31cc31592525fd3220f07e638c439817290d95b817265ddc46a3046a66",
         "src/Parchwell.Verifier/Judge/JudgeHandler.cs": "e35e56943e28a70db4e5db2ed0296cae527977af65743a2b9558216988a3fad8",
         "src/Parchwell.Verifier/Judge/PhaseCandidate.cs": "c62b6c53761eed23ebcbd14803cc563437d2b80c6386b7cdb82274c8c5ff639d",
         "src/Parchwell.Verifier/Parchwell.Verifier.csproj": "7794a1001a0ba5e52aed2fa4a95051bf6079b72de9fdebaf653feaa88f8d39c4",
@@ -10430,7 +10424,7 @@
         "src/Parchwell.Verifier/VerifyRun/Configuration/RegisteredProducerConfigurationResolver.cs": "6b5040db8285f7ebf9ee12a553c0644e4bcd5e431634d8a32373f99f5a002b7d",
         "src/Parchwell.Verifier/VerifyRun/Consumer/ConsumerRepeatExtension.cs": "6d564c03b57b02c2ac6ab280107bce2aaa8c477ac4a592044dc0c9159682c114",
         "src/Parchwell.Verifier/VerifyRun/Consumer/IRepeatResultExtension.cs": "a7549004b04f7d80171cd7366674abc15ca6bedb09786106318fd6c052d3ba7b",
-        "src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs": "64eefc613cd6331b5e34fd7d867a7aafd24ad20132585ec3d1831681bb1de20a",
+        "src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs": "356f46a620b984a19c7cefe21fb5d874f097f797aca22464513c98d32fa845c2",
         "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerCommittedOffsetReader.cs": "f8e28f746f4af593d1cc6cd62409ce669bbcfec03f03b3a3c9183b3828e8855e",
         "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerOffsetRead.cs": "cfadc39c9393d8c6c78f7a920490b17f6f5c29d220d44b67b0b88c580f2691fc",
         "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationJudgeHandler.cs": "7d9329fec7609b5238f7f01f65d15948bdb52ad5cca44abb97c80c9e460c529f",
@@ -10485,7 +10479,7 @@
         "tests/Parchwell.Verifier.Tests/Consumer/ConsumerHeldSetBoundaryTests.cs": "14cf1137a57b7133348d8b70deab5bb94ef2d9fc6bcc3fa032c97f2d073cd27a",
         "tests/Parchwell.Verifier.Tests/Consumer/ConsumerIoBoundaryTests.cs": "f6398f1657e628057c9d27182cb4575158299e67d99110ffe036fa261c518e3f",
         "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementFixture.cs": "6f508fa7a0ca17e66d10f32ae15cefb2ed19a67162c4dcfc9847509b1f2294db",
-        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": "e9afd69a5e20cd35d3b028fdbf8a08f49495eabbb1a8885a7052c1e2901df7bc",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": "1e1d549b0d772e57aa0c3eea342ae40ec12b0ac3c50239c076ca5c4ea27b008b",
         "tests/Parchwell.Verifier.Tests/Consumer/ConsumerMembershipTests.cs": "e8c6f1db046d51fd238fcbd14090e81cb57b6432bc2dae440978315c16ce7c3e",
         "tests/Parchwell.Verifier.Tests/Consumer/ConsumerNumericBoundaryTests.cs": "e2947d57cea08d8cf59a1c3274869673dbbf2506436e45e8f858ab16dca9132e",
         "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRecordNameTests.cs": "1cbfadee609abe30add6ced5b5c27a989f6fc157da6f09055457edab3124dbcd",
@@ -10542,13 +10536,13 @@
         "tests/Parchwell.Verifier.Tests/Judge/B10FinalProjectionCodecTests.cs": "8952edd137efaf1aa186b986d57d5ffed5f0c15fd636ed40d437027779d67ca9",
         "tests/Parchwell.Verifier.Tests/Judge/B10JudgeChecksTests.cs": "2d3d34d268659aa4c036127dcdb855a93afdb31093613dc1d8a7617a6c7114e2",
         "tests/Parchwell.Verifier.Tests/Judge/B10SweepChecksTests.cs": "dc01315c1ab165c4ee0927481fe5dacb1506603c8c3e2b354326eff742349739",
-        "tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs": "f35c243ff6765fbee3b2fe1bb0295e62c45ce52322f19eab0a8aa365c306fe6a",
+        "tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs": "700149eb85bc42e54ea7c71965db0504f5f13898aa3cdaf8f59257347a9336c2",
         "tests/Parchwell.Verifier.Tests/Judge/JudgeHandlerTests.cs": "b008e9ae2993b2701413e6a363a9f247c81f5456b9cbb38435198af93ebff115",
         "tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs": "b0c4abb2fd21de8d3af442119709af238834b6de8aa172082673d7f8e33f1638",
         "tests/Parchwell.Verifier.Tests/Judge/PhaseJudgeTests.cs": "91e652585a67723c588b424b237449257345864f4898cfd64bc50c4fc0d73833",
         "tests/Parchwell.Verifier.Tests/Judge/PublicationAcceptanceTests.cs": "49f69c36053b1b4df84ea16c741ea5e0f0333ba5d5c28395495e8f4fbacf992c",
         "tests/Parchwell.Verifier.Tests/Judgement/AbruptClassificationDuplicateTests.cs": "3b74b9e8f1a02e259b9ae5c2289dcd062178611ba27d08aa34a403b2d080bcc3",
-        "tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs": "c20d9e80a731ae33938d479459c8e5375101a5b3eae72b282000017dcea5eeaf",
+        "tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs": "381acc092771adf027b0f3fe58e246e76c32fe05811de0397760f96ebb6af586",
         "tests/Parchwell.Verifier.Tests/Judgement/B10IntakeChecksTests.cs": "5eef5f215344ae456cfeb0ca7ac606325de059c3b10c95c8d8dc28ad12b9333e",
         "tests/Parchwell.Verifier.Tests/Judgement/B10LateWriteChecksTests.cs": "56de4c4f6058f293ebffc79aea7c82cbd74016fc0cebd7a760facc2848c356f6",
         "tests/Parchwell.Verifier.Tests/Judgement/B10RepeatChecksTests.cs": "eaa5890a747696c464e0f9dc546016210670847552d01f70abb530800a12018c",
@@ -10634,7 +10628,7 @@
         "tests/fixtures/verifier-v1/captured-run/request-lifecycle.jsonl": "d63c6cc78d2b49be59975bd3c61e53bd660c8f5b7c2981a79f5cd2b1c5bf1db2",
         "tests/fixtures/verifier-v1/captured-run/statistics.jsonl": "b50c6a5688dba643f47e2aff4fb44a2ff4159c2b65d130aa752ba6674ac34988"
       },
-      "source_commit": "6982956ae1f6d14f8f2f4b53e8d6778b40216d56",
+      "source_commit": "e520f829001dc1ea76b10df49b2277b26e815872",
       "target_sources": {
         "Common/Phase/B10FinalProjection.cs": "5dace8b426012e1db4d91471c38a7dc38d1b6efbfd8a68f3e14dd8c67365741c",
         "Common/Phase/B10FinalProjectionCodec.cs": "43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f",
@@ -10650,7 +10644,7 @@
         "VerifyRun/A01/A01EvidenceRecorder.cs": "d01f8995692a84cd8bfd908b9874bd72eba08d2f737529c05c1a5d8973780806",
         "VerifyRun/A01/WorkloadRecorder.cs": "065cde4de7cd27b41946b665121589f9e5b333f0d6c4814346fd4a2cc082f808",
         "VerifyRun/Abrupt/AbruptClassification.cs": "2bd71be88483f1080fee3e4acc23bd3a4d5608f8e427351b4a120a5efd2eeead",
-        "VerifyRun/B10Final/B10FinalClassification.cs": "051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573",
+        "VerifyRun/B10Final/B10FinalClassification.cs": "9755cfa0f4a538835702f81fdda26fae6d2ef2f586def9c30db63e2e53d96643",
         "VerifyRun/B10Final/B10FinalRepeatEvidence.cs": "b14f190b6aa6c705a03647b4dc09edb5ba8ca6cea193f76c64a09d089278cfc1",
         "VerifyRun/B10Final/B10FinalSweepHandler.cs": "cb14b6e7c68fe38a9fafa54ce89fae68b35c8f26917b4b49d74a38f3b740e5a3",
         "VerifyRun/B10SweepHandler.cs": "cdce9430f112c04311cb524a8a95a10ef91c304ef6228c878e428ec84fcca4ba",
@@ -11454,9 +11448,10 @@
           },
           "tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317 accepted timing reuse only for an identical measured target and effective selection across the committed CI and repeat-ownership corrections at 0be50887eb42ba53fb9df934d2062c9e21a59850."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317 accepted timing reuse only for an identical measured target and effective selection across the committed CI and repeat-ownership corrections at 0be50887eb42ba53fb9df934d2062c9e21a59850.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061711703 accepts the timing uncertainty for the exact ownership correction, with records retained only for unchanged target and selector."
             ],
-            "current_sha256": "c20d9e80a731ae33938d479459c8e5375101a5b3eae72b282000017dcea5eeaf"
+            "current_sha256": "381acc092771adf027b0f3fe58e246e76c32fe05811de0397760f96ebb6af586"
           },
           "tests/Parchwell.Verifier.Tests/Judgement/B10LateWriteChecksTests.cs": {
             "basis": [
@@ -11628,9 +11623,10 @@
           },
           "VerifyRun/B10Final/B10FinalClassification.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317 accepted timing reuse only for an identical measured target and effective selection across the committed CI and repeat-ownership corrections at 0be50887eb42ba53fb9df934d2062c9e21a59850."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317 accepted timing reuse only for an identical measured target and effective selection across the committed CI and repeat-ownership corrections at 0be50887eb42ba53fb9df934d2062c9e21a59850.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061711703 accepts the timing uncertainty for the exact ownership correction, with records retained only for unchanged target and selector."
             ],
-            "current_sha256": "051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573"
+            "current_sha256": "9755cfa0f4a538835702f81fdda26fae6d2ef2f586def9c30db63e2e53d96643"
           },
           "VerifyRun/B10Final/B10FinalRepeatEvidence.cs": {
             "basis": [
@@ -12909,9 +12905,10 @@
           },
           "tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317 accepted timing reuse only for an identical measured target and effective selection across the committed CI and repeat-ownership corrections at 0be50887eb42ba53fb9df934d2062c9e21a59850."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317 accepted timing reuse only for an identical measured target and effective selection across the committed CI and repeat-ownership corrections at 0be50887eb42ba53fb9df934d2062c9e21a59850.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061711703 accepts the timing uncertainty for the exact ownership correction, with records retained only for unchanged target and selector."
             ],
-            "current_sha256": "c20d9e80a731ae33938d479459c8e5375101a5b3eae72b282000017dcea5eeaf"
+            "current_sha256": "381acc092771adf027b0f3fe58e246e76c32fe05811de0397760f96ebb6af586"
           },
           "tests/Parchwell.Verifier.Tests/Judgement/B10LateWriteChecksTests.cs": {
             "basis": [
@@ -13104,9 +13101,10 @@
           },
           "VerifyRun/B10Final/B10FinalClassification.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317 accepted timing reuse only for an identical measured target and effective selection across the committed CI and repeat-ownership corrections at 0be50887eb42ba53fb9df934d2062c9e21a59850."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317 accepted timing reuse only for an identical measured target and effective selection across the committed CI and repeat-ownership corrections at 0be50887eb42ba53fb9df934d2062c9e21a59850.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061711703 accepts the timing uncertainty for the exact ownership correction, with records retained only for unchanged target and selector."
             ],
-            "current_sha256": "051e589e46f0597ccfc0dd38ea7817a159d25873ba71844d73575c996dc11573"
+            "current_sha256": "9755cfa0f4a538835702f81fdda26fae6d2ef2f586def9c30db63e2e53d96643"
           },
           "VerifyRun/B10Final/B10FinalRepeatEvidence.cs": {
             "basis": [
