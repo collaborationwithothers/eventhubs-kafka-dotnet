@@ -2,7 +2,7 @@
 
 A mutation qualification records how long the verifier's mutation tests are expected to take and which source files support that estimate. This change lets an operator record a decision to keep an estimate after a shared input changes. The reviewer checks that the decision covers the changed files and the remaining uncertainty.
 
-Revision 1. One implementation pull request, `renew-v2`. Base on main: `ac14419f5afb6a04251e0137ca38209614482c28`.
+Revision 2. One implementation pull request, `renew-v2`. Base on main: `ac14419f5afb6a04251e0137ca38209614482c28`.
 
 ## Goal and authority
 
@@ -23,7 +23,7 @@ All other paths are outside the implementation. In particular, preserve the comm
 
 Use the same command for both versions: `python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py renew --head HEAD_SHA --qualification FILE --basis TEXT`. The head resolves to a Git commit. FILE is the operator's qualification file. Keep the existing success JSON and exit 0: `{"renewed":["global.json"],"status":"renewed"}` for that single changed path, or `{"renewed":[],"status":"unchanged"}`. The list contains sorted repository-relative paths changed against the file's previous top-level shared map. Version 2 continues to use `timing_inputs[context].assessments.shared_inputs[path]` with exactly `current_sha256` (lowercase SHA-256 hex or JSON null) and `basis` (a nonempty array of nonblank strings). A timing context is the pair of full input maps recorded for a measurement. Its key is the existing digest of those maps.
 
-`check --head HEAD_SHA --qualification FILE` keeps its existing output, including qualified or provisional status, pending targets if applicable, and the sorted, deduplicated union of all assessments as `assessed_inputs` with `shared_inputs:` or `target_sources:` prefixes. It omits the field for an empty union. No new public schema or flags. Command failures return 1, empty standard output, a diagnostic on standard error, and leave the original file intact.
+`check --head HEAD_SHA --qualification FILE` keeps its existing output, including qualified or provisional status, pending targets if applicable, and the sorted, deduplicated union of all assessments as `assessed_inputs` with `shared_inputs:` or `target_sources:` prefixes. It omits the field for an empty union. No new public schema or flags. Renewal failures return 1, empty standard output, a diagnostic on standard error, and leave the original file intact.
 
 ## Requirements and enforced checks
 
