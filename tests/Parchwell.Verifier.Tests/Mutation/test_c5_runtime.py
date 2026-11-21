@@ -684,6 +684,26 @@ class ReviewCorrectionBridgeTests(unittest.TestCase):
         context['assessments']['target_sources'][runtime.CODEC_TARGET]['current_sha256'] = '0' * 64
         self.assertFalse(self.proof(context, head=runtime.REBALANCED_SOURCE))
 
+    def test_ci_repair_links_only_retained_selections_to_their_prior_context(self):
+        head = runtime.CI_REPAIR_SOURCE
+        previous = runtime.prior_ci_repair_qualification()
+        binding = previous['targets'][self.OWNER]['shards'][self.SHARD]['timing_inputs_sha256']
+        context = copy.deepcopy(previous['timing_inputs'][binding])
+        shared, targets = runtime.proof_tree(head)[2]
+        for key, actual in (('shared_inputs', shared), ('target_sources', targets)):
+            measured = context[key]
+            context['assessments'][key] = {
+                path: {'current_sha256': actual.get(path), 'basis': ['Approved CI repair timing risk']}
+                for path in measured.keys() | actual.keys() if measured.get(path) != actual.get(path)
+            }
+        self.assertTrue(self.proof(context, head=head))
+        self.assertEqual(set(), runtime.provenance_errors(context, shared, targets, self.OWNER, self.SHARD, head))
+        self.assertFalse(runtime.retained_ci_repair_selection(head, self.OWNER, 'unknown'))
+        for owner in runtime.CI_REPAIR_OWNERS:
+            self.assertFalse(runtime.retained_ci_repair_selection(head, runtime.workflow.TARGETS[owner][0], owner + '-p1'))
+        context['source_commit'] = runtime.CI_REPAIR_PRIOR
+        self.assertFalse(self.proof(context, head=head))
+
     def test_rejects_changed_owner_and_incomplete_or_wrong_assessments(self):
         self.assertFalse(self.proof(owner=runtime.REVIEW_CORRECTION_TARGET,
                                     shard='b10-final-projection-codec-p1-a'))
@@ -3187,6 +3207,7 @@ class RebalanceTimingProvenanceTests(unittest.TestCase):
         for shard in runtime.REBALANCED_RECEIPTS:
             with self.subTest(shard=shard):
                 self.assertTrue(self.link(shard))
+                self.assertTrue(self.link(shard, head=runtime.CI_REPAIR_SOURCE))
         for suffix in (*(f'p{i}' for i in range(4, 16)), 'crossing'):
             shard = 'b10-final-projection-codec-' + suffix
             self.assertFalse(self.link(shard))

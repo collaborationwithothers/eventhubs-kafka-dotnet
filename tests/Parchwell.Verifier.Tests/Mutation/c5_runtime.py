@@ -1258,6 +1258,48 @@ def rebalance_trees(head):
     return old, new
 
 
+# These exact corrections retain timing only for an unchanged target and selector.
+# https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7058676317
+CI_REPAIR_PRIOR = '33f1d4618e22b0c125a1c097dc68db735a4db774'
+CI_REPAIR_SOURCE = '0be50887eb42ba53fb9df934d2062c9e21a59850'
+CI_REPAIR_OWNERS = frozenset({'b10-final-judge', 'b10-final-classification'})
+CI_REPAIR_TEST = 'tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs'
+
+
+@functools.lru_cache(maxsize=4)
+def ci_repair_trees(head):
+    repaired = proof_tree(CI_REPAIR_SOURCE)
+    if proof_tree(head) != repaired:
+        return None
+    previous = proof_tree(CI_REPAIR_PRIOR)
+    old, old_code, (old_shared, old_targets), old_config, old_matrix = previous
+    new, new_code, (new_shared, new_targets), new_config, new_matrix = repaired
+    expected = dict(old)
+    expected['PRIMARY_CUTS'] = {**old['PRIMARY_CUTS'], **{key: new['PRIMARY_CUTS'][key] for key in CI_REPAIR_OWNERS}}
+    changed_targets = {old['TARGETS'][key][0] for key in CI_REPAIR_OWNERS}
+    if (expected != new or (old_code, old_config, old_matrix) != (new_code, new_config, new_matrix)
+            or {path for path in old_shared.keys() | new_shared.keys() if old_shared.get(path) != new_shared.get(path)}
+            != {CI_REPAIR_TEST}
+            or {path for path in old_targets.keys() | new_targets.keys() if old_targets.get(path) != new_targets.get(path)}
+            != changed_targets):
+        return None
+    return previous, repaired
+
+
+def retained_ci_repair_selection(head, owner, shard):
+    trees = ci_repair_trees(head)
+    if trees is None:
+        return False
+    old, new = trees
+    return (owner in old[2][1] and old[2][1][owner] == new[2][1].get(owner)
+            and same_selection(old[0], old[4], new[0], new[4], owner, shard))
+
+
+@functools.lru_cache(maxsize=1)
+def prior_ci_repair_qualification():
+    return strict_json(blob(CI_REPAIR_PRIOR, HISTORICAL_QUALIFICATION_PATH))
+
+
 def retained_rebalance_timing(context, shard, path, record, item, timing, head):
     try:
         if (not head or path != CODEC_TARGET or shard not in REBALANCED_RECEIPTS
@@ -1275,7 +1317,8 @@ def retained_rebalance_timing(context, shard, path, record, item, timing, head):
                            and e['locator'] == locator and e['sha256'] == archive
                            for e in record['evidence'])):
             return False
-        trees = rebalance_trees(head)
+        prior = CI_REPAIR_PRIOR if retained_ci_repair_selection(head, path, shard) else head
+        trees = rebalance_trees(prior)
         if trees is None:
             return False
         old, new = trees
@@ -1296,6 +1339,13 @@ def committed_effective_config(context, owner, shard, head):
     try:
         if not head or not shard or owner == REVIEW_CORRECTION_TARGET:
             return False
+        if retained_ci_repair_selection(head, owner, shard):
+            previous = prior_ci_repair_qualification()
+            binding = previous['targets'][owner]['shards'][shard]['timing_inputs_sha256']
+            prior = previous['timing_inputs'][binding]
+            if any(context.get(key) != prior.get(key) for key in ('source_commit', 'shared_inputs', 'target_sources')):
+                return False
+            return committed_effective_config(prior, owner, shard, CI_REPAIR_PRIOR)
         prior = proof_tree(REVIEW_CORRECTION_PRIOR)
         correction = proof_tree(REVIEW_CORRECTION)
         current = proof_tree(head)
