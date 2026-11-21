@@ -7,8 +7,8 @@ using Parchwell.Verifier.Common.Scenario;
 namespace Parchwell.Verifier.Common.Consumer;
 
 /// <summary>
-/// Builds the verifier's plan for C03 from the packaged scenario files: the effective settings each member must have
-/// registered, and the completion deadline. The subject carries the configuration's replaced setting; the witness runs the baseline.
+/// Builds the verifier's plan for C03, C10 or C01 from the packaged scenario files: the effective settings each member must have
+/// registered, and the completion deadline. The subject carries the configuration's replaced setting; the witness runs the baseline. C10 and C01 add the subject's kill count.
 /// </summary>
 internal sealed class ScenarioConsumerVerificationPlanSource(VerifierHostOptions options, ScenarioLoadOptions loadOptions, string root) : IConsumerVerificationPlanSource
 {
@@ -17,7 +17,7 @@ internal sealed class ScenarioConsumerVerificationPlanSource(VerifierHostOptions
     public bool TryGetPlan(string scenarioId, string configurationId, out ConsumerVerificationPlan? plan)
     {
         plan = null;
-        if (scenarioId != "C03" || configurationId is not ("C0" or "C1")) return false;
+        if (scenarioId is not ("C03" or "C10" or "C01") || configurationId is not ("C0" or "C1")) return false;
         try
         {
             var loader = new ScenarioLoader(new FileSystemScenarioSource(root), Options.Create(loadOptions));
@@ -32,8 +32,10 @@ internal sealed class ScenarioConsumerVerificationPlanSource(VerifierHostOptions
             Dictionary<string, string> witness = factory.CreateEnrichmentConsumer().Configuration
                 .Where(pair => !Reserved.Contains(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
             ConsumerProcessingDefinition processing = scenario.Definition.ConsumerProcessing!;
-            plan = new ConsumerVerificationPlan(null, processing.CompletionDeadlineMs, subject, witness,
-                processing.WindowMs, processing.Configurations[configurationId].Mode);
+            plan = processing.KillCounts.TryGetValue(configurationId, out int killCount)
+                ? new ConsumerVerificationPlan(killCount, processing.CompletionDeadlineMs, subject, witness, null, null)
+                : new ConsumerVerificationPlan(null, processing.CompletionDeadlineMs, subject, witness,
+                    processing.WindowMs, processing.Configurations[configurationId].Mode);
             return true;
         }
         catch (Exception)

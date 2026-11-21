@@ -1,0 +1,82 @@
+schema_version: 1
+id: C10
+subject: >-
+  librdkafka v2.16.0 documents enable.auto.offset.store (default true) as
+  storing the offset of the last message provided to the application, and
+  recommends false with offsets stored after processing for long-time
+  processing. The baseline stores after processing.
+
+assessment_rules:
+  counted_repeats: complete_valid only, meeting commit_precondition
+  repeats_per_configuration: 5
+  replacements: 0
+  evidence: >-
+    The verifier consumer block of each repeat: status and counts
+    (docs/operations/verifier-contract.md). A repeat that is not
+    complete_valid has no counts.
+  kill_point: >-
+    The subject sends SIGKILL to itself when Consume returns its 110th
+    message, before processing it (ADR-022). The witness runs the baseline.
+  commit_precondition: >-
+    A repeat counts only when, in the archived consumer records, every
+    partition assigned to the subject at the start line whose start offset is
+    below its end offset has a successful subject commit entry for it with a
+    row sequence below the subject's kill-intent row. Otherwise the witness
+    starts that partition at the latest offset, and a loss there is not an
+    offset-store effect. A repeat that fails it is reported, not counted.
+
+configurations:
+  C0:
+    H1_store_after_process_loses_nothing:
+      question: >-
+        With offsets stored after processing, does a crash leave any message
+        committed but never processed?
+      holds_when: >-
+        All 5 repeats counted, and in each:
+        counts.committed_never_processed = 0.
+      contradicted_when: >-
+        All 5 repeats counted, and in at least one:
+        counts.committed_never_processed >= 1.
+      otherwise: inconclusive
+    processed_again:
+      mode: recorded_only
+      value: counts.processed_again and counts.processed_again_extra_rows per repeat
+  C1:
+    H2_auto_store_can_pass_an_unprocessed_message:
+      question: >-
+        With the default automatic offset store, does a crash leave a message
+        committed but never processed?
+      holds_when: >-
+        All 5 repeats counted, and in at least one:
+        counts.committed_never_processed >= 1.
+      contradicted_when: never; a zero count does not contradict a possibility.
+      otherwise: inconclusive
+      published_text_must_state: >-
+        Under this kill point a commit can pass an unprocessed message only if
+        an auto-commit lands between Consume returning the 110th message and
+        the kill, so loss under the automatic store is unlikely. A zero count
+        does not show that the automatic store is safe.
+    processed_again:
+      mode: recorded_only
+      value: counts.processed_again and counts.processed_again_extra_rows per repeat
+
+verdict:
+  confirmed_when: H1 holds.
+  contradicted_when: H1 is contradicted.
+  no_verdict_when: neither of the above; the run is investigated, not published.
+  smoke_run: never published as a result; it gives no verdict.
+  separate_lines: H2 and processed_again are published on their own lines and do not change the verdict.
+  text_must_state:
+    - The kill point in assessment_rules.kill_point.
+    - Each repeat that failed commit_precondition, with its partitions.
+    - H2's published_text_must_state.
+    - K-57 is tested under C01, not C10.
+    - The subject has no native-monitoring evidence; the archive records its
+      missing index as configured_self_kill.
+
+sources:
+  - https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md
+  - https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka.c
+  - https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_op.c
+  - https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_offset.c
+  - https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_cgrp.c
