@@ -11,19 +11,22 @@ internal static class ConsumerProcessingDefinitionReader
     private const int CompletionDeadlineMs = 30000;
     private const int SlowOrdinal = 100;
     private const int SlowDurationMs = 90000;
-    private const string PollIntervalOverride = "EnrichmentConsumer:max.poll.interval.ms=60000";
+    private const int C10KillCount = 110;
+    private const int C01KillCount = 1;
 
     internal static ConsumerProcessingDefinition? Read(NodeValidation validation, InputNode? node, ScenarioDefinition definition, bool combined)
     {
-        // The fixed rows of the items that declare a consumer experiment; #510 adds C10 and C01.
+        // The items that declare a consumer experiment: C03 (slow message), C10 and C01 (kill count).
+        var isKillItem = definition.Id is "C10" or "C01";
         var modes = Modes(definition.Id);
+        var declares = isKillItem || modes.Count != 0;
         if (node is null)
         {
-            if (modes.Count != 0)
+            if (declares)
                 validation.Error(definition.Source, Root, "consumer_processing_required", "This item requires its consumer_processing declaration.");
             return null;
         }
-        if (modes.Count == 0)
+        if (!declares)
         {
             validation.Error(node, Root, "consumer_processing_unexpected", "This item cannot declare consumer_processing.");
             return null;
@@ -51,9 +54,15 @@ internal static class ConsumerProcessingDefinitionReader
             return null;
         }
         var slowMessages = ImmutableDictionary.CreateBuilder<string, ConsumerSlowMessageDeclaration>(StringComparer.Ordinal);
+        var killCounts = ImmutableDictionary.CreateBuilder<string, int>(StringComparer.Ordinal);
         foreach (var (id, entry) in configurationsMap.Fields)
         {
             var path = Root + ".configurations." + id;
+            if (isKillItem)
+            {
+                ReadKillEntry(validation, definition.Id, id, entry, path, killCounts);
+                continue;
+            }
             if (entry is not MapNode entryMap || entryMap.Fields.Count != 1 || !entryMap.Fields.TryGetValue("slow_message", out var slowNode) ||
                 slowNode is not MapNode slowMap || slowMap.Fields.Count != 3 ||
                 !slowMap.Fields.TryGetValue("ordinal", out var ordinalNode) || !slowMap.Fields.TryGetValue("duration_ms", out var durationNode) ||
@@ -76,7 +85,7 @@ internal static class ConsumerProcessingDefinitionReader
             !definition.Roles.SequenceEqual([KafkaClientRole.LoadGenProducer, KafkaClientRole.EnrichmentConsumer, KafkaClientRole.VerifierConsumer]) ||
             !MeasuresAreFixed(definition) || !OverridesAreFixed(definition))
             validation.Error(node, Root, "consumer_processing_experiment", "Repeats, faults, gate, roles, measures and overrides must equal the fixed experiment.");
-        return new ConsumerProcessingDefinition(WindowMs, CompletionDeadlineMs, slowMessages.ToImmutable());
+        return new ConsumerProcessingDefinition(WindowMs, CompletionDeadlineMs, slowMessages.ToImmutable(), killCounts.ToImmutable());
     }
 
     private static bool MeasuresAreFixed(ScenarioDefinition definition)
@@ -95,10 +104,33 @@ internal static class ConsumerProcessingDefinitionReader
         return definition.Measures.SequenceEqual(expected);
     }
 
+    // Each configuration's replacements must be exactly the item's row, in the form <role>:<key>=<value>.
     private static bool OverridesAreFixed(ScenarioDefinition definition) =>
-        definition.Configurations.Values.All(configuration =>
-            configuration.Overrides.SelectMany(role => role.Value.Select(setting => $"{role.Key}:{setting.Key}={setting.Value.Value}"))
-                .SequenceEqual([PollIntervalOverride], StringComparer.Ordinal));
+        definition.Configurations.All(pair => pair.Value.Overrides
+            .SelectMany(role => role.Value.Select(setting => $"{role.Key}:{setting.Key}={setting.Value.Value}"))
+            .SequenceEqual(ExpectedOverrides(definition.Id, pair.Key), StringComparer.Ordinal));
+
+    private static string[] ExpectedOverrides(string item, string configuration) => (item, configuration) switch
+    {
+        ("C03", _) => ["EnrichmentConsumer:max.poll.interval.ms=60000"],
+        ("C10", "C1") => ["EnrichmentConsumer:enable.auto.offset.store=true"],
+        ("C01", "C1") => ["EnrichmentConsumer:session.timeout.ms=45000"],
+        _ => []
+    };
+
+    // C10 and C01: an entry holds exactly kill_count, the plain scalar the item fixes.
+    private static void ReadKillEntry(NodeValidation validation, string item, string id, InputNode entry, string path, ImmutableDictionary<string, int>.Builder killCounts)
+    {
+        if (entry is not MapNode entryMap || entryMap.Fields.Count != 1 || !entryMap.Fields.TryGetValue("kill_count", out var killNode))
+        {
+            validation.Error(entry, path, "consumer_processing_shape", "Expected exactly the kill_count field.");
+            return;
+        }
+        var expected = item == "C10" ? C10KillCount : C01KillCount;
+        if (killNode is not ScalarNode { IsPlain: true } scalar || scalar.Value != expected.ToString(System.Globalization.CultureInfo.InvariantCulture))
+            validation.Error(killNode, path + ".kill_count", "consumer_processing_literal", $"The kill count must be {expected}.");
+        killCounts[id] = expected;
+    }
 
     // The slow-message mode each configuration of an item that declares consumer_processing must use.
     private static ImmutableDictionary<string, string> Modes(string item)

@@ -60,8 +60,8 @@ public sealed class ScenarioPlanSourceTests
     }
 
     [Theory]
-    [InlineData("C10", "C0")]
-    [InlineData("C01", "C0")]
+    [InlineData("C10", "C2")]
+    [InlineData("C08", "C0")]
     [InlineData("C03", "C2")]
     public void Given_a_pair_that_is_not_C03_C0_or_C1_When_asked_for_the_plan_Then_it_returns_null(string scenario, string phase) =>
         Assert.Null(Source(Options("C03", "C0", "subject")).GetPlan(scenario, phase));
@@ -82,11 +82,18 @@ public sealed class ScenarioPlanSourceTests
     {
         using var harness = new ConsumerTestHarness();
         ConsumerProcessingOptions options = Options(scenario, "C0", "subject");
-        var worker = new ConsumerProcessingWorker(Microsoft.Extensions.Options.Options.Create(options), Source(options),
-            () => throw new InvalidOperationException("baseline_not_expected"), () => throw new InvalidOperationException("store_not_expected"),
-            (_, _) => throw new InvalidOperationException("consumer_not_expected"), TimeProvider.System, _ => { }, _ => (0, 0), harness.Error);
-        Assert.Equal(1, await worker.ExecuteAsync(TestContext.Current.CancellationToken));
-        Assert.StartsWith("consumer_processing_failed reason=consumer_plan_invalid ", harness.Error.ToString(), StringComparison.Ordinal);
+        // An empty root has no scenario files, so the production source returns null (the C10 and C01 files are packaged now).
+        string root = Path.Combine(Path.GetTempPath(), "empty-scenario-root-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var worker = new ConsumerProcessingWorker(Microsoft.Extensions.Options.Options.Create(options), Source(options, root),
+                () => throw new InvalidOperationException("baseline_not_expected"), () => throw new InvalidOperationException("store_not_expected"),
+                (_, _) => throw new InvalidOperationException("consumer_not_expected"), TimeProvider.System, _ => { }, _ => (0, 0), harness.Error);
+            Assert.Equal(1, await worker.ExecuteAsync(TestContext.Current.CancellationToken));
+            Assert.StartsWith("consumer_processing_failed reason=consumer_plan_invalid ", harness.Error.ToString(), StringComparison.Ordinal);
+        }
+        finally { Directory.Delete(root); }
     }
 
     [Theory]
