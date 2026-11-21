@@ -310,6 +310,8 @@ class Transfer:
             back.unlink(missing_ok=True)
 
 CONSUMER_SCENARIOS = ('C01', 'C03', 'C10')
+# The last line of a record blob is read for the self-kill check from at most this many bytes.
+ConsumerTailMaxBytes = 65536
 READINESS_OUTCOMES = ('ready', 'not_observed', 'not_attempted')
 READINESS_CONDITIONS = ('ready', 'list_failed', 'download_failed', 'row_invalid', 'member_count',
                         'not_assigned', 'overlap', 'coverage')
@@ -672,6 +674,12 @@ def validate_manifest(value):
         elif obj['state'] == 'not_started':
             if obj['required'] or any(obj[key] is not None for key in ('bytes', 'sha256', 'destination_etag', 'gap_code')):
                 raise InvalidArchiveConfig()
+        elif obj['gap_code'] == 'configured_self_kill':
+            # The expected absence of a self-killed C10 or C01 subject's native-monitoring index (issue 510 plan, section 16.2).
+            if (obj['kind'] != 'native_monitoring_index' or obj['source']['container'] != 'native-monitoring' or obj['required']
+                    or obj['state'] != 'missing' or obj['source']['etag'] is not None
+                    or any(obj[key] is not None for key in ('bytes', 'sha256', 'destination_etag'))):
+                raise InvalidArchiveConfig()
         elif not isinstance(obj['gap_code'], str) or obj['gap_code'] not in GAP_CODES:
             raise InvalidArchiveConfig()
         elif any(obj[key] is not None for key in ('bytes', 'sha256', 'destination_etag')):
@@ -949,6 +957,7 @@ class Collector:
         self.window_sources = {}
         self.native_existing = {}
         self.names = set()
+        self.consumer_tails = {}
         self.verified_bytes = 0
         self.logical_bytes = 0
 
@@ -1258,8 +1267,55 @@ class Collector:
             if properties is None:
                 if index == 0: self.gap('monitoring_incomplete', 'consumer record inventory', blob(0))
                 return
-            self.source(container, blob(index), 'consumer_record', repeat, source_properties=properties)
+            self.source(container, blob(index), 'consumer_record', repeat, source_properties=properties,
+                        inspect_source=self.record_tail(blob(index)))
             index += 1
+
+    def record_tail(self, name):
+        """Return an inspection hook that keeps the last line of a record blob, for the self-kill check."""
+        def inspect(path, size):
+            line = None
+            try:
+                with open(path, 'rb') as stream:
+                    end = stream.seek(0, 2)
+                    start = max(0, end - ConsumerTailMaxBytes - 1)
+                    stream.seek(start)
+                    data = stream.read(ConsumerTailMaxBytes + 1)
+                if data.endswith(b'\n'): data = data[:-1]
+                cut = data.rfind(b'\n')
+                if cut >= 0: line = data[cut + 1:]
+                elif start == 0: line = data
+            except OSError:
+                line = None
+            self.consumer_tails[name] = line if line is not None and len(line) <= ConsumerTailMaxBytes else None
+        return inspect
+
+    def configured_self_kill(self, phase, unit):
+        """True when a C10 or C01 subject ended at its kill-intent row (issue 510 plan, section 16.2, conditions 1 to 4)."""
+        if phase['scenario'] not in ('C10', 'C01') or phase['phase'] not in ('C0', 'C1'): return False
+        if unit['mode'] != 'consumer-subject' or unit['state'] != 'started' or not unit['pod_uid'] or not unit['pod_name']:
+            return False
+        root = f"{phase['run_id']}/{phase['phase']}/r{unit['repeat']}/consumer/{unit['pod_name']}/"
+        members = [obj for obj in self.objects if obj['source']['container'] == 'consumer-record' and obj['source']['name'].startswith(root)]
+        records = [obj for obj in members if obj['kind'] == 'consumer_record']
+        if (any(obj['kind'] == 'consumer_completion' for obj in members) or not records
+                or any(obj['state'] != 'verified' for obj in records)
+                or any((gap['object_name'] or '').startswith(root) for gap in self.gaps)):
+            return False
+        line = self.consumer_tails.get(max(obj['source']['name'] for obj in records))
+        if line is None: return False
+        try: row = strict_control(line, ConsumerTailMaxBytes)
+        except InvalidArchiveConfig: return False
+        return isinstance(row, dict) and row.get('kind') == 'kill_intent'
+
+    def expect_self_kill_absence(self, obj):
+        """Turn a missing native-monitoring index of a self-killed subject from a gap into an expected absence."""
+        name = obj['source']['name']
+        recorded = {'code': 'source_missing', 'boundary': 'source properties', 'object_name': name, 'expected_unit': None}
+        if recorded not in self.gaps: return False
+        self.gaps.remove(recorded)
+        obj.update(required=False, gap_code='configured_self_kill')
+        return True
 
     def runner(self, name, source_path, kind):
         if len(self.objects) >= ArchiveMaxObjects - 2:
@@ -2022,6 +2078,12 @@ def collect_native_monitoring(collector, phase, status, units):
                            if item['kind'] == 'native_monitoring_index'
                            and item['source']['name'] == prefix + 'index.json'
                            and item['state'] == 'failed' and item['gap_code']), None)
+            absent = next((item for item in collector.objects
+                           if item['kind'] == 'native_monitoring_index'
+                           and item['source']['name'] == prefix + 'index.json'
+                           and item['state'] == 'missing' and item['gap_code'] == 'source_missing'), None)
+            if absent is not None and collector.configured_self_kill(phase, unit) and collector.expect_self_kill_absence(absent):
+                continue
             boundary = f"native index failed: {failed['gap_code']}" if failed else 'native index unavailable'
             collector.gap('monitoring_incomplete', boundary, unit=job)
             continue
