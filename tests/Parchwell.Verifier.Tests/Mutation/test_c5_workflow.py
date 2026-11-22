@@ -1176,11 +1176,18 @@ class CommittedContractTests(unittest.TestCase):
         downloads = {step["name"]: step for step in jobs["aggregate"]["steps"]}
         download = downloads["Download coordinator shard evidence"]
         self.assertEqual("c5-mutation-${{ github.run_id }}-${{ github.run_attempt }}-*", download["with"]["pattern"])
-        peer = downloads["Download companion shard evidence"]["with"]
-        self.assertEqual("${{ steps.campaign.outputs.run-id }}", peer["run-id"])
-        self.assertEqual("c5-mutation-${{ steps.campaign.outputs.run-id }}-${{ steps.campaign.outputs.attempt }}-*",
-                         peer["pattern"])
-        self.assertIs(peer["merge-multiple"], False)
+        peer = downloads["Download companion shard evidence"]
+        self.assertEqual("always() && steps.campaign.outputs.run-id != ''", peer["if"])
+        self.assertEqual({
+            "GH_TOKEN": "${{ github.token }}",
+            "C5_CAMPAIGN": "${{ runner.temp }}/c5-campaign.json",
+            "C5_INPUT": "${{ runner.temp }}/c5-input",
+        }, peer["env"])
+        self.assertEqual(
+            'python3 tests/Parchwell.Verifier.Tests/Mutation/c5_companion_artifacts.py '
+            '--repository "$GITHUB_REPOSITORY" --commit "$GITHUB_SHA" '
+            '--manifest "$C5_CAMPAIGN" --output-dir "$C5_INPUT"', peer["run"])
+        self.assertEqual("always()", downloads["Combine raw C5 populations"]["if"])
 
     def test_committed_primary_spans_match_layout(self):
         root = Path(__file__).resolve().parents[3]
@@ -1572,6 +1579,106 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(17, summary["status_counts"]["RuntimeError"])
         self.assertEqual(17, summary["status_counts"]["Ignored"])
         self.assertEqual(2, fixture.receipts["phase"]["child_exit_code"])
+        self.assertTrue((fixture.output / "summary.md").is_file())
+        self.assertTrue((fixture.output / "survivors.json").is_file())
+
+    def test_failed_companion_download_preserves_verified_partial_aggregate(self):
+        self.assert_companion_gap_preserves_partial_aggregate(missing=False)
+
+    def test_missing_companion_archive_preserves_verified_partial_aggregate(self):
+        self.assert_companion_gap_preserves_partial_aggregate(missing=True)
+
+    def assert_companion_gap_preserves_partial_aggregate(self, missing):
+        from zipfile import ZipFile
+        import c5_campaign
+        import c5_companion_artifacts as downloader
+
+        fixture = AggregateFixture(self.directory)
+        companion_id, companion_attempt = "67890", "3"
+        repository = "owner/repo"
+        peers = ("phase", "publication")
+        layout = {
+            role: {shard: target for shard, target in workflow.SHARDS.items()
+                   if (shard in peers) == (role == "companion")}
+            for role in c5_campaign.PATHS
+        }
+        runs = {
+            role: {"id": int(rid), "attempt": int(attempt), "path": c5_campaign.PATHS[role],
+                   "created_at": "2026-10-25T17:59:00Z"}
+            for role, rid, attempt in (("coordinator", RUN_ID, ATTEMPT),
+                                       ("companion", companion_id, companion_attempt))
+        }
+        manifest = self.directory / "campaign.json"
+        write_json(manifest, {
+            "schema": 1, "repository": repository, "commit": COMMIT, "runs": runs,
+            "incomplete_reasons": [],
+            "shards": {name: {"target": path, "run_id": str(runs[role]["id"]),
+                              "run_attempt": str(runs[role]["attempt"])}
+                       for role, entries in layout.items() for name, path in entries.items()},
+        })
+        fixture.receipts["phase"].update(run_id=companion_id, run_attempt=companion_attempt)
+        fixture.save("phase")
+        data = io.BytesIO()
+        phase = fixture.paths["phase"]
+        with ZipFile(data, "w") as archive:
+            for path in phase.rglob("*"):
+                if path.is_file():
+                    archive.write(path, path.relative_to(phase).as_posix())
+        archive_bytes = data.getvalue()
+        for shard in peers:
+            shutil.rmtree(fixture.paths[shard])
+        artifacts = [
+            {"name": f"c5-mutation-{companion_id}-{attempt}-{shard}",
+             "id": number, "expired": False, "size_in_bytes": len(archive_bytes),
+             "digest": "sha256:" + hashlib.sha256(archive_bytes).hexdigest(),
+             "workflow_run": {"id": int(companion_id), "head_sha": COMMIT}}
+            for number, (shard, attempt) in enumerate(
+                (("phase", companion_attempt), ("publication", "1" if missing else companion_attempt)), 1)
+        ]
+        companion_run = {
+            "id": int(companion_id), "run_attempt": int(companion_attempt),
+            "path": c5_campaign.PATHS["companion"], "event": "workflow_dispatch",
+            "head_branch": "main", "head_sha": COMMIT, "repository": {"full_name": repository},
+            "head_repository": {"full_name": repository}, "created_at": runs["companion"]["created_at"],
+        }
+        downloads = []
+
+        class Transport:
+            def request(self, path, consume):
+                if "/attempts/" in path:
+                    return json.dumps(companion_run).encode()
+                if "/artifacts?" in path:
+                    return json.dumps({"total_count": len(artifacts), "artifacts": artifacts}).encode()
+                downloads.append(path)
+                if path.endswith("/1/zip"):
+                    return consume(io.BytesIO(archive_bytes), float("inf"))
+                raise downloader.DownloadError("GitHub request exhausted retries (HTTP 403 rate limit)")
+
+        args = ["downloader", "--repository", repository, "--commit", COMMIT,
+                "--manifest", str(manifest), "--output-dir", str(fixture.input)]
+        stderr = io.StringIO()
+        with (patch.object(sys, "argv", args),
+              patch.dict(os.environ, {"GH_TOKEN": "synthetic", "GITHUB_REPOSITORY": repository}),
+              patch.object(c5_campaign, "matrices", return_value=layout),
+              patch.object(downloader, "Transport", return_value=Transport()),
+              patch.object(workflow, "git", side_effect=[COMMIT.encode(), TREE.encode()]),
+              contextlib.redirect_stderr(stderr)):
+            self.assertEqual(downloader.main(), 1)
+            result = workflow.aggregate(fixture.input, COMMIT, RUN_ID, ATTEMPT, fixture.output, manifest)
+
+        self.assertEqual(downloads, [f"/repos/{repository}/actions/artifacts/{number}/zip"
+                                     for number in ([1] if missing else [1, 2])])
+        self.assertIn("missing companion artifacts" if missing else "GitHub request exhausted retries", stderr.getvalue())
+        summary = json.loads((fixture.output / "summary.json").read_text())
+        self.assertEqual(result, 1)
+        self.assertIs(summary["measurement_complete"], False)
+        self.assertIsNone(summary["break_passed"])
+        self.assertIsNone(summary["score_percent"])
+        self.assertIn("phase", summary["shards"])
+        self.assertIn("a01", summary["shards"])
+        self.assertNotIn("publication", summary["shards"])
+        self.assertTrue(any(reason.startswith("publication:") for reason in summary["incomplete_reasons"]))
+        self.assertTrue((fixture.input / f"c5-mutation-{companion_id}-{companion_attempt}-phase" / "receipt.json").is_file())
         self.assertTrue((fixture.output / "summary.md").is_file())
         self.assertTrue((fixture.output / "survivors.json").is_file())
 
