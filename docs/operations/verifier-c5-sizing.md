@@ -1,8 +1,8 @@
 # C5 hosted timing diagnostic
 
-`verifier-c5-sizing.yml` is a manual, CPU-only diagnostic. Dispatch it on `main` only, after the workflow change merges. For the issue 494 paired-run timing repair, use the default source `3c65a2fa52f16378c3815159cd07f8237e3346bf`. The workflow rejects other sources and verifies the checked-out commit and each matrix row's target SHA-256.
+`verifier-c5-sizing.yml` is a manual, CPU-only diagnostic. Dispatch it on `main` only, after the workflow change merges. For the issue 494 timeout recovery, use the default source `4275b634f14c1f81fcfe91dfcd7deb260a0c8a7f`. The workflow rejects other sources and verifies the checked-out commit and each matrix row's target SHA-256.
 
-The matrix measures the 43 selections changed by redistributing work in the verifier result codec, B10 final judge and B10 final projection codec. It includes each affected crossing selection. [Paired run outcome](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7067076568) and [Selection and intake plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7067192975)
+The matrix measures 18 changed selections across the result codec, B10 final judge and B10 final projection codec. It includes the crossing selection for each target. The recovery keeps 25 successful receipts from the previous diagnostic only where the physical configurations and timing inputs match. [Previous diagnostic](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44995993132) and [recovery plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7076174614).
 
 Each shard has a separate standard `ubuntu-24.04` job. `local-shard` uses the committed selector and required isolation for that physical shard. Its inner deadline is 2,650 seconds, the outer deadline including the termination grace is 2,700 seconds, and the job limit is 50 minutes. The diagnostic has no aggregate acceptance step.
 
