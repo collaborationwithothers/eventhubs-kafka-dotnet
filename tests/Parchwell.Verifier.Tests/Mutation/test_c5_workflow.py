@@ -1508,7 +1508,7 @@ class AggregationTests(unittest.TestCase):
     def test_coordinated_receipts_bind_each_shard_to_its_run_and_attempt(self):
         import c5_campaign
 
-        companion_id, companion_attempt = "67890", "1"
+        companion_id, companion_attempt = "67890", "2"
         companion_shard = "phase"
         repository = "owner/repo"
         layout = {
@@ -1583,6 +1583,12 @@ class AggregationTests(unittest.TestCase):
         self.assertTrue((fixture.output / "survivors.json").is_file())
 
     def test_failed_companion_download_preserves_verified_partial_aggregate(self):
+        self.assert_companion_gap_preserves_partial_aggregate(missing=False)
+
+    def test_missing_companion_archive_preserves_verified_partial_aggregate(self):
+        self.assert_companion_gap_preserves_partial_aggregate(missing=True)
+
+    def assert_companion_gap_preserves_partial_aggregate(self, missing):
         from zipfile import ZipFile
         import c5_campaign
         import c5_companion_artifacts as downloader
@@ -1621,31 +1627,48 @@ class AggregationTests(unittest.TestCase):
         archive_bytes = data.getvalue()
         for shard in peers:
             shutil.rmtree(fixture.paths[shard])
-        expected = {
-            f"c5-mutation-{companion_id}-{companion_attempt}-{shard}":
-                {"id": number, "size_in_bytes": len(archive_bytes),
-                 "digest": "sha256:" + hashlib.sha256(archive_bytes).hexdigest()}
-            for number, shard in enumerate(peers, 1)
+        artifacts = [
+            {"name": f"c5-mutation-{companion_id}-{attempt}-{shard}",
+             "id": number, "expired": False, "size_in_bytes": len(archive_bytes),
+             "digest": "sha256:" + hashlib.sha256(archive_bytes).hexdigest(),
+             "workflow_run": {"id": int(companion_id), "head_sha": COMMIT}}
+            for number, (shard, attempt) in enumerate(
+                (("phase", companion_attempt), ("publication", "1" if missing else companion_attempt)), 1)
+        ]
+        companion_run = {
+            "id": int(companion_id), "run_attempt": int(companion_attempt),
+            "path": c5_campaign.PATHS["companion"], "event": "workflow_dispatch",
+            "head_branch": "main", "head_sha": COMMIT, "repository": {"full_name": repository},
+            "head_repository": {"full_name": repository}, "created_at": runs["companion"]["created_at"],
         }
+        downloads = []
 
         class Transport:
             def request(self, path, consume):
+                if "/attempts/" in path:
+                    return json.dumps(companion_run).encode()
+                if "/artifacts?" in path:
+                    return json.dumps({"total_count": len(artifacts), "artifacts": artifacts}).encode()
+                downloads.append(path)
                 if path.endswith("/1/zip"):
                     return consume(io.BytesIO(archive_bytes), float("inf"))
                 raise downloader.DownloadError("GitHub request exhausted retries (HTTP 403 rate limit)")
 
         args = ["downloader", "--repository", repository, "--commit", COMMIT,
                 "--manifest", str(manifest), "--output-dir", str(fixture.input)]
+        stderr = io.StringIO()
         with (patch.object(sys, "argv", args),
               patch.dict(os.environ, {"GH_TOKEN": "synthetic", "GITHUB_REPOSITORY": repository}),
               patch.object(c5_campaign, "matrices", return_value=layout),
               patch.object(downloader, "Transport", return_value=Transport()),
-              patch.object(downloader, "catalog", return_value=expected),
               patch.object(workflow, "git", side_effect=[COMMIT.encode(), TREE.encode()]),
-              contextlib.redirect_stderr(io.StringIO())):
+              contextlib.redirect_stderr(stderr)):
             self.assertEqual(downloader.main(), 1)
             result = workflow.aggregate(fixture.input, COMMIT, RUN_ID, ATTEMPT, fixture.output, manifest)
 
+        self.assertEqual(downloads, [f"/repos/{repository}/actions/artifacts/{number}/zip"
+                                     for number in ([1] if missing else [1, 2])])
+        self.assertIn("missing companion artifacts" if missing else "GitHub request exhausted retries", stderr.getvalue())
         summary = json.loads((fixture.output / "summary.json").read_text())
         self.assertEqual(result, 1)
         self.assertIs(summary["measurement_complete"], False)

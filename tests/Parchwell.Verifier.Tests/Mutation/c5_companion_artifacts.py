@@ -76,8 +76,7 @@ class Transport:
                 headers = error.headers
                 try:
                     with error:
-                        self.pause(0)
-                        body = error.read1(8192).decode('utf-8', 'replace').lower()
+                        body = read_response(error, self.deadline, limit=8192).decode('utf-8', 'replace').lower()
                 except (HTTPException, OSError):
                     body = ''
                 primary = status in (403, 429) and headers.get('X-RateLimit-Remaining') == '0'
@@ -131,15 +130,18 @@ def retry_delay(headers, secondary, primary, attempt):
     return delay
 
 
-def read_response(response, deadline):
+def read_response(response, deadline, limit=None):
     chunks = []
-    while True:
+    while limit is None or limit > 0:
         if time.monotonic() >= deadline:
             raise DownloadError('transport deadline exceeded')
-        chunk = response.read1(65536)
+        chunk = response.read1(65536 if limit is None else min(65536, limit))
         if not chunk:
-            return b''.join(chunks)
+            break
         chunks.append(chunk)
+        if limit is not None:
+            limit -= len(chunk)
+    return b''.join(chunks)
 
 
 def catalog(transport, repository, identity, commit, shards):
@@ -180,8 +182,7 @@ def catalog(transport, repository, identity, commit, shards):
                             'invalid, duplicate, expired or foreign companion artifact')
         selected[name] = artifact
         ids.add(artifact['id'])
-    c5_campaign.require(set(selected) == expected, 'missing companion artifacts')
-    return selected
+    return selected, expected - selected.keys()
 
 
 def save_archive(response, deadline, path, expected_size):
@@ -250,13 +251,16 @@ def main():
         c5_campaign.validate_manifest(manifest, args.commit, layout['coordinator'], layout['companion'])
         c5_campaign.require(manifest['repository'] == args.repository, 'manifest repository mismatch')
         transport = Transport(os.environ.get('GH_TOKEN'))
-        artifacts = catalog(transport, args.repository, manifest['runs']['companion'], args.commit, layout['companion'])
+        artifacts, missing = catalog(transport, args.repository, manifest['runs']['companion'], args.commit,
+                                     layout['companion'])
         for name, artifact in sorted(artifacts.items()):
             try:
                 download(transport, args.repository, name, artifact, Path(args.output_dir))
             except (DownloadError, OSError) as error:
                 message = str(error) if isinstance(error, DownloadError) else 'artifact I/O error'
                 raise DownloadError(f'{name}: {message}') from None
+        if missing:
+            raise DownloadError(f'missing companion artifacts: {", ".join(sorted(missing))}')
         print(f'Verified {len(artifacts)} companion evidence archives.')
         return 0
     except (DownloadError, OSError, ValueError, KeyError, TypeError) as error:

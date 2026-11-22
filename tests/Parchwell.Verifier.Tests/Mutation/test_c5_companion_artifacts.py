@@ -49,9 +49,9 @@ class CatalogTests(unittest.TestCase):
             def request(self, path, consume):
                 return json.dumps(next(pages)).encode()
         self.assertEqual(companion.catalog(Fake(), 'owner/repo', identity, 'a' * 40, ['shard']),
-                         {expected['name']: expected})
+                         ({expected['name']: expected}, set()))
 
-    def test_missing_foreign_duplicate_or_expired_artifacts_rejected(self):
+    def test_foreign_duplicate_or_expired_artifacts_rejected(self):
         identity = {'id': 11, 'attempt': 2, 'created_at': '2025-01-01T00:00:00Z'}
         class Fake:
             def request(self, path, consume):
@@ -59,12 +59,25 @@ class CatalogTests(unittest.TestCase):
         expected = artifact('c5-mutation-11-2-shard', 1)
         with patch.object(companion.c5_campaign, 'validate_run',
                           return_value=companion.c5_campaign.timestamp(identity['created_at'])):
-            for rows in ([], [artifact('c5-mutation-11-1-shard', 1)],
-                         [artifact('c5-mutation-11-2-foreign', 1)], [expected, expected],
+            for rows in ([artifact('c5-mutation-11-2-foreign', 1)], [expected, expected],
                          [{**expected, 'expired': True}], [{**expected, 'id': 0}],
                          [{**expected, 'workflow_run': {'id': 12, 'head_sha': 'a' * 40}}]):
                 with self.subTest(rows=rows), self.assertRaises(ValueError):
                     companion.catalog(Fake(), 'owner/repo', identity, 'a' * 40, ['shard'])
+
+    def test_empty_and_older_attempt_catalogues_report_missing_current_artifacts(self):
+        identity = {'id': 11, 'attempt': 2, 'created_at': '2025-01-01T00:00:00Z'}
+
+        class Fake:
+            def request(self, path, consume):
+                return json.dumps({'total_count': len(rows), 'artifacts': rows}).encode()
+
+        with patch.object(companion.c5_campaign, 'validate_run',
+                          return_value=companion.c5_campaign.timestamp(identity['created_at'])):
+            for rows in ([], [artifact('c5-mutation-11-1-shard', 1)]):
+                with self.subTest(rows=rows):
+                    self.assertEqual(companion.catalog(Fake(), 'owner/repo', identity, 'a' * 40, ['shard']),
+                                     ({}, {'c5-mutation-11-2-shard'}))
 
     def test_catalogue_limit_accepts_999_and_1000_rows_and_rejects_1001(self):
         identity = {'id': 11, 'attempt': 2, 'created_at': '2025-01-01T00:00:00Z'}
@@ -83,7 +96,7 @@ class CatalogTests(unittest.TestCase):
                 with self.subTest(count=count):
                     if count <= 1000:
                         self.assertEqual(companion.catalog(Fake(), 'owner/repo', identity, 'a' * 40, ['shard']),
-                                         {expected['name']: expected})
+                                         ({expected['name']: expected}, set()))
                     else:
                         with self.assertRaisesRegex(ValueError, 'invalid artifact catalog'):
                             companion.catalog(Fake(), 'owner/repo', identity, 'a' * 40, ['shard'])
@@ -124,6 +137,30 @@ class TransportTests(unittest.TestCase):
             request.assert_called_once()
             sleep.assert_not_called()
 
+    def test_split_secondary_limit_message_respects_error_body_cap(self):
+        phrase = b'secondary rate limit'
+        for size, retryable in ((8191, True), (8192, True), (8193, False)):
+            clock = [0]
+            body = Response(b' ' * (size - len(phrase)) + phrase)
+            read1 = body.read1
+            error = HTTPError('https://api.github.com/x', 403, 'limited', {}, body)
+            with self.subTest(size=size), patch.object(body, 'read1', side_effect=lambda n: read1(min(n, 4090))) as read, \
+                    patch.object(companion.time, 'monotonic', side_effect=lambda: clock[0]), \
+                    patch.object(companion.time, 'sleep', side_effect=lambda delay: clock.__setitem__(0, clock[0] + delay)) as sleep:
+                transport = companion.Transport('synthetic')
+                with patch.object(transport.opener, 'open', side_effect=[error, Response(b'ok')]) as request:
+                    if retryable:
+                        self.assertEqual(transport.request('/x', companion.read_response), b'ok')
+                        self.assertEqual(request.call_count, 2)
+                        sleep.assert_called_once_with(60)
+                    else:
+                        with self.assertRaisesRegex(companion.DownloadError, 'HTTP 403'):
+                            transport.request('/x', companion.read_response)
+                        request.assert_called_once()
+                        sleep.assert_not_called()
+            self.assertEqual([call.args[0] for call in read.call_args_list],
+                             [8192, 4102, 12, 1] if size == 8191 else [8192, 4102, 12])
+
     def test_body_stops_starting_reads_at_the_deadline(self):
         for now, readable in ((239.99, True), (240, False), (240.01, False)):
             with self.subTest(now=now), patch.object(companion.time, 'monotonic', return_value=now):
@@ -150,6 +187,24 @@ class TransportTests(unittest.TestCase):
                 transport.request('/x', companion.read_response)
             request.assert_called_once()
             read.assert_not_called()
+
+    def test_error_body_stops_between_fragments_at_the_deadline(self):
+        clock = [0]
+        body = Response(b'')
+        error = HTTPError('https://api.github.com/x', 403, 'limited', {}, body)
+
+        def first_fragment(size):
+            clock[0] = 240
+            return b'secondary '
+
+        with patch.object(companion.time, 'monotonic', side_effect=lambda: clock[0]), \
+                patch.object(body, 'read1', side_effect=first_fragment) as read:
+            transport = companion.Transport('synthetic')
+            with patch.object(transport.opener, 'open', side_effect=error) as request, \
+                    self.assertRaisesRegex(companion.DownloadError, 'deadline exceeded'):
+                transport.request('/x', companion.read_response)
+            request.assert_called_once()
+            read.assert_called_once_with(8192)
 
     def test_http_retry_status_boundaries(self):
         for status, retryable in ((407, False), (408, True), (409, False), (499, False),
@@ -262,7 +317,7 @@ class DownloadCommandTests(unittest.TestCase):
                 patch.object(companion.Path, 'read_bytes', return_value=json.dumps(manifest).encode()), \
                 patch.object(companion.c5_campaign, 'matrices', return_value={'companion': {}, 'coordinator': {}}), \
                 patch.object(companion.c5_campaign, 'validate_manifest'), \
-                patch.object(companion, 'catalog', return_value=rows), \
+                patch.object(companion, 'catalog', return_value=(rows, set())), \
                 patch.object(companion, 'download', side_effect=effects) as download, \
                 patch.object(companion.sys, 'stderr', io.StringIO()):
             self.assertEqual(companion.main(), 1)
