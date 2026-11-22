@@ -2183,6 +2183,10 @@ class DependencyEndToEndTests(unittest.TestCase):
         def git(*args):
             if args[0] == 'rev-parse': return args[-1].replace('^{commit}', '').encode()
             if args[0] == 'diff': return (current + '\0').encode()
+            if (len(args) == 4 and args[:2] == ('merge-base', '--is-ancestor')
+                    and args[2] in {runtime.PAIRED_TAIL_SOURCE, runtime.PAIRED_RECOVERY_SOURCE}
+                    and args[3] in {'base', 'added'}):
+                raise subprocess.CalledProcessError(1, args)
             raise AssertionError(args)
         with mock.patch.object(runtime, 'files', side_effect=files), mock.patch.object(runtime, 'blob', side_effect=blob), \
              mock.patch.object(runtime, 'git', side_effect=git), \
@@ -3544,8 +3548,11 @@ class PairedRecoveryTimingTests(PairedTailTimingTests):
         self.assertFalse(runtime.retains_measurement_context(updated, original_context, edited))
 
     def test_cut_and_execution_drift_reject_the_transition(self):
+        head = runtime.git('rev-parse', 'HEAD').decode().strip()
+        self.assertNotEqual(head, self.head)
+        self.assertEqual(runtime.PAIRED_RECOVERY_CHANGED, runtime.paired_recovery_changes(head))
         original = runtime.proof_tree
-        tree = list(original(self.head))
+        tree = list(original(head))
         for index in (0, 1, 2, 3, 4):
             altered = copy.deepcopy(tree)
             if index == 0:
@@ -3562,14 +3569,15 @@ class PairedRecoveryTimingTests(PairedTailTimingTests):
                 altered[4].pop('b10-final-judge-p1')
             runtime.paired_recovery_changes.cache_clear()
             with self.subTest(index=index), mock.patch.object(runtime, 'proof_tree', side_effect=lambda ref:
-                    tuple(altered) if ref == self.head else original(ref)):
-                self.assertFalse(runtime.paired_recovery_changes(self.head))
+                    tuple(altered) if ref == head else original(ref)):
+                self.assertFalse(runtime.paired_recovery_changes(head))
         runtime.paired_recovery_changes.cache_clear()
 
     def test_each_role_matrix_must_match_both_sources(self):
+        head = runtime.git('rev-parse', 'HEAD').decode().strip()
         original = runtime.blob
         for path in runtime.CAMPAIGN_LIMITS:
-            for ref in (runtime.PAIRED_TAIL_SOURCE, self.head):
+            for ref in (runtime.PAIRED_TAIL_SOURCE, self.head, head):
                 runtime.paired_recovery_changes.cache_clear()
 
                 def changed_blob(commit, requested):
@@ -3582,5 +3590,5 @@ class PairedRecoveryTimingTests(PairedTailTimingTests):
                     return data
 
                 with self.subTest(path=path, ref=ref), mock.patch.object(runtime, 'blob', side_effect=changed_blob):
-                    self.assertFalse(runtime.paired_recovery_changes(self.head))
+                    self.assertFalse(runtime.paired_recovery_changes(head))
         runtime.paired_recovery_changes.cache_clear()
