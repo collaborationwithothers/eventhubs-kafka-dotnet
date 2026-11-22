@@ -93,7 +93,8 @@ class TransferTests(unittest.TestCase):
                     'destination': {'account_host': 'archive123.blob.core.windows.net', 'container': 'run-evidence',
                                     'prefix': prefix, 'retention_days': 90}, 'policy': archive._common.POLICY,
                     'expected_units': [], 'objects': [], 'captures': [], 'completion': None, 'gaps': [],
-                    'totals': {'expected_objects': 0, 'verified_objects': 0, 'verified_bytes': 0}}
+                    'totals': {'expected_objects': 0, 'verified_objects': 0, 'verified_bytes': 0},
+                    'transport_versions': {'azure_cli': '2.93.0', 'azure_storage_blob': '12.29.0b1'}}
         class Controls:
             fail = True
             deadline = float('inf')
@@ -376,7 +377,7 @@ class TransferTests(unittest.TestCase):
             phase_spec = importlib.util.spec_from_file_location('phase_entry', Path(__file__).resolve().parents[1] / 'phase.py')
             phase_module = importlib.util.module_from_spec(phase_spec); phase_spec.loader.exec_module(phase_module)
             with patch.dict(os.environ, env), patch.object(phase_module.Phase, 'archive_module', return_value=archive), \
-                    patch.object(archive._common, 'preflight'), patch.object(archive, 'Transfer', Controls):
+                    patch.object(archive._common, 'preflight', return_value={'python': '/usr/bin/python3', 'azure_cli': '2.93.0', 'azure_storage_blob': '12.29.0b1'}), patch.object(archive, 'Transfer', Controls):
                 self.assertEqual(1, phase_module.main(['archive']))
             manifest = json.loads((artifacts / 'archive/archive-manifest.json').read_bytes())
             receipt = json.loads((artifacts / 'archive/archive-receipt.json').read_bytes())
@@ -386,6 +387,7 @@ class TransferTests(unittest.TestCase):
             self.assertEqual(science, {key: status[key] for key in science})
             self.assertIsNotNone(receipt['manifest'])
             self.assertIsNone(receipt['completion'])
+            self.assertEqual({'azure_cli': '2.93.0', 'azure_storage_blob': '12.29.0b1'}, manifest['transport_versions'])
             self.assertEqual(16, len(manifest['expected_units']))
             self.assertTrue(all(gap['code'] == 'monitoring_incomplete' for gap in manifest['gaps']))
             import shutil
@@ -405,7 +407,7 @@ class TransferTests(unittest.TestCase):
                                                                      'candidate': science['candidate'], 'full_allowed': False, 'modes': records}))
             Controls.writes.clear()
             with patch.dict(os.environ, env), patch.object(phase_module.Phase, 'archive_module', return_value=archive), \
-                    patch.object(archive._common, 'preflight'), patch.object(archive, 'Transfer', Controls):
+                    patch.object(archive._common, 'preflight', return_value={'python': '/usr/bin/python3', 'azure_cli': '2.93.0', 'azure_storage_blob': '12.29.0b1'}), patch.object(archive, 'Transfer', Controls):
                 self.assertEqual(0, phase_module.main(['archive']))
             receipt = json.loads((artifacts / 'archive/archive-receipt.json').read_bytes())
             self.assertTrue(receipt['archive_complete'])
@@ -431,9 +433,11 @@ class TransferTests(unittest.TestCase):
                 self.assertEqual(2, phase_module.main(['archive']))
             receipt = json.loads((artifacts / 'archive/archive-receipt.json').read_bytes())
             self.assertEqual('config_invalid', receipt['gaps'][0]['code'])
+            self.assertEqual('archive transport version', receipt['gaps'][0]['boundary'])
+            self.assertNotIn('transport_versions', json.loads((artifacts / 'archive/archive-manifest.json').read_bytes()))
             shutil.rmtree(artifacts / 'archive'); shutil.rmtree(private / 'archive')
             with patch.dict(os.environ, env), patch.object(phase_module.Phase, 'archive_module', return_value=archive), \
-                    patch.object(archive._common, 'preflight'), patch.object(archive, 'Transfer', side_effect=OSError('private sentinel')):
+                    patch.object(archive._common, 'preflight', return_value={'python': '/usr/bin/python3', 'azure_cli': '2.93.0', 'azure_storage_blob': '12.29.0b1'}), patch.object(archive, 'Transfer', side_effect=OSError('private sentinel')):
                 self.assertEqual(1, phase_module.main(['archive']))
             receipt = json.loads((artifacts / 'archive/archive-receipt.json').read_bytes())
             self.assertFalse(receipt['archive_complete'])
@@ -564,7 +568,7 @@ class TransferTests(unittest.TestCase):
         session = Path(self.tmp.name) / 'preflight-session'; session.mkdir(mode=0o700)
         (session / 'freshness.json').write_text(json.dumps({'request_started_monotonic': time.monotonic(), 'assertion_exp': int(time.time()) + 600}))
         python = Path(self.tmp.name) / 'cli-python'
-        python.write_text('#!/usr/bin/python3\nimport os\nprint(os.environ.get("ARCHIVE_TEST_SDK", "12.29.0b1"))\n'); python.chmod(0o700)
+        python.write_text('#!/usr/bin/python3\nimport os\nimport sys\nprint(os.environ.get("ARCHIVE_TEST_SDK", "12.29.0b1"))\nsys.stderr.write(os.environ.get("ARCHIVE_TEST_SDK_ERR", ""))\nsys.exit(int(os.environ.get("ARCHIVE_TEST_SDK_EXIT", "0")))\n'); python.chmod(0o700)
         fake = Path(self.tmp.name) / 'az-real-version'
         fake.write_text('#!/usr/bin/python3\nimport json,os,sys\nif sys.argv[1] == "version": print(json.dumps({"azure-cli": os.environ.get("ARCHIVE_TEST_CLI", "2.92.0")}))\nelse: print(os.environ.get("ARCHIVE_TEST_LOCATION", ""))\n'); fake.chmod(0o700)
         wrapper_dir = Path(__file__).resolve().parents[4] / 'scripts/azure-cli-session'
@@ -574,8 +578,22 @@ class TransferTests(unittest.TestCase):
                'AZURE_CLIENT_ID': uid, 'AZURE_TENANT_ID': uid, 'AZURE_SUBSCRIPTION_ID': uid,
                'ARCHIVE_TEST_LOCATION': "Python location '" + str(python) + "'"}
         with patch.dict(os.environ, env):
-            self.assertEqual(str(python), archive._common.preflight(time.monotonic() + 30))
-            cases = ({'ARCHIVE_TEST_CLI': '2.91.0'}, {'ARCHIVE_TEST_SDK': '12.28.0'},
+            def versions(cli='2.92.0', sdk='12.29.0b1'):
+                return {'python': str(python), 'azure_cli': cli, 'azure_storage_blob': sdk}
+            self.assertEqual(versions(), archive._common.preflight(time.monotonic() + 30))
+            accepted = (({'ARCHIVE_TEST_CLI': '2.93.0'}, versions(cli='2.93.0')),
+                        ({'ARCHIVE_TEST_CLI': '2.91.0'}, versions(cli='2.91.0')),
+                        ({'ARCHIVE_TEST_CLI': '3.0.0b1'}, versions(cli='3.0.0b1')),
+                        ({'ARCHIVE_TEST_CLI': '2.93.0' + 'a' * 32}, versions(cli='2.93.0' + 'a' * 32)),
+                        ({'ARCHIVE_TEST_SDK': '12.28.0'}, versions(sdk='12.28.0')),
+                        ({'ARCHIVE_TEST_SDK': '12.30.0b2'}, versions(sdk='12.30.0b2')))
+            for changed, expected in accepted:
+                with self.subTest(accepted=changed), patch.dict(os.environ, changed):
+                    self.assertEqual(expected, archive._common.preflight(time.monotonic() + 30))
+            cases = ({'ARCHIVE_TEST_CLI': '2.93'}, {'ARCHIVE_TEST_CLI': 'v2.93.0'}, {'ARCHIVE_TEST_CLI': '2.93.0 '},
+                     {'ARCHIVE_TEST_CLI': '2.93.0' + 'a' * 33}, {'ARCHIVE_TEST_CLI': ''},
+                     {'ARCHIVE_TEST_SDK': ''}, {'ARCHIVE_TEST_SDK': 'not-a-version'}, {'ARCHIVE_TEST_SDK': '12.29'},
+                     {'ARCHIVE_TEST_SDK_ERR': 'PackageNotFoundError', 'ARCHIVE_TEST_SDK_EXIT': '1'},
                      {'ARCHIVE_TEST_LOCATION': ''}, {'ARCHIVE_TEST_LOCATION': "Python location 'relative/python'"},
                      {'ARCHIVE_TEST_LOCATION': env['ARCHIVE_TEST_LOCATION'] + '\n' + env['ARCHIVE_TEST_LOCATION']},
                      {'ARCHIVE_TEST_LOCATION': 'Python location /not-quoted'},

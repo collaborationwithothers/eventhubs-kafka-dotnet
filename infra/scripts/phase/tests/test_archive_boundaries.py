@@ -28,7 +28,8 @@ def manifest():
             'destination': {'account_host': 'archive123.blob.core.windows.net', 'container': 'run-evidence',
                             'prefix': PREFIX, 'retention_days': 90}, 'policy': dict(archive._common.POLICY),
             'expected_units': [], 'objects': [], 'captures': [], 'completion': None, 'gaps': [],
-            'totals': {'expected_objects': 0, 'verified_objects': 0, 'verified_bytes': 0}}
+            'totals': {'expected_objects': 0, 'verified_objects': 0, 'verified_bytes': 0},
+            'transport_versions': {'azure_cli': '2.93.0', 'azure_storage_blob': '12.29.0b1'}}
 
 
 def receipt():
