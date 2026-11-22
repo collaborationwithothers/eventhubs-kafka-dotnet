@@ -76,7 +76,8 @@ class Transport:
                 headers = error.headers
                 try:
                     with error:
-                        body = error.read(8192).decode('utf-8', 'replace').lower()
+                        self.pause(0)
+                        body = error.read1(8192).decode('utf-8', 'replace').lower()
                 except (HTTPException, OSError):
                     body = ''
                 primary = status in (403, 429) and headers.get('X-RateLimit-Remaining') == '0'

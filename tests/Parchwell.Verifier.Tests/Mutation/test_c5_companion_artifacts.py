@@ -135,6 +135,48 @@ class TransportTests(unittest.TestCase):
                         companion.read_response(response, 240)
                     self.assertEqual(response.tell(), 0)
 
+    def test_error_body_is_not_read_at_the_deadline(self):
+        clock = [0]
+        body = Response(b'secondary rate limit')
+        def open_request(request, timeout):
+            clock[0] = 240
+            raise HTTPError(request.full_url, 403, 'limited', {}, body)
+
+        with patch.object(companion.time, 'monotonic', side_effect=lambda: clock[0]):
+            transport = companion.Transport('synthetic')
+            with patch.object(transport.opener, 'open', side_effect=open_request) as request, \
+                    patch.object(body, 'read1', wraps=body.read1) as read, \
+                    self.assertRaisesRegex(companion.DownloadError, 'deadline exceeded'):
+                transport.request('/x', companion.read_response)
+            request.assert_called_once()
+            read.assert_not_called()
+
+    def test_http_retry_status_boundaries(self):
+        for status, retryable in ((407, False), (408, True), (409, False), (499, False),
+                                  (500, True), (599, True), (600, False)):
+            clock = [0]
+            error = HTTPError('https://api.github.com/x', status, 'error', {}, Response(b'error'))
+            with self.subTest(status=status), patch.object(companion.time, 'monotonic', side_effect=lambda: clock[0]), \
+                    patch.object(companion.time, 'sleep', side_effect=lambda delay: clock.__setitem__(0, clock[0] + delay)):
+                transport = companion.Transport('synthetic')
+                with patch.object(transport.opener, 'open', side_effect=[error, Response(b'ok')]) as request:
+                    if retryable:
+                        self.assertEqual(transport.request('/x', companion.read_response), b'ok')
+                        self.assertEqual(request.call_count, 2)
+                    else:
+                        with self.assertRaisesRegex(companion.DownloadError, f'HTTP {status}'):
+                            transport.request('/x', companion.read_response)
+                        request.assert_called_once()
+
+    def test_request_timeout_uses_smaller_of_15_seconds_and_remaining_time(self):
+        for remaining, expected in ((14.99, 14.99), (15, 15), (15.01, 15)):
+            with self.subTest(remaining=remaining), patch.object(companion.time, 'monotonic', return_value=0):
+                transport = companion.Transport('synthetic')
+                transport.deadline = remaining
+                with patch.object(transport.opener, 'open', return_value=Response(b'ok')) as request:
+                    self.assertEqual(transport.request('/x', companion.read_response), b'ok')
+                    self.assertEqual(request.call_args.kwargs['timeout'], expected)
+
     def test_permanent_error_does_not_retry_and_redirection_omits_token(self):
         transport = companion.Transport('secret')
         calls = []

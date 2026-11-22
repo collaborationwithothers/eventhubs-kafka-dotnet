@@ -1582,6 +1582,83 @@ class AggregationTests(unittest.TestCase):
         self.assertTrue((fixture.output / "summary.md").is_file())
         self.assertTrue((fixture.output / "survivors.json").is_file())
 
+    def test_failed_companion_download_preserves_verified_partial_aggregate(self):
+        from zipfile import ZipFile
+        import c5_campaign
+        import c5_companion_artifacts as downloader
+
+        fixture = AggregateFixture(self.directory)
+        companion_id, companion_attempt = "67890", "1"
+        repository = "owner/repo"
+        peers = ("phase", "publication")
+        layout = {
+            role: {shard: target for shard, target in workflow.SHARDS.items()
+                   if (shard in peers) == (role == "companion")}
+            for role in c5_campaign.PATHS
+        }
+        runs = {
+            role: {"id": int(rid), "attempt": int(attempt), "path": c5_campaign.PATHS[role],
+                   "created_at": "2026-10-25T17:59:00Z"}
+            for role, rid, attempt in (("coordinator", RUN_ID, ATTEMPT),
+                                       ("companion", companion_id, companion_attempt))
+        }
+        manifest = self.directory / "campaign.json"
+        write_json(manifest, {
+            "schema": 1, "repository": repository, "commit": COMMIT, "runs": runs,
+            "incomplete_reasons": [],
+            "shards": {name: {"target": path, "run_id": str(runs[role]["id"]),
+                              "run_attempt": str(runs[role]["attempt"])}
+                       for role, entries in layout.items() for name, path in entries.items()},
+        })
+        fixture.receipts["phase"].update(run_id=companion_id, run_attempt=companion_attempt)
+        fixture.save("phase")
+        data = io.BytesIO()
+        phase = fixture.paths["phase"]
+        with ZipFile(data, "w") as archive:
+            for path in phase.rglob("*"):
+                if path.is_file():
+                    archive.write(path, path.relative_to(phase).as_posix())
+        archive_bytes = data.getvalue()
+        for shard in peers:
+            shutil.rmtree(fixture.paths[shard])
+        expected = {
+            f"c5-mutation-{companion_id}-{companion_attempt}-{shard}":
+                {"id": number, "size_in_bytes": len(archive_bytes),
+                 "digest": "sha256:" + hashlib.sha256(archive_bytes).hexdigest()}
+            for number, shard in enumerate(peers, 1)
+        }
+
+        class Transport:
+            def request(self, path, consume):
+                if path.endswith("/1/zip"):
+                    return consume(io.BytesIO(archive_bytes), float("inf"))
+                raise downloader.DownloadError("GitHub request exhausted retries (HTTP 403 rate limit)")
+
+        args = ["downloader", "--repository", repository, "--commit", COMMIT,
+                "--manifest", str(manifest), "--output-dir", str(fixture.input)]
+        with (patch.object(sys, "argv", args),
+              patch.dict(os.environ, {"GH_TOKEN": "synthetic", "GITHUB_REPOSITORY": repository}),
+              patch.object(c5_campaign, "matrices", return_value=layout),
+              patch.object(downloader, "Transport", return_value=Transport()),
+              patch.object(downloader, "catalog", return_value=expected),
+              patch.object(workflow, "git", side_effect=[COMMIT.encode(), TREE.encode()]),
+              contextlib.redirect_stderr(io.StringIO())):
+            self.assertEqual(downloader.main(), 1)
+            result = workflow.aggregate(fixture.input, COMMIT, RUN_ID, ATTEMPT, fixture.output, manifest)
+
+        summary = json.loads((fixture.output / "summary.json").read_text())
+        self.assertEqual(result, 1)
+        self.assertIs(summary["measurement_complete"], False)
+        self.assertIsNone(summary["break_passed"])
+        self.assertIsNone(summary["score_percent"])
+        self.assertIn("phase", summary["shards"])
+        self.assertIn("a01", summary["shards"])
+        self.assertNotIn("publication", summary["shards"])
+        self.assertTrue(any(reason.startswith("publication:") for reason in summary["incomplete_reasons"]))
+        self.assertTrue((fixture.input / f"c5-mutation-{companion_id}-{companion_attempt}-phase" / "receipt.json").is_file())
+        self.assertTrue((fixture.output / "summary.md").is_file())
+        self.assertTrue((fixture.output / "survivors.json").is_file())
+
     def test_receipt_requires_statsbeat_disabled_override(self):
         for value in (None, "false"):
             with self.subTest(value=value), tempfile.TemporaryDirectory() as temp:
