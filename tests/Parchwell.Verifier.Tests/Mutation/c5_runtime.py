@@ -1107,6 +1107,132 @@ def selected_invocation(declarations, matrix, shard):
     return target, key, 'primary', bounds[index - 1:index + 1]
 
 
+PAIRED_TAIL_PRIOR = 'b31928a2ed22a634e8e1a66edb953311eaa9ca87'
+PAIRED_TAIL_SOURCE = '3c65a2fa52f16378c3815159cd07f8237e3346bf'
+PAIRED_TAIL_COUNTS = {'verifier-result-codec': 17, 'b10-final-judge': 13, 'b10-final-projection-codec': 13}
+
+PAIRED_RECOVERY_SOURCE = '4275b634f14c1f81fcfe91dfcd7deb260a0c8a7f'
+PAIRED_RECOVERY_CHANGED = frozenset({
+    'b10-final-judge-crossing',
+    'b10-final-judge-p1',
+    'b10-final-judge-p2',
+    'b10-final-judge-p3',
+    'b10-final-judge-p4',
+    'b10-final-projection-codec-crossing',
+    'b10-final-projection-codec-p5',
+    'b10-final-projection-codec-p6',
+    'b10-final-projection-codec-p7',
+    'b10-final-projection-codec-p8',
+    'b10-final-projection-codec-p9',
+    'verifier-result-codec-crossing',
+    'verifier-result-codec-p18',
+    'verifier-result-codec-p19',
+    'verifier-result-codec-p20',
+    'verifier-result-codec-p21',
+    'verifier-result-codec-p22',
+    'verifier-result-codec-p23',
+})
+# Receipt archive hashes and observed durations from the 25 completed, unchanged R3 jobs.
+PAIRED_RECOVERY_RETAINED = {
+    'b10-final-judge-p10': ('58719f95be11905c33f5ee3037f7f90179cca9d639a0d3c8621e8cc79c5c4363', 1935.7651908799999, 44, 1937),
+    'b10-final-judge-p11': ('082b5c913f584ca571cd4745f7b17e12796030d764a351e09ec4e2f98065f942', 1778.520286444, 43, 1780),
+    'b10-final-judge-p12': ('3cc07f1b8c6fcd547a18b9adf2d0677f9e9b8e79c529cc06bcab92e2a9853d5f', 2507.719754026, 58, 2509),
+    'b10-final-judge-p5': ('67af9be26618825da0d9c85f4a290316f1aac3cb1de0a67690db7cc92b733c46', 2151.477483571, 50, 2153),
+    'b10-final-judge-p6': ('c25cc6258b2d24cd7fdd215580550cf169a251e6ac932061c464f04086e0f985', 1710.121628492, 55, 1711),
+    'b10-final-judge-p7': ('9db0b00972930e222ed1cb2382b721a19f9e6b68c4a1291397ed55cc1467a832', 1530.6311089350002, 56, 1532),
+    'b10-final-judge-p8': ('3929baed27a339394a0b55afaa44548c08f9dc6488fedd0520605faf8d41adec', 2182.930586415, 50, 2184),
+    'b10-final-judge-p9': ('d3e4ff88956ef1ed6284c32d5892daf719274fa40f05462ae89452be40161a4e', 1180.904350457, 44, 1182),
+    'b10-final-projection-codec-p10': ('4049f0160671d84589c9b2b1841db3738916acd6e32fe2256c5465d593ced6fb', 1564.589691557, 44, 1566),
+    'b10-final-projection-codec-p11': ('4e6ca98258589b01d0a9575440cb5d4790a950108857deb2b405eef6da013b16', 2068.549000637, 47, 2070),
+    'b10-final-projection-codec-p12': ('b0acf4d2731e133579a8290fc74bc3e991d09b56b183f996b7a71154f47d6e47', 1278.426747581, 46, 1279),
+    'b10-final-projection-codec-p13': ('9b4fe9c91cde5d9a3b017c6129681dc8f7a1af265a1fc50cc7719cf0da74b235', 2009.4777907540001, 47, 2011),
+    'b10-final-projection-codec-p14': ('f46fc181c617909a3fe2c74fc0911d8d8dfa62b9fdeaff8232a23b1d73c5d8bf', 2072.841255362, 60, 2074),
+    'b10-final-projection-codec-p15': ('19a240f2b8d2e7b9bbaecf3addc44eb334bd9a5de6ff7431372f7d0d31ed0d72', 2137.536345279, 48, 2138),
+    'b10-final-projection-codec-p4': ('f79f6dcd792c280e7521ebffd316996a08cdf86b3cd7a1ff9711eb5aeaec4b7e', 2300.582122063, 55, 2302),
+    'verifier-result-codec-p10': ('fdf34139ebe69be1d4938f9b519d308b001c859c248669e5a4697247760c3246', 1373.559332149, 70, 1374),
+    'verifier-result-codec-p11': ('709dd0529b9aa4179b7f6bc18a21b3ed4d67d0fa83960466059901760ecf6395', 1997.400871458, 64, 1998),
+    'verifier-result-codec-p12': ('e594ac1b9a97d0247c85e1bf327a0241ae0d76e0080215d80e147a0fa49698df', 2315.3619691119998, 53, 2316),
+    'verifier-result-codec-p13': ('905d9a450a13eec1d33249457fe898cf80c2ba30ba7206b443df2989be54032d', 2004.812414428, 56, 2006),
+    'verifier-result-codec-p14': ('9950eaad8f091c699b663e5af186e70e9021113748ad0ad80e55aed679b075d6', 2304.787644521, 52, 2306),
+    'verifier-result-codec-p24': ('89c5159134ccae2488f8608f0b40e321e2634a63075e87e3e008742660b24e53', 2450.6672467020003, 73, 2451),
+    'verifier-result-codec-p25': ('df5c7a9a8b88c31c4963b51c7258c082dd969999a30c1d0b73759b2632eb4ede', 2246.865985225, 54, 2248),
+    'verifier-result-codec-p26': ('5d4fe56e695627b54bf38427db78bcdc9f82d23f6a04d25d961b602ff285c2e4', 2604.3595174330003, 70, 2605),
+    'verifier-result-codec-p8': ('697b48d6041e8ab0cd8167cc4ba2142939cee74c735e95933e2e9b8d7eddf19d', 1658.803118783, 54, 1659),
+    'verifier-result-codec-p9': ('2d40c34a422daa5daf0a52bbef7716693222fb2b9d43d7d2bf6c632bc52d0c43', 2556.626934938, 67, 2557),
+}
+
+
+@functools.lru_cache(maxsize=4)
+def paired_tail_changes(head):
+    """Find changed invocations only on the reviewed paired-run tail layout."""
+    if not head:
+        return frozenset()
+    try:
+        git('merge-base', '--is-ancestor', PAIRED_TAIL_SOURCE, head)
+        prior = proof_tree(PAIRED_TAIL_PRIOR)
+        measured = proof_tree(PAIRED_TAIL_SOURCE)
+        if not same_timing_layout(measured, proof_tree(head)) or prior[1:] != measured[1:]:
+            return frozenset()
+        old, new = prior[0], measured[0]
+        cuts = dict(old['PRIMARY_CUTS'])
+        for target in PAIRED_TAIL_COUNTS:
+            if len(cuts[target]) != len(new['PRIMARY_CUTS'][target]):
+                return frozenset()
+            cuts[target] = new['PRIMARY_CUTS'][target]
+        if new != {**old, 'PRIMARY_CUTS': cuts} or any(
+                workflow_matrix(blob(head, path)) != workflow_matrix(blob(PAIRED_TAIL_PRIOR, path))
+                for path in CAMPAIGN_LIMITS):
+            return frozenset()
+        matrix = measured[4]
+        changed = frozenset(shard for shard in matrix
+                            if selected_invocation(old, matrix, shard) != selected_invocation(new, matrix, shard))
+        counts = {target: sum(matrix[shard] == new['TARGETS'][target][0] for shard in changed)
+                  for target in PAIRED_TAIL_COUNTS}
+        if counts != PAIRED_TAIL_COUNTS or sum(counts.values()) != len(changed):
+            return frozenset()
+        return changed
+    except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
+        return frozenset()
+
+
+@functools.lru_cache(maxsize=4)
+def paired_recovery_changes(head):
+    """Accept only the reviewed successor and its exact physical owner changes."""
+    if not head:
+        return frozenset()
+    try:
+        git('merge-base', '--is-ancestor', PAIRED_RECOVERY_SOURCE, head)
+        old, new = proof_tree(PAIRED_TAIL_SOURCE), proof_tree(PAIRED_RECOVERY_SOURCE)
+        if not same_timing_layout(new, proof_tree(head)) or old[1:] != new[1:]:
+            return frozenset()
+        for path in CAMPAIGN_LIMITS:
+            old_matrix, new_matrix, head_matrix = (
+                list(workflow_matrix(blob(ref, path)).items())
+                for ref in (PAIRED_TAIL_SOURCE, PAIRED_RECOVERY_SOURCE, head)
+            )
+            if old_matrix != new_matrix or new_matrix != head_matrix:
+                return frozenset()
+        cuts = dict(old[0]['PRIMARY_CUTS'])
+        for target in PAIRED_TAIL_COUNTS:
+            if len(cuts[target]) != len(new[0]['PRIMARY_CUTS'][target]):
+                return frozenset()
+            cuts[target] = new[0]['PRIMARY_CUTS'][target]
+        if new[0] != {**old[0], 'PRIMARY_CUTS': cuts}:
+            return frozenset()
+        matrix = new[4]
+        changed = frozenset(shard for shard in matrix if
+                            selected_invocation(old[0], old[4], shard) !=
+                            selected_invocation(new[0], matrix, shard))
+        if changed != PAIRED_RECOVERY_CHANGED:
+            return frozenset()
+        r3 = paired_tail_changes(PAIRED_TAIL_SOURCE)
+        if changed | frozenset(PAIRED_RECOVERY_RETAINED) != r3:
+            return frozenset()
+        return changed
+    except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
+        return frozenset()
+
+
 def followup_equivalent(old, old_maps, old_config, new, new_maps, new_config):
     """Limit the paired runner change to the reviewed addition of the p4 cohort."""
     old_shared, old_targets = old_maps
@@ -1883,6 +2009,9 @@ def fresh_pinned_timing(config, path, record, shard, item, source, head):
         return False
     proof = config['timing_evidence'].get(shard, {})
     context = config['timing_inputs'].get(item['timing_inputs_sha256'], {})
+    if (shard in paired_tail_changes(head) or shard in paired_recovery_changes(head)
+            or (paired_recovery_changes(head) and shard in PAIRED_RECOVERY_RETAINED)):
+        return path == pinned_path and timing_context_linked(context, shard, path, record, item, proof, {}, head)
     return (path == pinned_path and digest(source) != pinned_source
             and proof.get('kind') == 'measured'
             and timing_context_linked(context, shard, path, record, item, proof, {}, head)
@@ -1899,6 +2028,28 @@ def committed_context_matches(context):
 
 def timing_context_linked(context, shard, path, record, item, timing, baseline, head=None):
     commit = context.get('source_commit')
+    changed_tail = shard in paired_tail_changes(head)
+    recovery = paired_recovery_changes(head)
+    fresh_recovery = shard in recovery
+    retained_recovery = bool(recovery) and shard in PAIRED_RECOVERY_RETAINED
+    if changed_tail or fresh_recovery or retained_recovery or timing.get('source_commit') in {PAIRED_TAIL_SOURCE, PAIRED_RECOVERY_SOURCE}:
+        if not (changed_tail or fresh_recovery or retained_recovery):
+            return False
+        expected_source = PAIRED_RECOVERY_SOURCE if fresh_recovery else PAIRED_TAIL_SOURCE
+        source = proof_tree(expected_source)
+        retained = PAIRED_RECOVERY_RETAINED.get(shard) if retained_recovery else None
+        return (timing.get('kind') == 'measured' and timing.get('source_commit') == expected_source
+                and source[4].get(shard) == path
+                and source[2] == (context.get('shared_inputs'), context.get('target_sources'))
+                and committed_context_matches(context)
+                and 0 < timing['observed_seconds'] <= min(2650, item['estimated_seconds'])
+                and 1 <= timing['observed_workers'] <= 2
+                and (retained is None or (timing['artifact_sha256'] == retained[0]
+                     and timing['observed_seconds'] == retained[1]
+                     and timing['observed_workers'] == 2
+                     and item['main_mutants'] == retained[2]
+                     and item['estimated_seconds'] == retained[3]))
+                and has_shard_timing(shard, path, record, item, timing, baseline))
     if timing.get('kind') == 'measured':
         if commit == REVIEW_CORRECTION and path == CODEC_TARGET and head:
             try:
@@ -1913,6 +2064,16 @@ def timing_context_linked(context, shard, path, record, item, timing, baseline, 
         return (commit == HISTORICAL_QUALIFICATION_COMMIT
                 and has_shard_timing(shard, path, record, item, timing, baseline))
     return False
+
+
+def retains_measurement_context(context, prior, shared):
+    """Keep the measured inputs and assessments whose subject has not changed."""
+    if (any(context.get(key) != prior.get(key) for key in ('source_commit', 'shared_inputs', 'target_sources'))
+            or context['assessments']['target_sources'] != prior['assessments']['target_sources']):
+        return False
+    return all(context['assessments']['shared_inputs'].get(path) == assessment
+               for path, assessment in prior['assessments']['shared_inputs'].items()
+               if assessment['current_sha256'] == shared.get(path))
 
 
 def validate(config, shared, targets, source, matrix, head=None):
@@ -1945,6 +2106,11 @@ def validate(config, shared, targets, source, matrix, head=None):
     used_contexts = set()
     baseline = historical_qualification() if config['schema_version'] == 2 and any(
         p['kind'] == 'historical' for p in config['timing_evidence'].values()) else {}
+    recovery_changes = paired_recovery_changes(head)
+    tail_changes = paired_tail_changes(PAIRED_TAIL_SOURCE) if recovery_changes else paired_tail_changes(head)
+    if tail_changes and config['schema_version'] != 2:
+        reasons.add('missing_measurement')
+    tail_prior = strict_json(blob(PAIRED_TAIL_PRIOR, HISTORICAL_QUALIFICATION_PATH)) if tail_changes else None
     shard_fields = {'selection_sha256', 'timing_inputs_sha256', 'main_mutants', 'main_work_seconds',
                     'parallelism', 'setup_seconds', 'isolated_seconds', 'estimated_seconds', 'basis'}
     for path, record in config['targets'].items():
@@ -1982,6 +2148,8 @@ def validate(config, shared, targets, source, matrix, head=None):
                     for field in ('hardware', 'calibration')):
                 reasons.add('missing_measurement')
         for shard, item in record['shards'].items():
+            retained_tail = tail_prior is not None and shard not in tail_changes
+            proof_head = PAIRED_TAIL_PRIOR if retained_tail else head
             if shard in all_shards:
                 reasons.add('layout_mismatch')
             all_shards[shard] = path
@@ -1998,12 +2166,21 @@ def validate(config, shared, targets, source, matrix, head=None):
                     reasons.add('missing_measurement')
                 else:
                     used_contexts.add(binding)
-                    reasons.update(provenance_errors(context, shared, targets, path, shard, head))
-                    if 'source_commit' in context:
+                    timing = config['timing_evidence'].get(shard, {})
+                    if retained_tail:
+                        prior_record = tail_prior['targets'][path]
+                        prior_evidence = prior_record['evidence']
+                        prior_context = tail_prior['timing_inputs'].get(binding, {})
+                        if (item != prior_record['shards'].get(shard)
+                                or timing != tail_prior['timing_evidence'].get(shard)
+                                or not retains_measurement_context(context, prior_context, shared)
+                                or record['evidence'][:len(prior_evidence)] != prior_evidence):
+                            reasons.add('missing_measurement')
+                    reasons.update(provenance_errors(context, shared, targets, path, shard, proof_head))
+                    if 'source_commit' in context or shard in tail_changes:
                         if not committed_context_matches(context):
                             reasons.add('stale_inputs')
-                        timing = config['timing_evidence'].get(shard, {})
-                        if not timing_context_linked(context, shard, path, record, item, timing, baseline, head):
+                        if not timing_context_linked(context, shard, path, record, item, timing, baseline, proof_head):
                             reasons.add('missing_measurement')
                 if provisional and binding != PROVISIONAL_TIMING_INPUTS_HASH:
                     reasons.add('stale_inputs')
@@ -2026,10 +2203,10 @@ def validate(config, shared, targets, source, matrix, head=None):
                                     or approved_six_tail(path, record, shard, item, source[path])):
                 reasons.add('invalid_estimate')
             if (shard in CODEC_NEIGHBOR and not approved_codec_neighbor(path, record, shard, item, source[path])
-                    and not fresh_pinned_timing(config, path, record, shard, item, source[path], head)):
+                    and not fresh_pinned_timing(config, path, record, shard, item, source[path], proof_head)):
                 reasons.add('invalid_estimate')
             if (shard in SIX_TAIL_BINDINGS and not approved_six_tail(path, record, shard, item, source[path])
-                    and not fresh_pinned_timing(config, path, record, shard, item, source[path], head)):
+                    and not fresh_pinned_timing(config, path, record, shard, item, source[path], proof_head)):
                 reasons.add('invalid_estimate')
             numeric = ('main_work_seconds', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')
             valid = (type(item['main_mutants']) is int and item['main_mutants'] >= 0
