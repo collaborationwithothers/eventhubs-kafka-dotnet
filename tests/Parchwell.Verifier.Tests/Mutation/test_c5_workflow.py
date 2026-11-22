@@ -1508,7 +1508,7 @@ class AggregationTests(unittest.TestCase):
     def test_coordinated_receipts_bind_each_shard_to_its_run_and_attempt(self):
         import c5_campaign
 
-        companion_id, companion_attempt = "67890", "2"
+        companion_id, companion_attempt = "67890", "1"
         companion_shard = "phase"
         repository = "owner/repo"
         layout = {
@@ -1594,7 +1594,7 @@ class AggregationTests(unittest.TestCase):
         import c5_companion_artifacts as downloader
 
         fixture = AggregateFixture(self.directory)
-        companion_id, companion_attempt = "67890", "1"
+        companion_id, companion_attempt = "67890", "3"
         repository = "owner/repo"
         peers = ("phase", "publication")
         layout = {
