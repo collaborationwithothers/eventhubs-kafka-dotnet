@@ -4,6 +4,7 @@ import json
 import math
 from pathlib import Path
 import shlex
+import shutil
 import tempfile
 import unittest
 import os
@@ -2705,6 +2706,265 @@ class RenewalTests(unittest.TestCase):
                 self.assertIn('synthetic replacement failure', stderr)
                 self.assertEqual(before, path.read_bytes())
                 self.assertEqual(entries, set(Path(directory).iterdir()))
+
+
+class RenewalV2Tests(unittest.TestCase):
+    setUp = QualificationTests.setUp
+    D1 = 'synthetic decision 1'
+    D2 = 'synthetic decision 2'
+    A, B, C = (runtime.digest(value) for value in (b'A', b'B', b'C'))
+
+    def build(self, previous, *contexts):
+        """Version 2 file whose top level is `previous`; each context is (measured shared map, assessments)."""
+        self.config['schema_version'] = 2
+        self.config['shared_inputs'] = dict(previous)
+        self.config['timing_inputs'] = {}
+        self.config['timing_evidence'] = {}
+        bindings = []
+        for measured, assessments, *extra in contexts:
+            targets, target_changes = extra or (self.targets, {})
+            binding = runtime.digest(runtime.canonical({'shared_inputs': measured, 'target_sources': targets}))
+            self.config['timing_inputs'][binding] = {'shared_inputs': dict(measured),
+                'target_sources': dict(targets),
+                'assessments': {'shared_inputs': copy.deepcopy(assessments), 'target_sources': copy.deepcopy(target_changes)}}
+            bindings.append(binding)
+        for index, (shard, path) in enumerate(self.shards.items()):
+            binding = bindings[min(index, len(bindings) - 1)]
+            self.config['targets'][path]['shards'][shard]['timing_inputs_sha256'] = binding
+            self.config['timing_evidence'][shard] = {'kind': 'measured', 'source_commit': 'a' * 40,
+                'artifact_sha256': 'a' * 64, 'timing_inputs_sha256': binding, 'observed_workers': 2,
+                'observed_seconds': 10, 'method': 'synthetic execution timing'}
+        return [self.config['timing_inputs'][binding] for binding in bindings]
+
+    def assessed(self, current, *basis):
+        return {'current_sha256': current, 'basis': list(basis)}
+
+    def write(self, directory):
+        self.path = Path(directory) / 'qualification.json'
+        self.path.write_text(json.dumps(self.config, indent=2, sort_keys=True) + '\n')
+
+    def mocks(self, shared, targets=None, runner=None):
+        original = Path(runtime.workflow.__file__).read_bytes()
+        targets = self.targets if targets is None else targets
+        def blob(ref, name):
+            if name == runtime.RUNNER:
+                return original if runner is None else runner
+            if name == runtime.WORKFLOW:
+                return b'matrix'
+            return self.source[name.removeprefix('src/Parchwell.Verifier/')]
+        return (mock.patch.object(runtime, 'git', return_value=b'head\n'), mock.patch.object(runtime, 'blob', side_effect=blob),
+                mock.patch.object(runtime, 'input_maps', return_value=(shared, targets)),
+                mock.patch.object(runtime, 'workflow_matrix', return_value=self.shards))
+
+    def invoke(self, shared, basis=None, targets=None, runner=None, command='renew'):
+        import contextlib
+        import io
+        import sys
+        basis = self.D1 if basis is None else basis
+        argv = ['c5_runtime.py', command, '--head', 'head', '--qualification', str(self.path)]
+        if command == 'renew':
+            argv += ['--basis', basis]
+        stdout, stderr = io.StringIO(), io.StringIO()
+        git, blob, input_maps, matrix = self.mocks(shared, targets, runner)
+        with mock.patch.object(sys, 'argv', argv), git, blob, input_maps, matrix, \
+             contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            status = runtime.main()
+        return status, stdout.getvalue(), stderr.getvalue()
+
+    def checked(self, shared):
+        status, stdout, _ = self.invoke(shared, command='check')
+        return status, json.loads(stdout)
+
+    def test_v2_context_renewal(self):
+        other, other_old = runtime.digest(b'other current'), runtime.digest(b'other measured')
+        previous = {'global.json': self.A, 'other.json': other}
+        unrelated = {'other.json': self.assessed(other, 'unrelated risk')}
+        stale_b = {**self.targets, 'b.cs': runtime.digest(b'old b')}
+        target_change = {'b.cs': self.assessed(self.targets['b.cs'], 'unrelated target risk')}
+        contexts = self.build(previous,
+                              ({'global.json': self.A, 'other.json': other_old}, unrelated, stale_b, target_change),
+                              ({'global.json': self.B, 'other.json': other},
+                               {'global.json': self.assessed(self.A, self.D1)}))
+        with tempfile.TemporaryDirectory() as directory:
+            self.write(directory)
+            expected = copy.deepcopy(self.config)
+            head = {'global.json': self.C, 'other.json': other}
+            self.assertEqual((0, '{"renewed": ["global.json"], "status": "renewed"}\n', ''), self.invoke(head, self.D2))
+            expected['shared_inputs'] = head
+            first, second = (expected['timing_inputs'][key] for key in
+                             (next(iter(expected['timing_inputs'])), list(expected['timing_inputs'])[1]))
+            first['assessments']['shared_inputs']['global.json'] = self.assessed(self.C, self.D2)
+            second['assessments']['shared_inputs']['global.json'] = self.assessed(self.C, self.D1, self.D2)
+            self.assertEqual(json.dumps(expected, indent=2, sort_keys=True) + '\n', self.path.read_text())
+            status, result = self.checked(head)
+            self.assertEqual((0, 'qualified', []), (status, result['status'], result['reasons']))
+            self.assertEqual(1, result['assessed_inputs'].count('shared_inputs:global.json'))
+            head = {'global.json': self.B, 'other.json': other}
+            self.assertEqual((0, '{"renewed": ["global.json"], "status": "renewed"}\n', ''), self.invoke(head, self.D1))
+            expected['shared_inputs'] = head
+            del second['assessments']['shared_inputs']['global.json']
+            first['assessments']['shared_inputs']['global.json'] = self.assessed(self.B, self.D2, self.D1)
+            self.assertEqual(json.dumps(expected, indent=2, sort_keys=True) + '\n', self.path.read_text())
+            self.assertEqual(0, self.checked(head)[0])
+            before = self.path.read_bytes()
+            self.assertEqual((0, '{"renewed": [], "status": "unchanged"}\n', ''), self.invoke(head, self.D2))
+            self.assertEqual(before, self.path.read_bytes())
+
+    def test_v2_membership(self):
+        old = runtime.digest(b'old')
+        self.build({'old.cs': old}, ({'old.cs': old}, {}))
+        with tempfile.TemporaryDirectory() as directory:
+            self.write(directory)
+            self.assertEqual((0, '{"renewed": ["new.cs", "old.cs"], "status": "renewed"}\n', ''),
+                             self.invoke({'new.cs': self.B}, self.D1))
+            context = next(iter(json.loads(self.path.read_text())['timing_inputs'].values()))
+            self.assertEqual({'old.cs': self.assessed(None, self.D1), 'new.cs': self.assessed(self.B, self.D1)},
+                             context['assessments']['shared_inputs'])
+            self.assertEqual((0, '{"renewed": ["new.cs", "old.cs"], "status": "renewed"}\n', ''),
+                             self.invoke({'old.cs': old}, self.D2))
+            document = json.loads(self.path.read_text())
+            self.assertEqual({}, next(iter(document['timing_inputs'].values()))['assessments']['shared_inputs'])
+            self.assertEqual({'old.cs': old}, document['shared_inputs'])
+            status, result = self.checked({'old.cs': old})
+            self.assertEqual((0, 'qualified'), (status, result['status']))
+            self.assertNotIn('assessed_inputs', result)
+
+    def test_v2_refusal(self):
+        other = runtime.digest(b'other')
+        tools, companion = '.config/dotnet-tools.json', runtime.COMPANION_WORKFLOW
+        def refused(label, shared, text, *, build=None, basis=None, targets=None, runner=None, replace_fails=False):
+            with self.subTest(case=label), tempfile.TemporaryDirectory() as directory:
+                self.build(*(build or ({'global.json': self.A}, ({'global.json': self.A}, {}))))
+                self.write(directory)
+                before, entries = self.path.read_bytes(), set(Path(directory).iterdir())
+                if replace_fails:
+                    with mock.patch.object(runtime.os, 'replace', side_effect=OSError(text)):
+                        status, stdout, stderr = self.invoke(shared, basis, targets, runner)
+                else:
+                    status, stdout, stderr = self.invoke(shared, basis, targets, runner)
+                self.assertEqual((1, ''), (status, stdout))
+                self.assertEqual(text + '\n', stderr) if not replace_fails else self.assertIn(text, stderr)
+                self.assertEqual(before, self.path.read_bytes())
+                self.assertEqual(entries, set(Path(directory).iterdir()))
+        refused('nonrenewable', {'global.json': self.C, tools: other, companion: other},
+                f'not renewable: {tools}, {companion}')
+        refused('changed target', {'global.json': self.A}, 'target sources changed', targets={**self.targets, 'b.cs': other})
+        refused('added target', {'global.json': self.A}, 'target sources changed', targets={**self.targets, 'c.cs': other})
+        refused('removed target', {'global.json': self.A}, 'target sources changed', targets={'a.cs': self.targets['a.cs']})
+        refused('blank basis', {'global.json': self.C}, 'basis must not be empty', basis='  ')
+        refused('runner differs', {'global.json': self.C}, 'checker is not running the requested revision', runner=b'changed runner')
+        gap = ({'global.json': self.A, 'x.json': self.A}, {})
+        refused('missing assessment with a change', {'global.json': self.C, 'x.json': self.B},
+                'qualification rejected: unaccounted_inputs', build=({'global.json': self.A, 'x.json': self.B}, gap))
+        refused('missing assessment without a change', {'global.json': self.A, 'x.json': self.B},
+                'qualification rejected: unaccounted_inputs', build=({'global.json': self.A, 'x.json': self.B}, gap))
+        refused('replacement fails', {'global.json': self.C}, 'synthetic replacement failure', replace_fails=True)
+
+    def test_v2_protected_pairs(self):
+        for path, (old, new) in ((PROJECTION_PATH, APPROVED_PROJECTION_PAIR), (RUNNER_PATH, APPROVED_RUNNER_PAIR)):
+            with self.subTest(path=path), tempfile.TemporaryDirectory() as directory:
+                self.build({path: old}, ({path: old}, {}), ({path: old}, {}))
+                self.write(directory)
+                self.assertEqual((0, json.dumps({'renewed': [path], 'status': 'renewed'}) + '\n', ''),
+                                 self.invoke({path: new}, self.D1))
+                for context in json.loads(self.path.read_text())['timing_inputs'].values():
+                    self.assertEqual({path: self.assessed(new, self.D1)}, context['assessments']['shared_inputs'])
+            for label, previous, head in (('reversed', new, old), ('other hash', old, new[:-1] + ('1' if new[-1] == '0' else '0'))):
+                with self.subTest(path=path, case=label), tempfile.TemporaryDirectory() as directory:
+                    self.build({path: previous}, ({path: previous}, {}), ({path: previous}, {}))
+                    self.write(directory)
+                    before = self.path.read_bytes()
+                    self.assertEqual((1, '', f'not renewable: {path}\n'), self.invoke({path: head}, self.D1))
+                    self.assertEqual(before, self.path.read_bytes())
+        with tempfile.TemporaryDirectory() as directory:
+            old, new = runtime.digest(b'config old'), runtime.digest(b'config new')
+            self.build({runtime.CONFIG_PATH: old}, ({runtime.CONFIG_PATH: old}, {}))
+            self.write(directory)
+            before = self.path.read_bytes()
+            with mock.patch.object(runtime, 'committed_effective_config', return_value=True):
+                self.assertEqual((1, '', f'not renewable: {runtime.CONFIG_PATH}\n'), self.invoke({runtime.CONFIG_PATH: new}))
+            self.assertEqual(before, self.path.read_bytes())
+        with tempfile.TemporaryDirectory() as directory:
+            old, new = runtime.digest(b'config old'), runtime.digest(b'config new')
+            previous = {'global.json': self.A, runtime.CONFIG_PATH: new}
+            held = {runtime.CONFIG_PATH: self.assessed(new, 'equivalence retained')}
+            self.build(previous, ({'global.json': self.A, runtime.CONFIG_PATH: old}, held))
+            self.write(directory)
+            with mock.patch.object(runtime, 'committed_effective_config', return_value=True):
+                self.assertEqual((0, '{"renewed": ["global.json"], "status": "renewed"}\n', ''),
+                                 self.invoke({'global.json': self.C, runtime.CONFIG_PATH: new}))
+            assessments = next(iter(json.loads(self.path.read_text())['timing_inputs'].values()))['assessments']['shared_inputs']
+            self.assertEqual({'global.json': self.assessed(self.C, self.D1), runtime.CONFIG_PATH: held[runtime.CONFIG_PATH]},
+                             assessments)
+
+    def test_v2_provisional_result_is_written(self):
+        self.build({'global.json': self.A}, ({'global.json': self.A}, {}))
+        ProvisionalQualificationTests.provisional(self)
+        with tempfile.TemporaryDirectory() as directory:
+            self.write(directory)
+            self.assertEqual((0, '{"renewed": ["global.json"], "status": "renewed"}\n', ''),
+                             self.invoke({'global.json': self.C}, self.D1))
+            status, result = self.checked({'global.json': self.C})
+            self.assertEqual((0, 'provisional', ['a.cs']), (status, result['status'], result['pending_targets']))
+
+    def test_v2_unchanged_file_is_not_rewritten_when_not_canonical(self):
+        self.build({'global.json': self.A}, ({'global.json': self.A}, {}))
+        with tempfile.TemporaryDirectory() as directory:
+            self.write(directory)
+            self.path.write_text(json.dumps(self.config, indent=4) + '\n')
+            before = self.path.read_bytes()
+            self.assertEqual((0, '{"renewed": [], "status": "unchanged"}\n', ''), self.invoke({'global.json': self.A}))
+            self.assertEqual(before, self.path.read_bytes())
+
+    @unittest.skipUnless(shutil.which('git'), 'git is required')
+    def test_v2_committed_renewal(self):
+        base = '3a72f1350b4a34ba2283457be4227c5c143ee79e'
+        path = 'src/Parchwell.Verifier/AssemblyInfo.cs'
+        module = 'tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py'
+        qualification = 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json'
+        new_hash = '36b6226f6db9e1d99baf0b3da865ea6a9f3c608e95267d1a49b47e4fad912ed2'
+        identity = {**os.environ, 'GIT_AUTHOR_NAME': 'synthetic', 'GIT_AUTHOR_EMAIL': 'synthetic@example.invalid',
+                    'GIT_COMMITTER_NAME': 'synthetic', 'GIT_COMMITTER_EMAIL': 'synthetic@example.invalid',
+                    'GIT_AUTHOR_DATE': '2026-11-22T00:00:00Z', 'GIT_COMMITTER_DATE': '2026-11-22T00:00:00Z'}
+        def git(*args, cwd=ROOT, **options):
+            return subprocess.run(['git', *args], cwd=cwd, check=True, capture_output=True, **options)
+        with tempfile.TemporaryDirectory() as directory:
+            tree = Path(directory) / 'tree'
+            git('worktree', 'add', '--detach', str(tree), base)
+            try:
+                shutil.copyfile(ROOT / module, tree / module)
+                with (tree / path).open('ab') as source:
+                    source.write(b'// synthetic renewal comment\n')
+                git('add', path, cwd=tree)
+                git('-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'synthetic renewal comment', cwd=tree, env=identity)
+                head = git('rev-parse', 'HEAD', cwd=tree).stdout.decode().strip()
+                self.assertEqual(new_hash, runtime.digest(git('show', f'{head}:{path}').stdout))
+                file = Path(directory) / 'qualification.json'
+                original = git('show', f'{base}:{qualification}').stdout
+                file.write_bytes(original)
+                def run(*args):
+                    return subprocess.run(['python3', str(tree / module), *args, '--head', head, '--qualification', str(file)],
+                                          cwd=tree, capture_output=True, text=True)
+                renewed = run('renew', '--basis', self.D1)
+                self.assertEqual((0, '{"renewed": ["src/Parchwell.Verifier/AssemblyInfo.cs"], "status": "renewed"}\n', ''),
+                                 (renewed.returncode, renewed.stdout, renewed.stderr))
+                expected = json.loads(original)
+                old_hash = expected['shared_inputs'][path]
+                expected['shared_inputs'][path] = new_hash
+                self.assertEqual(7, len(expected['timing_inputs']))
+                for context in expected['timing_inputs'].values():
+                    self.assertEqual(old_hash, context['shared_inputs'][path])
+                    self.assertNotIn(path, context['assessments']['shared_inputs'])
+                    context['assessments']['shared_inputs'][path] = self.assessed(new_hash, self.D1)
+                self.assertEqual(expected, json.loads(file.read_text()))
+                checked = run('check')
+                result = json.loads(checked.stdout)
+                self.assertEqual((0, 'qualified', []), (checked.returncode, result['status'], result['reasons']))
+                self.assertEqual(149, len(result['assessed_inputs']))
+                self.assertIn(f'shared_inputs:{path}', result['assessed_inputs'])
+            finally:
+                git('worktree', 'remove', '--force', str(tree))
+                git('worktree', 'prune')
 
 
 class LocalShardTests(unittest.TestCase):
