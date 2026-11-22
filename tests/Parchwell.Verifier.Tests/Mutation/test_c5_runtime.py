@@ -2796,7 +2796,8 @@ class RenewalV2Tests(unittest.TestCase):
         self.build({'old.cs': old}, ({'old.cs': old}, {}))
         with tempfile.TemporaryDirectory() as directory:
             self.write(directory)
-            self.invoke({'new.cs': self.B}, self.D1)
+            self.assertEqual((0, '{"renewed": ["new.cs", "old.cs"], "status": "renewed"}\n', ''),
+                             self.invoke({'new.cs': self.B}, self.D1))
             context = next(iter(json.loads(self.path.read_text())['timing_inputs'].values()))
             self.assertEqual({'old.cs': self.assessed(None, self.D1), 'new.cs': self.assessed(self.B, self.D1)},
                              context['assessments']['shared_inputs'])
@@ -2876,6 +2877,16 @@ class RenewalV2Tests(unittest.TestCase):
             assessments = next(iter(json.loads(self.path.read_text())['timing_inputs'].values()))['assessments']['shared_inputs']
             self.assertEqual({'global.json': self.assessed(self.C, self.D1), runtime.CONFIG_PATH: held[runtime.CONFIG_PATH]},
                              assessments)
+
+    def test_v2_provisional_result_is_written(self):
+        self.build({'global.json': self.A}, ({'global.json': self.A}, {}))
+        ProvisionalQualificationTests.provisional(self)
+        with tempfile.TemporaryDirectory() as directory:
+            self.write(directory)
+            self.assertEqual((0, '{"renewed": ["global.json"], "status": "renewed"}\n', ''),
+                             self.invoke({'global.json': self.C}, self.D1))
+            status, result = self.checked({'global.json': self.C})
+            self.assertEqual((0, 'provisional', ['a.cs']), (status, result['status'], result['pending_targets']))
 
     def test_v2_unchanged_file_is_not_rewritten_when_not_canonical(self):
         self.build({'global.json': self.A}, ({'global.json': self.A}, {}))
