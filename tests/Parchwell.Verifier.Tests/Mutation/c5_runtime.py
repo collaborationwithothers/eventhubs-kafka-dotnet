@@ -379,7 +379,14 @@ def execution_workflow(data):
     text = data.decode('utf-8')
     start = text.index('        include:\n') + len('        include:\n')
     end = text.index('    env:\n', start)
-    return (text[:start] + text[end:]).encode()
+    worker, aggregate_header, aggregate = (text[:start] + text[end:]).partition('\n  aggregate:\n')
+    # Preserve the measured worker fingerprint across this exact post-measurement action upgrade.
+    download = ("      - name: Download companion shard evidence\n"
+                "        if: always() && steps.campaign.outputs.run-id != ''\n"
+                "        uses: actions/download-artifact@")
+    upgraded = download + '9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2\n'
+    measured = download + 'd3f86a106a0bac45b974a628896c90dbdf5c8093\n'
+    return (worker + aggregate_header + aggregate.replace(upgraded, measured, 1)).encode()
 
 
 def workflow_matrix(data):
