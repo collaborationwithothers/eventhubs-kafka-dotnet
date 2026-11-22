@@ -462,13 +462,14 @@ jobs:
           merge-multiple: false
       - name: Download companion shard evidence
         if: always() && steps.campaign.outputs.run-id != ''
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          github-token: ${{ github.token }}
-          run-id: ${{ steps.campaign.outputs.run-id }}
-          pattern: c5-mutation-${{ steps.campaign.outputs.run-id }}-${{ steps.campaign.outputs.attempt }}-*
-          path: ${{ runner.temp }}/c5-input
-          merge-multiple: false
+        env:
+          GH_TOKEN: ${{ github.token }}
+          C5_CAMPAIGN: ${{ runner.temp }}/c5-campaign.json
+          C5_INPUT: ${{ runner.temp }}/c5-input
+        run: >-
+          python3 tests/Parchwell.Verifier.Tests/Mutation/c5_companion_artifacts.py
+          --repository "$GITHUB_REPOSITORY" --commit "$GITHUB_SHA"
+          --manifest "$C5_CAMPAIGN" --output-dir "$C5_INPUT"
       - name: Combine raw C5 populations
         if: always()
         id: aggregate

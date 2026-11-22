@@ -1176,11 +1176,18 @@ class CommittedContractTests(unittest.TestCase):
         downloads = {step["name"]: step for step in jobs["aggregate"]["steps"]}
         download = downloads["Download coordinator shard evidence"]
         self.assertEqual("c5-mutation-${{ github.run_id }}-${{ github.run_attempt }}-*", download["with"]["pattern"])
-        peer = downloads["Download companion shard evidence"]["with"]
-        self.assertEqual("${{ steps.campaign.outputs.run-id }}", peer["run-id"])
-        self.assertEqual("c5-mutation-${{ steps.campaign.outputs.run-id }}-${{ steps.campaign.outputs.attempt }}-*",
-                         peer["pattern"])
-        self.assertIs(peer["merge-multiple"], False)
+        peer = downloads["Download companion shard evidence"]
+        self.assertEqual("always() && steps.campaign.outputs.run-id != ''", peer["if"])
+        self.assertEqual({
+            "GH_TOKEN": "${{ github.token }}",
+            "C5_CAMPAIGN": "${{ runner.temp }}/c5-campaign.json",
+            "C5_INPUT": "${{ runner.temp }}/c5-input",
+        }, peer["env"])
+        self.assertEqual(
+            'python3 tests/Parchwell.Verifier.Tests/Mutation/c5_companion_artifacts.py '
+            '--repository "$GITHUB_REPOSITORY" --commit "$GITHUB_SHA" '
+            '--manifest "$C5_CAMPAIGN" --output-dir "$C5_INPUT"', peer["run"])
+        self.assertEqual("always()", downloads["Combine raw C5 populations"]["if"])
 
     def test_committed_primary_spans_match_layout(self):
         root = Path(__file__).resolve().parents[3]
