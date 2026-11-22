@@ -1,6 +1,6 @@
 # Plan: consumer input checks (#529)
 
-Revision 3. Base commit: `2158a93bff0cf8b0fcd1de9ae13f776291342b19` on `main`.
+Revision 4. Base commit: `2158a93bff0cf8b0fcd1de9ae13f776291342b19` on `main`.
 
 This plan adds one check to the consumer verifier: a consumer record that ends before rows the start line already saw makes the repeat invalid. It merges before the scientific C10 and C01 runs, so the counts their verdicts rest on are covered. The second finding, configured row limits and the input-entry budget, gets no change, by Hari's [decision 7075872795](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7075872795).
 
@@ -56,7 +56,7 @@ One pull request, named "snapshot frontier check". Revisions 1 and 2 had a secon
 Files allowed to change:
 - `src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs`
 - `tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotFrontierTests.cs` (new)
-- `tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json`, only if acceptance command 4 requires a renewal
+- `tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json`, with the version 2 assessments of acceptance command 4
 - existing files under `tests/Parchwell.Verifier.Tests/Consumer/`, only under the fixture rule of section 6
 
 Paths that must not change: `scenarios/`, `results/`, `docs/blueprint.md`, `charts/`, `infra/`, `.github/`, `src/Parchwell.Verifier/Judge/`, `src/Parchwell.Verifier/Common/Consumer/`, every Stryker target source listed in `tests/Parchwell.Verifier.Tests/stryker-config.json`, and every file not listed above. The pull request adds no reason name, so the judge's closed reason list (`src/Parchwell.Verifier/Judge/ConsumerPhaseEvidence.cs` lines 29 to 35) and `docs/operations/verifier-contract.md` line 128 stay correct unchanged.
@@ -123,7 +123,7 @@ Run on the pull request branch, in the order docs/agents/pull-requests.md "Verif
 1. `./scripts/verify-dotnet.sh --project Parchwell.Verifier.Tests` while work moves (gate step 1). Evidence: pass counts, cited as a partial run.
 2. Cold review under docs/agents/pull-requests.md rule 8 (gate step 2), with the implementation notes and any fixture changes.
 3. `./scripts/verify-dotnet.sh --tier sandbox` once on the reviewed source (gate step 3). Evidence: the summary, recorded as a partial run excluding `Tier=CGroupV2`.
-4. `python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py check --base <BASE_SHA> --head <HEAD_SHA> --qualification tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json`. If it reports a stale shared input, renew under docs/operations/verifier-mutation.md line 78 and run the check again. Evidence: `qualified`, `provisional` or `not applicable`. The pull request changes no Stryker target source.
+4. After committing the change, add to `tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json` one version 2 assessment for each changed shared input, in every timing context that uses its old hash, under docs/operations/verifier-mutation.md line 86. Each basis cites [decision 7076000200](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7076000200). Commit, then run `python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py check --base <BASE_SHA> --head <HEAD_SHA> --qualification tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json`. Evidence: `qualified` or `provisional`, with the changed paths under `assessed_inputs`.
 5. A script that maps T1 to T7, T5b included, to at least one test and its result in the step 3 run. Evidence: one line per ID, all passed.
 6. `git diff --name-only origin/main...HEAD`. Evidence: only section 3's paths.
 7. `npm run check:docs`. Evidence: the summary line.
@@ -149,7 +149,7 @@ Plan rule 1 (external behaviour): this plan relies on no Kafka, librdkafka, Conf
 
 ## 11. Open questions for Hari
 
-None. Q1 to Q5 of revision 2 and plan-check finding 5 are answered by [decision 7075872795](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7075872795).
+None. Q6 of [handoff 7075955109](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7075955109) is answered by [decision 7076000200](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7076000200).
 
 ## 12. Stop rule
 
@@ -180,3 +180,7 @@ Applies [decision 7075872795](https://github.com/collaborationwithothers/eventhu
 - Q5: the route and the fixture rule are stated as adopted.
 - Check 7075838247 P2-a is written into A4 and test T5b. P2-b and P2-c concerned only the dropped pull request.
 - Check notes: the C03 counts cite both configurations; the verifier image claim cites `.github/workflows/scenario.yml`; T7 is placed in the new test file.
+
+## 17. Changes since revision 3
+
+Applies [decision 7076000200](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7076000200), which accepts Q6 and adopts the three revision 4 texts of [handoff 7075955109](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7075955109), with their literal texts: the qualification line of section 3, acceptance command 4 of section 8, and section 11. Nothing else changes. P2-d of [check 7075948056](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7075948056) is `apply in implementation` by the same decision; its text is in the handoff, not in this plan.
