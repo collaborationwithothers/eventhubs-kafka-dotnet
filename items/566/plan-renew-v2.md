@@ -1,14 +1,14 @@
 # Renew version 2 mutation qualifications
 
-A mutation qualification records how long the verifier's mutation tests are expected to take and which source files support that estimate. This change lets `c5_runtime.py renew` write the version 2 assessments that record an authorized decision to keep an estimate after a shared input changes, and refuse to write anything that `check` would reject. At the base commit below, `check` rejected a correctly assessed comment change to a shared input of the committed qualification; that it rejects every such change is inferred from the code. So the command cannot yet renew that file; "Open questions for Hari" asks how to treat that.
+A mutation qualification records how long the verifier's mutation tests are expected to take and which source files support that estimate. This change lets `c5_runtime.py renew` write the version 2 assessments that record an authorized decision to keep an estimate after a shared input changes, and refuse to write anything that `check` would reject. At the base commit below, `check` rejected a correctly assessed comment change to a shared input of the committed qualification; that it rejects every such change is inferred from the code. So the command cannot yet renew that file. Hari decided to proceed anyway, and named the issue 494 qualification pull request as the successor that makes such renewals pass; "Deferred work" records it.
 
-Revision 4. One implementation pull request, `renew-v2`. Base on main: `2158a93bff0cf8b0fcd1de9ae13f776291342b19`.
+Revision 5. One implementation pull request, `renew-v2`. Base on main: `2158a93bff0cf8b0fcd1de9ae13f776291342b19`.
 
 ## Goal and authority
 
-The [issue body](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/566) supplies the requirements. The issue has no decision or approval comment, no parent and no approved split (catch-up of 2026-11-22: three comments, `scripts/decision-log.py --issue 566` reports none). The operation and data formats are owned by the [operations guide](../../docs/operations/verifier-mutation.md#per-estimate-timing-provenance). The operator supplies a basis: the written reason and decision reference authorizing the risk. Renewal does not measure elapsed time or approve that risk.
+The [issue body](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/566) supplies the requirements. [Decision 7076310830](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/566#issuecomment-7076310830) chooses option A of revision 4's open question 1: proceed as planned, with `renew` writing version 2 assessments, refusing and writing nothing when `check` would reject, and a committed test recording today's rejection. It names the successor recorded under "Deferred work". The issue has no other decision or approval comment, no parent and no approved split (catch-up of 2026-11-22: six comments; `scripts/decision-log.py --issue 566` exits 0 and prints only that decision). The operation and data formats are owned by the [operations guide](../../docs/operations/verifier-mutation.md#per-estimate-timing-provenance). The operator supplies a basis: the written reason and decision reference authorizing the risk. Renewal does not measure elapsed time or approve that risk.
 
-This plan is independent of the item planned under issue 529, which hand-writes version 2 assessments into the committed qualification. This pull request reads the committed qualification only from Git at the base commit and never writes it.
+This plan is independent of the item planned under issue 529, which hand-writes version 2 assessments into the committed qualification. This pull request reads the committed qualification only from Git at the base commit and never writes it. Whether those hand-written assessments meet the rejection described under "Deployment assumptions" was not checked.
 
 ## Scope
 
@@ -83,7 +83,7 @@ From the repository root:
 
 (a) Runtime-sized work: none. The test map fixes every input and transition; walking all contexts and shards is program behaviour on supplied data. An unforeseen runtime-sized step follows AGENTS.md "Before opening a pull request" rule 11.
 
-(b) Stricter than a parent: there is no parent plan. Requirement 5 validates unchanged runs too, which version 1 does not; this enforces the issue's requirement 3 that the output passes `check`.
+(b) Stricter than a parent: there is no parent plan. Requirement 5 validates unchanged runs too, which version 1 does not; this enforces the issue's requirement 3 that the output passes `check`. Requirement 3 is stricter than `check` in two places, both from the issue's requirement 2 that nonrenewable inputs are refused except the exact pairs the guide permits: it refuses a reversed pair, such as a projection helper reverting to its measured hash, which `check` would accept with no assessment; and it refuses a newly changed C5 config that the committed-tree route would accept.
 
 (c) Dependencies outside `main` and this pull request: none. The committed-rejection values rest on recorded output of the base commit's own checker, listed above.
 
@@ -95,20 +95,34 @@ From the repository root:
 - On the base commit, `docs/operations/verifier-mutation.md`: renewal paragraph (78), "Per-estimate timing provenance" (80 to 96), "Committed-tree configuration equivalence" (98).
 - No Kafka, librdkafka, Confluent.Kafka or Azure Event Hubs behaviour is relied on, so no documentation tool was needed.
 
+## Deferred work
+
+1. Make valid version 2 assessments of a renewable shared input pass `check` on the committed qualification.
+   - Evidence: at the base, `check` rejected a correctly assessed comment change to a shared input (measured), and by the code it rejects any such change whatever its assessments (inferred). Both are under "Deployment assumptions". Until this item lands, `renew` refuses the committed file for every shared-input change, so pull requests that change C5 shared inputs keep needing Hari's decision.
+   - Verdict path and why deferral is permitted: this pull request publishes no verdict and changes no measurement. The work changes version 2 checker rules, which the issue puts out of scope ("Out of scope", and requirement 2) and which this plan's "Scope" keeps unchanged. Hari chose to proceed without it in [decision 7076310830](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/566#issuecomment-7076310830).
+   - Responsible successor: the issue 494 qualification pull request, implemented by Codex, named by that decision. Per the decision, it changes the check so that valid version 2 assessments for a renewable shared input pass, and adds a regression case for that. It follows the diagnostic pinned by pull request 582 ("Pin the C5 timeout recovery diagnostic for #494"), which was open, unmerged, on 2026-11-22. On that date no pull request for the qualification step existed (pull request list of the repository read in this session). Its plan, cap and exhaustion action are set under issue 494, not here.
+   - Execution stage and prerequisites: its own pull request after the pull request 582 diagnostic, independent of this pull request's merge. Either order is possible. When that check change reaches `main` first, the committed-rejection case of this plan produces other values, and this plan's "Stop rule" applies to this pull request's implementer. When this pull request merges first, the successor's check change makes `v2_committed_rejection` produce other values; under "Stop rule" that later change updates the case's expected values to what its check produces and states the reason.
+   - Completion evidence: the successor merged on `main` with its regression case, and `renew` on the committed qualification for a renewable shared-input change exits 0 with the assessments of requirement 4.
+   - Gate it blocks: none of this pull request's gates. It blocks only the use of `renew` on the committed qualification by later pull requests that change C5 shared inputs.
+
 ## Open questions for Hari
 
-1. At the base commit, `check` rejected one correctly assessed shared-input change to the committed qualification (measured), and by the code it rejects any such change whatever its assessments (inferred), because retained timing for some shards is bound to an exact committed tree (evidence under "Deployment assumptions"). So `renew`, as the issue specifies it, cannot renew the committed file for any shared-input pull request today. The issue expected it to. Choose one:
-   - (A, recommended) Proceed as planned. `renew` writes version 2 assessments and refuses, writing nothing, when `check` would reject; the committed-rejection test records today's behaviour. The command becomes useful for the committed file only once those tree-bound retentions are replaced by fresh measurement or by a separately approved checker change. Pull requests that change shared inputs keep needing your decision until then.
-   - (B) `renew` writes the assessments even when `check` rejects, and reports the reasons. This contradicts the issue's requirement 3.
-   - (C) Widen this item to let the tree-bound routes accept assessed shared-input differences. That changes version 2 rules adopted under issue 494 decisions and conflicts with the issue's requirement 2; it would need its own plan.
-
-   Whether the hand-written assessments planned under issue 529 meet the same rejection was not checked.
+None. Revision 4's open question 1 is answered by [decision 7076310830](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/566#issuecomment-7076310830) (option A).
 
 ## Stop rule
 
 The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it needs to change an external contract, a requirement or the scope, or when the committed-rejection case produces values other than those above. That case runs the current `c5_runtime.py` against the fixed base tree, so a later correct checker change may need to update its expected values; that later change states the update and its reason.
 
-## Changes since revision 3
+## Changes since revision 4
+
+- Applies [decision 7076310830](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/566#issuecomment-7076310830): option A, so requirements, contracts, test map and scope are unchanged. Open question 1 is removed and "Open questions for Hari" states `None`.
+- Applies finding 1 of the [revision 3 check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/566#issuecomment-7076177073): a `Deferred work` section names the issue 494 qualification pull request as the successor, with the fields of docs/agents/factory.md "Deferred work in plans".
+- "Goal and authority" cites the decision; the issue 529 note moved there from the removed open question.
+- Plan-check question (b) also states the reversed-pair refusal, from that check's answer (b).
+
+Answering an open question and adding deferred work need a new check under docs/agents/factory.md "Item lifecycle" step 1.
+
+## Changes from revision 3 to revision 4
 
 Plan text only, from the [revision 3 check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/566#issuecomment-7076177073): its findings 2 and 3 applied verbatim, the "any shared-input change" claim labelled inferred (its finding 1 (iv)), and its first P2 noted under "Stop rule". None changes a gate, contract, requirement, scope, policy value or verdict rule, or adds, removes or answers an open question.
 
