@@ -3719,6 +3719,10 @@ class PairedTailTimingTests(unittest.TestCase):
 
 
 class PairedRecoveryTimingTests(PairedTailTimingTests):
+    # The qualification merge is a descendant with the reviewed recovery layout.
+    # Later checkouts can have unrelated assessed inputs or a different layout.
+    recovery_descendant = '717c5a75e3f0a56ad5378a0e7551caa832ed63d8'
+
     @classmethod
     def setUpClass(cls):
         cls.head = runtime.PAIRED_RECOVERY_SOURCE
@@ -3784,7 +3788,7 @@ class PairedRecoveryTimingTests(PairedTailTimingTests):
         self.assertFalse(runtime.timing_context_linked(wrong_context, shard, owner, record, item, timing, {}, self.head))
 
     def test_later_renewable_change_preserves_recovery_receipts_and_requires_assessment(self):
-        head = runtime.git('rev-parse', 'HEAD').decode().strip()
+        head = self.recovery_descendant
         original = runtime.proof_tree
         tree = original(head)
         shared, targets = tree[2]
@@ -3822,7 +3826,7 @@ class PairedRecoveryTimingTests(PairedTailTimingTests):
         self.assertFalse(runtime.retains_measurement_context(updated, original_context, edited))
 
     def test_cut_and_execution_drift_reject_the_transition(self):
-        head = runtime.git('rev-parse', 'HEAD').decode().strip()
+        head = self.recovery_descendant
         self.assertNotEqual(head, self.head)
         self.assertEqual(runtime.PAIRED_RECOVERY_CHANGED, runtime.paired_recovery_changes(head))
         original = runtime.proof_tree
@@ -3848,7 +3852,7 @@ class PairedRecoveryTimingTests(PairedTailTimingTests):
         runtime.paired_recovery_changes.cache_clear()
 
     def test_each_role_matrix_must_match_both_sources(self):
-        head = runtime.git('rev-parse', 'HEAD').decode().strip()
+        head = self.recovery_descendant
         original = runtime.blob
         for path in runtime.CAMPAIGN_LIMITS:
             for ref in (runtime.PAIRED_TAIL_SOURCE, self.head, head):
