@@ -761,6 +761,52 @@ class ReviewCorrectionBridgeTests(unittest.TestCase):
             self.assertIn('invalid_renewal', runtime.provenance_errors(
                 context, changed_shared, targets, self.OWNER, self.SHARD, changed_head))
 
+    def test_classifier_capacity_accepts_a_later_assessed_shared_input(self):
+        original = runtime.proof_tree
+        source = runtime.CI_REPAIR_OWNERSHIP_SOURCE
+        tree = original(source)
+        shared, targets = tree[2]
+        path = runtime.CI_REPAIR_TEST
+        head = 'a' * 40
+        qualification = runtime.prior_ci_repair_qualification()
+        binding = qualification['targets'][self.OWNER]['shards'][self.SHARD]['timing_inputs_sha256']
+        context = copy.deepcopy(qualification['timing_inputs'][binding])
+        previous_hash = context['shared_inputs'].get(path)
+        self.assertNotIn(path, runtime.NON_RENEWABLE)
+        self.assertIsNotNone(previous_hash)
+
+        original_blob = runtime.blob
+        def blob(ref, requested):
+            return original_blob(source if ref == head else ref, requested)
+
+        for current_hash in ('1' * 64, None, previous_hash):
+            with self.subTest(current_hash=current_hash):
+                edited = dict(shared)
+                if current_hash is None:
+                    edited.pop(path)
+                else:
+                    edited[path] = current_hash
+                changed = (*tree[:2], (edited, targets), *tree[3:])
+                for key, current in (('shared_inputs', edited), ('target_sources', targets)):
+                    measured = context[key]
+                    context['assessments'][key] = {
+                        name: {'current_sha256': current.get(name), 'basis': ['Synthetic assessment fixture']}
+                        for name in measured.keys() | current.keys() if measured.get(name) != current.get(name)
+                    }
+                runtime.classifier_capacity_trees.cache_clear()
+                with mock.patch.object(runtime, 'proof_tree', side_effect=lambda ref:
+                        changed if ref == head else original(ref)), mock.patch.object(runtime, 'blob', side_effect=blob):
+                    self.assertEqual(set(), runtime.provenance_errors(
+                        context, edited, targets, self.OWNER, self.SHARD, head))
+                    if current_hash != previous_hash:
+                        assessment = context['assessments']['shared_inputs'].pop(path)
+                        self.assertIn('unaccounted_inputs', runtime.provenance_errors(
+                            context, edited, targets, self.OWNER, self.SHARD, head))
+                        context['assessments']['shared_inputs'][path] = {**assessment, 'current_sha256': '9' * 64}
+                        self.assertIn('unaccounted_inputs', runtime.provenance_errors(
+                            context, edited, targets, self.OWNER, self.SHARD, head))
+        runtime.classifier_capacity_trees.cache_clear()
+
     def test_rejects_changed_owner_and_incomplete_or_wrong_assessments(self):
         self.assertFalse(self.proof(owner=runtime.REVIEW_CORRECTION_TARGET,
                                     shard='b10-final-projection-codec-p1-a'))

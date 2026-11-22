@@ -1033,6 +1033,15 @@ def proof_tree(ref):
             workflow_layout(ref, COMPANION_WORKFLOW in maps[0]))
 
 
+def same_timing_layout(reference, current):
+    """Match execution and target inputs while leaving renewable inputs to v2 assessments."""
+    old_shared, old_targets = reference[2]
+    new_shared, new_targets = current[2]
+    return (reference[:2] == current[:2] and reference[3:] == current[3:]
+            and old_targets == new_targets
+            and all(old_shared.get(path) == new_shared.get(path) for path in NON_RENEWABLE))
+
+
 def selector_ast(data):
     """Selector and ownership construction, including their module-level constants."""
     body = ast.parse(data.decode('utf-8')).body
@@ -1420,10 +1429,11 @@ CI_REPAIR_OWNERSHIP_SOURCE = 'e520f829001dc1ea76b10df49b2277b26e815872'
 
 def classifier_ownership_matches(combined, current):
     """Check the exact target, shared regression and relocated cut changes."""
-    if current != proof_tree(CI_REPAIR_OWNERSHIP_SOURCE):
+    ownership = proof_tree(CI_REPAIR_OWNERSHIP_SOURCE)
+    if not same_timing_layout(ownership, current):
         return False
     old, old_code, (old_shared, old_targets), old_config, old_matrix = combined
-    new, new_code, (new_shared, new_targets), new_config, new_matrix = current
+    new, new_code, (new_shared, new_targets), new_config, new_matrix = ownership
     key = CI_REPAIR_CLASSIFIER
     target = old['TARGETS'][key][0]
     cuts = {**old['PRIMARY_CUTS'], key: new['PRIMARY_CUTS'][key]}
@@ -1441,14 +1451,14 @@ def classifier_capacity_trees(head):
     prior = proof_tree(CI_REPAIR_REBALANCE)
     expanded = proof_tree(CI_REPAIR_CAPACITY)
     current = proof_tree(head)
-    if current != expanded:
+    if not same_timing_layout(expanded, current):
         combined = proof_tree(CI_REPAIR_CAPACITY_COMBINED)
         if (combined[:2], combined[2][1], combined[3:]) != (expanded[:2], expanded[2][1], expanded[3:]):
             return None
         sized, joined = expanded[2][0], combined[2][0]
         if {path for path in sized.keys() | joined.keys() if sized.get(path) != joined.get(path)} != CAPACITY_COMBINED_SHARED:
             return None
-        if current != combined and not classifier_ownership_matches(combined, current):
+        if not same_timing_layout(combined, current) and not classifier_ownership_matches(combined, current):
             return None
     old, old_code, (old_shared, old_targets), old_config, _ = prior
     new, new_code, (new_shared, new_targets), new_config, _ = expanded
