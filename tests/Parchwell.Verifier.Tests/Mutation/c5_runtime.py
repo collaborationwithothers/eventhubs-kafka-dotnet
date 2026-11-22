@@ -49,6 +49,7 @@ def estimate_work(observed_seconds, untested_count, setup_seconds, parallelism, 
     return {'main_work_seconds': work, 'estimated_seconds': math.ceil(setup_seconds + work / parallelism + isolated_seconds)}
 
 """Bounded, single-run mutation-only suite profiler (merge into c5_runtime.py)."""
+import copy
 import json
 import math
 import os
@@ -380,13 +381,32 @@ def execution_workflow(data):
     start = text.index('        include:\n') + len('        include:\n')
     end = text.index('    env:\n', start)
     worker, aggregate_header, aggregate = (text[:start] + text[end:]).partition('\n  aggregate:\n')
-    # Preserve the measured worker fingerprint across this exact post-measurement action upgrade.
-    download = ("      - name: Download companion shard evidence\n"
-                "        if: always() && steps.campaign.outputs.run-id != ''\n"
-                "        uses: actions/download-artifact@")
-    upgraded = download + '9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2\n'
-    measured = download + 'd3f86a106a0bac45b974a628896c90dbdf5c8093\n'
-    return (worker + aggregate_header + aggregate.replace(upgraded, measured, 1)).encode()
+    # Preserve the timing fingerprint for the exact reviewed companion transport changes.
+    step = ("      - name: Download companion shard evidence\n"
+            "        if: always() && steps.campaign.outputs.run-id != ''\n")
+    action = step + '        uses: actions/download-artifact@'
+    upgraded = action + '9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2\n'
+    measured = action + 'd3f86a106a0bac45b974a628896c90dbdf5c8093\n'
+    inputs = (
+        '        with:\n'
+        '          github-token: ${{ github.token }}\n'
+        '          run-id: ${{ steps.campaign.outputs.run-id }}\n'
+        '          pattern: c5-mutation-${{ steps.campaign.outputs.run-id }}-${{ steps.campaign.outputs.attempt }}-*\n'
+        '          path: ${{ runner.temp }}/c5-input\n'
+        '          merge-multiple: false\n'
+    )
+    paced = step + (
+        '        env:\n'
+        '          GH_TOKEN: ${{ github.token }}\n'
+        '          C5_CAMPAIGN: ${{ runner.temp }}/c5-campaign.json\n'
+        '          C5_INPUT: ${{ runner.temp }}/c5-input\n'
+        '        run: >-\n'
+        '          python3 tests/Parchwell.Verifier.Tests/Mutation/c5_companion_artifacts.py\n'
+        '          --repository "$GITHUB_REPOSITORY" --commit "$GITHUB_SHA"\n'
+        '          --manifest "$C5_CAMPAIGN" --output-dir "$C5_INPUT"\n'
+    )
+    aggregate = aggregate.replace(upgraded, measured, 1).replace(paced, measured + inputs, 1)
+    return (worker + aggregate_header + aggregate).encode()
 
 
 def workflow_matrix(data):
@@ -2308,13 +2328,13 @@ def renew(head, qualification, basis):
     path = Path(qualification)
     config = json.loads(path.read_text(), parse_constant=lambda value: (_ for _ in ()).throw(ValueError('nonfinite JSON')))
     shape(config)
-    if config['schema_version'] != 1:
-        raise ValueError('renew supports schema version 1 only; assess version 2 provenance explicitly')
     shared, targets = input_maps(head)
     if set(config['targets']) != set(targets) or any(config['targets'][p]['source_sha256'] != targets[p] for p in targets):
         raise ValueError('target sources changed')
     old = config['shared_inputs']
     changed = sorted(p for p in old.keys() | shared.keys() if old.get(p) != shared.get(p))
+    if config['schema_version'] == 2:
+        return renew_v2(head, path, config, shared, changed, basis)
     blocked = sorted(set(changed) & NON_RENEWABLE)
     if blocked:
         raise ValueError('not renewable: ' + ', '.join(blocked))
@@ -2335,15 +2355,53 @@ def renew(head, qualification, basis):
         config['renewals'] = renewals
     else:
         config.pop('renewals', None)
+    write_qualification(path, config)
+    return {'renewed': changed, 'status': 'renewed'}
+
+
+def write_qualification(path, config, accept=None):
+    """Replace the file atomically; `accept` may veto the candidate before the replacement."""
     temporary = None
     try:
         with tempfile.NamedTemporaryFile(mode='w', dir=path.parent, encoding='utf-8', delete=False) as output:
             temporary = Path(output.name)
             output.write(json.dumps(config, indent=2, sort_keys=True) + '\n')
+        if accept is not None:
+            accept(temporary)
         os.replace(temporary, path)
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
+
+
+def renew_v2(head, path, config, shared, changed, basis):
+    """Write version 2 assessments for the changed shared inputs, only if the full-head check accepts them."""
+    exact_pairs = {PROJECTION: PROJECTION_TIMING_PAIR, RUNNER: RUNNER_TIMING_PAIR}
+    old = config['shared_inputs']
+    blocked = sorted(p for p in set(changed) & NON_RENEWABLE if (old.get(p), shared.get(p)) != exact_pairs.get(p))
+    if blocked:
+        raise ValueError('not renewable: ' + ', '.join(blocked))
+
+    def accept(candidate):
+        result = check(None, head, candidate)
+        if result['status'] == 'rejected':
+            raise ValueError('qualification rejected: ' + ', '.join(sorted(result['reasons'])))
+
+    if not changed:
+        accept(path)
+        return {'renewed': [], 'status': 'unchanged'}
+    config = copy.deepcopy(config)
+    for context in config['timing_inputs'].values():
+        assessments = context['assessments']['shared_inputs']
+        for p in changed:
+            current = shared.get(p)
+            if context['shared_inputs'].get(p) == current:
+                assessments.pop(p, None)
+            else:
+                earlier = assessments[p]['basis'] if p in assessments else []
+                assessments[p] = {'current_sha256': current, 'basis': [*earlier, basis]}
+    config['shared_inputs'] = shared
+    write_qualification(path, config, accept)
     return {'renewed': changed, 'status': 'renewed'}
 
 
