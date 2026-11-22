@@ -1,6 +1,7 @@
 import importlib.util
 import fnmatch
 import json
+import math
 from pathlib import Path
 import shlex
 import tempfile
@@ -3391,3 +3392,111 @@ class PairedTailTimingTests(unittest.TestCase):
                 self.assertTrue(runtime.fresh_pinned_timing(config, owner, record, shard, item, source, self.head))
                 config['timing_evidence'][shard] = {**timing, 'source_commit': self.context['source_commit']}
                 self.assertFalse(runtime.fresh_pinned_timing(config, owner, record, shard, item, source, self.head))
+
+
+class PairedRecoveryTimingTests(PairedTailTimingTests):
+    @classmethod
+    def setUpClass(cls):
+        cls.head = runtime.PAIRED_RECOVERY_SOURCE
+        cls.tree = runtime.proof_tree(cls.head)
+        shared, sources = cls.tree[2]
+        cls.binding = runtime.digest(runtime.canonical({'shared_inputs': shared, 'target_sources': sources}))
+        prior = runtime.strict_json(runtime.blob(runtime.PAIRED_TAIL_PRIOR, runtime.HISTORICAL_QUALIFICATION_PATH))
+        cls.context = prior['timing_inputs'][cls.binding]
+
+    # The parent tests describe the first transition; the recovery has its own assertions.
+    def test_exact_transition_changes_only_the_reviewed_physical_owners(self):
+        changed = runtime.paired_recovery_changes(self.head)
+        self.assertEqual(runtime.PAIRED_RECOVERY_CHANGED, changed)
+        self.assertEqual(18, len(changed))
+        for prefix, count in (('b10-final-judge-', 5), ('b10-final-projection-codec-', 6),
+                              ('verifier-result-codec-', 7)):
+            self.assertEqual(count, sum(name.startswith(prefix) for name in changed))
+            self.assertIn(prefix + 'crossing', changed)
+        self.assertEqual(25, len(runtime.PAIRED_RECOVERY_RETAINED))
+        self.assertFalse(changed & runtime.PAIRED_RECOVERY_RETAINED.keys())
+
+    def test_changed_crossing_requires_the_exact_fresh_measurement(self):
+        for shard in ('b10-final-judge-crossing', 'b10-final-projection-codec-crossing',
+                      'verifier-result-codec-crossing'):
+            owner, _, record, item, timing = self.receipt(shard)
+            for seconds in (2649, 2650, 2651):
+                for estimate in (2649, 2650, 2651):
+                    with self.subTest(shard=shard, seconds=seconds, estimate=estimate):
+                        self.assertEqual(seconds <= min(2650, estimate), runtime.timing_context_linked(
+                            self.context, shard, owner, record, {**item, 'estimated_seconds': estimate},
+                            {**timing, 'observed_seconds': seconds}, {}, self.head))
+            for delta in ({'source_commit': runtime.PAIRED_TAIL_SOURCE}, {'artifact_sha256': 'f' * 64},
+                          {'observed_seconds': 2651}, {'observed_workers': 3}, {'kind': 'historical'},
+                          {'timing_inputs_sha256': '0' * 64}):
+                with self.subTest(shard=shard, delta=delta):
+                    self.assertFalse(runtime.timing_context_linked(
+                        self.context, shard, owner, record, item, {**timing, **delta}, {}, self.head))
+
+    def test_fresh_measurement_replaces_only_the_affected_pinned_selections(self):
+        for shard in ('b10-final-projection-codec-p9', 'b10-final-projection-codec-crossing'):
+            owner, source, record, item, timing = self.receipt(shard)
+            config = {'schema_version': 2, 'timing_evidence': {shard: timing},
+                      'timing_inputs': {self.binding: self.context}}
+            self.assertTrue(runtime.fresh_pinned_timing(config, owner, record, shard, item, source, self.head))
+            config['timing_evidence'][shard] = {**timing, 'source_commit': runtime.PAIRED_TAIL_SOURCE}
+            self.assertFalse(runtime.fresh_pinned_timing(config, owner, record, shard, item, source, self.head))
+
+    def test_retained_receipt_requires_original_source_artifact_and_observation(self):
+        shard = 'b10-final-judge-p5'
+        owner, _, record, item, timing = self.receipt(shard)
+        artifact, observed, mutants, estimate = runtime.PAIRED_RECOVERY_RETAINED[shard]
+        item.update(main_mutants=mutants, estimated_seconds=estimate)
+        record['evidence'][0].update(source_commit=runtime.PAIRED_TAIL_SOURCE, sha256=artifact)
+        timing.update(source_commit=runtime.PAIRED_TAIL_SOURCE, artifact_sha256=artifact,
+                      observed_seconds=observed)
+        self.assertTrue(runtime.timing_context_linked(self.context, shard, owner, record, item, timing, {}, self.head))
+        for delta in ({'source_commit': self.head}, {'artifact_sha256': 'f' * 64},
+                      {'observed_seconds': observed + 0.01}, {'observed_seconds': math.ceil(observed)}, {'observed_workers': 1}):
+            self.assertFalse(runtime.timing_context_linked(
+                self.context, shard, owner, record, item, {**timing, **delta}, {}, self.head))
+        wrong_context = copy.deepcopy(self.context)
+        wrong_context['shared_inputs'][runtime.CONFIG_PATH] = '0' * 64
+        self.assertFalse(runtime.timing_context_linked(wrong_context, shard, owner, record, item, timing, {}, self.head))
+
+    def test_cut_and_execution_drift_reject_the_transition(self):
+        original = runtime.proof_tree
+        tree = list(original(self.head))
+        for index in (0, 1, 2, 3, 4):
+            altered = copy.deepcopy(tree)
+            if index == 0:
+                cuts = list(altered[0]['PRIMARY_CUTS']['b10-final-judge'])
+                cuts[0] += 1
+                altered[0]['PRIMARY_CUTS']['b10-final-judge'] = tuple(cuts)
+            elif index == 1:
+                altered[1] = b'changed selector'
+            elif index == 2:
+                altered[2][0][runtime.CONFIG_PATH] = '0' * 64
+            elif index == 3:
+                altered[3]['changed'] = True
+            else:
+                altered[4].pop('b10-final-judge-p1')
+            runtime.paired_recovery_changes.cache_clear()
+            with self.subTest(index=index), mock.patch.object(runtime, 'proof_tree', side_effect=lambda ref:
+                    tuple(altered) if ref == self.head else original(ref)):
+                self.assertFalse(runtime.paired_recovery_changes(self.head))
+        runtime.paired_recovery_changes.cache_clear()
+
+    def test_each_role_matrix_must_match_both_sources(self):
+        original = runtime.blob
+        for path in runtime.CAMPAIGN_LIMITS:
+            for ref in (runtime.PAIRED_TAIL_SOURCE, self.head):
+                runtime.paired_recovery_changes.cache_clear()
+
+                def changed_blob(commit, requested):
+                    data = original(commit, requested)
+                    if commit == ref and requested == path:
+                        matrix = runtime.workflow_matrix(data)
+                        first, second = (f'          - shard: {shard}\n            target: {target}\n'.encode()
+                                         for shard, target in list(matrix.items())[:2])
+                        return data.replace(first + second, second + first, 1)
+                    return data
+
+                with self.subTest(path=path, ref=ref), mock.patch.object(runtime, 'blob', side_effect=changed_blob):
+                    self.assertFalse(runtime.paired_recovery_changes(self.head))
+        runtime.paired_recovery_changes.cache_clear()
