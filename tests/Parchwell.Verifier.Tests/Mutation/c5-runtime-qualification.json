@@ -186,7 +186,7 @@
     "src/Parchwell.Verifier/VerifyRun/Configuration/RegisteredProducerConfigurationResolver.cs": "6b5040db8285f7ebf9ee12a553c0644e4bcd5e431634d8a32373f99f5a002b7d",
     "src/Parchwell.Verifier/VerifyRun/Consumer/ConsumerRepeatExtension.cs": "6d564c03b57b02c2ac6ab280107bce2aaa8c477ac4a592044dc0c9159682c114",
     "src/Parchwell.Verifier/VerifyRun/Consumer/IRepeatResultExtension.cs": "a7549004b04f7d80171cd7366674abc15ca6bedb09786106318fd6c052d3ba7b",
-    "src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs": "356f46a620b984a19c7cefe21fb5d874f097f797aca22464513c98d32fa845c2",
+    "src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs": "8145b10227ee09fe72ab13bc0c57a5ce17aad4f2a5e125730b010ef59a14b8a2",
     "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerCommittedOffsetReader.cs": "f8e28f746f4af593d1cc6cd62409ce669bbcfec03f03b3a3c9183b3828e8855e",
     "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerOffsetRead.cs": "cfadc39c9393d8c6c78f7a920490b17f6f5c29d220d44b67b0b88c580f2691fc",
     "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationJudgeHandler.cs": "7d9329fec7609b5238f7f01f65d15948bdb52ad5cca44abb97c80c9e460c529f",
@@ -247,6 +247,7 @@
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRecordNameTests.cs": "1cbfadee609abe30add6ced5b5c27a989f6fc157da6f09055457edab3124dbcd",
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRegistrationPathTests.cs": "475284527c17705e17ee53f53c698a625bbfcb68199fe13d8d40f9ce469d7fb7",
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotBoundaryTests.cs": "0ce940f1d58a7069cfa48b2cf251b4c3f3bd4ebd912c282a5d23e7cbd6c06a43",
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotFrontierTests.cs": "4148454c116657817051f198c709667864cfec4cc77700d541004423352affd8",
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerWireFixture.cs": "3eb6be4374b4b9b7a4f724cd95d8a5d09a3bf3c885f1478c1879cbe0b71fe1a9",
     "tests/Parchwell.Verifier.Tests/Consumer/HostOptionsTests.cs": "4654f81a454a1c24a64fbd41f06c1ae840616c0a7a8531c1ef372dd18f9adef8",
     "tests/Parchwell.Verifier.Tests/Consumer/IntegrationB04BaseFixtures.cs": "99592df6b0f7ff05dda41faa8d3cb3f1f6eb6b0a83d183af0512f0cb0ceb8d02",
@@ -8321,15 +8322,22 @@
           },
           "src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7076000200 accepts the timing uncertainty from the exact shared-input change in the pull request for issue #529."
             ],
-            "current_sha256": "356f46a620b984a19c7cefe21fb5d874f097f797aca22464513c98d32fa845c2"
+            "current_sha256": "8145b10227ee09fe72ab13bc0c57a5ce17aad4f2a5e125730b010ef59a14b8a2"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
             ],
             "current_sha256": "1e1d549b0d772e57aa0c3eea342ae40ec12b0ac3c50239c076ca5c4ea27b008b"
+          },
+          "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotFrontierTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7076000200 accepts the timing uncertainty from the exact shared-input change in the pull request for issue #529."
+            ],
+            "current_sha256": "4148454c116657817051f198c709667864cfec4cc77700d541004423352affd8"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/HostOptionsTests.cs": {
             "basis": [
@@ -8913,15 +8921,22 @@
           },
           "src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7076000200 accepts the timing uncertainty from the exact shared-input change in the pull request for issue #529."
             ],
-            "current_sha256": "356f46a620b984a19c7cefe21fb5d874f097f797aca22464513c98d32fa845c2"
+            "current_sha256": "8145b10227ee09fe72ab13bc0c57a5ce17aad4f2a5e125730b010ef59a14b8a2"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
             ],
             "current_sha256": "1e1d549b0d772e57aa0c3eea342ae40ec12b0ac3c50239c076ca5c4ea27b008b"
+          },
+          "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotFrontierTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7076000200 accepts the timing uncertainty from the exact shared-input change in the pull request for issue #529."
+            ],
+            "current_sha256": "4148454c116657817051f198c709667864cfec4cc77700d541004423352affd8"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/HostOptionsTests.cs": {
             "basis": [
@@ -9462,15 +9477,22 @@
           },
           "src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7076000200 accepts the timing uncertainty from the exact shared-input change in the pull request for issue #529."
             ],
-            "current_sha256": "356f46a620b984a19c7cefe21fb5d874f097f797aca22464513c98d32fa845c2"
+            "current_sha256": "8145b10227ee09fe72ab13bc0c57a5ce17aad4f2a5e125730b010ef59a14b8a2"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
             ],
             "current_sha256": "1e1d549b0d772e57aa0c3eea342ae40ec12b0ac3c50239c076ca5c4ea27b008b"
+          },
+          "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotFrontierTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7076000200 accepts the timing uncertainty from the exact shared-input change in the pull request for issue #529."
+            ],
+            "current_sha256": "4148454c116657817051f198c709667864cfec4cc77700d541004423352affd8"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/HostOptionsTests.cs": {
             "basis": [
@@ -9996,7 +10018,20 @@
     },
     "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997": {
       "assessments": {
-        "shared_inputs": {},
+        "shared_inputs": {
+          "src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7076000200 accepts the timing uncertainty from the exact shared-input change in the pull request for issue #529."
+            ],
+            "current_sha256": "8145b10227ee09fe72ab13bc0c57a5ce17aad4f2a5e125730b010ef59a14b8a2"
+          },
+          "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotFrontierTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7076000200 accepts the timing uncertainty from the exact shared-input change in the pull request for issue #529."
+            ],
+            "current_sha256": "4148454c116657817051f198c709667864cfec4cc77700d541004423352affd8"
+          }
+        },
         "target_sources": {}
       },
       "shared_inputs": {
@@ -10843,9 +10878,10 @@
               "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted.",
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6992683745 accepts this exact timing-risk change for unchanged owners only. Prior approved candidate SHA-256 6ede189c5012c672ba6ebc5200f4beedc3a49c8ed16b8845a06230635b73a26a; combined candidate SHA-256 64eefc613cd6331b5e34fd7d867a7aafd24ad20132585ec3d1831681bb1de20a. The original timing may understate runtime.",
               "The combined input matches the merged consumer observation file under https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557.",
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7076000200 accepts the timing uncertainty from the exact shared-input change in the pull request for issue #529."
             ],
-            "current_sha256": "356f46a620b984a19c7cefe21fb5d874f097f797aca22464513c98d32fa845c2"
+            "current_sha256": "8145b10227ee09fe72ab13bc0c57a5ce17aad4f2a5e125730b010ef59a14b8a2"
           },
           "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerCommittedOffsetReader.cs": {
             "basis": [
@@ -10992,6 +11028,12 @@
               "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted."
             ],
             "current_sha256": "0ce940f1d58a7069cfa48b2cf251b4c3f3bd4ebd912c282a5d23e7cbd6c06a43"
+          },
+          "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotFrontierTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7076000200 accepts the timing uncertainty from the exact shared-input change in the pull request for issue #529."
+            ],
+            "current_sha256": "4148454c116657817051f198c709667864cfec4cc77700d541004423352affd8"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerWireFixture.cs": {
             "basis": [
@@ -12235,9 +12277,10 @@
               "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted.",
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6992683745 accepts this exact timing-risk change for unchanged owners only. Prior approved candidate SHA-256 6ede189c5012c672ba6ebc5200f4beedc3a49c8ed16b8845a06230635b73a26a; combined candidate SHA-256 64eefc613cd6331b5e34fd7d867a7aafd24ad20132585ec3d1831681bb1de20a. The original timing may understate runtime.",
               "The combined input matches the merged consumer observation file under https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6970923557.",
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573.",
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7076000200 accepts the timing uncertainty from the exact shared-input change in the pull request for issue #529."
             ],
-            "current_sha256": "356f46a620b984a19c7cefe21fb5d874f097f797aca22464513c98d32fa845c2"
+            "current_sha256": "8145b10227ee09fe72ab13bc0c57a5ce17aad4f2a5e125730b010ef59a14b8a2"
           },
           "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerCommittedOffsetReader.cs": {
             "basis": [
@@ -12400,6 +12443,12 @@
               "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted."
             ],
             "current_sha256": "0ce940f1d58a7069cfa48b2cf251b4c3f3bd4ebd912c282a5d23e7cbd6c06a43"
+          },
+          "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotFrontierTests.cs": {
+            "basis": [
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7076000200 accepts the timing uncertainty from the exact shared-input change in the pull request for issue #529."
+            ],
+            "current_sha256": "4148454c116657817051f198c709667864cfec4cc77700d541004423352affd8"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerWireFixture.cs": {
             "basis": [
