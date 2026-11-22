@@ -1,6 +1,6 @@
 # Plan: consumer input checks (#529)
 
-Revision 1. Base commit: `2158a93bff0cf8b0fcd1de9ae13f776291342b19` on `main`.
+Revision 2. Base commit: `2158a93bff0cf8b0fcd1de9ae13f776291342b19` on `main`.
 
 This plan asks Hari two scope questions about the consumer verifier and pins the work for the recommended answers. The first check rejects a consumer record that ends before rows the start line already saw; it is recommended, and recommended to merge before the C10 and C01 verdict runs. The second check charges consumer rows to the shared input-entry budget; it is optional and does not gate any verdict, because a resource bound can only make a repeat incomplete, never change a count.
 
@@ -105,6 +105,14 @@ Enforced checks added:
 - B4. WHEN the entries charged equal `MaxInputEntries` exactly, THEN the read is not unavailable on that account.
 - B5. WHEN `InputLimits.MaxRowBytes` or `InputLimits.MaxRowsPerArtifact` is smaller than a row or blob in the record, THEN the reader's result is unchanged: only the wire limits apply.
 
+## 5a. Invariants and safety rules
+
+- No expected outcome, verdict or file under `results/` changes (AGENTS.md GOVERNANCE "Verdict integrity").
+- No Kafka client setting, workflow, chart, infrastructure or scenario file changes (section 3, paths that must not change).
+- Neither check adds a reason name, a block property or a status (section 4).
+- The consumer record writer is not changed.
+- Every existing test assertion stays, except as the fixture rule of section 6 permits.
+
 ## 6. Test map
 
 Fixtures. PR 1 tests use `ConsumerJudgementFixture` (`F`) as built by `F.Create()` and `F.Read()` (`tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementFixture.cs` lines 18 to 41 and 69). Each member there has 7 rows, row sequences 0 to 6, and a completion receipt; the snapshot is `subject (0, 0)` and `witness (0, 0)`. Every other field stays valid, so no other reason can mask the check. PR 2 tests use `ConsumerWireFixture` with two members, subject and witness. Each member has one record blob of 3 rows, a registration marker and a completion receipt, so the listing returns 6 names and the record holds 6 rows: 12 entries in all.
@@ -158,7 +166,7 @@ Run on each pull request's branch, in the order docs/agents/pull-requests.md "Ve
 
 ## 10. Plan-check questions (docs/agents/factory.md "Item lifecycle" step 1)
 
-(a) No step's effort scales with a number unknown at planning time. The test inputs are fixed. The mutation check is one command with a fixed input set.
+(a) One step's effort scales with a number unknown at planning time: the existing tests whose fixtures check 1 or check 2 rejects, handled under the fixture rule of section 6. This plan sets no cap, so AGENTS.md "Before opening a pull request" rule 11 applies to it. Estimate, 2026-11-22, from reading the existing tests that set snapshot frontiers and the default `ConsumerWireFixture` limits: 0 for each pull request. The new test inputs are fixed. The mutation check is one command with a fixed input set.
 
 (b) Stricter than its parent plan, the approved #506 revision 5: PR 1 adds a condition to rules 4 and 5, which do not require the record to reach the snapshot frontier. Source: ADR-022 "Invalid run" (docs/blueprint.md line 779). PR 2 adds an entry charge that rule 2a does not list. Its source is the verifier's existing input-bound practice (section 2.2), not a scientific check; it can only make a repeat `incomplete`.
 
@@ -170,6 +178,7 @@ Plan rule 1 (external behaviour): this plan relies on no Kafka, librdkafka, Conf
 
 - PR 2, if Hari keeps it (Q3). Evidence: section 2.2. Not on the verdict path, because an exceeded bound gives `incomplete`. Successor: an implementing session after approval, at any time. Completion evidence: T8 to T12 pass on `main`. Gates nothing.
 - C03 recheck, only if Hari answers Q4 that way. Evidence: the published C03 result (`results/C03/2026-11-19.json`) was classified by a verifier without check 1. Not on the C10 or C01 verdict path. Whether the C03 evidence archive retains `consumer-start.json` is not verified in this session; `docs/operations/archive-smoke.md` line 107 lists only the members' registration, completion and record blobs. Successor: a session Hari names. Completion evidence: a recorded check result per C03 repeat. A failure is a finding on the C03 result, not a change to `results/`.
+- Mutation acceptance for PR 1 and, if Hari keeps it, PR 2. Evidence: each pull request changes files listed as shared inputs in `tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json`, which docs/operations/verifier-mutation.md line 10 makes mutation inputs. On the verdict path: yes, for the C10 and C01 evidence packs (docs/agents/factory.md "Evidence pack"). Why deferral is permitted: the run is dispatched on `main` only after the merge. Successor: the session that dispatches it on `main` after the merge, under the dispatch authority that applies then. Completion evidence: `summary.json` with `measurement_complete: true` and `break_passed: true`, naming a `main` commit whose history includes the merge. A later passing run that includes the merge also counts. Gate: the C10 and C01 evidence packs. Exhaustion: a failed or incomplete run opens a fix issue (docs/agents/factory.md "Evidence pack").
 
 ## 11. Open questions for Hari
 
@@ -197,3 +206,7 @@ Estimate, 2026-11-22, from the code read in section 2. Size is reported, not enf
 - The approved [#506 plan revision 5](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md), sections 3.2 and 3.6 and rules 2a, 4 and 5.
 - Hosted findings [r4583551983](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526#discussion_r4583551983) and [r4583551989](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526#discussion_r4583551989), as quoted in the #529 body (not read in this session).
 - Repository files cited in section 2, at the base commit.
+
+## 15. Changes since revision 1
+
+Applied the three `apply in revision` findings of [plan check 7075838247](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7075838247), with their literal texts: finding 2 (mutation acceptance in section 10a), finding 3 (new section 5a) and finding 4 (section 10 answer (a)). None is design-changing under docs/agents/factory.md "Item lifecycle" step 1: each writes down a gate or rule that an existing file already sets, or corrects an answer to match the plan, and none changes a gate, contract, requirement, scope, policy value, verdict rule or open question. The check's findings 1 and 5 and its P2s are unchanged and go to Hari.
