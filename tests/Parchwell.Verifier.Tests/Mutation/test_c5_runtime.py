@@ -38,6 +38,20 @@ class ExecutionWorkflowTests(unittest.TestCase):
             with self.subTest(workflow=other):
                 self.assertNotEqual(fingerprint, profile_module.execution_workflow(other))
 
+    def test_timing_fingerprint_retains_the_exact_paced_companion_step_only(self):
+        workflow = (ROOT / profile_module.WORKFLOW).read_bytes()
+        previous = profile_module.blob('717c5a75e3f0a56ad5378a0e7551caa832ed63d8', profile_module.WORKFLOW)
+        fingerprint = profile_module.execution_workflow(previous)
+        self.assertEqual(fingerprint, profile_module.execution_workflow(workflow))
+        for old, changed in (
+                (b'c5_companion_artifacts.py', b'c5_other_artifacts.py'),
+                (b'--manifest "$C5_CAMPAIGN"', b'--manifest "$OTHER_MANIFEST"'),
+                (b'--campaign-manifest "$C5_CAMPAIGN"', b'--campaign-manifest "$OTHER_MANIFEST"'),
+                (b'--output-dir "$C5_OUTPUT"', b'--output-dir "$OTHER_C5_OUTPUT"')):
+            with self.subTest(old=old):
+                self.assertIn(old, workflow)
+                self.assertNotEqual(fingerprint, profile_module.execution_workflow(workflow.replace(old, changed, 1)))
+
 
 class RequiredCheckIntegrationTests(unittest.TestCase):
     def invoke_step(self, event, fail_check, fail_discovery=False):

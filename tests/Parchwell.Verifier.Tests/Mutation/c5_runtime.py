@@ -381,13 +381,32 @@ def execution_workflow(data):
     start = text.index('        include:\n') + len('        include:\n')
     end = text.index('    env:\n', start)
     worker, aggregate_header, aggregate = (text[:start] + text[end:]).partition('\n  aggregate:\n')
-    # Preserve the measured worker fingerprint across this exact post-measurement action upgrade.
-    download = ("      - name: Download companion shard evidence\n"
-                "        if: always() && steps.campaign.outputs.run-id != ''\n"
-                "        uses: actions/download-artifact@")
-    upgraded = download + '9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2\n'
-    measured = download + 'd3f86a106a0bac45b974a628896c90dbdf5c8093\n'
-    return (worker + aggregate_header + aggregate.replace(upgraded, measured, 1)).encode()
+    # Preserve the timing fingerprint for the exact reviewed companion transport changes.
+    step = ("      - name: Download companion shard evidence\n"
+            "        if: always() && steps.campaign.outputs.run-id != ''\n")
+    action = step + '        uses: actions/download-artifact@'
+    upgraded = action + '9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2\n'
+    measured = action + 'd3f86a106a0bac45b974a628896c90dbdf5c8093\n'
+    inputs = (
+        '        with:\n'
+        '          github-token: ${{ github.token }}\n'
+        '          run-id: ${{ steps.campaign.outputs.run-id }}\n'
+        '          pattern: c5-mutation-${{ steps.campaign.outputs.run-id }}-${{ steps.campaign.outputs.attempt }}-*\n'
+        '          path: ${{ runner.temp }}/c5-input\n'
+        '          merge-multiple: false\n'
+    )
+    paced = step + (
+        '        env:\n'
+        '          GH_TOKEN: ${{ github.token }}\n'
+        '          C5_CAMPAIGN: ${{ runner.temp }}/c5-campaign.json\n'
+        '          C5_INPUT: ${{ runner.temp }}/c5-input\n'
+        '        run: >-\n'
+        '          python3 tests/Parchwell.Verifier.Tests/Mutation/c5_companion_artifacts.py\n'
+        '          --repository "$GITHUB_REPOSITORY" --commit "$GITHUB_SHA"\n'
+        '          --manifest "$C5_CAMPAIGN" --output-dir "$C5_INPUT"\n'
+    )
+    aggregate = aggregate.replace(upgraded, measured, 1).replace(paced, measured + inputs, 1)
+    return (worker + aggregate_header + aggregate).encode()
 
 
 def workflow_matrix(data):
