@@ -52,6 +52,13 @@ internal static class ConsumerJudgement
                 if(request.Plan.SlowMessageMode is not null&&(members.Where(m=>m.Registration!.Role=="subject").Sum(m=>m.Rows.Count(r=>r.Kind=="processed"&&r.Slow))!=1||
                     members.Where(m=>m.Registration!.Role=="witness").Any(m=>m.Rows.Any(r=>r.Kind=="processed"&&r.Slow))))invalid.Add("consumer_slow_message_invalid");
                 if(!ValidStart(request,members))invalid.Add("consumer_start_assignment_invalid");
+                foreach(ConsumerMember member in members)
+                {
+                    ConsumerSnapshotMember? entry=request.Snapshot?.Members.FirstOrDefault(m=>m.InstanceId==member.Registration!.InstanceId);
+                    long last=member.Rows.Count>0?member.Rows[^1].RowSequence:-1;
+                    if(entry is not null&&last<entry.SecondReadLastRowSequence)
+                    {invalid.Add("consumer_record_invalid");diagnostics.Add(new("consumer_record_invalid",member.Registration!.InstanceId,member.Prefix,entry.SecondReadLastRowSequence,Detail:"record ends before start snapshot"));}
+                }
                 if(final)
                 {
                     if(read.Outcome is "kafka_exception" or "partition_exception" or "invalid_response")incomplete="consumer_commit_evidence_unavailable";
