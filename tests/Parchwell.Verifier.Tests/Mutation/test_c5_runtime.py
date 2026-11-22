@@ -3459,6 +3459,44 @@ class PairedRecoveryTimingTests(PairedTailTimingTests):
         wrong_context['shared_inputs'][runtime.CONFIG_PATH] = '0' * 64
         self.assertFalse(runtime.timing_context_linked(wrong_context, shard, owner, record, item, timing, {}, self.head))
 
+    def test_later_renewable_change_preserves_recovery_receipts_and_requires_assessment(self):
+        head = runtime.git('rev-parse', 'HEAD').decode().strip()
+        original = runtime.proof_tree
+        tree = original(head)
+        shared, targets = tree[2]
+        path = runtime.CI_REPAIR_TEST
+        edited = {**shared, path: '9' * 64}
+        changed = (*tree[:2], (edited, targets), *tree[3:])
+        self.assertNotIn(path, runtime.NON_RENEWABLE)
+        self.assertNotEqual(shared[path], edited[path])
+        context = copy.deepcopy(self.context)
+        assessment = {'current_sha256': edited[path], 'basis': ['Synthetic assessment fixture']}
+        context['assessments']['shared_inputs'][path] = assessment
+        shard = 'b10-final-judge-crossing'
+        owner, _, record, item, timing = self.receipt(shard)
+
+        runtime.paired_recovery_changes.cache_clear()
+        with mock.patch.object(runtime, 'proof_tree', side_effect=lambda ref:
+                changed if ref == head else original(ref)):
+            self.assertEqual(runtime.PAIRED_RECOVERY_CHANGED, runtime.paired_recovery_changes(head))
+            self.assertTrue(runtime.timing_context_linked(context, shard, owner, record, item, timing, {}, head))
+            self.assertEqual(set(), runtime.provenance_errors(context, edited, targets, owner, shard, head))
+            self.assertIn('unaccounted_inputs', runtime.provenance_errors(
+                self.context, edited, targets, owner, shard, head))
+        runtime.paired_recovery_changes.cache_clear()
+
+        prior = runtime.strict_json(runtime.blob(runtime.PAIRED_TAIL_PRIOR, runtime.HISTORICAL_QUALIFICATION_PATH))
+        owner, shard = 'Judge/PhaseJudge.cs', 'phase-p1'
+        binding = prior['targets'][owner]['shards'][shard]['timing_inputs_sha256']
+        original_context = prior['timing_inputs'][binding]
+        updated = copy.deepcopy(original_context)
+        updated['assessments']['shared_inputs'][path] = assessment
+        self.assertTrue(runtime.retains_measurement_context(updated, original_context, edited))
+        self.assertEqual(set(), runtime.provenance_errors(
+            updated, edited, targets, owner, shard, runtime.PAIRED_TAIL_PRIOR))
+        updated['source_commit'] = self.head
+        self.assertFalse(runtime.retains_measurement_context(updated, original_context, edited))
+
     def test_cut_and_execution_drift_reject_the_transition(self):
         original = runtime.proof_tree
         tree = list(original(self.head))

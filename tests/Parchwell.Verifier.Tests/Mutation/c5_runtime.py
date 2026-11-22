@@ -1161,7 +1161,7 @@ def paired_tail_changes(head):
         git('merge-base', '--is-ancestor', PAIRED_TAIL_SOURCE, head)
         prior = proof_tree(PAIRED_TAIL_PRIOR)
         measured = proof_tree(PAIRED_TAIL_SOURCE)
-        if proof_tree(head) != measured or prior[1:] != measured[1:]:
+        if not same_timing_layout(measured, proof_tree(head)) or prior[1:] != measured[1:]:
             return frozenset()
         old, new = prior[0], measured[0]
         cuts = dict(old['PRIMARY_CUTS'])
@@ -1193,7 +1193,7 @@ def paired_recovery_changes(head):
     try:
         git('merge-base', '--is-ancestor', PAIRED_RECOVERY_SOURCE, head)
         old, new = proof_tree(PAIRED_TAIL_SOURCE), proof_tree(PAIRED_RECOVERY_SOURCE)
-        if proof_tree(head) != new or old[1:] != new[1:]:
+        if not same_timing_layout(new, proof_tree(head)) or old[1:] != new[1:]:
             return frozenset()
         for path in CAMPAIGN_LIMITS:
             old_matrix, new_matrix, head_matrix = (
@@ -2055,6 +2055,16 @@ def timing_context_linked(context, shard, path, record, item, timing, baseline, 
     return False
 
 
+def retains_measurement_context(context, prior, shared):
+    """Keep the measured inputs and assessments whose subject has not changed."""
+    if (any(context.get(key) != prior.get(key) for key in ('source_commit', 'shared_inputs', 'target_sources'))
+            or context['assessments']['target_sources'] != prior['assessments']['target_sources']):
+        return False
+    return all(context['assessments']['shared_inputs'].get(path) == assessment
+               for path, assessment in prior['assessments']['shared_inputs'].items()
+               if assessment['current_sha256'] == shared.get(path))
+
+
 def validate(config, shared, targets, source, matrix, head=None):
     reasons = set()
     if set(config['targets']) != set(targets):
@@ -2149,9 +2159,10 @@ def validate(config, shared, targets, source, matrix, head=None):
                     if retained_tail:
                         prior_record = tail_prior['targets'][path]
                         prior_evidence = prior_record['evidence']
+                        prior_context = tail_prior['timing_inputs'].get(binding, {})
                         if (item != prior_record['shards'].get(shard)
                                 or timing != tail_prior['timing_evidence'].get(shard)
-                                or context != tail_prior['timing_inputs'].get(binding)
+                                or not retains_measurement_context(context, prior_context, shared)
                                 or record['evidence'][:len(prior_evidence)] != prior_evidence):
                             reasons.add('missing_measurement')
                     reasons.update(provenance_errors(context, shared, targets, path, shard, proof_head))
