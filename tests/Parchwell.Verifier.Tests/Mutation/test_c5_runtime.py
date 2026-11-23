@@ -3982,3 +3982,74 @@ class ObservedTailTimingTests(unittest.TestCase):
             with self.subTest(delta=delta):
                 self.assertFalse(linked({**timing, **delta}))
         self.assertFalse(linked(timing, 2649))
+
+
+class ObservedTailLedgerTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # This snapshot contains the hosted receipt set and the merged frontier assessments.
+        cls.head = '64075129a9885956b4ae097f923c2990fd4d3907'
+        cls.ledger = runtime.strict_json(runtime.blob(cls.head, runtime.HISTORICAL_QUALIFICATION_PATH))
+        cls.prior = runtime.strict_json(runtime.blob(runtime.OBSERVED_TAIL_PRIOR, runtime.HISTORICAL_QUALIFICATION_PATH))
+        cls.shared, cls.targets = runtime.input_maps(cls.head)
+        cls.source = {path: runtime.blob(cls.head, 'src/Parchwell.Verifier/' + path) for path in cls.targets}
+        cls.matrix = runtime.workflow_layout(cls.head, paired=True)
+        cls.changed = runtime.observed_tail_changes(cls.head)
+        cls.target = 'Judge/PhaseCandidateCodec.cs'
+        cls.retained = 'phase-candidate-codec-p10'
+        cls.fresh = 'phase-candidate-codec-p3'
+        cls.peer = 'phase-candidate-codec-p4'
+
+    def validate(self, config):
+        return runtime.validate(config, self.shared, self.targets, self.source, self.matrix, self.head)
+
+    def test_complete_hosted_ledger_matches_the_exact_receipts_and_retained_items(self):
+        self.assertEqual(324, len(self.ledger['timing_evidence']))
+        self.assertEqual(runtime.OBSERVED_TAIL_CHANGED, self.changed)
+        self.assertEqual(set(), runtime.observed_tail_ledger_errors(self.ledger, self.prior, self.shared, self.changed))
+
+    def test_foreign_receipt_swap_inside_one_target_is_rejected(self):
+        config = copy.deepcopy(self.ledger)
+        first, second = (config['timing_evidence'][shard] for shard in (self.fresh, self.peer))
+        self.assertNotEqual(first['artifact_sha256'], second['artifact_sha256'])
+        first['artifact_sha256'], second['artifact_sha256'] = second['artifact_sha256'], first['artifact_sha256']
+        self.assertEqual({'missing_measurement'}, self.validate(config))
+
+    def test_receipt_for_a_different_selector_or_archive_is_rejected(self):
+        config = copy.deepcopy(self.ledger)
+        first, second = (config['targets'][self.target]['shards'][shard] for shard in (self.fresh, self.peer))
+        self.assertNotEqual(first['selection_sha256'], second['selection_sha256'])
+        first['selection_sha256'] = second['selection_sha256']
+        self.assertEqual({'missing_measurement'}, self.validate(config))
+
+        config = copy.deepcopy(self.ledger)
+        record = config['targets'][self.target]
+        timing = config['timing_evidence'][self.fresh]
+        entry = next(e for e in record['evidence'] if e['sha256'] == timing['artifact_sha256'])
+        entry['locator'] = entry['locator'].rsplit('/', 1)[0] + '/1'
+        self.assertEqual({'missing_measurement'}, self.validate(config))
+
+    def test_retained_item_timing_and_measured_inputs_keep_their_original_values(self):
+        for field in ('item', 'timing', 'measured_input'):
+            with self.subTest(field=field):
+                config = copy.deepcopy(self.ledger)
+                item = config['targets'][self.target]['shards'][self.retained]
+                timing = config['timing_evidence'][self.retained]
+                if field == 'item':
+                    item['estimated_seconds'] -= 1
+                elif field == 'timing':
+                    timing['artifact_sha256'] = 'f' * 64
+                else:
+                    context = config['timing_inputs'][item['timing_inputs_sha256']]
+                    context['shared_inputs'][runtime.RUNNER] = 'f' * 64
+                self.assertEqual({'missing_measurement'}, self.validate(config))
+
+    def test_missing_and_extra_physical_rows_are_rejected(self):
+        config = copy.deepcopy(self.ledger)
+        del config['targets'][self.target]['shards'][self.retained]
+        self.assertIn('layout_mismatch', self.validate(config))
+
+        config = copy.deepcopy(self.ledger)
+        record = config['targets'][self.target]['shards']
+        record['phase-candidate-codec-p99'] = copy.deepcopy(record[self.retained])
+        self.assertIn('layout_mismatch', self.validate(config))

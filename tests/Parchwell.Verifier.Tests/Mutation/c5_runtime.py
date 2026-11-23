@@ -1254,6 +1254,8 @@ def paired_recovery_changes(head):
 
 OBSERVED_TAIL_PRIOR = '89e75f39a2a281afc8942f4af280776e40e38520'
 OBSERVED_TAIL_SOURCE = '0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd'
+# Canonical shard, selector, timing and archive bindings verified from hosted run 45117421809.
+OBSERVED_TAIL_RECEIPTS_SHA256 = '12839ca86845786fbed63554387eb60d4ed6106e9fb815fbbba7b701c9487472'
 OBSERVED_TAIL_WINDOWS = {
     'b10-final-repeat-evidence': range(16, 23),
     'b10-sweep-codec': range(5, 7),
@@ -2155,6 +2157,45 @@ def retains_measurement_context(context, prior, shared):
                if assessment['current_sha256'] == shared.get(path))
 
 
+def observed_tail_ledger_errors(config, prior, shared, changed):
+    """Check exact retained records and authenticate each changed shard's timing receipt."""
+    if config['schema_version'] != 2 or config['timing_evidence'].keys() != prior['timing_evidence'].keys():
+        return {'missing_measurement'}
+    if config['targets'].keys() != prior['targets'].keys():
+        return {'layout_mismatch'}
+    receipts = {}
+    reasons = set()
+    for path, original in prior['targets'].items():
+        record = config['targets'][path]
+        if record['shards'].keys() != original['shards'].keys():
+            reasons.add('layout_mismatch')
+            continue
+        if record['source_sha256'] != original['source_sha256']:
+            reasons.add('stale_inputs')
+        retained = original['evidence']
+        added = record['evidence'][len(retained):]
+        by_digest = {entry['sha256']: entry for entry in added}
+        if (record['evidence'][:len(retained)] != retained
+                or len(added) != len(by_digest) or len(added) != len(changed & record['shards'].keys())):
+            reasons.add('missing_measurement')
+        for shard, item in record['shards'].items():
+            timing = config['timing_evidence'][shard]
+            if shard in changed:
+                receipts[shard] = {'target': path, 'item': item, 'timing': timing,
+                                   'evidence': by_digest.get(timing.get('artifact_sha256'))}
+                continue
+            binding = item['timing_inputs_sha256']
+            context = config['timing_inputs'].get(binding)
+            previous_context = prior['timing_inputs'].get(binding)
+            if (item != original['shards'][shard] or timing != prior['timing_evidence'][shard]
+                    or context is None or previous_context is None
+                    or not retains_measurement_context(context, previous_context, shared)):
+                reasons.add('missing_measurement')
+    if receipts.keys() != changed or digest(canonical(receipts)) != OBSERVED_TAIL_RECEIPTS_SHA256:
+        reasons.add('missing_measurement')
+    return reasons
+
+
 def validate(config, shared, targets, source, matrix, head=None):
     reasons = set()
     if set(config['targets']) != set(targets):
@@ -2187,6 +2228,10 @@ def validate(config, shared, targets, source, matrix, head=None):
         p['kind'] == 'historical' for p in config['timing_evidence'].values()) else {}
     observed_changes = observed_tail_changes(head)
     observed_prior = strict_json(blob(OBSERVED_TAIL_PRIOR, HISTORICAL_QUALIFICATION_PATH)) if observed_changes else None
+    if observed_prior is not None:
+        observed_errors = observed_tail_ledger_errors(config, observed_prior, shared, observed_changes)
+        if observed_errors:
+            return reasons | observed_errors
     recovery_head = OBSERVED_TAIL_PRIOR if observed_changes else head
     recovery_changes = paired_recovery_changes(recovery_head)
     tail_changes = paired_tail_changes(PAIRED_TAIL_SOURCE) if recovery_changes else paired_tail_changes(recovery_head)
@@ -2201,17 +2246,6 @@ def validate(config, shared, targets, source, matrix, head=None):
         if record['source_sha256'] != targets[path]:
             reasons.add('stale_inputs')
         observed_record = observed_prior['targets'][path] if observed_prior is not None else None
-        if observed_record is not None and config['schema_version'] == 2:
-            previous_evidence = observed_record['evidence']
-            added_evidence = record['evidence'][len(previous_evidence):]
-            changed = observed_changes & record['shards'].keys()
-            artifacts = {config['timing_evidence'].get(shard, {}).get('artifact_sha256') for shard in changed}
-            if (record['evidence'][:len(previous_evidence)] != previous_evidence
-                    or len(added_evidence) != len(changed)
-                    or {entry['sha256'] for entry in added_evidence} != artifacts
-                    or any(entry['source_commit'] != OBSERVED_TAIL_SOURCE or entry['kind'] != 'hosted_complete'
-                           for entry in added_evidence)):
-                reasons.add('missing_measurement')
         provisional = record.get('geometry_status') == PROVISIONAL_STATUS
         if provisional:
             if not native_geometry_valid(path, record, source[path]):
@@ -2265,16 +2299,7 @@ def validate(config, shared, targets, source, matrix, head=None):
                 else:
                     used_contexts.add(binding)
                     timing = config['timing_evidence'].get(shard, {})
-                    proof_context = context
-                    if retained_observed:
-                        prior_context = observed_prior['timing_inputs'].get(binding)
-                        if (item != observed_record['shards'].get(shard)
-                                or timing != observed_prior['timing_evidence'].get(shard)
-                                or prior_context is None
-                                or not retains_measurement_context(context, prior_context, shared)):
-                            reasons.add('missing_measurement')
-                        else:
-                            proof_context = prior_context
+                    proof_context = observed_prior['timing_inputs'][binding] if retained_observed else context
                     if retained_tail:
                         prior_record = tail_prior['targets'][path]
                         prior_evidence = prior_record['evidence']
