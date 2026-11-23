@@ -1,5 +1,6 @@
 import importlib.util
 import fnmatch
+from functools import cache
 import json
 import math
 from pathlib import Path
@@ -4053,3 +4054,37 @@ class ObservedTailLedgerTests(unittest.TestCase):
         record = config['targets'][self.target]['shards']
         record['phase-candidate-codec-p99'] = copy.deepcopy(record[self.retained])
         self.assertIn('layout_mismatch', self.validate(config))
+
+    def test_complete_ledger_enforces_timing_boundaries_after_receipt_authentication(self):
+        # The fixture samples strict timing bounds with a matching synthetic receipt pin.
+        # Immutable Git reads are cached across cases so every case can run the whole checker.
+        cases = (
+            (2649, 2699, 2699, set()),
+            (2650, 2700, 2700, set()),
+            (2651, 2700, 2700, {'missing_measurement'}),
+            (2650, 2701, 2701, {'missing_measurement', 'shard_over_budget'}),
+            (2650, 2649, 2649, {'missing_measurement'}),
+            (2649, 2699, 2700, {'invalid_estimate'}),
+        )
+        with (mock.patch.object(runtime, 'git', cache(runtime.git)),
+              mock.patch.object(runtime, 'proof_tree', cache(runtime.proof_tree.__wrapped__))):
+            for observed, estimate, calculated, expected in cases:
+                with self.subTest(observed=observed, estimate=estimate, calculated=calculated):
+                    config = copy.deepcopy(self.ledger)
+                    item = config['targets'][self.target]['shards'][self.fresh]
+                    item['estimated_seconds'] = estimate
+                    item['main_work_seconds'] = (calculated - item['setup_seconds'] - item['isolated_seconds']) * item['parallelism']
+                    config['timing_evidence'][self.fresh]['observed_seconds'] = observed
+                    receipts = {}
+                    for shard in self.changed:
+                        target = self.matrix[shard]
+                        record = config['targets'][target]
+                        timing = config['timing_evidence'][shard]
+                        entry = next(e for e in record['evidence'] if e['sha256'] == timing['artifact_sha256'])
+                        receipts[shard] = {'target': target, 'item': record['shards'][shard],
+                                           'timing': timing, 'evidence': entry}
+                    fingerprint = runtime.digest(runtime.canonical(receipts))
+                    with mock.patch.object(runtime, 'OBSERVED_TAIL_RECEIPTS_SHA256', fingerprint):
+                        self.assertEqual(set(), runtime.observed_tail_ledger_errors(
+                            config, self.prior, self.shared, self.changed))
+                        self.assertEqual(expected, self.validate(config))
