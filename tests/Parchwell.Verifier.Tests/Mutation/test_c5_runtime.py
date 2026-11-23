@@ -4078,7 +4078,6 @@ class ObservedTailLedgerTests(unittest.TestCase):
             return owners[key][2]
 
         with (mock.patch.object(runtime, 'git', cache(runtime.git)),
-              mock.patch.object(runtime, 'proof_tree', cache(runtime.proof_tree.__wrapped__)),
               mock.patch.object(runtime, 'committed_physical_owners', physical_owners),
               mock.patch.object(runtime.workflow, 'shard_config', cache(runtime.workflow.shard_config))):
             for observed, estimate, calculated, expected in cases:

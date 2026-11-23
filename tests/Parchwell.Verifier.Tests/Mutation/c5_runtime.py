@@ -1041,7 +1041,7 @@ def strict_json(data):
                       parse_constant=lambda value: (_ for _ in ()).throw(ValueError('nonfinite JSON')))
 
 
-@functools.lru_cache(maxsize=8)
+@functools.lru_cache(maxsize=32)
 def proof_tree(ref):
     if not re.fullmatch(r'[0-9a-f]{40}', ref) or git('cat-file', '-t', ref).strip() != b'commit':
         raise ValueError('proof source is not a commit')
