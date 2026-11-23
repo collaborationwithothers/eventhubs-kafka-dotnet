@@ -7,7 +7,7 @@ on:
         description: Full lowercase commit SHA containing the diagnostic helpers
         required: true
         type: string
-        default: 4275b634f14c1f81fcfe91dfcd7deb260a0c8a7f
+        default: 0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd
 
 permissions:
   contents: read
@@ -21,58 +21,97 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - shard: b10-final-judge-crossing
-            target: Judge/B10FinalJudge.cs
-            target_sha256: e37f0604e2483e2c54f73006dca1e6fc68f5ee5e422a660ecd18f94f0240967a
-          - shard: b10-final-judge-p1
-            target: Judge/B10FinalJudge.cs
-            target_sha256: e37f0604e2483e2c54f73006dca1e6fc68f5ee5e422a660ecd18f94f0240967a
-          - shard: b10-final-judge-p2
-            target: Judge/B10FinalJudge.cs
-            target_sha256: e37f0604e2483e2c54f73006dca1e6fc68f5ee5e422a660ecd18f94f0240967a
-          - shard: b10-final-judge-p3
-            target: Judge/B10FinalJudge.cs
-            target_sha256: e37f0604e2483e2c54f73006dca1e6fc68f5ee5e422a660ecd18f94f0240967a
-          - shard: b10-final-judge-p4
-            target: Judge/B10FinalJudge.cs
-            target_sha256: e37f0604e2483e2c54f73006dca1e6fc68f5ee5e422a660ecd18f94f0240967a
-          - shard: b10-final-projection-codec-crossing
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
-          - shard: b10-final-projection-codec-p5
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
-          - shard: b10-final-projection-codec-p6
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
-          - shard: b10-final-projection-codec-p7
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
-          - shard: b10-final-projection-codec-p8
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
-          - shard: b10-final-projection-codec-p9
-            target: Common/Phase/B10FinalProjectionCodec.cs
-            target_sha256: 43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f
+          - shard: b10-final-repeat-evidence-crossing
+            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
+            target_sha256: b14f190b6aa6c705a03647b4dc09edb5ba8ca6cea193f76c64a09d089278cfc1
+          - shard: b10-final-repeat-evidence-p16
+            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
+            target_sha256: b14f190b6aa6c705a03647b4dc09edb5ba8ca6cea193f76c64a09d089278cfc1
+          - shard: b10-final-repeat-evidence-p17
+            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
+            target_sha256: b14f190b6aa6c705a03647b4dc09edb5ba8ca6cea193f76c64a09d089278cfc1
+          - shard: b10-final-repeat-evidence-p18
+            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
+            target_sha256: b14f190b6aa6c705a03647b4dc09edb5ba8ca6cea193f76c64a09d089278cfc1
+          - shard: b10-final-repeat-evidence-p19
+            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
+            target_sha256: b14f190b6aa6c705a03647b4dc09edb5ba8ca6cea193f76c64a09d089278cfc1
+          - shard: b10-final-repeat-evidence-p20
+            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
+            target_sha256: b14f190b6aa6c705a03647b4dc09edb5ba8ca6cea193f76c64a09d089278cfc1
+          - shard: b10-final-repeat-evidence-p21
+            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
+            target_sha256: b14f190b6aa6c705a03647b4dc09edb5ba8ca6cea193f76c64a09d089278cfc1
+          - shard: b10-final-repeat-evidence-p22
+            target: VerifyRun/B10Final/B10FinalRepeatEvidence.cs
+            target_sha256: b14f190b6aa6c705a03647b4dc09edb5ba8ca6cea193f76c64a09d089278cfc1
+          - shard: b10-sweep-codec-crossing
+            target: Common/Phase/B10SweepEvidenceCodec.cs
+            target_sha256: 57f91765198e1cb0ae6ee05d466b0a3a6f40fd02e6dfba25ce5665241d4afe91
+          - shard: b10-sweep-codec-p5
+            target: Common/Phase/B10SweepEvidenceCodec.cs
+            target_sha256: 57f91765198e1cb0ae6ee05d466b0a3a6f40fd02e6dfba25ce5665241d4afe91
+          - shard: b10-sweep-codec-p6
+            target: Common/Phase/B10SweepEvidenceCodec.cs
+            target_sha256: 57f91765198e1cb0ae6ee05d466b0a3a6f40fd02e6dfba25ce5665241d4afe91
+          - shard: phase-candidate-codec-crossing
+            target: Judge/PhaseCandidateCodec.cs
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
+          - shard: phase-candidate-codec-p1
+            target: Judge/PhaseCandidateCodec.cs
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
+          - shard: phase-candidate-codec-p2
+            target: Judge/PhaseCandidateCodec.cs
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
+          - shard: phase-candidate-codec-p3
+            target: Judge/PhaseCandidateCodec.cs
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
+          - shard: phase-candidate-codec-p4
+            target: Judge/PhaseCandidateCodec.cs
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
+          - shard: phase-candidate-codec-p5
+            target: Judge/PhaseCandidateCodec.cs
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
+          - shard: phase-candidate-codec-p6
+            target: Judge/PhaseCandidateCodec.cs
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
+          - shard: phase-candidate-codec-p7
+            target: Judge/PhaseCandidateCodec.cs
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
+          - shard: phase-candidate-codec-p8
+            target: Judge/PhaseCandidateCodec.cs
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
+          - shard: phase-candidate-codec-p9
+            target: Judge/PhaseCandidateCodec.cs
+            target_sha256: 02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905
+          - shard: single-action-configuration-crossing
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+            target_sha256: e266b1d73da52fe84fbb583bac42e8bd5e2118af445d8a2f3c4bf7c4ff67f661
+          - shard: single-action-configuration-p33
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+            target_sha256: e266b1d73da52fe84fbb583bac42e8bd5e2118af445d8a2f3c4bf7c4ff67f661
+          - shard: single-action-configuration-p34
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+            target_sha256: e266b1d73da52fe84fbb583bac42e8bd5e2118af445d8a2f3c4bf7c4ff67f661
+          - shard: single-action-configuration-p35
+            target: VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs
+            target_sha256: e266b1d73da52fe84fbb583bac42e8bd5e2118af445d8a2f3c4bf7c4ff67f661
           - shard: verifier-result-codec-crossing
-            target: Common/Results/VerifierResultCodec.cs
-            target_sha256: 8526a0adbb9e5ac1cac4c92177377616d2768c003fa7d91338d231d99baa8dba
-          - shard: verifier-result-codec-p18
-            target: Common/Results/VerifierResultCodec.cs
-            target_sha256: 8526a0adbb9e5ac1cac4c92177377616d2768c003fa7d91338d231d99baa8dba
-          - shard: verifier-result-codec-p19
-            target: Common/Results/VerifierResultCodec.cs
-            target_sha256: 8526a0adbb9e5ac1cac4c92177377616d2768c003fa7d91338d231d99baa8dba
-          - shard: verifier-result-codec-p20
-            target: Common/Results/VerifierResultCodec.cs
-            target_sha256: 8526a0adbb9e5ac1cac4c92177377616d2768c003fa7d91338d231d99baa8dba
-          - shard: verifier-result-codec-p21
             target: Common/Results/VerifierResultCodec.cs
             target_sha256: 8526a0adbb9e5ac1cac4c92177377616d2768c003fa7d91338d231d99baa8dba
           - shard: verifier-result-codec-p22
             target: Common/Results/VerifierResultCodec.cs
             target_sha256: 8526a0adbb9e5ac1cac4c92177377616d2768c003fa7d91338d231d99baa8dba
           - shard: verifier-result-codec-p23
+            target: Common/Results/VerifierResultCodec.cs
+            target_sha256: 8526a0adbb9e5ac1cac4c92177377616d2768c003fa7d91338d231d99baa8dba
+          - shard: verifier-result-codec-p24
+            target: Common/Results/VerifierResultCodec.cs
+            target_sha256: 8526a0adbb9e5ac1cac4c92177377616d2768c003fa7d91338d231d99baa8dba
+          - shard: verifier-result-codec-p25
+            target: Common/Results/VerifierResultCodec.cs
+            target_sha256: 8526a0adbb9e5ac1cac4c92177377616d2768c003fa7d91338d231d99baa8dba
+          - shard: verifier-result-codec-p26
             target: Common/Results/VerifierResultCodec.cs
             target_sha256: 8526a0adbb9e5ac1cac4c92177377616d2768c003fa7d91338d231d99baa8dba
     env:
@@ -101,7 +140,7 @@ jobs:
             done
           } > "$DIAGNOSTIC_DIR/metadata.txt"
           [[ "$GITHUB_REF" == refs/heads/main ]]
-          [[ "$SOURCE_SHA" == 4275b634f14c1f81fcfe91dfcd7deb260a0c8a7f ]]
+          [[ "$SOURCE_SHA" == 0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd ]]
       - name: Check out diagnostic source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
