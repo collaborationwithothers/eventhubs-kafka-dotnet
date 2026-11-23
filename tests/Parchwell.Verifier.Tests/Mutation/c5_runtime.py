@@ -1041,7 +1041,7 @@ def strict_json(data):
                       parse_constant=lambda value: (_ for _ in ()).throw(ValueError('nonfinite JSON')))
 
 
-@functools.lru_cache(maxsize=8)
+@functools.lru_cache(maxsize=32)
 def proof_tree(ref):
     if not re.fullmatch(r'[0-9a-f]{40}', ref) or git('cat-file', '-t', ref).strip() != b'commit':
         raise ValueError('proof source is not a commit')
@@ -1248,6 +1248,56 @@ def paired_recovery_changes(head):
         if changed | frozenset(PAIRED_RECOVERY_RETAINED) != r3:
             return frozenset()
         return changed
+    except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
+        return frozenset()
+
+
+OBSERVED_TAIL_PRIOR = '89e75f39a2a281afc8942f4af280776e40e38520'
+OBSERVED_TAIL_SOURCE = '0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd'
+# Canonical shard, selector, timing and archive bindings verified from hosted run 45117421809.
+OBSERVED_TAIL_RECEIPTS_SHA256 = '12839ca86845786fbed63554387eb60d4ed6106e9fb815fbbba7b701c9487472'
+OBSERVED_TAIL_WINDOWS = {
+    'b10-final-repeat-evidence': range(16, 23),
+    'b10-sweep-codec': range(5, 7),
+    'phase-candidate-codec': range(1, 10),
+    'single-action-configuration': range(33, 36),
+    'verifier-result-codec': range(22, 27),
+}
+OBSERVED_TAIL_CHANGED = frozenset(
+    name for target, spans in OBSERVED_TAIL_WINDOWS.items()
+    for name in (target + '-crossing', *(f'{target}-p{span}' for span in spans))
+)
+
+
+@functools.lru_cache(maxsize=4)
+def observed_tail_changes(head):
+    """Recognize the exact measured cut repair and its renewable descendants."""
+    if not head:
+        return frozenset()
+    try:
+        git('merge-base', '--is-ancestor', OBSERVED_TAIL_SOURCE, head)
+        git('merge-base', '--is-ancestor', OBSERVED_TAIL_PRIOR, OBSERVED_TAIL_SOURCE)
+        prior, measured, current = (proof_tree(ref) for ref in (OBSERVED_TAIL_PRIOR, OBSERVED_TAIL_SOURCE, head))
+        if prior[1:] != measured[1:] or not same_timing_layout(measured, current):
+            return frozenset()
+        cuts = dict(prior[0]['PRIMARY_CUTS'])
+        for target in OBSERVED_TAIL_WINDOWS:
+            replacement = measured[0]['PRIMARY_CUTS'][target]
+            if len(cuts[target]) != len(replacement):
+                return frozenset()
+            cuts[target] = replacement
+        if measured[0] != {**prior[0], 'PRIMARY_CUTS': cuts}:
+            return frozenset()
+        for path in CAMPAIGN_LIMITS:
+            matrices = [list(workflow_matrix(blob(ref, path)).items())
+                        for ref in (OBSERVED_TAIL_PRIOR, OBSERVED_TAIL_SOURCE, head)]
+            if not matrices[0] == matrices[1] == matrices[2]:
+                return frozenset()
+        matrix = measured[4]
+        changed = frozenset(shard for shard in matrix if
+                            selected_invocation(prior[0], matrix, shard) !=
+                            selected_invocation(measured[0], matrix, shard))
+        return changed if changed == OBSERVED_TAIL_CHANGED else frozenset()
     except (KeyError, TypeError, ValueError, SyntaxError, UnicodeError, subprocess.CalledProcessError):
         return frozenset()
 
@@ -1672,8 +1722,8 @@ def committed_effective_config(context, owner, shard, head):
         return False
 
 
-def provenance_errors(context, shared, targets, owner, shard=None, head=None):
-    """Account for every difference without renewing the estimate's own target."""
+def provenance_errors(context, shared, targets, owner, shard=None, head=None, proof_context=None):
+    """Check current assessments, using the original context for anchored selector proofs."""
     errors = set()
     current_maps = {'shared_inputs': shared, 'target_sources': targets}
     derived = {RUNNER, CONFIG_PATH}
@@ -1695,7 +1745,7 @@ def provenance_errors(context, shared, targets, owner, shard=None, head=None):
                     path in derived or (path == CAMPAIGN_VALIDATOR
                                         and retained_classifier_capacity_selection(head, owner, shard))):
                 if equivalent is None:
-                    equivalent = committed_effective_config(context, owner, shard, head)
+                    equivalent = committed_effective_config(proof_context or context, owner, shard, head)
                 if equivalent:
                     continue
             if (key == 'shared_inputs' and path in NON_RENEWABLE
@@ -2045,6 +2095,18 @@ def committed_context_matches(context):
         return False
 
 
+def observed_tail_timing_linked(context, shard, path, record, item, timing, baseline):
+    """Bind a changed selection to the diagnostic commit even when measured maps are shared."""
+    measured = proof_tree(OBSERVED_TAIL_SOURCE)
+    return (timing.get('kind') == 'measured' and timing.get('source_commit') == OBSERVED_TAIL_SOURCE
+            and measured[4].get(shard) == path
+            and measured[2] == (context['shared_inputs'], context['target_sources'])
+            and 0 < timing['observed_seconds'] <= min(2650, item['estimated_seconds'])
+            and item['estimated_seconds'] <= 2700
+            and 1 <= timing['observed_workers'] <= 2
+            and has_shard_timing(shard, path, record, item, timing, baseline))
+
+
 def timing_context_linked(context, shard, path, record, item, timing, baseline, head=None):
     commit = context.get('source_commit')
     changed_tail = shard in paired_tail_changes(head)
@@ -2095,6 +2157,45 @@ def retains_measurement_context(context, prior, shared):
                if assessment['current_sha256'] == shared.get(path))
 
 
+def observed_tail_ledger_errors(config, prior, shared, changed):
+    """Check exact retained records and authenticate each changed shard's timing receipt."""
+    if config['schema_version'] != 2 or config['timing_evidence'].keys() != prior['timing_evidence'].keys():
+        return {'missing_measurement'}
+    if config['targets'].keys() != prior['targets'].keys():
+        return {'layout_mismatch'}
+    receipts = {}
+    reasons = set()
+    for path, original in prior['targets'].items():
+        record = config['targets'][path]
+        if record['shards'].keys() != original['shards'].keys():
+            reasons.add('layout_mismatch')
+            continue
+        if record['source_sha256'] != original['source_sha256']:
+            reasons.add('stale_inputs')
+        retained = original['evidence']
+        added = record['evidence'][len(retained):]
+        by_digest = {entry['sha256']: entry for entry in added}
+        if (record['evidence'][:len(retained)] != retained
+                or len(added) != len(by_digest) or len(added) != len(changed & record['shards'].keys())):
+            reasons.add('missing_measurement')
+        for shard, item in record['shards'].items():
+            timing = config['timing_evidence'][shard]
+            if shard in changed:
+                receipts[shard] = {'target': path, 'item': item, 'timing': timing,
+                                   'evidence': by_digest.get(timing.get('artifact_sha256'))}
+                continue
+            binding = item['timing_inputs_sha256']
+            context = config['timing_inputs'].get(binding)
+            previous_context = prior['timing_inputs'].get(binding)
+            if (item != original['shards'][shard] or timing != prior['timing_evidence'][shard]
+                    or context is None or previous_context is None
+                    or not retains_measurement_context(context, previous_context, shared)):
+                reasons.add('missing_measurement')
+    if receipts.keys() != changed or digest(canonical(receipts)) != OBSERVED_TAIL_RECEIPTS_SHA256:
+        reasons.add('missing_measurement')
+    return reasons
+
+
 def validate(config, shared, targets, source, matrix, head=None):
     reasons = set()
     if set(config['targets']) != set(targets):
@@ -2125,8 +2226,15 @@ def validate(config, shared, targets, source, matrix, head=None):
     used_contexts = set()
     baseline = historical_qualification() if config['schema_version'] == 2 and any(
         p['kind'] == 'historical' for p in config['timing_evidence'].values()) else {}
-    recovery_changes = paired_recovery_changes(head)
-    tail_changes = paired_tail_changes(PAIRED_TAIL_SOURCE) if recovery_changes else paired_tail_changes(head)
+    observed_changes = observed_tail_changes(head)
+    observed_prior = strict_json(blob(OBSERVED_TAIL_PRIOR, HISTORICAL_QUALIFICATION_PATH)) if observed_changes else None
+    if observed_prior is not None:
+        observed_errors = observed_tail_ledger_errors(config, observed_prior, shared, observed_changes)
+        if observed_errors:
+            return reasons | observed_errors
+    recovery_head = OBSERVED_TAIL_PRIOR if observed_changes else head
+    recovery_changes = paired_recovery_changes(recovery_head)
+    tail_changes = paired_tail_changes(PAIRED_TAIL_SOURCE) if recovery_changes else paired_tail_changes(recovery_head)
     if tail_changes and config['schema_version'] != 2:
         reasons.add('missing_measurement')
     tail_prior = strict_json(blob(PAIRED_TAIL_PRIOR, HISTORICAL_QUALIFICATION_PATH)) if tail_changes else None
@@ -2137,6 +2245,7 @@ def validate(config, shared, targets, source, matrix, head=None):
             continue
         if record['source_sha256'] != targets[path]:
             reasons.add('stale_inputs')
+        observed_record = observed_prior['targets'][path] if observed_prior is not None else None
         provisional = record.get('geometry_status') == PROVISIONAL_STATUS
         if provisional:
             if not native_geometry_valid(path, record, source[path]):
@@ -2167,8 +2276,12 @@ def validate(config, shared, targets, source, matrix, head=None):
                     for field in ('hardware', 'calibration')):
                 reasons.add('missing_measurement')
         for shard, item in record['shards'].items():
-            retained_tail = tail_prior is not None and shard not in tail_changes
-            proof_head = PAIRED_TAIL_PRIOR if retained_tail else head
+            freshly_rebalanced = shard in observed_changes
+            retained_observed = observed_record is not None and not freshly_rebalanced
+            retained_tail = tail_prior is not None and shard not in tail_changes and not freshly_rebalanced
+            proof_head = PAIRED_TAIL_PRIOR if retained_tail else recovery_head if retained_observed else head
+            proof_record = observed_record if retained_observed else record
+            fresh_timing = False
             if shard in all_shards:
                 reasons.add('layout_mismatch')
             all_shards[shard] = path
@@ -2186,6 +2299,7 @@ def validate(config, shared, targets, source, matrix, head=None):
                 else:
                     used_contexts.add(binding)
                     timing = config['timing_evidence'].get(shard, {})
+                    proof_context = observed_prior['timing_inputs'][binding] if retained_observed else context
                     if retained_tail:
                         prior_record = tail_prior['targets'][path]
                         prior_evidence = prior_record['evidence']
@@ -2195,15 +2309,22 @@ def validate(config, shared, targets, source, matrix, head=None):
                                 or not retains_measurement_context(context, prior_context, shared)
                                 or record['evidence'][:len(prior_evidence)] != prior_evidence):
                             reasons.add('missing_measurement')
-                    reasons.update(provenance_errors(context, shared, targets, path, shard, proof_head))
-                    if 'source_commit' in context or shard in tail_changes:
+                    reasons.update(provenance_errors(context, shared, targets, path, shard, proof_head, proof_context))
+                    if 'source_commit' in context or shard in tail_changes or freshly_rebalanced:
                         if not committed_context_matches(context):
                             reasons.add('stale_inputs')
-                        if not timing_context_linked(context, shard, path, record, item, timing, baseline, proof_head):
+                        if freshly_rebalanced or timing.get('source_commit') == OBSERVED_TAIL_SOURCE:
+                            fresh_timing = freshly_rebalanced and observed_tail_timing_linked(
+                                context, shard, path, record, item, timing, baseline)
+                            linked = fresh_timing
+                        else:
+                            linked = timing_context_linked(
+                                proof_context, shard, path, proof_record, item, timing, baseline, proof_head)
+                        if not linked:
                             reasons.add('missing_measurement')
                 if provisional and binding != PROVISIONAL_TIMING_INPUTS_HASH:
                     reasons.add('stale_inputs')
-                if not has_shard_timing(shard, path, record, item, config['timing_evidence'].get(shard), baseline):
+                if not has_shard_timing(shard, path, proof_record, item, config['timing_evidence'].get(shard), baseline):
                     reasons.add('missing_measurement')
             if shard in workflow.SHARDS and workflow.SHARDS[shard] == path:
                 selection = digest(canonical(workflow.shard_config(shard, source[path])))
@@ -2222,10 +2343,10 @@ def validate(config, shared, targets, source, matrix, head=None):
                                     or approved_six_tail(path, record, shard, item, source[path])):
                 reasons.add('invalid_estimate')
             if (shard in CODEC_NEIGHBOR and not approved_codec_neighbor(path, record, shard, item, source[path])
-                    and not fresh_pinned_timing(config, path, record, shard, item, source[path], proof_head)):
+                    and not fresh_timing and not fresh_pinned_timing(config, path, record, shard, item, source[path], proof_head)):
                 reasons.add('invalid_estimate')
             if (shard in SIX_TAIL_BINDINGS and not approved_six_tail(path, record, shard, item, source[path])
-                    and not fresh_pinned_timing(config, path, record, shard, item, source[path], proof_head)):
+                    and not fresh_timing and not fresh_pinned_timing(config, path, record, shard, item, source[path], proof_head)):
                 reasons.add('invalid_estimate')
             numeric = ('main_work_seconds', 'setup_seconds', 'isolated_seconds', 'estimated_seconds')
             valid = (type(item['main_mutants']) is int and item['main_mutants'] >= 0

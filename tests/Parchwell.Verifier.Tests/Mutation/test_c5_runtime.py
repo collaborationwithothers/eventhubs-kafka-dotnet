@@ -1,5 +1,6 @@
 import importlib.util
 import fnmatch
+from functools import cache
 import json
 import math
 from pathlib import Path
@@ -2199,7 +2200,8 @@ class DependencyEndToEndTests(unittest.TestCase):
             if args[0] == 'rev-parse': return args[-1].replace('^{commit}', '').encode()
             if args[0] == 'diff': return (current + '\0').encode()
             if (len(args) == 4 and args[:2] == ('merge-base', '--is-ancestor')
-                    and args[2] in {runtime.PAIRED_TAIL_SOURCE, runtime.PAIRED_RECOVERY_SOURCE}
+                    and args[2] in {runtime.PAIRED_TAIL_SOURCE, runtime.PAIRED_RECOVERY_SOURCE,
+                                    runtime.OBSERVED_TAIL_SOURCE}
                     and args[3] in {'base', 'added'}):
                 raise subprocess.CalledProcessError(1, args)
             raise AssertionError(args)
@@ -3870,3 +3872,231 @@ class PairedRecoveryTimingTests(PairedTailTimingTests):
                 with self.subTest(path=path, ref=ref), mock.patch.object(runtime, 'blob', side_effect=changed_blob):
                     self.assertFalse(runtime.paired_recovery_changes(head))
         runtime.paired_recovery_changes.cache_clear()
+
+
+class ObservedTailTimingTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.source = runtime.OBSERVED_TAIL_SOURCE
+        cls.prior = runtime.OBSERVED_TAIL_PRIOR
+        cls.measured = runtime.proof_tree(cls.source)
+        cls.shared, cls.targets = cls.measured[2]
+        cls.binding = runtime.digest(runtime.canonical({
+            'shared_inputs': cls.shared, 'target_sources': cls.targets}))
+        ledger = runtime.strict_json(runtime.blob(cls.prior, runtime.HISTORICAL_QUALIFICATION_PATH))
+        cls.context = ledger['timing_inputs'][cls.binding]
+
+    def setUp(self):
+        runtime.observed_tail_changes.cache_clear()
+        self.addCleanup(runtime.observed_tail_changes.cache_clear)
+
+    def test_exact_source_has_the_reviewed_changes_and_requires_ancestry(self):
+        self.assertEqual(runtime.OBSERVED_TAIL_CHANGED, runtime.observed_tail_changes(self.source))
+        self.assertEqual(31, len(runtime.observed_tail_changes(self.source)))
+        self.assertNotIn('phase-candidate-codec-p10', runtime.observed_tail_changes(self.source))
+        self.assertFalse(runtime.observed_tail_changes(self.prior))
+
+    def test_unapproved_source_drift_cannot_reuse_the_transition(self):
+        original = runtime.proof_tree
+        for field in range(5):
+            changed = list(copy.deepcopy(self.measured))
+            if field == 0:
+                cuts = changed[0]['PRIMARY_CUTS']['phase']
+                changed[0]['PRIMARY_CUTS']['phase'] = (cuts[0] + 1, *cuts[1:])
+            elif field == 1:
+                changed[1] += b'unapproved execution'
+            elif field == 2:
+                changed[2][0][runtime.CONFIG_PATH] = 'f' * 64
+            elif field == 3:
+                changed[3]['unapproved'] = True
+            else:
+                changed[4].pop('phase-candidate-codec-p1')
+            runtime.observed_tail_changes.cache_clear()
+            with self.subTest(field=field), mock.patch.object(runtime, 'proof_tree', side_effect=lambda ref:
+                    tuple(changed) if ref == self.source else original(ref)):
+                self.assertFalse(runtime.observed_tail_changes(self.source))
+
+    def test_ordered_membership_of_each_role_is_part_of_the_proof(self):
+        original = runtime.blob
+        for path in runtime.CAMPAIGN_LIMITS:
+            data = original(self.source, path)
+            first, second = (
+                f'          - shard: {shard}\n            target: {target}\n'.encode()
+                for shard, target in list(runtime.workflow_matrix(data).items())[:2])
+            self.assertIn(first + second, data)
+            swapped = data.replace(first + second, second + first, 1)
+            runtime.observed_tail_changes.cache_clear()
+            with self.subTest(role=path), mock.patch.object(runtime, 'blob', side_effect=lambda ref, name:
+                    swapped if (ref, name) == (self.source, path) else original(ref, name)):
+                self.assertFalse(runtime.observed_tail_changes(self.source))
+
+    def test_renewable_descendant_requires_exact_current_assessment(self):
+        path = runtime.CI_REPAIR_TEST
+        source = self.source
+        head = 'f' * 40
+        shared = {**self.shared, path: '9' * 64}
+        current = (*self.measured[:2], (shared, self.targets), *self.measured[3:])
+        original_git, original_tree, original_blob = runtime.git, runtime.proof_tree, runtime.blob
+        def git(*args):
+            return b'' if args == ('merge-base', '--is-ancestor', source, head) else original_git(*args)
+
+        with (mock.patch.object(runtime, 'git', side_effect=git),
+              mock.patch.object(runtime, 'proof_tree', side_effect=lambda ref:
+                                current if ref == head else original_tree(ref)),
+              mock.patch.object(runtime, 'blob', side_effect=lambda ref, name:
+                                original_blob(source if ref == head else ref, name))):
+            self.assertEqual(runtime.OBSERVED_TAIL_CHANGED, runtime.observed_tail_changes(head))
+            context = copy.deepcopy(self.context)
+            self.assertIn('unaccounted_inputs', runtime.provenance_errors(
+                context, shared, self.targets, 'Judge/PhaseCandidateCodec.cs',
+                'phase-candidate-codec-p10', self.prior, self.context))
+            context['assessments']['shared_inputs'][path] = {
+                'current_sha256': shared[path], 'basis': ['Synthetic assessment fixture']}
+            self.assertTrue(runtime.retains_measurement_context(context, self.context, shared))
+            self.assertEqual(set(), runtime.provenance_errors(
+                context, shared, self.targets, 'Judge/PhaseCandidateCodec.cs',
+                'phase-candidate-codec-p10', self.prior, self.context))
+
+    def test_new_receipt_requires_exact_source_workers_and_bounded_elapsed(self):
+        shard = 'phase-candidate-codec-p3'
+        owner = self.measured[4][shard]
+        archive = 'a' * 64
+        record = {'source_sha256': self.targets[owner], 'evidence': [
+            {'kind': 'hosted_complete', 'source_commit': self.source, 'sha256': archive}]}
+        item = {'timing_inputs_sha256': self.binding, 'estimated_seconds': 2700,
+                'basis': 'Synthetic receipt with observed_workers=2'}
+        timing = {'kind': 'measured', 'source_commit': self.source,
+                  'artifact_sha256': archive, 'observed_workers': 2,
+                  'timing_inputs_sha256': self.binding, 'observed_seconds': 2650}
+        def linked(evidence, estimate=2700):
+            return runtime.observed_tail_timing_linked(
+                self.context, shard, owner, record, {**item, 'estimated_seconds': estimate}, evidence, {})
+
+        self.assertNotEqual(self.context['source_commit'], self.source)
+        for seconds, expected in ((0, False), (2649, True), (2650, True), (2651, False)):
+            with self.subTest(seconds=seconds):
+                self.assertEqual(expected, linked({**timing, 'observed_seconds': seconds}))
+        for estimate, expected in ((2699, True), (2700, True), (2701, False)):
+            with self.subTest(estimate=estimate):
+                self.assertEqual(expected, linked(timing, estimate))
+        for delta in ({'source_commit': self.prior}, {'kind': 'historical'},
+                      {'artifact_sha256': 'b' * 64}, {'observed_workers': 0}, {'observed_workers': 3}):
+            with self.subTest(delta=delta):
+                self.assertFalse(linked({**timing, **delta}))
+        self.assertFalse(linked(timing, 2649))
+
+
+class ObservedTailLedgerTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # This snapshot contains the hosted receipt set and the merged frontier assessments.
+        cls.head = '64075129a9885956b4ae097f923c2990fd4d3907'
+        cls.ledger = runtime.strict_json(runtime.blob(cls.head, runtime.HISTORICAL_QUALIFICATION_PATH))
+        cls.prior = runtime.strict_json(runtime.blob(runtime.OBSERVED_TAIL_PRIOR, runtime.HISTORICAL_QUALIFICATION_PATH))
+        cls.shared, cls.targets = runtime.input_maps(cls.head)
+        cls.source = {path: runtime.blob(cls.head, 'src/Parchwell.Verifier/' + path) for path in cls.targets}
+        cls.matrix = runtime.workflow_layout(cls.head, paired=True)
+        cls.changed = runtime.observed_tail_changes(cls.head)
+        cls.target = 'Judge/PhaseCandidateCodec.cs'
+        cls.retained = 'phase-candidate-codec-p10'
+        cls.fresh = 'phase-candidate-codec-p3'
+        cls.peer = 'phase-candidate-codec-p4'
+
+    def validate(self, config):
+        return runtime.validate(config, self.shared, self.targets, self.source, self.matrix, self.head)
+
+    def test_complete_hosted_ledger_matches_the_exact_receipts_and_retained_items(self):
+        self.assertEqual(324, len(self.ledger['timing_evidence']))
+        self.assertEqual(runtime.OBSERVED_TAIL_CHANGED, self.changed)
+        self.assertEqual(set(), runtime.observed_tail_ledger_errors(self.ledger, self.prior, self.shared, self.changed))
+
+    def test_foreign_receipt_swap_inside_one_target_is_rejected(self):
+        config = copy.deepcopy(self.ledger)
+        first, second = (config['timing_evidence'][shard] for shard in (self.fresh, self.peer))
+        self.assertNotEqual(first['artifact_sha256'], second['artifact_sha256'])
+        first['artifact_sha256'], second['artifact_sha256'] = second['artifact_sha256'], first['artifact_sha256']
+        self.assertEqual({'missing_measurement'}, self.validate(config))
+
+    def test_receipt_for_a_different_selector_or_archive_is_rejected(self):
+        config = copy.deepcopy(self.ledger)
+        first, second = (config['targets'][self.target]['shards'][shard] for shard in (self.fresh, self.peer))
+        self.assertNotEqual(first['selection_sha256'], second['selection_sha256'])
+        first['selection_sha256'] = second['selection_sha256']
+        self.assertEqual({'missing_measurement'}, self.validate(config))
+
+        config = copy.deepcopy(self.ledger)
+        record = config['targets'][self.target]
+        timing = config['timing_evidence'][self.fresh]
+        entry = next(e for e in record['evidence'] if e['sha256'] == timing['artifact_sha256'])
+        entry['locator'] = entry['locator'].rsplit('/', 1)[0] + '/1'
+        self.assertEqual({'missing_measurement'}, self.validate(config))
+
+    def test_retained_item_timing_and_measured_inputs_keep_their_original_values(self):
+        for field in ('item', 'timing', 'measured_input'):
+            with self.subTest(field=field):
+                config = copy.deepcopy(self.ledger)
+                item = config['targets'][self.target]['shards'][self.retained]
+                timing = config['timing_evidence'][self.retained]
+                if field == 'item':
+                    item['estimated_seconds'] -= 1
+                elif field == 'timing':
+                    timing['artifact_sha256'] = 'f' * 64
+                else:
+                    context = config['timing_inputs'][item['timing_inputs_sha256']]
+                    context['shared_inputs'][runtime.RUNNER] = 'f' * 64
+                self.assertEqual({'missing_measurement'}, self.validate(config))
+
+    def test_missing_and_extra_physical_rows_are_rejected(self):
+        config = copy.deepcopy(self.ledger)
+        del config['targets'][self.target]['shards'][self.retained]
+        self.assertIn('layout_mismatch', self.validate(config))
+
+        config = copy.deepcopy(self.ledger)
+        record = config['targets'][self.target]['shards']
+        record['phase-candidate-codec-p99'] = copy.deepcopy(record[self.retained])
+        self.assertIn('layout_mismatch', self.validate(config))
+
+    def test_complete_ledger_enforces_timing_boundaries_after_receipt_authentication(self):
+        # The fixture samples strict timing bounds with a matching synthetic receipt pin.
+        # Reuse calculations on the same immutable inputs across full validations.
+        cases = (
+            (2649, 2699, 2699, set()),
+            (2650, 2700, 2700, set()),
+            (2651, 2700, 2700, {'missing_measurement'}),
+            (2650, 2701, 2701, {'missing_measurement', 'shard_over_budget'}),
+            (2650, 2649, 2649, {'missing_measurement'}),
+            (2649, 2699, 2700, {'invalid_estimate'}),
+        )
+        original_owners = runtime.committed_physical_owners
+        owners = {}
+
+        def physical_owners(declarations, matrix):
+            key = id(declarations), id(matrix)
+            if key not in owners:
+                # Keep both immutable inputs alive for the lifetime of the cache.
+                owners[key] = declarations, matrix, original_owners(declarations, matrix)
+            return owners[key][2]
+
+        with (mock.patch.object(runtime, 'git', cache(runtime.git)),
+              mock.patch.object(runtime, 'committed_physical_owners', physical_owners),
+              mock.patch.object(runtime.workflow, 'shard_config', cache(runtime.workflow.shard_config))):
+            for observed, estimate, calculated, expected in cases:
+                with self.subTest(observed=observed, estimate=estimate, calculated=calculated):
+                    config = copy.deepcopy(self.ledger)
+                    item = config['targets'][self.target]['shards'][self.fresh]
+                    item['estimated_seconds'] = estimate
+                    item['main_work_seconds'] = (calculated - item['setup_seconds'] - item['isolated_seconds']) * item['parallelism']
+                    config['timing_evidence'][self.fresh]['observed_seconds'] = observed
+                    receipts = {}
+                    for shard in self.changed:
+                        target = self.matrix[shard]
+                        record = config['targets'][target]
+                        timing = config['timing_evidence'][shard]
+                        entry = next(e for e in record['evidence'] if e['sha256'] == timing['artifact_sha256'])
+                        receipts[shard] = {'target': target, 'item': record['shards'][shard],
+                                           'timing': timing, 'evidence': entry}
+                    fingerprint = runtime.digest(runtime.canonical(receipts))
+                    with mock.patch.object(runtime, 'OBSERVED_TAIL_RECEIPTS_SHA256', fingerprint):
+                        self.assertEqual(set(), runtime.observed_tail_ledger_errors(
+                            config, self.prior, self.shared, self.changed))
+                        self.assertEqual(expected, self.validate(config))
