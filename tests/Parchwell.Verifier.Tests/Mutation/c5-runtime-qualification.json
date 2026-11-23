@@ -1168,19 +1168,40 @@
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Source, selector, isolation and log evidence verified. Retained expiration evidence is outside Git.",
           "sha256": "39248e33ddffec7dfd7f48418cda817cac4fc038a0757f44c8daaa535b60a6c2",
           "source_commit": "81cf412ed7df300a5e181532ab45c61dd274d069"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14792237156",
+          "note": "Exact hosted timing evidence for b10-sweep-codec-crossing.",
+          "sha256": "fda151b259cd0ab6a52a90ac6e9376cc5180b79e9eb1c21fd7b3e2257b312e6c",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793770198",
+          "note": "Exact hosted timing evidence for b10-sweep-codec-p5.",
+          "sha256": "69ad51e8c813ec261700593259a4781b3ae674b84db04f12db79d976ee092263",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793613679",
+          "note": "Exact hosted timing evidence for b10-sweep-codec-p6.",
+          "sha256": "e0c0ad414dd4a39966bd33febb92be05b4ce73d27d0f7483f3916bf39fcc2bf0",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
         }
       ],
       "shards": {
         "b10-sweep-codec-crossing": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44562412403/artifacts/14550652981 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 482,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14792237156 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 376,
           "isolated_seconds": 0,
-          "main_mutants": 7,
-          "main_work_seconds": 595,
+          "main_mutants": 8,
+          "main_work_seconds": 488,
           "parallelism": 2,
-          "selection_sha256": "55b342d3b486d4dbf1b9ec606e71e74665d01e84dec6b425d9e8802c040b1553",
-          "setup_seconds": 184,
-          "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
+          "selection_sha256": "6ff0bc47672e50362b21750f8c290546a37dfdaab734ce1cccba7d4d1f53f58c",
+          "setup_seconds": 132,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "b10-sweep-codec-p1": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44562412403/artifacts/14553725032 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
@@ -1227,26 +1248,26 @@
           "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
         },
         "b10-sweep-codec-p5": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44562412403/artifacts/14552649360 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 2605,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793770198 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1471,
           "isolated_seconds": 0,
-          "main_mutants": 69,
-          "main_work_seconds": 4886,
+          "main_mutants": 60,
+          "main_work_seconds": 2705,
           "parallelism": 2,
-          "selection_sha256": "44c10439636e5b6f492ecc435eade2a827affa0bb72dd24a0a112eb9ff344710",
-          "setup_seconds": 162,
-          "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
+          "selection_sha256": "af82e39feb3ae4f182e288973ad2b49ad7e5fdb3422e9c1bb54ee272064e43be",
+          "setup_seconds": 118,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "b10-sweep-codec-p6": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44562412403/artifacts/14550084385 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 1314,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793613679 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2504,
           "isolated_seconds": 0,
-          "main_mutants": 50,
-          "main_work_seconds": 2397,
+          "main_mutants": 57,
+          "main_work_seconds": 4631,
           "parallelism": 2,
-          "selection_sha256": "b280e01447511ffc43175ed137c391ca0e9bbfe57e56e3be688f1c747d24eefa",
-          "setup_seconds": 115,
-          "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
+          "selection_sha256": "5635e628cd02ee221c1e13ea7638f6a662adaac0e999f7ec10019881f528f164",
+          "setup_seconds": 188,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "b10-sweep-codec-p7": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44562412403/artifacts/14550034854 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
@@ -1621,18 +1642,60 @@
           "note": "Exact hosted diagnostic evidence for verifier-result-codec-p23.",
           "sha256": "05f3a32139f0e385c30052a1df944a9e6f16db7318530340750d6a7e1b59454f",
           "source_commit": "4275b634f14c1f81fcfe91dfcd7deb260a0c8a7f"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14792652088",
+          "note": "Exact hosted timing evidence for verifier-result-codec-crossing.",
+          "sha256": "892cc8687d7d40aea706796859716b032eeb8bc39bbe7eb964a400d825e21ebb",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793309027",
+          "note": "Exact hosted timing evidence for verifier-result-codec-p22.",
+          "sha256": "114d88c35f1ec13c9efa4a82b9b487a2d2638a6fb30ff8a1cd8275a05b6aa026",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793985452",
+          "note": "Exact hosted timing evidence for verifier-result-codec-p23.",
+          "sha256": "5fb0b4bd58aa125a82ed8561cf8ddbb4785d02b23723e73bcadc06464941b4e0",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793309707",
+          "note": "Exact hosted timing evidence for verifier-result-codec-p24.",
+          "sha256": "88b2442833e5d267250f2d93c2d001752affdfa566f4350b33c6172843f07b03",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793533651",
+          "note": "Exact hosted timing evidence for verifier-result-codec-p25.",
+          "sha256": "2ce5891c62dd0029f1b86eca1e0c20bcbb27c22e2c71523ddac8494da3058c71",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793517324",
+          "note": "Exact hosted timing evidence for verifier-result-codec-p26.",
+          "sha256": "e9f1c52ec7a398b1c05e50c34e948e814f7d7f90a05c3e7c0d48f248b71fbff6",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
         }
       ],
       "shards": {
         "verifier-result-codec-crossing": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45005678538/artifacts/14747579905 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-          "estimated_seconds": 835,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14792652088 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 874,
           "isolated_seconds": 0,
-          "main_mutants": 24,
-          "main_work_seconds": 1301,
+          "main_mutants": 25,
+          "main_work_seconds": 1382,
           "parallelism": 2,
-          "selection_sha256": "1f5cae229c991c4388890a5dd7e8a280f3c6890d83e38c87f959dfb54be4e0a5",
-          "setup_seconds": 184,
+          "selection_sha256": "6480070380fef4285fa600a639c2f11c3e5be0c7514177fb53346c802ec12b7b",
+          "setup_seconds": 183,
           "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "verifier-result-codec-p1": {
@@ -1801,58 +1864,58 @@
           "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "verifier-result-codec-p22": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45005678538/artifacts/14748911645 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-          "estimated_seconds": 1857,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793309027 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2061,
           "isolated_seconds": 0,
-          "main_mutants": 51,
-          "main_work_seconds": 3341,
+          "main_mutants": 60,
+          "main_work_seconds": 3755,
           "parallelism": 2,
-          "selection_sha256": "162fba25bbbc023626f0b472dc7c99ff1abe5b956be56b6cc135ee8866e20589",
-          "setup_seconds": 186,
+          "selection_sha256": "2b7e079562ad1626a896bd84062bf849f6096219553f2a526d4ba1522c7593ee",
+          "setup_seconds": 183,
           "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "verifier-result-codec-p23": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45005678538/artifacts/14749480768 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-          "estimated_seconds": 2617,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793985452 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2136,
           "isolated_seconds": 0,
-          "main_mutants": 63,
-          "main_work_seconds": 4749,
+          "main_mutants": 72,
+          "main_work_seconds": 3913,
           "parallelism": 2,
-          "selection_sha256": "801e91ecbc10798c1b66da3b1c8b789e2ba4b39b1a89c5ea5e3b72eabf0d2909",
-          "setup_seconds": 242,
+          "selection_sha256": "33f61d4ae1f243a7d3764eab42971671a2d17ac89f68e725ad6d8ac8bd59d5b0",
+          "setup_seconds": 179,
           "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "verifier-result-codec-p24": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44995993132/artifacts/14745261273 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-          "estimated_seconds": 2451,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793309707 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2282,
           "isolated_seconds": 0,
-          "main_mutants": 73,
-          "main_work_seconds": 4422,
+          "main_mutants": 61,
+          "main_work_seconds": 4061,
           "parallelism": 2,
-          "selection_sha256": "dc7056b865083f2215da35732851365dc4b43536a029cd9eac749aadc07e9afa",
-          "setup_seconds": 240,
+          "selection_sha256": "8f8cfc378ce05cdaa7553eca134bcdbe3bfb0ef3ac3750f15e1c68eebf1baafc",
+          "setup_seconds": 251,
           "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "verifier-result-codec-p25": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44995993132/artifacts/14744509649 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-          "estimated_seconds": 2248,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793533651 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2372,
           "isolated_seconds": 0,
-          "main_mutants": 54,
-          "main_work_seconds": 3978,
+          "main_mutants": 61,
+          "main_work_seconds": 4241,
           "parallelism": 2,
-          "selection_sha256": "4af409a446f23fd3f6b8352538a4efc28c5e29645639560f40e37784cf78a163",
-          "setup_seconds": 259,
+          "selection_sha256": "eddf5f2ee6a4b467e818c0331c07b99d0d5d97d69e65def089c1d11a8e3824f3",
+          "setup_seconds": 251,
           "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "verifier-result-codec-p26": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44995993132/artifacts/14744174212 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-          "estimated_seconds": 2605,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793517324 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1806,
           "isolated_seconds": 0,
-          "main_mutants": 70,
-          "main_work_seconds": 4726,
+          "main_mutants": 57,
+          "main_work_seconds": 3218,
           "parallelism": 2,
-          "selection_sha256": "561f87496ef2ee8e5744a582eb3ff3711cef1ffe186bfa4797d462ab1c50dcb5",
-          "setup_seconds": 242,
+          "selection_sha256": "97a0121de09c7c87971794521ccafa589db964cad9729a8a209ec6b21b4d6bc8",
+          "setup_seconds": 197,
           "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "verifier-result-codec-p3": {
@@ -2636,30 +2699,100 @@
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Source, selector, isolation and log evidence verified. Retained expiration evidence is outside Git.",
           "sha256": "cc713fde4ac94ff3a351fdb0e28f1e3a41b93119a86aa5c8abd7dc38c6bed1f5",
           "source_commit": "81cf412ed7df300a5e181532ab45c61dd274d069"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793407657",
+          "note": "Exact hosted timing evidence for phase-candidate-codec-crossing.",
+          "sha256": "cb2daedc5ed86c3fc037135fe53510545c43eb841d97f8774abb2482b229fc73",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793431574",
+          "note": "Exact hosted timing evidence for phase-candidate-codec-p1.",
+          "sha256": "f8eb68e0c8bba04e520d8de177832a5ddba89e7c3dde6bd8199f2ef9b82a9031",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793548558",
+          "note": "Exact hosted timing evidence for phase-candidate-codec-p2.",
+          "sha256": "6866493d304aa5c3be5a2c6a0d7d6e18e3f3cae6e4391b5e1e60b500c125d2b9",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793732550",
+          "note": "Exact hosted timing evidence for phase-candidate-codec-p3.",
+          "sha256": "b3e7373dc75107d237a87a57d5d6c9a7471518fe6ab63b7f314fcee145ad46ed",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793663421",
+          "note": "Exact hosted timing evidence for phase-candidate-codec-p4.",
+          "sha256": "468d78d5256e5729c86e2be1b4548c29a1adb336ec3a4107da1e3107abb1eb5d",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793349819",
+          "note": "Exact hosted timing evidence for phase-candidate-codec-p5.",
+          "sha256": "0e49e156f63efeded7918dbd3af6d5819f7e9c30800db128e1a561c622515e4e",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793052570",
+          "note": "Exact hosted timing evidence for phase-candidate-codec-p6.",
+          "sha256": "566986d0c2308721696294eed3d3adfcc8c73b310489c312e4eeb9351e2fd7c7",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793079278",
+          "note": "Exact hosted timing evidence for phase-candidate-codec-p7.",
+          "sha256": "5a0391115f83f95e19a88d53a49cc33a40057a8991f55a831c8ee90b3d872c54",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793176993",
+          "note": "Exact hosted timing evidence for phase-candidate-codec-p8.",
+          "sha256": "fea6e9295b80c940c62b5c24a5cc05cf70affe41305f2906fe5eaf2173c30d27",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793810872",
+          "note": "Exact hosted timing evidence for phase-candidate-codec-p9.",
+          "sha256": "1201cd4ed95fd4f695d929e4d50b21a4af2827c2967e51513b73485fa88652fb",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
         }
       ],
       "shards": {
         "phase-candidate-codec-crossing": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44562412403/artifacts/14552757516 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 2056,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793407657 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1693,
           "isolated_seconds": 0,
-          "main_mutants": 42,
-          "main_work_seconds": 3595,
+          "main_mutants": 48,
+          "main_work_seconds": 3007,
           "parallelism": 2,
-          "selection_sha256": "ed9cd594aa50b9fc20d27be2d8ba115b4691c908950d1f1c9786852c4e6afa59",
-          "setup_seconds": 258,
-          "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
+          "selection_sha256": "67505b1a0c33d516a391c35a8443d99f3d773a509d72338c274010ccf6b6028e",
+          "setup_seconds": 189,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "phase-candidate-codec-p1": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512509425 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 2384,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793431574 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1433,
           "isolated_seconds": 0,
-          "main_mutants": 52,
-          "main_work_seconds": 4267,
+          "main_mutants": 51,
+          "main_work_seconds": 2563,
           "parallelism": 2,
-          "selection_sha256": "4f1a1f71bd9e0f04cb73e4ffb5c11ccef6b914d003b6990ab0d3e11a7071e2c5",
-          "setup_seconds": 250,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "e3c4bcf1e45f4bf2373aed817883f88dd6f17a2c42d8aa80ccad6d6d32904b66",
+          "setup_seconds": 151,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "phase-candidate-codec-p10": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513345479 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
@@ -2772,15 +2905,15 @@
           "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
         },
         "phase-candidate-codec-p2": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513851081 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 2555,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793548558 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2362,
           "isolated_seconds": 0,
-          "main_mutants": 62,
-          "main_work_seconds": 4654,
+          "main_mutants": 53,
+          "main_work_seconds": 4214,
           "parallelism": 2,
-          "selection_sha256": "5994bc705c294b4ea4d21ec592df2c98a7c3e5bc919ab8d66aa152d067dee74c",
-          "setup_seconds": 228,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "09403477e252f5307fc9fbc58e423c7ac96875b705cba2e549fd1c46999de62e",
+          "setup_seconds": 255,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "phase-candidate-codec-p20": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513450015 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
@@ -2893,15 +3026,15 @@
           "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
         },
         "phase-candidate-codec-p3": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512943814 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 2538,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793732550 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2219,
           "isolated_seconds": 0,
-          "main_mutants": 76,
-          "main_work_seconds": 4705,
+          "main_mutants": 51,
+          "main_work_seconds": 3933,
           "parallelism": 2,
-          "selection_sha256": "e3713bb46a7a2e5ca575df472f037ad3d0ab6a5144fd40799d42a7d456ac9bf9",
-          "setup_seconds": 185,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "811acbcbf0e143b8c3c7a36bb6c84d247f85372f7e646eee631565145bc8a943",
+          "setup_seconds": 252,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "phase-candidate-codec-p30": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44562412403/artifacts/14550944148 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
@@ -2948,70 +3081,70 @@
           "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
         },
         "phase-candidate-codec-p4": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513915400 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 2186,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793663421 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2439,
           "isolated_seconds": 0,
-          "main_mutants": 60,
-          "main_work_seconds": 3991,
+          "main_mutants": 52,
+          "main_work_seconds": 4350,
           "parallelism": 2,
-          "selection_sha256": "21b634aff9e17ea9e3a3d21b31e98fd9ae1d47a7626ed64ca6e7369f1aad7f35",
-          "setup_seconds": 190,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "eb607488f90e26049bba6cffdd980b2c23f82c91fba8437719ee5d5c5125cd0c",
+          "setup_seconds": 264,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "phase-candidate-codec-p5": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512233277 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 1828,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793349819 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2346,
           "isolated_seconds": 0,
-          "main_mutants": 50,
-          "main_work_seconds": 3279,
+          "main_mutants": 53,
+          "main_work_seconds": 4219,
           "parallelism": 2,
-          "selection_sha256": "0cec8a7adf8c8ef1a51a45fd3c1b095dddb60eeb0cc404e846be01f4a84505aa",
-          "setup_seconds": 188,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "927d7d9d7ade0e047ea4e98119d523baaface4775bf6c4e3026c73b21c3d6d33",
+          "setup_seconds": 236,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "phase-candidate-codec-p6": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512064278 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 2013,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793052570 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1480,
           "isolated_seconds": 0,
-          "main_mutants": 43,
-          "main_work_seconds": 3523,
+          "main_mutants": 57,
+          "main_work_seconds": 2678,
           "parallelism": 2,
-          "selection_sha256": "829a3801570cbe6fc4ba739fd1107d832c2899dd7e651ba2e7df793b4fbbc177",
-          "setup_seconds": 251,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "eda3ff4b3da8c6bc5588ae20975339e7147cd4a9341bae03fdec9c82051e34e1",
+          "setup_seconds": 141,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "phase-candidate-codec-p7": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512881228 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 1651,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793079278 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1872,
           "isolated_seconds": 0,
-          "main_mutants": 43,
-          "main_work_seconds": 2897,
+          "main_mutants": 52,
+          "main_work_seconds": 3364,
           "parallelism": 2,
-          "selection_sha256": "f3961438a0708c829ae63abbe332a38ff46dbd2023b36ab2d06efcc017523691",
-          "setup_seconds": 202,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "65da9fff341a1c4abe5650bb5816163528ceaaea953927a49dec48e2e925a7bd",
+          "setup_seconds": 190,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "phase-candidate-codec-p8": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512687675 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 1830,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793176993 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1415,
           "isolated_seconds": 0,
-          "main_mutants": 40,
-          "main_work_seconds": 3152,
+          "main_mutants": 54,
+          "main_work_seconds": 2547,
           "parallelism": 2,
-          "selection_sha256": "cdb505bb8e40ca43c68016a1c0bc7b4e70497ea08834e860f56dd6e0e9031b95",
-          "setup_seconds": 254,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "89bd2768056b3acd7bbe6dc7da48306e2f65db578a14bf4c2667c0ee0679250e",
+          "setup_seconds": 141,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "phase-candidate-codec-p9": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513357083 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 2237,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793810872 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1944,
           "isolated_seconds": 0,
-          "main_mutants": 55,
-          "main_work_seconds": 4032,
+          "main_mutants": 52,
+          "main_work_seconds": 3492,
           "parallelism": 2,
-          "selection_sha256": "7e20c6c7d6879a28e232f52ed92f9e8f5cfd581545808dd6c1b701b22dbbec2d",
-          "setup_seconds": 221,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "a04da63702337be12d3733aa60dcbe6e61d8d10b18cb9aec35a2431b21a349c9",
+          "setup_seconds": 198,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         }
       },
       "source_sha256": "02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905"
@@ -3880,19 +4013,75 @@
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Source, selector, isolation and log evidence verified. Retained expiration evidence is outside Git.",
           "sha256": "51fc67061bec38dc40b794c8387defc378b42027daea78a71b91515ee07d4be1",
           "source_commit": "81cf412ed7df300a5e181532ab45c61dd274d069"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793031868",
+          "note": "Exact hosted timing evidence for b10-final-repeat-evidence-crossing.",
+          "sha256": "2ef873e7b6284dee9634c2f39276b9f9df96751d51da76d8f6df93d9485ee8f6",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793850500",
+          "note": "Exact hosted timing evidence for b10-final-repeat-evidence-p16.",
+          "sha256": "29da58347e49b0d5076b6e78cf7034369d6c7668a0ed00974ad71500c7f9c7b8",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793007461",
+          "note": "Exact hosted timing evidence for b10-final-repeat-evidence-p17.",
+          "sha256": "b7300f5e6db23269161a130c3b850a41d79b9bc3d2394f25a8708c1916758e5a",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14794120865",
+          "note": "Exact hosted timing evidence for b10-final-repeat-evidence-p18.",
+          "sha256": "8af1586471129e55d36a4211d98d92dc0ff9969e797725e36a5419e12dd75bb6",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14794040783",
+          "note": "Exact hosted timing evidence for b10-final-repeat-evidence-p19.",
+          "sha256": "a6d8bf5a82f5c702a1d452f1803f7c0b5edf3993960c307cbc4d713cee7d6a9f",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14792969094",
+          "note": "Exact hosted timing evidence for b10-final-repeat-evidence-p20.",
+          "sha256": "64c08294e2ead773e9fad0cba3840df93f07842e2394ea4b3d578cfbfd46e785",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793925000",
+          "note": "Exact hosted timing evidence for b10-final-repeat-evidence-p21.",
+          "sha256": "07e60700eb66ae830ee5a4a013340b2cf4ca16717765ef87894720aeb331bd62",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14794320076",
+          "note": "Exact hosted timing evidence for b10-final-repeat-evidence-p22.",
+          "sha256": "00356707efb96f801634043e63ab8621a60ddd2712962516b6e8c30c5040c71d",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
         }
       ],
       "shards": {
         "b10-final-repeat-evidence-crossing": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44562412403/artifacts/14551378078 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 809,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793031868 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 872,
           "isolated_seconds": 0,
-          "main_mutants": 24,
-          "main_work_seconds": 1336,
+          "main_mutants": 21,
+          "main_work_seconds": 1404,
           "parallelism": 2,
-          "selection_sha256": "c20850845880d81807cd86a5fd4221d30301279b686a9c4be2125af33f8e0889",
-          "setup_seconds": 141,
-          "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
+          "selection_sha256": "b1df26205b4c8082048b2a8a3c379e5982d3f850018c1ba49d2a971abef55c70",
+          "setup_seconds": 170,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "b10-final-repeat-evidence-p1": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512017114 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
@@ -3972,48 +4161,48 @@
           "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
         },
         "b10-final-repeat-evidence-p16": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513766644 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 2557,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793850500 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1882,
           "isolated_seconds": 0,
-          "main_mutants": 54,
-          "main_work_seconds": 4671,
+          "main_mutants": 43,
+          "main_work_seconds": 3346,
           "parallelism": 2,
-          "selection_sha256": "101c0132a77837502dc4df4177969a96ba3a075ecb040e404ef923fafa6f4635",
-          "setup_seconds": 221,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "39e189b3ae5318b8503de1af7d7be583073e857fb1879e28dbce8a9516ae0939",
+          "setup_seconds": 209,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "b10-final-repeat-evidence-p17": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512614752 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 2341,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793007461 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1446,
           "isolated_seconds": 0,
-          "main_mutants": 59,
-          "main_work_seconds": 4300,
+          "main_mutants": 52,
+          "main_work_seconds": 2629,
           "parallelism": 2,
-          "selection_sha256": "7e2193541dcac262a208a8f4010cb72a1082f3b11d3e00de96a134fe3a20b8aa",
-          "setup_seconds": 191,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "dfcb780cccc71cd3fd9f028471d8899012b07cf99d5e77826ab90dee319adc20",
+          "setup_seconds": 131,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "b10-final-repeat-evidence-p18": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44562412403/artifacts/14554250998 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 2047,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14794120865 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2346,
           "isolated_seconds": 0,
-          "main_mutants": 60,
-          "main_work_seconds": 3768,
+          "main_mutants": 54,
+          "main_work_seconds": 4277,
           "parallelism": 2,
-          "selection_sha256": "e4699aadd93e7713895474f7b15eaf89c680347b2222b8869471f184128a6550",
-          "setup_seconds": 163,
-          "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
+          "selection_sha256": "eaf6f425acb69fb58920f600cdde4eb0ba5d85bef1c0326fd4a37b99f78b410d",
+          "setup_seconds": 207,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "b10-final-repeat-evidence-p19": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44562412403/artifacts/14575397546 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 2107,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14794040783 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2202,
           "isolated_seconds": 0,
-          "main_mutants": 62,
-          "main_work_seconds": 3897,
+          "main_mutants": 53,
+          "main_work_seconds": 3998,
           "parallelism": 2,
-          "selection_sha256": "ed002b1fd20a8c64644039c2e727f7fbca8c62a74ee3fe17ff14c499d13ef093",
-          "setup_seconds": 158,
-          "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
+          "selection_sha256": "e50fbb59658ed8072b1d84a6e4ca453f721593ad6862b7c39f291aab53e1b630",
+          "setup_seconds": 203,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "b10-final-repeat-evidence-p2": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513347427 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
@@ -4027,37 +4216,37 @@
           "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
         },
         "b10-final-repeat-evidence-p20": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44562412403/artifacts/14552219032 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 1826,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14792969094 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2091,
           "isolated_seconds": 0,
-          "main_mutants": 52,
-          "main_work_seconds": 3325,
+          "main_mutants": 47,
+          "main_work_seconds": 3763,
           "parallelism": 2,
-          "selection_sha256": "51628ef4a434330257f02f3b92e2ac431e986c2dc0f3a7ff8c8796cb2b97e1d9",
-          "setup_seconds": 163,
-          "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
+          "selection_sha256": "ad2a398f3bb5f526feaf1507e52268a170440fb004e62d7005811d202c6573af",
+          "setup_seconds": 209,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "b10-final-repeat-evidence-p21": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512634310 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 2219,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793925000 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1734,
           "isolated_seconds": 0,
-          "main_mutants": 51,
-          "main_work_seconds": 4017,
+          "main_mutants": 49,
+          "main_work_seconds": 3135,
           "parallelism": 2,
-          "selection_sha256": "68cd8a356915b981bdf0e926b47e92a6b86705580b1cbe860721c2c4eaf32030",
-          "setup_seconds": 210,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "5fdea32900a8b63b150dbd37a569c558076647302c71dbe6eb792e4dc95909af",
+          "setup_seconds": 166,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "b10-final-repeat-evidence-p22": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14510819014 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 419,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14794320076 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2371,
           "isolated_seconds": 0,
-          "main_mutants": 7,
-          "main_work_seconds": 506,
+          "main_mutants": 52,
+          "main_work_seconds": 4308,
           "parallelism": 2,
-          "selection_sha256": "26336fb33877a59a80bd68ce004d2e9dec9f0449ef360409ac35fbdc40d1ccbf",
-          "setup_seconds": 166,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "ad6515d2a81fa08cc84005e5675cd14f35143df00296400235eae0e5730e001f",
+          "setup_seconds": 217,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "b10-final-repeat-evidence-p3": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512364961 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
@@ -5178,19 +5367,47 @@
           "note": "Canonical job metadata; whole job started 2026-11-14T20:44:54Z and completed 2026-11-14T21:31:08Z; Statsbeat enabled. Old-layout timing, not current-profile measurement.",
           "sha256": "a13856eb56d620697116e378f32f41a9fdc3868ceb5e9d8ed978b3bd00f7e997",
           "source_commit": "4aa6218f9c0750f80b072e0bab1e26e754de8f94"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14792279108",
+          "note": "Exact hosted timing evidence for single-action-configuration-crossing.",
+          "sha256": "bddea237ab33a7040d3bd9bb5dd485acae676d131040686d4e0952b09d0c1a6f",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793793077",
+          "note": "Exact hosted timing evidence for single-action-configuration-p33.",
+          "sha256": "4f7cf5ba478bad9a03f714d63ea799385ac70cfebc8f46ac289006055a9dcf59",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14792533128",
+          "note": "Exact hosted timing evidence for single-action-configuration-p34.",
+          "sha256": "03a2fea1257aceac0c00a5b58ac708a93b34d2aa975ed793174c2bcdc017d021",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793536614",
+          "note": "Exact hosted timing evidence for single-action-configuration-p35.",
+          "sha256": "f4c9533809ad7412f971b69c36d50b547aa0955eee0a64687fa8267bb1b6448f",
+          "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
         }
       ],
       "shards": {
         "single-action-configuration-crossing": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers. observed_workers=2.",
-          "estimated_seconds": 714,
-          "isolated_seconds": 0.0,
-          "main_mutants": 22,
-          "main_work_seconds": 1012,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14792279108 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1225,
+          "isolated_seconds": 0,
+          "main_mutants": 32,
+          "main_work_seconds": 2105,
           "parallelism": 2,
-          "selection_sha256": "400a7debd1dd4688627bd0b3c9187088f8d0ba48217b5a474b1f384438f05f52",
-          "setup_seconds": 208,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+          "selection_sha256": "0750d4dc21dd53bef8ed16ac537993f83239bbe20861fc184d92c790d31be98a",
+          "setup_seconds": 172,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "single-action-configuration-p1": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
@@ -5479,37 +5696,37 @@
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "single-action-configuration-p33": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1316,
-          "isolated_seconds": 0.0,
-          "main_mutants": 31,
-          "main_work_seconds": 2215,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793793077 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2484,
+          "isolated_seconds": 0,
+          "main_mutants": 54,
+          "main_work_seconds": 4511,
           "parallelism": 2,
-          "selection_sha256": "d49ab0450e1613dc7f58d98806b0b9870c0d5e0b37d3510f45ad79a82260e28d",
-          "setup_seconds": 208,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+          "selection_sha256": "cfc3929a1066e9408ab7b61b6f309e17042f3f9618e2564736d3b365e268f292",
+          "setup_seconds": 228,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "single-action-configuration-p34": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1574,
-          "isolated_seconds": 0.0,
-          "main_mutants": 53,
-          "main_work_seconds": 2732,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14792533128 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1199,
+          "isolated_seconds": 0,
+          "main_mutants": 43,
+          "main_work_seconds": 2113,
           "parallelism": 2,
-          "selection_sha256": "fd071147cc27ff5716c567160e4280b14fa21ea607166d717b308f1511d9a946",
-          "setup_seconds": 208,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+          "selection_sha256": "2ee097828a7b5992e328b21b4bc84cf28f726c7a5ba34a5da7fb6409b7eb93ff",
+          "setup_seconds": 142,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "single-action-configuration-p35": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1566,
-          "isolated_seconds": 0.0,
-          "main_mutants": 63,
-          "main_work_seconds": 2715,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793536614 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1620,
+          "isolated_seconds": 0,
+          "main_mutants": 50,
+          "main_work_seconds": 2929,
           "parallelism": 2,
-          "selection_sha256": "f09c064cf43134035f239c324461cd7d854aed8f2110e7488e8910034897c52a",
-          "setup_seconds": 208,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+          "selection_sha256": "a48d2c0bef75782aaec3139ba0c37383f56a5655183e4c00431c544178ef28f4",
+          "setup_seconds": 155,
+          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "single-action-configuration-p36": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
@@ -6777,13 +6994,13 @@
       "kind": "historical"
     },
     "b10-final-repeat-evidence-crossing": {
-      "artifact_sha256": "b4e4d8b677029672d5f98d6935e92bd586e44ad03c4416358d1856fbda06a305",
+      "artifact_sha256": "2ef873e7b6284dee9634c2f39276b9f9df96751d51da76d8f6df93d9485ee8f6",
       "kind": "measured",
-      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 808.135801517,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 870.683525106,
       "observed_workers": 2,
-      "source_commit": "81cf412ed7df300a5e181532ab45c61dd274d069",
-      "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-repeat-evidence-p1": {
       "artifact_sha256": "77f4438a816237ae02e4c5758b05acc312806e56d88e71bf1327a1e5d9b1471f",
@@ -6849,40 +7066,40 @@
       "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
     },
     "b10-final-repeat-evidence-p16": {
-      "artifact_sha256": "32c7920c9bdeda8623b3eccb3083e4034ae1e4e4236cda40bbabfd4334c0cf18",
+      "artifact_sha256": "29da58347e49b0d5076b6e78cf7034369d6c7668a0ed00974ad71500c7f9c7b8",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 2556.328635034,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1880.6692523610002,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-repeat-evidence-p17": {
-      "artifact_sha256": "f3423581fef703d9cb4a903ada524532c11f764d11591ede399373b2f89ba113",
+      "artifact_sha256": "b7300f5e6db23269161a130c3b850a41d79b9bc3d2394f25a8708c1916758e5a",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 2340.475598958,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1444.639928866,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-repeat-evidence-p18": {
-      "artifact_sha256": "5de080cf9953b637bf239ef5698adc80b490fcc5898dac23fb2fb459508ddd66",
+      "artifact_sha256": "8af1586471129e55d36a4211d98d92dc0ff9969e797725e36a5419e12dd75bb6",
       "kind": "measured",
-      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 2046.4128567980001,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2344.517793342,
       "observed_workers": 2,
-      "source_commit": "81cf412ed7df300a5e181532ab45c61dd274d069",
-      "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-repeat-evidence-p19": {
-      "artifact_sha256": "009fd1f0f080092ce6cf0757f1ea8cd1f29dd53db9dd137d797410e8a1659a7d",
+      "artifact_sha256": "a6d8bf5a82f5c702a1d452f1803f7c0b5edf3993960c307cbc4d713cee7d6a9f",
       "kind": "measured",
-      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 2105.9985751550003,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2201.058438005,
       "observed_workers": 2,
-      "source_commit": "81cf412ed7df300a5e181532ab45c61dd274d069",
-      "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-repeat-evidence-p2": {
       "artifact_sha256": "c60c60a5ff4b77e93f0b27bc13ea3350c62d23331c9d0b3a94df84566683f008",
@@ -6894,31 +7111,31 @@
       "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
     },
     "b10-final-repeat-evidence-p20": {
-      "artifact_sha256": "51fc67061bec38dc40b794c8387defc378b42027daea78a71b91515ee07d4be1",
+      "artifact_sha256": "64c08294e2ead773e9fad0cba3840df93f07842e2394ea4b3d578cfbfd46e785",
       "kind": "measured",
-      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 1824.979444712,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2089.893880637,
       "observed_workers": 2,
-      "source_commit": "81cf412ed7df300a5e181532ab45c61dd274d069",
-      "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-repeat-evidence-p21": {
-      "artifact_sha256": "b72cf65df8798b6a3008064e066c084d384650bb6caa16cce2d93ce3e66d9e70",
+      "artifact_sha256": "07e60700eb66ae830ee5a4a013340b2cf4ca16717765ef87894720aeb331bd62",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 2218.187520061,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1732.581378272,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-repeat-evidence-p22": {
-      "artifact_sha256": "66cc841bae689baac6d5357e959b698b6c7a513030df6227df5c6c4c1d6740b6",
+      "artifact_sha256": "00356707efb96f801634043e63ab8621a60ddd2712962516b6e8c30c5040c71d",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 418.73736376299996,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2369.953594011,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-repeat-evidence-p3": {
       "artifact_sha256": "59587942fc5358f8d8cee6337f4ce4695525e6838245a7002adfa2dde02df67b",
@@ -7131,13 +7348,13 @@
       "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
     },
     "b10-sweep-codec-crossing": {
-      "artifact_sha256": "117764276bb03529b6e2db197dc878e4e1107b12fbbb254bf38b53ec1f14f2e6",
+      "artifact_sha256": "fda151b259cd0ab6a52a90ac6e9376cc5180b79e9eb1c21fd7b3e2257b312e6c",
       "kind": "measured",
-      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 480.394117011,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 375.3444197540001,
       "observed_workers": 2,
-      "source_commit": "81cf412ed7df300a5e181532ab45c61dd274d069",
-      "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-sweep-codec-p1": {
       "artifact_sha256": "1ac401b213aae0d93063d545b63d9d69a28836e01d149202ba58cab0e25847c7",
@@ -7176,22 +7393,22 @@
       "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
     },
     "b10-sweep-codec-p5": {
-      "artifact_sha256": "135a6aa6ddc8395cbcf2793100b3ea3db352f0fa346beb845e50183b784453e8",
+      "artifact_sha256": "69ad51e8c813ec261700593259a4781b3ae674b84db04f12db79d976ee092263",
       "kind": "measured",
-      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 2604.532653306,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1469.703123362,
       "observed_workers": 2,
-      "source_commit": "81cf412ed7df300a5e181532ab45c61dd274d069",
-      "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-sweep-codec-p6": {
-      "artifact_sha256": "00fe8955207687fde36565b6941e284b18e94e70f201677fee9b0bfc1235a5ba",
+      "artifact_sha256": "e0c0ad414dd4a39966bd33febb92be05b4ce73d27d0f7483f3916bf39fcc2bf0",
       "kind": "measured",
-      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 1312.332074315,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2502.6924701440003,
       "observed_workers": 2,
-      "source_commit": "81cf412ed7df300a5e181532ab45c61dd274d069",
-      "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-sweep-codec-p7": {
       "artifact_sha256": "9e4af322fb795ff185f42c3bbae6197d4836e4fb39c8af28c22521167a4e2d37",
@@ -7314,22 +7531,22 @@
       "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
     },
     "phase-candidate-codec-crossing": {
-      "artifact_sha256": "014daa29f0278dcbb9a6cba2ab61fce62d806e57520ec8fb25c7f25dde4fb418",
+      "artifact_sha256": "cb2daedc5ed86c3fc037135fe53510545c43eb841d97f8774abb2482b229fc73",
       "kind": "measured",
-      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 2054.6942946609997,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1692.1844844930001,
       "observed_workers": 2,
-      "source_commit": "81cf412ed7df300a5e181532ab45c61dd274d069",
-      "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "phase-candidate-codec-p1": {
-      "artifact_sha256": "2b679c4856af1172107e832f01bd9ade88cdf3d9dfff8fc0351c1bcfa6f40a76",
+      "artifact_sha256": "f8eb68e0c8bba04e520d8de177832a5ddba89e7c3dde6bd8199f2ef9b82a9031",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 2382.992368493,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1431.3637657709999,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "phase-candidate-codec-p10": {
       "artifact_sha256": "d4834ae213b324f151fdb088f02a0df5c02c43357e701f6061ffd2fd154f4996",
@@ -7422,13 +7639,13 @@
       "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
     },
     "phase-candidate-codec-p2": {
-      "artifact_sha256": "6fcba228b740e499477a27ebf1dfe7d99188fb4eaead1ba7801b4e7d205c3996",
+      "artifact_sha256": "6866493d304aa5c3be5a2c6a0d7d6e18e3f3cae6e4391b5e1e60b500c125d2b9",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 2554.328271249,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2361.8369520290003,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "phase-candidate-codec-p20": {
       "artifact_sha256": "d4635462d3b82cf2ea54f3bbb11ad9b8d01c58092d1fd711e9713bebbd557432",
@@ -7521,13 +7738,13 @@
       "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
     },
     "phase-candidate-codec-p3": {
-      "artifact_sha256": "34ba00223c7ddea10f3160fce5a28fc0dfd1d6e208d96a111ee75ac311afb435",
+      "artifact_sha256": "b3e7373dc75107d237a87a57d5d6c9a7471518fe6ab63b7f314fcee145ad46ed",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 2536.707198743,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2217.303166175,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "phase-candidate-codec-p30": {
       "artifact_sha256": "22800ea016096dcb37973f6446be036ed9ff2ccf40e08d346b279383cb64535d",
@@ -7566,58 +7783,58 @@
       "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
     },
     "phase-candidate-codec-p4": {
-      "artifact_sha256": "9baba84e0be3e7a5b556d00371375dc743d1f93ba41bc8a7550d26bdc48cb318",
+      "artifact_sha256": "468d78d5256e5729c86e2be1b4548c29a1adb336ec3a4107da1e3107abb1eb5d",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 2184.443613789,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2437.876017733,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "phase-candidate-codec-p5": {
-      "artifact_sha256": "91e139b3edbff6d0d3cc5786f814ccfe4740089d285dc26b36306cb0d05c8c1c",
+      "artifact_sha256": "0e49e156f63efeded7918dbd3af6d5819f7e9c30800db128e1a561c622515e4e",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 1826.4811968449999,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2345.104102247,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "phase-candidate-codec-p6": {
-      "artifact_sha256": "64b8486e4bbce5a4217b1b60d86e8c20726fbd11667553c4efc998141a7b451c",
+      "artifact_sha256": "566986d0c2308721696294eed3d3adfcc8c73b310489c312e4eeb9351e2fd7c7",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 2012.137714159,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1479.5829678609998,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "phase-candidate-codec-p7": {
-      "artifact_sha256": "e7d3b952aaa2be043e91d1510a577a074d89d173ee5e13d749e21ef6ebdcef7e",
+      "artifact_sha256": "5a0391115f83f95e19a88d53a49cc33a40057a8991f55a831c8ee90b3d872c54",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 1649.828706515,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1871.138218863,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "phase-candidate-codec-p8": {
-      "artifact_sha256": "9eb199e3f0f66a3b6d4703ac001ca464022fb1ae2cae8cd2932c535101d57257",
+      "artifact_sha256": "fea6e9295b80c940c62b5c24a5cc05cf70affe41305f2906fe5eaf2173c30d27",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 1829.2355398959999,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1414.082120302,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "phase-candidate-codec-p9": {
-      "artifact_sha256": "13da617d8f28134ed8152b500d05dc37861df091354b669d0e64a0035821c3c6",
+      "artifact_sha256": "1201cd4ed95fd4f695d929e4d50b21a4af2827c2967e51513b73485fa88652fb",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 2236.1530097470004,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1943.0202509540002,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "phase-crossing": {
       "artifact_sha256": "e8a5cd0e389e6549576df2b91bc24a02ed28cf1ccdc0206f61287d425797c7af",
@@ -7707,7 +7924,13 @@
       "kind": "historical"
     },
     "single-action-configuration-crossing": {
-      "kind": "historical"
+      "artifact_sha256": "bddea237ab33a7040d3bd9bb5dd485acae676d131040686d4e0952b09d0c1a6f",
+      "kind": "measured",
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1223.627196349,
+      "observed_workers": 2,
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "single-action-configuration-p1": {
       "kind": "historical"
@@ -7788,13 +8011,31 @@
       "kind": "historical"
     },
     "single-action-configuration-p33": {
-      "kind": "historical"
+      "artifact_sha256": "4f7cf5ba478bad9a03f714d63ea799385ac70cfebc8f46ac289006055a9dcf59",
+      "kind": "measured",
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2482.3659236959998,
+      "observed_workers": 2,
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "single-action-configuration-p34": {
-      "kind": "historical"
+      "artifact_sha256": "03a2fea1257aceac0c00a5b58ac708a93b34d2aa975ed793174c2bcdc017d021",
+      "kind": "measured",
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1197.920568799,
+      "observed_workers": 2,
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "single-action-configuration-p35": {
-      "kind": "historical"
+      "artifact_sha256": "f4c9533809ad7412f971b69c36d50b547aa0955eee0a64687fa8267bb1b6448f",
+      "kind": "measured",
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1618.312163816,
+      "observed_workers": 2,
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
+      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "single-action-configuration-p36": {
       "kind": "historical"
@@ -7917,12 +8158,12 @@
       "kind": "historical"
     },
     "verifier-result-codec-crossing": {
-      "artifact_sha256": "8c4eceff875c4efbb5e3ee7d943bbe04b56e067c20d6c3cb6bcddb79300511ce",
+      "artifact_sha256": "892cc8687d7d40aea706796859716b032eeb8bc39bbe7eb964a400d825e21ebb",
       "kind": "measured",
-      "method": "Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-      "observed_seconds": 833.732274303,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 873.361011879,
       "observed_workers": 2,
-      "source_commit": "4275b634f14c1f81fcfe91dfcd7deb260a0c8a7f",
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
       "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "verifier-result-codec-p1": {
@@ -8061,48 +8302,48 @@
       "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "verifier-result-codec-p22": {
-      "artifact_sha256": "62c35583494d7be80d1fcce9c00416c36ef48d61d91d0d9aad36d4b26eba4e60",
+      "artifact_sha256": "114d88c35f1ec13c9efa4a82b9b487a2d2638a6fb30ff8a1cd8275a05b6aa026",
       "kind": "measured",
-      "method": "Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-      "observed_seconds": 1855.550794722,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2059.789925307,
       "observed_workers": 2,
-      "source_commit": "4275b634f14c1f81fcfe91dfcd7deb260a0c8a7f",
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
       "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "verifier-result-codec-p23": {
-      "artifact_sha256": "05f3a32139f0e385c30052a1df944a9e6f16db7318530340750d6a7e1b59454f",
+      "artifact_sha256": "5fb0b4bd58aa125a82ed8561cf8ddbb4785d02b23723e73bcadc06464941b4e0",
       "kind": "measured",
-      "method": "Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-      "observed_seconds": 2615.910803415,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2135.099659598,
       "observed_workers": 2,
-      "source_commit": "4275b634f14c1f81fcfe91dfcd7deb260a0c8a7f",
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
       "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "verifier-result-codec-p24": {
-      "artifact_sha256": "89c5159134ccae2488f8608f0b40e321e2634a63075e87e3e008742660b24e53",
+      "artifact_sha256": "88b2442833e5d267250f2d93c2d001752affdfa566f4350b33c6172843f07b03",
       "kind": "measured",
-      "method": "Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-      "observed_seconds": 2450.6672467020003,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2280.709794816,
       "observed_workers": 2,
-      "source_commit": "3c65a2fa52f16378c3815159cd07f8237e3346bf",
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
       "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "verifier-result-codec-p25": {
-      "artifact_sha256": "df5c7a9a8b88c31c4963b51c7258c082dd969999a30c1d0b73759b2632eb4ede",
+      "artifact_sha256": "2ce5891c62dd0029f1b86eca1e0c20bcbb27c22e2c71523ddac8494da3058c71",
       "kind": "measured",
-      "method": "Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-      "observed_seconds": 2246.865985225,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2370.231627592,
       "observed_workers": 2,
-      "source_commit": "3c65a2fa52f16378c3815159cd07f8237e3346bf",
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
       "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "verifier-result-codec-p26": {
-      "artifact_sha256": "5d4fe56e695627b54bf38427db78bcdc9f82d23f6a04d25d961b602ff285c2e4",
+      "artifact_sha256": "e9f1c52ec7a398b1c05e50c34e948e814f7d7f90a05c3e7c0d48f248b71fbff6",
       "kind": "measured",
-      "method": "Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-      "observed_seconds": 2604.3595174330003,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1804.649553079,
       "observed_workers": 2,
-      "source_commit": "3c65a2fa52f16378c3815159cd07f8237e3346bf",
+      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
       "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "verifier-result-codec-p3": {
