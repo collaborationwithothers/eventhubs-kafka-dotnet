@@ -1275,8 +1275,8 @@ def observed_tail_changes(head):
     if not head:
         return frozenset()
     try:
-        git('merge-base', '--is-ancestor', OBSERVED_TAIL_PRIOR, OBSERVED_TAIL_SOURCE)
         git('merge-base', '--is-ancestor', OBSERVED_TAIL_SOURCE, head)
+        git('merge-base', '--is-ancestor', OBSERVED_TAIL_PRIOR, OBSERVED_TAIL_SOURCE)
         prior, measured, current = (proof_tree(ref) for ref in (OBSERVED_TAIL_PRIOR, OBSERVED_TAIL_SOURCE, head))
         if prior[1:] != measured[1:] or not same_timing_layout(measured, current):
             return frozenset()

@@ -2200,7 +2200,8 @@ class DependencyEndToEndTests(unittest.TestCase):
             if args[0] == 'rev-parse': return args[-1].replace('^{commit}', '').encode()
             if args[0] == 'diff': return (current + '\0').encode()
             if (len(args) == 4 and args[:2] == ('merge-base', '--is-ancestor')
-                    and args[2] in {runtime.PAIRED_TAIL_SOURCE, runtime.PAIRED_RECOVERY_SOURCE}
+                    and args[2] in {runtime.PAIRED_TAIL_SOURCE, runtime.PAIRED_RECOVERY_SOURCE,
+                                    runtime.OBSERVED_TAIL_SOURCE}
                     and args[3] in {'base', 'added'}):
                 raise subprocess.CalledProcessError(1, args)
             raise AssertionError(args)
@@ -4057,7 +4058,7 @@ class ObservedTailLedgerTests(unittest.TestCase):
 
     def test_complete_ledger_enforces_timing_boundaries_after_receipt_authentication(self):
         # The fixture samples strict timing bounds with a matching synthetic receipt pin.
-        # Immutable Git reads are cached across cases so every case can run the whole checker.
+        # Reuse calculations on the same immutable inputs across full validations.
         cases = (
             (2649, 2699, 2699, set()),
             (2650, 2700, 2700, set()),
@@ -4066,8 +4067,20 @@ class ObservedTailLedgerTests(unittest.TestCase):
             (2650, 2649, 2649, {'missing_measurement'}),
             (2649, 2699, 2700, {'invalid_estimate'}),
         )
+        original_owners = runtime.committed_physical_owners
+        owners = {}
+
+        def physical_owners(declarations, matrix):
+            key = id(declarations), id(matrix)
+            if key not in owners:
+                # Keep both immutable inputs alive for the lifetime of the cache.
+                owners[key] = declarations, matrix, original_owners(declarations, matrix)
+            return owners[key][2]
+
         with (mock.patch.object(runtime, 'git', cache(runtime.git)),
-              mock.patch.object(runtime, 'proof_tree', cache(runtime.proof_tree.__wrapped__))):
+              mock.patch.object(runtime, 'proof_tree', cache(runtime.proof_tree.__wrapped__)),
+              mock.patch.object(runtime, 'committed_physical_owners', physical_owners),
+              mock.patch.object(runtime.workflow, 'shard_config', cache(runtime.workflow.shard_config))):
             for observed, estimate, calculated, expected in cases:
                 with self.subTest(observed=observed, estimate=estimate, calculated=calculated):
                     config = copy.deepcopy(self.ledger)
