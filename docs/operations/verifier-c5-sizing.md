@@ -1,8 +1,8 @@
 # C5 hosted timing diagnostic
 
-`verifier-c5-sizing.yml` is a manual, CPU-only diagnostic. Dispatch it on `main` only, after the workflow change merges. For the issue 494 timeout recovery, use the default source `4275b634f14c1f81fcfe91dfcd7deb260a0c8a7f`. The workflow rejects other sources and verifies the checked-out commit and each matrix row's target SHA-256.
+`verifier-c5-sizing.yml` is a manual, CPU-only diagnostic. Dispatch it on `main` only, after the workflow change merges. For the issue 494 paired-runtime repair, use the default source `0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd`. The workflow rejects other sources and verifies the checked-out commit and each matrix row's target SHA-256.
 
-The matrix measures 18 changed selections across the result codec, B10 final judge and B10 final projection codec. It includes the crossing selection for each target. The recovery keeps 25 successful receipts from the previous diagnostic only where the physical configurations and timing inputs match. [Previous diagnostic](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44995993132) and [recovery plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7076174614).
+The matrix measures the 31 physical selections affected by the boundary changes in PhaseCandidateCodec, SingleActionConfigurationJudgement, VerifierResultCodec, B10FinalRepeatEvidence and B10SweepEvidenceCodec. It includes each affected crossing selection. The previous full campaign met the mutation score and exceeded the combined time limit. [Observed campaign](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7080705681) | [Performance repair direction](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7085780478)
 
 Each shard has a separate standard `ubuntu-24.04` job. `local-shard` uses the committed selector and required isolation for that physical shard. Its inner deadline is 2,650 seconds, the outer deadline including the termination grace is 2,700 seconds, and the job limit is 50 minutes. The diagnostic has no aggregate acceptance step.
 
@@ -11,6 +11,10 @@ Each job uploads its diagnostic directory, including raw reports, command logs, 
 Artifacts expire after one day. Download and preserve the evidence needed for review before expiry. The workflow has read-only contents permission, does not use an environment, secrets or Azure, and does not persist checkout credentials.
 
 On 2026-11-15, [GitHub's billing documentation](https://docs.github.com/en/billing/concepts/product-billing/github-actions) stated that standard hosted runners in public repositories are free. That establishes the compute rule, not an unconditional exemption for artifact storage. This diagnostic does not use a larger runner.
+
+## Earlier timeout recovery
+
+The [previous workflow](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/89e75f39a2a281afc8942f4af280776e40e38520/.github/workflows/verifier-c5-sizing.yml) used source `4275b634f14c1f81fcfe91dfcd7deb260a0c8a7f`. The matrix measures 18 changed selections across the result codec, B10 final judge and B10 final projection codec. It includes the crossing selection for each target. The recovery keeps 25 successful receipts from the previous diagnostic only where the physical configurations and timing inputs match. [Previous diagnostic](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44995993132) and [recovery plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7076174614).
 
 ## Earlier sweep timing campaign
 
