@@ -4200,14 +4200,22 @@ class TimingMarginTests(unittest.TestCase):
         item = record['shards'][self.FRESH]
         timing = self.ledger['timing_evidence'][self.FRESH]
         context = self.ledger['timing_inputs'][item['timing_inputs_sha256']]
-        for observed, estimate, expected in ((2650, 2700, True), (2651, 2700, False),
-                                              (2650, 2701, False), (2650, 2649, False)):
-            with self.subTest(observed=observed, estimate=estimate):
+        cases = (
+            (2650, 2700, 0, False),
+            (2650, 2700, 1, True),
+            (2650, 2700, 2, True),
+            (2650, 2700, 3, False),
+            (2651, 2700, 2, False),
+            (2650, 2701, 2, False),
+            (2650, 2649, 2, False),
+        )
+        for observed, estimate, workers, expected in cases:
+            with self.subTest(observed=observed, estimate=estimate, workers=workers):
                 actual = runtime.measured_cut_timing_linked(
                     context, self.FRESH, self.TARGET, record,
-                    {**item, 'basis': 'Synthetic boundary fixture observed_workers=2',
+                    {**item, 'basis': f'Synthetic boundary fixture observed_workers={workers}',
                      'estimated_seconds': estimate},
-                    {**timing, 'observed_workers': 2, 'observed_seconds': observed}, {}, self.source)
+                    {**timing, 'observed_workers': workers, 'observed_seconds': observed}, {}, self.source)
                 self.assertEqual(expected, actual)
 
     def test_retained_assessment_tracks_actual_head(self):
