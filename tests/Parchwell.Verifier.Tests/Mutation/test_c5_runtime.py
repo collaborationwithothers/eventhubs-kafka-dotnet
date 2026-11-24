@@ -2349,12 +2349,15 @@ class CampaignValidatorRecoveryTests(unittest.TestCase):
             return subprocess.run(['git', *args], cwd=ROOT, check=True, capture_output=True, env=env,
                                   input=data).stdout.decode().strip()
         with tempfile.TemporaryDirectory() as directory:
-            env = {**os.environ, 'GIT_INDEX_FILE': str(Path(directory) / 'index')}
+            identity = {'GIT_AUTHOR_NAME': 'Test', 'GIT_AUTHOR_EMAIL': 'test@example.invalid',
+                        'GIT_COMMITTER_NAME': 'Test', 'GIT_COMMITTER_EMAIL': 'test@example.invalid'}
+            env = {**os.environ, **identity, 'GIT_INDEX_FILE': str(Path(directory) / 'index')}
             git('read-tree', self.BASE, env=env)
             for path, data in replacements.items():
                 git('update-index', '--cacheinfo', f"100644,{git('hash-object', '-w', '--stdin', data=data)},{path}", env=env)
             tree = git('write-tree', env=env)
-        return git('commit-tree', tree, '-p', self.BASE, '-m', 'synthetic head for a checker test')
+        return git('-c', 'commit.gpgsign=false', 'commit-tree', tree, '-p', self.BASE, '-m', 'synthetic head for a checker test',
+                   env={**os.environ, **identity})
 
     def check_head(self, base, **replacements):
         """Run `check` on a synthetic head that sits on the base commit and its qualification."""
