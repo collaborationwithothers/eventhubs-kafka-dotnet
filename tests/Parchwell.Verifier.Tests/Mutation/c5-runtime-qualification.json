@@ -220,11 +220,11 @@
     "src/Parchwell.Verifier/VerifyRun/SingleAction/SingleActionScenarioResolver.cs": "3c3ee661f083232f05a4bd4d4dad2eb870c7f1cb6a57b1f9537e6cb022bbb77e",
     "src/Parchwell.Verifier/VerifyRun/Storage/BlobLedgerArtifactSource.cs": "33a412d197586445cb00f9a9b19e2d3efd91cac8727df96cc313296109402957",
     "src/Parchwell.Verifier/VerifyRun/Storage/ILedgerArtifactSource.cs": "fe80ebf52231a21f79bfe34530dfd8faa4400e5f4c3108c764c10403c2dd7c78",
-    "src/Parchwell.Verifier/VerifyRun/Window/ConsumedMetadataCapture.cs": "361308efb4718c12fca1863d661380c82f2a167fbe1c97f37924957e1bb2d8b5",
+    "src/Parchwell.Verifier/VerifyRun/Window/ConsumedMetadataCapture.cs": "9eb1de5a59d38500fc2c173f6dcd63771cbf914965969729a94a1243e4270179",
     "src/Parchwell.Verifier/VerifyRun/Window/ConsumedRecordBudget.cs": "7d7376af1ca61985e716fd949159b3218fcee967cfd22c4278104e368747f1b8",
     "src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs": "b2012594b326ea2afd577d123867af37e0078e0f1da961a9dda5d2555aaefcca",
     "src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs": "87d5e8057535d0a2895d19c0a45fdc90df491787869ade1dfb08a2c6c0695c98",
-    "src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs": "51482cfcf3e471552d374c2fe237476204ca39f5a3efaa9e9a9cdd52bf14a1a7",
+    "src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs": "a0eb99569dfaf7389399d6b293ad46743ab6780fb84d5e1d048b2ed04dcb9e21",
     "src/Parchwell.Verifier/packages.lock.json": "c9c2f3096cba8a0c3dc705fd2c9c5f0404ebf5a173837b5ffd9c0f73ba7d4e26",
     "tests/Parchwell.ArchitectureTests/packages.lock.json": "34a6ea41cfff3aef85ef7748fd20fdac0a8480a53d1047c34de5683fd927ecfe",
     "tests/Parchwell.Enrichment.Tests/packages.lock.json": "1378e0c4323a993d167d1fd3d3c30b65539d46bcdf8e1fd352622da80c9e7e8a",
@@ -375,12 +375,12 @@
     "tests/Parchwell.Verifier.Tests/Window/B10RunWindowTests.cs": "bcead6b4e5318a2b1b0a28e8aa01d3a94f5cdb9d2068c1da728a0bd6d7df029a",
     "tests/Parchwell.Verifier.Tests/Window/B10ScientificThreeJobStartLineCodecTests.cs": "91543ad9a424770553838dc4e9ffb91dc68f680ba281e38a4392255473d8e0d2",
     "tests/Parchwell.Verifier.Tests/Window/B10TrialStartLineCodecTests.cs": "b326978264d5bb953fdfb3f4db32871de86cc98ba7c14d5a04b1fa5d2defec06",
-    "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": "c4ae6838205ff88b2568ced00a3e0b874d24ecb3ead55898b15d44a365dc3b95",
+    "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": "095df4bbd52e102e6fb11f24e4ad0c8c25932c370446c605562219468d446a91",
     "tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs": "b7ea0fe4e83e3da2dc34790fb637cfa04d10fc1dd77cdc9b4dc03719b3ca2d4e",
     "tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs": "aa7bef8c9e41ac307fc9724e33381d4c33ccc6b7bcae8560429c0202a7d51710",
     "tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs": "c571be0a01efd0f523a727774ba5a6e517719dfb0d6c42c620cdb2be5a97d508",
     "tests/Parchwell.Verifier.Tests/Window/TokenPumpTests.cs": "44b672baffc7ee86dd2eefd45d515d3489301fe1e2dd659bf80555a9b5080b2f",
-    "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": "e8e5761f0db2e6426b7a8330453853bd1ff9f0c4a8f0429d2f0d1b79bd92c4ce",
+    "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": "f37a4938a177ec624af9dfaabfaf5bc4c03da67f455ccc09db8adba05525da5f",
     "tests/Parchwell.Verifier.Tests/packages.lock.json": "6b08c8d420de3207678ae7338e89831ee55696be7e963c80b76c4e1a538fc335",
     "tests/fixtures/ProbeV2MockCluster.cs": "9acd4b0f66c3e4fd51f1c8ec4f79c1f5d644fff61512d6f9caadddb975d62c2d",
     "tests/fixtures/verifier-v1/README.md": "583e9275404bc839a0a27cfaa4545fd1f6db2a3dd68804d10904391e94f43b80",
@@ -8894,6 +8894,18 @@
             ],
             "current_sha256": "8145b10227ee09fe72ab13bc0c57a5ce17aad4f2a5e125730b010ef59a14b8a2"
           },
+          "src/Parchwell.Verifier/VerifyRun/Window/ConsumedMetadataCapture.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "9eb1de5a59d38500fc2c173f6dcd63771cbf914965969729a94a1243e4270179"
+          },
+          "src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "a0eb99569dfaf7389399d6b293ad46743ab6780fb84d5e1d048b2ed04dcb9e21"
+          },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
@@ -8985,6 +8997,18 @@
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
             ],
             "current_sha256": "66d344ecda579ea25cb72a6e824b0fefe520692da394f83d02e1787df0b67ed0"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "095df4bbd52e102e6fb11f24e4ad0c8c25932c370446c605562219468d446a91"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "f37a4938a177ec624af9dfaabfaf5bc4c03da67f455ccc09db8adba05525da5f"
           }
         },
         "target_sources": {
@@ -9493,6 +9517,18 @@
             ],
             "current_sha256": "8145b10227ee09fe72ab13bc0c57a5ce17aad4f2a5e125730b010ef59a14b8a2"
           },
+          "src/Parchwell.Verifier/VerifyRun/Window/ConsumedMetadataCapture.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "9eb1de5a59d38500fc2c173f6dcd63771cbf914965969729a94a1243e4270179"
+          },
+          "src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "a0eb99569dfaf7389399d6b293ad46743ab6780fb84d5e1d048b2ed04dcb9e21"
+          },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
@@ -9547,6 +9583,18 @@
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
             ],
             "current_sha256": "66d344ecda579ea25cb72a6e824b0fefe520692da394f83d02e1787df0b67ed0"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "095df4bbd52e102e6fb11f24e4ad0c8c25932c370446c605562219468d446a91"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "f37a4938a177ec624af9dfaabfaf5bc4c03da67f455ccc09db8adba05525da5f"
           }
         },
         "target_sources": {
@@ -10049,6 +10097,18 @@
             ],
             "current_sha256": "8145b10227ee09fe72ab13bc0c57a5ce17aad4f2a5e125730b010ef59a14b8a2"
           },
+          "src/Parchwell.Verifier/VerifyRun/Window/ConsumedMetadataCapture.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "9eb1de5a59d38500fc2c173f6dcd63771cbf914965969729a94a1243e4270179"
+          },
+          "src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "a0eb99569dfaf7389399d6b293ad46743ab6780fb84d5e1d048b2ed04dcb9e21"
+          },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
@@ -10139,6 +10199,18 @@
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
             ],
             "current_sha256": "66d344ecda579ea25cb72a6e824b0fefe520692da394f83d02e1787df0b67ed0"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "095df4bbd52e102e6fb11f24e4ad0c8c25932c370446c605562219468d446a91"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "f37a4938a177ec624af9dfaabfaf5bc4c03da67f455ccc09db8adba05525da5f"
           }
         },
         "target_sources": {
@@ -10592,11 +10664,35 @@
             ],
             "current_sha256": "8145b10227ee09fe72ab13bc0c57a5ce17aad4f2a5e125730b010ef59a14b8a2"
           },
+          "src/Parchwell.Verifier/VerifyRun/Window/ConsumedMetadataCapture.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "9eb1de5a59d38500fc2c173f6dcd63771cbf914965969729a94a1243e4270179"
+          },
+          "src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "a0eb99569dfaf7389399d6b293ad46743ab6780fb84d5e1d048b2ed04dcb9e21"
+          },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotFrontierTests.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7076000200 accepts the timing uncertainty from the exact shared-input change in the pull request for issue #529."
             ],
             "current_sha256": "4148454c116657817051f198c709667864cfec4cc77700d541004423352affd8"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "095df4bbd52e102e6fb11f24e4ad0c8c25932c370446c605562219468d446a91"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "f37a4938a177ec624af9dfaabfaf5bc4c03da67f455ccc09db8adba05525da5f"
           }
         },
         "target_sources": {}
@@ -11487,6 +11583,18 @@
             ],
             "current_sha256": null
           },
+          "src/Parchwell.Verifier/VerifyRun/Window/ConsumedMetadataCapture.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "9eb1de5a59d38500fc2c173f6dcd63771cbf914965969729a94a1243e4270179"
+          },
+          "src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "a0eb99569dfaf7389399d6b293ad46743ab6780fb84d5e1d048b2ed04dcb9e21"
+          },
           "tests/Parchwell.ArchitectureTests/packages.lock.json": {
             "basis": [
               "Only the Enrichment project dependency list gains the two Azure package references. See tests/Parchwell.ArchitectureTests/packages.lock.json:582.",
@@ -11923,6 +12031,18 @@
               "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/Support/VerifierHostTestOptions.cs ; measured SHA-256 9824f6035d61539ed4c5122ddf171ba72f618b061517334d1efc35bd3046100c; main SHA-256 9824f6035d61539ed4c5122ddf171ba72f618b061517334d1efc35bd3046100c; current SHA-256 5fb1bb8e31baf1d0c3045bb756abf49bc5bde65bd0042cbf03432434eb1d7d9b."
             ],
             "current_sha256": "5fb1bb8e31baf1d0c3045bb756abf49bc5bde65bd0042cbf03432434eb1d7d9b"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "095df4bbd52e102e6fb11f24e4ad0c8c25932c370446c605562219468d446a91"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "f37a4938a177ec624af9dfaabfaf5bc4c03da67f455ccc09db8adba05525da5f"
           }
         },
         "target_sources": {
@@ -12890,17 +13010,19 @@
             "basis": [
               "Change-specific assessment: New capture implementation serializes metadata, hashes and manages chunks and finalization. Row/chunk/total limits do not establish a runtime limit or unchanged historical estimates; added tests exercise it.",
               "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
-              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance.",
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
             ],
-            "current_sha256": "361308efb4718c12fca1863d661380c82f2a167fbe1c97f37924957e1bb2d8b5"
+            "current_sha256": "9eb1de5a59d38500fc2c173f6dcd63771cbf914965969729a94a1243e4270179"
           },
           "src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs": {
             "basis": [
               "Change-specific assessment: Adds capture-aware drain, observation and finalization paths. They are in existing consumer execution as well as new tests; per-mutant impact is unmeasured.",
               "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
-              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance.",
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
             ],
-            "current_sha256": "51482cfcf3e471552d374c2fe237476204ca39f5a3efaa9e9a9cdd52bf14a1a7"
+            "current_sha256": "a0eb99569dfaf7389399d6b293ad46743ab6780fb84d5e1d048b2ed04dcb9e21"
           },
           "tests/Parchwell.ArchitectureTests/packages.lock.json": {
             "basis": [
@@ -13397,17 +13519,19 @@
             "basis": [
               "Change-specific assessment: New tests exercise serialization, bounds, gaps and failures; 18 cases in final profile total 0.359 seconds of xUnit duration in that one unmutated run. Mutant-dependent cost is unmeasured.",
               "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
-              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance.",
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
             ],
-            "current_sha256": "c4ae6838205ff88b2568ced00a3e0b874d24ecb3ead55898b15d44a365dc3b95"
+            "current_sha256": "095df4bbd52e102e6fb11f24e4ad0c8c25932c370446c605562219468d446a91"
           },
           "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": {
             "basis": [
               "Change-specific assessment: Adds capture drain/error/cancellation tests and a fake callback. The current profile includes the class; the added execution has no per-mutant comparison.",
               "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
-              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance.",
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
             ],
-            "current_sha256": "e8e5761f0db2e6426b7a8330453853bd1ff9f0c4a8f0429d2f0d1b79bd92c4ce"
+            "current_sha256": "f37a4938a177ec624af9dfaabfaf5bc4c03da67f455ccc09db8adba05525da5f"
           }
         },
         "target_sources": {
@@ -13886,7 +14010,32 @@
     },
     "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6": {
       "assessments": {
-        "shared_inputs": {},
+        "shared_inputs": {
+          "src/Parchwell.Verifier/VerifyRun/Window/ConsumedMetadataCapture.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "9eb1de5a59d38500fc2c173f6dcd63771cbf914965969729a94a1243e4270179"
+          },
+          "src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "a0eb99569dfaf7389399d6b293ad46743ab6780fb84d5e1d048b2ed04dcb9e21"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "095df4bbd52e102e6fb11f24e4ad0c8c25932c370446c605562219468d446a91"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": {
+            "basis": [
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+            ],
+            "current_sha256": "f37a4938a177ec624af9dfaabfaf5bc4c03da67f455ccc09db8adba05525da5f"
+          }
+        },
         "target_sources": {}
       },
       "shared_inputs": {
