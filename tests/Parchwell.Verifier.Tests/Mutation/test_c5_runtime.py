@@ -2201,7 +2201,7 @@ class DependencyEndToEndTests(unittest.TestCase):
             if args[0] == 'diff': return (current + '\0').encode()
             if (len(args) == 4 and args[:2] == ('merge-base', '--is-ancestor')
                     and args[2] in {runtime.PAIRED_TAIL_SOURCE, runtime.PAIRED_RECOVERY_SOURCE,
-                                    runtime.OBSERVED_TAIL_SOURCE}
+                                    runtime.OBSERVED_TAIL_SOURCE, runtime.TIMING_MARGIN_SOURCE}
                     and args[3] in {'base', 'added'}):
                 raise subprocess.CalledProcessError(1, args)
             raise AssertionError(args)
@@ -3969,8 +3969,9 @@ class ObservedTailTimingTests(unittest.TestCase):
                   'artifact_sha256': archive, 'observed_workers': 2,
                   'timing_inputs_sha256': self.binding, 'observed_seconds': 2650}
         def linked(evidence, estimate=2700):
-            return runtime.observed_tail_timing_linked(
-                self.context, shard, owner, record, {**item, 'estimated_seconds': estimate}, evidence, {})
+            return runtime.measured_cut_timing_linked(
+                self.context, shard, owner, record, {**item, 'estimated_seconds': estimate},
+                evidence, {}, self.source)
 
         self.assertNotEqual(self.context['source_commit'], self.source)
         for seconds, expected in ((0, False), (2649, True), (2650, True), (2651, False)):
@@ -4008,7 +4009,8 @@ class ObservedTailLedgerTests(unittest.TestCase):
     def test_complete_hosted_ledger_matches_the_exact_receipts_and_retained_items(self):
         self.assertEqual(324, len(self.ledger['timing_evidence']))
         self.assertEqual(runtime.OBSERVED_TAIL_CHANGED, self.changed)
-        self.assertEqual(set(), runtime.observed_tail_ledger_errors(self.ledger, self.prior, self.shared, self.changed))
+        self.assertEqual(set(), runtime.measured_cut_ledger_errors(
+            self.ledger, self.prior, self.shared, self.changed, runtime.OBSERVED_TAIL_RECEIPTS_SHA256))
 
     def test_foreign_receipt_swap_inside_one_target_is_rejected(self):
         config = copy.deepcopy(self.ledger)
@@ -4097,6 +4099,137 @@ class ObservedTailLedgerTests(unittest.TestCase):
                                            'timing': timing, 'evidence': entry}
                     fingerprint = runtime.digest(runtime.canonical(receipts))
                     with mock.patch.object(runtime, 'OBSERVED_TAIL_RECEIPTS_SHA256', fingerprint):
-                        self.assertEqual(set(), runtime.observed_tail_ledger_errors(
-                            config, self.prior, self.shared, self.changed))
+                        self.assertEqual(set(), runtime.measured_cut_ledger_errors(
+                            config, self.prior, self.shared, self.changed, fingerprint))
                         self.assertEqual(expected, self.validate(config))
+
+
+
+class TimingMarginTests(unittest.TestCase):
+    # This snapshot contains all 38 verified receipts and both prior proof layers.
+    LEDGER_REVISION = '728f337a43da4698ecd943a180dc134368c85e8e'
+    TARGET = 'VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs'
+    RETAINED_TARGET = 'VerifyRun/Input/RestartManifestReader.cs'
+    RETAINED = 'b10-restart-manifest-p1'
+    FRESH = 'single-action-configuration-p41'
+    PEER = 'single-action-configuration-p40'
+
+    @classmethod
+    def setUpClass(cls):
+        cls.source = runtime.TIMING_MARGIN_SOURCE
+        cls.prior_head = runtime.TIMING_MARGIN_PRIOR
+        cls.tree = runtime.proof_tree(cls.source)
+        cls.shared, cls.targets = cls.tree[2]
+        cls.prior = runtime.strict_json(runtime.blob(cls.prior_head, runtime.HISTORICAL_QUALIFICATION_PATH))
+        cls.ledger = runtime.strict_json(runtime.blob(cls.LEDGER_REVISION, runtime.HISTORICAL_QUALIFICATION_PATH))
+
+    def setUp(self):
+        runtime.timing_margin_changes.cache_clear()
+        self.addCleanup(runtime.timing_margin_changes.cache_clear)
+
+    def test_reviewed_selector_set_and_ancestry(self):
+        changed = runtime.timing_margin_changes(self.source)
+        self.assertEqual(runtime.TIMING_MARGIN_CHANGED, changed)
+        self.assertEqual(38, len(changed))
+        self.assertNotIn(self.RETAINED, changed)
+        self.assertFalse(runtime.timing_margin_changes(self.prior_head))
+        runtime.timing_margin_changes.cache_clear()
+        original = runtime.git
+
+        def missing_ancestry(*args):
+            if args == ('merge-base', '--is-ancestor', self.source, self.source):
+                raise subprocess.CalledProcessError(1, args)
+            return original(*args)
+
+        with mock.patch.object(runtime, 'git', side_effect=missing_ancestry):
+            self.assertFalse(runtime.timing_margin_changes(self.source))
+
+    def test_layout_and_input_drift_reject(self):
+        data = runtime.blob(self.source, runtime.WORKFLOW)
+        first, second = (
+            f'          - shard: {shard}\n            target: {target}\n'.encode()
+            for shard, target in list(runtime.workflow_matrix(data).items())[:2])
+        self.assertIn(first + second, data)
+        swapped = data.replace(first + second, second + first, 1)
+        original_blob = runtime.blob
+        with mock.patch.object(runtime, 'blob', side_effect=lambda ref, name:
+                               swapped if (ref, name) == (self.source, runtime.WORKFLOW)
+                               else original_blob(ref, name)):
+            self.assertFalse(runtime.timing_margin_changes(self.source))
+
+        runtime.timing_margin_changes.cache_clear()
+        edited = copy.deepcopy(self.tree)
+        edited[2][0][runtime.CONFIG_PATH] = '0' * 64
+        original_tree = runtime.proof_tree
+        with mock.patch.object(runtime, 'proof_tree', side_effect=lambda ref:
+                               edited if ref == self.source else original_tree(ref)):
+            self.assertFalse(runtime.timing_margin_changes(self.source))
+
+    def test_bound_receipts_and_retained_items(self):
+        changed = runtime.timing_margin_changes(self.source)
+
+        def ledger_errors(ledger):
+            return runtime.measured_cut_ledger_errors(
+                ledger, self.prior, self.shared, changed, runtime.TIMING_MARGIN_RECEIPTS_SHA256)
+
+        self.assertEqual(set(), ledger_errors(self.ledger))
+        for alteration in ('swapped', 'older_source', 'retained_item', 'retained_context', 'missing', 'extra'):
+            with self.subTest(alteration=alteration):
+                ledger = copy.deepcopy(self.ledger)
+                receipts = ledger['timing_evidence']
+                retained = ledger['targets'][self.RETAINED_TARGET]['shards'][self.RETAINED]
+                if alteration == 'swapped':
+                    first, second = receipts[self.FRESH], receipts[self.PEER]
+                    self.assertNotEqual(first['artifact_sha256'], second['artifact_sha256'])
+                    first['artifact_sha256'], second['artifact_sha256'] = (
+                        second['artifact_sha256'], first['artifact_sha256'])
+                elif alteration == 'older_source':
+                    receipts[self.FRESH]['source_commit'] = runtime.OBSERVED_TAIL_SOURCE
+                elif alteration == 'retained_item':
+                    retained['setup_seconds'] += 1
+                elif alteration == 'retained_context':
+                    ledger['timing_inputs'][retained['timing_inputs_sha256']]['source_commit'] = '0' * 40
+                elif alteration == 'missing':
+                    receipts.pop(self.RETAINED)
+                else:
+                    receipts['not-a-shard'] = receipts[self.RETAINED]
+                self.assertEqual({'missing_measurement'}, ledger_errors(ledger))
+
+    def test_timing_observation_and_estimate_limits(self):
+        record = self.ledger['targets'][self.TARGET]
+        item = record['shards'][self.FRESH]
+        timing = self.ledger['timing_evidence'][self.FRESH]
+        context = self.ledger['timing_inputs'][item['timing_inputs_sha256']]
+        for observed, estimate, expected in ((2650, 2700, True), (2651, 2700, False),
+                                              (2650, 2701, False), (2650, 2649, False)):
+            with self.subTest(observed=observed, estimate=estimate):
+                actual = runtime.measured_cut_timing_linked(
+                    context, self.FRESH, self.TARGET, record,
+                    {**item, 'basis': 'Synthetic boundary fixture observed_workers=2',
+                     'estimated_seconds': estimate},
+                    {**timing, 'observed_workers': 2, 'observed_seconds': observed}, {}, self.source)
+                self.assertEqual(expected, actual)
+
+    def test_retained_assessment_tracks_actual_head(self):
+        row = self.ledger['targets'][self.RETAINED_TARGET]['shards'][self.RETAINED]
+        proof = self.prior['timing_inputs'][row['timing_inputs_sha256']]
+        context = copy.deepcopy(self.ledger['timing_inputs'][row['timing_inputs_sha256']])
+        frontier = 'tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotFrontierTests.cs'
+        self.assertEqual(proof['assessments']['shared_inputs'][frontier],
+                         context['assessments']['shared_inputs'][frontier])
+        self.assertEqual(self.shared[frontier], context['assessments']['shared_inputs'][frontier]['current_sha256'])
+        path = runtime.CI_REPAIR_TEST
+        shared = {**self.shared, path: '9' * 64}
+        assessments = context['assessments']['shared_inputs']
+
+        def reasons():
+            return runtime.provenance_errors(
+                context, shared, self.targets, self.RETAINED_TARGET, self.RETAINED,
+                runtime.PAIRED_TAIL_PRIOR, proof)
+
+        assessments[path] = {'current_sha256': shared[path], 'basis': ['Synthetic assessed current input']}
+        self.assertEqual(set(), reasons())
+        assessments[path]['current_sha256'] = '0' * 64
+        self.assertEqual({'unaccounted_inputs'}, reasons())
+        assessments.pop(path)
+        self.assertEqual({'unaccounted_inputs'}, reasons())
