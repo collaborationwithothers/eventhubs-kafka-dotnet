@@ -3997,6 +3997,7 @@ class ObservedTailLedgerTests(unittest.TestCase):
         cls.shared, cls.targets = runtime.input_maps(cls.head)
         cls.source = {path: runtime.blob(cls.head, 'src/Parchwell.Verifier/' + path) for path in cls.targets}
         cls.matrix = runtime.workflow_layout(cls.head, paired=True)
+        cls.fixture_cuts = runtime.proof_tree(cls.head)[0]['PRIMARY_CUTS']
         cls.changed = runtime.observed_tail_changes(cls.head)
         cls.target = 'Judge/PhaseCandidateCodec.cs'
         cls.retained = 'phase-candidate-codec-p10'
@@ -4004,7 +4005,9 @@ class ObservedTailLedgerTests(unittest.TestCase):
         cls.peer = 'phase-candidate-codec-p4'
 
     def validate(self, config):
-        return runtime.validate(config, self.shared, self.targets, self.source, self.matrix, self.head)
+        # Generate selectors from the same committed layout as the historical ledger.
+        with mock.patch.object(runtime.workflow, 'PRIMARY_CUTS', self.fixture_cuts):
+            return runtime.validate(config, self.shared, self.targets, self.source, self.matrix, self.head)
 
     def test_complete_hosted_ledger_matches_the_exact_receipts_and_retained_items(self):
         self.assertEqual(324, len(self.ledger['timing_evidence']))
