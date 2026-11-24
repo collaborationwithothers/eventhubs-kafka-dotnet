@@ -1,14 +1,16 @@
 # C5 timing margin
 
-Revision R1. Base `e62bdc9b39620897c63e615b059d20646b0546e4`. Measured-input candidate `5d70de86ca7655549bd3a8f5f8c98910385c492a`.
+Rebalance the C5 mutation jobs that consumed the campaign time. Verify each changed selection before running one complete campaign.
+
+Revision R2. Base `e62bdc9b39620897c63e615b059d20646b0546e4`. Measured-input candidate `5d70de86ca7655549bd3a8f5f8c98910385c492a`.
 
 ## Goal and authority
 
-Close #494 after complete C5 acceptance on qualified `main`. The 23 November campaign delivered 323 of 324 physical receipts and took 3,737 seconds. The hosted runner for `phase-p1` shut down before uploading its receipt. The companion alone took 3,509 seconds. The slowest command grew from 1,547.778 to 3,466.014 seconds across the same 57 mutations and outcomes. The owner approved resizing from these timings and one complete pair after the protected product merge. All 324 physical receipts, the 60% score floor and the inclusive 3,000-second end-to-end bound remain required. [Decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7123218757) · [Terminal evidence](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7115998357)
+Close #494 after complete C5 acceptance on qualified `main`. The 23 November campaign delivered 323 of 324 physical receipts and took 3,737 seconds. The hosted runner for `phase-p1` shut down before uploading its receipt. The companion alone took 3,509 seconds. The slowest command grew from 1,547.778 to 3,466.014 seconds across the same 57 mutations and outcomes. The owner approved resizing from these timings and one complete pair after the protected product merge. All 324 physical receipts, the 60% score floor and the inclusive 3,000-second end-to-end bound remain required. [Decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7123218757) | [Terminal evidence](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7115998357)
 
 ## Ordered split and scope
 
-1. **Pin the timing diagnostic.** Change only `.github/workflows/verifier-c5-sizing.yml`, its byte-identical mirror at `docs/operations/workflows/verifier-c5-sizing.yml.txt`, and `docs/operations/verifier-c5-sizing.md`. Replace the two existing source pins and the include matrix with the exact candidate and table below. Keep the previous source, matrix size, and run link as runbook history. An estimate on 24 November, based on the old 31-row file and the new 38-row table, is three files and about 120 changed lines.
+1. **Pin the timing diagnostic.** Change only `.github/workflows/verifier-c5-sizing.yml`, its byte-identical mirror at `docs/operations/workflows/verifier-c5-sizing.yml.txt`, and `docs/operations/verifier-c5-sizing.md`. Replace the two existing source pins and the include matrix with the exact candidate and table below. Keep the previous source, matrix size, and run link as runbook history. An estimate on 24 November, based on the old 31-row file and the new 38-row table, is three files and about 280 changed lines including the mirror.
 2. **Qualify the measured cuts.** Change only the cut table and its equivalent expected-cut assertions in `tests/Parchwell.Verifier.Tests/Mutation/{c5_workflow.py,test_c5_workflow.py}`, the checker and its tests in `{c5_runtime.py,test_c5_runtime.py}`, `c5-runtime-qualification.json`, and `docs/operations/verifier-mutation.md`. The immutable candidate contains the two table edits. Bring its actual commit into the product PR history and preserve it using a merge commit. An estimate on 24 November, based on the 60 table-line diff, 38 evidence entries, the prior observed-tail proof and matching regression cases, is six files and about 1,500 changed lines.
 
 The role matrices, aggregate workflow, target and test-project source, configuration defaults, static and cohort ownership, corpus, mutation thresholds, Azure workflows and scientific results stay outside the file set. The owner merges both protected PRs after their exact-head CI and reviews complete. [Protected paths](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e62bdc9b39620897c63e615b059d20646b0546e4/.github/CODEOWNERS#L7-L19)
@@ -73,22 +75,22 @@ The role matrices, aggregate workflow, target and test-project source, configura
 
 Cuts use one-based boundary indices and UTF-16 offsets. Every unlisted offset stays as in the immutable base.
 
-| Target key | Boundary index and previous → new offset |
+| Target key | Boundary index and previous to new offset |
 |---|---|
-| `b10-final-judge` | 11 27524 → 27568 |
-| `b10-final-projection-codec` | 7 8544 → 8642, 9 11342 → 11070, 13 16156 → 16272 |
-| `b10-final-repeat-evidence` | 1 12311 → 13730 |
-| `b10-intake` | 1 4158 → 3617 |
-| `b10-restart-manifest` | 2 2044 → 1435, 3 6937 → 3637 |
-| `phase-candidate-codec` | 19 29996 → 29526 |
-| `single-action-configuration` | 40 41130 → 41174, 41 43393 → 42912 |
-| `verifier-result-codec` | 17 39474 → 39804, 21 50624 → 50715, 23 57576 → 56963, 24 62111 → 62006 |
-| `verify-run-handler` | 6 30029 → 26909 |
+| `b10-final-judge` | 11 27524 to 27568 |
+| `b10-final-projection-codec` | 7 8544 to 8642, 9 11342 to 11070, 13 16156 to 16272 |
+| `b10-final-repeat-evidence` | 1 12311 to 13730 |
+| `b10-intake` | 1 4158 to 3617 |
+| `b10-restart-manifest` | 2 2044 to 1435, 3 6937 to 3637 |
+| `phase-candidate-codec` | 19 29996 to 29526 |
+| `single-action-configuration` | 40 41130 to 41174, 41 43393 to 42912 |
+| `verifier-result-codec` | 17 39474 to 39804, 21 50624 to 50715, 23 57576 to 56963, 24 62111 to 62006 |
+| `verify-run-handler` | 6 30029 to 26909 |
 
 ## Test map and acceptance
 
-- **Diagnostic source and layout, requirements 1–2.** Compare all 324 actual canonical selectors against the base. Exactly the table entries change. Mutate a source pin or one table digest in the audit input and require a mismatch. Confirm plain source and generated mirror are byte-identical. Existing fixture asserts the literal cut tuples, range boundaries, disjoint ownership and unchanged static/cohort assumptions. Hosted CI runs the repository tests.
-- **Receipt and proof binding, requirements 3–4.** Verify all 38 hosted receipts with provider and command-log hashes. In the current-base ledger regression, swap receipt digests within a target, substitute the first repair's source for a changed selector, alter a prior record or its referenced measured maps, remove or add a physical record, and remove the measured ancestry. Each must reject. Keep the prior bridge and historical records intact in the passing case. Isolate receipt-content authentication while exercising observation 2,650 versus 2,651, estimate 2,700 versus 2,701, and observation one second above its smaller estimate. The passing limit values and their adjacent rejections remain distinct.
+- **Diagnostic source and layout, requirements 1-2.** Compare all 324 actual canonical selectors against the base. Exactly the table entries change. Mutate a source pin or one table digest in the audit input and require a mismatch. Confirm plain source and generated mirror are byte-identical. Existing fixture asserts the literal cut tuples, range boundaries, disjoint ownership and unchanged static/cohort assumptions. Hosted CI runs the repository tests.
+- **Receipt and proof binding, requirements 3-4.** Verify all 38 hosted receipts with provider and command-log hashes. In the current-base ledger regression, swap receipt digests within a target, substitute the first repair's source for a changed selector, alter a prior record or its referenced measured maps, remove or add a physical record, and remove the measured ancestry. Each must reject. Keep the prior bridge and historical records intact in the passing case. Isolate receipt-content authentication while exercising observation 2,650 versus 2,651, estimate 2,700 versus 2,701, and observation one second above its smaller estimate. The passing limit values and their adjacent rejections remain distinct.
 - **Renewal, requirement 5.** Exercise the prior real v2 context including the merged snapshot frontier assessment. Accept an actual renewed context with exact assessed subject bytes and reject the same input with the assessment missing or stale. Cover ignored/unaccounted input and immutable worker or matrix drift through the existing final-head checker.
 - **Terminal acceptance, requirement 6.** Retain and authenticate the aggregate, then use `python3 tests/Parchwell.Verifier.Tests/Mutation/c5_campaign.py terminal --repository collaborationwithothers/eventhubs-kafka-dotnet --commit <main-sha> --manifest <campaign.json> --summary <summary.json> --output <performance.json>`. Require `status=met`, `elapsed_seconds<=3000`, both workflows successful, 324 manifest-bound physical receipts and score at least 60%. Existing tests cover 3,000 versus 3,001 seconds and unsuccessful or missing job evidence. Preserve both terminal evidence and the slowest critical-path step on failure. Hosted CI provides the PR tests per the owner's direction. [CI direction](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6909056894)
 
@@ -100,11 +102,13 @@ The observed runner speeds vary across fresh standard hosted runners. The sizing
 
 Model at most 108 archived receipts with up to 500 MB of selected provider ZIPs from the three authenticated input sets. This study used 88 archives. Stop the candidate and record the gap on missing evidence or infeasible timing under the cap. Run one 38-job diagnostic and one 324-job acceptance pair. If the diagnostic misses its receipt or timing bounds, preserve the output and report the gap. If the campaign is incomplete or exceeds 50 minutes, retain the artifact and critical-path evidence and keep #494 open. These caps do not authorize a second dispatch or a change to the cutoff or score gate.
 
+If implementation needs a change to a contract, requirement or scope, stop and hand off under AGENTS.md GOVERNANCE "Handoffs".
+
 ## Plan-check questions
 
-1. **Does it solve the issue it claims?** It redistributes the measured bottlenecks and obtains fresh source-bound proof. The full measured campaign decides closure under requirements 3 and 6.
-2. **Is the approach within scope and safe?** Requirements 1–5 preserve all physical ownership coverage, parent proof, static isolation, v2 checks and the standard-runner path. The two merges have independent review and CI gates.
-3. **Can an implementer execute it without making contract decisions?** The immutable source, exact table, ledger interface, limits, tests, approved workflow order and failure behavior pin the contract. The code structure remains the implementer's choice.
+1. **Which work scales with a runtime count?** The archive study is capped at 108 receipts and 500 MB of selected ZIPs. Missing evidence or infeasibility records the gap. Receipt validation is bounded by the 38 diagnostic jobs and acceptance by one pair with 324 physical jobs. A missing or invalid receipt records the gap and stops qualification or closure. Review work follows the repository review budget.
+2. **Where is this stricter than the parent plan, and why?** The parent #347 is the B10 producer-batch proposal. This repair adds exact selector, source, receipt and timing checks for the C5 acceptance prerequisite. Those checks authenticate the new measurements and preserve the existing qualification chain and scientific outcome rules.
+3. **Which checks depend on code, data or behavior outside main and the PR?** The fresh diagnostic receipts and final paired-run artifacts do not exist yet. The existing diagnostic workflow and `c5_campaign.py` define how to produce and check them. The prior campaign and diagnostic outputs inform the sizing. Future standard-runner timing variability and the retained restart-manifest p1 risk are listed in Deployment assumptions. Requirements 3 and 6 require the new outputs and leave a gap on a miss.
 
 ## Sources
 
