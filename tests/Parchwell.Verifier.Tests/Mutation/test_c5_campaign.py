@@ -444,6 +444,20 @@ class RecoveryTests(unittest.TestCase):
                 self.assertTrue(manifest['incomplete_reasons'])
                 campaign.validate_manifest(manifest, self.commit, self.layout['coordinator'], self.layout['companion'])
 
+    def test_job_before_every_attempt_or_without_attempt_starts_fails_closed(self):
+        # No attempt began at or before the job's start: no origin exists, so none is invented.
+        self.job('coordinator', 2, 'a')['started_at'] = self.at(-1)
+        manifest, _ = self.prepare()
+        self.assertEqual(['a: unverified attempt origin'], manifest['incomplete_reasons'])
+        self.assertEqual('2', manifest['shards']['a']['run_attempt'])
+        # An attempt document without a usable start leaves no shard of that run verifiable.
+        for change in (lambda doc: doc.pop('run_started_at'), lambda doc: doc.update(run_started_at='not a time')):
+            with self.subTest(change=change):
+                self.setUp()
+                change(self.attempts[(1, 1)])
+                manifest, _ = self.prepare()
+                self.assertEqual([f'{s}: unverified attempt origin' for s in 'abc'], manifest['incomplete_reasons'])
+
     def test_unreadable_origin_jobs_fail_closed(self):
         del self.lists[(1, 1)]
         manifest, _ = self.prepare()

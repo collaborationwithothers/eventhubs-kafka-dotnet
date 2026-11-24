@@ -2340,50 +2340,56 @@ class CampaignValidatorRecoveryTests(unittest.TestCase):
         shared, _ = runtime.input_maps('HEAD')
         return shared[runtime.CAMPAIGN_VALIDATOR]
 
-    def qualification(self, shared, targets, sources, directory):
-        binding = runtime.digest(runtime.canonical({'shared_inputs': shared, 'target_sources': targets}))
-        evidence = {'source_commit': 'a' * 40, 'locator': 'synthetic', 'sha256': 'a' * 64,
-                    'kind': 'hosted_complete', 'note': 'synthetic'}
-        config = {'schema_version': 1, 'budget_seconds': 1800, 'shared_inputs': shared,
-                  'targets': {p: {'source_sha256': h, 'evidence': [evidence], 'shards': {}} for p, h in targets.items()}}
-        for shard, target in runtime.workflow.SHARDS.items():
-            config['targets'][target]['shards'][shard] = {
-                'selection_sha256': runtime.digest(runtime.canonical(runtime.workflow.shard_config(shard, sources[target]))),
-                'timing_inputs_sha256': binding, 'main_mutants': 1, 'main_work_seconds': 20,
-                'parallelism': 1, 'setup_seconds': 10, 'isolated_seconds': 0,
-                'estimated_seconds': 30, 'basis': 'synthetic observed_workers=1'}
-        path = Path(directory) / 'qualification.json'
-        path.write_text(json.dumps(config))
-        return path
+    BASE = '4ea8fae3d52111e37028c39033430bc0a3c40776'
+    QUALIFICATION = 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json'
 
-    def test_check_treats_the_reviewed_validator_as_unchanged(self):
-        """The qualification of the tree that measured BASE still qualifies the reviewed validator."""
-        blob = self.environment()
-        base_shared, targets = runtime.input_maps('HEAD')
-        self.assertEqual(runtime.CAMPAIGN_VALIDATOR_BASE, base_shared[runtime.CAMPAIGN_VALIDATOR])
-        sources = {p: blob('HEAD', 'src/Parchwell.Verifier/' + p) for p in targets}
-        real_input_maps = runtime.input_maps
-        off = self.VALIDATOR + b'#'
-        # The synthetic estimates make every check without a base reject with invalid_estimate, so the
-        # signal is whether the validator makes its inputs stale against the qualification.
-        cases = {'reviewed validator': ({}, 'not_applicable', False),
-                 'one byte off the pin': ({'validator': off}, 'rejected', True),
-                 'companion workflow mentions the validator': (
-                     {'companion': lambda text: text + '# c5_campaign\n'}, 'rejected', True)}
+    def synthetic_head(self, **replacements):
+        """Commit the base tree with some files replaced (path -> bytes); only git objects are written."""
+        def git(*args, env=None, data=None):
+            return subprocess.run(['git', *args], cwd=ROOT, check=True, capture_output=True, env=env,
+                                  input=data).stdout.decode().strip()
         with tempfile.TemporaryDirectory() as directory:
-            qualification = self.qualification(base_shared, targets, sources, directory)
-            for label, (changes, with_base, stale) in cases.items():
-                with self.subTest(label):
-                    self.environment(**changes)
-                    # The same mock chain serves the base: its maps are the qualified ones.
-                    def input_maps(ref, declared=None):
-                        return (base_shared, targets) if ref == 'base' else real_input_maps(ref)
-                    with mock.patch.object(runtime, 'input_maps', side_effect=input_maps):
-                        based = runtime.check('base', 'head', qualification)
-                        alone = runtime.check(None, 'head', qualification)
-                    self.assertEqual(with_base, based['status'])
-                    self.assertEqual(stale, 'stale_inputs' in based['reasons'])
-                    self.assertEqual(stale, 'stale_inputs' in alone['reasons'])
+            env = {**os.environ, 'GIT_INDEX_FILE': str(Path(directory) / 'index')}
+            git('read-tree', self.BASE, env=env)
+            for path, data in replacements.items():
+                git('update-index', '--cacheinfo', f"100644,{git('hash-object', '-w', '--stdin', data=data)},{path}", env=env)
+            tree = git('write-tree', env=env)
+        return git('commit-tree', tree, '-p', self.BASE, '-m', 'synthetic head for a checker test')
+
+    def check_head(self, base, **replacements):
+        """Run `check` on a synthetic head that sits on the base commit and its qualification."""
+        head = self.synthetic_head(**replacements)
+        with tempfile.TemporaryDirectory() as directory:
+            qualification = Path(directory) / 'qualification.json'
+            qualification.write_bytes(runtime.blob(self.BASE, self.QUALIFICATION))
+            return runtime.check(self.BASE if base else None, head, qualification)
+
+    def test_check_outcomes_for_the_reviewed_validator(self):
+        """A head that differs from the base only by the reviewed validator needs no new measurement."""
+        reviewed = {runtime.CAMPAIGN_VALIDATOR: (ROOT / runtime.CAMPAIGN_VALIDATOR).read_bytes()}
+        self.assertEqual({'status': 'not_applicable', 'reasons': []}, self.check_head(True, **reviewed))
+        result = self.check_head(False, **reviewed)
+        self.assertEqual(('qualified', []), (result['status'], result['reasons']))
+
+    def test_check_rejects_a_validator_that_is_not_the_reviewed_one(self):
+        real = (ROOT / runtime.CAMPAIGN_VALIDATOR).read_bytes()
+        companion = runtime.blob(self.BASE, runtime.COMPANION_WORKFLOW) + b'# c5_campaign\n'
+        cases = {'one byte off the pin': {runtime.CAMPAIGN_VALIDATOR: real + b'#'},
+                 'companion workflow mentions the validator': {runtime.CAMPAIGN_VALIDATOR: real,
+                                                               runtime.COMPANION_WORKFLOW: companion}}
+        for label, replacements in cases.items():
+            for base in (True, False):
+                with self.subTest(label, base=base):
+                    result = self.check_head(base, **replacements)
+                    self.assertEqual('rejected', result['status'])
+                    self.assertIn('missing_measurement', result['reasons'])
+
+    def test_check_refuses_a_head_with_another_runner(self):
+        runner = runtime.blob(self.BASE, runtime.RUNNER) + b'\n#\n'
+        for base in (True, False):
+            with self.subTest(base=base):
+                # The checker refuses a head whose runner differs from the one it runs; no reason is pinned.
+                self.assertEqual('rejected', self.check_head(base, **{runtime.RUNNER: runner})['status'])
 
     def test_input_maps_records_the_measured_hash_only_for_the_reviewed_validator(self):
         self.assertEqual(runtime.CAMPAIGN_VALIDATOR_BASE, self.recorded())

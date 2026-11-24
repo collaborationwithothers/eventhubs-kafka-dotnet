@@ -348,7 +348,7 @@ class DownloadCommandTests(unittest.TestCase):
 
 class RecoveryDownloadTests(unittest.TestCase):
     commit = 'a' * 40
-    layout = {'coordinator': {'a': 'A.cs', 'b': 'B.cs'}, 'companion': {'d': 'D.cs'}}
+    layout = {'coordinator': {'a': 'A.cs', 'b': 'B.cs'}, 'companion': {'d': 'D.cs', 'e': 'E.cs'}}
 
     def manifest(self, schema):
         run = lambda rid, attempt, role, created: {  # noqa: E731
@@ -356,15 +356,16 @@ class RecoveryDownloadTests(unittest.TestCase):
         if schema == 1:
             runs = {'coordinator': run(11, 1, 'coordinator', '2026-11-20T00:10:00Z'),
                     'companion': run(12, 1, 'companion', '2026-11-20T00:20:00Z')}
-            origins = {'a': '1', 'b': '1', 'd': '1'}
+            origins = {'a': '1', 'b': '1', 'd': '1', 'e': '1'}
         else:
             runs = {'coordinator': {**run(11, 2, 'coordinator', '2026-11-20T00:10:00Z'),
                                     'first_created_at': '2026-11-20T00:00:00Z'},
                     'companion': {**run(12, 2, 'companion', '2026-11-20T00:20:00Z'),
                                   'first_created_at': '2026-11-20T00:05:00Z'}}
-            origins = {'a': '1', 'b': '2', 'd': '2'}
-        targets = {'a': 'A.cs', 'b': 'B.cs', 'd': 'D.cs'}
-        ids = {'a': 11, 'b': 11, 'd': 12}
+            # The companion lost only d: e keeps its attempt 1 evidence although the run is at attempt 2.
+            origins = {'a': '1', 'b': '2', 'd': '2', 'e': '1'}
+        targets = {'a': 'A.cs', 'b': 'B.cs', 'd': 'D.cs', 'e': 'E.cs'}
+        ids = {'a': 11, 'b': 11, 'd': 12, 'e': 12}
         return {'schema': schema, 'repository': 'owner/repo', 'commit': self.commit, 'runs': runs,
                 'shards': {s: {'target': targets[s], 'run_id': str(ids[s]), 'run_attempt': origins[s]}
                            for s in targets},
@@ -405,7 +406,7 @@ class RecoveryDownloadTests(unittest.TestCase):
             with patch.object(companion.sys, 'argv', command), patch.dict(companion.os.environ, {'GH_TOKEN': 'synthetic'}), \
                     patch.object(companion.Path, 'read_bytes', return_value=json.dumps(manifest).encode()), \
                     patch.object(companion.c5_campaign, 'matrices', return_value=self.layout), \
-                    patch.object(companion.c5_campaign.c5_workflow, 'SHARDS', {'a': 'A.cs', 'b': 'B.cs', 'd': 'D.cs'}), \
+                    patch.object(companion.c5_campaign.c5_workflow, 'SHARDS', {'a': 'A.cs', 'b': 'B.cs', 'd': 'D.cs', 'e': 'E.cs'}), \
                     patch.object(companion, 'Transport', return_value=Fake()), \
                     patch.object(companion.sys, 'stderr', stderr), patch.object(companion.sys, 'stdout', stdout):
                 code = companion.main()
@@ -415,7 +416,8 @@ class RecoveryDownloadTests(unittest.TestCase):
 
     catalogue = [(11, 'c5-mutation-11-1-a'), (11, 'c5-mutation-11-1-b'), (11, 'c5-mutation-11-2-b'),
                  (11, 'c5-logs-11-1-a'), (11, 'c5-summary-11-2'), (11, 'c5-mutation-11-1-logs-a'),
-                 (12, 'c5-mutation-12-1-d'), (12, 'c5-mutation-12-2-d'), (12, 'c5-logs-12-2-d')]
+                 (12, 'c5-mutation-12-1-d'), (12, 'c5-mutation-12-2-d'), (12, 'c5-logs-12-2-d'),
+                 (12, 'c5-mutation-12-1-e'), (12, 'c5-mutation-12-2-e')]
 
     def test_schema_two_downloads_exact_origins(self):
         code, _, downloaded, names, _ = self.drive(self.manifest(2), self.catalogue)
@@ -423,26 +425,28 @@ class RecoveryDownloadTests(unittest.TestCase):
         # The companion's re-run shard at its origin and the coordinator's attempt 1 shard; never the
         # coordinator's own attempt 2 archive (its download step fetches it), an older archive of a re-run
         # shard or a log archive.
-        self.assertEqual(['c5-mutation-11-1-a', 'c5-mutation-12-2-d'], downloaded)
+        self.assertEqual(['c5-mutation-11-1-a', 'c5-mutation-12-1-e', 'c5-mutation-12-2-d'], downloaded)
         self.assertEqual(downloaded, sorted(names))
 
     def test_schema_one_unchanged(self):
         code, requests, downloaded, names, _ = self.drive(
-            self.manifest(1), [(11, 'c5-mutation-11-1-a'), (12, 'c5-mutation-12-1-d'), (12, 'c5-logs-12-1-d')])
-        self.assertEqual((0, ['c5-mutation-12-1-d'], ['c5-mutation-12-1-d']), (code, downloaded, names))
-        self.assertEqual(3, len(requests))
+            self.manifest(1), [(11, 'c5-mutation-11-1-a'), (12, 'c5-mutation-12-1-d'), (12, 'c5-mutation-12-1-e'),
+                               (12, 'c5-logs-12-1-d')])
+        expected = ['c5-mutation-12-1-d', 'c5-mutation-12-1-e']
+        self.assertEqual((0, expected, expected), (code, downloaded, names))
+        self.assertEqual(4, len(requests))
         self.assertTrue(all('/runs/12/' in path or '/artifacts/' in path for path in requests))
 
     def test_schema_one_still_rejects_an_unexpected_archive_of_its_attempt(self):
         code, _, downloaded, _, message = self.drive(
-            self.manifest(1), [(12, 'c5-mutation-12-1-d'), (12, 'c5-mutation-12-1-foreign')])
+            self.manifest(1), [(12, 'c5-mutation-12-1-d'), (12, 'c5-mutation-12-1-e'), (12, 'c5-mutation-12-1-foreign')])
         self.assertEqual((1, []), (code, downloaded))
         self.assertIn('foreign companion artifact', message)
 
     def test_schema_two_missing_name_reported(self):
         names = [row for row in self.catalogue if row[1] != 'c5-mutation-12-2-d']
         code, _, downloaded, _, message = self.drive(self.manifest(2), names)
-        self.assertEqual((1, ['c5-mutation-11-1-a']), (code, downloaded))
+        self.assertEqual((1, ['c5-mutation-11-1-a', 'c5-mutation-12-1-e']), (code, downloaded))
         self.assertIn('missing companion artifacts: c5-mutation-12-2-d', message)
 
     def test_schema_two_duplicate_expected_name_rejected(self):
