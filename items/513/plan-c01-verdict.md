@@ -1,12 +1,20 @@
 # C01 verdict contract-grade plan
 
-Revision: 2. Base commit: `main` at `3e7163dc641e724437025d917032fd40419e6c4d`.
+Revision: 3. Base commit: `main` at `3e7163dc641e724437025d917032fd40419e6c4d`.
 
 This plan writes the C01 evidence pack and verdict pull request from batch run 45124695288, whose two phases are both `complete_valid` with complete archives. At `session.timeout.ms` 30000 the takeover fell inside its predicted window in all five repeats, and at 45000 it exceeded its upper bound in all five, so the expected outcome selects `contradicted`. The report explains, in plain words and before any verifier term, the production event, what happened step by step, what was measured, and what `contradicted` does and does not mean, as Hari decided on 2026-11-24.
 
 Item: C01, `session.timeout.ms` 30000 (Microsoft) versus 45000 (librdkafka default), with K-57 (killed before the first commit, `auto.offset.reset` at its baseline `latest`) folded in [issue #513; parent entry 10 of #499]. Workload data is synthetic. Every number below is copied from a pinned run artifact, a pinned log or a cited source, or computed from them by script on 2026-11-24; no number is an estimate unless labelled.
 
 ## 1. What changed
+
+Revision 3 applies Hari's [decision 7128051335](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/513#issuecomment-7128051335), which answers [handoff 7127860772](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/513#issuecomment-7127860772) after the [check of revision 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/513#issuecomment-7127843863):
+- Point 1, option B: the pull request appends eight items to `verdict.text_must_state` in `scenarios/C01/expected.yaml`, given literally in section 4.10. The file joins the scope (section 3). The results pin both the hash the run was judged against (`7fa82b42f1d09d2ac9e2fa6c204dbdce18b80e8813bcff89c0a6f5249c6dd2fb`) and the edited hash (`17ced6efa4af8ebb1d8f656fe7dd62fcadc5bcd0629c256840562d8b5c122deb`). The new check G11 (R13) holds the edit additive. The open question is removed (section 15 states `None`).
+- Point 2: `tests/Parchwell.Scenarios.Tests/KillConsumerProcessingDefinitionTests.cs` joins the scope; line 149, the `C01` `InlineData`, takes the edited hash with a trailing comment citing the decision (section 4.11). Because a file under `tests/` changes, the verification gates of docs/agents/pull-requests.md "Verification gates" steps 1 and 3 apply (section 9).
+- The two `apply in implementation` P2s of the revision 2 check are applied in the plan: the profile citation is `c01-consumer.yaml` line 20 (sections 4.4, 10 and 12), and the stored-after-processing claim also cites docs/blueprint.md line 756 (sections 4.4 and 4.6).
+- Section 2 records decision 7128051335 and the `Tool: Claude` comment 7127778299.
+
+This revision changes scope, a check and an expected-outcome file, so it needs a new check.
 
 Revision 2 applies the [plan check of revision 1](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/513#issuecomment-7127640270):
 
@@ -25,7 +33,9 @@ Authority, in creation order. No item state file is read: files at `items/<issue
 
 1. [Issue body](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/513), created 2026-11-15T13:50:16Z, issue `updated_at` 2026-11-24T08:32:21Z: "Verdict pull request for C01 from the batch run of entry 7. Verdict pull requests go to Hari." It names `Parent items: #499`, `Split entry: 10 (C01 verdict)`, `Predecessor PRs: the pull request of #510 (entry 7)`, and asks the plan to read [proposal revision 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894560135) and the #499 decisions [6894534441](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894534441), [6894564479](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894564479), [6894587233](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894587233) and [6894614673](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894614673). It names Claude for planning, with the `grilling` skill and then the `plan-pr` skill, and Codex for implementation, with the Claude review gate of decision 6894587233.
 2. [Decision 6895539750](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/513#issuecomment-6895539750), 2026-11-15T14:03:42Z, adopts [standing decision 6895535291 on #499](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6895535291): the control session (point 1), grilling answers adopted in advance (point 2), plan approval on a check with `Blocking findings: none` and "Open questions for Hari" `None` (point 3); not covered (point 4): money, Azure dispatch, expected outcomes and verdicts, protected-path merges, scope beyond the approved split, and the `ready-for-agent` label.
-3. [Decision 7126257034](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/513#issuecomment-7126257034), 2026-11-24T08:32:20Z. Hari: "ok start planning the verdict PRs . All this needs to be clear in that like you have explained it to me". The published C01 result must make eight points clear in plain words, before any verifier terms: the scenario as a production event; what happens step by step; what was measured; what the verdict means and does not mean; the skip count growing with takeover time, at about 2 messages per second, labelled an inference; a shorter timeout shrinking the loss without removing it; remedies not tested, cited if named; and when the case happens in production, contrasted with the C10 case. It states: "This adds to the `text_must_state` list in `scenarios/C01/expected.yaml`; it changes no expected outcome or verdict rule." Section 4.4 encodes the eight points; section 15 question 1 asks how the addition is recorded.
+3. [Decision 7126257034](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/513#issuecomment-7126257034), 2026-11-24T08:32:20Z. Hari: "ok start planning the verdict PRs . All this needs to be clear in that like you have explained it to me". The published C01 result must make eight points clear in plain words, before any verifier terms: the scenario as a production event; what happens step by step; what was measured; what the verdict means and does not mean; the skip count growing with takeover time, at about 2 messages per second, labelled an inference; a shorter timeout shrinking the loss without removing it; remedies not tested, cited if named; and when the case happens in production, contrasted with the C10 case. It states: "This adds to the `text_must_state` list in `scenarios/C01/expected.yaml`; it changes no expected outcome or verdict rule." Section 4.4 encodes the eight points; decision 7128051335 (item 4) settles how the addition is recorded.
+4. [Decision 7128051335](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/513#issuecomment-7128051335), 2026-11-24T09:54:30Z, answering handoff 7127860772. Hari: "Yes B". Point 1: option B, as for C10 ([#512 decision 7127777487](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/512#issuecomment-7127777487)): the verdict pull request edits `scenarios/C01/expected.yaml`, appending the points of decision 7126257034 to `verdict.text_must_state`; the plan gives the literal YAML; the results pin both hashes; "The edit adds required published text only; it changes no hypothesis, window, holds/contradicted rule or verdict rule." Point 2: the scope adds `tests/Parchwell.Scenarios.Tests/KillConsumerProcessingDefinitionTests.cs`, whose `C01` hash at line 149 becomes the edited file's hash, with a comment citing the decision; the `C10` line is changed by the C10 verdict pull request, and whichever merges second rebases.
+5. Comment [7127778299](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/513#issuecomment-7127778299), 2026-11-24T09:42:28Z, body `Tool: Claude`. It is not a `## Decision` comment; under docs/agents/factory.md "Item lifecycle" step 2 a comment naming the tool before `ready-for-agent` is applied selects the tool, and the implementing session determines it then.
 
 What this plan relies on from the decisions the issue body names:
 - 6894534441 point 2: the consumer ends its own process at a point fixed before the run. Point 4: Codex implements.
@@ -33,7 +43,7 @@ What this plan relies on from the decisions the issue body names:
 
 K-57 placement: decision 6894534441 point 3 put K-57 under C10; the merged blueprint section 12 row (`docs/blueprint.md` line 1276 at the base commit) places it under C01 "for #499, with the subject killed at its first message", and `scenarios/C01/expected.yaml` tests it as H3. This plan follows the merged files.
 
-Grilling. Under standing decision 6895535291 point 2, the grilling round for this plan was written with recommended answers, and the batch's control session (`session_01AjonZt9g5B8rzRapBsEYGw`, point 1) reported on 2026-11-24 that questions Q1 to Q9 are adopted as recommended. Section 12 lists each question and its adopted answer. The control session records the adoption in a `## Decision` comment on #513 under point 2; this plan relies on no answer outside those recommendations.
+Grilling. Under standing decision 6895535291 point 2, the grilling round for this plan was written with recommended answers, and the batch's control session (`session_01AjonZt9g5B8rzRapBsEYGw`, point 1) reported on 2026-11-24 that questions Q1 to Q9 are adopted as recommended. Section 12 lists each question and its adopted answer. The control session records the adoption in a `## Decision` comment on #513 under point 2; this plan relies on no answer outside those recommendations. The one question in a reserved area (expected outcomes, point 4 of that decision) went to Hari and is answered by decision 7128051335.
 
 Other #499 decisions (6895299617, 6895328446, 6895343227, 6899939624, 6926376436, 6958521790) are not linked and adopted by a decision on #513, so under docs/agents/factory.md "Item lifecycle" step 3 this plan relies on none of them. Their substance that matters here is merged in ADR-022, `scenarios/C01/expected.yaml` and docs/operations/verifier-contract.md. The merge method decision is irrelevant: the verdict pull request goes to Hari (AGENTS.md GOVERNANCE "Verdict integrity").
 
@@ -45,11 +55,11 @@ Design authority on `main` at the base commit, each equal to the run's head by `
 
 Candidate selection: #513 is a child of the #499 split, entry 10, with no plan comment. Its one pull request is named `C01 verdict`. It is one coherent piece: one evidence pack for one run.
 
-Implementing tool: the issue body's decisions name Codex. Under standing decision 6895535291 point 5 the control session asks Hari before he applies `ready-for-agent`. This plan does not decide the tool.
+Implementing tool: the issue body's decisions name Codex; the later `Tool: Claude` comment (item 5) names Claude Code. Under docs/agents/factory.md "Item lifecycle" step 2 the tool is the one named when `ready-for-agent` is applied, and under standing decision 6895535291 point 5 the control session asks Hari before he applies it. This plan does not decide the tool; acceptance step 10 covers both.
 
 ## 3. Scope
 
-Files allowed to change, and only these five:
+Files allowed to change, and only these seven:
 
 | Path | Change | Protected |
 |---|---|---|
@@ -58,16 +68,18 @@ Files allowed to change, and only these five:
 | `README.md` | line 30, the C01 row, only | yes, `/*.md` |
 | `docs/operations/evidence/issue-513-c01-verdict/make_results.py` | new | no |
 | `docs/operations/evidence/issue-513-c01-verdict/receipt.md` | new | no |
+| `scenarios/C01/expected.yaml` | 42 lines inserted after line 113, exactly as section 4.10 gives them, and nothing else | yes, expected outcome |
+| `tests/Parchwell.Scenarios.Tests/KillConsumerProcessingDefinitionTests.cs` | line 149 only, as section 4.11 gives it | no |
 
 The date is the run's UTC creation date, 2026-11-23 (run `created_at` 2026-11-23T06:31:38Z), as in `results/C03/2026-11-19.md` for run 44562323424 created 2026-11-19T16:06:27Z. Phase C1 ran on 2026-11-24; the report states both phases' times.
 
 The generator may start from a copy of `docs/operations/evidence/issue-511-c03-verdict/make_results.py` (866 lines at the base commit); it is a new file in the new folder, and the C03 file does not change.
 
-Size estimate (estimate, 2026-11-24; basis: the C03 precedent at the base commit, whose generator is 866 lines by `wc -l`, and this plan's similar rule set with more published text): about 800 lines for `make_results.py`, 60 for `receipt.md`, 220 for the report and 1 changed line in `README.md`. The results JSON is generator output and is not estimated by hand. Five files.
+Size estimate (estimate, 2026-11-24; basis: the C03 precedent at the base commit, whose generator is 866 lines by `wc -l`, and this plan's similar rule set with more published text): about 800 lines for `make_results.py`, 60 for `receipt.md`, 220 for the report, 1 changed line in `README.md`, 42 added lines in `expected.yaml` and 1 changed line in the test file (the last two counted from sections 4.10 and 4.11). The results JSON is generator output and is not estimated by hand. Seven files.
 
-Paths that must not change: `scenarios/` (all, including `scenarios/C01/expected.yaml`, unless section 15 question 1 is answered otherwise), `src/`, `tests/`, `charts/`, `infra/`, `scripts/`, `.github/`, `docs/blueprint.md`, `docs/agents/`, `docs/operations/` outside the new evidence folder, every other path under `results/` and `items/`. No workflow is dispatched by the implementer. No expected outcome, decision rule, verifier output or candidate is edited (AGENTS.md GOVERNANCE "Verdict integrity").
+Paths that must not change: `scenarios/` except the insertion into `scenarios/C01/expected.yaml` that section 4.10 gives, `src/`, `tests/` except line 149 of the test file that section 4.11 gives, `charts/`, `infra/`, `scripts/`, `.github/`, `docs/blueprint.md`, `docs/agents/`, `docs/operations/` outside the new evidence folder, every other path under `results/` and `items/`. No workflow is dispatched by the implementer. No hypothesis, window, holds or contradicted rule, verdict rule, verifier output or candidate is edited (AGENTS.md GOVERNANCE "Verdict integrity"); the one expected-outcome change is the additive text of section 4.10, which decision 7128051335 point 1 authorizes.
 
-The results files are generator output. docs/agents/pull-requests.md rule 8 says "Agents commit no program output"; its paragraph beginning "Some Code Review Rules flag work that only Hari can approve" keeps such work only if "the verdict step requires it", which it does here, as in every earlier verdict pull request. The pull request description lists the protected-path and results-file findings under that paragraph and leaves the merge to Hari.
+The results files are generator output. docs/agents/pull-requests.md rule 8 says "Agents commit no program output"; its paragraph beginning "Some Code Review Rules flag work that only Hari can approve" keeps such work only if "the verdict step requires it", which it does here, as in every earlier verdict pull request. The `expected.yaml` change is kept under the same paragraph because the approved plan requires it (decision 7128051335 point 1); AGENTS.md "Code Review Rules" makes "Any change to an existing `expected.yaml`" a P0, so the description lists it with that decision. The test change replaces a pinned hash, not an assertion: the test still asserts the committed bytes equal approved text, and the description lists it with decision 7128051335 point 2 against the Code Review Rule on loosened tests. The pull request description lists the protected-path, expected-outcome, test and results-file findings under that paragraph and leaves the merge to Hari.
 
 ## 4. External contracts
 
@@ -95,7 +107,8 @@ The generator reads only these inputs from one directory `$IN`, each pinned by S
 | `full-C3.log` | job 138067157139 (`full-C3`, ran C1) | `ba2481fa746610661a8d94ec2d91a818bd9e39fbf3a2bc1c24af79efd0b92439` |
 | `c5-summary.zip` | the mutation summary artifact of section 4.9, not yet available; its `inputs` source value is `artifact <id>, c5-summary-<run>-<attempt>` with the IDs the implementer downloads | recorded by the implementer; must equal the artifact API `digest` |
 | its member `summary.json` | | recorded by the implementer |
-| `scenarios/C01/expected.yaml` | working tree, equal to the base commit and the run head | `7fa82b42f1d09d2ac9e2fa6c204dbdce18b80e8813bcff89c0a6f5249c6dd2fb` |
+| `expected-judged.yaml` | `git show 2d370de00059df30506154c1fd504d0f81d237bc:scenarios/C01/expected.yaml`, the expected outcome the run was judged against (equal to the base commit) | `7fa82b42f1d09d2ac9e2fa6c204dbdce18b80e8813bcff89c0a6f5249c6dd2fb` |
+| `scenarios/C01/expected.yaml` | working tree after the section 4.10 edit (read from the repository, not `$IN`) | `17ced6efa4af8ebb1d8f656fe7dd62fcadc5bcd0629c256840562d8b5c122deb` |
 | `scenarios/C01/scenario.yaml` | working tree, equal to the base commit and the run head | `555cb0be7f37c6e5d6a6e94f899875f0616fcafca49be34fab4ad70fda59efd2` |
 
 The generator takes the two mutation hashes as arguments `--mutation-zip-sha256` and `--mutation-summary-sha256`, the mutation run ID as `--mutation-run` and the mutation artifact ID as `--mutation-artifact-id`; every other hash is a constant in the generator. Each archive receipt's `manifest.sha256` equals its manifest member hash above. The generator reads the pods members `<job>/pods.json` for the consumer subject and witness of each repeat by path inside the ZIP, covered by the ZIP hash. Run artifacts expire 2027-02-21T06:31:39Z (artifact API `expires_at`); the report states that date. Phase mapping: `probe` ran C0 (21:33:08Z to 22:38:25Z on 2026-11-23) and `full-C3` ran C1 (05:36:19Z to 06:35:15Z on 2026-11-24), as the phase-status members' `phase` fields and the job times show. Jobs `batch`, `batch-stop` and `full-C0` were skipped.
@@ -104,7 +117,7 @@ If any pinned hash differs from a fresh download, the implementer stops under se
 
 ### 4.2 Pinned outcomes
 
-The generator recomputes each rule of `scenarios/C01/expected.yaml` from the candidates, exactly as written there, and requires these results (G3):
+The generator recomputes each rule of `expected-judged.yaml` (the expected outcome the run was judged against; G11 shows the edited file has the same rules) from the candidates, exactly as written there, and requires these results (G3):
 
 | Rule | Recomputed result |
 |---|---|
@@ -137,13 +150,15 @@ workload: "synthetic"
 run: {workflow_run_id: 45124695288, attempt: 1, event: "workflow_dispatch", ref: "main",
       head_sha: "2d370de00059df30506154c1fd504d0f81d237bc", created_at: "2026-11-23T06:31:38Z",
       conclusion: "success", run_id: "c01-45124695288-1"}
-expected_outcome: {path: "scenarios/C01/expected.yaml", sha256: "7fa82b42f1d09d2ac9e2fa6c204dbdce18b80e8813bcff89c0a6f5249c6dd2fb"}
+expected_outcome: {path: "scenarios/C01/expected.yaml", judged_sha256: "7fa82b42f1d09d2ac9e2fa6c204dbdce18b80e8813bcff89c0a6f5249c6dd2fb",
+                   published_sha256: "17ced6efa4af8ebb1d8f656fe7dd62fcadc5bcd0629c256840562d8b5c122deb",
+                   change: "eight verdict.text_must_state items appended by decision 7128051335 point 1; no rule changed"}
 scenario_definition: {path: "scenarios/C01/scenario.yaml", sha256: "555cb0be7f37c6e5d6a6e94f899875f0616fcafca49be34fab4ad70fda59efd2"}
 publication_decision: {comment_id: 7126257034, url: "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/513#issuecomment-7126257034"}
 proposed_verdict: "contradicted"
 rule: "scenarios/C01/expected.yaml verdict.contradicted_when: H1 is contradicted or H2 is contradicted."
-kill_point: <expected.yaml assessment_rules.kill_point, verbatim, whitespace folded as YAML folds it>
-window_policy: <expected.yaml assessment_rules.window_policy, verbatim, folded likewise>
+kill_point: <expected-judged.yaml assessment_rules.kill_point, verbatim, whitespace folded as YAML folds it>
+window_policy: <expected-judged.yaml assessment_rules.window_policy, verbatim, folded likewise>
 hypotheses:
   H1_removal_follows_30000: {configuration: "C0", result: "holds", window_microseconds: [27000000, 45000000]}
   H2_removal_follows_45000: {configuration: "C1", result: "contradicted", window_microseconds: [42000000, 60000000]}
@@ -221,17 +236,17 @@ Then these sections, in this order, with these headings:
    - `- Session timeouts other than 30000 and 45000 ms: not tested.`
 10. `## Sources`. Exactly these bullets, in this order (`<...>` filled from the mutation inputs):
     - `- Run [45124695288](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45124695288), its artifacts and job logs, as listed above and in the JSON \`inputs\`.`
-    - `- Scenario definition and expected outcome as approved: [scenarios/C01/scenario.yaml](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/2d370de00059df30506154c1fd504d0f81d237bc/scenarios/C01/scenario.yaml) (SHA-256 \`555cb0be7f37c6e5d6a6e94f899875f0616fcafca49be34fab4ad70fda59efd2\`) and [scenarios/C01/expected.yaml](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/2d370de00059df30506154c1fd504d0f81d237bc/scenarios/C01/expected.yaml) (SHA-256 \`7fa82b42f1d09d2ac9e2fa6c204dbdce18b80e8813bcff89c0a6f5249c6dd2fb\`), both at \`2d370de00059df30506154c1fd504d0f81d237bc\`.`
+    - `- Scenario definition and expected outcome as approved: [scenarios/C01/scenario.yaml](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/2d370de00059df30506154c1fd504d0f81d237bc/scenarios/C01/scenario.yaml) (SHA-256 \`555cb0be7f37c6e5d6a6e94f899875f0616fcafca49be34fab4ad70fda59efd2\`) and [scenarios/C01/expected.yaml](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/2d370de00059df30506154c1fd504d0f81d237bc/scenarios/C01/expected.yaml) (SHA-256 \`7fa82b42f1d09d2ac9e2fa6c204dbdce18b80e8813bcff89c0a6f5249c6dd2fb\`), both at \`2d370de00059df30506154c1fd504d0f81d237bc\`, as the run was judged. The expected outcome as published adds eight \`verdict.text_must_state\` items by [decision 7128051335](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/513#issuecomment-7128051335) and changes no rule (SHA-256 \`17ced6efa4af8ebb1d8f656fe7dd62fcadc5bcd0629c256840562d8b5c122deb\`).`
     - `- Publication decision: [7126257034](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/513#issuecomment-7126257034) (the plain-words points).`
     - `- librdkafka v2.16.0 [\`CONFIGURATION.md\`](https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md) lines 131, 132, 138, 139, 140 and 206, and [\`src/rdkafka_assignment.c\`](https://github.com/confluentinc/librdkafka/blob/v2.16.0/src/rdkafka_assignment.c) lines 214 to 220 and 631 to 635.`
     - `- Microsoft, [Apache Kafka client configurations for Azure Event Hubs](https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations), "librdkafka configuration properties", consumer-only table (\`session.timeout.ms\` default 45000, recommended 30000), and "Troubleshooting common issues", row "Unexpected offset reset".`
-    - `- This repository at \`3e7163dc641e724437025d917032fd40419e6c4d\`: [\`BaselineSettingsCatalog.cs\`](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/3e7163dc641e724437025d917032fd40419e6c4d/src/Parchwell.Kafka/Configuration/BaselineSettingsCatalog.cs) lines 149, 151, 179, 181, 183 and 185; [\`ScenarioConsumerProcessingPlanSource.cs\`](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/3e7163dc641e724437025d917032fd40419e6c4d/src/Parchwell.Enrichment/ConsumerProcessing/ScenarioConsumerProcessingPlanSource.cs) line 11; [\`ConsumerJudgement.cs\`](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/3e7163dc641e724437025d917032fd40419e6c4d/src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs) lines 63 to 74, 90 to 102 and 169 to 175; [\`ConsumerCommittedOffsetReader.cs\`](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/3e7163dc641e724437025d917032fd40419e6c4d/src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerCommittedOffsetReader.cs) line 11; [\`c01-consumer.yaml\`](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/3e7163dc641e724437025d917032fd40419e6c4d/scenarios/profiles/c01-consumer.yaml) line 19; [\`aks.tf\`](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/3e7163dc641e724437025d917032fd40419e6c4d/infra/cluster/aks.tf) lines 35, 44 and 51; [docs/blueprint.md](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/3e7163dc641e724437025d917032fd40419e6c4d/docs/blueprint.md) line 1276 (K-57 under C01).`
+    - `- This repository at \`3e7163dc641e724437025d917032fd40419e6c4d\`: [\`BaselineSettingsCatalog.cs\`](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/3e7163dc641e724437025d917032fd40419e6c4d/src/Parchwell.Kafka/Configuration/BaselineSettingsCatalog.cs) lines 149, 151, 179, 181, 183 and 185; [\`ScenarioConsumerProcessingPlanSource.cs\`](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/3e7163dc641e724437025d917032fd40419e6c4d/src/Parchwell.Enrichment/ConsumerProcessing/ScenarioConsumerProcessingPlanSource.cs) line 11; [\`ConsumerJudgement.cs\`](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/3e7163dc641e724437025d917032fd40419e6c4d/src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs) lines 63 to 74, 90 to 102 and 169 to 175; [\`ConsumerCommittedOffsetReader.cs\`](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/3e7163dc641e724437025d917032fd40419e6c4d/src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerCommittedOffsetReader.cs) line 11; [\`c01-consumer.yaml\`](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/3e7163dc641e724437025d917032fd40419e6c4d/scenarios/profiles/c01-consumer.yaml) line 20; [\`aks.tf\`](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/3e7163dc641e724437025d917032fd40419e6c4d/infra/cluster/aks.tf) lines 35, 44 and 51; [docs/blueprint.md](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/3e7163dc641e724437025d917032fd40419e6c4d/docs/blueprint.md) lines 756 (ADR-022, store after the processed row) and 1276 (K-57 under C01).`
     - `- C5 mutation run [<run>](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/<run>) and its \`summary.json\`, as in Mutation acceptance.`
     - `- Generator and receipt: [make_results.py](../../docs/operations/evidence/issue-513-c01-verdict/make_results.py) and [receipt.md](../../docs/operations/evidence/issue-513-c01-verdict/receipt.md).`
 
 The report names no earlier C01 run. A published result shows the final run only (AGENTS.md GOVERNANCE "Verdict integrity").
 
-The eight points of decision 7126257034 map to the report as follows; G9 checks each: point 1 to paragraph 1; point 2 to paragraph 2; point 3 to paragraph 3, the summary and "Results by repeat"; point 4 to paragraph 4 and the H1 and H2 lines; point 5 to paragraph 6; point 6 to paragraph 7; point 7 to paragraph 8 and "Not tested"; point 8 to paragraph 9. Paragraph 5 carries the excess figures of grilling question Q6 (section 12). The `text_must_state` items of `scenarios/C01/expected.yaml` map as follows: the kill point and window policy to "What was tested"; the synthetic workload and its 150 s load to "What was tested" and paragraph 3; K-57 tested here to "What was tested"; early-removal findings to the early-removal line (none); `configured_self_kill` to "Run validity and evidence".
+The eight points of decision 7126257034, which section 4.10 appends to `text_must_state` point for point, map to the report as follows; G9 checks each: point 1 to paragraph 1; point 2 to paragraph 2; point 3 to paragraph 3, the summary and "Results by repeat"; point 4 to paragraph 4 and the H1 and H2 lines; point 5 to paragraph 6; point 6 to paragraph 7; point 7 to paragraph 8 and "Not tested"; point 8 to paragraph 9. Paragraph 5 carries the excess figures of grilling question Q6 (section 12). The five earlier `text_must_state` items of `scenarios/C01/expected.yaml` map as follows: the kill point and window policy to "What was tested"; the synthetic workload and its 150 s load to "What was tested" and paragraph 3; K-57 tested here to "What was tested"; early-removal findings to the early-removal line (none); `configured_self_kill` to "Run validity and evidence".
 
 ### 4.5 `README.md` line 30
 
@@ -249,7 +264,7 @@ Files: librdkafka v2.16.0 `CONFIGURATION.md` (`b68b3e195018f0b77f32ddf9f2dde9c71
 
 1. A member that sends no heartbeat within the session timeout is removed. Confirmed. `CONFIGURATION.md` line 131: "If no hearts are received by the broker for a group member within the session timeout, the broker will remove the consumer from the group and trigger a rebalance"; default 45000. Line 132: `heartbeat.interval.ms` default 3000. The baseline pins 30000 and 3000 (`BaselineSettingsCatalog.cs` lines 149 and 151). The baseline's classic group protocol is pinned at line 145, under which `session.timeout.ms` applies (line 131 says it "is not supported for `group.protocol=consumer`").
 2. With no committed offset, `auto.offset.reset` decides the start. Confirmed. `src/rdkafka_assignment.c` lines 214 to 220: "If rktpar->offset is RD_KAFKA_OFFSET_INVALID it means there was no committed offset for this partition ... the partition fetcher will employ auto.offset.reset to know what to do"; lines 631 to 635: otherwise "use the last committed offset for partition". `CONFIGURATION.md` line 206: `auto.offset.reset` "Action to take when there is no initial offset in offset store", with `latest` "automatically reset the offset to the largest offset" and `error` "trigger an error (ERR__AUTO_OFFSET_RESET)". The baseline sets `latest` for the consumer (`BaselineSettingsCatalog.cs` line 185).
-3. The killed member committed nothing. Inference from sources, as `scenarios/C01/expected.yaml` `assessment_rules.kill_point` states it ("before processing it, so it has committed nothing (ADR-022)"): the baseline stores an offset only after processing (`enable.auto.offset.store` `false`, `BaselineSettingsCatalog.cs` line 183), and the offset store "is an in-memory store of the next offset to (auto-)commit" (`CONFIGURATION.md` line 140), so a member killed before processing its first message has nothing to commit. Automatic commits every 5000 ms: `CONFIGURATION.md` lines 138 and 139; baseline lines 179 and 181.
+3. The killed member committed nothing. Inference from sources, as `scenarios/C01/expected.yaml` `assessment_rules.kill_point` states it ("before processing it, so it has committed nothing (ADR-022)"): the baseline stores an offset only after processing (`enable.auto.offset.store` `false`, `BaselineSettingsCatalog.cs` line 183; ADR-022 has the member append its processed row before it stores the offset, docs/blueprint.md line 756), and the offset store "is an in-memory store of the next offset to (auto-)commit" (`CONFIGURATION.md` line 140), so a member killed before processing its first message has nothing to commit. Automatic commits every 5000 ms: `CONFIGURATION.md` lines 138 and 139; baseline lines 179 and 181.
 4. The witness runs the baseline in both configurations: `ScenarioConsumerProcessingPlanSource.cs` line 11 at the base commit ("the witness gets the same window and delay and runs the baseline") and `scenarios/C01/expected.yaml` `assessment_rules.kill_point` ("The witness runs the baseline.").
 5. Microsoft recommends `session.timeout.ms` 30000 for librdkafka clients, against the default 45000, within 6000 to 300000 ("librdkafka configuration properties", consumer-only table, fetched 2026-11-24). Its troubleshooting table lists, for "Unexpected offset reset", the likely cause "Consumer offsets expired beyond Event Hubs retention period". The page gives no offset-retention duration, so the report states none.
 6. Measured, not inferred: the takeover time, the counts, and that the group's committed offsets reached the end line in every repeat (`ConsumerJudgement.cs` lines 63 to 74 make that a validity condition). The count of messages committed but never processed is a delivered message in the run window with no `processed` row from either member (`ConsumerJudgement.cs` lines 90 to 102).
@@ -275,9 +290,70 @@ Evidence, 2026-11-24, from the runs list of `verifier-c5-mutation.yml` and `git`
 
 Therefore the acceptance this pull request needs does not exist yet. The implementer requires (G10): a `verifier-c5-mutation.yml` run with `event` `workflow_dispatch`, `head_branch` `main`, `conclusion` `success`, whose `summary.json` has `measurement_complete` true, `break_passed` true and a `commit` that is on `main` and has `2d370de00059df30506154c1fd504d0f81d237bc` as an ancestor; and it must be the newest completed `verifier-c5-mutation.yml` run on `main` when the implementer downloads it. One such run can serve both the C10 and C01 verdicts. The ancestry is checked by acceptance step 6, not by the generator. See "Deferred work".
 
+### 4.10 `scenarios/C01/expected.yaml`
+
+Insert exactly these 42 lines after line 113 (the last line of the `verdict.text_must_state` item that ends "missing index as configured_self_kill."), before the blank line 114, and change nothing else. Each item restates one point of decision 7126257034 as a requirement on published text, so it holds for any run; the run's own numbers go in the report, not in the expected outcome. Point 2's item carries the inference-label requirement of docs/agents/pull-requests.md rule 2, and point 5's the inference label the decision itself gives.
+
+```yaml
+    - >-
+      Decision 7126257034 point 1, in plain words before any verifier term:
+      the scenario as a production event. A consumer in a brand-new group is
+      killed before it has ever committed an offset, and another member takes
+      over its partitions, with the baseline settings (auto.offset.reset
+      latest, auto-commit every 5 s) and messages flowing throughout.
+    - >-
+      Decision 7126257034 point 2, step by step: the dead member's partitions
+      are unread until the session timeout expires; messages keep arriving;
+      the survivor finds no committed offset, falls back to latest and starts
+      at the end; what arrived between the crash and the takeover is skipped;
+      the survivor's commits then pass the skipped messages; no error is
+      raised. Each step the run did not measure is labelled an inference with
+      its source.
+    - >-
+      Decision 7126257034 point 3: what was measured, per configuration, the
+      takeover times and the messages skipped per repeat, from the published
+      run.
+    - >-
+      Decision 7126257034 point 4: contradicted is against the 15 s rebalance
+      allowance in the upper bound, a policy value. The run does not show that
+      30000 is the right value or that 45000 is wrong; it measured failover
+      time only and did not test the cost of a shorter timeout (a live member
+      that stalls being removed by mistake). The text recommends no value.
+    - >-
+      Decision 7126257034 point 5: the skip count grows with takeover time, at
+      about the rate the published run shows, stated as an inference from the
+      numbers, not a measured rate.
+    - >-
+      Decision 7126257034 point 6: a shorter session timeout shrinks the loss
+      but does not remove it.
+    - >-
+      Decision 7126257034 point 7: remedies such as auto.offset.reset earliest
+      or error were not tested here; if the text names them, it says so and
+      cites official documentation for their behaviour. Storing offsets after
+      processing does not address this case, because nothing was committed.
+    - >-
+      Decision 7126257034 point 8: when it happens in production (a new
+      group's first deployment crashing before its first commit, committed
+      offsets that expired, a partition never committed to), and that a group
+      that has been committing normally resumes from its last commit instead,
+      the C10 case.
+```
+
+The edited file's SHA-256 is `17ced6efa4af8ebb1d8f656fe7dd62fcadc5bcd0629c256840562d8b5c122deb` (computed in planning on 2026-11-24 by applying this insertion to the base commit's file with `sed '113r'` and `sha256sum`). Parsed with PyYAML 6.0.3 `safe_load`, the edited file equals the judged file except that `verdict.text_must_state` keeps its five items in order and gains these eight.
+
+### 4.11 `tests/Parchwell.Scenarios.Tests/KillConsumerProcessingDefinitionTests.cs` line 149
+
+Replace line 149 with exactly this line (four spaces of indent), and change nothing else in the file:
+
+```
+    [InlineData("C01", "17ced6efa4af8ebb1d8f656fe7dd62fcadc5bcd0629c256840562d8b5c122deb")] // #513 decision 7128051335: the #510 plan text plus eight appended verdict.text_must_state items.
+```
+
+The test `Given_ApprovedExpectedOutcomes_When_ReadingTheCommittedFile_Then_BytesEqualTheApprovedText` keeps its assertions: no carriage return, a final newline, and the SHA-256 of the committed bytes equal to the pinned value. Line 148, the `C10` row, is the C10 verdict pull request's to change (decision 7128051335 point 2); if that pull request merges first, this one rebases and keeps its line 148, and the reverse.
+
 ## 5. Requirements
 
-- R1. WHEN the generator starts, THEN it checks every hash of section 4.1, including the two mutation hashes passed as arguments, and fails `G1` on any difference.
+- R1. WHEN the generator starts, THEN it checks every hash of section 4.1, including the two mutation hashes passed as arguments and both expected-outcome files, and fails `G1` on any difference.
 - R2. WHEN both candidates are read, THEN each must have `scenario_id` `C01`, `configuration_id` and `phase` equal to its configuration, `run_id` `c01-45124695288-1`, `source_commit` `2d370de00059df30506154c1fd504d0f81d237bc`, `synthetic` true, root `status` and `consumer.status` `complete_valid` with empty `reasons`, and exactly repeats 1 to 5, each with `status` and `consumer.status` `complete_valid` and empty `reasons`; and the two `versions` objects must be equal. Otherwise `G2`.
 - R3. WHEN the rules of section 4.2 are recomputed, THEN each result, each recorded value and each precondition must equal section 4.2. G3 compares the rules in the row order of the section 4.2 table, then the preconditions in their listed order, and reports the first difference as `FAIL G3: <rule> <computed>, expected <pinned>` for a rule (for example `FAIL G3: configurations.C0.H1_removal_follows_30000 contradicted, expected holds`) or `FAIL G3: precondition <n>` for the n-th precondition bullet. Otherwise `G3`, and the implementer stops (a finding, not a fix).
 - R4. WHEN root counts are compared, THEN each root `counts` key equals the sum over repeats of that key, and each root `consumer.counts` key equals the sum of the repeats' `consumer.counts`. Otherwise `G4`.
@@ -287,12 +363,13 @@ Therefore the acceptance this pull request needs does not exist yet. The impleme
 - R8. WHEN the report is rendered, THEN it contains only ASCII, and so does the README row. Otherwise `G8`.
 - R9. WHEN the report is rendered, THEN it contains, verbatim, the title, the summary, the `## In plain words` heading and its nine paragraphs, the kill-point and window-policy quotations, the five hypothesis lines, the `configured_self_kill` sentence and the three "Not tested" lines; the `## In plain words` heading comes before `## What was tested`; no text between the title and `## In plain words` contains any of `committed_never_processed`, `reassignment`, `offset_read`, `complete_valid` or `H1`; paragraphs 2, 6 and 7 each contain the word `inference`; and the README row contains `an inference from the numbers`, `Inferred from the librdkafka documentation` and `recommends no session timeout`. Otherwise `G9`.
 - R10. WHEN the mutation summary is read, THEN `measurement_complete` is true, `break_passed` is true, `run_id` (a JSON string) equals the decimal string of `--mutation-run`, and `commit` is a 40-character lowercase hexadecimal SHA. Otherwise `G10`.
-- R11. The checks run in the order G1, G2, G3, G4, G5, G6, G10, then rendering, G8, G9, and G7 only with `--check`. The first failure prints `FAIL G<n>: <reason>` and exits 1.
-- R12. `--self-test` runs the real inputs, printing `PASS real_inputs`, then each case of section 7 on an in-memory copy, the three R1 cases before G1 and every other case after G1, printing `PASS <case>` when the case fails at its expected check and, for G3, with the expected reason text up to and including the rule name or precondition number, and exits 0 only if every case matched. G7 runs in self-test only for case `report_edit`.
+- R13. WHEN both expected-outcome files are parsed with `yaml.safe_load`, THEN the edited file equals the judged file in every key except `verdict.text_must_state`, whose first five items equal the judged file's five items in order and whose remaining items are exactly the eight of section 4.10 after YAML folding. Otherwise `G11`.
+- R11. The checks run in the order G1, G11, G2, G3, G4, G5, G6, G10, then rendering, G8, G9, and G7 only with `--check`. The first failure prints `FAIL G<n>: <reason>` and exits 1.
+- R12. `--self-test` runs the real inputs, printing `PASS real_inputs`, then each case of section 7 on an in-memory copy, the three R1 cases before G1, the two R13 cases after G1 and before G11, and every other case after G11, printing `PASS <case>` when the case fails at its expected check and, for G3, with the expected reason text up to and including the rule name or precondition number, and exits 0 only if every case matched. G7 runs in self-test only for case `report_edit`.
 
 ## 6. Invariants and safety rules
 
-- No edit to an expected outcome, a verdict rule, a verifier output or a candidate (AGENTS.md GOVERNANCE "Verdict integrity"). A recomputation that disagrees with a candidate or with section 4.2 is a finding: stop under section 11.
+- No edit to a hypothesis, window, holds or contradicted rule, verdict rule, verifier output or candidate (AGENTS.md GOVERNANCE "Verdict integrity"). The one expected-outcome change is section 4.10's additive text, authorized by decision 7128051335 point 1 and held by G11. A recomputation that disagrees with a candidate or with section 4.2 is a finding: stop under section 11.
 - No dispatch by the implementer, no Azure access, no secret, tenant ID or subscription ID (hard safety rules 2, 3 and 7). The generator copies no log text; section 4.4 cites log lines by number only.
 - No number that was not measured or computed by script (hard safety rule 11; docs/agents/pull-requests.md rule 4). Every causal step the run did not measure is labelled an inference with its source (docs/agents/pull-requests.md rule 2): paragraph 2 as a whole, paragraphs 6, 7 and 8, and the README row.
 - The report recommends no `session.timeout.ms` value (decision 7126257034 point 4).
@@ -301,7 +378,7 @@ Therefore the acceptance this pull request needs does not exist yet. The impleme
 
 ## 7. Test map
 
-The tests are the generator's `--self-test` cases. Each changes one value in memory: the three R1 cases before G1, every other case after it. No existing test changes, so plan rule 2's standing fixture rule has no case; if one arose, the implementer follows it exactly: (a) change the fixture so it passes the new checks, keeping every assertion and boundary, or (b) where invalid input is the test's purpose, keep the input and change expected values to exactly what the checks produce; never remove a case, loosen an assertion or change a check, and list each change with the check that forces it in the PR implementation notes.
+The tests are the generator's `--self-test` cases. Each changes one value in memory: the three R1 cases before G1, the two R13 cases before G11, every other case after G11. No existing test changes, so plan rule 2's standing fixture rule has no case; if one arose, the implementer follows it exactly: (a) change the fixture so it passes the new checks, keeping every assertion and boundary, or (b) where invalid input is the test's purpose, keep the input and change expected values to exactly what the checks produce; never remove a case, loosen an assertion or change a check, and list each change with the check that forces it in the PR implementation notes.
 
 | Requirement | Case | Change | Expected |
 |---|---|---|---|
@@ -340,9 +417,11 @@ The tests are the generator's `--self-test` cases. Each changes one value in mem
 | R9 | `missing_plain_words` | delete paragraph 4 of `## In plain words` from the rendered report | `FAIL G9` |
 | R9 | `verifier_term_early` | insert `reassignment` into the summary paragraph of the rendered report | `FAIL G9` |
 | R9 | `inference_label_dropped` | delete the word `inference` from paragraph 6 of the rendered report | `FAIL G9` |
+| R13 | `expected_rule_changed` | edited file: `verdict.confirmed_when` to `H1 holds.` | `FAIL G11` |
+| R13 | `expected_item_missing` | edited file: delete the last appended `text_must_state` item | `FAIL G11` |
 | R7 | `report_edit` | change one table cell of the committed report, with `--check` | `FAIL G7` |
 
-In this table `...` stands for the rendered computed and pinned values, which the self-test does not compare; it compares the text up to the rule name. Boundaries: H1 reads 45000000 as contradicted (`h1_at_upper_bound`) and 44999999 as inside the window (`h1_below_upper_bound`, which then fails only the recorded-value comparison); the lower bound reads 27000000 as inside (`h1_at_lower_bound`) and 26999999 as early (`h1_early`), and 42000000 as inside (`h2_at_lower_bound`) and 41999999 as early (`h2_early`); H2 reads 59999999 as inside (`h2_in_window`) and 60000000 as contradicted (`h2_one_at_bound`); H3 reads `committed_never_processed` 1 (pass, real inputs) and 0 (`h3_zero`); the count precondition reads the sum 600 (pass) and 599 (`count_sum_short`). 36 cases.
+In this table `...` stands for the rendered computed and pinned values, which the self-test does not compare; it compares the text up to the rule name. Boundaries: H1 reads 45000000 as contradicted (`h1_at_upper_bound`) and 44999999 as inside the window (`h1_below_upper_bound`, which then fails only the recorded-value comparison); the lower bound reads 27000000 as inside (`h1_at_lower_bound`) and 26999999 as early (`h1_early`), and 42000000 as inside (`h2_at_lower_bound`) and 41999999 as early (`h2_early`); H2 reads 59999999 as inside (`h2_in_window`) and 60000000 as contradicted (`h2_one_at_bound`); H3 reads `committed_never_processed` 1 (pass, real inputs) and 0 (`h3_zero`); the count precondition reads the sum 600 (pass) and 599 (`count_sum_short`). 38 cases.
 
 ## 8. Deployment assumptions
 
@@ -355,15 +434,16 @@ Run from the repository root, with the inputs of section 4.1 in a scratch direct
 1. `sha256sum` of each ZIP, member and log equals section 4.1, and the mutation ZIP hash equals its artifact API `digest`. Evidence: the output in the receipt.
 2. `python3 -I docs/operations/evidence/issue-513-c01-verdict/make_results.py --inputs "$IN" --mutation-run <id> --mutation-artifact-id <id> --mutation-zip-sha256 <hash> --mutation-summary-sha256 <hash>` writes the two results files and prints the README row. Evidence: exit 0.
 3. The same command with `--check`. Evidence: exit 0 and `PASS check`.
-4. The same command with `--self-test`. Evidence: `PASS real_inputs` and one `PASS <case>` line for each of the 36 cases of section 7, exit 0.
+4. The same command with `--self-test`. Evidence: `PASS real_inputs` and one `PASS <case>` line for each of the 38 cases of section 7, exit 0.
 5. `python3 -m json.tool results/C01/2026-11-23.json > /dev/null`. Evidence: exit 0.
 6. `git merge-base --is-ancestor 2d370de00059df30506154c1fd504d0f81d237bc <summary commit>` and `git merge-base --is-ancestor <summary commit> origin/main` both exit 0; `gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/workflows/verifier-c5-mutation.yml/runs?per_page=5` shows that run as the newest completed run on `main`, with `conclusion` `success`. Evidence: the outputs in the receipt.
 7. `npm run check:docs`. Evidence: no warning on a changed file, or each explained in the pull request.
-8. `LC_ALL=C grep -rnP '[^\x00-\x7F]' results/C01/ docs/operations/evidence/issue-513-c01-verdict/` and the same on line 30 of `README.md`. Evidence: no output.
-9. `git diff --name-only origin/main...HEAD` lists exactly the five paths of section 3, and `git diff origin/main...HEAD -- README.md` changes only line 30.
+8. `LC_ALL=C grep -rnP '[^\x00-\x7F]' results/C01/ docs/operations/evidence/issue-513-c01-verdict/ scenarios/C01/expected.yaml` and the same on line 30 of `README.md`. Evidence: no output.
+9. `git diff --name-only origin/main...HEAD` lists exactly the seven paths of section 3; `git diff origin/main...HEAD -- README.md` changes only line 30; `git diff origin/main...HEAD -- scenarios/C01/expected.yaml` shows only the 42 added lines of section 4.10, as one hunk after line 113; `sha256sum scenarios/C01/expected.yaml` prints `17ced6efa4af8ebb1d8f656fe7dd62fcadc5bcd0629c256840562d8b5c122deb`; `git diff origin/main...HEAD -- tests/Parchwell.Scenarios.Tests/KillConsumerProcessingDefinitionTests.cs` changes only line 149, to section 4.11's text. A rebase over the C10 verdict pull request keeps that pull request's line 148.
+11. Verification gates of docs/agents/pull-requests.md "Verification gates", in its order: step 1, `./scripts/verify-dotnet.sh --project Parchwell.Scenarios.Tests`, recorded as a partial run; step 2, the cold review of step 10; step 3, `./scripts/verify-dotnet.sh --tier sandbox` once on the source the cold review cleared, recorded as a partial run with the `Tier=CGroupV2` exclusion; step 4, the hosted `.NET verification` check on the final head. Evidence: each output in the pull request's self-review record.
 10. Cold review under AGENTS.md "Before opening a pull request" rule 8; when Codex implements, the Claude review gate of decision 6633528258 point 2; Codex review and Codex security review requested as hard safety rule 10 allows; the pull request labelled `verdict`.
 
-`scripts/verify-dotnet.sh` is not required: the pull request changes no file under `src/` or `tests/` (docs/agents/pull-requests.md "Verification gates").
+The verification gates of step 11 apply because the pull request changes a file under `tests/` (docs/agents/pull-requests.md "Verification gates", last paragraph).
 
 ## 10. Sources
 
@@ -372,20 +452,20 @@ Run from the repository root, with the inputs of section 4.1 in a scratch direct
 - librdkafka v2.16.0 `CONFIGURATION.md` and `src/rdkafka_assignment.c`, at the hashes and lines of section 4.6.
 - Microsoft, [Apache Kafka client configurations for Azure Event Hubs](https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations), fetched 2026-11-24.
 - `src/Parchwell.Kafka/Configuration/BaselineSettingsCatalog.cs` lines 145, 149, 151, 179, 181, 183 and 185, and `src/Parchwell.Enrichment/ConsumerProcessing/ScenarioConsumerProcessingPlanSource.cs` line 11, at the base commit.
-- `scenarios/C01/expected.yaml`, `scenarios/C01/scenario.yaml`, `scenarios/profiles/c01-consumer.yaml` (line 19: 4 attempts per second for 150 s), docs/blueprint.md ADR-022 and section 12 line 1276, and docs/operations/verifier-contract.md lines 128 and 136, at the base commit.
+- `scenarios/C01/expected.yaml`, `scenarios/C01/scenario.yaml`, `scenarios/profiles/c01-consumer.yaml` (line 20: 4 attempts per second for 150 s), docs/blueprint.md ADR-022 and section 12 line 1276, and docs/operations/verifier-contract.md lines 128 and 136, at the base commit.
 - `src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs` lines 63 to 74 (commit evidence), 90 to 102 (counts) and 169 to 175 (reassignment), and `src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerCommittedOffsetReader.cs` line 11, at the base commit.
 - `infra/cluster/aks.tf` lines 35, 44 and 51 at the base commit (`vm_size = "Standard_D4ds_v5"` for all three pools).
 - Decision [7126257034](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/513#issuecomment-7126257034).
 
 ## 11. Stop rule
 
-The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it needs to change a contract, a requirement or the scope; when a pinned hash in section 4.1 differs from a fresh download; when G2 to G6 or G10 fails on the real inputs (a finding under "Verdict integrity", not a fix); when no mutation run meets section 4.9; when a predecessor pull request of #510 is not merged; or when section 15 question 1 is unanswered or answered with option B (which needs a plan revision first).
+The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it needs to change a contract, a requirement or the scope; when a pinned hash in section 4.1 differs from a fresh download; when G2 to G6 or G10 fails on the real inputs (a finding under "Verdict integrity", not a fix); when no mutation run meets section 4.9; when a predecessor pull request of #510 is not merged; or or when the C10 verdict pull request's change to line 148 cannot be kept in a rebase without changing line 149's text.
 
 ## 12. Choices made under "Act or ask", and grilling answers
 
 These are ordinary reversible choices within authority (docs/agents/factory.md "Act or ask") and the grilling answers adopted under standing decision 6895535291 point 2; Hari may change any of them when he reviews the verdict pull request.
 
-1. Grilling Q1, shape: the C03 and C10 verdict shape, five files, date 2026-11-23. Adopted.
+1. Grilling Q1, shape: the C03 and C10 verdict shape, date 2026-11-23. Adopted; decision 7128051335 later added the expected-outcome and test files, so the scope has seven.
 2. Grilling Q2, how "contradicted" reads: the production event first, then measured times and skip counts, then the verdict and what it does not mean. Adopted; section 4.4 order and R9.
 3. Grilling Q3, remedies: name `earliest` and `error`, cite `CONFIGURATION.md` line 206, mark them not tested, label the repeat-tolerance point an inference. Adopted; paragraph 8 and "Not tested".
 4. Grilling Q4, expired offsets: cite Microsoft's troubleshooting row and state no duration. Adopted; paragraph 9.
@@ -395,7 +475,7 @@ These are ordinary reversible choices within authority (docs/agents/factory.md "
 8. Grilling Q8, a shorter timeout: measured at both values; the general claim labelled an inference. Adopted; paragraph 7.
 9. Grilling Q9, no error raised: grounded in `CONFIGURATION.md` line 206. The consumer pod logs in both pods artifacts are empty (0 bytes for every `consumer-subject` and `consumer-witness` log), so the report says the absence of an error was not observed. Adopted; paragraph 2.
 10. "Marked done" is used for a committed offset that has moved past a message, defined once in paragraph 1, as in the C10 verdict plan; the verifier name `committed_never_processed` appears only after the plain words.
-11. The offered load of 4 messages per second (`c01-consumer.yaml` line 19) is stated in "What was tested" only. The report does not relate it to the 2 per second ratio, because the run does not record how many partitions the subject held.
+11. The offered load of 4 messages per second (`c01-consumer.yaml` line 20) is stated in "What was tested" only. The report does not relate it to the 2 per second ratio, because the run does not record how many partitions the subject held.
 
 ## 13. Deferred work
 
@@ -403,15 +483,12 @@ These are ordinary reversible choices within authority (docs/agents/factory.md "
 
 ## 14. Plan-check answers
 
-(a) No step's effort scales with a number unknown at planning time. The inputs are fixed: two candidates, two archive receipts and manifests, two pods artifacts, two job logs and one mutation summary. The self-test has exactly 36 cases plus the real-input run.
+(a) No step's effort scales with a number unknown at planning time. The inputs are fixed: two candidates, two archive receipts and manifests, two pods artifacts, two job logs and one mutation summary. The self-test has exactly 38 cases plus the real-input run.
 
-(b) The parent's split row 10 says only "One verdict pull request each for C03, C10 and C01". This plan is stricter: it adds the generator's recomputation of every expected.yaml rule, its archive, phase-status and mutation checks, the plain-words ordering and inference-label checks of R9, and its self-test. Why: docs/agents/pull-requests.md rule 4 requires counts and totals by script; AGENTS.md "Verdict integrity" makes any disagreement with a candidate a finding, which only a recomputation can detect; decision 7126257034 requires the plain words before any verifier term; and docs/agents/pull-requests.md rule 2 requires each unmeasured causal step to be labelled, which only a check can hold.
+(b) The parent's split row 10 says only "One verdict pull request each for C03, C10 and C01". This plan is stricter: it adds the generator's recomputation of every expected.yaml rule, its archive, phase-status and mutation checks, the plain-words ordering and inference-label checks of R9, the additive-edit check of R13, and its self-test. Why: docs/agents/pull-requests.md rule 4 requires counts and totals by script; AGENTS.md "Verdict integrity" makes any disagreement with a candidate a finding, which only a recomputation can detect; decision 7126257034 requires the plain words before any verifier term; and docs/agents/pull-requests.md rule 2 requires each unmeasured causal step to be labelled, which only a check can hold.
 
-(c) Dependencies neither on `main` nor in the pull request: the run's artifacts and job logs, recorded output pinned by hash in section 4.1 and retained until 2027-02-21T06:31:39Z; the mutation summary of a run that does not exist yet, checked by G1, G10 and acceptance step 6 (section 4.9); the librdkafka sources, pinned by tag and hash; the Microsoft page, fetched 2026-11-24 and not versioned. No deployment assumption exists (section 8).
+(c) Dependencies neither on `main` nor in the pull request: the run's artifacts and job logs, recorded output pinned by hash in section 4.1 and retained until 2027-02-21T06:31:39Z; the mutation summary of a run that does not exist yet, checked by G1, G10 and acceptance step 6 (section 4.9); the librdkafka sources, pinned by tag and hash; the Microsoft page, fetched 2026-11-24 and not versioned. The test of section 4.11 runs in the repository's existing test project and reads only the committed file. No deployment assumption exists (section 8).
 
 ## 15. Open questions for Hari
 
-1. How is decision 7126257034's addition to `text_must_state` recorded? The decision says "This adds to the `text_must_state` list in `scenarios/C01/expected.yaml`; it changes no expected outcome or verdict rule." Expected outcomes are outside the advance adoption of grilling answers ([standing decision 6895535291](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6895535291) point 4), so this is asked, not assumed. The same question for C10 is open on #512 ([handoff 7126961327](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/512#issuecomment-7126961327), point 1).
-   - (A, recommended) The verdict pull request does not edit `scenarios/C01/expected.yaml`. The decision itself is the binding addition; the plan encodes its eight points as required report text (section 4.4), G9 enforces them, and the results JSON links the decision (`publication_decision`). Why: the run was judged against `expected.yaml` at SHA-256 `7fa82b42f1d09d2ac9e2fa6c204dbdce18b80e8813bcff89c0a6f5249c6dd2fb`, and the evidence pack must carry "the scenario definition and expected outcome as approved"; editing the file after the run changes the hash the published result pins, and AGENTS.md "Code Review Rules" makes "Any change to an existing `expected.yaml`" a P0 to defend in review.
-   - (B) The verdict pull request also appends the eight points to `verdict.text_must_state` in `scenarios/C01/expected.yaml`. Then the scope adds that file (protected), the results JSON pins both the run-time hash and the new hash, and G1 checks the new hash. A plan revision would pin the literal YAML text.
-   Yes accepts (A).
+None. Decision 7128051335 answered the one open question of revision 2 (option B). Approving or rejecting the verdict stays with Hari on the verdict pull request; this plan proposes it and decides nothing about it.
