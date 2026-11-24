@@ -642,19 +642,68 @@
           "note": "Exact hosted diagnostic evidence for b10-final-projection-codec-p9.",
           "sha256": "591c45e341a93da0e365b85550e997833783a1afddcaff0d66d5ab214d25202a",
           "source_commit": "4275b634f14c1f81fcfe91dfcd7deb260a0c8a7f"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903551854",
+          "note": "Exact hosted timing evidence for b10-final-projection-codec-crossing.",
+          "sha256": "3845b15f93430cbfda6dba634e306ce44444e0af943aac30c0915d0fb0f8e595",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903948167",
+          "note": "Exact hosted timing evidence for b10-final-projection-codec-p10.",
+          "sha256": "d85afc747a5d12933100942ab56205cb778c9199d6795542d3023021a143cbe6",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903968247",
+          "note": "Exact hosted timing evidence for b10-final-projection-codec-p13.",
+          "sha256": "6ed5ff2cef24eb7392e79ea9f041e890619139c456b72f801c5e275554377756",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904195010",
+          "note": "Exact hosted timing evidence for b10-final-projection-codec-p14.",
+          "sha256": "ff0edfe7d401a43d4f567d8870b020606b9b8b9089080c88fb99dc9a9ec44103",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14905355135",
+          "note": "Exact hosted timing evidence for b10-final-projection-codec-p7.",
+          "sha256": "f5f8292c19a39b220005312920ef3d4484d925a043207b33729f6fc41f83be79",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14905075506",
+          "note": "Exact hosted timing evidence for b10-final-projection-codec-p8.",
+          "sha256": "a01fe41ff37e953f5b3256668c9ed4f214a0ab35c03b187ecd0300f300678bce",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903124299",
+          "note": "Exact hosted timing evidence for b10-final-projection-codec-p9.",
+          "sha256": "9698c9d084a6b01140353be66e22616dc0a92d585590ff327f12f7b1ef5596be",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
         }
       ],
       "shards": {
         "b10-final-projection-codec-crossing": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45005678538/artifacts/14748061849 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-          "estimated_seconds": 591,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903551854 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1213,
           "isolated_seconds": 0,
-          "main_mutants": 21,
-          "main_work_seconds": 991,
+          "main_mutants": 23,
+          "main_work_seconds": 2056,
           "parallelism": 2,
-          "selection_sha256": "ed34472a7940912a7b526ab7c0eac6abf7bc27e24bad6dfa1c7ff5bb0225dbbb",
-          "setup_seconds": 95,
-          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+          "selection_sha256": "69be6efcd153d7b54c77dc6e092234be6a6a5bfd6f58be341b6a518b9e3293cb",
+          "setup_seconds": 185,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "b10-final-projection-codec-p1-a": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44686622095/artifacts/14607930859 observed_workers=1. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
@@ -679,15 +728,15 @@
           "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
         },
         "b10-final-projection-codec-p10": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44995993132/artifacts/14744553017 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-          "estimated_seconds": 1566,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903948167 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2274,
           "isolated_seconds": 0,
-          "main_mutants": 44,
-          "main_work_seconds": 2862,
+          "main_mutants": 54,
+          "main_work_seconds": 4213,
           "parallelism": 2,
-          "selection_sha256": "749562c3fee63072fd2f27d6b021d87289b0bfb4eb09e541e38cc403d693535a",
-          "setup_seconds": 135,
-          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+          "selection_sha256": "416ae5ff38a19bd722af75c24408032deba63aee49464e65eaae809b372445ae",
+          "setup_seconds": 167,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "b10-final-projection-codec-p11": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44995993132/artifacts/14744579136 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
@@ -712,26 +761,26 @@
           "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "b10-final-projection-codec-p13": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44995993132/artifacts/14744033608 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-          "estimated_seconds": 2011,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903968247 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2318,
           "isolated_seconds": 0,
-          "main_mutants": 47,
-          "main_work_seconds": 3689,
+          "main_mutants": 53,
+          "main_work_seconds": 4280,
           "parallelism": 2,
-          "selection_sha256": "4d9dc80824abc2123fd885951d7812d56f3f24d883c6261f7cbe16eea22697ef",
-          "setup_seconds": 166,
-          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+          "selection_sha256": "887b2284480fa52841e02639a5144912fa37a13a7d8913290c5304b74aadc8da",
+          "setup_seconds": 178,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "b10-final-projection-codec-p14": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44995993132/artifacts/14744304666 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-          "estimated_seconds": 2074,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904195010 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1298,
           "isolated_seconds": 0,
-          "main_mutants": 60,
-          "main_work_seconds": 3885,
+          "main_mutants": 53,
+          "main_work_seconds": 2393,
           "parallelism": 2,
-          "selection_sha256": "b4af75f7b4680d517c2abd01a43faa0580b830162b902479596a47477f9aea3e",
-          "setup_seconds": 131,
-          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+          "selection_sha256": "9d47620a6a9646c3e071bc8751c636d884cf50f879018398802eeb198d53066f",
+          "setup_seconds": 101,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "b10-final-projection-codec-p15": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44995993132/artifacts/14744434621 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
@@ -822,37 +871,37 @@
           "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "b10-final-projection-codec-p7": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45005678538/artifacts/14748308563 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-          "estimated_seconds": 1648,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14905355135 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2352,
           "isolated_seconds": 0,
-          "main_mutants": 62,
-          "main_work_seconds": 3081,
+          "main_mutants": 67,
+          "main_work_seconds": 4421,
           "parallelism": 2,
-          "selection_sha256": "a3286ff5b94ae41d0437dac8810a77db92465faac670f49fa0ba622a9f9c8c0a",
-          "setup_seconds": 107,
-          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+          "selection_sha256": "79b9bc98536b27f80456cfbb8fe270abcddfcf565283f56a8b9e63973fc93c07",
+          "setup_seconds": 141,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "b10-final-projection-codec-p8": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45005678538/artifacts/14749162133 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-          "estimated_seconds": 2449,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14905075506 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2094,
           "isolated_seconds": 0,
-          "main_mutants": 58,
-          "main_work_seconds": 4564,
+          "main_mutants": 53,
+          "main_work_seconds": 3858,
           "parallelism": 2,
-          "selection_sha256": "fcc2f3d83252b5646471ce37f6872f84a3ff0e0a09357070f9c1221b1fef0e2d",
-          "setup_seconds": 167,
-          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+          "selection_sha256": "2b197b9c0154c0b7da9a2ba117df3df17201ac3bf3e32b2a4a837d875f27a02b",
+          "setup_seconds": 165,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "b10-final-projection-codec-p9": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45005678538/artifacts/14748847522 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-          "estimated_seconds": 2167,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903124299 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1550,
           "isolated_seconds": 0,
-          "main_mutants": 60,
-          "main_work_seconds": 4065,
+          "main_mutants": 50,
+          "main_work_seconds": 2855,
           "parallelism": 2,
-          "selection_sha256": "0fba635255095cfba547afe04e3564f4f0953510f10d8d2999f0121db0157f2c",
-          "setup_seconds": 134,
-          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+          "selection_sha256": "20dd27282fa5fdfc2b2a5d3f379db0ae1110884ae7956e8311c157b0a085e94c",
+          "setup_seconds": 122,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         }
       },
       "source_sha256": "43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f"
@@ -1684,19 +1733,75 @@
           "note": "Exact hosted timing evidence for verifier-result-codec-p26.",
           "sha256": "e9f1c52ec7a398b1c05e50c34e948e814f7d7f90a05c3e7c0d48f248b71fbff6",
           "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14901854733",
+          "note": "Exact hosted timing evidence for verifier-result-codec-crossing.",
+          "sha256": "84b2168c8b34176028fbde06e9578aa3ea913b21c6dda80561de8835f65750c3",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904811525",
+          "note": "Exact hosted timing evidence for verifier-result-codec-p17.",
+          "sha256": "c861c955d004f04ec6afc0f451b00b0a088012ff524e85801a57df9942d85c95",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904476968",
+          "note": "Exact hosted timing evidence for verifier-result-codec-p18.",
+          "sha256": "10dad09dbeffdd140056f4d06bd973643354a728c16a53966ecfc48935bf1cbb",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903964248",
+          "note": "Exact hosted timing evidence for verifier-result-codec-p21.",
+          "sha256": "92b11d4875cd77949fc1267dd47cce1e7db1adb66d1aad8bf4e27b53acf5bad5",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14905186008",
+          "note": "Exact hosted timing evidence for verifier-result-codec-p22.",
+          "sha256": "ecf9d27f37a01f438ae21a7f73d9dccc43d86734ea61aedfb72f36e5332e3967",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903864065",
+          "note": "Exact hosted timing evidence for verifier-result-codec-p23.",
+          "sha256": "af6acde7a16b494f3af5d105b87e57096b6d92f3d8806a615d0fc5dfa8715dde",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904571990",
+          "note": "Exact hosted timing evidence for verifier-result-codec-p24.",
+          "sha256": "4fc9d2136b25b4f0213622aa800d62f7b5fb070af4ff200fbe774287dbcb4ca1",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14905130617",
+          "note": "Exact hosted timing evidence for verifier-result-codec-p25.",
+          "sha256": "13e1259c3a581de702cf355393c24167886cd37a4167ead83641b728c2cbc227",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
         }
       ],
       "shards": {
         "verifier-result-codec-crossing": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14792652088 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
-          "estimated_seconds": 874,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14901854733 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 611,
           "isolated_seconds": 0,
-          "main_mutants": 25,
-          "main_work_seconds": 1382,
+          "main_mutants": 23,
+          "main_work_seconds": 945,
           "parallelism": 2,
-          "selection_sha256": "6480070380fef4285fa600a639c2f11c3e5be0c7514177fb53346c802ec12b7b",
-          "setup_seconds": 183,
-          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+          "selection_sha256": "9e0a11847d7e75ee0e9b1c03181514a1f1b821762d2ce290f30031b695d751fd",
+          "setup_seconds": 138,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "verifier-result-codec-p1": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512767324 observed_workers=1. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
@@ -1787,26 +1892,26 @@
           "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
         },
         "verifier-result-codec-p17": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512176809 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 1203,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904811525 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2250,
           "isolated_seconds": 0,
-          "main_mutants": 59,
-          "main_work_seconds": 2114,
+          "main_mutants": 63,
+          "main_work_seconds": 4004,
           "parallelism": 2,
-          "selection_sha256": "1ff72cadaf4bbbc9a7a71827fa74da775125a7e58a1c5b3820cfc2b50af8f224",
-          "setup_seconds": 146,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "5e8eeb269eda8d8f5b8091d35bb114754ff1cfd8dce9025d7259bcee769d30e8",
+          "setup_seconds": 248,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "verifier-result-codec-p18": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45005678538/artifacts/14748813460 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-          "estimated_seconds": 2501,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904476968 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2114,
           "isolated_seconds": 0,
-          "main_mutants": 70,
-          "main_work_seconds": 4512,
+          "main_mutants": 66,
+          "main_work_seconds": 3819,
           "parallelism": 2,
-          "selection_sha256": "0b19a8ca2e61ae19134b1cf9b451df0c3c7c3ab74f7efa140e165bfb71a7e903",
-          "setup_seconds": 245,
-          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+          "selection_sha256": "2899231bc23fb1c49a68a0aa5b2b6ee8cee6a8597f11ec7743020778b99cbc02",
+          "setup_seconds": 204,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "verifier-result-codec-p19": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45005678538/artifacts/14748342465 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
@@ -1853,59 +1958,59 @@
           "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "verifier-result-codec-p21": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45005678538/artifacts/14748931402 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-          "estimated_seconds": 2183,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903964248 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2397,
           "isolated_seconds": 0,
-          "main_mutants": 48,
-          "main_work_seconds": 3876,
+          "main_mutants": 53,
+          "main_work_seconds": 4306,
           "parallelism": 2,
-          "selection_sha256": "6abe5fb29acde8776b583f328e0a134ee19e0b3601c04ec7ef178ffdd477a5df",
-          "setup_seconds": 245,
-          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+          "selection_sha256": "a327358ddc9cfd0915eaeb15ef3e821da66162a279a35464a1468b86b318ebed",
+          "setup_seconds": 244,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "verifier-result-codec-p22": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793309027 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
-          "estimated_seconds": 2061,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14905186008 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2423,
           "isolated_seconds": 0,
-          "main_mutants": 60,
-          "main_work_seconds": 3755,
+          "main_mutants": 57,
+          "main_work_seconds": 4374,
           "parallelism": 2,
-          "selection_sha256": "2b7e079562ad1626a896bd84062bf849f6096219553f2a526d4ba1522c7593ee",
-          "setup_seconds": 183,
-          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+          "selection_sha256": "f0be0e07f837b241b149a0cd76d561d6df36ad9552c73c48e3822c2bb490944c",
+          "setup_seconds": 236,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "verifier-result-codec-p23": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793985452 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
-          "estimated_seconds": 2136,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903864065 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2247,
           "isolated_seconds": 0,
-          "main_mutants": 72,
-          "main_work_seconds": 3913,
+          "main_mutants": 60,
+          "main_work_seconds": 4040,
           "parallelism": 2,
-          "selection_sha256": "33f61d4ae1f243a7d3764eab42971671a2d17ac89f68e725ad6d8ac8bd59d5b0",
-          "setup_seconds": 179,
-          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+          "selection_sha256": "66e6d791e7c08ebd95b35c7236c57a70be78515392fba01217ef35ad287e1914",
+          "setup_seconds": 227,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "verifier-result-codec-p24": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793309707 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
-          "estimated_seconds": 2282,
-          "isolated_seconds": 0,
-          "main_mutants": 61,
-          "main_work_seconds": 4061,
-          "parallelism": 2,
-          "selection_sha256": "8f8cfc378ce05cdaa7553eca134bcdbe3bfb0ef3ac3750f15e1c68eebf1baafc",
-          "setup_seconds": 251,
-          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
-        },
-        "verifier-result-codec-p25": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793533651 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904571990 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
           "estimated_seconds": 2372,
           "isolated_seconds": 0,
-          "main_mutants": 61,
-          "main_work_seconds": 4241,
+          "main_mutants": 70,
+          "main_work_seconds": 4247,
           "parallelism": 2,
-          "selection_sha256": "eddf5f2ee6a4b467e818c0331c07b99d0d5d97d69e65def089c1d11a8e3824f3",
-          "setup_seconds": 251,
-          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+          "selection_sha256": "b3578c9fb17b450d649faab3cdd0074ce05ac5e1f3c2760f2b0d10df05946990",
+          "setup_seconds": 248,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
+        },
+        "verifier-result-codec-p25": {
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14905130617 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2221,
+          "isolated_seconds": 0,
+          "main_mutants": 64,
+          "main_work_seconds": 3987,
+          "parallelism": 2,
+          "selection_sha256": "21ac00f08af179cdb8d26beb1fccf63138dfed0425bedd0f1ba6e43949f1eb79",
+          "setup_seconds": 227,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "verifier-result-codec-p26": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793517324 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
@@ -2192,19 +2297,40 @@
           "note": "Exact hosted diagnostic evidence for b10-final-judge-p4.",
           "sha256": "7ff00b293748e332ec2de971f85c6089a5401b570fc5782ac2d8bb2824418904",
           "source_commit": "4275b634f14c1f81fcfe91dfcd7deb260a0c8a7f"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14902793163",
+          "note": "Exact hosted timing evidence for b10-final-judge-crossing.",
+          "sha256": "f733648f713976c99b2a11d38c074a92f5af7b0cc76cf6f1354c08379abbd56d",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903254462",
+          "note": "Exact hosted timing evidence for b10-final-judge-p11.",
+          "sha256": "16f42fa9d62db2e36138a167bee53f68ee1a9ad33a9a8c33d702e64a4732d52c",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14905150749",
+          "note": "Exact hosted timing evidence for b10-final-judge-p12.",
+          "sha256": "0ddd5514456c71e034b5ec0c9525ac84e43e7f7288589900aa5d4265117c14a9",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
         }
       ],
       "shards": {
         "b10-final-judge-crossing": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45005678538/artifacts/14748396115 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-          "estimated_seconds": 1001,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14902793163 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1131,
           "isolated_seconds": 0,
-          "main_mutants": 36,
-          "main_work_seconds": 1792,
+          "main_mutants": 35,
+          "main_work_seconds": 2000,
           "parallelism": 2,
-          "selection_sha256": "7cafa54983d9db34a5feaf6c272449cb7637cdd221ab1f44bd8a2fd6690969e2",
-          "setup_seconds": 105,
-          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+          "selection_sha256": "a7e0bc683d4b07fbd8b61770961eb4d81dd91dfb39134751b11168043b059659",
+          "setup_seconds": 131,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "b10-final-judge-p1": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45005678538/artifacts/14749047069 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
@@ -2229,26 +2355,26 @@
           "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "b10-final-judge-p11": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44995993132/artifacts/14744438716 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-          "estimated_seconds": 1780,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903254462 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1755,
           "isolated_seconds": 0,
-          "main_mutants": 43,
-          "main_work_seconds": 3219,
+          "main_mutants": 50,
+          "main_work_seconds": 3238,
           "parallelism": 2,
-          "selection_sha256": "a4911f52b5335a1c8598da09a64ebfafe906854ff0595daf6fa2c3d81737592d",
-          "setup_seconds": 170,
-          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+          "selection_sha256": "9d7904325d676ced40fd6e1a80ca1e3d746656644b8aa71101a95c3e700feee7",
+          "setup_seconds": 136,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "b10-final-judge-p12": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44995993132/artifacts/14744383765 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-          "estimated_seconds": 2509,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14905150749 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2280,
           "isolated_seconds": 0,
-          "main_mutants": 58,
-          "main_work_seconds": 4674,
+          "main_mutants": 53,
+          "main_work_seconds": 4214,
           "parallelism": 2,
-          "selection_sha256": "3fefdccc7383e6ab09bdb8b89b9f751322b6e514aefdbddb04c20653ee74efea",
-          "setup_seconds": 172,
-          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+          "selection_sha256": "d6ce92ab3d89e4ea75f25e9d9c84fa92f8a2063b064ea1de6fa540242cb80756",
+          "setup_seconds": 173,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "b10-final-judge-p2": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45005678538/artifacts/14748846144 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
@@ -2769,19 +2895,40 @@
           "note": "Exact hosted timing evidence for phase-candidate-codec-p9.",
           "sha256": "1201cd4ed95fd4f695d929e4d50b21a4af2827c2967e51513b73485fa88652fb",
           "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904895645",
+          "note": "Exact hosted timing evidence for phase-candidate-codec-crossing.",
+          "sha256": "48443cd007064ae218a5b7ec52f162875e77521b9c01fb0fa94b78a0909a2cdf",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904000150",
+          "note": "Exact hosted timing evidence for phase-candidate-codec-p19.",
+          "sha256": "1463bf139039f071e49958d4e969b943c3d69dd6f587e6c01ff0597926dc604b",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904423906",
+          "note": "Exact hosted timing evidence for phase-candidate-codec-p20.",
+          "sha256": "ea828883a5dd9a9fb51f9229cd2c88b8f2e91b4fc197035e51b73eaffbd12177",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
         }
       ],
       "shards": {
         "phase-candidate-codec-crossing": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793407657 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
-          "estimated_seconds": 1693,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904895645 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2019,
           "isolated_seconds": 0,
-          "main_mutants": 48,
-          "main_work_seconds": 3007,
+          "main_mutants": 47,
+          "main_work_seconds": 3580,
           "parallelism": 2,
-          "selection_sha256": "67505b1a0c33d516a391c35a8443d99f3d773a509d72338c274010ccf6b6028e",
-          "setup_seconds": 189,
-          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+          "selection_sha256": "c76f798475ea9485fd299e34a13a985c1d842fb8ce846abdc23d67743815b73d",
+          "setup_seconds": 229,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "phase-candidate-codec-p1": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793431574 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
@@ -2894,15 +3041,15 @@
           "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
         },
         "phase-candidate-codec-p19": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512848964 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 2515,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904000150 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1216,
           "isolated_seconds": 0,
-          "main_mutants": 56,
-          "main_work_seconds": 4531,
+          "main_mutants": 44,
+          "main_work_seconds": 2149,
           "parallelism": 2,
-          "selection_sha256": "ca24be10b48f338e5ae8621376a6743e01449777471afe5fde5b1d583651ed56",
-          "setup_seconds": 249,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "abd8859458873507cf37b618ef569590415a5efc3177ebe69f244576c7a29149",
+          "setup_seconds": 141,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "phase-candidate-codec-p2": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793548558 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
@@ -2916,15 +3063,15 @@
           "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "phase-candidate-codec-p20": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513450015 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 1662,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904423906 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2638,
           "isolated_seconds": 0,
-          "main_mutants": 47,
-          "main_work_seconds": 2947,
+          "main_mutants": 59,
+          "main_work_seconds": 4761,
           "parallelism": 2,
-          "selection_sha256": "f824b97a0f6812d968f94fad9b04c6a424a7582d9a9612156a890066eefde918",
-          "setup_seconds": 188,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "0586e75a26e6f5df91a1b88b088ada5d1c8be1d9d132d0222cb0bf967efe862f",
+          "setup_seconds": 257,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "phase-candidate-codec-p21": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44562412403/artifacts/14553966190 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
@@ -4069,30 +4216,51 @@
           "note": "Exact hosted timing evidence for b10-final-repeat-evidence-p22.",
           "sha256": "00356707efb96f801634043e63ab8621a60ddd2712962516b6e8c30c5040c71d",
           "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14902094864",
+          "note": "Exact hosted timing evidence for b10-final-repeat-evidence-crossing.",
+          "sha256": "f7e5e510a2c8a7c9e52af8311083140859e2cdef93b71c07e100dd679d6c2683",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903741604",
+          "note": "Exact hosted timing evidence for b10-final-repeat-evidence-p1.",
+          "sha256": "6c20952013480f18f4d6aa3c04b9428f5aeafc3f2585a765b90b52f3675b3e3b",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904840618",
+          "note": "Exact hosted timing evidence for b10-final-repeat-evidence-p2.",
+          "sha256": "d1522f2e32a4f3af2557d3398e4ca3a02b881f9e298e1c7d46830e5588a2a461",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
         }
       ],
       "shards": {
         "b10-final-repeat-evidence-crossing": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14793031868 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
-          "estimated_seconds": 872,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14902094864 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1145,
           "isolated_seconds": 0,
           "main_mutants": 21,
-          "main_work_seconds": 1404,
+          "main_work_seconds": 1843,
           "parallelism": 2,
-          "selection_sha256": "b1df26205b4c8082048b2a8a3c379e5982d3f850018c1ba49d2a971abef55c70",
-          "setup_seconds": 170,
-          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+          "selection_sha256": "046c3b669d95571a5f3710f0d5e1d2e6be84ceac4ee72d1e8e0934f1d9a3f37b",
+          "setup_seconds": 223,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "b10-final-repeat-evidence-p1": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14512017114 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 1201,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903741604 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1533,
           "isolated_seconds": 0,
-          "main_mutants": 31,
-          "main_work_seconds": 2064,
+          "main_mutants": 44,
+          "main_work_seconds": 2735,
           "parallelism": 2,
-          "selection_sha256": "d5143fc68337e317ad8377a28a543bcdbd8b35f7141ecfba1faef18ec33bc314",
-          "setup_seconds": 169,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "6745315069fb50acb4df6572c5b23cf1467ebb7a2a6c23d5c3fcd72b048fc4f3",
+          "setup_seconds": 165,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "b10-final-repeat-evidence-p10": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14511944931 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
@@ -4205,15 +4373,15 @@
           "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
         },
         "b10-final-repeat-evidence-p2": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513347427 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 2574,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904840618 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1980,
           "isolated_seconds": 0,
-          "main_mutants": 57,
-          "main_work_seconds": 4705,
+          "main_mutants": 44,
+          "main_work_seconds": 3530,
           "parallelism": 2,
-          "selection_sha256": "1cddc72deb48ff01f0d810a2a589cf9a31e79347cc9581aa1ac65e3b7dbf48dc",
-          "setup_seconds": 221,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "63c51055e9efb0f934a3ae0d7d3c626acbba3b71aff4567a17959230459a34ce",
+          "setup_seconds": 215,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "b10-final-repeat-evidence-p20": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14792969094 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
@@ -4725,19 +4893,47 @@
           "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout.",
           "sha256": "d103078e84210bb1f2ce59f61602515f8ffcad193069590cac1c4e1324e982a1",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14902636015",
+          "note": "Exact hosted timing evidence for b10-restart-manifest-crossing.",
+          "sha256": "2fd1e450d9b39e8ea6816887219fb8354a0557df44eb539fac895d72e08dcf6f",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904276805",
+          "note": "Exact hosted timing evidence for b10-restart-manifest-p2.",
+          "sha256": "d233bd8b491434bf5ed520851166f6d5a8670bc033399348fa60e8468802ab88",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904716272",
+          "note": "Exact hosted timing evidence for b10-restart-manifest-p3.",
+          "sha256": "0d8f1ad4778bf7154277a20b61d63a6ec73336a913a73b40d4fd707f7dc2cb8f",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903349781",
+          "note": "Exact hosted timing evidence for b10-restart-manifest-p4.",
+          "sha256": "21665f7a6cf818d6dc1c4e227609cec679baa416901e1ff2609dc0cc9dfb4ce3",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
         }
       ],
       "shards": {
         "b10-restart-manifest-crossing": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers. observed_workers=2.",
-          "estimated_seconds": 162,
-          "isolated_seconds": 0.0,
-          "main_mutants": 0,
-          "main_work_seconds": 0,
-          "parallelism": 2,
-          "selection_sha256": "4677f36e63ca5a5eee748fe14196ddb46795b6fcc5ab3b251bfb77ea510bbb41",
-          "setup_seconds": 162,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14902636015 observed_workers=1. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 208,
+          "isolated_seconds": 0,
+          "main_mutants": 1,
+          "main_work_seconds": 62,
+          "parallelism": 1,
+          "selection_sha256": "7ea8e57e7be9818a3c2dee57b20ac93f022de7a3054be1cac41527b8ea6401b4",
+          "setup_seconds": 146,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "b10-restart-manifest-p1": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
@@ -4751,37 +4947,37 @@
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "b10-restart-manifest-p2": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1777,
-          "isolated_seconds": 789.028,
-          "main_mutants": 31,
-          "main_work_seconds": 1651,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904276805 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2008,
+          "isolated_seconds": 1181,
+          "main_mutants": 16,
+          "main_work_seconds": 1281,
           "parallelism": 2,
-          "selection_sha256": "0518c9e00d914714cafec77b75731f253a9cf90822d36fb7003962db37be8c1e",
-          "setup_seconds": 162,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+          "selection_sha256": "386844b759be8aabf232b91f57a59922fa4f3a037f7c6e876f129cd28a126eee",
+          "setup_seconds": 186,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "b10-restart-manifest-p3": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1753,
-          "isolated_seconds": 0.0,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904716272 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2219,
+          "isolated_seconds": 0,
           "main_mutants": 55,
-          "main_work_seconds": 3182,
+          "main_work_seconds": 4068,
           "parallelism": 2,
-          "selection_sha256": "3fadf87605c409924eca061e5163154c502c89840355f7346d71a9660f01779c",
-          "setup_seconds": 162,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+          "selection_sha256": "9bc111e5d70b88afef6a8c7b0da0dbf420a84c5606a5dfcfa1be6a1c80b4497e",
+          "setup_seconds": 185,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "b10-restart-manifest-p4": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1062,
-          "isolated_seconds": 0.0,
-          "main_mutants": 32,
-          "main_work_seconds": 1799,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903349781 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2018,
+          "isolated_seconds": 0,
+          "main_mutants": 47,
+          "main_work_seconds": 3668,
           "parallelism": 2,
-          "selection_sha256": "5b4fe2727dfe3d44c88b2be5e07718f6e0876942b797c0f75cb1872a1c5def3e",
-          "setup_seconds": 162,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+          "selection_sha256": "9eda4b9356020bcb88bf4c6eb1a410f42bae007636daf3af2ab8f9ad748f2c14",
+          "setup_seconds": 184,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         }
       },
       "source_sha256": "d48a59bcbe7af3a60b00555b2b34f0faf40c671dbbfbce951ad835cc17000598"
@@ -4794,41 +4990,62 @@
           "note": "API ZIP digest, target before/after hashes and native report/log receipt hashes verified; hosted job evidence, not acceptance for this layout. Existing timing evidence was collected with Statsbeat enabled; the current runner disables only internal vendor diagnostics. The proposed layout has not been measured.",
           "sha256": "a632800de54011acfc935290041ba35546e0822ff734b513ddfa6cba9b950668",
           "source_commit": "e7b303f3d2bb7c6d54e7be804cc5bf8bf83aa2a5"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14902072990",
+          "note": "Exact hosted timing evidence for b10-intake-crossing.",
+          "sha256": "98ccbd0ce34d2bee31c1109e8995dfa816fe4c855d37a7b9bd81bd5684f05c41",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904093421",
+          "note": "Exact hosted timing evidence for b10-intake-p1.",
+          "sha256": "cc78cf9b772234ce6a9ef612680154889596933ce18e6c2ae015c0e510590ccd",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14905060759",
+          "note": "Exact hosted timing evidence for b10-intake-p2.",
+          "sha256": "2add1935e0e3e8f1203458d71aa1e4852f4a48a08906aecb5657c5ba06de7f2f",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
         }
       ],
       "shards": {
         "b10-intake-crossing": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers. observed_workers=2.",
-          "estimated_seconds": 112,
-          "isolated_seconds": 0.0,
-          "main_mutants": 0,
-          "main_work_seconds": 0,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14902072990 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 270,
+          "isolated_seconds": 0,
+          "main_mutants": 2,
+          "main_work_seconds": 212,
           "parallelism": 2,
-          "selection_sha256": "3bbe9543c230740647cdbde9093b02e5358cfa1cdac03a0461c0ac5154996004",
-          "setup_seconds": 112,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+          "selection_sha256": "c517127e578851bd61ed7ec6ba484f767f988256829e3bcf1094697038cab26b",
+          "setup_seconds": 164,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "b10-intake-p1": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1789,
-          "isolated_seconds": 0.0,
-          "main_mutants": 74,
-          "main_work_seconds": 3353,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904093421 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2277,
+          "isolated_seconds": 0,
+          "main_mutants": 65,
+          "main_work_seconds": 4201,
           "parallelism": 2,
-          "selection_sha256": "358a2ad2f3aa7d9fb1cb714cdbffe3d06d2153fb6291f786aa3b6698fc6250c5",
-          "setup_seconds": 112,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+          "selection_sha256": "0ef78efb0271d39e9ea5a63168b896bfe278d2975533750810d782a8d8ba3fed",
+          "setup_seconds": 176,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "b10-intake-p2": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1450,
-          "isolated_seconds": 0.0,
-          "main_mutants": 48,
-          "main_work_seconds": 2675,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14905060759 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2227,
+          "isolated_seconds": 0,
+          "main_mutants": 57,
+          "main_work_seconds": 4118,
           "parallelism": 2,
-          "selection_sha256": "3194c663df9b232ebd0436c7b384a7f5f76ae75db555bcbede3fa2f8ddeef3da",
-          "setup_seconds": 112,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+          "selection_sha256": "34c12239f1f383adbb311289712c0167827da229a89b29e2965fb7667ebeade6",
+          "setup_seconds": 168,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "b10-intake-p3": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
@@ -5395,19 +5612,47 @@
           "note": "Exact hosted timing evidence for single-action-configuration-p35.",
           "sha256": "f4c9533809ad7412f971b69c36d50b547aa0955eee0a64687fa8267bb1b6448f",
           "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903114009",
+          "note": "Exact hosted timing evidence for single-action-configuration-crossing.",
+          "sha256": "63dba15dbe06a13dbef22aeb4c78d6053fef5259314b8dded6a492751ecce25a",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903904136",
+          "note": "Exact hosted timing evidence for single-action-configuration-p40.",
+          "sha256": "6d9abae7644743cdb7281c4fa79fb09567c9e087beddec32a0c998600c95b2b7",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903815800",
+          "note": "Exact hosted timing evidence for single-action-configuration-p41.",
+          "sha256": "53750aec866a9f1d3d9246b1b20f263864337388543415b31a0445fb3a510052",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904310974",
+          "note": "Exact hosted timing evidence for single-action-configuration-p42.",
+          "sha256": "20a8a2ee980e2a27d809f9f3bd5148526e00cfa5e54ffde52665bf7357c0d1ff",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
         }
       ],
       "shards": {
         "single-action-configuration-crossing": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45117421809/artifacts/14792279108 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
-          "estimated_seconds": 1225,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903114009 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1453,
           "isolated_seconds": 0,
-          "main_mutants": 32,
-          "main_work_seconds": 2105,
+          "main_mutants": 40,
+          "main_work_seconds": 2564,
           "parallelism": 2,
-          "selection_sha256": "0750d4dc21dd53bef8ed16ac537993f83239bbe20861fc184d92c790d31be98a",
-          "setup_seconds": 172,
-          "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+          "selection_sha256": "b86830a83c11371761b676684c0e6db8966b7bc3a4099c05aa1fb7dabc2e1683",
+          "setup_seconds": 171,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "single-action-configuration-p1": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
@@ -5784,37 +6029,37 @@
           "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
         },
         "single-action-configuration-p40": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1604,
-          "isolated_seconds": 0.0,
-          "main_mutants": 52,
-          "main_work_seconds": 2791,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903904136 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 2290,
+          "isolated_seconds": 0,
+          "main_mutants": 53,
+          "main_work_seconds": 4143,
           "parallelism": 2,
-          "selection_sha256": "09b779c7d88927dc4fc5987bf3b0020f36f23ae3628a814c05250c1195396614",
-          "setup_seconds": 208,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+          "selection_sha256": "17528940ba617af25556e696b18003315a4232bdd7f78ef17f09ce8f9f87411b",
+          "setup_seconds": 218,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "single-action-configuration-p41": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1797,
-          "isolated_seconds": 0.0,
-          "main_mutants": 57,
-          "main_work_seconds": 3178,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903815800 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1220,
+          "isolated_seconds": 0,
+          "main_mutants": 39,
+          "main_work_seconds": 2165,
           "parallelism": 2,
-          "selection_sha256": "3db985a792cc0ecb716c3af1af9b3a62570cedee9dfab1fbcd92eb1501d50b31",
-          "setup_seconds": 208,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+          "selection_sha256": "3876cf5f49dd83057e20b8610b5616491116db7783f74b4d7d902832bf5ba36f",
+          "setup_seconds": 137,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "single-action-configuration-p42": {
-          "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
-          "estimated_seconds": 1511,
-          "isolated_seconds": 0.0,
-          "main_mutants": 41,
-          "main_work_seconds": 2606,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14904310974 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1727,
+          "isolated_seconds": 0,
+          "main_mutants": 50,
+          "main_work_seconds": 3125,
           "parallelism": 2,
-          "selection_sha256": "427390a30b8250e9ae4a4efc0cf2f85c54559baa1f11bdf0a6bb759e34f818b9",
-          "setup_seconds": 208,
-          "timing_inputs_sha256": "e15cd682a2731538bfde90aa333a9742bccb40e3db957f855d71a25a9e520463"
+          "selection_sha256": "07cad12689329a751768eec6a5c0ccee764351000f39825dac1ffc7961c1ee44",
+          "setup_seconds": 164,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "single-action-configuration-p43": {
           "basis": "Retained hosted receipt/report/logs; measured ID durations, unobserved IDs weighted at target maximum; max observed setup plus max reporting teardown, two workers; isolated invocations added sequentially. observed_workers=2.",
@@ -6312,19 +6557,40 @@
           "note": "hardware=ubuntu-24.04_standard_hosted_runner calibration=unadjusted_full_wall. Source, selector, isolation and log evidence verified. Retained expiration evidence is outside Git.",
           "sha256": "1b92ae6308b1d496d7ba5f2cde4a852f837a15309337a017239fc0494ee1b546",
           "source_commit": "81cf412ed7df300a5e181532ab45c61dd274d069"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14902342375",
+          "note": "Exact hosted timing evidence for verify-run-handler-crossing.",
+          "sha256": "f4ce9ad0f0f3cd5e41d913a95dda3b6f27f49e2af0f6c7da61d8121291b27d6e",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903892646",
+          "note": "Exact hosted timing evidence for verify-run-handler-p6.",
+          "sha256": "d8f87e19739a17f4a2622d72eb684e836e905bcd5a26e8af651abe93a2c6545d",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
+        },
+        {
+          "kind": "hosted_complete",
+          "locator": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903403992",
+          "note": "Exact hosted timing evidence for verify-run-handler-p7.",
+          "sha256": "cd174d1a590f639b8b4c75915f638962919dde9e8169556847807b6107c6bd0f",
+          "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a"
         }
       ],
       "shards": {
         "verify-run-handler-crossing": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44562412403/artifacts/14549797675 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-          "estimated_seconds": 545,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14902342375 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 474,
           "isolated_seconds": 0,
           "main_mutants": 13,
-          "main_work_seconds": 824,
+          "main_work_seconds": 717,
           "parallelism": 2,
-          "selection_sha256": "3ce76a2ecaf15599eeccb5ecd28eff0b031f12a696e540d711e3dad9ca05a2b1",
-          "setup_seconds": 133,
-          "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
+          "selection_sha256": "76de2a74b703d86c956fae5bcc17ca78607e5206b047ec25f7ba41ae2bdc7bcd",
+          "setup_seconds": 115,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "verify-run-handler-p1": {
           "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44562412403/artifacts/14553731235 observed_workers=2. Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
@@ -6382,26 +6648,26 @@
           "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
         },
         "verify-run-handler-p6": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14513258010 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 2450,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903892646 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1634,
           "isolated_seconds": 0,
-          "main_mutants": 66,
-          "main_work_seconds": 4556,
+          "main_mutants": 38,
+          "main_work_seconds": 2919,
           "parallelism": 2,
-          "selection_sha256": "cb6a218d285488539707772115538e776fe2f803863ab4450e4eb480f5688e0d",
-          "setup_seconds": 172,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "f96ad911dff4eb3237098c69f2609c00aee4bc1c27028e228366b538b31cb8f3",
+          "setup_seconds": 174,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         },
         "verify-run-handler-p7": {
-          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/44486815934/artifacts/14511517273 observed_workers=2. Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-          "estimated_seconds": 539,
+          "basis": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113/artifacts/14903403992 observed_workers=2. Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+          "estimated_seconds": 1740,
           "isolated_seconds": 0,
-          "main_mutants": 19,
-          "main_work_seconds": 867,
+          "main_mutants": 47,
+          "main_work_seconds": 3120,
           "parallelism": 2,
-          "selection_sha256": "afcff69e7a7a5f65363fac57005714c3364b92b3ac068f10812347b5c2c4dee6",
-          "setup_seconds": 105,
-          "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+          "selection_sha256": "54e3af7add38974f07a1ff4cc63593ecd5a3776824971c0abf980a8641b72769",
+          "setup_seconds": 180,
+          "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
         }
       },
       "source_sha256": "2a9d721f3b7f55e6aa4b7c19f4871278712dacba0549ac27dfe2a5f70a632c8e"
@@ -6643,13 +6909,13 @@
       "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-judge-crossing": {
-      "artifact_sha256": "4e3494eb7b751e7637be4a477b23276f50e835d6cbdc7fbf92245370b892c1b6",
+      "artifact_sha256": "f733648f713976c99b2a11d38c074a92f5af7b0cc76cf6f1354c08379abbd56d",
       "kind": "measured",
-      "method": "Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-      "observed_seconds": 1000.708391926,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1129.76966245,
       "observed_workers": 2,
-      "source_commit": "4275b634f14c1f81fcfe91dfcd7deb260a0c8a7f",
-      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "b10-final-judge-p1": {
       "artifact_sha256": "a2dc6057a01d635f0ced975bcae20d002c49485f51d97bc6777381763edd5f09",
@@ -6670,22 +6936,22 @@
       "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-judge-p11": {
-      "artifact_sha256": "082b5c913f584ca571cd4745f7b17e12796030d764a351e09ec4e2f98065f942",
+      "artifact_sha256": "16f42fa9d62db2e36138a167bee53f68ee1a9ad33a9a8c33d702e64a4732d52c",
       "kind": "measured",
-      "method": "Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-      "observed_seconds": 1778.520286444,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1753.840643019,
       "observed_workers": 2,
-      "source_commit": "3c65a2fa52f16378c3815159cd07f8237e3346bf",
-      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "b10-final-judge-p12": {
-      "artifact_sha256": "3cc07f1b8c6fcd547a18b9adf2d0677f9e9b8e79c529cc06bcab92e2a9853d5f",
+      "artifact_sha256": "0ddd5514456c71e034b5ec0c9525ac84e43e7f7288589900aa5d4265117c14a9",
       "kind": "measured",
-      "method": "Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-      "observed_seconds": 2507.719754026,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2279.430006396,
       "observed_workers": 2,
-      "source_commit": "3c65a2fa52f16378c3815159cd07f8237e3346bf",
-      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "b10-final-judge-p2": {
       "artifact_sha256": "013e2fa899a939b9ba066fca58c10483c78768678d114ab1edef1762d4371044",
@@ -6769,13 +7035,13 @@
       "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
     },
     "b10-final-projection-codec-crossing": {
-      "artifact_sha256": "85f2b1480db953457e8f26d727b4084bf07cd041c58f7089cd171d98d59e5084",
+      "artifact_sha256": "3845b15f93430cbfda6dba634e306ce44444e0af943aac30c0915d0fb0f8e595",
       "kind": "measured",
-      "method": "Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-      "observed_seconds": 589.1906244469999,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1211.9483164130002,
       "observed_workers": 2,
-      "source_commit": "4275b634f14c1f81fcfe91dfcd7deb260a0c8a7f",
-      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "b10-final-projection-codec-p1-a": {
       "artifact_sha256": "0c56bd10ffcfe70697c192eb39d43f03fc1affcb20cd4c09febaf3b65aabb7f4",
@@ -6796,13 +7062,13 @@
       "timing_inputs_sha256": "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145"
     },
     "b10-final-projection-codec-p10": {
-      "artifact_sha256": "4049f0160671d84589c9b2b1841db3738916acd6e32fe2256c5465d593ced6fb",
+      "artifact_sha256": "d85afc747a5d12933100942ab56205cb778c9199d6795542d3023021a143cbe6",
       "kind": "measured",
-      "method": "Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-      "observed_seconds": 1564.589691557,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2272.435746027,
       "observed_workers": 2,
-      "source_commit": "3c65a2fa52f16378c3815159cd07f8237e3346bf",
-      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "b10-final-projection-codec-p11": {
       "artifact_sha256": "4e6ca98258589b01d0a9575440cb5d4790a950108857deb2b405eef6da013b16",
@@ -6823,22 +7089,22 @@
       "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-projection-codec-p13": {
-      "artifact_sha256": "9b4fe9c91cde5d9a3b017c6129681dc8f7a1af265a1fc50cc7719cf0da74b235",
+      "artifact_sha256": "6ed5ff2cef24eb7392e79ea9f041e890619139c456b72f801c5e275554377756",
       "kind": "measured",
-      "method": "Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-      "observed_seconds": 2009.4777907540001,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2317.357861069,
       "observed_workers": 2,
-      "source_commit": "3c65a2fa52f16378c3815159cd07f8237e3346bf",
-      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "b10-final-projection-codec-p14": {
-      "artifact_sha256": "f46fc181c617909a3fe2c74fc0911d8d8dfa62b9fdeaff8232a23b1d73c5d8bf",
+      "artifact_sha256": "ff0edfe7d401a43d4f567d8870b020606b9b8b9089080c88fb99dc9a9ec44103",
       "kind": "measured",
-      "method": "Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-      "observed_seconds": 2072.841255362,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1296.908399791,
       "observed_workers": 2,
-      "source_commit": "3c65a2fa52f16378c3815159cd07f8237e3346bf",
-      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "b10-final-projection-codec-p15": {
       "artifact_sha256": "19a240f2b8d2e7b9bbaecf3addc44eb334bd9a5de6ff7431372f7d0d31ed0d72",
@@ -6913,31 +7179,31 @@
       "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-projection-codec-p7": {
-      "artifact_sha256": "e6b372b4241db2bb5791b28a1ed983efbe1124706ce06e7accd5adbc8a440fcd",
+      "artifact_sha256": "f5f8292c19a39b220005312920ef3d4484d925a043207b33729f6fc41f83be79",
       "kind": "measured",
-      "method": "Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-      "observed_seconds": 1646.574280375,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2350.732058585,
       "observed_workers": 2,
-      "source_commit": "4275b634f14c1f81fcfe91dfcd7deb260a0c8a7f",
-      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "b10-final-projection-codec-p8": {
-      "artifact_sha256": "48ed8c5f65bc84adedd1d107c9e17b8830844fb482fe9b0680e2f84776c91c1d",
+      "artifact_sha256": "a01fe41ff37e953f5b3256668c9ed4f214a0ab35c03b187ecd0300f300678bce",
       "kind": "measured",
-      "method": "Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-      "observed_seconds": 2448.7225925400003,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2092.511551448,
       "observed_workers": 2,
-      "source_commit": "4275b634f14c1f81fcfe91dfcd7deb260a0c8a7f",
-      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "b10-final-projection-codec-p9": {
-      "artifact_sha256": "591c45e341a93da0e365b85550e997833783a1afddcaff0d66d5ab214d25202a",
+      "artifact_sha256": "9698c9d084a6b01140353be66e22616dc0a92d585590ff327f12f7b1ef5596be",
       "kind": "measured",
-      "method": "Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-      "observed_seconds": 2166.0272234450003,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1548.516073677,
       "observed_workers": 2,
-      "source_commit": "4275b634f14c1f81fcfe91dfcd7deb260a0c8a7f",
-      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "b10-final-registrations-crossing": {
       "kind": "historical"
@@ -6994,22 +7260,22 @@
       "kind": "historical"
     },
     "b10-final-repeat-evidence-crossing": {
-      "artifact_sha256": "2ef873e7b6284dee9634c2f39276b9f9df96751d51da76d8f6df93d9485ee8f6",
+      "artifact_sha256": "f7e5e510a2c8a7c9e52af8311083140859e2cdef93b71c07e100dd679d6c2683",
       "kind": "measured",
       "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
-      "observed_seconds": 870.683525106,
+      "observed_seconds": 1143.586700324,
       "observed_workers": 2,
-      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
-      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "b10-final-repeat-evidence-p1": {
-      "artifact_sha256": "77f4438a816237ae02e4c5758b05acc312806e56d88e71bf1327a1e5d9b1471f",
+      "artifact_sha256": "6c20952013480f18f4d6aa3c04b9428f5aeafc3f2585a765b90b52f3675b3e3b",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 1200.292027948,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1531.5738104,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "b10-final-repeat-evidence-p10": {
       "artifact_sha256": "a0e78a41bc4eb705ebfcf2d612720dac73f514e10108f44a2a4badbaa5dbd0c1",
@@ -7102,13 +7368,13 @@
       "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "b10-final-repeat-evidence-p2": {
-      "artifact_sha256": "c60c60a5ff4b77e93f0b27bc13ea3350c62d23331c9d0b3a94df84566683f008",
+      "artifact_sha256": "d1522f2e32a4f3af2557d3398e4ca3a02b881f9e298e1c7d46830e5588a2a461",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 2572.968553918,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1979.4932509740001,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "b10-final-repeat-evidence-p20": {
       "artifact_sha256": "64c08294e2ead773e9fad0cba3840df93f07842e2394ea4b3d578cfbfd46e785",
@@ -7246,13 +7512,31 @@
       "timing_inputs_sha256": "d700bd7823eba6654556c98af0e44bf1541adb877ee4d19bda63fdcb78959dd5"
     },
     "b10-intake-crossing": {
-      "kind": "historical"
+      "artifact_sha256": "98ccbd0ce34d2bee31c1109e8995dfa816fe4c855d37a7b9bd81bd5684f05c41",
+      "kind": "measured",
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 268.660819056,
+      "observed_workers": 2,
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "b10-intake-p1": {
-      "kind": "historical"
+      "artifact_sha256": "cc78cf9b772234ce6a9ef612680154889596933ce18e6c2ae015c0e510590ccd",
+      "kind": "measured",
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2275.756934082,
+      "observed_workers": 2,
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "b10-intake-p2": {
-      "kind": "historical"
+      "artifact_sha256": "2add1935e0e3e8f1203458d71aa1e4852f4a48a08906aecb5657c5ba06de7f2f",
+      "kind": "measured",
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2226.931942474,
+      "observed_workers": 2,
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "b10-intake-p3": {
       "kind": "historical"
@@ -7324,19 +7608,43 @@
       "kind": "historical"
     },
     "b10-restart-manifest-crossing": {
-      "kind": "historical"
+      "artifact_sha256": "2fd1e450d9b39e8ea6816887219fb8354a0557df44eb539fac895d72e08dcf6f",
+      "kind": "measured",
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 206.756147301,
+      "observed_workers": 1,
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "b10-restart-manifest-p1": {
       "kind": "historical"
     },
     "b10-restart-manifest-p2": {
-      "kind": "historical"
+      "artifact_sha256": "d233bd8b491434bf5ed520851166f6d5a8670bc033399348fa60e8468802ab88",
+      "kind": "measured",
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2006.109337294,
+      "observed_workers": 2,
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "b10-restart-manifest-p3": {
-      "kind": "historical"
+      "artifact_sha256": "0d8f1ad4778bf7154277a20b61d63a6ec73336a913a73b40d4fd707f7dc2cb8f",
+      "kind": "measured",
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2217.864184369,
+      "observed_workers": 2,
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "b10-restart-manifest-p4": {
-      "kind": "historical"
+      "artifact_sha256": "21665f7a6cf818d6dc1c4e227609cec679baa416901e1ff2609dc0cc9dfb4ce3",
+      "kind": "measured",
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2017.6714455940003,
+      "observed_workers": 2,
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "b10-sweep": {
       "artifact_sha256": "3ade871aafb33760fac4a40b563bea5baaa9245f76185634acaae5f0f28708d0",
@@ -7531,13 +7839,13 @@
       "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
     },
     "phase-candidate-codec-crossing": {
-      "artifact_sha256": "cb2daedc5ed86c3fc037135fe53510545c43eb841d97f8774abb2482b229fc73",
+      "artifact_sha256": "48443cd007064ae218a5b7ec52f162875e77521b9c01fb0fa94b78a0909a2cdf",
       "kind": "measured",
       "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
-      "observed_seconds": 1692.1844844930001,
+      "observed_seconds": 2018.7667870439998,
       "observed_workers": 2,
-      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
-      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "phase-candidate-codec-p1": {
       "artifact_sha256": "f8eb68e0c8bba04e520d8de177832a5ddba89e7c3dde6bd8199f2ef9b82a9031",
@@ -7630,13 +7938,13 @@
       "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
     },
     "phase-candidate-codec-p19": {
-      "artifact_sha256": "550a73e3607d90e00a1bd94bc18fb044a78513e0242954e3b4f64a634b9d2703",
+      "artifact_sha256": "1463bf139039f071e49958d4e969b943c3d69dd6f587e6c01ff0597926dc604b",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 2513.9885115039997,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1214.9963616500002,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "phase-candidate-codec-p2": {
       "artifact_sha256": "6866493d304aa5c3be5a2c6a0d7d6e18e3f3cae6e4391b5e1e60b500c125d2b9",
@@ -7648,13 +7956,13 @@
       "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "phase-candidate-codec-p20": {
-      "artifact_sha256": "d4635462d3b82cf2ea54f3bbb11ad9b8d01c58092d1fd711e9713bebbd557432",
+      "artifact_sha256": "ea828883a5dd9a9fb51f9229cd2c88b8f2e91b4fc197035e51b73eaffbd12177",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 1660.943906576,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2637.0731617779998,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "phase-candidate-codec-p21": {
       "artifact_sha256": "838a570fa43ad6d389cb48fa339ee947496fa2aca006fff4776cc6a8b00149ce",
@@ -7924,13 +8232,13 @@
       "kind": "historical"
     },
     "single-action-configuration-crossing": {
-      "artifact_sha256": "bddea237ab33a7040d3bd9bb5dd485acae676d131040686d4e0952b09d0c1a6f",
+      "artifact_sha256": "63dba15dbe06a13dbef22aeb4c78d6053fef5259314b8dded6a492751ecce25a",
       "kind": "measured",
       "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
-      "observed_seconds": 1223.627196349,
+      "observed_seconds": 1452.004233843,
       "observed_workers": 2,
-      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
-      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "single-action-configuration-p1": {
       "kind": "historical"
@@ -8053,13 +8361,31 @@
       "kind": "historical"
     },
     "single-action-configuration-p40": {
-      "kind": "historical"
+      "artifact_sha256": "6d9abae7644743cdb7281c4fa79fb09567c9e087beddec32a0c998600c95b2b7",
+      "kind": "measured",
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2289.117247212,
+      "observed_workers": 2,
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "single-action-configuration-p41": {
-      "kind": "historical"
+      "artifact_sha256": "53750aec866a9f1d3d9246b1b20f263864337388543415b31a0445fb3a510052",
+      "kind": "measured",
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1218.375367855,
+      "observed_workers": 2,
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "single-action-configuration-p42": {
-      "kind": "historical"
+      "artifact_sha256": "20a8a2ee980e2a27d809f9f3bd5148526e00cfa5e54ffde52665bf7357c0d1ff",
+      "kind": "measured",
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1725.885137716,
+      "observed_workers": 2,
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "single-action-configuration-p43": {
       "kind": "historical"
@@ -8158,13 +8484,13 @@
       "kind": "historical"
     },
     "verifier-result-codec-crossing": {
-      "artifact_sha256": "892cc8687d7d40aea706796859716b032eeb8bc39bbe7eb964a400d825e21ebb",
+      "artifact_sha256": "84b2168c8b34176028fbde06e9578aa3ea913b21c6dda80561de8835f65750c3",
       "kind": "measured",
       "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
-      "observed_seconds": 873.361011879,
+      "observed_seconds": 609.7853810099999,
       "observed_workers": 2,
-      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
-      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "verifier-result-codec-p1": {
       "artifact_sha256": "5b70e80b9343b9ddc0e9992d86d0923c464b36b6e3931c2a93b8cabb54a82dd7",
@@ -8239,22 +8565,22 @@
       "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
     },
     "verifier-result-codec-p17": {
-      "artifact_sha256": "0a958f9bee6f49a644ca6cf56ded71047b2cf7f0c60426714027e4bd2967c741",
+      "artifact_sha256": "c861c955d004f04ec6afc0f451b00b0a088012ff524e85801a57df9942d85c95",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 1202.3315465580001,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2249.709419459,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "verifier-result-codec-p18": {
-      "artifact_sha256": "eb6ce3cbec8c6c29ff98dbfd8207bcddef402d32c17b8a165fddf5d1d6334133",
+      "artifact_sha256": "10dad09dbeffdd140056f4d06bd973643354a728c16a53966ecfc48935bf1cbb",
       "kind": "measured",
-      "method": "Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-      "observed_seconds": 2500.91976659,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2112.429158851,
       "observed_workers": 2,
-      "source_commit": "4275b634f14c1f81fcfe91dfcd7deb260a0c8a7f",
-      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "verifier-result-codec-p19": {
       "artifact_sha256": "56da452c636f3323b55e932d99259cb9c22a32eca0d1895fbd18ffff3531dc95",
@@ -8293,49 +8619,49 @@
       "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "verifier-result-codec-p21": {
-      "artifact_sha256": "bdae5c360361df6f2c87d9e93ee05ecc0fd929402bdae024a0be5c95737e9ec6",
+      "artifact_sha256": "92b11d4875cd77949fc1267dd47cce1e7db1adb66d1aad8bf4e27b53acf5bad5",
       "kind": "measured",
-      "method": "Receipt-verified hosted C5 diagnostic wall time, complete native inventory and exact selector.",
-      "observed_seconds": 2182.154174059,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 2396.32460567,
       "observed_workers": 2,
-      "source_commit": "4275b634f14c1f81fcfe91dfcd7deb260a0c8a7f",
-      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "verifier-result-codec-p22": {
-      "artifact_sha256": "114d88c35f1ec13c9efa4a82b9b487a2d2638a6fb30ff8a1cd8275a05b6aa026",
+      "artifact_sha256": "ecf9d27f37a01f438ae21a7f73d9dccc43d86734ea61aedfb72f36e5332e3967",
       "kind": "measured",
       "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
-      "observed_seconds": 2059.789925307,
+      "observed_seconds": 2421.887537837,
       "observed_workers": 2,
-      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
-      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "verifier-result-codec-p23": {
-      "artifact_sha256": "5fb0b4bd58aa125a82ed8561cf8ddbb4785d02b23723e73bcadc06464941b4e0",
+      "artifact_sha256": "af6acde7a16b494f3af5d105b87e57096b6d92f3d8806a615d0fc5dfa8715dde",
       "kind": "measured",
       "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
-      "observed_seconds": 2135.099659598,
+      "observed_seconds": 2246.585791429,
       "observed_workers": 2,
-      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
-      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "verifier-result-codec-p24": {
-      "artifact_sha256": "88b2442833e5d267250f2d93c2d001752affdfa566f4350b33c6172843f07b03",
+      "artifact_sha256": "4fc9d2136b25b4f0213622aa800d62f7b5fb070af4ff200fbe774287dbcb4ca1",
       "kind": "measured",
       "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
-      "observed_seconds": 2280.709794816,
+      "observed_seconds": 2370.621921664,
       "observed_workers": 2,
-      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
-      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "verifier-result-codec-p25": {
-      "artifact_sha256": "2ce5891c62dd0029f1b86eca1e0c20bcbb27c22e2c71523ddac8494da3058c71",
+      "artifact_sha256": "13e1259c3a581de702cf355393c24167886cd37a4167ead83641b728c2cbc227",
       "kind": "measured",
       "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
-      "observed_seconds": 2370.231627592,
+      "observed_seconds": 2219.409685936,
       "observed_workers": 2,
-      "source_commit": "0130ccc4cea9f3c41ba0b681b27aeefdbb06d5cd",
-      "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "verifier-result-codec-p26": {
       "artifact_sha256": "e9f1c52ec7a398b1c05e50c34e948e814f7d7f90a05c3e7c0d48f248b71fbff6",
@@ -8419,13 +8745,13 @@
       "timing_inputs_sha256": "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997"
     },
     "verify-run-handler-crossing": {
-      "artifact_sha256": "48c067beb380fa84687b950411df30284b857104d45a64e5d39aaf54ea357fc9",
+      "artifact_sha256": "f4ce9ad0f0f3cd5e41d913a95dda3b6f27f49e2af0f6c7da61d8121291b27d6e",
       "kind": "measured",
-      "method": "Complete source-bound local-shard wall on a standard hosted runner. Rounded setup before the first dispatch, full remaining main wall including idle and teardown multiplied by observed overlapping dispatches, and rounded sequential isolation wall. Sequential cohort work is charged to isolation. The one-worker bound for a zero-main selection is based on baseline or isolated execution.",
-      "observed_seconds": 544.386697454,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 472.650733559,
       "observed_workers": 2,
-      "source_commit": "81cf412ed7df300a5e181532ab45c61dd274d069",
-      "timing_inputs_sha256": "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "verify-run-handler-p1": {
       "artifact_sha256": "05fb58e821db52a2317b33bdb4b7d42097d1993ebb0ed956aab9dd9324ea0897",
@@ -8473,22 +8799,22 @@
       "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
     },
     "verify-run-handler-p6": {
-      "artifact_sha256": "9a77a6c78c8fd863de7185344611ac302b61d277406cdcab712d5ec1860086a1",
+      "artifact_sha256": "d8f87e19739a17f4a2622d72eb684e836e905bcd5a26e8af651abe93a2c6545d",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 2449.210526611,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1632.999225496,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "verify-run-handler-p7": {
-      "artifact_sha256": "6feaae6cf33284e90716141ade0061c8615f19a95414299c0480349948c95416",
+      "artifact_sha256": "cd174d1a590f639b8b4c75915f638962919dde9e8169556847807b6107c6bd0f",
       "kind": "measured",
-      "method": "Complete source-bound hosted shard wall. Rounded setup and sequential isolation; the remaining wall charges observed worker overlap, idle time and teardown.",
-      "observed_seconds": 537.901400795,
+      "method": "Receipt-verified hosted C5 diagnostic wall time with authenticated raw inventory and exact selector.",
+      "observed_seconds": 1738.984282093,
       "observed_workers": 2,
-      "source_commit": "d28b1fc49ca53e48259101701d0fbb7e3271a0c5",
-      "timing_inputs_sha256": "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c"
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "timing_inputs_sha256": "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6"
     },
     "workload-crossing": {
       "kind": "historical"
@@ -13556,6 +13882,436 @@
         "VerifyRun/Publication/PublicationAcceptance.cs": "780e2109d7b1a0f261d06eb12a8ba856c90f15aaefd189646bb1b96f1c6232e2",
         "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs": "e266b1d73da52fe84fbb583bac42e8bd5e2118af445d8a2f3c4bf7c4ff67f661",
         "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs": "5c0788ac841b4397610f602435cd7ef923b1b4caa36d701c454891f79b2706a8"
+      }
+    },
+    "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6": {
+      "assessments": {
+        "shared_inputs": {},
+        "target_sources": {}
+      },
+      "shared_inputs": {
+        ".config/dotnet-tools.json": "50249a8f3a7134b08b4409c485dfe67afb17910e5a2329bf65810c3338231244",
+        ".github/workflows/verifier-c5-mutation-companion.yml": "1fade2b54ce8b20ed963ba5ebc5ff8cd0e6315f67b402cb46b1bfe695ffbebfb",
+        ".github/workflows/verifier-c5-mutation.yml": "cda07e2545340ade8d658ccfcce1ae65a472c97690c35186ab5f804712a46569",
+        "Directory.Build.props": "da23174e8d1ba562fc1e5fe99518e2bc54473c4c48b7744b84da1232588b8cb1",
+        "Directory.Packages.props": "9b61ecb44bf2297db16699cbac097f4576ba34d0ae624edff4d34f1d48caca05",
+        "docs/operations/a01-runtime-limits.json": "246f5b871bbc1a07209998a2e162b2d1593de9146fb3cae5a613ac8709950437",
+        "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/packages.lock.json": "a29c6aa8cfb81874ff8bb78dc369d7416f28c9b8cc47e99592bfc019b20c41eb",
+        "global.json": "ab4eed8da9aaee0671a10b49fe4ff1b27b3341b264f317ee88785607c0711e9a",
+        "scenarios/A01/scenario.yaml": "00b54054031ec6f80e864616852e2a96ef817effeefa17556093bf11a900fcfc",
+        "scenarios/A02/scenario.yaml": "739b96191574afff8edd89edbb9b09452185d636afa6add915888de8c3e70493",
+        "scenarios/A03/scenario.yaml": "083e21240d442078d2c3383249a5539aa8fc309ee5697513656916005eddb7dc",
+        "scenarios/A04/scenario.yaml": "ffc06a71e84d2af3f1b27242643cec5b1e9a953f2b17e54b826d79ca0bdc4abd",
+        "scenarios/B01/scenario.yaml": "878bbbe969dbc9feedf54d4e935c1a5f994cdde28852ae628096a90654b60e64",
+        "scenarios/B03/scenario.yaml": "ccca55e7e270e1b2504e54d0535db4061195da8d1c32e26cd116d634fbc50841",
+        "scenarios/B04/scenario.yaml": "c894fde26a1e201940cdd67e6b299f13c8754a821bed3a1f14006aebbf93689c",
+        "scenarios/B05/scenario.yaml": "2856fcfdfab4e1bee32c407666fc3ebec4eaa3f8e9b73f888fc370add4dee406",
+        "scenarios/B06/scenario.yaml": "20698b93ae365ca2ff688a489c974356a495c6b51f7e03dc73545d0814209400",
+        "scenarios/B07/scenario.yaml": "637f850154562fa85d33b7e8d2d2bc1ec527ecbcf7be0a844f6b090d0de5f53d",
+        "scenarios/B08/scenario.yaml": "e4869d401bd366e8922043baa3bfa0a53a1fe1d406ee40f2077405bdc9b7bef4",
+        "scenarios/B10/scenario.yaml": "762b1a540e8975129652358b0c91bb8a8c867b007dae162b00b78ad2dcc8569c",
+        "scenarios/C01/scenario.yaml": "555cb0be7f37c6e5d6a6e94f899875f0616fcafca49be34fab4ad70fda59efd2",
+        "scenarios/C03/scenario.yaml": "2b6da0fff85d6ebf124e30fa5d341d4d88d1db8b02b30b6d7a29422dca5e9e31",
+        "scenarios/C08/scenario.yaml": "061416216f9acbac792d61f85df0d5be90043b67e1bb4fdddc055bac5fcfcd47",
+        "scenarios/C10/scenario.yaml": "d72b4ab55fb1c05b7ef3312ced62e2ae95a65903a8c9266bda785fcf5647d290",
+        "scenarios/C12/scenario.yaml": "32dc43a8a5166ad9de7823164d17345b313fe26ff7948ba67e75e1c94013c561",
+        "scenarios/E01/scenario.yaml": "75d3810adbafd61b7cda676842cef70f86532c88e88516a78c1bcb2854533c07",
+        "scenarios/F04/scenario.yaml": "11409c59fd070b08473522d80ccee73a0c76fc9d83e0d4d79d2e2104ac9ceedb",
+        "scenarios/F06/scenario.yaml": "3ca313515ec897c487a71c86e7e6bb2d3dbfdc6c63577726929b3509428133b0",
+        "scenarios/profiles/b10-timeout.yaml": "39daef3f0b5df87fd8de5efc17304d249bc6eb1df281e76686bf0d637d0ee802",
+        "scenarios/profiles/c01-consumer.yaml": "d36530d2cf026b1c7519241f9d613878b9506e20eaecb0d54f36a2be0da67b02",
+        "scenarios/profiles/c03-consumer.yaml": "721d5f2fec07a066581ffa21ad3925dfba824457e805f59a3a1b6a0d7483fa65",
+        "scenarios/profiles/saturation-ramp.yaml": "20627a8282fd81730867fb2d10bca8a6d4198cb59d6dc70aab8eebd22528c215",
+        "src/Parchwell.Enrichment/packages.lock.json": "c9c2f3096cba8a0c3dc705fd2c9c5f0404ebf5a173837b5ffd9c0f73ba7d4e26",
+        "src/Parchwell.Kafka/Authentication/IKafkaTokenProvider.cs": "ac09c1464f9df6c704dd70a9e56ce8a35377abe51c30339dc4568802f6081325",
+        "src/Parchwell.Kafka/Authentication/IObservedKafkaTokenProvider.cs": "7ac8afe8bc16f35d2a8c60e0fc6bdf0758463b9fd9bec58ac0ede4f1350c8862",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationConfiguration.cs": "70a441daf0648bd73b6c632a37396d762808ac9c1346115d3b943386c874ec17",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationFactory.cs": "c723338944cd92593386c869c915dc894c093c097575aeba718105eb556c63c1",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationFailure.cs": "ade2e461ed1abb1533f2853288731011048b8e8080a0e66678823316040883cd",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationIdentity.cs": "8a59b91bf696fe38e5be37322afd3dc05134df049c134193bc93458a9f906773",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationLifecycleObservation.cs": "857f1027a09344c0bfc371c293fcd241dc398c865d4838fac7b4d4540bda8296",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationMetrics.cs": "6b4b6366028f3e0e7982a856384a38c762d887eab166f816f4d1df4390ffe56f",
+        "src/Parchwell.Kafka/Authentication/KafkaAuthenticationServiceCollectionExtensions.cs": "c5c1cbc9bb588d52cf040b86ad9b389fa2cbbadb8246ce8c76834cbe1fb45902",
+        "src/Parchwell.Kafka/Authentication/KafkaOAuthBearerSession.cs": "82f91ef61374177bd31bae7606bfcee687ca01b8761d4354947c1d140b2fecf1",
+        "src/Parchwell.Kafka/Authentication/KafkaWorkloadIdentityOptions.cs": "4269992f4f9262a00fd77f09daa8d328480bbc7314f0849a21b8366382e848f8",
+        "src/Parchwell.Kafka/Authentication/KafkaWorkloadIdentityOptionsValidator.cs": "715c1cd555c3c63f0523565e5831cfe74912cbb98ff009f932bbdbe2fd7c28ec",
+        "src/Parchwell.Kafka/Authentication/ProjectedTokenFileObserver.cs": "35fc8d2908d4c15cdac6a9a7e6896ba3ee30ae38a8f5c1fdfc65305954686c6c",
+        "src/Parchwell.Kafka/Authentication/ProjectedTokenPathResolver.cs": "83a4ba4f5a090c1e990e5c31ca274cee3d517c01a0d25a63c5f3c2bdfa098574",
+        "src/Parchwell.Kafka/Authentication/WorkloadIdentityTokenProvider.cs": "b5a0897b450a8b91b38a2faaaba9b60b3f84de2aa3b037da183ffac5b84f4655",
+        "src/Parchwell.Kafka/Configuration/BaselineSettingsCatalog.cs": "a1395a1ab548ec97c42a04af73051987da114bc921d08babc2a2d6a91fe51420",
+        "src/Parchwell.Kafka/Configuration/FrozenInventory.cs": "5416a103a29c8f8e65581e734bf499510c543446f7a20575c3763262ea9f5619",
+        "src/Parchwell.Kafka/Configuration/KafkaBaseline.cs": "e8a1de90b0742b2de9ecd15dde1e38337022b0d79cfa9f31a341c19f7c054982",
+        "src/Parchwell.Kafka/Configuration/KafkaBaselineOptions.cs": "17994d170d095cc2f583234189fb58abbe8a87e3d924f2cee84494524c3a64b1",
+        "src/Parchwell.Kafka/Configuration/KafkaBaselineOptionsValidator.cs": "eadbd4b70b42611cebe5daeb36f458f538e504ffeb97b94dc8014b1606a1092d",
+        "src/Parchwell.Kafka/Configuration/KafkaClientRole.cs": "fc8b0772bba663ee627dc9aba0152737b29b1a8633fc2d759e1db9ea90ae8953",
+        "src/Parchwell.Kafka/Configuration/KafkaConfigurationFactory.cs": "3a075caeb23a21cd84cc57632e7dd35ceae9952121f0e5fcd02482040c07a0e3",
+        "src/Parchwell.Kafka/Configuration/KafkaRequiredInput.cs": "0cf52b4ba6e6947583b2f4786b01ce2cd1baaa457210a3f8597d05f964d65ddb",
+        "src/Parchwell.Kafka/Configuration/KafkaRoleRegistration.cs": "0c484f79729d905350feceb54fa5225f7e63b8783d18957d546417fd5a34e846",
+        "src/Parchwell.Kafka/Configuration/KafkaScenarioOverrideSetting.cs": "7d3fd0e91733766fbb4aab95762cd20742c7f8773416feba3ddfacdec1a0f730",
+        "src/Parchwell.Kafka/Configuration/KafkaScenarioOverrideValueKind.cs": "7a4bc90b98d2a0e7defae8650f3ebe283e4f630d6891346525cc34f5a799df4f",
+        "src/Parchwell.Kafka/Configuration/KafkaServiceCollectionExtensions.cs": "221e5d692b5bf1e0e820b405a797bf1f30337fc8c9465645f6cc27db6bb37072",
+        "src/Parchwell.Kafka/Configuration/KafkaSettingDefinition.cs": "055c11dbab67403e2a06fbeb4f71e8840b8690bf7b5226596a9752a06d78bc6d",
+        "src/Parchwell.Kafka/Configuration/KafkaSettingDisposition.cs": "eba8f58bf6e32353c9ef9ddd694c66b168e298a9a6ea1b72ca90500345c9e043",
+        "src/Parchwell.Kafka/Configuration/KafkaSettingKeys.cs": "abd90edc2d89aea517ea50a1b914a3cf7cb3946c9405ad0f1465536d82c898eb",
+        "src/Parchwell.Kafka/Configuration/KafkaSettingMetadata.cs": "021ec6d57d49d9e2e71729b085c14b6bfa5e53a93293a12f64c6d322205c3fa0",
+        "src/Parchwell.Kafka/Configuration/KafkaSettingSource.cs": "f3cae18c354ff2018614a1f9422bc36bf914cf7d2916c4f7cb478c4bd74d101c",
+        "src/Parchwell.Kafka/Parchwell.Kafka.csproj": "d2e21020adf42f67b06bf5033335afb6233638cab9a6e9445bded30062788484",
+        "src/Parchwell.Kafka/Properties/AssemblyInfo.cs": "4ccad28f774ce15722c8e82708237331c4e2c8820d8768be83375346a297fcae",
+        "src/Parchwell.Kafka/Statistics/IKafkaNativeMonitoringStore.cs": "2710df9ce00117075d346d9726a0b4f2068603b26a7c98c7c5bb3859e3a6f04c",
+        "src/Parchwell.Kafka/Statistics/IKafkaStatisticsEvidenceSink.cs": "28f2951695f500cdf06bf7e8fc9db484616c4ec451ce65aae7e863f3e6a8ae19",
+        "src/Parchwell.Kafka/Statistics/KafkaBrokerStatistics.cs": "371903009a832a327cb8acdeee5c27b817686182bff6f480381e44b0eef01adf",
+        "src/Parchwell.Kafka/Statistics/KafkaNativeMetricCatalogue.cs": "10c182835956ad85316caccfded68e7f643f92e5d49c34b95b4331ebf452614a",
+        "src/Parchwell.Kafka/Statistics/KafkaNativeMetricParser.cs": "6b8370d5d838e6691e399640c2f033575033ca9fe23cc6750555a4211221a340",
+        "src/Parchwell.Kafka/Statistics/KafkaNativeMetricProjection.cs": "e36c2c08e397e72243fcd9d84dc1270b6526ea8b51d3eead5ff09a9360752def",
+        "src/Parchwell.Kafka/Statistics/KafkaNativeMetricState.cs": "e51f3d85dacf1b953ab6de064ef60b8cc8e0e24b4705739f7f05c592f3073039",
+        "src/Parchwell.Kafka/Statistics/KafkaNativeMonitoringCapture.cs": "2c0d14face9ff856cfbf88d3bca6d0023647b3533fa743739f8f023cdfe87352",
+        "src/Parchwell.Kafka/Statistics/KafkaNativeMonitoringOptions.cs": "a78620d18c20097cca22a16f8991e8566f5a5a64349f00379c1ca067a002fd03",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsBridgeFactory.cs": "d708a7be90890a2065132693456c3c817f4ef2bbd08aea046e80b7e9bbd50143",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsCompletion.cs": "229ced2c2bc03d275d5fcbb8f4b698abbb20328e45d0f8aea1dc7e08349508fe",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsDiagnostic.cs": "fa6685f3e17c6beca4467dcc2f5622f85937f28a15def0388bd0d98ea86bde3a",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsIdentity.cs": "eac73d15879541de0e0e540aae00823ef7043b9ea4afd8b015affafc4ad7c0e2",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsMetrics.cs": "2fc513da909f34e45d5786723da4d21741dda81b9050446c50d4720654eab038",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsMonitoringStatus.cs": "0d630f447685cf575e780350cb697143cd250c3bb13a44336c1eb2f50d455505",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsOptions.cs": "d13b61ef181795e251d6ea4feb7e03db83344d097ad29b5d9c4df5c986d49e75",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsParser.cs": "53f8792b9985397c74091d22c85b1b2da627ec03b0f7c8fb6d97ae88521763af",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsReport.cs": "9d5528dab7dd12a509e221c19b63f25e2b825d2b762eea5d2f568578a26f3eb1",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsServiceCollectionExtensions.cs": "12b010c131c3867054127b9b1b1d8945c98d484f134c09b3a98b68e38df81cd6",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsSession.cs": "1288e8f5655c5797fc0f959be40d370846ee5b47b184142063b641068b9d4908",
+        "src/Parchwell.Kafka/Statistics/KafkaStatisticsSnapshot.cs": "70237ee71214b6ba2881081ca750b50a1e033835cc12293f6aad9fa46467c0f2",
+        "src/Parchwell.Kafka/Statistics/KafkaWindowStatistics.cs": "4441980563ca945a5a6a4b39c02afb9adf28ec58a37e789da80c9e01f302b49b",
+        "src/Parchwell.Kafka/Telemetry/ParchwellTelemetryOptions.cs": "bb515629199189d2ea4be682c395fa80ddc42c315f1c5e4bbde4d32dbfa6f576",
+        "src/Parchwell.Kafka/Telemetry/ParchwellTelemetryServiceCollectionExtensions.cs": "112270d3cd426c8f091cd10d776c1635f71d41d7712742d2fba8cd777164d991",
+        "src/Parchwell.Kafka/Telemetry/ParchwellTelemetrySources.cs": "2fd20d5f737c0d476427535d8a6c90a4aa97c81ab45b267ab882a64341d4fbcc",
+        "src/Parchwell.Kafka/packages.lock.json": "c59708b937db00f9e3aec0ef5a7fde689a6218645a4158fb49d6a5bddc717f98",
+        "src/Parchwell.LoadGen/packages.lock.json": "c9c2f3096cba8a0c3dc705fd2c9c5f0404ebf5a173837b5ffd9c0f73ba7d4e26",
+        "src/Parchwell.Scenarios/Contracts/IScenarioSource.cs": "35fa8562d38f5fce099455619d3df22c361915ad0adba899f558abe484b75098",
+        "src/Parchwell.Scenarios/Contracts/InputNodes.cs": "8ae64bb0353a415e7bf9fc679395b803dc5a8880c0ed584f987ef42898f7146c",
+        "src/Parchwell.Scenarios/Contracts/MeasurementCatalog.cs": "2ff7f3595a5d97d6141c0c8201ca01c147c92688b8aabcf9b040a185d460a4d8",
+        "src/Parchwell.Scenarios/Contracts/ScenarioContracts.cs": "719da4f0a01bceb8dc46d8d19d69aea8e0679d82251db2bcc42cc769b2c59c08",
+        "src/Parchwell.Scenarios/Contracts/ScenarioLoadOptions.cs": "8fbd29e1439f2b7f01fe8cb82e43435bf71bce29dddc690f36050fa70680ab29",
+        "src/Parchwell.Scenarios/Contracts/ScenarioPhases.cs": "60f7da34292fa587bb9ff8b8e44775b59cea04b7fdf33682955357a57aa82adf",
+        "src/Parchwell.Scenarios/Contracts/ScenarioValidationException.cs": "9fef8c2801eb8891732bed8c325308588259c9b122e2f47f6b9e59da3b61d69b",
+        "src/Parchwell.Scenarios/Loading/ConsumerProcessingDefinitionReader.cs": "1810cafe68b848a81b77e1906a81052f0034c307d4cae7fd64f5d7cae8c5a589",
+        "src/Parchwell.Scenarios/Loading/DefinitionReader.cs": "1e8e2155891196a0bd05e720465236b5a8d6eb76c4bab454d9c082f2d795e50e",
+        "src/Parchwell.Scenarios/Loading/IdleObservationDefinitionReader.cs": "f287a76f0c2bbc2bd752d789782a472a732bca3f3ba713dbf7a6cff9c88ef22f",
+        "src/Parchwell.Scenarios/Loading/NodeValidation.cs": "15d18dcf5cb50a819af9b2d05abbfb288de44c31dac89c07779a4f00212ee4d4",
+        "src/Parchwell.Scenarios/Loading/ProbeV2DefinitionReader.cs": "1ca197c92283c960c0dc30084caec8cb96d33993468140315028f5ffa9ab2ed6",
+        "src/Parchwell.Scenarios/Loading/ProfileReader.cs": "6d64f24a6e063d98531b7d819521e2be5250bb2c2e4c46ef5ecd5fc536525a49",
+        "src/Parchwell.Scenarios/Loading/ScenarioLoader.cs": "0397b71d9bf22327ee0d4babf6360dad31cda60d286c69a3b3747c12f5cb8acc",
+        "src/Parchwell.Scenarios/Loading/SingleActionDefinitionReader.cs": "6398490b00cb855877de3a53437d348468327e0d66c5a85d6400c492dc8f0958",
+        "src/Parchwell.Scenarios/Loading/YamlInput.cs": "5d71b5c818ded0211f2eb841d65954e970ac6655d8ed9305b1d30d73528be79a",
+        "src/Parchwell.Scenarios/Parchwell.Scenarios.csproj": "2430b704445cd856081232b12b34bdd40edca0c8d4602ba130497a8bcc522f8e",
+        "src/Parchwell.Scenarios/Properties/AssemblyInfo.cs": "7f00132f475aaacbda4e45214cf7b25e577b9b183f61ff9b6c42460beb022f53",
+        "src/Parchwell.Scenarios/Resolution/ScenarioResolver.cs": "bf7a89e93d59e276c0827e9f41ab3f238f8623859182765f7266211169ebb827",
+        "src/Parchwell.Scenarios/ScenarioServiceCollectionExtensions.cs": "549ad00e7882df296c8110016f6b4d4c7a1ffb3e72730362f1d079276f40155b",
+        "src/Parchwell.Scenarios/packages.lock.json": "dfa542e0f44824734c5a13615d1afbdc34a69da040edaeb9d9bec9e7a16533b4",
+        "src/Parchwell.Verifier/AssemblyInfo.cs": "6e4b9fa6a51796a8cfbf259852e73263bf241b124c1cd504344c023f2a392978",
+        "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifactCodec.cs": "0b61f41ad55754a1342ce837aae7e8e7296dfce4181a163395b2a7e27d0b0f68",
+        "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifactReader.cs": "20e12e34b4502625aa0f9f82a096f035b25a1eba442f42c56e2d1d3158e87760",
+        "src/Parchwell.Verifier/Common/Consumer/ConsumerArtifacts.cs": "ab9e5c90b886c8fd07bda7fa85956f5d0b235a38c285a3f1f304ace6879a13dc",
+        "src/Parchwell.Verifier/Common/Consumer/ConsumerRecordLimits.cs": "7e772a07fcc98dc19a3524d82f7e3bd37467009d7f46fa9b05b503311d78a16c",
+        "src/Parchwell.Verifier/Common/Consumer/ConsumerVerificationPlan.cs": "8f09b23fab1ddeb2d1b33e2857357877fa3eba6fc67ca333c04c612a3896c3dd",
+        "src/Parchwell.Verifier/Common/Consumer/ScenarioConsumerVerificationPlanSource.cs": "cce81c4345c69af4ad72a25e3c09077c9ee4155008928fd44c7ee98210bf50e2",
+        "src/Parchwell.Verifier/Common/Contracts/CheckAssessment.cs": "954935825eb8acf1f92c912c19afdbc0e140b272504d63d2c71fcc4b4e193edc",
+        "src/Parchwell.Verifier/Common/Contracts/RunIdentity.cs": "53b552ed4a123fbcb128a20715225a4efc778e464df52e2fb951bd4bf76cd019",
+        "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSession.cs": "77aa05942c72fd527ad74685c011dbddc7d1a60494b464a7990f8c7eeb3d523a",
+        "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaSessionFactory.cs": "ba6d6b90e29f8176890a2e9b76656628e15ff81dd51d5e115dd5c03b7907b530",
+        "src/Parchwell.Verifier/Common/Kafka/VerifierKafkaTokenProvider.cs": "ece4f51e384b5e83bc913d3cefe08ac542b5480e0e223e251deec103723f36d2",
+        "src/Parchwell.Verifier/Common/NativeMonitoring/BlobNativeMonitoringStore.cs": "e6a6f4f8f9ac2f8c050a63c7e4867d353cdef75424f2914918c80f7c54444ab5",
+        "src/Parchwell.Verifier/Common/Phase/B10SweepEvidence.cs": "e5a4fb09fc63ec53cbb08694d3d38b3d26b59377d894505aad238ee45b356b80",
+        "src/Parchwell.Verifier/Common/Phase/PhaseIdentity.cs": "f9a5baf696556088f72d8891a8da83348eb72a4fa944c5d7c61b3c4d6d06941b",
+        "src/Parchwell.Verifier/Common/Phase/PhasePaths.cs": "4d22f738676b82048a4b1b9feccfeceb01427a2802c1e6f147102861551e93c1",
+        "src/Parchwell.Verifier/Common/Phase/PhaseWireCodec.cs": "32bcf51577b8aa1c0234dad10d9b9b692e6824b55f314e3a5c2107749670bf21",
+        "src/Parchwell.Verifier/Common/Phase/ProducerRegistration.cs": "2a4dda01365845fd94ae48aa3d77f0561e6aebf81957a5b26c530571855b3068",
+        "src/Parchwell.Verifier/Common/Results/B10ProducerObservationsCodec.cs": "173cec5ddafd634b54270548fd8b7127ff12f6c1d8ae3c6bd1d9831f4dc998ff",
+        "src/Parchwell.Verifier/Common/Results/VerifierResult.cs": "f7015c332757eddc2522a1f443bb2e299ef149fa165441cff5bb82b1f097e298",
+        "src/Parchwell.Verifier/Common/Scenario/FileSystemScenarioSource.cs": "eba56bc542517e3f609c496dbf8de16b3a873cec79144047afadcc0e4da56373",
+        "src/Parchwell.Verifier/Common/Serialization/DeploymentJson.cs": "a4063de459234656d6d250b1a5e57fca959bb7ae8e52446286dac2f483704dec",
+        "src/Parchwell.Verifier/Common/Serialization/StrictJson.cs": "0db8159e387ecb3466c1cda72dcd129974740f78faa42542b0aff0fb97bfad4d",
+        "src/Parchwell.Verifier/Common/SingleAction/SingleActionLimits.cs": "8bed22307d3b3c144cc93745bb5aa3e9f63b44b1b759250005be01f4dc77b968",
+        "src/Parchwell.Verifier/Common/SingleAction/SingleActionWire.cs": "171c02eb80722e38056c304b1ab149dc6a9431289dc2acdf0e0bad3b4f1b5158",
+        "src/Parchwell.Verifier/Common/Storage/BlobProducerArtifactStore.cs": "e820f20ad43a2d85a5958ff7f01b31a223fdb25b35e5253a828374f2a479d56e",
+        "src/Parchwell.Verifier/Common/Storage/BlobVerifierArtifactStore.cs": "02f27feb7551ebdab83b33e5465af160c90f63cc24a29a24e1e6b79b7ce8494c",
+        "src/Parchwell.Verifier/Common/Storage/ICompletionReceiptPublisher.cs": "5a633d5c492d30139cf2ae2b520f6bb593cd957082f086be1b6866fe5885a662",
+        "src/Parchwell.Verifier/Common/Storage/IProducerArtifactStore.cs": "989abefbbc37d6fc769d8756e88b6a70244b23fa7b8767e4c77a1f321c538452",
+        "src/Parchwell.Verifier/Common/Storage/IVerifierArtifactStore.cs": "260b2f7d7013771a89216e6bed987eab4b5de474b98f2cb82e5b4c6c0fa5fa4f",
+        "src/Parchwell.Verifier/Common/Window/BrokerInventory.cs": "4dd0d92e52227a27a0bee068216ab5780457afd2044aff0193923c563d257964",
+        "src/Parchwell.Verifier/Common/Window/BrokerInventoryReader.cs": "84fad19b214dab36bf40dd9b318f6b9bfb3b8a34aaf1105eeddea41a6b632edf",
+        "src/Parchwell.Verifier/Common/Window/StartLineNote.cs": "249dca8c9c1ce896f9275a7c2766eeb788805a8a5bfa3ec8738baf45cd25a0aa",
+        "src/Parchwell.Verifier/Common/Window/StartLineNoteCodec.cs": "50183e73c15874dfec6785f00bdfb2852c78a9536583bfdd7b2f4d52ca85118f",
+        "src/Parchwell.Verifier/ImageSmoke.cs": "d70b8871232ece0c670491906054a4937d27f3dcc9267d93b80c6a49e5ac60ac",
+        "src/Parchwell.Verifier/Judge/ConsumerPhaseEvidence.cs": "bcb02c31cc31592525fd3220f07e638c439817290d95b817265ddc46a3046a66",
+        "src/Parchwell.Verifier/Judge/JudgeHandler.cs": "e35e56943e28a70db4e5db2ed0296cae527977af65743a2b9558216988a3fad8",
+        "src/Parchwell.Verifier/Judge/PhaseCandidate.cs": "c62b6c53761eed23ebcbd14803cc563437d2b80c6386b7cdb82274c8c5ff639d",
+        "src/Parchwell.Verifier/Parchwell.Verifier.csproj": "7794a1001a0ba5e52aed2fa4a95051bf6079b72de9fdebaf653feaa88f8d39c4",
+        "src/Parchwell.Verifier/ProbeGate/IProbeGateFileStore.cs": "7b0b302f3603dee035bb377eabc59d5a6299d3e96764df7a41b1e154789d3f0b",
+        "src/Parchwell.Verifier/ProbeGate/LocalProbeGateFileStore.cs": "2e24e4d97767d598f227bc71ceb369351535668e9008f0b21dd61b6e45a03e1a",
+        "src/Parchwell.Verifier/ProbeGate/ProbeGateEvaluator.cs": "f86cf11307e7e80c11733b391a764b72b6611a2482bc4db1774a9465ebba2d5e",
+        "src/Parchwell.Verifier/ProbeGate/ProbeGateHandler.cs": "6a4872672703e12d6368a8e027b7fe8accf38630731da74fa610b21d9b0ae939",
+        "src/Parchwell.Verifier/ProbeGate/ProbeGateRequest.cs": "e3199ed7633543e25d1a4b2c8d4fa839382035eb750f24b57dadb6b4ff2049f2",
+        "src/Parchwell.Verifier/ProbeGate/ProbeGateResult.cs": "26f62dc09a9af721e47df90a353e638cf117aa52cf9e05da726876c4bc310fc6",
+        "src/Parchwell.Verifier/Program.cs": "465e8d1bbd7d72c88b5b34f589a68a52448c0b5479b012968e76eb33406e75fb",
+        "src/Parchwell.Verifier/StartLine/B10SweepLineHandler.cs": "0ec9027a631af6f0646b4fbe5079580f22b71c69f2939a9be1bffd55a0a09caf",
+        "src/Parchwell.Verifier/StartLine/BrokerInventoryCodec.cs": "4d3095eba706234f73739afb2c6b4b5d4b4a67b3a42e619b4f3476c0c1092041",
+        "src/Parchwell.Verifier/StartLine/StartLineHandler.cs": "d9b11257f06b305d3397a3899af365ee18c1038b577d72ca9667bbed03e285d7",
+        "src/Parchwell.Verifier/VerifierCompletionState.cs": "87bb1a0cf9c156777c5cab123dd09e8a95b494e9040954797b68ee37010a6ad6",
+        "src/Parchwell.Verifier/VerifierHostOptions.cs": "e57a7a834324f4c7ae3625b2cace55782900cca696ba989ec153ce6726d3ab2c",
+        "src/Parchwell.Verifier/VerifierHostOptionsValidator.cs": "2e3e9b0396291c8133462b8ccaf52e0f752205a8697ad650a64b56f8900229b9",
+        "src/Parchwell.Verifier/VerifierWorker.cs": "1ad54c9ff68f5cc35a28076cfd075098c0521854074db7107bdc282f4e3a47cc",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptDiagnostics.cs": "a3c787c0101ead81ceef9099d4af2f482a10d9740a818bb5d23ff8e4fa5ab146",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptEvidenceCodec.cs": "0645267ceaffa9a173fdaaf3d29c73ac72e78f856d8e75d45a01b32899a6d9cf",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptEvidenceReader.cs": "bdfddc4c2acf7f1227ba861f75e6361a5350ba3ab74ec5e803cb936ffed643e3",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptGuard.cs": "11a37566cb8f4e7f89b44ca62053aabeca104c3981d0f910119ff03bfd38c125",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptGuardConfiguration.cs": "4d197708fe9ad8f1f71bb9c1b92c0d904cbe3b6a7ffdc3487996bdde73b52df0",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/AbruptReconciliation.cs": "d500af3b52e6ca9f056a4ea3a95ad0d629a475124cad2c96f1d48f0828349db8",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/B10AbruptVerifyHandler.cs": "af7d9093b4595018b52d1b4bc8b2befe72fa9815ede03e6a4cb1d9b07fec9ce6",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/EarlierRepeatEvidenceReader.cs": "312865b5fb2ec95761dc8fbacc041ebeab94571dd5f18d459e19187123d02c34",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/StartLineEvidenceReader.cs": "04640f3fcbd6352a54a2f01ced057e50eb3ff3ec1c433cfaaf9a34796f68baa9",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/TimeoutEvidenceReader.cs": "caf53bdabf6c8e58a4400d35b7a1878449485ee5823246147a83eaec9a7d0c18",
+        "src/Parchwell.Verifier/VerifyRun/Abrupt/TimeoutPublicationAcceptance.cs": "4dc3b713a8d890e7bfaece31c693b6722a7362859b8d94c71905af00ebfafabe",
+        "src/Parchwell.Verifier/VerifyRun/B04/B04EvidenceRecorder.cs": "1fd4571c9d4e33df692115e7c36ea5fff253a1aef35dabfec967266ee18bcfa6",
+        "src/Parchwell.Verifier/VerifyRun/B10LateObservationDiagnostics.cs": "79e54486c7f8a9d1983563a7e46caa6f93994a2a67ea3d4c6850733408078210",
+        "src/Parchwell.Verifier/VerifyRun/Configuration/RegisteredProducerConfigurationResolver.cs": "6b5040db8285f7ebf9ee12a553c0644e4bcd5e431634d8a32373f99f5a002b7d",
+        "src/Parchwell.Verifier/VerifyRun/Consumer/ConsumerRepeatExtension.cs": "6d564c03b57b02c2ac6ab280107bce2aaa8c477ac4a592044dc0c9159682c114",
+        "src/Parchwell.Verifier/VerifyRun/Consumer/IRepeatResultExtension.cs": "a7549004b04f7d80171cd7366674abc15ca6bedb09786106318fd6c052d3ba7b",
+        "src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs": "8145b10227ee09fe72ab13bc0c57a5ce17aad4f2a5e125730b010ef59a14b8a2",
+        "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerCommittedOffsetReader.cs": "f8e28f746f4af593d1cc6cd62409ce669bbcfec03f03b3a3c9183b3828e8855e",
+        "src/Parchwell.Verifier/VerifyRun/Consumer/Offsets/ConsumerOffsetRead.cs": "cfadc39c9393d8c6c78f7a920490b17f6f5c29d220d44b67b0b88c580f2691fc",
+        "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationJudgeHandler.cs": "7d9329fec7609b5238f7f01f65d15948bdb52ad5cca44abb97c80c9e460c529f",
+        "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationJudgeHost.cs": "e36235d5999d47a7966e71f56c61d1505232cb3232b88e0fed2cf9a123466462",
+        "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationJudgeOptions.cs": "30ebf6c5e0f8674d29ba1ecd2c00ef71adbd8528c43db53445ebd1246bc7a11d",
+        "src/Parchwell.Verifier/VerifyRun/IdleObservation/IdleObservationWire.cs": "53c9a12513a324c9a28233a0b8e7d067f1ce27da378006dd25ed99a8cb34da0c",
+        "src/Parchwell.Verifier/VerifyRun/Input/ArtifactIndexReader.cs": "47ea5d201901581f238987150704432044096e3bdc4af10c963a1ab60c76985e",
+        "src/Parchwell.Verifier/VerifyRun/Input/CapturedArtifacts.cs": "fd73f098b907f227de04ba43b67cf6842842e7b92d3438558925b6a3968ba1a9",
+        "src/Parchwell.Verifier/VerifyRun/Input/CapturedEvidenceReader.cs": "d185b76fd498532fcf33985abf5cb6be972cb8d342d3ed1f1a37b006c4a5393f",
+        "src/Parchwell.Verifier/VerifyRun/Input/ConsumedRecord.cs": "67b6524ddd818d1a5e7f2142313407cc99f6a85977ded99860846478a43464d3",
+        "src/Parchwell.Verifier/VerifyRun/Input/LedgerReader.cs": "9a0652de60a50e2a33bfa51c121d9be735256d435204742ec10e8399409a8905",
+        "src/Parchwell.Verifier/VerifyRun/Input/ManifestReader.cs": "de7085d4e73a312ae8e4d75e44d71d91cc8963078794a14493e084b1113df8b5",
+        "src/Parchwell.Verifier/VerifyRun/Input/NativeStatisticsReader.cs": "3b7278ed1d948d269534b63ac1de254ce184d005d958f3939adf6284d1f9abb4",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/B10OneProducerChecks.cs": "0fec291c542db3dc4760f2822e644669831da5e8f054497f513097fae3b46e64",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/BookkeepingChecks.cs": "286e35ff4129f589fd5d97344db34bd49de77774421fc0744a6c4b72996138c4",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/BrokerCountRecorder.cs": "9518932dbfbb1896d76c850fbe60fc161b121037561b2a43fc56c55c20b48108",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/ConfigurationFidelityCheck.cs": "b832a639de1e053a5abeefc0c6f48aa27b99dba4420593f1cf542adea72ad2d4",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/LateWriteChecks.cs": "d40a9a5209ac476798d19f7af8cb33cfcb685a55fc5ec3dc41ae34eaaf6621b9",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/RunJudgement.cs": "723139f45dac31ef63a44040180459bb7f5b3814a17a6e68d5d880b2291a013d",
+        "src/Parchwell.Verifier/VerifyRun/Judgement/StatisticsChecks.cs": "e5ada0f0548be096ffe3dccb5a9f84c9597e12a84f007be9fa20658c383756d9",
+        "src/Parchwell.Verifier/VerifyRun/Publication/DiagnosticPublicationReader.cs": "fd8745d244e0e04d4d5ac843163d3334e6d2b99d6a6c60e2581523d8a81260e0",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Candidate.cs": "2fa5346b8ef8800ddc70e447ec3d89554bf2c7d29e6bb1c58a3004855c5d99a8",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Handler.cs": "aee2a473313198d9930a94cb23263558c79c6449d9aa15a293ebe6af08689a37",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Host.cs": "4f8034abe31f52c3e1c8a419e43f074867f54b21ac480b1c202f2ad14d8b743f",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Matrix.cs": "9f56f28aa82981bbfbd1120c0ecd96ace3c8d3b31d6a4d3a6713b23b4cfaca2b",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Options.cs": "d6de5dcd71f09f4f29fcd36caf83f32c80e259d51e0b0433729e3489c2811d58",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/ProbeV2Wire.cs": "641817e4563801d95cc6f95ad3f167db27e0331fb7b4b7d3a417957c250f9597",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/SingleActionCandidate.cs": "70d99b2aa0d3a57d6a80a1e79be7d0be20c142e1fadfe26034ae90615e9594c1",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/SingleActionCandidateCodec.cs": "7a32874f9c4bfad3447116158bec46e8225f683eccbc5ebc12deba338ee6b529",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/SingleActionHandler.cs": "5e1169f92d57ff78587f9e20f1b1a2f6750bbae673a1b80721fd77d830a12dda",
+        "src/Parchwell.Verifier/VerifyRun/SingleAction/SingleActionScenarioResolver.cs": "3c3ee661f083232f05a4bd4d4dad2eb870c7f1cb6a57b1f9537e6cb022bbb77e",
+        "src/Parchwell.Verifier/VerifyRun/Storage/BlobLedgerArtifactSource.cs": "33a412d197586445cb00f9a9b19e2d3efd91cac8727df96cc313296109402957",
+        "src/Parchwell.Verifier/VerifyRun/Storage/ILedgerArtifactSource.cs": "fe80ebf52231a21f79bfe34530dfd8faa4400e5f4c3108c764c10403c2dd7c78",
+        "src/Parchwell.Verifier/VerifyRun/Window/ConsumedMetadataCapture.cs": "361308efb4718c12fca1863d661380c82f2a167fbe1c97f37924957e1bb2d8b5",
+        "src/Parchwell.Verifier/VerifyRun/Window/ConsumedRecordBudget.cs": "7d7376af1ca61985e716fd949159b3218fcee967cfd22c4278104e368747f1b8",
+        "src/Parchwell.Verifier/VerifyRun/Window/MessageIdentityReader.cs": "b2012594b326ea2afd577d123867af37e0078e0f1da961a9dda5d2555aaefcca",
+        "src/Parchwell.Verifier/VerifyRun/Window/RunWindow.cs": "87d5e8057535d0a2895d19c0a45fdc90df491787869ade1dfb08a2c6c0695c98",
+        "src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs": "51482cfcf3e471552d374c2fe237476204ca39f5a3efaa9e9a9cdd52bf14a1a7",
+        "src/Parchwell.Verifier/packages.lock.json": "c9c2f3096cba8a0c3dc705fd2c9c5f0404ebf5a173837b5ffd9c0f73ba7d4e26",
+        "tests/Parchwell.ArchitectureTests/packages.lock.json": "34a6ea41cfff3aef85ef7748fd20fdac0a8480a53d1047c34de5683fd927ecfe",
+        "tests/Parchwell.Enrichment.Tests/packages.lock.json": "1378e0c4323a993d167d1fd3d3c30b65539d46bcdf8e1fd352622da80c9e7e8a",
+        "tests/Parchwell.Kafka.Tests/packages.lock.json": "55d6914e6eeaeb987f0db833e3366f57820aa0b8ff3411660828c90131ef0327",
+        "tests/Parchwell.LoadGen.Tests/packages.lock.json": "d15af1ddbb1f8fad55a20f7804e4c849cd03028c2de09df424b3b72e4c5bd26d",
+        "tests/Parchwell.Scenarios.Tests/packages.lock.json": "be591ff559bdfccfb49704ebaa0a726650b5e7ad31346b5d77e88f7d046181f4",
+        "tests/Parchwell.Verifier.Tests/A01/A01C3EvidenceRecorderTests.cs": "cf850b729c3889a7d6e1ddfde08d3ffd2411126973df581f04690d4ecd0d7e15",
+        "tests/Parchwell.Verifier.Tests/A01/A01EvidenceRecorderTests.cs": "87f2be41c3a1b95ad17fb1cbe375d4fc18e4fda8597da07d3a22e9a6a9f60e04",
+        "tests/Parchwell.Verifier.Tests/A01/WorkloadRecorderTests.cs": "e4555eeba7bee230f47f4e1ddb97338d81bf9fee640db453a082db3fac198e43",
+        "tests/Parchwell.Verifier.Tests/Authentication/VerifierKafkaTokenProviderRetryTests.cs": "a0e7bb8f7bab5f2f8324a7dbe266bdd5a28bacfabb3e6233c32fbf93f996a4c3",
+        "tests/Parchwell.Verifier.Tests/B04/B04EvidenceRecorderTests.cs": "a2cca43cd9a7b5a7affde0597fdfa4f3e85e4d8a2a876d132492f47174d3f741",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerArtifactTests.cs": "28cf665ef89eb08ac3f3e06cac26893e330a5077a26112d8a1e640f8bcf0665d",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerExtensionTests.cs": "c2aecccb15fc0132729bc6ad118dbba1bf55e7120603faac254fd4aff2de79fb",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerHeldSetBoundaryTests.cs": "14cf1137a57b7133348d8b70deab5bb94ef2d9fc6bcc3fa032c97f2d073cd27a",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerIoBoundaryTests.cs": "f6398f1657e628057c9d27182cb4575158299e67d99110ffe036fa261c518e3f",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementFixture.cs": "6f508fa7a0ca17e66d10f32ae15cefb2ed19a67162c4dcfc9847509b1f2294db",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": "1e1d549b0d772e57aa0c3eea342ae40ec12b0ac3c50239c076ca5c4ea27b008b",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerMembershipTests.cs": "e8c6f1db046d51fd238fcbd14090e81cb57b6432bc2dae440978315c16ce7c3e",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerNumericBoundaryTests.cs": "e2947d57cea08d8cf59a1c3274869673dbbf2506436e45e8f858ab16dca9132e",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRecordNameTests.cs": "1cbfadee609abe30add6ced5b5c27a989f6fc157da6f09055457edab3124dbcd",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRegistrationPathTests.cs": "475284527c17705e17ee53f53c698a625bbfcb68199fe13d8d40f9ce469d7fb7",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotBoundaryTests.cs": "0ce940f1d58a7069cfa48b2cf251b4c3f3bd4ebd912c282a5d23e7cbd6c06a43",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotFrontierTests.cs": "4148454c116657817051f198c709667864cfec4cc77700d541004423352affd8",
+        "tests/Parchwell.Verifier.Tests/Consumer/ConsumerWireFixture.cs": "3eb6be4374b4b9b7a4f724cd95d8a5d09a3bf3c885f1478c1879cbe0b71fe1a9",
+        "tests/Parchwell.Verifier.Tests/Consumer/HostOptionsTests.cs": "4654f81a454a1c24a64fbd41f06c1ae840616c0a7a8531c1ef372dd18f9adef8",
+        "tests/Parchwell.Verifier.Tests/Consumer/IntegrationB04BaseFixtures.cs": "99592df6b0f7ff05dda41faa8d3cb3f1f6eb6b0a83d183af0512f0cb0ceb8d02",
+        "tests/Parchwell.Verifier.Tests/Consumer/IntegrationConsumerHostTests.cs": "9c9778d93f17b3954d131e1f1f0af6cc6fdee8dfa88f2ac8d752769517f0481b",
+        "tests/Parchwell.Verifier.Tests/Consumer/MalformedRecordPublicationTests.cs": "302b81bdaa39f91a681353d37e823e529fde3073d9c559ad3f4a39fc304a7a77",
+        "tests/Parchwell.Verifier.Tests/Consumer/OffsetAuthenticationTests.cs": "a2e7e35192bfe38a580530f2871108b1f8881940c0cc5f0c54de956aa760a3d2",
+        "tests/Parchwell.Verifier.Tests/Consumer/OffsetReaderTests.cs": "c0fa74c0345d036f3f2be9bec030929f0aa729a6204d21e43944372d9c147fba",
+        "tests/Parchwell.Verifier.Tests/Consumer/OffsetSetupDeadlineTests.cs": "759ca209a9b45ec9a0c6a22741eb319ca2faf6b1d6d3e5eb83f6ed1e4a635515",
+        "tests/Parchwell.Verifier.Tests/Consumer/PhaseWireBaseFixtures.cs": "f98cd76eb2b6fbb4c54db0e8977265d2fb7a4f1acfc9725333d70fb611c13b6e",
+        "tests/Parchwell.Verifier.Tests/Consumer/PhaseWireConsumerTests.cs": "8fa808762a51298af56b079acd810135814e9f66f5e97f25be6696bc285e3630",
+        "tests/Parchwell.Verifier.Tests/Consumer/ScenarioKillVerificationPlanSourceTests.cs": "7cd5823d93641a69749442472b45f409d39d01fefd60cd7c00a5f7e7efae9a51",
+        "tests/Parchwell.Verifier.Tests/Consumer/ScenarioVerificationPlanSourceTests.cs": "9fa59549b29a2d4f520cec886580b5771e349f2570829f7f1e3eef6c9d9d069e",
+        "tests/Parchwell.Verifier.Tests/Consumer/StartSnapshotTests.cs": "1fda577ec439430c8b010c40c54c0517adb9b7e9e9ad9bf1bb08b8f470a62369",
+        "tests/Parchwell.Verifier.Tests/Host/B10EarlierRepeatExclusionTests.cs": "48c8e18f0b6ca5b0f4d1c50f38e797f85dfff58b6546b261d24b4661ccd448ff",
+        "tests/Parchwell.Verifier.Tests/Host/B10ExpectedProducerJobsTests.cs": "46cdbfea42d395729283a2f9c403269ba10eb0256c350ca73d3d6adcfc5a582a",
+        "tests/Parchwell.Verifier.Tests/Host/B10FinalHostTests.cs": "f5186aacb65df2dadc86eec4c514f1b1a533880733df39e5c3b19ff7fd46a321",
+        "tests/Parchwell.Verifier.Tests/Host/B10FinalSweepUnitTests.cs": "45fd88227d7d1fdc97f4ed6674b7a90bae54bed7352f54dca6a5d3e09c939f6e",
+        "tests/Parchwell.Verifier.Tests/Host/B10LateObservationDiagnosticsTests.cs": "69096977206e0c7a28f4d5becca94e2a7e06061c4608922eab3d96a5dc564ccb",
+        "tests/Parchwell.Verifier.Tests/Host/B10OneJobC0VerifyTests.cs": "517588e82c60148f117391efd629bbf2e218920d8857694601716d968f2b5872",
+        "tests/Parchwell.Verifier.Tests/Host/B10RepeatVerifyTests.cs": "f4f613f02a059203ac4f98bc9c7fd4ce7460788e82a59243cb95c72c2354aa27",
+        "tests/Parchwell.Verifier.Tests/Host/B10ScientificThreeJobLegacyReaderTests.cs": "e5febabc6ff4cff4409b45b7d1eea4140537a8a50ece2513997c6ac5a037b4f8",
+        "tests/Parchwell.Verifier.Tests/Host/B10ScientificThreeJobOptionsTests.cs": "c5902b41f4aa867e92a438330321b4378500a21c72aee768e43a4b89516cf87d",
+        "tests/Parchwell.Verifier.Tests/Host/B10SweepHandlerTests.cs": "a22aac994165638c1825ddff184051fdf25919211e2dac0a058beb9374028e15",
+        "tests/Parchwell.Verifier.Tests/Host/B10SweepLineHandlerTests.cs": "e13fd5d23258c7e2a8cde6c4ce832f1755e0fd9fe59056a0dd911943b0796bea",
+        "tests/Parchwell.Verifier.Tests/Host/B10SweepLineOptionsTests.cs": "68552e06ce74768e517d6c83f84d7b4310205f3f3007cb53c10b6595753d920d",
+        "tests/Parchwell.Verifier.Tests/Host/B10SweepOptionsTests.cs": "881823cf46b1e7517a367b66022faddf127133458960e4f20f0920d810921211",
+        "tests/Parchwell.Verifier.Tests/Host/B10TrialStartLineOptionsTests.cs": "383a2553cdb4f58b20be06f74572ce8397f7d4c6a07eb099aac1634d4e792d73",
+        "tests/Parchwell.Verifier.Tests/Host/B10TwoInstanceVerifyTests.cs": "ccca452e11a55689a736a1acbb268300381b72ffa277508f613723beee44819d",
+        "tests/Parchwell.Verifier.Tests/Host/BrokerInventoryTests.cs": "e2ec290b2450ec05986765f7995df6703e1ba1aea0d31f72bb9282056099bc92",
+        "tests/Parchwell.Verifier.Tests/Host/C3HandlerTests.cs": "cc7daabb792a37e7da99a05d32768fd83815be2fa227e094fa38c4b3d40f26b8",
+        "tests/Parchwell.Verifier.Tests/Host/ChartEnvironmentVerifierHostTests.cs": "48e4ff2bc0a7692c57ad50c1af881f5f3cb4d427f9aa1c4610577c762430b040",
+        "tests/Parchwell.Verifier.Tests/Host/ConsumerJudgeOptionsTests.cs": "64bd336ead19b4ea1c36e0a9a96c13f2e76dce2fd205eca02bbdc8688d22a37a",
+        "tests/Parchwell.Verifier.Tests/Host/ImageSmokeTests.cs": "be613a4b55103a0538dddee591e47c26b10033fc972c0b56710ca18eb4a101e4",
+        "tests/Parchwell.Verifier.Tests/Host/StartLineHandlerTests.cs": "0255aff534a2ae853ae813dfa1f424d69b6ea82752da1d65bf1b114f3264741a",
+        "tests/Parchwell.Verifier.Tests/Host/TelemetryWiringTests.cs": "ecfc325e82f9b8c787a158eede69ebb44188082d2ddcd29e3d7465568d474262",
+        "tests/Parchwell.Verifier.Tests/Host/VerifierCompletionTests.cs": "9efb7c7121808be4879fc18556869aa1733bb5ff1ba2c930b26aa540ca1b009c",
+        "tests/Parchwell.Verifier.Tests/Host/VerifierKafkaTokenProviderHostTests.cs": "9a301d3232e73ce0b1a634607a12fbee18b5da43b060909717e91147b0cfc061",
+        "tests/Parchwell.Verifier.Tests/Host/VerifyInputCapacityTests.cs": "1a4cfa11b8b6d7f1dcd7dbe494bc683c818dec4e23d94595fff3483823095d97",
+        "tests/Parchwell.Verifier.Tests/Host/VerifyRunDiagnosticTests.cs": "3d98c0a523717ff8fc4f544e6e405a870ad4a9646025f03eff7e2eb04081734e",
+        "tests/Parchwell.Verifier.Tests/IdleObservation/IdleFixture.cs": "94b64bce8181ab4ed28be480db2f4facb217a4142dbe2b03ffece99ef217cdd8",
+        "tests/Parchwell.Verifier.Tests/IdleObservation/IdleObservationJudgeHandlerTests.cs": "07546cd59da494d2684c67d8eb19a7fb64fd1f2250f8e87f7f32824ba2d149d6",
+        "tests/Parchwell.Verifier.Tests/IdleObservation/IdleObservationJudgeOptionsTests.cs": "0cc1959bc4dd8d4be9accc088128d6cda89c5f20243ca4edfa105cca69cd1bb5",
+        "tests/Parchwell.Verifier.Tests/IdleObservation/IdleObservationJudgementTests.cs": "ec3a3a5c5d9e8179c75457ffa30ff7d5725bc75a174290277480af52d1d63dd4",
+        "tests/Parchwell.Verifier.Tests/Input/GoldenArtifactReaderTests.cs": "c5acda17fa39847db871f7d0ae22d209d57ac8fe88e3e3aade561e00ea76f45e",
+        "tests/Parchwell.Verifier.Tests/Input/RestartManifestReaderTests.cs": "37bcd07eb5f3377c97220ce4a7602ca62c28c9b30ce6ab59742ec50fb694db62",
+        "tests/Parchwell.Verifier.Tests/Input/StrictParserTests.cs": "02a6958674319949d17d81791cfcc9c561ef52f4d9b249c0d8a499d4e2e91c11",
+        "tests/Parchwell.Verifier.Tests/Judge/B04BaseCandidate.cs": "630d021ef0210d0591cb72bd776b8464d6fa6ce4a795e3b9d1c2e1f6f0b6f18e",
+        "tests/Parchwell.Verifier.Tests/Judge/B10FinalJudgeTests.cs": "002731ebb70398b9ae0f61ccd4f748c93185e74f5e6ff1194a4e315253158463",
+        "tests/Parchwell.Verifier.Tests/Judge/B10FinalProjectionCodecTests.cs": "8952edd137efaf1aa186b986d57d5ffed5f0c15fd636ed40d437027779d67ca9",
+        "tests/Parchwell.Verifier.Tests/Judge/B10JudgeChecksTests.cs": "2d3d34d268659aa4c036127dcdb855a93afdb31093613dc1d8a7617a6c7114e2",
+        "tests/Parchwell.Verifier.Tests/Judge/B10SweepChecksTests.cs": "dc01315c1ab165c4ee0927481fe5dacb1506603c8c3e2b354326eff742349739",
+        "tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs": "700149eb85bc42e54ea7c71965db0504f5f13898aa3cdaf8f59257347a9336c2",
+        "tests/Parchwell.Verifier.Tests/Judge/JudgeHandlerTests.cs": "b008e9ae2993b2701413e6a363a9f247c81f5456b9cbb38435198af93ebff115",
+        "tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs": "b0c4abb2fd21de8d3af442119709af238834b6de8aa172082673d7f8e33f1638",
+        "tests/Parchwell.Verifier.Tests/Judge/PhaseJudgeTests.cs": "91e652585a67723c588b424b237449257345864f4898cfd64bc50c4fc0d73833",
+        "tests/Parchwell.Verifier.Tests/Judge/PublicationAcceptanceTests.cs": "49f69c36053b1b4df84ea16c741ea5e0f0333ba5d5c28395495e8f4fbacf992c",
+        "tests/Parchwell.Verifier.Tests/Judgement/AbruptClassificationDuplicateTests.cs": "3b74b9e8f1a02e259b9ae5c2289dcd062178611ba27d08aa34a403b2d080bcc3",
+        "tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs": "381acc092771adf027b0f3fe58e246e76c32fe05811de0397760f96ebb6af586",
+        "tests/Parchwell.Verifier.Tests/Judgement/B10IntakeChecksTests.cs": "5eef5f215344ae456cfeb0ca7ac606325de059c3b10c95c8d8dc28ad12b9333e",
+        "tests/Parchwell.Verifier.Tests/Judgement/B10LateWriteChecksTests.cs": "56de4c4f6058f293ebffc79aea7c82cbd74016fc0cebd7a760facc2848c356f6",
+        "tests/Parchwell.Verifier.Tests/Judgement/B10RepeatChecksTests.cs": "eaa5890a747696c464e0f9dc546016210670847552d01f70abb530800a12018c",
+        "tests/Parchwell.Verifier.Tests/Judgement/BookkeepingChecksTests.cs": "1fa73d65386b32656a67e8439373b0e5ffe376aa1fec3ef89c1605d2957c422e",
+        "tests/Parchwell.Verifier.Tests/Judgement/BrokerCountTests.cs": "dfc40cbefb86fff388f8e5783b0aad1ba7168515dac23b5a94427457c4784824",
+        "tests/Parchwell.Verifier.Tests/Judgement/ConfigurationFidelityTests.cs": "3a600de24ed58068c837700c19e382a63dae2179e85b63bc10c04afeca5598d0",
+        "tests/Parchwell.Verifier.Tests/Judgement/DuplicateClassifierTests.cs": "b53e0fa8b9e4d9fa39f3f0159cb365b53cffcabf98631fd271128e6af4e98704",
+        "tests/Parchwell.Verifier.Tests/Judgement/LateWriteChecksTests.cs": "9523390ba70369f7473e0ab52373de42d59098655cfa4a791f424d917e08f236",
+        "tests/Parchwell.Verifier.Tests/Judgement/OutcomeClassifierTests.cs": "77d1a1affabb283f31c0dd77af348d4c808b707bf4da45e87494e647b4bc3b41",
+        "tests/Parchwell.Verifier.Tests/Judgement/RunJudgementTests.cs": "6363c4024ed1f62028e79404b0510d7ef0500a7a6239c65a4e34aff63fbf1e61",
+        "tests/Parchwell.Verifier.Tests/Judgement/StatisticsChecksTests.cs": "b61b9a63f22447c5c2caef0a6778198ed3f2bb493603f315554a9c73f17d2cd7",
+        "tests/Parchwell.Verifier.Tests/LedgerBatch/BatchingEvidenceRecorderTests.cs": "6294256abac200355df5fe228a5fd7578d3fffdcd251f31031228366ea27a244",
+        "tests/Parchwell.Verifier.Tests/Mutation/c5_campaign.py": "5dd294fcb0b3bb9ff2de8a5df5ac71242e775066a91e444091d382cb3406b46f",
+        "tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py": "3771b676b8d5856eb34705dcaa3e9c34ffd8184dd514179a1bf85ee7535fb16f",
+        "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": "5e123dc8552d72e9e424f292ebcc5b4b695ff39fed026470f2879d8b5a234552",
+        "tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json": "9b67e2dfcad56280254a430497c34e340754646ad4f2f0525391f303550c83d6",
+        "tests/Parchwell.Verifier.Tests/NativeMonitoring/VerifierNativeMonitoringTests.cs": "4d907495debffed9b44a282f817286b63bf0a8882330f3453717a11679e30221",
+        "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj": "a3d7fe4824fb1f4c11d5bdca6438d04c92eec1c3614e9db02df27f232468721a",
+        "tests/Parchwell.Verifier.Tests/Phase/B10IntakeWireTests.cs": "7c4e96508b3d2ad28ca613e8bb33570b41d50082a95855cb7e57fc240743a315",
+        "tests/Parchwell.Verifier.Tests/Phase/B10RegistrationTests.cs": "9027fe0c884e57baf8f46b88427af682621deebf71f34ecc76b34d0f762e6553",
+        "tests/Parchwell.Verifier.Tests/Phase/B10ScientificThreeJobReceiptCodecTests.cs": "d5126ebcb07ccde23365fd8a701cec5567eeeba54b0e5d5aea5500f00bfbcb87",
+        "tests/Parchwell.Verifier.Tests/Phase/B10SweepEvidenceCodecDuplicateTests.cs": "f8bf4d6a7772032ad474c27cc5fee03bb38c2917e38a286c2c0e88f217c320ab",
+        "tests/Parchwell.Verifier.Tests/Phase/B10SweepEvidenceTests.cs": "cbb3b90fce2f3abb7cc90cbc72ad3dcf4f1eaf438b9b41ca352cfb35fbebb5c4",
+        "tests/Parchwell.Verifier.Tests/Phase/PhaseWireCodecTests.cs": "2665e7f8b45a71ce7feb376eab80671f6386d0706033d20b6b4b603dcce7b2c5",
+        "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs": "d4c79c03d019ccf4c66105c19c8fd612ae991ea731682635c9c9638bcae91d11",
+        "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs": "a8c65916866ed4e5aec13753be1df94ff296d3ede9151df67131b5991bf06087",
+        "tests/Parchwell.Verifier.Tests/Results/B10OneJobC0CodecTests.cs": "116ab54d5187bb2032d59ff4aa761d3aa5cce19121b81d0208f90f754b540072",
+        "tests/Parchwell.Verifier.Tests/Results/B10ProducerObservationsCodecTests.cs": "08656a6c728f871d717b66a4c95f66b711a124ac13e318b61ce77b981d3f6a88",
+        "tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs": "118397b15974d96dd16098088ef775b11cd9d734050d8e6653028b82fdb6d7d1",
+        "tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs": "2206b3a4b381e3a5c2656c080bf21c180fa9a86410bfe893009b9e5b8440392b",
+        "tests/Parchwell.Verifier.Tests/Scenario/FileSystemScenarioSourceTests.cs": "fb5f5f07f47516400233ae22049f4a6164d6572020a650b6631f18314399ab19",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2AccessEvidenceAuditTests.cs": "ed38cd23f589458a6c76312e89ad553ce8a9b6938d030846a013c1f456a149ed",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2AccessEvidenceTests.cs": "57308194a60467a714da8049f403b5576e27cfd804c77ee3b7c0e6218fd3e29b",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2BoundaryTests.cs": "bd6274225f1cf7e16c08a9e58e8b8902336fd5263739dc63cc351c6b5f264eb5",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2CandidateProjectionAuditTests.cs": "43c9f0461e7bdc3ad065f261c07f37daafa83220d683a1c6eb871245c7951118",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2ComparatorAuditTests.cs": "0232751ceac5680f22c8519bc277f5e6dfdc6706b41ed4565116ff94b975b98a",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2EvidenceGapTests.cs": "302ed191893054609c6c16be03464843fc6fec3f34b5a40a8cb8f0b85000eb8c",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2Fixture.cs": "3c42ad118558cb6f73ac226b61425a0e914961f6e4af8c9686e1e96dab8afb03",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2HandlerTests.cs": "f7c8350f55f7fd14d13c3d083ce8cd45bd4dff5572bb9cddd2bb3f93ac56d249",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2InputFileBoundaryTests.cs": "5b7c36ff7bdd65b4b1a06587cfabdc29d540873d88a2fb15ace4cae287b614c3",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2ItemJudgementAuditTests.cs": "5d39d132be8159f6000dea6e1b620a4609ad780ca426dbd95585787000d36740",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2JudgementTests.cs": "4b903dd077e955a16c31b8a3328f526c75d6b57cfa2989d4eda5857460f14e0b",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2MultipartInputTests.cs": "174aae24036d2aff453396fe74077b6515436f69028c47223282c74f44cef706",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2OptionsTests.cs": "a99fd638b5cf4e702f883d69ddc8f012f039627bb8ad93e6055148149d7ccce9",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2ScientificAssessmentTests.cs": "160312786e9d02dc94aef6a18f8a139e97610b33c5b2b9f800bf9e75e7a07441",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2SmokeControlTests.cs": "a1a996a613a89654f1a9cc06e0f428cf09477bfa5fb601f0951155a8fef6dd9c",
+        "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2StatisticsBudgetTests.cs": "cd6e70b18d7a322a28b5efff61f89caa17167df13f1f05f5849b4d3ada96d074",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionConfigurationJudgementTests.cs": "188a85e867716b20d510c8f975cebf59788ed24081b70f6146daebbaf124242b",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionFixture.cs": "582489eda6d7141aa704809aa87d6b15f32f5fb8848a54d64e1e2b5161a78819",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionHandlerTests.cs": "d5e22d6e01afe5d84980198371f2190302d15028b73b9adbf628dfcf3060b68f",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionHostOptionsTests.cs": "a9ebce86a294115f9f4b5c84929352a485f2f45e2b5c84e454cf63cf773b4753",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionJudgementBoundaryAuditTests.cs": "a8d185d54289797e8a520ae364cfd7445b15c69b498d438f0b7fb4ad4fb71915",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionRepeatJudgementTests.cs": "a6fef5bf6a8251dacf1316ada0db7defc6d394ccde95502b0350e5b894ec5f29",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionSeedAndItemTests.cs": "6739c564362a7564a34d705643845d9e8deec3d69b6df2979357db3b02aa39af",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionTerminalRuleJudgementTests.cs": "fcc5cec9d559e89b1432b7b42d62e231b8fe3725d100858e1b29fc366cae9ee7",
+        "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionWireAndBoundaryTests.cs": "110149cd94b1bb22276638a46924e1de613ee94772a01c2836d41a7f860e833c",
+        "tests/Parchwell.Verifier.Tests/Storage/BlobArtifactStoreTests.cs": "4b081dfc8ebc4eaa52ef9442fda07229fb289bcb90a4fa46f48f86721d2c95a5",
+        "tests/Parchwell.Verifier.Tests/Support/B10AbruptVerifyEvidence.cs": "527c3e9d22c1aec8b72fe0a1175a8b57f1cddda895dc175c337c86c1da49f29d",
+        "tests/Parchwell.Verifier.Tests/Support/B10AbruptVerifyFixtureBuilder.cs": "cfd95435aeebc095073093200360c0ba8efa8740a1e8c067ec1ffcaaf91bfa7b",
+        "tests/Parchwell.Verifier.Tests/Support/B10SweepFixture.cs": "f648d74ab97161049394b6fa6fe3b8a26c4d094df942864d1ab9d10b2ba6fc2a",
+        "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": "66d344ecda579ea25cb72a6e824b0fefe520692da394f83d02e1787df0b67ed0",
+        "tests/Parchwell.Verifier.Tests/Support/KafkaSessionTestSupport.cs": "d4b4b06c096c80ad6b4cdbdb5f16df5639ea53912b276f827e80850752e5c7d3",
+        "tests/Parchwell.Verifier.Tests/Support/NativeMonitoringTestSupport.cs": "0f35c3c71bb7ed4efac0804b6738d599e29ff7738eb445e3413dfabafcd98115",
+        "tests/Parchwell.Verifier.Tests/Support/ProbeGateEvidenceBuilder.cs": "45acec2e62becd32a7b3e4f9349a3d366dc824d216fab847eafb708c92adb278",
+        "tests/Parchwell.Verifier.Tests/Support/RecordedEvidence.cs": "428e8f4dcd5e9b160b1daa60d6ff04e4e292d1b2493f1b9b7fed62b341b4a7b7",
+        "tests/Parchwell.Verifier.Tests/Support/VerifierHostTestOptions.cs": "5fb1bb8e31baf1d0c3045bb756abf49bc5bde65bd0042cbf03432434eb1d7d9b",
+        "tests/Parchwell.Verifier.Tests/Window/B10RunWindowTests.cs": "bcead6b4e5318a2b1b0a28e8aa01d3a94f5cdb9d2068c1da728a0bd6d7df029a",
+        "tests/Parchwell.Verifier.Tests/Window/B10ScientificThreeJobStartLineCodecTests.cs": "91543ad9a424770553838dc4e9ffb91dc68f680ba281e38a4392255473d8e0d2",
+        "tests/Parchwell.Verifier.Tests/Window/B10TrialStartLineCodecTests.cs": "b326978264d5bb953fdfb3f4db32871de86cc98ba7c14d5a04b1fa5d2defec06",
+        "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": "c4ae6838205ff88b2568ced00a3e0b874d24ecb3ead55898b15d44a365dc3b95",
+        "tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs": "b7ea0fe4e83e3da2dc34790fb637cfa04d10fc1dd77cdc9b4dc03719b3ca2d4e",
+        "tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs": "aa7bef8c9e41ac307fc9724e33381d4c33ccc6b7bcae8560429c0202a7d51710",
+        "tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs": "c571be0a01efd0f523a727774ba5a6e517719dfb0d6c42c620cdb2be5a97d508",
+        "tests/Parchwell.Verifier.Tests/Window/TokenPumpTests.cs": "44b672baffc7ee86dd2eefd45d515d3489301fe1e2dd659bf80555a9b5080b2f",
+        "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": "e8e5761f0db2e6426b7a8330453853bd1ff9f0c4a8f0429d2f0d1b79bd92c4ce",
+        "tests/Parchwell.Verifier.Tests/packages.lock.json": "6b08c8d420de3207678ae7338e89831ee55696be7e963c80b76c4e1a538fc335",
+        "tests/fixtures/ProbeV2MockCluster.cs": "9acd4b0f66c3e4fd51f1c8ec4f79c1f5d644fff61512d6f9caadddb975d62c2d",
+        "tests/fixtures/verifier-v1/README.md": "583e9275404bc839a0a27cfaa4545fd1f6db2a3dd68804d10904391e94f43b80",
+        "tests/fixtures/verifier-v1/captured-run/capabilities.json": "38d8a1044a1d5e8042799e138d899f23bea011a8b9e1c37fea69364af1b3319a",
+        "tests/fixtures/verifier-v1/captured-run/index.json": "7f01ddd43037fba50e3004eba401d75e62bd4b2a570c690a295204ed00e5e54f",
+        "tests/fixtures/verifier-v1/captured-run/ledger.jsonl": "bf5fdb1cec62fe6b5976b64a6dbad1eb968201355babb03e8aa76dd7e1fb52b1",
+        "tests/fixtures/verifier-v1/captured-run/manifest.json": "c760166e7b45f5448439c5673dfa601000c64419e8348dfa38f63fe43b519d66",
+        "tests/fixtures/verifier-v1/captured-run/request-lifecycle.jsonl": "d63c6cc78d2b49be59975bd3c61e53bd660c8f5b7c2981a79f5cd2b1c5bf1db2",
+        "tests/fixtures/verifier-v1/captured-run/statistics.jsonl": "b50c6a5688dba643f47e2aff4fb44a2ff4159c2b65d130aa752ba6674ac34988"
+      },
+      "source_commit": "5d70de86ca7655549bd3a8f5f8c98910385c492a",
+      "target_sources": {
+        "Common/Phase/B10FinalProjection.cs": "5dace8b426012e1db4d91471c38a7dc38d1b6efbfd8a68f3e14dd8c67365741c",
+        "Common/Phase/B10FinalProjectionCodec.cs": "43b65bb7b91010a7bf1b97343ce8c134c686ea9c2d4d973f8e284fa4bcfdcf4f",
+        "Common/Phase/B10FinalRegistrationReader.cs": "7a28b10054c4620b8a84f0513244da2b96b89fbe748a157eb491bfcce6d755ba",
+        "Common/Phase/B10SweepEvidenceCodec.cs": "57f91765198e1cb0ae6ee05d466b0a3a6f40fd02e6dfba25ce5665241d4afe91",
+        "Common/Results/DuplicateBreakdown.cs": "7547c2a3d43949ab6f006e90ed5c3393bdc40b112bb0c86c6f5d446528493629",
+        "Common/Results/VerifierResultCodec.cs": "8526a0adbb9e5ac1cac4c92177377616d2768c003fa7d91338d231d99baa8dba",
+        "Judge/B10FinalJudge.cs": "e37f0604e2483e2c54f73006dca1e6fc68f5ee5e422a660ecd18f94f0240967a",
+        "Judge/B10JudgeChecks.cs": "b365656c412f8415f760af8256bcb23c755d340cff843e288d730c18f07c44da",
+        "Judge/B10SweepChecks.cs": "04e7a081d442d0990bb66e112ed4c6643a4689ad35c8dfd30b79194fdd1aacaa",
+        "Judge/PhaseCandidateCodec.cs": "02c1dd85b444bdb0b8e33027e4d8f6af178a85363a7e184199ead304d18b8905",
+        "Judge/PhaseJudge.cs": "2630e0ac839f97a9cfd33e24c06ed6f85c1383beba925739cac45177166fffc9",
+        "VerifyRun/A01/A01EvidenceRecorder.cs": "d01f8995692a84cd8bfd908b9874bd72eba08d2f737529c05c1a5d8973780806",
+        "VerifyRun/A01/WorkloadRecorder.cs": "065cde4de7cd27b41946b665121589f9e5b333f0d6c4814346fd4a2cc082f808",
+        "VerifyRun/Abrupt/AbruptClassification.cs": "2bd71be88483f1080fee3e4acc23bd3a4d5608f8e427351b4a120a5efd2eeead",
+        "VerifyRun/B10Final/B10FinalClassification.cs": "9755cfa0f4a538835702f81fdda26fae6d2ef2f586def9c30db63e2e53d96643",
+        "VerifyRun/B10Final/B10FinalRepeatEvidence.cs": "b14f190b6aa6c705a03647b4dc09edb5ba8ca6cea193f76c64a09d089278cfc1",
+        "VerifyRun/B10Final/B10FinalSweepHandler.cs": "cb14b6e7c68fe38a9fafa54ce89fae68b35c8f26917b4b49d74a38f3b740e5a3",
+        "VerifyRun/B10SweepHandler.cs": "cdce9430f112c04311cb524a8a95a10ef91c304ef6228c878e428ec84fcca4ba",
+        "VerifyRun/IdleObservation/IdleObservationJudgement.cs": "53f985dbeb9664775180d8b12bf3b42c6c0895ace9e1990d3b56bf3dc280e475",
+        "VerifyRun/Input/B10PhaseRegistrationReader.cs": "e73faee335b336fb7d06590fa6d0c7f22f0c188dbcce3495b673c839fbe1c5c0",
+        "VerifyRun/Input/RestartManifestReader.cs": "d48a59bcbe7af3a60b00555b2b34f0faf40c671dbbfbce951ad835cc17000598",
+        "VerifyRun/Judgement/B10IntakeChecks.cs": "ade1802b795c9313ded04dbf1332752a0bc8c594473854519aecd54c6145b8ab",
+        "VerifyRun/Judgement/B10LateWriteChecks.cs": "0e6d61fe636cf7686cf88bb6d3d5e49bce09b0b6fec2fc8a142f248d5db5ddca",
+        "VerifyRun/Judgement/B10RepeatChecks.cs": "c34be5717c08a3b5757d750eeccaebcf92755870aefa041b08eb85142068089b",
+        "VerifyRun/Judgement/DuplicateClassifier.cs": "aadb29b13d9180e4f59e82051bc86181bdeaf8887a7e5429bec6e59f5b73c854",
+        "VerifyRun/Judgement/OutcomeClassifier.cs": "756aebdbba77298dd444f7f919c2f2de076fc5b27381f4e01e443c8802cf818f",
+        "VerifyRun/LedgerBatch/BatchingEvidenceRecorder.cs": "b2e9391b5b0d324b6e65f281bcb356dc0c8d8ae1d06fe039f57ad90d362adf5b",
+        "VerifyRun/Publication/PublicationAcceptance.cs": "780e2109d7b1a0f261d06eb12a8ba856c90f15aaefd189646bb1b96f1c6232e2",
+        "VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs": "e266b1d73da52fe84fbb583bac42e8bd5e2118af445d8a2f3c4bf7c4ff67f661",
+        "VerifyRun/SingleAction/SingleActionRepeatJudgement.cs": "5c0788ac841b4397610f602435cd7ef923b1b4caa36d701c454891f79b2706a8",
+        "VerifyRun/VerifyRunHandler.cs": "2a9d721f3b7f55e6aa4b7c19f4871278712dacba0549ac27dfe2a5f70a632c8e"
       }
     }
   }
