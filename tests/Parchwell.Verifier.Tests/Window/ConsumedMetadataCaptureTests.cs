@@ -334,6 +334,131 @@ public sealed class ConsumedMetadataCaptureTests
             Assert.EndsWith("-w10000", PhasePaths.ConsumedCaptureId(mode, "job", "pod", 10000), StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(99, true)]
+    [InlineData(100, false)]
+    [InlineData(101, false)]
+    public void Given_CaptureClockAdvancesDuringChunkUpload_When_Sealing_Then_TimeoutBoundaryApplies(int advance, bool complete)
+    {
+        var clock = new ManualKafkaTimeProvider();
+        var options = VerifierHostTestOptions.ValidOptions("verify"); options.BlobIoTimeout = TimeSpan.FromMilliseconds(100);
+        var store = new DelegateStore(clock, advance, name => name.EndsWith(".jsonl", StringComparison.Ordinal));
+        var capture = ConsumedMetadataCapture.TryStart(options, store, Window(), 0, "ordinary", 1)!;
+        capture.UseClock(clock);
+        capture.Observe(OneRecord()); capture.Finish(true);
+        using var manifest = JsonDocument.Parse(store.Objects.Single(p => p.Key.EndsWith("capture.json", StringComparison.Ordinal)).Value);
+        var root = manifest.RootElement;
+        Assert.Equal(complete, root.GetProperty("complete").GetBoolean());
+        Assert.Equal(1, root.GetProperty("observed_rows").GetInt64());
+        if (complete)
+        {
+            Assert.Equal(0, root.GetProperty("gaps").GetArrayLength());
+            Assert.Equal(1, root.GetProperty("captured_rows").GetInt64());
+            return;
+        }
+        Assert.Equal(0, root.GetProperty("captured_rows").GetInt64());
+        Assert.Equal(0, root.GetProperty("first_missing_ordinal").GetInt64());
+        var gap = Assert.Single(root.GetProperty("gaps").EnumerateArray());
+        Assert.Equal("upload_failed", gap.GetProperty("code").GetString());
+        Assert.Equal(0, gap.GetProperty("ordinal").GetInt64());
+    }
+
+    [Theory]
+    [InlineData(99, true)]
+    [InlineData(100, false)]
+    [InlineData(101, false)]
+    public void Given_CaptureClockAdvancesDuringRolloverUpload_When_Observing_Then_TimeoutBoundaryApplies(int advance, bool complete)
+    {
+        var record = OneRecord();
+        var options = VerifierHostTestOptions.ValidOptions("verify");
+        var sampleStore = new Store(); var sample = ConsumedMetadataCapture.TryStart(options, sampleStore, Window(), 0, "ordinary", 1)!;
+        sample.Observe(record); sample.Finish(true);
+        long size = sampleStore.Objects.Single(p => p.Key.EndsWith(".jsonl", StringComparison.Ordinal)).Value.LongLength;
+        options.ConsumedMetadata!.MaxRowBytes = size; options.ConsumedMetadata.MaxChunkBytes = size; options.ConsumedMetadata.MaxBytes = size * 2;
+        options.BlobIoTimeout = TimeSpan.FromMilliseconds(100);
+        var clock = new ManualKafkaTimeProvider();
+        var store = new DelegateStore(clock, advance, name => name.EndsWith("chunk-000001.jsonl", StringComparison.Ordinal));
+        var capture = ConsumedMetadataCapture.TryStart(options, store, Window(), 0, "ordinary", 1)!;
+        capture.UseClock(clock);
+        capture.Observe(record); capture.Observe(record); capture.Finish(true);
+        using var manifest = JsonDocument.Parse(store.Objects.Single(p => p.Key.EndsWith("capture.json", StringComparison.Ordinal)).Value);
+        var root = manifest.RootElement;
+        Assert.Equal(complete, root.GetProperty("complete").GetBoolean());
+        Assert.Equal(2, root.GetProperty("observed_rows").GetInt64());
+        if (complete)
+        {
+            Assert.Equal(2, root.GetProperty("chunks").GetArrayLength());
+            Assert.Equal(2, root.GetProperty("captured_rows").GetInt64());
+            return;
+        }
+        Assert.Equal(0, root.GetProperty("captured_rows").GetInt64());
+        Assert.Equal(0, root.GetProperty("first_missing_ordinal").GetInt64());
+        var gap = Assert.Single(root.GetProperty("gaps").EnumerateArray());
+        Assert.Equal("upload_failed", gap.GetProperty("code").GetString());
+        Assert.Equal(0, gap.GetProperty("ordinal").GetInt64());
+    }
+
+    [Theory]
+    [InlineData(99, true)]
+    [InlineData(100, false)]
+    [InlineData(101, false)]
+    public void Given_CaptureClockAdvancesDuringManifestWrite_When_Finishing_Then_TimeoutBoundaryApplies(int advance, bool written)
+    {
+        var clock = new ManualKafkaTimeProvider();
+        var options = VerifierHostTestOptions.ValidOptions("verify"); options.BlobIoTimeout = TimeSpan.FromMilliseconds(100);
+        var store = new DelegateStore(clock, advance, name => name.EndsWith("capture.json", StringComparison.Ordinal));
+        var capture = ConsumedMetadataCapture.TryStart(options, store, Window(), 0, "ordinary", 1)!;
+        capture.UseClock(clock);
+        capture.Finish(true);
+        var manifests = store.Objects.Where(p => p.Key.EndsWith("capture.json", StringComparison.Ordinal)).ToArray();
+        if (!written) { Assert.Empty(manifests); return; }
+        using var manifest = JsonDocument.Parse(Assert.Single(manifests).Value);
+        Assert.True(manifest.RootElement.GetProperty("complete").GetBoolean());
+    }
+
+    [Fact]
+    public void Given_NoClock_When_StoreSlowerThanBlobTimeout_Then_UploadFails()
+    {
+        var options = VerifierHostTestOptions.ValidOptions("verify"); options.BlobIoTimeout = TimeSpan.FromMilliseconds(10);
+        var store = new DelegateStore(null, 0, _ => false) { WaitForToken = true };
+        var capture = ConsumedMetadataCapture.TryStart(options, store, Window(), 0, "ordinary", 1)!;
+        capture.Observe(OneRecord()); capture.Finish(true);
+        using var manifest = JsonDocument.Parse(store.Objects.Single(p => p.Key.EndsWith("capture.json", StringComparison.Ordinal)).Value);
+        var root = manifest.RootElement;
+        Assert.False(root.GetProperty("complete").GetBoolean());
+        Assert.Equal("upload_failed", root.GetProperty("gaps")[0].GetProperty("code").GetString());
+        Assert.Equal(0, root.GetProperty("captured_rows").GetInt64());
+    }
+
+    private static ConsumeResult<byte[], byte[]> OneRecord() => new()
+    {
+        Topic = "document-events", Partition = new Partition(0), Offset = new Offset(0),
+        Message = new Message<byte[], byte[]> { Key = [], Value = [] }
+    };
+
+    /// <summary>Store whose matching writes advance a manual clock (or wait for the token), then honour cancellation.</summary>
+    internal sealed class DelegateStore(ManualKafkaTimeProvider? clock, int advanceMilliseconds, Func<string, bool> advancesFor) : IVerifierArtifactStore
+    {
+        private bool advanced;
+        internal bool WaitForToken { get; init; }
+        internal Dictionary<string, byte[]> Objects { get; } = new(StringComparer.Ordinal);
+        public Task<byte[]?> ReadAsync(string name, CancellationToken cancellationToken) => Task.FromResult(Objects.GetValueOrDefault(name));
+        public Task<BlobListing> ListAsync(string prefix, CancellationToken cancellationToken) => Task.FromResult(new BlobListing([], 0, true));
+        public Task CreateAsync(string name, byte[] content, CancellationToken cancellationToken)
+        { Delay(name, cancellationToken); Objects.Add(name, content); return Task.CompletedTask; }
+        public async Task CreateStreamAsync(string name, Stream content, CancellationToken cancellationToken)
+        {
+            Delay(name, cancellationToken);
+            using var buffer = new MemoryStream(); await content.CopyToAsync(buffer, cancellationToken); Objects.Add(name, buffer.ToArray());
+        }
+        private void Delay(string name, CancellationToken cancellationToken)
+        {
+            if (WaitForToken && name.EndsWith(".jsonl", StringComparison.Ordinal)) cancellationToken.WaitHandle.WaitOne(TimeSpan.FromSeconds(30));
+            else if (!advanced && clock is not null && advancesFor(name)) { advanced = true; clock.Advance(advanceMilliseconds); }
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+    }
+
     internal sealed class Store : IVerifierArtifactStore
     {
         internal bool FailStream { get; init; }

@@ -1,6 +1,7 @@
 import importlib.util
 import fnmatch
 from functools import cache
+import contextlib
 import json
 import math
 from pathlib import Path
@@ -2280,6 +2281,128 @@ class DependencyEndToEndTests(unittest.TestCase):
                 with mock.patch.object(runtime, 'files', return_value=names | {name}), mock.patch.object(runtime, 'blob', side_effect=blob):
                     with self.assertRaises(ValueError):
                         runtime.input_maps('HEAD')
+
+
+class CampaignValidatorRecoveryTests(unittest.TestCase):
+    """The one reviewed c5_campaign.py is recorded at its measured hash; anything else is compared as it is."""
+    VALIDATOR = b'# synthetic reviewed validator\n'
+
+    def environment(self, validator=None, runner=None, companion=lambda text: text, coordinator=lambda text: text):
+        validator = self.VALIDATOR if validator is None else validator
+        names = runtime.files('HEAD') | {runtime.COMPANION_WORKFLOW, runtime.CAMPAIGN_VALIDATOR}
+        real_runner = Path(runtime.workflow.__file__).read_bytes()
+        cache = {}
+
+        def blob(ref, path):
+            if path == runtime.RUNNER:
+                return real_runner if runner is None else runner
+            if path == runtime.CAMPAIGN_VALIDATOR:
+                return validator
+            if path == runtime.COMPANION_WORKFLOW:
+                return companion((ROOT / path).read_text()).encode()
+            if path == runtime.WORKFLOW:
+                return coordinator((ROOT / path).read_text()).encode()
+            if path not in cache:
+                cache[path] = runtime.subprocess.check_output(['git', 'show', f'HEAD:{path}'], cwd=ROOT)
+            return cache[path]
+
+        def git(*args):
+            if args[0] == 'rev-parse':
+                return args[-1].replace('^{commit}', '').encode()
+            if args[0] == 'diff':
+                return b'README.md\0'
+            if len(args) == 4 and args[:2] == ('merge-base', '--is-ancestor'):
+                raise subprocess.CalledProcessError(1, args)
+            raise AssertionError(args)
+
+        stack = contextlib.ExitStack()
+        for patch in (mock.patch.object(runtime, 'files', return_value=names),
+                      mock.patch.object(runtime, 'blob', side_effect=blob),
+                      mock.patch.object(runtime, 'git', side_effect=git),
+                      mock.patch.object(runtime, 'workflow_matrix', return_value=runtime.workflow.SHARDS),
+                      mock.patch.object(runtime, 'workflow_layout', return_value=runtime.workflow.SHARDS),
+                      mock.patch.object(runtime, 'SIX_TAIL_BINDINGS', {}),
+                      mock.patch.object(runtime, 'CODEC_NEIGHBOR', {}),
+                      mock.patch.object(runtime, 'CAMPAIGN_VALIDATOR_PIN', runtime.digest(self.VALIDATOR))):
+            stack.enter_context(patch)
+        self.addCleanup(stack.close)
+        return blob
+
+    def test_pins_match_the_committed_files(self):
+        runner = Path(runtime.workflow.__file__).read_bytes()
+        self.assertEqual(runtime.RUNNER_EXECUTION_PIN, runtime.digest(runtime.execution_runner(runner)))
+        committed = json.loads((ROOT / 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json').read_text())
+        self.assertEqual(runtime.CAMPAIGN_VALIDATOR_BASE, committed['shared_inputs'][runtime.CAMPAIGN_VALIDATOR])
+        self.assertEqual(runtime.CAMPAIGN_VALIDATOR_PIN, runtime.digest((ROOT / runtime.CAMPAIGN_VALIDATOR).read_bytes()))
+
+    def recorded(self, **changes):
+        self.environment(**changes)
+        shared, _ = runtime.input_maps('HEAD')
+        return shared[runtime.CAMPAIGN_VALIDATOR]
+
+    def qualification(self, shared, targets, sources, directory):
+        binding = runtime.digest(runtime.canonical({'shared_inputs': shared, 'target_sources': targets}))
+        evidence = {'source_commit': 'a' * 40, 'locator': 'synthetic', 'sha256': 'a' * 64,
+                    'kind': 'hosted_complete', 'note': 'synthetic'}
+        config = {'schema_version': 1, 'budget_seconds': 1800, 'shared_inputs': shared,
+                  'targets': {p: {'source_sha256': h, 'evidence': [evidence], 'shards': {}} for p, h in targets.items()}}
+        for shard, target in runtime.workflow.SHARDS.items():
+            config['targets'][target]['shards'][shard] = {
+                'selection_sha256': runtime.digest(runtime.canonical(runtime.workflow.shard_config(shard, sources[target]))),
+                'timing_inputs_sha256': binding, 'main_mutants': 1, 'main_work_seconds': 20,
+                'parallelism': 1, 'setup_seconds': 10, 'isolated_seconds': 0,
+                'estimated_seconds': 30, 'basis': 'synthetic observed_workers=1'}
+        path = Path(directory) / 'qualification.json'
+        path.write_text(json.dumps(config))
+        return path
+
+    def test_check_treats_the_reviewed_validator_as_unchanged(self):
+        """The qualification of the tree that measured BASE still qualifies the reviewed validator."""
+        blob = self.environment()
+        base_shared, targets = runtime.input_maps('HEAD')
+        self.assertEqual(runtime.CAMPAIGN_VALIDATOR_BASE, base_shared[runtime.CAMPAIGN_VALIDATOR])
+        sources = {p: blob('HEAD', 'src/Parchwell.Verifier/' + p) for p in targets}
+        real_input_maps = runtime.input_maps
+        off = self.VALIDATOR + b'#'
+        # The synthetic estimates make every check without a base reject with invalid_estimate, so the
+        # signal is whether the validator makes its inputs stale against the qualification.
+        cases = {'reviewed validator': ({}, 'not_applicable', False),
+                 'one byte off the pin': ({'validator': off}, 'rejected', True),
+                 'companion workflow mentions the validator': (
+                     {'companion': lambda text: text + '# c5_campaign\n'}, 'rejected', True)}
+        with tempfile.TemporaryDirectory() as directory:
+            qualification = self.qualification(base_shared, targets, sources, directory)
+            for label, (changes, with_base, stale) in cases.items():
+                with self.subTest(label):
+                    self.environment(**changes)
+                    # The same mock chain serves the base: its maps are the qualified ones.
+                    def input_maps(ref, declared=None):
+                        return (base_shared, targets) if ref == 'base' else real_input_maps(ref)
+                    with mock.patch.object(runtime, 'input_maps', side_effect=input_maps):
+                        based = runtime.check('base', 'head', qualification)
+                        alone = runtime.check(None, 'head', qualification)
+                    self.assertEqual(with_base, based['status'])
+                    self.assertEqual(stale, 'stale_inputs' in based['reasons'])
+                    self.assertEqual(stale, 'stale_inputs' in alone['reasons'])
+
+    def test_input_maps_records_the_measured_hash_only_for_the_reviewed_validator(self):
+        self.assertEqual(runtime.CAMPAIGN_VALIDATOR_BASE, self.recorded())
+        off = self.VALIDATOR + b'#'
+        cases = {
+            'validator one byte off the pin': {'validator': off},
+            'runner changed by one line': {'runner': Path(runtime.workflow.__file__).read_bytes() + b'\n#\n'},
+            'companion workflow mentions the validator': {'companion': lambda text: text + '# c5_campaign\n'},
+            'coordinator job mentions the validator': {'coordinator': lambda text: text.replace(
+                '\n  aggregate:\n', '\n    # c5_campaign\n\n  aggregate:\n', 1)},
+        }
+        for label, changes in cases.items():
+            with self.subTest(label):
+                actual = self.recorded(**changes)
+                self.assertEqual(runtime.digest(changes.get('validator', self.VALIDATOR)), actual)
+                self.assertNotEqual(runtime.CAMPAIGN_VALIDATOR_BASE, actual)
+        with self.subTest('a mention after the aggregate job is the reviewed step'):
+            self.assertEqual(runtime.CAMPAIGN_VALIDATOR_BASE, self.recorded(
+                coordinator=lambda text: text + '\n# c5_campaign\n'))
 
 
 class ProvisionalQualificationTests(unittest.TestCase):

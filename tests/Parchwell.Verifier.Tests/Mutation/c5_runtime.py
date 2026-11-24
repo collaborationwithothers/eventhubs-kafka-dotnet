@@ -334,6 +334,13 @@ PROJECTION_TIMING_PAIR = ('b1c9a96740111676caa0b9e95db90b4ff93f07ff2317710233558
                           '3771b676b8d5856eb34705dcaa3e9c34ffd8184dd514179a1bf85ee7535fb16f')
 RUNNER_TIMING_PAIR = ('dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea14629a0af4625',
                       'c147bb8000ef1273609052660e80b20c8da8bf33a77a0df65a94d32a5f7a1c40')
+# Shard jobs never run c5_campaign.py: only the coordinator's aggregate job does, so its bytes cannot change
+# a shard's elapsed time. input_maps records the one reviewed hash pinned below at CAMPAIGN_VALIDATOR_BASE,
+# its measured hash, while the executable runner and both workflows are exactly as reviewed. Any other
+# hash is recorded as it is. Issue 494, plan items/494/plan-c5-failure-causes.md requirement 15.
+CAMPAIGN_VALIDATOR_PIN = '28aeac539670a3a55889021afd6da856dd3cf5b59a16c5b1640b4fdb738072b5'
+CAMPAIGN_VALIDATOR_BASE = '5dd294fcb0b3bb9ff2de8a5df5ac71242e775066a91e444091d382cb3406b46f'
+RUNNER_EXECUTION_PIN = '5e123dc8552d72e9e424f292ebcc5b4b695ff39fed026470f2879d8b5a234552'
 NON_RENEWABLE = {RUNNER, WORKFLOW, COMPANION_WORKFLOW, CAMPAIGN_VALIDATOR, PROJECTION,
                  'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json', '.config/dotnet-tools.json'}
 EXCLUDED = ('Component/', 'Support/ComponentEvidenceBuilder.cs', 'Host/VerifyRunHandlerTests.cs',
@@ -525,8 +532,19 @@ def input_maps(ref, declared_targets=None):
         elif p in CAMPAIGN_LIMITS:
             data = execution_workflow(data)
         result[p] = digest(data)
+    if campaign_validator_is_reviewed(ref, result):
+        result[CAMPAIGN_VALIDATOR] = CAMPAIGN_VALIDATOR_BASE
     targets = {p: digest(blob(ref, 'src/Parchwell.Verifier/' + p)) for p, _ in declared_targets.values()}
     return result, targets
+
+
+def campaign_validator_is_reviewed(ref, result):
+    """True when the tree holds the one reviewed validator and nothing that runs it inside a shard job."""
+    if result.get(CAMPAIGN_VALIDATOR) != CAMPAIGN_VALIDATOR_PIN or result.get(RUNNER) != RUNNER_EXECUTION_PIN:
+        return False
+    companion = blob(ref, COMPANION_WORKFLOW).decode('utf-8')
+    coordinator = blob(ref, WORKFLOW).decode('utf-8').partition('\n  aggregate:\n')[0]
+    return 'c5_campaign' not in companion and 'c5_campaign' not in coordinator
 
 
 # The initial live-qualification pilot's only approved incomplete native inventories.

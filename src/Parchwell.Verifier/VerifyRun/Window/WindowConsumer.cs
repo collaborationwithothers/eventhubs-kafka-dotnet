@@ -28,6 +28,7 @@ internal static class WindowConsumer
         ConsumedRecordBudget budget, IReadOnlySet<string>? valueHashKeys, ConsumedMetadataCapture? capture,
         CancellationToken cancellationToken, CancellationToken safetyCancellationToken = default)
     {
+        capture?.UseClock(timeProvider);
         if (!window.CanAssign) { FinishCapture(capture, false); return new([], [], null, null); }
         var records = new List<ConsumedRecord>();
         PartitionWindow[] pending = window.Partitions.Where(p => p.Start != p.End).ToArray();

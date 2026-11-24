@@ -15,7 +15,9 @@ import c5_workflow
 ROOT = Path(__file__).resolve().parents[3]
 PATHS = {'coordinator': '.github/workflows/verifier-c5-mutation.yml',
          'companion': '.github/workflows/verifier-c5-mutation-companion.yml'}
-BUDGET = 3000
+BUDGET = 4200
+# A run is re-run at most this many times before its evidence is declared incomplete.
+MAX_ATTEMPTS = 5
 # Reserve ten minutes of the hosted job limit to retain aggregate evidence.
 POLL_SECONDS = 17_400
 
@@ -66,16 +68,32 @@ def validate_run(run, role, repository, commit, run_id, attempt):
     return timestamp(run.get('created_at'))
 
 
+def job_name(shard, target):
+    name = f'mutation ({shard}, {target})'
+    return name if len(name) <= 100 else name[:97] + '...'
+
+
+def job_names(matrix):
+    """Map each expected mutation job name to its shard."""
+    expected = {}
+    for shard, target in matrix.items():
+        name = job_name(shard, target)
+        require(name not in expected, 'ambiguous job names')
+        expected[name] = shard
+    return expected
+
+
+def find_job(document, name):
+    """Return the one job of that name, or None when the list has none or several."""
+    found = [job for job in document['jobs'] if isinstance(job, dict) and job.get('name') == name]
+    return found[0] if len(found) == 1 else None
+
+
 def validate_jobs(document, run_id, attempt, commit, matrix, coordinator, *, terminal=False):
     require(isinstance(document, dict) and isinstance(document.get('jobs'), list)
             and type(document.get('total_count')) is int
             and document['total_count'] == len(document['jobs']), 'missing job pages')
-    expected = {}
-    for shard, target in matrix.items():
-        name = f'mutation ({shard}, {target})'
-        name = name if len(name) <= 100 else name[:97] + '...'
-        require(name not in expected, 'ambiguous job names')
-        expected[name] = shard
+    expected = job_names(matrix)
     names, ids = set(), set()
     for job in document['jobs']:
         require(isinstance(job, dict) and type(job.get('id')) is int
@@ -97,7 +115,11 @@ def validate_jobs(document, run_id, attempt, commit, matrix, coordinator, *, ter
             'missing or foreign jobs')
 
 
-def build_manifest(repository, commit, runs, layout, incomplete_reasons=None):
+def build_manifest(repository, commit, runs, layout, incomplete_reasons=None, origins=None, firsts=None):
+    """Build the manifest: schema 1 when both runs are at attempt 1, otherwise schema 2.
+
+    origins maps a shard to the attempt that ran it; firsts maps a role to its attempt 1 creation time.
+    """
     validate_layout(layout)
     require(re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repository) is not None
             and re.fullmatch(r'[0-9a-f]{40}', commit) is not None, 'invalid repository or commit')
@@ -106,27 +128,33 @@ def build_manifest(repository, commit, runs, layout, incomplete_reasons=None):
     reasons = [] if incomplete_reasons is None else incomplete_reasons
     require(isinstance(reasons, list) and all(isinstance(reason, str) and reason for reason in reasons),
             'invalid incomplete reasons')
-    result = {'schema': 1, 'repository': repository, 'commit': commit, 'runs': {}, 'shards': {},
-              'incomplete_reasons': reasons}
+    for role in PATHS:
+        run = runs[role]
+        require(type(run['id']) is int and run['id'] > 0 and type(run['run_attempt']) is int
+                and run['run_attempt'] > 0, 'invalid run id or attempt')
+        validate_run(run, role, repository, commit, run['id'], run['run_attempt'])
+    recovered = any(runs[role]['run_attempt'] > 1 for role in PATHS)
+    result = {'schema': 2 if recovered else 1, 'repository': repository, 'commit': commit, 'runs': {},
+              'shards': {}, 'incomplete_reasons': reasons}
     for role in PATHS:
         run = runs[role]
         run_id, attempt = run['id'], run['run_attempt']
-        require(type(run_id) is int and run_id > 0 and type(attempt) is int and attempt > 0,
-                'invalid run id or attempt')
-        validate_run(run, role, repository, commit, run_id, attempt)
         result['runs'][role] = {'id': run_id, 'attempt': attempt, 'path': PATHS[role],
                                 'created_at': run['created_at']}
+        if recovered:
+            result['runs'][role]['first_created_at'] = (firsts or {}).get(role, run['created_at'])
         for shard, target in layout[role].items():
-            result['shards'][shard] = {'target': target, 'run_id': str(run_id),
-                                       'run_attempt': str(attempt)}
+            origin = (origins or {}).get(shard, attempt) if recovered else attempt
+            result['shards'][shard] = {'target': target, 'run_id': str(run_id), 'run_attempt': str(origin)}
     return result
 
 
 def validate_manifest(manifest, expected_commit, coordinator_matrix, companion_matrix):
     """Validate a manifest and return its shard-to-origin mapping; raise on any mismatch."""
     require(isinstance(manifest, dict) and set(manifest) == {'schema', 'repository', 'commit', 'runs', 'shards', 'incomplete_reasons'}
-            and type(manifest['schema']) is int and manifest['schema'] == 1
+            and type(manifest['schema']) is int and manifest['schema'] in (1, 2)
             and manifest['commit'] == expected_commit, 'invalid manifest')
+    recovered = manifest['schema'] == 2
     require(isinstance(manifest['repository'], str)
             and re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', manifest['repository'])
             and isinstance(expected_commit, str) and re.fullmatch(r'[0-9a-f]{40}', expected_commit),
@@ -142,14 +170,35 @@ def validate_manifest(manifest, expected_commit, coordinator_matrix, companion_m
     ids = set()
     for role, path in PATHS.items():
         run = runs[role]
-        require(isinstance(run, dict) and set(run) == {'id', 'attempt', 'path', 'created_at'}
+        keys = {'id', 'attempt', 'path', 'created_at'} | ({'first_created_at'} if recovered else set())
+        require(isinstance(run, dict) and set(run) == keys
                 and type(run['id']) is int and run['id'] > 0
                 and type(run['attempt']) is int and run['attempt'] > 0 and run['path'] == path,
                 'invalid manifest run identity')
-        timestamp(run['created_at'])
+        created = timestamp(run['created_at'])
+        require(not recovered or timestamp(run['first_created_at']) <= created, 'invalid manifest run identity')
         ids.add(run['id'])
+        if recovered:
+            continue
         origins.update({s: {'target': target, 'run_id': str(run['id']),
                             'run_attempt': str(run['attempt'])} for s, target in layout[role].items()})
+    if recovered:
+        require(any(runs[role]['attempt'] > 1 for role in PATHS), 'invalid manifest run identity')
+        shards = manifest['shards']
+        require(len(ids) == 2 and isinstance(shards, dict)
+                and set(shards) == set(layout['coordinator']) | set(layout['companion']),
+                'manifest shard provenance mismatch')
+        for role in PATHS:
+            for shard, target in layout[role].items():
+                entry = shards[shard]
+                require(isinstance(entry, dict) and set(entry) == {'target', 'run_id', 'run_attempt'}
+                        and entry['target'] == target and entry['run_id'] == str(runs[role]['id'])
+                        and isinstance(entry['run_attempt'], str)
+                        and re.fullmatch(r'[1-9][0-9]*', entry['run_attempt']) is not None
+                        and int(entry['run_attempt']) <= runs[role]['attempt'],
+                        'manifest shard provenance mismatch')
+                origins[shard] = dict(entry)
+        return origins
     require(len(ids) == 2 and manifest['shards'] == origins, 'manifest shard provenance mismatch')
     return origins
 
@@ -178,6 +227,44 @@ def jobs(repository, run_id, attempt):
         page += 1
 
 
+def shard_origins(repository, role, run_id, attempt, attempts, own_jobs, matrix, reasons):
+    """Return each shard's origin attempt, proven by the job lists, and record unverified shards.
+
+    attempts maps each attempt number 1..attempt to its run document. A shard's origin is the
+    latest attempt that started at or before the shard job's start; that attempt's own job list
+    must show the same job, with the same start, as a success.
+    """
+    result, lists = {}, {attempt: own_jobs}
+    try:
+        started = {k: timestamp(document.get('run_started_at')) for k, document in attempts.items()}
+    except (AttributeError, ValueError):
+        started = None
+    for shard, target in matrix.items():
+        name = job_name(shard, target)
+        try:
+            require(started is not None, 'missing attempt start')
+            record = find_job(own_jobs, name)
+            require(record is not None and record.get('conclusion') == 'success', 'unsuccessful job')
+            begun = timestamp(record.get('started_at'))
+            origin = max(k for k in attempts if started[k] <= begun)
+            if origin != attempt:
+                if origin not in lists:
+                    try:
+                        lists[origin] = jobs(repository, run_id, origin)
+                    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+                        lists[origin] = None
+                require(lists[origin] is not None, 'unreadable origin jobs')
+                other = find_job(lists[origin], name)
+                require(other is not None and other.get('run_id') == run_id
+                        and other.get('run_attempt') == origin and other.get('conclusion') == 'success'
+                        and timestamp(other.get('started_at')) == begun, 'origin job mismatch')
+            result[shard] = origin
+        except (ValueError, KeyError, TypeError):
+            reasons.append(f'{shard}: unverified attempt origin')
+            result[shard] = attempt
+    return result
+
+
 def prepare(repository, commit, coordinator_id, coordinator_attempt, companion_id, companion_attempt, output):
     deadline = time.monotonic() + POLL_SECONDS
     require(isinstance(repository, str) and re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repository)
@@ -197,6 +284,16 @@ def prepare(repository, commit, coordinator_id, coordinator_attempt, companion_i
             for role, (rid, attempt) in ids.items()}
     starts = [validate_run(runs[role], role, repository, commit, *ids[role]) for role in PATHS]
     reasons = []
+    latest = api(repository, f'actions/runs/{companion_id}')
+    require(isinstance(latest, dict) and type(latest.get('run_attempt')) is int and latest['run_attempt'] > 0,
+            'invalid companion run')
+    if latest['run_attempt'] < companion_attempt:
+        reasons.append('companion attempt regressed')
+    elif latest['run_attempt'] > companion_attempt:
+        companion_attempt = latest['run_attempt']
+        ids['companion'] = (companion_id, companion_attempt)
+        runs['companion'] = api(repository, f'actions/runs/{companion_id}/attempts/{companion_attempt}')
+        starts[1] = validate_run(runs['companion'], 'companion', repository, commit, companion_id, companion_attempt)
     while True:
         peer = runs['companion']
         if peer.get('status') == 'completed':
@@ -221,26 +318,50 @@ def prepare(repository, commit, coordinator_id, coordinator_attempt, companion_i
         runs['companion'] = updated
     if runs['coordinator'].get('status') != 'in_progress':
         reasons.append('coordinator run is not in progress')
+    documents = {}
     for role, (rid, attempt) in ids.items():
         try:
-            validate_jobs(jobs(repository, rid, attempt), rid, attempt, commit, layout[role], role == 'coordinator')
+            documents[role] = jobs(repository, rid, attempt)
+            validate_jobs(documents[role], rid, attempt, commit, layout[role], role == 'coordinator')
         except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
             reasons.append(f'{role} jobs: {error}')
-    manifest = build_manifest(repository, commit, runs, layout, reasons)
+    origins, firsts = {}, {}
+    for role, (rid, attempt) in ids.items():
+        if attempt == 1:
+            continue
+        if attempt > MAX_ATTEMPTS:
+            if 'too many run attempts' not in reasons:
+                reasons.append('too many run attempts')
+            continue
+        attempts = {k: api(repository, f'actions/runs/{rid}/attempts/{k}') for k in range(1, attempt)}
+        for k, document in attempts.items():
+            validate_run(document, role, repository, commit, rid, k)
+        attempts[attempt] = runs[role]
+        firsts[role] = attempts[1]['created_at']
+        if role in documents:
+            origins.update(shard_origins(repository, role, rid, attempt, attempts, documents[role],
+                                         layout[role], reasons))
+    manifest = build_manifest(repository, commit, runs, layout, reasons, origins, firsts)
     validate_manifest(manifest, commit, layout['coordinator'], layout['companion'])
     with Path(output).open('x', encoding='utf-8') as stream:
         json.dump(manifest, stream, indent=2, sort_keys=True)
         stream.write('\n')
 
 
-def terminal_report(repository, commit, manifest_bytes, summary_bytes, layout, runs, documents):
-    """Verify terminal runs and aggregate evidence; return a fail-closed performance report."""
+def terminal_report(repository, commit, manifest_bytes, summary_bytes, layout, runs, documents,
+                    firsts=None, origin_documents=None):
+    """Verify terminal runs and aggregate evidence; return a fail-closed performance report.
+
+    For a schema 2 manifest, firsts maps a role to its attempt 1 run document and origin_documents maps
+    a role to {attempt: job list} for each earlier origin attempt of its shards.
+    """
     report = {'status': 'incomplete', 'reasons': [], 'budget_seconds': BUDGET,
               'elapsed_seconds': None, 'runs': {}}
     try:
         manifest = c5_runtime.strict_json(manifest_bytes)
         summary = c5_runtime.strict_json(summary_bytes)
-        validate_manifest(manifest, commit, layout['coordinator'], layout['companion'])
+        origins = validate_manifest(manifest, commit, layout['coordinator'], layout['companion'])
+        recovered = manifest['schema'] == 2
         require(manifest['repository'] == repository, 'manifest repository mismatch')
         require(not manifest['incomplete_reasons'], 'manifest records incomplete evidence')
         require(isinstance(summary, dict) and summary.get('commit') == commit
@@ -255,6 +376,12 @@ def terminal_report(repository, commit, manifest_bytes, summary_bytes, layout, r
             run = runs[role]
             start = validate_run(run, role, repository, commit, identity['id'], identity['attempt'])
             require(start == timestamp(identity['created_at']), 'run creation time mismatch')
+            if recovered:
+                first_run = run if identity['attempt'] == 1 else (firsts or {}).get(role)
+                require(first_run is not None, 'run creation time mismatch')
+                first = validate_run(first_run, role, repository, commit, identity['id'], 1)
+                require(first == timestamp(identity['first_created_at']), 'run creation time mismatch')
+                start = first
             require(run.get('status') == 'completed' and run.get('conclusion') == 'success',
                     'run is not complete and successful')
             end = timestamp(run.get('updated_at'))
@@ -263,8 +390,18 @@ def terminal_report(repository, commit, manifest_bytes, summary_bytes, layout, r
             validate_jobs(document, identity['id'], identity['attempt'], commit, layout[role],
                           role == 'coordinator', terminal=True)
             job_seconds, queue_seconds = 0.0, 0.0
+            names = job_names(layout[role])
             for job in document['jobs']:
-                created, begun, completed = (timestamp(job.get(key)) for key in
+                record = job
+                origin = int(origins[names[job['name']]]['run_attempt']) if recovered and job['name'] in names else None
+                if origin is not None and origin < identity['attempt']:
+                    other = find_job((origin_documents or {}).get(role, {}).get(origin) or {'jobs': []}, job['name'])
+                    require(other is not None and other.get('run_id') == identity['id']
+                            and other.get('run_attempt') == origin and other.get('conclusion') == 'success'
+                            and all(other.get(key) == job.get(key) for key in ('started_at', 'completed_at')),
+                            'invalid job timing')
+                    record = other
+                created, begun, completed = (timestamp(record.get(key)) for key in
                                              ('created_at', 'started_at', 'completed_at'))
                 require(start <= created <= begun <= completed <= end, 'invalid job timing')
                 queue_seconds += (begun - created).total_seconds()
@@ -298,14 +435,20 @@ def terminal(repository, commit, manifest_path, summary_path, output):
             committed = subprocess.check_output(['git', 'show', f'{commit}:{path}'], cwd=ROOT)
             require((ROOT / path).read_bytes() == committed, 'workflow matrix source differs from commit')
         layout = matrices()
-        validate_manifest(manifest, commit, layout['coordinator'], layout['companion'])
-        runs, documents = {}, {}
+        origins = validate_manifest(manifest, commit, layout['coordinator'], layout['companion'])
+        runs, documents, firsts, origin_documents = {}, {}, {}, {}
         for role in PATHS:
             identity = manifest['runs'][role]
             rid, attempt = identity['id'], identity['attempt']
             runs[role] = api(repository, f'actions/runs/{rid}/attempts/{attempt}')
             documents[role] = jobs(repository, rid, attempt)
-        report = terminal_report(repository, commit, manifest_bytes, summary_bytes, layout, runs, documents)
+            if manifest['schema'] == 2:
+                if attempt > 1:
+                    firsts[role] = api(repository, f'actions/runs/{rid}/attempts/1')
+                earlier = {int(origins[shard]['run_attempt']) for shard in layout[role]} - {attempt}
+                origin_documents[role] = {k: jobs(repository, rid, k) for k in sorted(earlier)}
+        report = terminal_report(repository, commit, manifest_bytes, summary_bytes, layout, runs, documents,
+                                 firsts, origin_documents)
     except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
         report = {'status': 'incomplete', 'reasons': [str(error)], 'budget_seconds': BUDGET,
                   'elapsed_seconds': None, 'runs': {}}
