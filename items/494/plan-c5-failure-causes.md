@@ -2,7 +2,7 @@
 
 This change set removes two causes that made paired C5 mutation runs on `main` fail without any mutation being at fault. The first is an intermittent verifier test failure: the consumed-metadata capture times its Blob writes on the real clock while the test drives the handler with a manual clock. The second is the companion evidence download deadline of 240 seconds, which one pair exhausted.
 
-Revision R1. Base `main` commit `4ea8fae3d52111e37028c39033430bc0a3c40776`. One pull request, named `494-c5-failure-causes`.
+Revision R2. Base `main` commit `4ea8fae3d52111e37028c39033430bc0a3c40776`. One pull request, named `494-c5-failure-causes`.
 
 ## Goal and authority
 
@@ -20,7 +20,7 @@ Source facts, read on `main` at the base commit:
 2. Every other Blob or cleanup deadline in the verifier handlers uses the injected clock, for example `B10SweepHandler.Bounded` at `src/Parchwell.Verifier/VerifyRun/B10SweepHandler.cs` lines 305-313 and the cleanup deadline at line 121.
 3. `WindowConsumer.Drain` receives that clock as `timeProvider` but calls `capture?.Observe(record)` and `capture?.Finish(complete, interrupted)` without it (`src/Parchwell.Verifier/VerifyRun/Window/WindowConsumer.cs` lines 31, 73, 88 and 93).
 4. The test's options come from `HostEvidenceBuilder`, which sets `BlobIoTimeout = TimeSpan.FromMilliseconds(100)` (`tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs` line 177). The handler runs on `ManualKafkaTimeProvider`, which never advances in this test (`tests/Parchwell.Verifier.Tests/Support/KafkaSessionTestSupport.cs` lines 149-185).
-5. The test store copies the chunk with `content.CopyToAsync(buffer, cancellationToken)` (`tests/Parchwell.Verifier.Tests/Host/B10SweepHandlerTests.cs` lines 557-564). When the real 100 ms expires first, the copy throws, `Seal` records gap `upload_failed`, and `capture.json` is written with `complete` false. A failure of the later `capture.json` write would instead remove the file and fail the count assertion at line 46, not line 54.
+5. The test store copies the chunk with `content.CopyToAsync(buffer, cancellationToken)` (`tests/Parchwell.Verifier.Tests/Host/B10SweepHandlerTests.cs` lines 557-564). When the real 100 ms expires first, the copy throws, `Seal` records gap `upload_failed`, and `capture.json` is written with `complete` false. A failure of the later `capture.json` write would instead leave no `capture.json` and fail the count assertion at line 46, not line 54.
 
 Reproduction, run in this planning session on 2026-11-24 in a scratch worktree at the base commit, Release build, one run per setting, with a temporary real-time `Thread.Sleep` added before the store's copy:
 
@@ -52,7 +52,7 @@ In the failed run, 143 of 146 archives had finished when the 144th request (`wor
 
 New value: `DEADLINE = 600`. Basis: it is 3.57 times the longest successful download and 2.4 times the estimate for the failed one. The deadline only ends a download that is still running; a download that finishes earlier takes the same time as before.
 
-Effect on the 3,000-second campaign limit: none for a download that finishes within 240 s. A download that takes between 240 and 600 s now completes, and up to 360 more seconds count against the limit. The terminal checker then reports the campaign as `met` or `missed` with complete evidence, instead of the aggregate reporting it incomplete. On the current layout, the run 45374369955 left 204 s of the limit for its download and the later steps, and run 45459740602 left 8 s. So the failed run 45449734959 would very likely have missed 3,000 seconds even with the new deadline: it reached the download step at 2,780 s and needed about 245 s more for downloads alone. This change removes a failure mode; it does not create campaign time.
+Effect on the 3,000-second campaign limit: none for a download that finishes within 240 s. A download that takes between 240 and 600 s now completes, and up to 360 more seconds count against the limit. The terminal checker then reports the campaign as `met` or `missed` with complete evidence, instead of the aggregate reporting it incomplete. On the current layout, once every step except the download is counted, run 45374369955 left 204 s of the limit for its download, and run 45459740602 left 8 s. So the failed run 45449734959 would very likely have missed 3,000 seconds even with the new deadline: it reached the download step at 2,780 s and needed about 245 s more for downloads alone. This change removes a failure mode; it does not create campaign time.
 
 ### Material uncertainty for the next pair
 
@@ -109,13 +109,14 @@ All new C# tests are in `ConsumedMetadataCaptureTests.cs` or `WindowConsumerTest
 |---|---|---|---|
 | 1 | `WindowConsumerTests.Given_StoreSlowerThanBlobTimeoutInRealTime_When_DrainClockStill_Then_CaptureIsComplete` | `BlobIoTimeout` 10 ms; one in-window record; the store sleeps 60 ms real time, then calls `ThrowIfCancellationRequested()`, then copies, in both `CreateStreamAsync` and `CreateAsync`; the drain clock is not advanced | `capture.json` present; `complete` true; `observed_rows` 1; `captured_rows` 1; `gaps` empty; one chunk |
 | 2 | `ConsumedMetadataCaptureTests.Given_CaptureClockAdvancesDuringChunkUpload_When_Sealing_Then_TimeoutBoundaryApplies` (theory) | `BlobIoTimeout` 100 ms; one record observed and finished with the manual clock; the store advances that clock by N ms inside `CreateStreamAsync`, then calls `ThrowIfCancellationRequested()` | N = 99: `complete` true, `gaps` empty, `captured_rows` 1. N = 100 and N = 101: `complete` false, `gaps` `[{"code":"upload_failed","ordinal":0}]`, `observed_rows` 1, `captured_rows` 0, `first_missing_ordinal` 0 |
+| 2 | `ConsumedMetadataCaptureTests.Given_CaptureClockAdvancesDuringRolloverUpload_When_Observing_Then_TimeoutBoundaryApplies` (theory) | `BlobIoTimeout` 100 ms; the record and the `MaxRowBytes = MaxChunkBytes = size`, `MaxBytes = size * 2` settings of the existing `ConsumedMetadata_ChunkRotationAndAggregateLimit`; two `Observe` calls and `Finish(true)` with the manual clock; the store advances that clock by N ms inside the first `CreateStreamAsync` call only, then calls `ThrowIfCancellationRequested()` | N = 99: `complete` true, two chunks, `captured_rows` 2. N = 100 and N = 101: `complete` false, `gaps` `[{"code":"upload_failed","ordinal":0}]`, `observed_rows` 2, `captured_rows` 0, `first_missing_ordinal` 0 |
 | 3 | `ConsumedMetadataCaptureTests.Given_CaptureClockAdvancesDuringManifestWrite_When_Finishing_Then_TimeoutBoundaryApplies` (theory) | `BlobIoTimeout` 100 ms; no record; `Finish(true)` with the manual clock; the store advances that clock by N ms inside `CreateAsync` for the name ending `capture.json`, then calls `ThrowIfCancellationRequested()` | N = 99: one `capture.json`, `complete` true. N = 100 and N = 101: no `capture.json` |
-| 4 | `ConsumedMetadataCaptureTests.Given_NoClock_When_StoreSlowerThanBlobTimeout_Then_UploadFails` | `BlobIoTimeout` 10 ms; one record; `Observe` and `Finish(true)` without a clock; the store sleeps 60 ms real time in `CreateStreamAsync`, then calls `ThrowIfCancellationRequested()` | `complete` false; `gaps[0].code` `upload_failed`; `captured_rows` 0 |
+| 4 | `ConsumedMetadataCaptureTests.Given_NoClock_When_StoreSlowerThanBlobTimeout_Then_UploadFails` | `BlobIoTimeout` 10 ms; one record; `Observe` and `Finish(true)` without a clock; in `CreateStreamAsync` the store calls `cancellationToken.WaitHandle.WaitOne(TimeSpan.FromSeconds(30))`, then `ThrowIfCancellationRequested()` | `complete` false; `gaps[0].code` `upload_failed`; `captured_rows` 0 |
 | 5 | `test_c5_companion_artifacts.TransportTests.test_transport_deadline_is_600_seconds_from_construction` | `time.monotonic` returns 0 at construction | `transport.deadline` 600. At clock 590 a request opens with `timeout` 10. At clock 600 a request raises `DownloadError` matching `deadline exceeded` and `opener.open` is not called |
 | 6 | `test_error_body_is_not_read_at_the_deadline`, `test_error_body_stops_between_fragments_at_the_deadline` | fixture `clock[0] = 600` instead of 240 | existing assertions unchanged and passing |
 | 7 | `.NET verification` hosted check, which runs `c5_runtime.py check` against the base | the renewed qualification | `qualified` |
 
-Tests 1 and 4 together show the clock source: the same slow store passes with the drain's still clock and fails on the system clock. Requirement 1's 60 ms real sleep is the only added wall time in new tests besides test 4's 60 ms; both are below 0.2 s in total.
+Tests 1 and 4 together show the clock source: a store slower than `BlobIoTimeout` in real time passes with the drain's still clock and fails on the system clock. Test 4's store waits for the token instead of sleeping a fixed time, so its outcome does not depend on how quickly the system timer fires under load. The only added real wall time in new tests is test 1's 60 ms sleep and test 4's wait, which ends when the 10 ms system-clock deadline cancels the token.
 
 Controlled pre-fix comparison, recorded in the pull request and not committed: on the base commit and on the head, add the temporary 150 ms real-time sleep before the copy in `B10SweepHandlerTests` `PhaseFixture.CreateStreamAsync` and run `ImmutableResultsReceiveFinalCountsAfterCleanup`. Expected: base 2 of 2 fail at line 54; head 2 of 2 pass. Discard the temporary edit. Also run test 1 on the base with the new test file: expected `complete` false with `upload_failed`.
 
@@ -128,7 +129,7 @@ Controlled pre-fix comparison, recorded in the pull request and not committed: o
 
 ## Deployment assumptions
 
-1. **Companion download time.** The 146 companion archives download within 600 seconds on a standard GitHub-hosted runner. Evidence: the five aggregate jobs in the table above, each on a fresh runner with a fresh HTTPS connection per request, under GitHub's ordinary shared load, which no run controlled. Four finished in 92.7 to 167.9 s; one stopped at 240 s with 143 archives done. No offline test can cover hosted throughput; test 5 covers the value. Decision 7142132171 point 1 directs setting the value from these measurements. If a download still exceeds 600 s, the aggregate reports incomplete evidence, as it does today at 240 s.
+None accepted yet. The companion download time assumption is under "Open questions for Hari" until he accepts its risk by name; a non-design revision then moves it back here with a link to that decision.
 
 No assumption about a deployed container, image, chart or Azure runtime is made: nothing here is deployed.
 
@@ -136,7 +137,7 @@ No assumption about a deployed container, image, chart or Azure runtime is made:
 
 1. **Work that scales with a number unknown at planning time.** `renew` writes one assessment per changed shared input per timing context; the qualification has 7 contexts and the change has at most 4 renewable paths, so at most 28 entries, written by script. The post-merge acceptance is one pair of 324 physical jobs and one download of 146 archives bounded by 600 s. Review rounds follow docs/agents/pull-requests.md rule 8. No other step scales.
 2. **Where this is stricter than the parent plan, and why.** The parent is the approved observability-evidence specification R3 ([plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/f96eab914d00c06484431ff67a1808fb331c7e13/items/494/plan-observability-evidence.md)), which introduced the consumed-metadata capture. It did not pin which clock the capture's deadlines use. This plan pins it to the caller's clock, to remove the nondeterminism diagnosed above. Production behaviour is unchanged.
-3. **Checks that depend on code, data or behaviour outside `main` and the pull request.** The hosted download times and the post-merge pair's outputs. The download times were checked against the recorded aggregate logs linked above; they are listed as deployment assumption 1. The pair's outputs do not exist yet; requirement 9 and the stop rule say what happens on a miss.
+3. **Checks that depend on code, data or behaviour outside `main` and the pull request.** The hosted download times and the post-merge pair's outputs. The download times were checked against the recorded aggregate logs linked above; they are listed under "Open questions for Hari" as question 1. The pair's outputs do not exist yet; requirement 9 and the stop rule say what happens on a miss.
 
 ## Stop rule and caps
 
@@ -157,4 +158,4 @@ Post-merge execution: one pair. Exhaustion action: `record the gap and continue`
 
 ## Open questions for Hari
 
-None.
+1. **Accept the companion download time risk by name.** Deployment assumption: the 146 companion archives download within 600 seconds on a standard GitHub-hosted runner. Evidence: the five aggregate jobs in "Companion download measurements", each on a fresh runner with a fresh HTTPS connection per request, under GitHub's ordinary shared load, which no run controlled. Four finished in 92.7 to 167.9 s; one stopped at 240 s with 143 archives done. No offline test can cover hosted throughput; test 5 covers the value. Decision 7142132171 point 1 sets the value from these measurements but does not accept the risk of a slower download. Consequence if the risk occurs: the aggregate reports incomplete evidence, as it does today at 240 s, and the one post-merge pair does not close the issue. Recommendation: accept it. The alternative is a larger value, which only lengthens a campaign that would already miss 3,000 seconds.
