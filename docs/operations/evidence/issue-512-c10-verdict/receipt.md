@@ -10,7 +10,7 @@ This receipt describes how the C10 evidence pack in `results/C10/2026-11-22.md` 
 
 ## Inputs
 
-Downloaded on 2026-11-25 with `gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/artifacts/<id>/zip` and `.../actions/jobs/<id>/logs` into a scratch directory outside the repository. `sha256sum` of each of the nine files the plan pins in section 4.1 equalled the plan's value, and `make_results.py` pins the same values (check G1). The plan checks matched each of those ZIP hashes against the artifact API `digest`. The mutation ZIP is not pinned by the plan: its SHA-256, given below, equals the `digest` that `gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/artifacts/14997997843` returned on 2026-11-25 (`sha256:764cdd3789329d07553303cd3b2508e640426499c6aaeee2f8224f01db04aae3`, `expired` false), and the generator checks it against `--mutation-zip-sha256` (G1).
+Downloaded on 2026-11-25 with `gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/artifacts/<id>/zip` and `.../actions/jobs/<id>/logs` into a scratch directory outside the repository. `sha256sum` of each of the eight run files the plan pins in section 4.1 (six ZIPs and two logs), and of `scenarios/C10/expected.yaml` and `scenarios/C10/scenario.yaml` in the working tree, equalled the plan's value, and `make_results.py` pins the same values (check G1). The plan checks matched each of those ZIP hashes against the artifact API `digest`. The mutation ZIP is not pinned by the plan: its SHA-256, given below, equals the `digest` that `gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/artifacts/14997997843` returned on 2026-11-25 (`sha256:764cdd3789329d07553303cd3b2508e640426499c6aaeee2f8224f01db04aae3`, `expired` false), and the generator checks it against `--mutation-zip-sha256` (G1).
 
 | File | Source | SHA-256 |
 |---|---|---|
@@ -51,10 +51,10 @@ Run 45074268881 as read from the API on 2026-11-25: `workflow_dispatch`, `main`,
 
 - Mutation `run_id` comparison (plan check of revision 1, `apply in implementation`): the summary's `run_id` is the JSON string "45555996117"; check G10 compares it with the decimal string of `--mutation-run`, and requires `--mutation-run` and `--mutation-artifact-id` to be decimal IDs.
 - Mutation artifact ID (plan check of revision 2, `apply in implementation`): the generator takes `--mutation-artifact-id` and renders the JSON `inputs` source as `artifact <id>, c5-summary-<run_id>-<run_attempt>`, both from the summary.
-- Self-test order (plan check of revision 1, `apply in implementation`): the three R1 cases (`hash_c0_candidate`, `expected_yaml_edit`, `mutation_hash`) change their input in memory before G1 and print `PASS <case>` when G1 fails; every other case changes its value after G1. `expected_rule_changed` and `expected_item_missing` change the parsed edited file between G1 and G11.
+- Self-test order (plan check of revision 1, `apply in implementation`): the three R1 cases (`hash_c0_candidate`, `expected_yaml_edit`, `mutation_hash`) change their input in memory before G1 and print `PASS <case>` when G1 fails; every other case changes its value after G1.
 - Running the generator without a mode flag also replaces README line 39, which must be the existing C10 row; it prints the row as well. `--check` requires line 39 to equal it.
 - `--self-test` runs the real inputs without G7 (plan R12). Only `report_edit` runs G7, against copies of the rendered files.
-- The generator reads the YAML files with PyYAML `safe_load`; PyYAML 6.0.1 was installed in this session. The plan names PyYAML 6.0.3, which was not installed here.
+- The generator reads the YAML files with PyYAML `safe_load`; PyYAML 6.0.1 was installed in this session. Plan revision 5 names no PyYAML version.
 - The pod table lists the member path of the pod log and `pods.json` of each of the five Jobs of every repeat and of each phase's judge Job. The node table lists the node of each consumer pair.
 
 ## Source checks made in this session (2026-11-25)
