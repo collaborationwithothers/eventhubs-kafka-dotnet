@@ -146,11 +146,11 @@ public sealed class KillConsumerProcessingDefinitionTests
 
     [Theory]
     [InlineData("C10", "21097f98e69c3a8e2f77247c0f5ccd2d0b6bd5ef8b638e8866f2f838f364f34c")]
-    [InlineData("C01", "7fa82b42f1d09d2ac9e2fa6c204dbdce18b80e8813bcff89c0a6f5249c6dd2fb")]
+    [InlineData("C01", "17ced6efa4af8ebb1d8f656fe7dd62fcadc5bcd0629c256840562d8b5c122deb")] // #513 decision 7128051335: the #510 plan text plus eight appended verdict.text_must_state items.
     public void Given_ApprovedExpectedOutcomes_When_ReadingTheCommittedFile_Then_BytesEqualTheApprovedText(string item, string sha256)
     {
         // With the C03 test of ConsumerProcessingDefinitionTests, the only tests that read an expected.yaml (ADR-014).
-        // The hash is of the text in the approved #510 plan (revision 6, section 5.2), LF endings and a final newline.
+        // Each hash is of the approved text: the #510 plan (revision 6, section 5.2), plus any verdict decision that a row's trailing comment names; LF endings and a final newline.
         var bytes = File.ReadAllBytes(Path.Combine(Root(), "scenarios", item, "expected.yaml"));
         Assert.DoesNotContain((byte)'\r', bytes);
         Assert.Equal((byte)'\n', bytes[^1]);

@@ -111,6 +111,48 @@ verdict:
     - Each counted repeat with an early_removal finding, with its reassignment value.
     - The subject has no native-monitoring evidence; the archive records its
       missing index as configured_self_kill.
+    - >-
+      Decision 7126257034 point 1, in plain words before any verifier term:
+      the scenario as a production event. A consumer in a brand-new group is
+      killed before it has ever committed an offset, and another member takes
+      over its partitions, with the baseline settings (auto.offset.reset
+      latest, auto-commit every 5 s) and messages flowing throughout.
+    - >-
+      Decision 7126257034 point 2, step by step: the dead member's partitions
+      are unread until the session timeout expires; messages keep arriving;
+      the survivor finds no committed offset, falls back to latest and starts
+      at the end; what arrived between the crash and the takeover is skipped;
+      the survivor's commits then pass the skipped messages; no error is
+      raised. Each step the run did not measure is labelled an inference with
+      its source.
+    - >-
+      Decision 7126257034 point 3: what was measured, per configuration, the
+      takeover times and the messages skipped per repeat, from the published
+      run.
+    - >-
+      Decision 7126257034 point 4: contradicted is against the 15 s rebalance
+      allowance in the upper bound, a policy value. The run does not show that
+      30000 is the right value or that 45000 is wrong; it measured failover
+      time only and did not test the cost of a shorter timeout (a live member
+      that stalls being removed by mistake). The text recommends no value.
+    - >-
+      Decision 7126257034 point 5: the skip count grows with takeover time, at
+      about the rate the published run shows, stated as an inference from the
+      numbers, not a measured rate.
+    - >-
+      Decision 7126257034 point 6: a shorter session timeout shrinks the loss
+      but does not remove it.
+    - >-
+      Decision 7126257034 point 7: remedies such as auto.offset.reset earliest
+      or error were not tested here; if the text names them, it says so and
+      cites official documentation for their behaviour. Storing offsets after
+      processing does not address this case, because nothing was committed.
+    - >-
+      Decision 7126257034 point 8: when it happens in production (a new
+      group's first deployment crashing before its first commit, committed
+      offsets that expired, a partition never committed to), and that a group
+      that has been committing normally resumes from its last commit instead,
+      the C10 case.
 
 sources:
   - https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md
