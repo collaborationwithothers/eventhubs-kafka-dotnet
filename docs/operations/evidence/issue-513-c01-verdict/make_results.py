@@ -2,27 +2,20 @@
 """Writes the C01 evidence pack and verdict inputs for batch run 45124695288.
 
 Run it from anywhere with `python3 -I`. The inputs are the artifacts and job logs
-of the run and the mutation summary of the accepted C5 mutation run, downloaded to one
+of the run and the mutation summary of the accepted C5 mutation run 45555996117, downloaded to one
 directory outside the repository (INPUT_FILES names the files that directory must hold).
-The mutation inputs are named on the command line, because the mutation run is not part of
-the batch run:
 
-  --mutation-run ID --mutation-artifact-id ID
-  --mutation-zip-sha256 HASH --mutation-summary-sha256 HASH
-
-  make_results.py --inputs DIR <mutation args>               check everything, then write
+  make_results.py --inputs DIR               check everything, then write
                                              results/C01/2026-11-23.json and .md
                                              and README.md line 30, and print the row
-  make_results.py --inputs DIR <mutation args> --check       re-render and require byte
+  make_results.py --inputs DIR --check       re-render and require byte
                                              equality with the committed files
-  make_results.py --inputs DIR <mutation args> --self-test   run the real inputs, then each
+  make_results.py --inputs DIR --self-test   run the real inputs, then each
                                              single-change case; each must fail at its named check
 
-Checks run in this order: G1 (hashes), G11 (the expected-outcome edit is additive), G2 to G6
-and G10 (the inputs), then rendering, G8 and G9 on the rendered files, and G7 (byte equality
+Checks run in this order: G1 (hashes), G2 to G6 and G10 (the inputs), then rendering, G8 and G9 on the rendered files, and G7 (byte equality
 with the committed files) only with --check. A failure prints `FAIL G<n>: <reason>` and
-exits 1. The generator reads no network and holds no secret. It reads the expected outcome
-the run was judged against with `git show`.
+exits 1. The generator reads no network and holds no secret.
 """
 
 import argparse
@@ -32,7 +25,6 @@ import io
 import json
 import pathlib
 import re
-import subprocess
 import sys
 import zipfile
 
@@ -44,15 +36,19 @@ RUN_ID_NUM = 45124695288
 RUN_URL = f"{REPO}/actions/runs/{RUN_ID_NUM}"
 RUN_ID = "c01-45124695288-1"
 HEAD = "2d370de00059df30506154c1fd504d0f81d237bc"
-BASE = "3e7163dc641e724437025d917032fd40419e6c4d"
+MUTATION_RUN = 45555996117
+MUTATION_ARTIFACT = 14997997843
+MUTATION_COMMIT = "e3c8eb9462a6ecae139a651c5eef39812be07801"
+MUTATION_ZIP_SHA = "764cdd3789329d07553303cd3b2508e640426499c6aaeee2f8224f01db04aae3"
+MUTATION_SUMMARY_SHA = "bb52a814b734277bd088a8b3745db6041c2bf5bc58ac57fb240588068667282d"
+BASE = "3e7163dc641e724437025d917032fd40419e6c4d"  # the plan's earlier base, kept for the repository links of the report
 JSON_PATH = "results/C01/2026-11-23.json"
 MD_PATH = "results/C01/2026-11-23.md"
 README_LINE = 30
 ARTIFACT_EXPIRY = "2027-02-21T06:31:39Z"
 
 EXPECTED_PATH = "scenarios/C01/expected.yaml"
-JUDGED_SHA = "7fa82b42f1d09d2ac9e2fa6c204dbdce18b80e8813bcff89c0a6f5249c6dd2fb"
-EDITED_SHA = "17ced6efa4af8ebb1d8f656fe7dd62fcadc5bcd0629c256840562d8b5c122deb"
+EXPECTED_SHA = "7fa82b42f1d09d2ac9e2fa6c204dbdce18b80e8813bcff89c0a6f5249c6dd2fb"
 SCENARIO_PATH = "scenarios/C01/scenario.yaml"
 SCENARIO_SHA = "555cb0be7f37c6e5d6a6e94f899875f0616fcafca49be34fab4ad70fda59efd2"
 CONFIGS = ("C0", "C1")
@@ -60,7 +56,7 @@ REPEATS = [1, 2, 3, 4, 5]
 WINDOWS = {"C0": (27000000, 45000000), "C1": (42000000, 60000000)}
 SESSION_TIMEOUT_S = {"C0": 30, "C1": 45}
 
-# Input files: key -> (file name in the inputs directory, SHA-256). The mutation ZIP's hash is an argument.
+# Input files: key -> (file name in the inputs directory, SHA-256).
 INPUT_FILES = {
     "c0cand": ("c01-C0-candidate.zip", "bd388eac5dc682ca9f3d0a73d94847192aff6cbfef6d5cc120c70b84aac15fb3"),
     "c1cand": ("c01-C1-candidate.zip", "52105da54df8e4e95415c02eaf925163980e70479d5d35eaf48c4daff5fbb596"),
@@ -70,7 +66,7 @@ INPUT_FILES = {
     "c1pods": ("c01-C1-pods.zip", "aff647840c189209f12e6bdd0edfdba00c7a87a18e8da6833ed19ac92b19ba0a"),
     "c0log": ("probe.log", "655d77582f398d448fedd8a33c1e96da87f4e3ccce8c8aa5dbc60482a914fffe"),
     "c1log": ("full-C3.log", "ba2481fa746610661a8d94ec2d91a818bd9e39fbf3a2bc1c24af79efd0b92439"),
-    "c5": ("c5-summary.zip", None),
+    "c5": ("c5-summary.zip", MUTATION_ZIP_SHA),
 }
 ZIP_KEYS = ("c0cand", "c1cand", "c0arch", "c1arch", "c0pods", "c1pods", "c5")
 MEMBER_PINS = {
@@ -82,7 +78,7 @@ MEMBER_PINS = {
     ("c1arch", "archive-manifest.json"): "eb2d4f785a3e89ac5b2993e023177ffc934ffabcec49649b7a6d01de86ab8573",
     ("c0pods", "phase-status.json"): "6741510c7377cb3bc524e766bab8fa4474c3c132f4183381d512b163a4c86df7",
     ("c1pods", "phase-status.json"): "605647a1a8c64c2257867f324e3a98c6a825d5cdfd2e071d92bb7b86d8381039",
-    ("c5", "summary.json"): None,
+    ("c5", "summary.json"): MUTATION_SUMMARY_SHA,
 }
 ARTIFACTS = {
     "C0": [("candidate", 14867803464, "c01-C0-candidate-45124695288-1", "c0cand"),
@@ -111,54 +107,6 @@ PINNED = [
     ("verdict", "contradicted"),
 ]
 
-# The eight items appended to verdict.text_must_state by decision 7128051335 point 1 (plan section 4.10),
-# as the 42 inserted lines of scenarios/C01/expected.yaml.
-APPENDED_YAML = """\
-    - >-
-      Decision 7126257034 point 1, in plain words before any verifier term:
-      the scenario as a production event. A consumer in a brand-new group is
-      killed before it has ever committed an offset, and another member takes
-      over its partitions, with the baseline settings (auto.offset.reset
-      latest, auto-commit every 5 s) and messages flowing throughout.
-    - >-
-      Decision 7126257034 point 2, step by step: the dead member's partitions
-      are unread until the session timeout expires; messages keep arriving;
-      the survivor finds no committed offset, falls back to latest and starts
-      at the end; what arrived between the crash and the takeover is skipped;
-      the survivor's commits then pass the skipped messages; no error is
-      raised. Each step the run did not measure is labelled an inference with
-      its source.
-    - >-
-      Decision 7126257034 point 3: what was measured, per configuration, the
-      takeover times and the messages skipped per repeat, from the published
-      run.
-    - >-
-      Decision 7126257034 point 4: contradicted is against the 15 s rebalance
-      allowance in the upper bound, a policy value. The run does not show that
-      30000 is the right value or that 45000 is wrong; it measured failover
-      time only and did not test the cost of a shorter timeout (a live member
-      that stalls being removed by mistake). The text recommends no value.
-    - >-
-      Decision 7126257034 point 5: the skip count grows with takeover time, at
-      about the rate the published run shows, stated as an inference from the
-      numbers, not a measured rate.
-    - >-
-      Decision 7126257034 point 6: a shorter session timeout shrinks the loss
-      but does not remove it.
-    - >-
-      Decision 7126257034 point 7: remedies such as auto.offset.reset earliest
-      or error were not tested here; if the text names them, it says so and
-      cites official documentation for their behaviour. Storing offsets after
-      processing does not address this case, because nothing was committed.
-    - >-
-      Decision 7126257034 point 8: when it happens in production (a new
-      group's first deployment crashing before its first commit, committed
-      offsets that expired, a partition never committed to), and that a group
-      that has been committing normally resumes from its last commit instead,
-      the C10 case.
-"""
-APPENDED_ITEMS = yaml.safe_load("items:\n" + APPENDED_YAML)["items"]
-assert len(APPENDED_ITEMS) == 8 and len(APPENDED_YAML.splitlines()) == 42
 
 # Published text of the report, as the plan gives it (section 4.4). Fields in braces are filled from the data.
 
@@ -352,10 +300,8 @@ SOURCES = [
         '(SHA-256 `555cb0be7f37c6e5d6a6e94f899875f0616fcafca49be34fab4ad70fda59efd2`) and '
         '[scenarios/C01/expected.yaml](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/2d370de00059df30506154c1fd504d0f81d237bc/scenarios/C01/expected.yaml) '
         '(SHA-256 `7fa82b42f1d09d2ac9e2fa6c204dbdce18b80e8813bcff89c0a6f5249c6dd2fb`), both at '
-        '`2d370de00059df30506154c1fd504d0f81d237bc`, as the run was judged. The expected outcome as published '
-        'adds eight `verdict.text_must_state` items by [decision '
-        '7128051335](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/513#issuecomment-7128051335) '
-        'and changes no rule (SHA-256 `17ced6efa4af8ebb1d8f656fe7dd62fcadc5bcd0629c256840562d8b5c122deb`).'
+        '`2d370de00059df30506154c1fd504d0f81d237bc`. The plain-words points of the publication decision bind the '
+        "published text in addition to the expected outcome's `text_must_state`."
     ),
     (
         '- Publication decision: '
@@ -394,8 +340,8 @@ SOURCES = [
     ),
     (
         '- C5 mutation run '
-        '[<run>](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/<run>) and its '
-        '`summary.json`, as in Mutation acceptance.'
+        '[45555996117](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45555996117) '
+        'and its `summary.json`, as in Mutation acceptance.'
     ),
     (
         '- Generator and receipt: '
@@ -438,13 +384,6 @@ class Ctx:
 # Loading
 
 
-def git(*args):
-    result = subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True)
-    if result.returncode != 0:
-        fail("G1", "git " + " ".join(args) + " failed: " + result.stderr.decode("utf-8", "replace").strip())
-    return result.stdout
-
-
 def read_inputs(directory):
     raw = {}
     for key, (name, _pin) in INPUT_FILES.items():
@@ -463,23 +402,13 @@ def open_zip(data, key):
     return {name: archive.read(name) for name in archive.namelist() if not name.endswith("/")}
 
 
-def new_context(raw, cfg):
+def new_context(raw):
     ctx = Ctx()
     ctx.raw = raw
-    ctx.cfg = cfg
     ctx.members = {key: open_zip(raw[key], key) for key in ZIP_KEYS}
-    ctx.judged = git("show", f"{HEAD}:{EXPECTED_PATH}")
     ctx.working_expected = (ROOT / EXPECTED_PATH).read_bytes()
     ctx.working_scenario = (ROOT / SCENARIO_PATH).read_bytes()
     return ctx
-
-
-def zip_pin(ctx, key):
-    return ctx.cfg["zip_sha"] if key == "c5" else INPUT_FILES[key][1]
-
-
-def member_pin(ctx, key, member):
-    return ctx.cfg["summary_sha"] if key == "c5" else MEMBER_PINS[(key, member)]
 
 
 # ----------------------------------------------------------------------------------------------
@@ -487,30 +416,13 @@ def member_pin(ctx, key, member):
 
 
 def check_g1(ctx):
-    for key, (name, _pin) in INPUT_FILES.items():
-        expect(sha256(ctx.raw[key]) == zip_pin(ctx, key), "G1", f"{name} differs from its pinned SHA-256")
-    for (key, member) in MEMBER_PINS:
+    for key, (name, pin) in INPUT_FILES.items():
+        expect(sha256(ctx.raw[key]) == pin, "G1", f"{name} differs from its pinned SHA-256")
+    for (key, member), pin in MEMBER_PINS.items():
         expect(member in ctx.members[key], "G1", f"{key} has no member {member}")
-        expect(sha256(ctx.members[key][member]) == member_pin(ctx, key, member), "G1", f"member {member} of {key} differs from its pin")
-    expect(sha256(ctx.judged) == JUDGED_SHA, "G1", f"{EXPECTED_PATH} at {HEAD} differs from its pin")
-    expect(sha256(ctx.working_expected) == EDITED_SHA, "G1", f"{EXPECTED_PATH} in the working tree differs from its pin")
+        expect(sha256(ctx.members[key][member]) == pin, "G1", f"member {member} of {key} differs from its pin")
+    expect(sha256(ctx.working_expected) == EXPECTED_SHA, "G1", f"{EXPECTED_PATH} in the working tree differs from its pin")
     expect(sha256(ctx.working_scenario) == SCENARIO_SHA, "G1", f"{SCENARIO_PATH} in the working tree differs from its pin")
-
-
-def check_g11(ctx):
-    """The edited expected outcome equals the judged one, except for eight appended text_must_state items."""
-    try:
-        judged = yaml.safe_load(ctx.judged.decode("utf-8"))
-        edited = yaml.safe_load(ctx.working_expected.decode("utf-8"))
-    except (yaml.YAMLError, UnicodeDecodeError) as error:
-        fail("G11", f"expected.yaml does not parse: {error}")
-    j_items = judged["verdict"]["text_must_state"]
-    e_items = edited["verdict"]["text_must_state"]
-    expect(len(j_items) == 5, "G11", "the judged text_must_state does not have five items")
-    expect(e_items[:5] == j_items, "G11", "the first five text_must_state items differ from the judged file")
-    expect(e_items[5:] == APPENDED_ITEMS, "G11", "the appended text_must_state items are not the eight of the plan")
-    judged["verdict"]["text_must_state"] = edited["verdict"]["text_must_state"] = None
-    expect(judged == edited, "G11", "the edited expected outcome differs from the judged one beyond text_must_state")
 
 
 def strict_json(data, label):
@@ -546,7 +458,7 @@ def parse(ctx):
     ctx.manifest = {p: strict_json(pick(p, "arch", "archive-manifest.json"), f"{p} archive manifest") for p in CONFIGS}
     ctx.phase = {p: strict_json(pick(p, "pods", "phase-status.json"), f"{p} phase status") for p in CONFIGS}
     ctx.summary = strict_json(ctx.members["c5"]["summary.json"], "C5 summary")
-    ctx.judged_yaml = yaml.safe_load(ctx.judged.decode("utf-8"))
+    ctx.expected_yaml = yaml.safe_load(ctx.working_expected.decode("utf-8"))
     ctx.pods = {}
     ctx.jobfiles = {}
     for phase in CONFIGS:
@@ -704,8 +616,8 @@ def check_g6(ctx):
 def check_g10(ctx):
     s = ctx.summary
     expect(s.get("measurement_complete") is True and s.get("break_passed") is True, "G10", "mutation summary measurement_complete or break_passed")
-    expect(s.get("run_id") == str(ctx.cfg["run"]), "G10", "mutation summary run_id differs from --mutation-run")
-    expect(isinstance(s.get("commit"), str) and re.fullmatch(r"[0-9a-f]{40}", s["commit"]) is not None, "G10", "mutation summary commit is not a 40-character SHA")
+    expect(s.get("run_id") == str(MUTATION_RUN), "G10", "mutation summary run_id differs from the accepted run")
+    expect(s.get("commit") == MUTATION_COMMIT, "G10", "mutation summary commit differs from the accepted run's commit")
 
 
 def check_g8(md, row):
@@ -861,15 +773,13 @@ def render_md(ctx, document):
     ]
 
     out += ["## Not tested", ""] + NOT_TESTED + [""]
-    run = ctx.cfg["run"]
-    out += ["## Sources", ""] + [s.replace("<run>", str(run)) for s in SOURCES] + [""]
+    out += ["## Sources", ""] + SOURCES + [""]
     return "\n".join(out).rstrip("\n") + "\n"
 
 
 def build_publication(ctx):
     cands = ctx.cand
-    cfg = ctx.cfg
-    judged = ctx.judged_yaml
+    judged = ctx.expected_yaml
     inputs = []
     for key in ZIP_KEYS:
         if key == "c5":
@@ -885,11 +795,10 @@ def build_publication(ctx):
     for phase in CONFIGS:
         job_id, job_key, key = LOGS[phase]
         inputs.append({"name": f"{phase} job log", "source": f"job {job_id} ({job_key})", "sha256": INPUT_FILES[key][1]})
-    inputs.append({"name": "mutation summary artifact ZIP", "source": f"artifact {cfg['artifact']}, c5-summary-{ctx.summary['run_id']}-{ctx.summary['run_attempt']}",
-                   "sha256": cfg["zip_sha"]})
-    inputs.append({"name": "mutation summary.json", "source": f"member summary.json of artifact {cfg['artifact']}", "sha256": cfg["summary_sha"]})
-    inputs.append({"name": "expected-judged.yaml", "source": f"git show {HEAD}:{EXPECTED_PATH}, the expected outcome the run was judged against", "sha256": JUDGED_SHA})
-    inputs.append({"name": EXPECTED_PATH, "source": "working tree after the eight-item edit", "sha256": EDITED_SHA})
+    inputs.append({"name": "mutation summary artifact ZIP", "source": f"artifact {MUTATION_ARTIFACT}, c5-summary-{ctx.summary['run_id']}-{ctx.summary['run_attempt']}",
+                   "sha256": MUTATION_ZIP_SHA})
+    inputs.append({"name": "mutation summary.json", "source": f"member summary.json of artifact {MUTATION_ARTIFACT}", "sha256": MUTATION_SUMMARY_SHA})
+    inputs.append({"name": EXPECTED_PATH, "source": f"working tree, equal to {HEAD}; the expected outcome the run was judged against", "sha256": EXPECTED_SHA})
     inputs.append({"name": SCENARIO_PATH, "source": f"working tree, equal to {HEAD}", "sha256": SCENARIO_SHA})
 
     got = dict(zip([r for r, _ in PINNED], recompute(ctx)))
@@ -906,10 +815,7 @@ def build_publication(ctx):
             "workflow_run_id": RUN_ID_NUM, "attempt": 1, "event": "workflow_dispatch", "ref": "main", "head_sha": HEAD,
             "created_at": "2026-11-23T06:31:38Z", "conclusion": "success", "run_id": RUN_ID,
         },
-        "expected_outcome": {
-            "path": EXPECTED_PATH, "judged_sha256": JUDGED_SHA, "published_sha256": EDITED_SHA,
-            "change": "eight verdict.text_must_state items appended by decision 7128051335 point 1; no rule changed",
-        },
+        "expected_outcome": {"path": EXPECTED_PATH, "sha256": EXPECTED_SHA},
         "scenario_definition": {"path": SCENARIO_PATH, "sha256": SCENARIO_SHA},
         "publication_decision": {
             "comment_id": 7126257034,
@@ -956,8 +862,8 @@ def build_publication(ctx):
         },
         "versions": cands["C0"]["versions"],
         "mutation_acceptance": {
-            "workflow_run_id": cfg["run"], "commit": ctx.summary["commit"], "measurement_complete": ctx.summary["measurement_complete"],
-            "break_passed": ctx.summary["break_passed"], "summary_sha256": cfg["summary_sha"], "includes_run_head": HEAD,
+            "workflow_run_id": MUTATION_RUN, "commit": ctx.summary["commit"], "measurement_complete": ctx.summary["measurement_complete"],
+            "break_passed": ctx.summary["break_passed"], "summary_sha256": MUTATION_SUMMARY_SHA, "includes_run_head": HEAD,
         },
         "inputs": inputs,
     }
@@ -985,8 +891,8 @@ def check_g9(ctx, md, row):
         position = at + len(paragraph)
         if number in (2, 6, 7):
             expect("inference" in paragraph and "inference" in md[at:at + len(paragraph)], "G9", f"plain-words paragraph {number} lacks the word inference")
-    publication_kill = ctx.judged_yaml["assessment_rules"]["kill_point"]
-    publication_window = ctx.judged_yaml["assessment_rules"]["window_policy"]
+    publication_kill = ctx.expected_yaml["assessment_rules"]["kill_point"]
+    publication_window = ctx.expected_yaml["assessment_rules"]["window_policy"]
     required = [WHAT_TESTED, "> " + publication_kill, "> " + publication_window, RESULTS_SENTENCE, COMMIT_EVIDENCE, BROKER_SENTENCE, SELF_KILL_SENTENCE,
                 NODE_SENTENCE, MUTATION_SENTENCE] + [fill(h, values) for h in HYPOTHESES] + NOT_TESTED
     for text in required:
@@ -1000,21 +906,17 @@ def check_g9(ctx, md, row):
 # Pipeline
 
 
-def pipeline(raw, cfg, mode="render", hooks=None, committed=None):
+def pipeline(raw, mode="render", hooks=None, committed=None):
     hooks = hooks or {}
 
     def hook(stage, *args):
         if stage in hooks:
             hooks[stage](*args)
 
-    cfg = dict(cfg)
-    hook("cfg", cfg)
-    ctx = new_context(raw, cfg)
+    ctx = new_context(raw)
     hook("members", ctx)
     hook("working", ctx)
     check_g1(ctx)
-    hook("after_g1", ctx)
-    check_g11(ctx)
     parse(ctx)
     hook("parsed", ctx)
     check_g2(ctx)
@@ -1071,7 +973,7 @@ def flip(data, index=10):
     return bytes(buffer)
 
 
-def case_table(cfg):
+def case_table(paragraphs):
     """Each case: (name, expected check code, expected message prefix or None, hooks). One change each."""
 
     def at(stage, fn):
@@ -1139,37 +1041,17 @@ def case_table(cfg):
 
         return {"md": apply}
 
-    def edit_expected(old, new):
-        def apply(ctx):
-            text = ctx.working_expected.decode("utf-8")
-            expect(old in text, "SELFTEST", f"case text not found: {old[:40]}")
-            ctx.working_expected = text.replace(old, new, 1).encode("utf-8")
-
-        return at("after_g1", apply)
-
-    def drop_last_item(ctx):
-        lines = ctx.working_expected.decode("utf-8").split("\n")
-        start = max(i for i, line in enumerate(lines) if line == "    - >-")
-        end = next(i for i in range(start, len(lines)) if lines[i] == "")
-        ctx.working_expected = "\n".join(lines[:start] + lines[end:]).encode("utf-8")
-
     def committed_edit(files):
         expect("| 1 | complete_valid |" in files["md"], "SELFTEST", "committed report has no repeat 1 row")
         files["md"] = files["md"].replace("| 1 | complete_valid |", "| 1 | complete_invalid |", 1)
 
-    def mutation_hash(c):
-        c["summary_sha"] = c["summary_sha"][:-1] + ("0" if c["summary_sha"][-1] != "0" else "1")
-
     def summary_set(key, value):
         return at("parsed", lambda ctx: ctx.summary.__setitem__(key, value))
-
-    # The rendered paragraphs are needed for the report cases; they are recomputed from the real inputs below.
-    paragraphs = cfg["paragraphs"]
 
     return [
         ("hash_c0_candidate", "G1", None, at("members", lambda ctx: ctx.members["c0cand"].__setitem__("candidate.json", flip(ctx.members["c0cand"]["candidate.json"])))),
         ("expected_yaml_edit", "G1", None, at("working", lambda ctx: setattr(ctx, "working_expected", flip(ctx.working_expected)))),
-        ("mutation_hash", "G1", None, at("cfg", mutation_hash)),
+        ("mutation_hash", "G1", None, at("members", lambda ctx: ctx.members["c5"].__setitem__("summary.json", flip(ctx.members["c5"]["summary.json"])))),
         ("c1_repeat_status", "G2", None, at("parsed", lambda ctx: rep(ctx, "C1", 3)["consumer"].__setitem__("status", "incomplete"))),
         ("versions_differ", "G2", None, at("parsed", lambda ctx: ctx.cand["C1"]["versions"].__setitem__("librdkafka", "2.15.0"))),
         ("h1_at_upper_bound", "G3", "configurations.C0.H1_removal_follows_30000 contradicted, expected holds", reassign("C0", 2, 45000000)),
@@ -1197,35 +1079,31 @@ def case_table(cfg):
         ("phase_safety_stop", "G6", None, at("parsed", lambda ctx: ctx.phase["C0"].__setitem__("safety_stop", True))),
         ("subject_mode_complete", "G6", None, at("parsed", lambda ctx: next(m for m in ctx.phase["C1"]["modes"] if m["repeat"] == 1 and m["mode"] == "consumer-subject").__setitem__("outcome", "complete"))),
         ("mutation_incomplete", "G10", None, summary_set("measurement_complete", False)),
-        ("mutation_run_id", "G10", None, summary_set("run_id", "1")),
+        ("mutation_run_id", "G10", None, summary_set("run_id", "45555996118")),
         ("non_ascii", "G8", None, md_replace("## Sources", "## Sources " + chr(0x2013))),
         ("missing_plain_words", "G9", None, md_replace(paragraphs[3] + "\n\n", "")),
         ("verifier_term_early", "G9", None, md_replace("In run 45124695288 on", "In run 45124695288 reassignment on")),
         ("inference_label_dropped", "G9", None, md_replace(paragraphs[5], paragraphs[5].replace("This is an inference from", "This is from"))),
-        ("expected_rule_changed", "G11", None, edit_expected("confirmed_when: H1 holds and H2 holds.", "confirmed_when: H1 holds.")),
-        ("expected_item_missing", "G11", None, at("after_g1", drop_last_item)),
         ("report_edit", "G7", None, {"committed": committed_edit}),
     ]
 
 
-def self_test(raw, cfg):
+def self_test(raw):
     problems = 0
     try:
-        base = pipeline(copy.deepcopy(raw), cfg)
+        pipeline(copy.deepcopy(raw))
         print("PASS real_inputs")
     except Fail as error:
         print(f"FAIL real_inputs: {error}")
         return 1
-    cfg = dict(cfg)
-    ctx = new_context(raw, cfg)
+    ctx = new_context(raw)
     parse(ctx)
-    cfg["paragraphs"] = plain_paragraphs(derived(ctx))
-    cases = case_table(cfg)
+    cases = case_table(plain_paragraphs(derived(ctx)))
     print(f"{len(cases)} cases")
     for name, code, prefix, hooks in cases:
         mode = "check" if code == "G7" else "render"
         try:
-            pipeline(copy.deepcopy(raw), cfg, mode=mode, hooks=hooks)
+            pipeline(copy.deepcopy(raw), mode=mode, hooks=hooks)
         except Fail as error:
             if error.code == code and (prefix is None or error.text.startswith(prefix)):
                 print(f"PASS {name}")
@@ -1241,25 +1119,19 @@ def self_test(raw, cfg):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--inputs", required=True, help="directory holding the downloaded artifacts and job logs")
-    parser.add_argument("--mutation-run", required=True, type=int)
-    parser.add_argument("--mutation-artifact-id", required=True, type=int)
-    parser.add_argument("--mutation-zip-sha256", required=True)
-    parser.add_argument("--mutation-summary-sha256", required=True)
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--check", action="store_true")
     group.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
-    cfg = {"run": args.mutation_run, "artifact": args.mutation_artifact_id,
-           "zip_sha": args.mutation_zip_sha256, "summary_sha": args.mutation_summary_sha256}
     try:
         raw = read_inputs(args.inputs)
         if args.self_test:
-            return self_test(raw, cfg)
+            return self_test(raw)
         if args.check:
-            pipeline(raw, cfg, mode="check")
+            pipeline(raw, mode="check")
             print("PASS check")
             return 0
-        result = pipeline(raw, cfg)
+        result = pipeline(raw)
         write_outputs(result)
         print(result["row"])
         return 0

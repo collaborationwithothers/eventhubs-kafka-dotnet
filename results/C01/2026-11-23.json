@@ -14,9 +14,7 @@
     },
     "expected_outcome": {
       "path": "scenarios/C01/expected.yaml",
-      "judged_sha256": "7fa82b42f1d09d2ac9e2fa6c204dbdce18b80e8813bcff89c0a6f5249c6dd2fb",
-      "published_sha256": "17ced6efa4af8ebb1d8f656fe7dd62fcadc5bcd0629c256840562d8b5c122deb",
-      "change": "eight verdict.text_must_state items appended by decision 7128051335 point 1; no rule changed"
+      "sha256": "7fa82b42f1d09d2ac9e2fa6c204dbdce18b80e8813bcff89c0a6f5249c6dd2fb"
     },
     "scenario_definition": {
       "path": "scenarios/C01/scenario.yaml",
@@ -364,14 +362,9 @@
         "sha256": "bb52a814b734277bd088a8b3745db6041c2bf5bc58ac57fb240588068667282d"
       },
       {
-        "name": "expected-judged.yaml",
-        "source": "git show 2d370de00059df30506154c1fd504d0f81d237bc:scenarios/C01/expected.yaml, the expected outcome the run was judged against",
-        "sha256": "7fa82b42f1d09d2ac9e2fa6c204dbdce18b80e8813bcff89c0a6f5249c6dd2fb"
-      },
-      {
         "name": "scenarios/C01/expected.yaml",
-        "source": "working tree after the eight-item edit",
-        "sha256": "17ced6efa4af8ebb1d8f656fe7dd62fcadc5bcd0629c256840562d8b5c122deb"
+        "source": "working tree, equal to 2d370de00059df30506154c1fd504d0f81d237bc; the expected outcome the run was judged against",
+        "sha256": "7fa82b42f1d09d2ac9e2fa6c204dbdce18b80e8813bcff89c0a6f5249c6dd2fb"
       },
       {
         "name": "scenarios/C01/scenario.yaml",
