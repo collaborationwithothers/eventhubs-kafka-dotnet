@@ -4,6 +4,7 @@ using Parchwell.Verifier.Tests.Support;
 using Confluent.Kafka;
 using Parchwell.Verifier.Common.Contracts;
 using Parchwell.Verifier.Common.Serialization;
+using Parchwell.Verifier.Common.Storage;
 using Parchwell.Verifier.VerifyRun.Window;
 using Xunit;
 
@@ -294,6 +295,43 @@ public sealed class WindowConsumerTests
         RunWindowTests.AssertSemanticFailure(Assert.Single(result.Assessments), 9);
         using var offsetManifest = JsonDocument.Parse(offsetStore.Objects.Single(p => p.Key.EndsWith("capture.json", StringComparison.Ordinal)).Value);
         Assert.False(offsetManifest.RootElement.GetProperty("complete").GetBoolean());
+    }
+
+    [Fact]
+    public void Given_StoreSlowerThanBlobTimeoutInRealTime_When_DrainClockStill_Then_CaptureIsComplete()
+    {
+        var (consumer, fake) = Create();
+        var window = RunWindowTests.Create([new(0, 5)], new Dictionary<int, long> { [0] = 6 });
+        var record = MessageIdentityReaderTests.Record(offset: 5); record.Partition = new Partition(0);
+        fake.Polls.Enqueue(new(record, 6, 1));
+        var options = VerifierHostTestOptions.ValidOptions("verify"); options.BlobIoTimeout = TimeSpan.FromMilliseconds(10);
+        var store = new SlowStore();
+        var capture = ConsumedMetadataCapture.TryStart(options, store, window, 0, "ordinary", 1)!;
+        WindowConsumer.Drain(consumer, window, new ManualKafkaTimeProvider(), 0, TimeSpan.FromMilliseconds(1000),
+            TimeSpan.FromMilliseconds(1000), new(10, 1000), null, capture, CancellationToken.None, default);
+        using var manifest = JsonDocument.Parse(store.Objects.Single(p => p.Key.EndsWith("capture.json", StringComparison.Ordinal)).Value);
+        var root = manifest.RootElement;
+        Assert.True(root.GetProperty("complete").GetBoolean());
+        Assert.Equal(1, root.GetProperty("observed_rows").GetInt64());
+        Assert.Equal(1, root.GetProperty("captured_rows").GetInt64());
+        Assert.Equal(0, root.GetProperty("gaps").GetArrayLength());
+        Assert.Single(root.GetProperty("chunks").EnumerateArray());
+    }
+
+    private sealed class SlowStore : IVerifierArtifactStore
+    {
+        internal Dictionary<string, byte[]> Objects { get; } = new(StringComparer.Ordinal);
+        public Task<byte[]?> ReadAsync(string name, CancellationToken cancellationToken) => Task.FromResult(Objects.GetValueOrDefault(name));
+        public Task<BlobListing> ListAsync(string prefix, CancellationToken cancellationToken) => Task.FromResult(new BlobListing([], 0, true));
+        public Task CreateAsync(string name, byte[] content, CancellationToken cancellationToken)
+        {
+            Thread.Sleep(60); cancellationToken.ThrowIfCancellationRequested(); Objects.Add(name, content); return Task.CompletedTask;
+        }
+        public async Task CreateStreamAsync(string name, Stream content, CancellationToken cancellationToken)
+        {
+            Thread.Sleep(60); cancellationToken.ThrowIfCancellationRequested();
+            using var buffer = new MemoryStream(); await content.CopyToAsync(buffer, cancellationToken); Objects.Add(name, buffer.ToArray());
+        }
     }
 
     [Fact]

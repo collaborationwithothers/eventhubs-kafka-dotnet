@@ -24,7 +24,7 @@ import c5_runtime
 
 API = 'https://api.github.com'
 SPACING = 0.2
-DEADLINE = 240
+DEADLINE = 600
 TIMEOUT = 15
 ATTEMPTS = 4
 
@@ -144,13 +144,23 @@ def read_response(response, deadline, limit=None):
     return b''.join(chunks)
 
 
-def catalog(transport, repository, identity, commit, shards):
+def catalog(transport, repository, identity, commit, shards, *, role='companion', origins=None):
+    """List the run's expected evidence archives.
+
+    Without origins (schema 1) every shard is expected at the run's attempt and any other archive of
+    that attempt is rejected. With origins (schema 2) each shard is expected at its own origin attempt,
+    and archives of the run that are not expected names are skipped.
+    """
     run_id, attempt = identity['id'], identity['attempt']
     run = json.loads(transport.request(f'/repos/{repository}/actions/runs/{run_id}/attempts/{attempt}', read_response))
-    created = c5_campaign.validate_run(run, 'companion', repository, commit, run_id, attempt)
+    created = c5_campaign.validate_run(run, role, repository, commit, run_id, attempt)
     c5_campaign.require(created == c5_campaign.timestamp(identity['created_at']), 'companion creation time mismatch')
-    prefix = f'c5-mutation-{run_id}-{attempt}-'
-    expected = {prefix + shard for shard in shards}
+    if origins is None:
+        prefix = f'c5-mutation-{run_id}-{attempt}-'
+        expected = {prefix + shard for shard in shards}
+    else:
+        prefix = f'c5-mutation-{run_id}-'
+        expected = {f'{prefix}{origins[shard]}-{shard}' for shard in shards}
     rows, total = [], None
     for page in range(1, 11):
         data = json.loads(transport.request(f'/repos/{repository}/actions/runs/{run_id}/artifacts?per_page=100&page={page}', read_response))
@@ -170,7 +180,7 @@ def catalog(transport, repository, identity, commit, shards):
     for artifact in rows:
         c5_campaign.require(isinstance(artifact, dict) and isinstance(artifact.get('name'), str), 'invalid artifact')
         name = artifact['name']
-        if not name.startswith(prefix):
+        if not name.startswith(prefix) or (origins is not None and name not in expected):
             continue
         info = artifact.get('workflow_run')
         digest = artifact.get('digest')
@@ -183,6 +193,22 @@ def catalog(transport, repository, identity, commit, shards):
         selected[name] = artifact
         ids.add(artifact['id'])
     return selected, expected - selected.keys()
+
+
+def recovered_catalog(transport, repository, manifest, commit, layout):
+    """Catalogue a schema 2 manifest: every companion shard at its origin attempt, and each coordinator
+    shard that an earlier attempt ran; the coordinator's own download step fetches its current attempt."""
+    artifacts, missing = {}, set()
+    for role in ('companion', 'coordinator'):
+        identity = manifest['runs'][role]
+        origins = {shard: int(manifest['shards'][shard]['run_attempt']) for shard in layout[role]}
+        wanted = [shard for shard, origin in origins.items() if role == 'companion' or origin != identity['attempt']]
+        if not wanted:
+            continue
+        found, absent = catalog(transport, repository, identity, commit, wanted, role=role, origins=origins)
+        artifacts.update(found)
+        missing |= absent
+    return artifacts, missing
 
 
 def save_archive(response, deadline, path, expected_size):
@@ -251,8 +277,11 @@ def main():
         c5_campaign.validate_manifest(manifest, args.commit, layout['coordinator'], layout['companion'])
         c5_campaign.require(manifest['repository'] == args.repository, 'manifest repository mismatch')
         transport = Transport(os.environ.get('GH_TOKEN'))
-        artifacts, missing = catalog(transport, args.repository, manifest['runs']['companion'], args.commit,
-                                     layout['companion'])
+        if manifest.get('schema') == 2:
+            artifacts, missing = recovered_catalog(transport, args.repository, manifest, args.commit, layout)
+        else:
+            artifacts, missing = catalog(transport, args.repository, manifest['runs']['companion'], args.commit,
+                                         layout['companion'])
         for name, artifact in sorted(artifacts.items()):
             try:
                 download(transport, args.repository, name, artifact, Path(args.output_dir))

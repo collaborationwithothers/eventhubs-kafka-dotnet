@@ -32,6 +32,7 @@ internal sealed class ConsumedMetadataCapture
     private readonly Func<Stream> _openChunk;
     private readonly List<object> _chunks = [];
     private readonly List<object> _gaps = [];
+    private TimeProvider _clock = TimeProvider.System;
     private Stream? _file;
     private long _chunkRows, _observed, _captured, _bytes;
     private long? _firstMissing;
@@ -52,6 +53,9 @@ internal sealed class ConsumedMetadataCapture
         try { return options.ConsumedMetadata?.Enabled == true ? new(options, store, window, index, kind, repeat, openChunk) : null; }
         catch (Exception) { return null; }
     }
+
+    /// <summary>Measures the Blob deadlines on the caller's clock; without a call they run on the system clock.</summary>
+    internal void UseClock(TimeProvider clock) => _clock = clock;
 
     internal void Observe(ConsumeResult<byte[], byte[]> record)
     {
@@ -176,7 +180,7 @@ internal sealed class ConsumedMetadataCapture
             _file.Flush(); long length = _file.Length; _file.Position = 0;
             string sha = Convert.ToHexStringLower(SHA256.HashData(_file)); _file.Position = 0;
             string name = _prefix + $"chunk-{_chunks.Count + 1:D6}.jsonl";
-            using var timeout = new CancellationTokenSource(_options.BlobIoTimeout!.Value);
+            using var timeout = new CancellationTokenSource(_options.BlobIoTimeout!.Value, _clock);
             _store.CreateStreamAsync(name, _file, timeout.Token).GetAwaiter().GetResult();
             _chunks.Add(new { name, bytes = length, sha256 = sha, rows = _chunkRows });
         }
@@ -215,7 +219,7 @@ internal sealed class ConsumedMetadataCapture
                 complete = sourceComplete && _gaps.Count == 0 && _observed == _captured,
                 first_missing_ordinal = _firstMissing, gaps = _gaps
             });
-            using var timeout = new CancellationTokenSource(_options.BlobIoTimeout!.Value);
+            using var timeout = new CancellationTokenSource(_options.BlobIoTimeout!.Value, _clock);
             _store.CreateAsync(_prefix + "capture.json", json, timeout.Token).GetAwaiter().GetResult();
         }
         catch (Exception) { /* Missing capture.json is an archive gap. */ }
