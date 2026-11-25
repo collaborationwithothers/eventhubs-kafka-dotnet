@@ -198,11 +198,11 @@ RESULTS_SENTENCE = (
 
 COMMIT_EVIDENCE = (
     "After each repeat the verifier read the group's committed offsets from Event Hubs without joining the "
-    'group (`offset_read`, outcome `success` in all ten repeats). A repeat is valid only when every committed '
-    "offset it read matches an offset the members' own commit records report, and only when, on every "
-    "partition that received messages during the run, the committed offset reached the run's end line. So "
-    '"committed" here is observed from the broker, not only reported by the consumers. Every delivered '
-    'message was processed once or never: none was processed twice.'
+    'group (`offset_read`, outcome `success` in all ten repeats). A repeat counts only when every committed '
+    "offset it read matches an offset the members' own commit records report (otherwise it is invalid), and "
+    'only when, on every partition that received messages during the run, the committed offset reached the '
+    'run\'s end line (otherwise it is incomplete). So "committed" here is observed from the broker, not only '
+    'reported by the consumers. Every delivered message was processed once or never: none was processed twice.'
 )
 
 BROKER_SENTENCE = (
