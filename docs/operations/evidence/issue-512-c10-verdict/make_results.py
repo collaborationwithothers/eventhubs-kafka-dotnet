@@ -21,8 +21,8 @@ MUTATION_ARGS are --mutation-run, --mutation-artifact-id, --mutation-zip-sha256 
 run that meets docs/agents/factory.md "Evidence pack", and the SHA-256 of its ZIP and of
 its summary.json member.
 
-The checks run in the order G1, G11, G2, G3, G4, G5, G6, G10, then rendering, G8, G9, and
-G7 only with --check. Nothing is written unless every check before G7 passes. A failure
+The checks run in the order G1, G2, G3, G4, G5, G6, G10, then rendering, G8, G9, and G7
+only with --check. Nothing is written unless every check before G7 passes. A failure
 prints `FAIL G<n>: <reason>` and exits 1. The generator reads no network and holds no
 secret. Whether the mutation run's commit is on main and includes the run head is checked
 outside the generator (plan acceptance step 6).
@@ -55,7 +55,6 @@ ARTIFACT_EXPIRY = "2027-02-20T21:49:49Z"
 
 EXPECTED_PATH = "scenarios/C10/expected.yaml"
 JUDGED_SHA = "21097f98e69c3a8e2f77247c0f5ccd2d0b6bd5ef8b638e8866f2f838f364f34c"
-EDITED_SHA = "261e0a2bc6b439b92bd40cfe4f7e25dc5cfb62bd2999c640950b2d9da4251adb"
 SCENARIO_PATH = "scenarios/C10/scenario.yaml"
 SCENARIO_SHA = "d72b4ab55fb1c05b7ef3312ced62e2ae95a65903a8c9266bda785fcf5647d290"
 CONFIGS = ("C0", "C1")
@@ -75,7 +74,6 @@ INPUT_FILES = {
     "c1pods": ("c10-C1-pods.zip", "d22a170953de53161cfc639aa96b08ec6e29541dd804e8d65e69ad9f8750a33d"),
     "c0log": ("probe.log", "c5708404195a7f9b7e07f7fbb555865238b10e486db38dce2ddd0e73bd307069"),
     "c1log": ("full-C3.log", "3985285031dcb90ac3bea90fb5e6ed0e973f09d1830c1b9d94ad74d5b723ee82"),
-    "judged": ("expected-judged.yaml", JUDGED_SHA),
 }
 MUTATION_ZIP_NAME = "c5-summary.zip"
 ZIP_KEYS = ("c0cand", "c1cand", "c0arch", "c1arch", "c0pods", "c1pods", "c5")
@@ -101,30 +99,6 @@ LOGS = {"C0": (137367883128, "probe", "c0log"), "C1": (137388417872, "full-C3", 
 # Log line numbers of the Terraform plan lines, in the order sku, capacity, location.
 LOG_LINES = {"C0": (1582, 1567, 1576), "C1": (1409, 1394, 1403)}
 JOBS = ("consumer-subject", "consumer-witness", "start-line", "loadgen", "verify")
-
-# The six items that decision 7127777487 point 1 appends to verdict.text_must_state, as
-# YAML folds them (scenarios/C10/expected.yaml, after the five existing items).
-ADDED_ITEMS = [
-    "Decision 7126256621 point 1, in plain words before any verifier term: the scenario as a production event. "
-    "A consumer that has been running and committing is killed while it holds a message it has not processed, "
-    "and another member takes over its partitions. The question is whether that crash leaves any message marked "
-    "done that nobody processed.",
-    "Decision 7126256621 point 2, in plain words: the two settings compared, storing an offset only after the "
-    "message is processed (the baseline), versus librdkafka's default, which stores the offset when the message "
-    "is handed to the application.",
-    "Decision 7126256621 point 3: what was measured, per setting and per repeat, the number of messages marked "
-    "done without being processed and the number processed twice, from the published run.",
-    "Decision 7126256621 point 4: what the verdict means and does not mean. Whether storing after processing lost "
-    "anything, and so whether the prediction is confirmed; and that a zero under the default store does not show "
-    "that the default is safe, because under this kill point loss needs an auto-commit to land between the "
-    "message being handed over and the kill, which is unlikely (H2's published_text_must_state).",
-    "Decision 7126256621 point 5: processing a message twice is the cost of committing periodically "
-    "(at-least-once delivery); after a crash, the survivor redoes the work done since the last commit. The "
-    "published text labels this cause an inference from the librdkafka sources, not a measurement (decision "
-    "7127777487 point 2).",
-    "Decision 7126256621 point 6: a consumer that dies before its first commit is a different failure with a "
-    "different cause, tested under C01, not here.",
-]
 
 TITLE = ("# C10: a consumer killed while holding an unprocessed message left no message marked done that nobody "
          "processed; some messages were processed twice")
@@ -193,7 +167,7 @@ PROCESSED_AGAIN_LINE = ("- Processed again, recorded only and published on its o
                         "C0 and {c1} in C1.")
 COMMIT_EVIDENCE = (
     "After each repeat the verifier read the group's committed offsets from Event Hubs without joining the group "
-    "(`offset_read`, outcome `success` in all ten repeats). A repeat is valid only when every committed offset it "
+    "(`offset_read`, outcome `success` in all ten repeats). A repeat is complete and valid only when every committed offset it "
     "read matches an offset the members' own commit records report, and only when, on every partition that "
     "received messages during the run, the committed offset reached the run's end line. So \"committed\" here is "
     "observed from the broker, not only reported by the consumers."
@@ -308,7 +282,7 @@ def check_g1(ctx):
     expect("summary.json" in ctx.members["c5"], "G1", "the mutation ZIP has no member summary.json")
     expect(sha256(ctx.members["c5"]["summary.json"]) == ctx.args["summary_sha256"], "G1",
            "the mutation summary.json differs from --mutation-summary-sha256")
-    expect(sha256(ctx.working_expected) == EDITED_SHA, "G1", "expected.yaml in the working tree differs from its pin")
+    expect(sha256(ctx.working_expected) == JUDGED_SHA, "G1", "expected.yaml in the working tree differs from its pin")
     expect(sha256(ctx.working_scenario) == SCENARIO_SHA, "G1", "scenario.yaml in the working tree differs from its pin")
 
 
@@ -339,8 +313,7 @@ def job_members(ctx, phase, repeat, job):
 
 
 def parse_yaml(ctx):
-    ctx.judged = load_yaml(ctx.raw["judged"], "expected-judged.yaml")
-    ctx.edited = load_yaml(ctx.working_expected, "expected.yaml")
+    ctx.judged = load_yaml(ctx.working_expected, "expected.yaml")
 
 
 def parse(ctx):
@@ -372,19 +345,6 @@ def parse(ctx):
                 ctx.pods[(phase, repeat, role)] = strict_json(
                     ctx.members["c0pods" if phase == "C0" else "c1pods"][pods], f"pods.json {phase} r{repeat} {role}")
         ctx.jobfiles[(phase, None, "judge")] = job_members(ctx, phase, None, "judge")
-
-
-def check_g11(ctx):
-    judged, edited = copy.deepcopy(ctx.judged), copy.deepcopy(ctx.edited)
-    try:
-        old_items = judged["verdict"].pop("text_must_state")
-        new_items = edited["verdict"].pop("text_must_state")
-    except (KeyError, TypeError, AttributeError):
-        fail("G11", "verdict.text_must_state is missing from an expected outcome file")
-    expect(judged == edited, "G11", "the edited expected outcome differs from the judged one outside verdict.text_must_state")
-    expect(isinstance(old_items, list) and len(old_items) == 5, "G11", "the judged file does not hold five text_must_state items")
-    expect(isinstance(new_items, list) and new_items[:5] == old_items, "G11", "the first five text_must_state items changed")
-    expect(new_items[5:] == ADDED_ITEMS, "G11", "the items after the first five are not exactly the six of plan section 4.10")
 
 
 def check_g2(ctx):
@@ -582,8 +542,8 @@ def build_publication(ctx):
                    "source": f"artifact {ctx.args['artifact_id']}, {summary_name}", "sha256": ctx.args["zip_sha256"]})
     inputs.append({"name": "mutation summary.json", "source": f"member summary.json of artifact {ctx.args['artifact_id']}",
                    "sha256": ctx.args["summary_sha256"]})
-    inputs.append({"name": "expected-judged.yaml", "source": f"git show {RUN_HEAD}:{EXPECTED_PATH}", "sha256": JUDGED_SHA})
-    inputs.append({"name": EXPECTED_PATH, "source": "working tree after the plan section 4.10 edit", "sha256": EDITED_SHA})
+    inputs.append({"name": EXPECTED_PATH, "source": "working tree, equal to the base commit and the run head: the expected outcome the run was judged against",
+                   "sha256": JUDGED_SHA})
     inputs.append({"name": SCENARIO_PATH, "source": "working tree, equal to the base commit and the run head", "sha256": SCENARIO_SHA})
 
     def per(phase, role):
@@ -602,10 +562,7 @@ def build_publication(ctx):
             "workflow_run_id": RUN_ID_NUM, "attempt": 1, "event": "workflow_dispatch", "ref": "main", "head_sha": RUN_HEAD,
             "created_at": "2026-11-22T21:49:48Z", "conclusion": "success", "run_id": RUN_ID,
         },
-        "expected_outcome": {
-            "path": EXPECTED_PATH, "judged_sha256": JUDGED_SHA, "published_sha256": EDITED_SHA,
-            "change": "six verdict.text_must_state items appended by decision 7127777487 point 1; no rule changed",
-        },
+        "expected_outcome": {"path": EXPECTED_PATH, "sha256": JUDGED_SHA},
         "scenario_definition": {"path": SCENARIO_PATH, "sha256": SCENARIO_SHA},
         "publication_decision": {
             "comment_id": 7126256621, "url": f"{REPO}/issues/512#issuecomment-7126256621",
@@ -779,9 +736,7 @@ def render_md(ctx, document):
             f"- Run [{RUN_ID_NUM}]({RUN_URL}), its artifacts and job logs, as listed above and in the JSON `inputs`.",
             f"- Scenario definition and expected outcome as approved: [scenarios/C10/scenario.yaml]({BLOB_HEAD}{SCENARIO_PATH}) "
             f"(SHA-256 `{SCENARIO_SHA}`) and [scenarios/C10/expected.yaml]({BLOB_HEAD}{EXPECTED_PATH}) (SHA-256 `{JUDGED_SHA}`), "
-            f"both at `{RUN_HEAD}`, as the run was judged. The expected outcome as published adds six `verdict.text_must_state` "
-            f"items and changes no rule ([scenarios/C10/expected.yaml](../../scenarios/C10/expected.yaml), SHA-256 `{EDITED_SHA}`; "
-            f"decision [7127777487]({REPO}/issues/512#issuecomment-7127777487) point 1).",
+            f"both at `{RUN_HEAD}`, as the run was judged.",
             f"- Publication decision: [7126256621]({REPO}/issues/512#issuecomment-7126256621) (the plain-words points).",
             f"- librdkafka v2.16.0 [`CONFIGURATION.md`]({lib}CONFIGURATION.md) lines 138, 139, 140 and 206; "
             f"[`src/rdkafka.c`]({lib}src/rdkafka.c) lines 5126 to 5128 and 5183 to 5193; "
@@ -822,8 +777,6 @@ def pipeline(raw, args, mode="render", hooks=None, committed=None):
     hook("working", ctx)
     check_g1(ctx)
     parse_yaml(ctx)
-    hook("yaml", ctx)
-    check_g11(ctx)
     parse(ctx)
     hook("parsed", ctx)
     check_g2(ctx)
@@ -927,15 +880,6 @@ def case_table():
         value = ctx.args["summary_sha256"]
         ctx.args["summary_sha256"] = value[:-1] + ("0" if value[-1] != "0" else "1")
 
-    def yaml_edit(fn):
-        return {"yaml": fn}
-
-    def rule_changed(ctx):
-        ctx.edited["verdict"]["confirmed_when"] = "H1 holds and H2 holds."
-
-    def item_missing(ctx):
-        ctx.edited["verdict"]["text_must_state"].pop()
-
     def mutation_run_id(ctx):
         ctx.summary["run_id"] = "45028998990"
 
@@ -973,8 +917,6 @@ def case_table():
         ("non_ascii", "G8", md_replace("## Sources", "## Sources " + chr(0x2013))),
         ("missing_plain_words", "G9", md_replace(plain4 + "\n\n", "")),
         ("verifier_term_early", "G9", md_replace("In run 45074268881", "committed_never_processed In run 45074268881")),
-        ("expected_rule_changed", "G11", yaml_edit(rule_changed)),
-        ("expected_item_missing", "G11", yaml_edit(item_missing)),
         ("report_edit", "G7", {"committed": committed_edit}),
     ]
 

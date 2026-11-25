@@ -73,38 +73,6 @@ verdict:
     - K-57 is tested under C01, not C10.
     - The subject has no native-monitoring evidence; the archive records its
       missing index as configured_self_kill.
-    - >-
-      Decision 7126256621 point 1, in plain words before any verifier term:
-      the scenario as a production event. A consumer that has been running and
-      committing is killed while it holds a message it has not processed, and
-      another member takes over its partitions. The question is whether that
-      crash leaves any message marked done that nobody processed.
-    - >-
-      Decision 7126256621 point 2, in plain words: the two settings compared,
-      storing an offset only after the message is processed (the baseline),
-      versus librdkafka's default, which stores the offset when the message is
-      handed to the application.
-    - >-
-      Decision 7126256621 point 3: what was measured, per setting and per
-      repeat, the number of messages marked done without being processed and
-      the number processed twice, from the published run.
-    - >-
-      Decision 7126256621 point 4: what the verdict means and does not mean.
-      Whether storing after processing lost anything, and so whether the
-      prediction is confirmed; and that a zero under the default store does
-      not show that the default is safe, because under this kill point loss
-      needs an auto-commit to land between the message being handed over and
-      the kill, which is unlikely (H2's published_text_must_state).
-    - >-
-      Decision 7126256621 point 5: processing a message twice is the cost of
-      committing periodically (at-least-once delivery); after a crash, the
-      survivor redoes the work done since the last commit. The published text
-      labels this cause an inference from the librdkafka sources, not a
-      measurement (decision 7127777487 point 2).
-    - >-
-      Decision 7126256621 point 6: a consumer that dies before its first
-      commit is a different failure with a different cause, tested under C01,
-      not here.
 
 sources:
   - https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md

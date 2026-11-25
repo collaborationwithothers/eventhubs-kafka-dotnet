@@ -14,9 +14,7 @@
     },
     "expected_outcome": {
       "path": "scenarios/C10/expected.yaml",
-      "judged_sha256": "21097f98e69c3a8e2f77247c0f5ccd2d0b6bd5ef8b638e8866f2f838f364f34c",
-      "published_sha256": "261e0a2bc6b439b92bd40cfe4f7e25dc5cfb62bd2999c640950b2d9da4251adb",
-      "change": "six verdict.text_must_state items appended by decision 7127777487 point 1; no rule changed"
+      "sha256": "21097f98e69c3a8e2f77247c0f5ccd2d0b6bd5ef8b638e8866f2f838f364f34c"
     },
     "scenario_definition": {
       "path": "scenarios/C10/scenario.yaml",
@@ -378,14 +376,9 @@
         "sha256": "bb52a814b734277bd088a8b3745db6041c2bf5bc58ac57fb240588068667282d"
       },
       {
-        "name": "expected-judged.yaml",
-        "source": "git show f23fa035405cb13699235b03e98f058b3cd6cf25:scenarios/C10/expected.yaml",
-        "sha256": "21097f98e69c3a8e2f77247c0f5ccd2d0b6bd5ef8b638e8866f2f838f364f34c"
-      },
-      {
         "name": "scenarios/C10/expected.yaml",
-        "source": "working tree after the plan section 4.10 edit",
-        "sha256": "261e0a2bc6b439b92bd40cfe4f7e25dc5cfb62bd2999c640950b2d9da4251adb"
+        "source": "working tree, equal to the base commit and the run head: the expected outcome the run was judged against",
+        "sha256": "21097f98e69c3a8e2f77247c0f5ccd2d0b6bd5ef8b638e8866f2f838f364f34c"
       },
       {
         "name": "scenarios/C10/scenario.yaml",
