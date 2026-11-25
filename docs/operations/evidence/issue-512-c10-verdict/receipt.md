@@ -10,7 +10,7 @@ This receipt describes how the C10 evidence pack in `results/C10/2026-11-22.md` 
 
 ## Inputs
 
-Downloaded on 2026-11-25 with `gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/artifacts/<id>/zip` and `.../actions/jobs/<id>/logs` into a scratch directory outside the repository. `sha256sum` of each file equalled the plan's section 4.1, and `make_results.py` pins the same values (check G1). Each ZIP hash equals the plan's value, which the plan checks matched against the artifact API `digest`.
+Downloaded on 2026-11-25 with `gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/artifacts/<id>/zip` and `.../actions/jobs/<id>/logs` into a scratch directory outside the repository. `sha256sum` of each of the nine files the plan pins in section 4.1 equalled the plan's value, and `make_results.py` pins the same values (check G1). The plan checks matched each of those ZIP hashes against the artifact API `digest`. The mutation ZIP is not pinned by the plan: its SHA-256, given below, equals the `digest` that `gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/artifacts/14997997843` returned on 2026-11-25 (`sha256:764cdd3789329d07553303cd3b2508e640426499c6aaeee2f8224f01db04aae3`, `expired` false), and the generator checks it against `--mutation-zip-sha256` (G1).
 
 | File | Source | SHA-256 |
 |---|---|---|
@@ -44,7 +44,7 @@ Run 45074268881 as read from the API on 2026-11-25: `workflow_dispatch`, `main`,
 
 ## Changes made at implementation under the approval
 
-- `tests/Parchwell.Scenarios.Tests/KillConsumerProcessingDefinitionTests.cs`, existing test `Given_ApprovedExpectedOutcomes_When_ReadingTheCommittedFile_Then_BytesEqualTheApprovedText`, case `C10`, under plan rule 2's standing fixture rule case (b). Line 148's expected hash changes from `21097f98...` to `261e0a2b...`, the hash of the `expected.yaml` that the plan's section 4.10 edit produces, with a trailing comment citing decision 7127777487 point 1. The test still reads the committed file and checks the hash byte for byte. No case is removed and no assertion is loosened. Line 149 (`C01`) is not changed. Line 153's comment becomes the text of decision 7128617336. Forced by: the approved `expected.yaml` edit (plan section 4.10; decisions 7127777487 and 7128050969).
+- `tests/Parchwell.Scenarios.Tests/KillConsumerProcessingDefinitionTests.cs`, existing test `Given_ApprovedExpectedOutcomes_When_ReadingTheCommittedFile_Then_BytesEqualTheApprovedText`, case `C10`, as decision 7128050969 directs. It is not a fixture change under plan rule 2: no new check rejects the test, and its input and assertions are unchanged. Line 148's expected hash changes from `21097f98...` to `261e0a2b...`, the hash of the `expected.yaml` that the plan's section 4.10 edit produces, with a trailing comment citing decision 7127777487 point 1. The test still reads the committed file and checks the hash byte for byte. No case is removed and no assertion is loosened. Line 149 (`C01`) is not changed. Line 153's comment becomes the text of decision 7128617336. Forced by: the approved `expected.yaml` edit (plan section 4.10; decisions 7127777487 and 7128050969).
 
 ## Implementer choices
 
