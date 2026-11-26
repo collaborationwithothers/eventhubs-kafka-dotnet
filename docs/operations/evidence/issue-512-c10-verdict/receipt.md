@@ -10,7 +10,7 @@ This receipt describes how the C10 evidence pack in `results/C10/2026-11-22.md` 
 
 ## Inputs
 
-Downloaded on 2026-11-25 with `gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/artifacts/<id>/zip` and `.../actions/jobs/<id>/logs` into a scratch directory outside the repository. `sha256sum` of each of the eight run files the plan pins in section 4.1 (six ZIPs and two logs), and of `scenarios/C10/expected.yaml` and `scenarios/C10/scenario.yaml` in the working tree, equalled the plan's value, and `make_results.py` pins the same values (check G1). The plan checks matched each of those ZIP hashes against the artifact API `digest`. The mutation ZIP is not pinned by the plan: its SHA-256, given below, equals the `digest` that `gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/artifacts/14997997843` returned on 2026-11-25 (`sha256:764cdd3789329d07553303cd3b2508e640426499c6aaeee2f8224f01db04aae3`, `expired` false), and the generator checks it against `--mutation-zip-sha256` (G1).
+Downloaded on 2026-11-25 with `gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/artifacts/<id>/zip` and `.../actions/jobs/<id>/logs` into a scratch directory outside the repository. `sha256sum` of each of the eight run files the plan pins in section 4.1 (six ZIPs and two logs), and of `scenarios/C10/expected.yaml` and `scenarios/C10/scenario.yaml` in the working tree, equalled the plan's value, and `make_results.py` pins the same values (check G1). The eight members inside those ZIPs (two `candidate.json`, two `archive-receipt.json`, two `archive-manifest.json` and two `phase-status.json`) were hashed with Python `hashlib` and equal section 4.1; check G1 hashes them against `MEMBER_PINS`. The plan checks matched each of those ZIP hashes against the artifact API `digest`. The mutation ZIP is not pinned by the plan: its SHA-256, given below, equals the `digest` that `gh api repos/collaborationwithothers/eventhubs-kafka-dotnet/actions/artifacts/14997997843` returned on 2026-11-25 (`sha256:764cdd3789329d07553303cd3b2508e640426499c6aaeee2f8224f01db04aae3`, `expired` false), and the generator checks it against `--mutation-zip-sha256` (G1).
 
 | File | Source | SHA-256 |
 |---|---|---|
@@ -38,7 +38,7 @@ Run 45074268881 as read from the API on 2026-11-25: `workflow_dispatch`, `main`,
 
 ## Generator
 
-`make_results.py` runs G1 (every input and member hash, both mutation hashes against the arguments, `expected.yaml` and `scenario.yaml` in the working tree, and the shape of each pods-artifact Job folder), G2 (both candidates' identity, source commit, statuses, reasons and repeats 1 to 5, equal versions), G3 (H1, H2 and the verdict recomputed from the candidates, and the preconditions of the published sentences), G4 (root counts equal the sums of the repeats), G5 (archive receipts), G6 (phase-status files), G10 (mutation summary), G8 (ASCII report and README row), G9 (the pinned summary, plain-words paragraphs and their order, the quotations, the H2 line, the `configured_self_kill` sentence, the Not tested lines and the README sentence) and, with `--check`, G7 (byte equality with the committed files). It writes nothing unless every check before G7 passes.
+`make_results.py` runs G1 (every input and member hash, both mutation hashes against the arguments, `expected.yaml` and `scenario.yaml` in the working tree, and the shape of each pods-artifact Job folder), G2 (both candidates' identity, source commit, statuses, reasons and repeats 1 to 5, equal versions), G3 (H1, H2 and the verdict recomputed from the candidates, and the preconditions of the published sentences), G4 (root counts equal the sums of the repeats), G5 (archive receipts), G6 (phase-status files), G10 (mutation summary), G8 (ASCII report and README row), G9 (the pinned summary, the presence of each plain-words paragraph, the position of the plain-words heading before `## What was tested`, the absence of verifier terms before that heading, the quotations, the H2 line, the `configured_self_kill` sentence, the Not tested lines and the README sentence) and, with `--check`, G7 (byte equality with the committed files). It writes nothing unless every check before G7 passes.
 
 `--self-test` runs the real inputs and then 28 single-change cases, each of which must fail at its named check: `hash_c0_candidate`, `expected_yaml_edit`, `mutation_hash`, `c1_repeat_status`, `versions_differ`, `h1_loss_one`, `h1_precondition_failed`, `h2_loss_one`, `h2_precondition_failed`, `extra_rows_differ`, `processed_again_zero`, `kill_count`, `offset_read_failed`, `subject_exit_zero`, `node_split`, `self_kill_missing`, `root_consumer_sum`, `root_producer_sum`, `archive_gap`, `archive_phase`, `phase_safety_stop`, `subject_mode_complete`, `mutation_incomplete`, `mutation_run_id`, `non_ascii`, `missing_plain_words`, `verifier_term_early` and `report_edit`.
 
@@ -49,12 +49,12 @@ Run 45074268881 as read from the API on 2026-11-25: `workflow_dispatch`, `main`,
 
 ## Implementer choices
 
-- Mutation `run_id` comparison (plan check of revision 1, `apply in implementation`): the summary's `run_id` is the JSON string "45555996117"; check G10 compares it with the decimal string of `--mutation-run`, and requires `--mutation-run` and `--mutation-artifact-id` to be decimal IDs.
+- Mutation `run_id` comparison (plan check of revision 1, `apply in implementation`): the summary's `run_id` is the JSON string "45555996117"; check G10 compares it with the decimal string of `--mutation-run`; check G1 requires `--mutation-run` and `--mutation-artifact-id` to be decimal IDs.
 - Mutation artifact ID (plan check of revision 2, `apply in implementation`): the generator takes `--mutation-artifact-id` and renders the JSON `inputs` source as `artifact <id>, c5-summary-<run_id>-<run_attempt>`, both from the summary.
 - Self-test order (plan check of revision 1, `apply in implementation`): the three R1 cases (`hash_c0_candidate`, `expected_yaml_edit`, `mutation_hash`) change their input in memory before G1 and print `PASS <case>` when G1 fails; every other case changes its value after G1.
 - Running the generator without a mode flag also replaces README line 39, which must be the existing C10 row; it prints the row as well. `--check` requires line 39 to equal it.
 - `--self-test` runs the real inputs without G7 (plan R12). Only `report_edit` runs G7, against copies of the rendered files.
-- The generator reads the YAML files with PyYAML `safe_load`; PyYAML 6.0.1 was installed in this session. Plan revision 5 names no PyYAML version.
+- The generator reads the YAML files with PyYAML `safe_load`; `python3 -I` imported PyYAML 6.0.1 (plain `python3` in this session imports 6.0.3). Plan revision 5 names no PyYAML version.
 - The pod table lists the member path of the pod log and `pods.json` of each of the five Jobs of every repeat and of each phase's judge Job. The node table lists the node of each consumer pair.
 
 ## Source checks made in this session (2026-11-25)
@@ -67,7 +67,7 @@ Run 45074268881 as read from the API on 2026-11-25: `workflow_dispatch`, `main`,
 
 Run from the repository root on the branch, with the inputs in a scratch directory outside the repository.
 
-- `make_results.py --inputs "$IN" --mutation-run 45555996117 --mutation-artifact-id 14997997843 --mutation-zip-sha256 764cdd3789329d07553303cd3b2508e640426499c6aaeee2f8224f01db04aae3 --mutation-summary-sha256 bb52a814b734277bd088a8b3745db6041c2bf5bc58ac57fb240588068667282d`: exit 0; wrote the two results files and README line 39; printed the row.
+- `python3 -I docs/operations/evidence/issue-512-c10-verdict/make_results.py --inputs "$IN" --mutation-run 45555996117 --mutation-artifact-id 14997997843 --mutation-zip-sha256 764cdd3789329d07553303cd3b2508e640426499c6aaeee2f8224f01db04aae3 --mutation-summary-sha256 bb52a814b734277bd088a8b3745db6041c2bf5bc58ac57fb240588068667282d`: exit 0; wrote the two results files and README line 39; printed the row.
 - The same command with `--check`: exit 0, `PASS check`.
 - The same command with `--self-test`: exit 0; `PASS real_inputs` and 28 `PASS` lines, from `PASS hash_c0_candidate` to `PASS report_edit`.
 - `python3 -m json.tool results/C10/2026-11-22.json`: exit 0.
