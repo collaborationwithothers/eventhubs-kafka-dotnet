@@ -1,0 +1,3036 @@
+{
+  "publication": {
+    "item": "C01",
+    "workload": "synthetic",
+    "run": {
+      "workflow_run_id": 45124695288,
+      "attempt": 1,
+      "event": "workflow_dispatch",
+      "ref": "main",
+      "head_sha": "2d370de00059df30506154c1fd504d0f81d237bc",
+      "created_at": "2026-11-23T06:31:38Z",
+      "conclusion": "success",
+      "run_id": "c01-45124695288-1"
+    },
+    "expected_outcome": {
+      "path": "scenarios/C01/expected.yaml",
+      "sha256": "7fa82b42f1d09d2ac9e2fa6c204dbdce18b80e8813bcff89c0a6f5249c6dd2fb"
+    },
+    "scenario_definition": {
+      "path": "scenarios/C01/scenario.yaml",
+      "sha256": "555cb0be7f37c6e5d6a6e94f899875f0616fcafca49be34fab4ad70fda59efd2"
+    },
+    "publication_decision": {
+      "comment_id": 7126257034,
+      "url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/513#issuecomment-7126257034"
+    },
+    "proposed_verdict": "contradicted",
+    "rule": "scenarios/C01/expected.yaml verdict.contradicted_when: H1 is contradicted or H2 is contradicted.",
+    "kill_point": "The subject sends SIGKILL to itself when Consume returns its first message, before processing it, so it has committed nothing (ADR-022). heartbeat.interval.ms stays 3000. The witness runs the baseline.",
+    "window_policy": "The lower bound is session.timeout.ms minus heartbeat.interval.ms, because the last heartbeat can precede the kill by up to 3000 ms. The upper bound adds 15000 ms for rebalance time, a policy value, not a measurement.",
+    "hypotheses": {
+      "H1_removal_follows_30000": {
+        "configuration": "C0",
+        "result": "holds",
+        "window_microseconds": [
+          27000000,
+          45000000
+        ]
+      },
+      "H2_removal_follows_45000": {
+        "configuration": "C1",
+        "result": "contradicted",
+        "window_microseconds": [
+          42000000,
+          60000000
+        ]
+      },
+      "H3_k57_latest_reset_skips_messages": {
+        "C0": "holds",
+        "C1": "holds",
+        "separate_line": true
+      }
+    },
+    "early_removal": {
+      "C0": {
+        "finding": false,
+        "repeats": []
+      },
+      "C1": {
+        "finding": false,
+        "repeats": []
+      },
+      "separate_line": true
+    },
+    "reassignment_microseconds": {
+      "mode": "recorded_only",
+      "separate_line": true,
+      "C0": [
+        31794219,
+        32994458,
+        35956669,
+        38562494,
+        37192516
+      ],
+      "C1": [
+        63539433,
+        68186056,
+        62547934,
+        68071749,
+        61342653
+      ]
+    },
+    "committed_never_processed": {
+      "C0": [
+        66,
+        70,
+        77,
+        78,
+        75
+      ],
+      "C1": [
+        128,
+        140,
+        125,
+        141,
+        125
+      ]
+    },
+    "archives": {
+      "C0": {
+        "archive_complete": true,
+        "gaps": [],
+        "manifest_sha256": "0d7cd201bc7e9d1cbb18db622b75e16c1c4084a38f08c91e5b710a46be281e94",
+        "configured_self_kill_repeats": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "C1": {
+        "archive_complete": true,
+        "gaps": [],
+        "manifest_sha256": "eb2d4f785a3e89ac5b2993e023177ffc934ffabcec49649b7a6d01de86ab8573",
+        "configured_self_kill_repeats": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    },
+    "consumer_nodes": {
+      "C0": [
+        "aks-workload-29100019-vmss00001k",
+        "aks-workload-29100019-vmss00001k",
+        "aks-workload-29100019-vmss00001k",
+        "aks-workload-29100019-vmss00001k",
+        "aks-workload-29100019-vmss00001k"
+      ],
+      "C1": [
+        "aks-workload-29100019-vmss00001k",
+        "aks-workload-29100019-vmss00001k",
+        "aks-workload-29100019-vmss00001k",
+        "aks-workload-29100019-vmss00001k",
+        "aks-workload-29100019-vmss00001k"
+      ]
+    },
+    "consumer_exit_codes": {
+      "C0": {
+        "subject": [
+          137,
+          137,
+          137,
+          137,
+          137
+        ],
+        "witness": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "C1": {
+        "subject": [
+          137,
+          137,
+          137,
+          137,
+          137
+        ],
+        "witness": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "broker_connection_counts": {
+      "C0": [
+        {
+          "repeat": 1,
+          "role": "LoadGenProducer",
+          "maximum": 16,
+          "first_post_drain": 16,
+          "lower_bound": true
+        },
+        {
+          "repeat": 2,
+          "role": "LoadGenProducer",
+          "maximum": 16,
+          "first_post_drain": 16,
+          "lower_bound": true
+        },
+        {
+          "repeat": 3,
+          "role": "LoadGenProducer",
+          "maximum": 16,
+          "first_post_drain": 16,
+          "lower_bound": true
+        },
+        {
+          "repeat": 4,
+          "role": "LoadGenProducer",
+          "maximum": 16,
+          "first_post_drain": 16,
+          "lower_bound": true
+        },
+        {
+          "repeat": 5,
+          "role": "LoadGenProducer",
+          "maximum": 16,
+          "first_post_drain": 16,
+          "lower_bound": true
+        }
+      ],
+      "C1": [
+        {
+          "repeat": 1,
+          "role": "LoadGenProducer",
+          "maximum": 16,
+          "first_post_drain": 16,
+          "lower_bound": true
+        },
+        {
+          "repeat": 2,
+          "role": "LoadGenProducer",
+          "maximum": 16,
+          "first_post_drain": 16,
+          "lower_bound": true
+        },
+        {
+          "repeat": 3,
+          "role": "LoadGenProducer",
+          "maximum": 16,
+          "first_post_drain": 16,
+          "lower_bound": true
+        },
+        {
+          "repeat": 4,
+          "role": "LoadGenProducer",
+          "maximum": 16,
+          "first_post_drain": 16,
+          "lower_bound": true
+        },
+        {
+          "repeat": 5,
+          "role": "LoadGenProducer",
+          "maximum": 16,
+          "first_post_drain": 16,
+          "lower_bound": true
+        }
+      ]
+    },
+    "environment": {
+      "namespace_sku": "Premium",
+      "processing_units": 1,
+      "region": "uksouth",
+      "node_size": "Standard_D4ds_v5",
+      "node_size_source": "inferred from infra/cluster/aks.tf lines 35, 44 and 51 at the base commit; not captured by the run"
+    },
+    "versions": {
+      "confluent_kafka": "2.16.0+56ef87df3402861f0dc72ef921fcfac702ae1f16",
+      "dotnet": "10.0.13",
+      "librdkafka": "2.16.0",
+      "verifier": "1.0.0.0",
+      "workload_generator": "1"
+    },
+    "mutation_acceptance": {
+      "workflow_run_id": 45555996117,
+      "commit": "e3c8eb9462a6ecae139a651c5eef39812be07801",
+      "measurement_complete": true,
+      "break_passed": true,
+      "summary_sha256": "bb52a814b734277bd088a8b3745db6041c2bf5bc58ac57fb240588068667282d",
+      "includes_run_head": "2d370de00059df30506154c1fd504d0f81d237bc"
+    },
+    "inputs": [
+      {
+        "name": "C0 candidate artifact ZIP",
+        "source": "artifact 14867803464, c01-C0-candidate-45124695288-1",
+        "sha256": "bd388eac5dc682ca9f3d0a73d94847192aff6cbfef6d5cc120c70b84aac15fb3"
+      },
+      {
+        "name": "C0 candidate member candidate.json",
+        "source": "member candidate.json of artifact 14867803464",
+        "sha256": "0448245936d7d27756b17088a81c17c208d8349451ac5a262202e9649d37929f"
+      },
+      {
+        "name": "C1 candidate artifact ZIP",
+        "source": "artifact 14895402374, c01-C1-candidate-45124695288-1",
+        "sha256": "52105da54df8e4e95415c02eaf925163980e70479d5d35eaf48c4daff5fbb596"
+      },
+      {
+        "name": "C1 candidate member candidate.json",
+        "source": "member candidate.json of artifact 14895402374",
+        "sha256": "779a2625b0f7f817d6caa3ba1a62a6aace909be0263996af314e1979b98e149d"
+      },
+      {
+        "name": "C0 archive artifact ZIP",
+        "source": "artifact 14870530520, c01-C0-archive-45124695288-1",
+        "sha256": "be25c6ac639f362a5716575f9becab797b66ff927fba25ad15354aedf6b77772"
+      },
+      {
+        "name": "C0 archive member archive-receipt.json",
+        "source": "member archive-receipt.json of artifact 14870530520",
+        "sha256": "df75ed9da0e8bdd11001485f0ab09badf3642cfdc66ba57f971bd38246632308"
+      },
+      {
+        "name": "C0 archive member archive-manifest.json",
+        "source": "member archive-manifest.json of artifact 14870530520",
+        "sha256": "0d7cd201bc7e9d1cbb18db622b75e16c1c4084a38f08c91e5b710a46be281e94"
+      },
+      {
+        "name": "C1 archive artifact ZIP",
+        "source": "artifact 14896405743, c01-C1-archive-45124695288-1",
+        "sha256": "dac66b1feb1f5107e29dd2aec2e681db11b8869f85854e49c5fe040fd233a6ac"
+      },
+      {
+        "name": "C1 archive member archive-receipt.json",
+        "source": "member archive-receipt.json of artifact 14896405743",
+        "sha256": "0a5e9d3577323f06f8a6969ef15cd45f0d7bb9acc0619bb5b77b65599a6802df"
+      },
+      {
+        "name": "C1 archive member archive-manifest.json",
+        "source": "member archive-manifest.json of artifact 14896405743",
+        "sha256": "eb2d4f785a3e89ac5b2993e023177ffc934ffabcec49649b7a6d01de86ab8573"
+      },
+      {
+        "name": "C0 pods artifact ZIP",
+        "source": "artifact 14868618067, c01-C0-pods-45124695288-1",
+        "sha256": "e49f1a3f2088318fe1ea88acd70f38ac46fce463c335a1b5c9c2dbe2fefd7ad5"
+      },
+      {
+        "name": "C0 pods member phase-status.json",
+        "source": "member phase-status.json of artifact 14868618067",
+        "sha256": "6741510c7377cb3bc524e766bab8fa4474c3c132f4183381d512b163a4c86df7"
+      },
+      {
+        "name": "C1 pods artifact ZIP",
+        "source": "artifact 14895726646, c01-C1-pods-45124695288-1",
+        "sha256": "aff647840c189209f12e6bdd0edfdba00c7a87a18e8da6833ed19ac92b19ba0a"
+      },
+      {
+        "name": "C1 pods member phase-status.json",
+        "source": "member phase-status.json of artifact 14895726646",
+        "sha256": "605647a1a8c64c2257867f324e3a98c6a825d5cdfd2e071d92bb7b86d8381039"
+      },
+      {
+        "name": "C0 job log",
+        "source": "job 137529776430 (probe)",
+        "sha256": "655d77582f398d448fedd8a33c1e96da87f4e3ccce8c8aa5dbc60482a914fffe"
+      },
+      {
+        "name": "C1 job log",
+        "source": "job 138067157139 (full-C3)",
+        "sha256": "ba2481fa746610661a8d94ec2d91a818bd9e39fbf3a2bc1c24af79efd0b92439"
+      },
+      {
+        "name": "mutation summary artifact ZIP",
+        "source": "artifact 14997997843, c5-summary-45555996117-1",
+        "sha256": "764cdd3789329d07553303cd3b2508e640426499c6aaeee2f8224f01db04aae3"
+      },
+      {
+        "name": "mutation summary.json",
+        "source": "member summary.json of artifact 14997997843",
+        "sha256": "bb52a814b734277bd088a8b3745db6041c2bf5bc58ac57fb240588068667282d"
+      },
+      {
+        "name": "scenarios/C01/expected.yaml",
+        "source": "working tree, equal to 2d370de00059df30506154c1fd504d0f81d237bc; the expected outcome the run was judged against",
+        "sha256": "7fa82b42f1d09d2ac9e2fa6c204dbdce18b80e8813bcff89c0a6f5249c6dd2fb"
+      },
+      {
+        "name": "scenarios/C01/scenario.yaml",
+        "source": "working tree, equal to 2d370de00059df30506154c1fd504d0f81d237bc",
+        "sha256": "555cb0be7f37c6e5d6a6e94f899875f0616fcafca49be34fab4ad70fda59efd2"
+      }
+    ]
+  },
+  "candidates": {
+    "C0": {
+      "schema_version": 1,
+      "synthetic": true,
+      "scenario_id": "C01",
+      "configuration_id": "C0",
+      "run_id": "c01-45124695288-1",
+      "phase": "C0",
+      "source_commit": "2d370de00059df30506154c1fd504d0f81d237bc",
+      "status": "complete_valid",
+      "gate": null,
+      "versions": {
+        "confluent_kafka": "2.16.0+56ef87df3402861f0dc72ef921fcfac702ae1f16",
+        "dotnet": "10.0.13",
+        "librdkafka": "2.16.0",
+        "verifier": "1.0.0.0",
+        "workload_generator": "1"
+      },
+      "image_digests": {
+        "loadgen": "sha256:1b7abe405f95ef9e28c3ca474cbb2a95e1370802da2420c7c9541975651ae97f",
+        "verifier": "sha256:16dc36bde7cd20c86b051f420e3a46ba9242b8ef4af325f8907f7b561b7ad620"
+      },
+      "timings": {
+        "duration_seconds": 1932.3604968,
+        "judge_completed_utc": "2026-11-23T22:19:46.5004632+00:00",
+        "worker_started_utc": "2026-11-23T21:47:34.1399678+00:00"
+      },
+      "diagnostics": {
+        "disconnect_increment": null,
+        "error_codes": [],
+        "max_throttle_ms": null,
+        "request_timeout_increment": null,
+        "rtt_p99_ms": null
+      },
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "c01-45124695288-1-c0-r1-loadgen-sbcxv",
+          "probe_observation": null,
+          "workload_observation": null,
+          "broker_count": {
+            "role": "LoadGenProducer",
+            "client_id": "c01-45124695288-1-c0-r1-loadgen-sbcxv",
+            "maximum": 16,
+            "first_post_drain": 16,
+            "lower_bound": true
+          },
+          "counts": {
+            "ok": 600,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 0,
+            "duplicate": 0,
+            "reorder": 0
+          },
+          "duplicate_breakdown": {
+            "duplicate_same_attempt": 0,
+            "duplicate_different_attempt": 0
+          },
+          "consumer": {
+            "status": "complete_valid",
+            "reasons": [],
+            "group_id": "c01-45124695288-1-c0-r1-consumers",
+            "kill_count": 1,
+            "offset_read": {
+              "outcome": "success",
+              "requested_partitions": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                29,
+                30,
+                31
+              ],
+              "started_utc": "2026-11-23T21:53:40.6162927Z",
+              "ended_utc": "2026-11-23T21:53:40.9466207Z",
+              "error_code": 0,
+              "offsets": [
+                {
+                  "partition": 0,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 1,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 2,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 3,
+                  "offset": 25,
+                  "error_code": 0
+                },
+                {
+                  "partition": 4,
+                  "offset": 25,
+                  "error_code": 0
+                },
+                {
+                  "partition": 5,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 6,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 7,
+                  "offset": 25,
+                  "error_code": 0
+                },
+                {
+                  "partition": 8,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 9,
+                  "offset": 10,
+                  "error_code": 0
+                },
+                {
+                  "partition": 10,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 11,
+                  "offset": 25,
+                  "error_code": 0
+                },
+                {
+                  "partition": 12,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 13,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 14,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 15,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 16,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 17,
+                  "offset": 25,
+                  "error_code": 0
+                },
+                {
+                  "partition": 18,
+                  "offset": 25,
+                  "error_code": 0
+                },
+                {
+                  "partition": 19,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 20,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 21,
+                  "offset": 25,
+                  "error_code": 0
+                },
+                {
+                  "partition": 22,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 23,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 24,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 25,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 26,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 27,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 28,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 29,
+                  "offset": 25,
+                  "error_code": 0
+                },
+                {
+                  "partition": 30,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 31,
+                  "offset": 10,
+                  "error_code": 0
+                }
+              ]
+            },
+            "counts": {
+              "processed_once": 534,
+              "processed_again": 0,
+              "processed_again_extra_rows": 0,
+              "committed_never_processed": 66
+            },
+            "reassignment": {
+              "microseconds": 31794219,
+              "unavailable_reason": null
+            }
+          }
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "c01-45124695288-1-c0-r2-loadgen-trswc",
+          "probe_observation": null,
+          "workload_observation": null,
+          "broker_count": {
+            "role": "LoadGenProducer",
+            "client_id": "c01-45124695288-1-c0-r2-loadgen-trswc",
+            "maximum": 16,
+            "first_post_drain": 16,
+            "lower_bound": true
+          },
+          "counts": {
+            "ok": 600,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 0,
+            "duplicate": 0,
+            "reorder": 0
+          },
+          "duplicate_breakdown": {
+            "duplicate_same_attempt": 0,
+            "duplicate_different_attempt": 0
+          },
+          "consumer": {
+            "status": "complete_valid",
+            "reasons": [],
+            "group_id": "c01-45124695288-1-c0-r2-consumers",
+            "kill_count": 1,
+            "offset_read": {
+              "outcome": "success",
+              "requested_partitions": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                29,
+                30,
+                31
+              ],
+              "started_utc": "2026-11-23T22:00:07.3959996Z",
+              "ended_utc": "2026-11-23T22:00:07.5364604Z",
+              "error_code": 0,
+              "offsets": [
+                {
+                  "partition": 0,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 1,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 2,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 3,
+                  "offset": 50,
+                  "error_code": 0
+                },
+                {
+                  "partition": 4,
+                  "offset": 50,
+                  "error_code": 0
+                },
+                {
+                  "partition": 5,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 6,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 7,
+                  "offset": 50,
+                  "error_code": 0
+                },
+                {
+                  "partition": 8,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 9,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 10,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 11,
+                  "offset": 50,
+                  "error_code": 0
+                },
+                {
+                  "partition": 12,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 13,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 14,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 15,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 16,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 17,
+                  "offset": 50,
+                  "error_code": 0
+                },
+                {
+                  "partition": 18,
+                  "offset": 50,
+                  "error_code": 0
+                },
+                {
+                  "partition": 19,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 20,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 21,
+                  "offset": 50,
+                  "error_code": 0
+                },
+                {
+                  "partition": 22,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 23,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 24,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 25,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 26,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 27,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 28,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 29,
+                  "offset": 50,
+                  "error_code": 0
+                },
+                {
+                  "partition": 30,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 31,
+                  "offset": 20,
+                  "error_code": 0
+                }
+              ]
+            },
+            "counts": {
+              "processed_once": 530,
+              "processed_again": 0,
+              "processed_again_extra_rows": 0,
+              "committed_never_processed": 70
+            },
+            "reassignment": {
+              "microseconds": 32994458,
+              "unavailable_reason": null
+            }
+          }
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "c01-45124695288-1-c0-r3-loadgen-8tttg",
+          "probe_observation": null,
+          "workload_observation": null,
+          "broker_count": {
+            "role": "LoadGenProducer",
+            "client_id": "c01-45124695288-1-c0-r3-loadgen-8tttg",
+            "maximum": 16,
+            "first_post_drain": 16,
+            "lower_bound": true
+          },
+          "counts": {
+            "ok": 600,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 0,
+            "duplicate": 0,
+            "reorder": 0
+          },
+          "duplicate_breakdown": {
+            "duplicate_same_attempt": 0,
+            "duplicate_different_attempt": 0
+          },
+          "consumer": {
+            "status": "complete_valid",
+            "reasons": [],
+            "group_id": "c01-45124695288-1-c0-r3-consumers",
+            "kill_count": 1,
+            "offset_read": {
+              "outcome": "success",
+              "requested_partitions": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                29,
+                30,
+                31
+              ],
+              "started_utc": "2026-11-23T22:06:36.1825736Z",
+              "ended_utc": "2026-11-23T22:06:36.4976032Z",
+              "error_code": 0,
+              "offsets": [
+                {
+                  "partition": 0,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 1,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 2,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 3,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 4,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 5,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 6,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 7,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 8,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 9,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 10,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 11,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 12,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 13,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 14,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 15,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 16,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 17,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 18,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 19,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 20,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 21,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 22,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 23,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 24,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 25,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 26,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 27,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 28,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 29,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 30,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 31,
+                  "offset": 30,
+                  "error_code": 0
+                }
+              ]
+            },
+            "counts": {
+              "processed_once": 523,
+              "processed_again": 0,
+              "processed_again_extra_rows": 0,
+              "committed_never_processed": 77
+            },
+            "reassignment": {
+              "microseconds": 35956669,
+              "unavailable_reason": null
+            }
+          }
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "c01-45124695288-1-c0-r4-loadgen-rt9pr",
+          "probe_observation": null,
+          "workload_observation": null,
+          "broker_count": {
+            "role": "LoadGenProducer",
+            "client_id": "c01-45124695288-1-c0-r4-loadgen-rt9pr",
+            "maximum": 16,
+            "first_post_drain": 16,
+            "lower_bound": true
+          },
+          "counts": {
+            "ok": 600,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 0,
+            "duplicate": 0,
+            "reorder": 0
+          },
+          "duplicate_breakdown": {
+            "duplicate_same_attempt": 0,
+            "duplicate_different_attempt": 0
+          },
+          "consumer": {
+            "status": "complete_valid",
+            "reasons": [],
+            "group_id": "c01-45124695288-1-c0-r4-consumers",
+            "kill_count": 1,
+            "offset_read": {
+              "outcome": "success",
+              "requested_partitions": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                29,
+                30,
+                31
+              ],
+              "started_utc": "2026-11-23T22:13:03.9019762Z",
+              "ended_utc": "2026-11-23T22:13:04.1548719Z",
+              "error_code": 0,
+              "offsets": [
+                {
+                  "partition": 0,
+                  "offset": 80,
+                  "error_code": 0
+                },
+                {
+                  "partition": 1,
+                  "offset": 80,
+                  "error_code": 0
+                },
+                {
+                  "partition": 2,
+                  "offset": 80,
+                  "error_code": 0
+                },
+                {
+                  "partition": 3,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 4,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 5,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 6,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 7,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 8,
+                  "offset": 80,
+                  "error_code": 0
+                },
+                {
+                  "partition": 9,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 10,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 11,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 12,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 13,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 14,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 15,
+                  "offset": 80,
+                  "error_code": 0
+                },
+                {
+                  "partition": 16,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 17,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 18,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 19,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 20,
+                  "offset": 80,
+                  "error_code": 0
+                },
+                {
+                  "partition": 21,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 22,
+                  "offset": 80,
+                  "error_code": 0
+                },
+                {
+                  "partition": 23,
+                  "offset": 80,
+                  "error_code": 0
+                },
+                {
+                  "partition": 24,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 25,
+                  "offset": 80,
+                  "error_code": 0
+                },
+                {
+                  "partition": 26,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 27,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 28,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 29,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 30,
+                  "offset": 80,
+                  "error_code": 0
+                },
+                {
+                  "partition": 31,
+                  "offset": 40,
+                  "error_code": 0
+                }
+              ]
+            },
+            "counts": {
+              "processed_once": 522,
+              "processed_again": 0,
+              "processed_again_extra_rows": 0,
+              "committed_never_processed": 78
+            },
+            "reassignment": {
+              "microseconds": 38562494,
+              "unavailable_reason": null
+            }
+          }
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "c01-45124695288-1-c0-r5-loadgen-5s7p5",
+          "probe_observation": null,
+          "workload_observation": null,
+          "broker_count": {
+            "role": "LoadGenProducer",
+            "client_id": "c01-45124695288-1-c0-r5-loadgen-5s7p5",
+            "maximum": 16,
+            "first_post_drain": 16,
+            "lower_bound": true
+          },
+          "counts": {
+            "ok": 600,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 0,
+            "duplicate": 0,
+            "reorder": 0
+          },
+          "duplicate_breakdown": {
+            "duplicate_same_attempt": 0,
+            "duplicate_different_attempt": 0
+          },
+          "consumer": {
+            "status": "complete_valid",
+            "reasons": [],
+            "group_id": "c01-45124695288-1-c0-r5-consumers",
+            "kill_count": 1,
+            "offset_read": {
+              "outcome": "success",
+              "requested_partitions": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                29,
+                30,
+                31
+              ],
+              "started_utc": "2026-11-23T22:19:36.4340717Z",
+              "ended_utc": "2026-11-23T22:19:36.6775650Z",
+              "error_code": 0,
+              "offsets": [
+                {
+                  "partition": 0,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 1,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 2,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 3,
+                  "offset": 125,
+                  "error_code": 0
+                },
+                {
+                  "partition": 4,
+                  "offset": 125,
+                  "error_code": 0
+                },
+                {
+                  "partition": 5,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 6,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 7,
+                  "offset": 125,
+                  "error_code": 0
+                },
+                {
+                  "partition": 8,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 9,
+                  "offset": 50,
+                  "error_code": 0
+                },
+                {
+                  "partition": 10,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 11,
+                  "offset": 125,
+                  "error_code": 0
+                },
+                {
+                  "partition": 12,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 13,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 14,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 15,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 16,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 17,
+                  "offset": 125,
+                  "error_code": 0
+                },
+                {
+                  "partition": 18,
+                  "offset": 125,
+                  "error_code": 0
+                },
+                {
+                  "partition": 19,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 20,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 21,
+                  "offset": 125,
+                  "error_code": 0
+                },
+                {
+                  "partition": 22,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 23,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 24,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 25,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 26,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 27,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 28,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 29,
+                  "offset": 125,
+                  "error_code": 0
+                },
+                {
+                  "partition": 30,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 31,
+                  "offset": 50,
+                  "error_code": 0
+                }
+              ]
+            },
+            "counts": {
+              "processed_once": 525,
+              "processed_again": 0,
+              "processed_again_extra_rows": 0,
+              "committed_never_processed": 75
+            },
+            "reassignment": {
+              "microseconds": 37192516,
+              "unavailable_reason": null
+            }
+          }
+        }
+      ],
+      "counts": {
+        "ok": 3000,
+        "loss": 0,
+        "phantom": 0,
+        "reported_failure": 0,
+        "duplicate": 0,
+        "reorder": 0
+      },
+      "duplicate_breakdown": {
+        "duplicate_same_attempt": 0,
+        "duplicate_different_attempt": 0
+      },
+      "consumer": {
+        "status": "complete_valid",
+        "reasons": [],
+        "counts": {
+          "processed_once": 2634,
+          "processed_again": 0,
+          "processed_again_extra_rows": 0,
+          "committed_never_processed": 366
+        }
+      },
+      "reasons": []
+    },
+    "C1": {
+      "schema_version": 1,
+      "synthetic": true,
+      "scenario_id": "C01",
+      "configuration_id": "C1",
+      "run_id": "c01-45124695288-1",
+      "phase": "C1",
+      "source_commit": "2d370de00059df30506154c1fd504d0f81d237bc",
+      "status": "complete_valid",
+      "gate": null,
+      "versions": {
+        "confluent_kafka": "2.16.0+56ef87df3402861f0dc72ef921fcfac702ae1f16",
+        "dotnet": "10.0.13",
+        "librdkafka": "2.16.0",
+        "verifier": "1.0.0.0",
+        "workload_generator": "1"
+      },
+      "image_digests": {
+        "loadgen": "sha256:1b7abe405f95ef9e28c3ca474cbb2a95e1370802da2420c7c9541975651ae97f",
+        "verifier": "sha256:16dc36bde7cd20c86b051f420e3a46ba9242b8ef4af325f8907f7b561b7ad620"
+      },
+      "timings": {
+        "duration_seconds": 1938.1668157,
+        "judge_completed_utc": "2026-11-24T06:16:20.4940782+00:00",
+        "worker_started_utc": "2026-11-24T05:44:02.3272636+00:00"
+      },
+      "diagnostics": {
+        "disconnect_increment": null,
+        "error_codes": [],
+        "max_throttle_ms": null,
+        "request_timeout_increment": null,
+        "rtt_p99_ms": null
+      },
+      "repeats": [
+        {
+          "repeat": 1,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "c01-45124695288-1-c1-r1-loadgen-t99qt",
+          "probe_observation": null,
+          "workload_observation": null,
+          "broker_count": {
+            "role": "LoadGenProducer",
+            "client_id": "c01-45124695288-1-c1-r1-loadgen-t99qt",
+            "maximum": 16,
+            "first_post_drain": 16,
+            "lower_bound": true
+          },
+          "counts": {
+            "ok": 600,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 0,
+            "duplicate": 0,
+            "reorder": 0
+          },
+          "duplicate_breakdown": {
+            "duplicate_same_attempt": 0,
+            "duplicate_different_attempt": 0
+          },
+          "consumer": {
+            "status": "complete_valid",
+            "reasons": [],
+            "group_id": "c01-45124695288-1-c1-r1-consumers",
+            "kill_count": 1,
+            "offset_read": {
+              "outcome": "success",
+              "requested_partitions": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                29,
+                30,
+                31
+              ],
+              "started_utc": "2026-11-24T05:50:08.5391421Z",
+              "ended_utc": "2026-11-24T05:50:08.9886545Z",
+              "error_code": 0,
+              "offsets": [
+                {
+                  "partition": 0,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 1,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 2,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 3,
+                  "offset": 25,
+                  "error_code": 0
+                },
+                {
+                  "partition": 4,
+                  "offset": 25,
+                  "error_code": 0
+                },
+                {
+                  "partition": 5,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 6,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 7,
+                  "offset": 25,
+                  "error_code": 0
+                },
+                {
+                  "partition": 8,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 9,
+                  "offset": 10,
+                  "error_code": 0
+                },
+                {
+                  "partition": 10,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 11,
+                  "offset": 25,
+                  "error_code": 0
+                },
+                {
+                  "partition": 12,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 13,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 14,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 15,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 16,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 17,
+                  "offset": 25,
+                  "error_code": 0
+                },
+                {
+                  "partition": 18,
+                  "offset": 25,
+                  "error_code": 0
+                },
+                {
+                  "partition": 19,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 20,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 21,
+                  "offset": 25,
+                  "error_code": 0
+                },
+                {
+                  "partition": 22,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 23,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 24,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 25,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 26,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 27,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 28,
+                  "offset": 15,
+                  "error_code": 0
+                },
+                {
+                  "partition": 29,
+                  "offset": 25,
+                  "error_code": 0
+                },
+                {
+                  "partition": 30,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 31,
+                  "offset": 10,
+                  "error_code": 0
+                }
+              ]
+            },
+            "counts": {
+              "processed_once": 472,
+              "processed_again": 0,
+              "processed_again_extra_rows": 0,
+              "committed_never_processed": 128
+            },
+            "reassignment": {
+              "microseconds": 63539433,
+              "unavailable_reason": null
+            }
+          }
+        },
+        {
+          "repeat": 2,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "c01-45124695288-1-c1-r2-loadgen-hjjn7",
+          "probe_observation": null,
+          "workload_observation": null,
+          "broker_count": {
+            "role": "LoadGenProducer",
+            "client_id": "c01-45124695288-1-c1-r2-loadgen-hjjn7",
+            "maximum": 16,
+            "first_post_drain": 16,
+            "lower_bound": true
+          },
+          "counts": {
+            "ok": 600,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 0,
+            "duplicate": 0,
+            "reorder": 0
+          },
+          "duplicate_breakdown": {
+            "duplicate_same_attempt": 0,
+            "duplicate_different_attempt": 0
+          },
+          "consumer": {
+            "status": "complete_valid",
+            "reasons": [],
+            "group_id": "c01-45124695288-1-c1-r2-consumers",
+            "kill_count": 1,
+            "offset_read": {
+              "outcome": "success",
+              "requested_partitions": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                29,
+                30,
+                31
+              ],
+              "started_utc": "2026-11-24T05:56:38.4165587Z",
+              "ended_utc": "2026-11-24T05:56:38.6289584Z",
+              "error_code": 0,
+              "offsets": [
+                {
+                  "partition": 0,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 1,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 2,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 3,
+                  "offset": 50,
+                  "error_code": 0
+                },
+                {
+                  "partition": 4,
+                  "offset": 50,
+                  "error_code": 0
+                },
+                {
+                  "partition": 5,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 6,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 7,
+                  "offset": 50,
+                  "error_code": 0
+                },
+                {
+                  "partition": 8,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 9,
+                  "offset": 20,
+                  "error_code": 0
+                },
+                {
+                  "partition": 10,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 11,
+                  "offset": 50,
+                  "error_code": 0
+                },
+                {
+                  "partition": 12,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 13,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 14,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 15,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 16,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 17,
+                  "offset": 50,
+                  "error_code": 0
+                },
+                {
+                  "partition": 18,
+                  "offset": 50,
+                  "error_code": 0
+                },
+                {
+                  "partition": 19,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 20,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 21,
+                  "offset": 50,
+                  "error_code": 0
+                },
+                {
+                  "partition": 22,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 23,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 24,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 25,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 26,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 27,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 28,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 29,
+                  "offset": 50,
+                  "error_code": 0
+                },
+                {
+                  "partition": 30,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 31,
+                  "offset": 20,
+                  "error_code": 0
+                }
+              ]
+            },
+            "counts": {
+              "processed_once": 460,
+              "processed_again": 0,
+              "processed_again_extra_rows": 0,
+              "committed_never_processed": 140
+            },
+            "reassignment": {
+              "microseconds": 68186056,
+              "unavailable_reason": null
+            }
+          }
+        },
+        {
+          "repeat": 3,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "c01-45124695288-1-c1-r3-loadgen-zj6q5",
+          "probe_observation": null,
+          "workload_observation": null,
+          "broker_count": {
+            "role": "LoadGenProducer",
+            "client_id": "c01-45124695288-1-c1-r3-loadgen-zj6q5",
+            "maximum": 16,
+            "first_post_drain": 16,
+            "lower_bound": true
+          },
+          "counts": {
+            "ok": 600,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 0,
+            "duplicate": 0,
+            "reorder": 0
+          },
+          "duplicate_breakdown": {
+            "duplicate_same_attempt": 0,
+            "duplicate_different_attempt": 0
+          },
+          "consumer": {
+            "status": "complete_valid",
+            "reasons": [],
+            "group_id": "c01-45124695288-1-c1-r3-consumers",
+            "kill_count": 1,
+            "offset_read": {
+              "outcome": "success",
+              "requested_partitions": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                29,
+                30,
+                31
+              ],
+              "started_utc": "2026-11-24T06:03:09.0510262Z",
+              "ended_utc": "2026-11-24T06:03:09.2088637Z",
+              "error_code": 0,
+              "offsets": [
+                {
+                  "partition": 0,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 1,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 2,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 3,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 4,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 5,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 6,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 7,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 8,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 9,
+                  "offset": 30,
+                  "error_code": 0
+                },
+                {
+                  "partition": 10,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 11,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 12,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 13,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 14,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 15,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 16,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 17,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 18,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 19,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 20,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 21,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 22,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 23,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 24,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 25,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 26,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 27,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 28,
+                  "offset": 45,
+                  "error_code": 0
+                },
+                {
+                  "partition": 29,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 30,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 31,
+                  "offset": 30,
+                  "error_code": 0
+                }
+              ]
+            },
+            "counts": {
+              "processed_once": 475,
+              "processed_again": 0,
+              "processed_again_extra_rows": 0,
+              "committed_never_processed": 125
+            },
+            "reassignment": {
+              "microseconds": 62547934,
+              "unavailable_reason": null
+            }
+          }
+        },
+        {
+          "repeat": 4,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "c01-45124695288-1-c1-r4-loadgen-gbh4x",
+          "probe_observation": null,
+          "workload_observation": null,
+          "broker_count": {
+            "role": "LoadGenProducer",
+            "client_id": "c01-45124695288-1-c1-r4-loadgen-gbh4x",
+            "maximum": 16,
+            "first_post_drain": 16,
+            "lower_bound": true
+          },
+          "counts": {
+            "ok": 600,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 0,
+            "duplicate": 0,
+            "reorder": 0
+          },
+          "duplicate_breakdown": {
+            "duplicate_same_attempt": 0,
+            "duplicate_different_attempt": 0
+          },
+          "consumer": {
+            "status": "complete_valid",
+            "reasons": [],
+            "group_id": "c01-45124695288-1-c1-r4-consumers",
+            "kill_count": 1,
+            "offset_read": {
+              "outcome": "success",
+              "requested_partitions": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                29,
+                30,
+                31
+              ],
+              "started_utc": "2026-11-24T06:09:39.8033493Z",
+              "ended_utc": "2026-11-24T06:09:39.8997624Z",
+              "error_code": 0,
+              "offsets": [
+                {
+                  "partition": 0,
+                  "offset": 80,
+                  "error_code": 0
+                },
+                {
+                  "partition": 1,
+                  "offset": 80,
+                  "error_code": 0
+                },
+                {
+                  "partition": 2,
+                  "offset": 80,
+                  "error_code": 0
+                },
+                {
+                  "partition": 3,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 4,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 5,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 6,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 7,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 8,
+                  "offset": 80,
+                  "error_code": 0
+                },
+                {
+                  "partition": 9,
+                  "offset": 40,
+                  "error_code": 0
+                },
+                {
+                  "partition": 10,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 11,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 12,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 13,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 14,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 15,
+                  "offset": 80,
+                  "error_code": 0
+                },
+                {
+                  "partition": 16,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 17,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 18,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 19,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 20,
+                  "offset": 80,
+                  "error_code": 0
+                },
+                {
+                  "partition": 21,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 22,
+                  "offset": 80,
+                  "error_code": 0
+                },
+                {
+                  "partition": 23,
+                  "offset": 80,
+                  "error_code": 0
+                },
+                {
+                  "partition": 24,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 25,
+                  "offset": 80,
+                  "error_code": 0
+                },
+                {
+                  "partition": 26,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 27,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 28,
+                  "offset": 60,
+                  "error_code": 0
+                },
+                {
+                  "partition": 29,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 30,
+                  "offset": 80,
+                  "error_code": 0
+                },
+                {
+                  "partition": 31,
+                  "offset": 40,
+                  "error_code": 0
+                }
+              ]
+            },
+            "counts": {
+              "processed_once": 459,
+              "processed_again": 0,
+              "processed_again_extra_rows": 0,
+              "committed_never_processed": 141
+            },
+            "reassignment": {
+              "microseconds": 68071749,
+              "unavailable_reason": null
+            }
+          }
+        },
+        {
+          "repeat": 5,
+          "status": "complete_valid",
+          "reasons": [],
+          "checks": {
+            "j1_repeat_slots": true,
+            "j2_publication_unaccepted": true,
+            "j3_verifier_receipt": true,
+            "j4_producer_job_binding": true,
+            "j5_registered_producer_count": true,
+            "j6_broker_inventory_coverage": true,
+            "j8_probe_inconclusive": false
+          },
+          "identity": "c01-45124695288-1-c1-r5-loadgen-hfwkn",
+          "probe_observation": null,
+          "workload_observation": null,
+          "broker_count": {
+            "role": "LoadGenProducer",
+            "client_id": "c01-45124695288-1-c1-r5-loadgen-hfwkn",
+            "maximum": 16,
+            "first_post_drain": 16,
+            "lower_bound": true
+          },
+          "counts": {
+            "ok": 600,
+            "loss": 0,
+            "phantom": 0,
+            "reported_failure": 0,
+            "duplicate": 0,
+            "reorder": 0
+          },
+          "duplicate_breakdown": {
+            "duplicate_same_attempt": 0,
+            "duplicate_different_attempt": 0
+          },
+          "consumer": {
+            "status": "complete_valid",
+            "reasons": [],
+            "group_id": "c01-45124695288-1-c1-r5-consumers",
+            "kill_count": 1,
+            "offset_read": {
+              "outcome": "success",
+              "requested_partitions": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                29,
+                30,
+                31
+              ],
+              "started_utc": "2026-11-24T06:16:06.8922886Z",
+              "ended_utc": "2026-11-24T06:16:07.2920064Z",
+              "error_code": 0,
+              "offsets": [
+                {
+                  "partition": 0,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 1,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 2,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 3,
+                  "offset": 125,
+                  "error_code": 0
+                },
+                {
+                  "partition": 4,
+                  "offset": 125,
+                  "error_code": 0
+                },
+                {
+                  "partition": 5,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 6,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 7,
+                  "offset": 125,
+                  "error_code": 0
+                },
+                {
+                  "partition": 8,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 9,
+                  "offset": 50,
+                  "error_code": 0
+                },
+                {
+                  "partition": 10,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 11,
+                  "offset": 125,
+                  "error_code": 0
+                },
+                {
+                  "partition": 12,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 13,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 14,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 15,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 16,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 17,
+                  "offset": 125,
+                  "error_code": 0
+                },
+                {
+                  "partition": 18,
+                  "offset": 125,
+                  "error_code": 0
+                },
+                {
+                  "partition": 19,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 20,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 21,
+                  "offset": 125,
+                  "error_code": 0
+                },
+                {
+                  "partition": 22,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 23,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 24,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 25,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 26,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 27,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 28,
+                  "offset": 75,
+                  "error_code": 0
+                },
+                {
+                  "partition": 29,
+                  "offset": 125,
+                  "error_code": 0
+                },
+                {
+                  "partition": 30,
+                  "offset": 100,
+                  "error_code": 0
+                },
+                {
+                  "partition": 31,
+                  "offset": 50,
+                  "error_code": 0
+                }
+              ]
+            },
+            "counts": {
+              "processed_once": 475,
+              "processed_again": 0,
+              "processed_again_extra_rows": 0,
+              "committed_never_processed": 125
+            },
+            "reassignment": {
+              "microseconds": 61342653,
+              "unavailable_reason": null
+            }
+          }
+        }
+      ],
+      "counts": {
+        "ok": 3000,
+        "loss": 0,
+        "phantom": 0,
+        "reported_failure": 0,
+        "duplicate": 0,
+        "reorder": 0
+      },
+      "duplicate_breakdown": {
+        "duplicate_same_attempt": 0,
+        "duplicate_different_attempt": 0
+      },
+      "consumer": {
+        "status": "complete_valid",
+        "reasons": [],
+        "counts": {
+          "processed_once": 2341,
+          "processed_again": 0,
+          "processed_again_extra_rows": 0,
+          "committed_never_processed": 659
+        }
+      },
+      "reasons": []
+    }
+  }
+}
