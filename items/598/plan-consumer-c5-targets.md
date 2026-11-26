@@ -2,7 +2,7 @@
 
 Issue: [#598](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/598). Plan name: `consumer-c5-targets`, an ordered set of three pull requests under docs/agents/factory.md "Item lifecycle" step 3 "Split by scope", plus one conditional pull request (section 2). This is the contract-grade plan for that set.
 
-Revision 3. Base: `main` at `46a58ddd43d365486d5448f1cf5de35b696e33c3`. File paths and line numbers are on the base unless a line says otherwise. Paths under `src/Parchwell.Verifier/` are written relative to that folder where the C5 tables write them that way.
+Revision 4. Base: `main` at `46a58ddd43d365486d5448f1cf5de35b696e33c3`. File paths and line numbers are on the base unless a line says otherwise. Paths under `src/Parchwell.Verifier/` are written relative to that folder where the C5 tables write them that way.
 
 The consumer verifier code behind the published C03, C10 and C01 verdicts is not mutation-tested today. This plan adds three consumer verifier files as C5 mutation targets, measures their new shards on hosted runners before merge, and records their survivors after a passing paired run on `main`. The new shards need more mutation jobs than the 324 that the #494 capacity decision allowed; Hari allowed up to 40 more companion jobs in [decision 7185528103](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/598#issuecomment-7185528103), which this revision applies.
 
@@ -19,6 +19,8 @@ Authorities on #598, in creation order (factory.md "Item lifecycle" step 3):
 Decisions on #494 used as sources, not adopted as authority on #598: [7060787313](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313) (at most 178 coordinator and 146 companion mutation jobs; diagnostic deadlines 2,650 s inner, 2,700 s outer, 50 minutes per job); [7145295306](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7145295306) (paired limit 4,200 s, measured "from the earlier run's creation ... through the last completion, including aggregation"; 2,700-second per-shard command ceiling and 50-minute hosted job limit unchanged). Evidence: the [#494 completion](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7155038729) (clean pair on `e3c8eb94`, `elapsed_seconds` 3046.0, raw score 9774/12715, `break_passed` true against break 60); [#474 control action 6925864409](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/474#issuecomment-6925864409), the follow-up this issue replaces.
 
 4. [Decision 7185528103](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/598#issuecomment-7185528103), Hari's answer "All recommended" to [handoff 7185304016](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/598#issuecomment-7185304016) on revision 2: point 1, the three targets of 3.1, `Judge/JudgeHandler.cs` not added, the Common consumer codec and reader to a separate issue; point 2, up to 40 added companion jobs, companion capacity 146 + N with N fixed by hosted sizing, coordinator 178, the 4,200-second limit unchanged; point 3, deployment assumption D1 accepted by name; point 4, F4 option (a) with the handoff's acceptance line verbatim; point 5, the handoff's section 6 text verbatim. It authorizes this revision and one fresh check, and a clean result approves it under decision 7184653835.
+
+5. [Decision 7185831322](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/598#issuecomment-7185831322), Hari's "yes, with 15 minutes" on [handoff 7185803183](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/598#issuecomment-7185803183): point 1, option (a), condition 8 replaced by the handoff's literal text, R12's citation to runbook lines 91 to 133, the `unaccounted_inputs` test row, and the third check's P2 marked `apply in implementation`; point 2 amends decision 7185528103 point 4 with a CI fallback: PR B may raise the `.NET verification` job's `timeout-minutes` from 10 to 15, and stops above 15 minutes; point 3, a hosted sizing measurement of a new shard above its ceiling, such as the `ReasonNames` declaration, stops and hands off, and nothing else is pre-approved. It authorizes this revision and one fresh check, and a clean result approves it under decision 7184653835.
 
 No parent item, no split approved earlier, no plan comment on the issue before this one. Candidate: the whole issue.
 
@@ -37,6 +39,7 @@ PR A and PR B touch protected paths (`.github/CODEOWNERS` line 7 `/.*/`, and `Pa
 - `tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py`: `TARGETS` (line 27) and `PRIMARY_CUTS` (line 59) only.
 - `tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json`: the `mutate` list (line 17) only.
 - `.github/workflows/verifier-c5-mutation-companion.yml`: new `matrix.include` rows only.
+- `.github/workflows/dotnet-verification.yml`: line 123 `timeout-minutes: 10` to `15`, only under section 8 command 6's fallback (decision 7185831322 point 2), and any committed copy of it.
 - `tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py`: `CAMPAIGN_LIMITS` (line 327) and the additive-target bridge of section 3.4.
 - `tests/Parchwell.Verifier.Tests/Mutation/test_c5_workflow.py`, `test_c5_runtime.py`: the pins and tests of section 6.
 - `tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json`.
@@ -97,7 +100,7 @@ A new pinned route in `c5_runtime.py`. Two constants pin it: `CONSUMER_TARGETS_P
 5. The coordinator matrix equals M's. The companion matrix equals M's rows followed by exactly the new shards in `workflow.SHARDS` order.
 6. `CAMPAIGN_LIMITS` is 178 for the coordinator and 146 plus the number of new shards for the companion.
 7. Every byte of the runner (`c5_workflow.py`) outside `TARGETS` and `PRIMARY_CUTS`, of the campaign validator (`c5_campaign.py`), of the coordinator workflow, and of the companion workflow outside its `matrix.include` rows equals M's. The shard's generated `shard_config` equals M's.
-8. Each retained timing context's assessments differ from M's only by `shared_inputs['src/Parchwell.Verifier/<path>'] = {current_sha256: null}` and `target_sources['<path>'] = {current_sha256: <head hash>}` for each 3.1 path, plus ordinary version 2 assessments of renewable inputs that changed after M.
+8. Each retained timing context's assessments differ from M's only by: (i) for each 3.1 path, `shared_inputs['src/Parchwell.Verifier/<path>'] = {basis, current_sha256: null}` where the context's measured `shared_inputs` holds the path, and removal of that path's existing `shared_inputs` assessment where it does not; (ii) `target_sources['<path>'] = {basis, current_sha256: <head hash>}` for each 3.1 path; (iii) `shared_inputs['tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json'] = {basis, current_sha256: <head hash>}`, which the bridge accepts for this nonrenewable path only when condition 4 holds; (iv) ordinary version 2 assessments of renewable inputs that changed after M. Each `basis` is a nonempty list of strings citing this plan and decision 7185528103.
 
 The new shards qualify through the existing measured route, with timing contexts whose `source_commit` is S (docs/operations/verifier-mutation.md, "Committed-tree configuration equivalence"). The bridge adds no reason name and changes no existing route. It computes the proofs at M once per checker process and reuses them for every retained shard (decision 7185528103 point 4).
 
@@ -123,7 +126,7 @@ R4. WHEN PR A is prepared, THEN each new shard's projected estimate is at most 2
 
 R5. WHEN Hari merges PR A, THEN the implementer dispatches `verifier-c5-sizing.yml` once on `main` with `source_sha` S, and downloads every artifact before its one-day expiry. Cap: one dispatch.
 
-R6. WHEN a new shard's sizing job times out, has no receipt, or yields an estimate above 2,150 s, THEN the implementer moves cuts for that target. It re-measures every selection whose generated configuration changed, including that target's crossing selection, through PR A2 and one further dispatch on the new source S2. S2 replaces S everywhere below. A lost receipt with an unchanged configuration is re-measured in PR A2 unchanged. Cap: one PR A2 and one dispatch. Exhaustion action: push -wip and hand off to the next session, with every receipt and failure preserved.
+R6. WHEN a new shard's sizing job times out, has no receipt, or yields an estimate above 2,150 s, THEN the implementer moves cuts for that target. It re-measures every selection whose generated configuration changed, including that target's crossing selection, through PR A2 and one further dispatch on the new source S2. S2 replaces S everywhere below. A lost receipt with an unchanged configuration is re-measured in PR A2 unchanged. Cap: one PR A2 and one dispatch. Exhaustion action: push -wip and hand off to the next session, with every receipt and failure preserved. WHEN the shard above the ceiling is one whose time comes from a `static readonly` declaration that no cut can split, such as `ReasonNames` (`ConsumerPhaseEvidence.cs` lines 29 to 36), THEN moving cuts cannot help, and the implementer stops and hands off to Hari (decision 7185831322 point 3).
 
 R7. WHEN every new shard has a complete hosted receipt, THEN the implementer records each receipt under the rules of the #494 timing-margin repair: artifact ZIP size and SHA-256, commit, tree, target, selector, complete native identity set and workers. It requires 0 < observed_seconds <= 2650, workers 1 or 2, `estimated_seconds` >= observed_seconds, and `estimated_seconds` <= 2150. `estimated_seconds` = `ceil(setup_seconds + main_work_seconds / parallelism + isolated_seconds)` (`c5_runtime.py` line 2438), and each basis states `observed_workers=N`.
 
@@ -135,7 +138,7 @@ R10. WHEN Hari merges PR B, THEN the implementer runs one acceptance pair on the
 
 R11. WHEN the acceptance pair passes, THEN PR C records, by script from that run's reports, each new target's killed, survived, no-coverage, timeout and compile-error counts and its score, and one row per mutant whose status is not Killed, giving id, line and column span, mutator and status. A non-Killed mutant on a line that section 3.1 names as producing a C03, C10 or C01 verdict field is listed in PR C's description as a finding for Hari. The rows cover every status in `c5_workflow.py` `STATUSES` (line 321) except `Killed` and `Ignored`; `Ignored` is counted, not listed. The verdict-field lines are: `ConsumerJudgement.cs` lines 24 to 105 and 123 to 191; `ConsumerPhaseEvidence.cs` lines 78 to 214 and 252 to 285; `ConsumerRepeatExtension.cs` lines 36 to 55. Line numbers are those at the acceptance commit; if a target's source changed after the base, PR C maps the ranges by member name. No test, threshold or verdict changes.
 
-R12. WHEN `main` changes a shared input after M and before PR B merges, THEN PR B assesses each change under the version 2 rules (docs/operations/verifier-mutation.md lines 109 to 133). Cap: 20 changed paths. Exhaustion action: push -wip and hand off to the next session. WHEN such a change touches a 3.1 target's source, THEN that target's receipts are stale. The implementer stops and hands off.
+R12. WHEN `main` changes a shared input after M and before PR B merges, THEN PR B assesses each change under the version 2 rules (docs/operations/verifier-mutation.md lines 91 to 133). Cap: 20 changed paths. Exhaustion action: push -wip and hand off to the next session. WHEN such a change touches a 3.1 target's source, THEN that target's receipts are stale. The implementer stops and hands off.
 
 ## 5. Invariants and safety rules
 
@@ -161,10 +164,11 @@ All tests are Python unit tests under `tests/Parchwell.Verifier.Tests/Mutation/`
 | R9, 3.4 item 2 | new `test_consumer_bridge_rejects_changed_retained_record` | head JSON with one retained shard's `basis` text extended by ` Edited.`, keeping `observed_workers=` and every number | `rejected`, reasons contain `missing_measurement` |
 | R9, 3.4 item 3 | new `test_consumer_bridge_rejects_reordered_targets` | head `TARGETS`, `mutate` and companion rows with the 3.1 keys in reverse order, all consistent with each other | `rejected`, reasons contain `missing_measurement` |
 | R9, 3.4 item 4 | new `test_consumer_bridge_rejects_changed_config` | head `stryker-c5-config.json` with `coverage-analysis` `perTest`, `mutate` as 3.1 requires | `rejected`, reasons contain `missing_measurement` |
-| R9, 3.4 item 5 | new `test_consumer_bridge_rejects_moved_coordinator_row` | one coordinator row moved to the companion, limits 177 and 147 + N | `rejected`, reasons contain `missing_measurement` |
+| R9, 3.4 item 5 | new `test_consumer_bridge_rejects_moved_coordinator_row` | one existing coordinator row exchanged with one existing companion row, both of retained shards, limits 178 and 146 + N, so both matrices keep their sizes | `rejected`, reasons contain `missing_measurement` |
 | R9, 3.4 item 6 | new `test_consumer_bridge_rejects_wrong_companion_limit` | companion limit 147 + N, matrix unchanged | `rejected`, reasons contain `missing_measurement` |
 | R9, 3.4 item 7 | new `test_consumer_bridge_rejects_changed_validator` | one comment line appended to `c5_campaign.py` | `rejected`, reasons contain `missing_measurement` |
 | R9, 3.4 item 8 | new `test_consumer_bridge_rejects_missing_move_assessment` | one context without the `null` assessment for `ConsumerJudgement.cs` | `rejected`, reasons contain `unaccounted_inputs` |
+| R9, 3.4 item 8 (iii) | new `test_consumer_bridge_rejects_missing_config_assessment` | one context without the `stryker-c5-config.json` assessment at the head hash | `rejected`, reasons contain `unaccounted_inputs` |
 | R9 second clause | new `test_consumer_bridge_inactive_without_all_keys` | head with only `consumer-judgement` added, its record and shards measured | `rejected`, reasons contain `missing_measurement` |
 | R9 second clause | new `test_consumer_bridge_inactive_at_prior` | head M | `qualified` |
 | R9 | existing `test_new_target_has_no_default_pass` (line 2023) and `test_additive_target_preserves_committed_invocation` (line 436) | unchanged | unchanged expectations |
@@ -194,6 +198,7 @@ D2. Hosted runner speed. Covered pre-merge by the hosted sizing measurement (R5 
 4. PR B: the R3 script prints zero changed existing configurations. PR B's implementation notes record its output.
 5. After PR B merges: the R10 pair and `python3 tests/Parchwell.Verifier.Tests/Mutation/c5_campaign.py terminal ...` with `status` `met`, recorded in a comment on #598.
 6. PR B: the `.NET verification` job on PR B's final head completes within its 10-minute timeout; PR B's description records the job's duration and the qualification step's duration. If it does not, the implementer stops and hands off; it does not change the workflow.
+   Amended by decision 7185831322 point 2: if the job exceeds its 10-minute timeout on PR B's final head, PR B raises that job's `timeout-minutes` from 10 to 15 in `.github/workflows/dotnet-verification.yml` (line 123), and nothing else in that file. No committed copy of that workflow exists under `docs/operations/workflows/` on the base (listed 2026-11-26); if one exists when PR B is built, it gets the same change, byte for byte (AGENTS.md hard safety rule 8). No trigger changes. PR B's description records both durations at 10 and at 15 minutes. If the job exceeds 15 minutes, the implementer stops and hands off. Hari merges the protected change.
 7. PR C: `npm run check:docs` passes, and the R11 table is produced by a script whose command PR C's description records.
 
 ## 9. Sources
@@ -216,7 +221,7 @@ Estimates (AGENTS.md hard safety rule 11, all dated 2026-11-26):
 
 ## 10. Plan-check questions (factory.md "Item lifecycle" step 1)
 
-(a) Work that scales with a runtime number: local cut-preparation runs (R1, cap 6 invocations, each at most 2,700 s); hosted sizing (R5 and R6, cap two dispatches and one PR A2); new shard count N (cap 40 by decision 7185528103 point 2, stop at R2); acceptance recovery (R10, the runbook's at most four re-runs per run); survivor rows (R11, produced by script, no per-survivor work); shared-input assessments after M (R12, cap 20 paths); historical-layout test fixtures (section 6, cap 15 tests); the CI job duration (section 8 command 6, stop and hand off beyond 10 minutes); PR B cold review (docs/agents/pull-requests.md rule 8 budget).
+(a) Work that scales with a runtime number: local cut-preparation runs (R1, cap 6 invocations, each at most 2,700 s); hosted sizing (R5 and R6, cap two dispatches and one PR A2); new shard count N (cap 40 by decision 7185528103 point 2, stop at R2); acceptance recovery (R10, the runbook's at most four re-runs per run); survivor rows (R11, produced by script, no per-survivor work); shared-input assessments after M (R12, cap 20 paths); historical-layout test fixtures (section 6, cap 15 tests); the CI job duration (section 8 command 6: raise to 15 minutes if 10 is exceeded, stop and hand off beyond 15); PR B cold review (docs/agents/pull-requests.md rule 8 budget).
 
 (b) Stricter than its sources: the 2,150-second estimate ceiling for new shards, against the 2,700-second budget and 2,650-second inner deadline. Why: #494's slow-host study chose 2,150.5 s for a 499.5 s margin (comment 7060563104), and a new shard above the current tail would extend the paired time. The bridge requires byte-identical retained records, stricter than the generic committed-tree route, because the measured evidence above shows that route does not cover an added target.
 
@@ -240,6 +245,8 @@ All answered by [decision 7185528103](https://github.com/collaborationwithothers
 - Q3: deployment assumption D1 accepted by name (section 7).
 - F4 (second check): option (a), prior proofs computed once per process (3.4) and acceptance command 6 (section 8).
 - F5 (second check): the historical-layout fixture rule in section 6, cap 15.
+- Third check's finding on condition 8: [decision 7185831322](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/598#issuecomment-7185831322) point 1, option (a), applied in 3.4.
+- CI headroom: [decision 7185831322](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/598#issuecomment-7185831322) point 2, the 15-minute fallback in section 8 command 6.
 
 ## 12. Stop rule
 
@@ -250,10 +257,20 @@ The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when i
 Estimates under AGENTS.md hard safety rule 11, dated 2026-11-26, from the base file sizes and the N estimate. Size is reported, not enforced.
 - PR A: 3 files, about 370 to 450 changed lines (38 rows of 3 lines out and 21 to 33 rows in, in two byte-identical files, 364 to 436 lines by script, plus the two pin lines and about 10 runbook lines).
 - PR A2, if needed: 3 files, under 150 lines.
-- PR B: 8 files, about 1,500 to 2,000 changed lines, most of them qualification JSON records.
+- PR B: 8 files, or 9 with the CI fallback, about 1,500 to 2,000 changed lines, most of them qualification JSON records.
 - PR C: 1 file, about 50 to 300 lines, depending on the survivor count.
 
-## 14. Changes since revision 2
+## 14. Changes since revision 3
+
+Applies [decision 7185831322](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/598#issuecomment-7185831322) and the P2 of the [third plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/598#issuecomment-7185786266):
+- Section 1 adds the decision as authority 5.
+- 3.4 condition 8 is the handoff's literal text, including the `stryker-c5-config.json` assessment and removal where a context never measured a moved file.
+- R12 cites runbook lines 91 to 133.
+- The test map adds the missing-config-assessment row, and the condition 5 row exchanges rows at unchanged limits (the P2 marked `apply in implementation`).
+- Section 8 command 6 adds the 15-minute fallback. Section 2 lists `dotnet-verification.yml` for that fallback only.
+- R6 states point 3's stop for a shard that is over the ceiling because of a static declaration no cut can split.
+
+## 14b. Changes since revision 2
 
 Applies [decision 7185528103](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/598#issuecomment-7185528103) and the non-blocking notes of the [second plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/598#issuecomment-7185285667):
 - Section 1 adds the decision as authority 4. The opening paragraph, 3.1, 3.2, R2 and the stop rule now state the decided target set and the cap of 40.
