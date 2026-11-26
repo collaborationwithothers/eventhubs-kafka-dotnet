@@ -2,7 +2,7 @@
 
 Issue: [#598](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/598). Plan name: `consumer-c5-targets`, an ordered set of three pull requests under docs/agents/factory.md "Item lifecycle" step 3 "Split by scope", plus one conditional pull request (section 2). This is the contract-grade plan for that set.
 
-Revision 1. Base: `main` at `46a58ddd43d365486d5448f1cf5de35b696e33c3`. File paths and line numbers are on the base unless a line says otherwise. Paths under `src/Parchwell.Verifier/` are written relative to that folder where the C5 tables write them that way.
+Revision 2. Base: `main` at `46a58ddd43d365486d5448f1cf5de35b696e33c3`. File paths and line numbers are on the base unless a line says otherwise. Paths under `src/Parchwell.Verifier/` are written relative to that folder where the C5 tables write them that way.
 
 The consumer verifier code behind the published C03, C10 and C01 verdicts is not mutation-tested today. This plan adds three consumer verifier files as C5 mutation targets, measures their new shards on hosted runners before merge, and records their survivors after a passing paired run on `main`. The new shards need more mutation jobs than the 324 that Hari's capacity decision allows, so the plan cannot be approved until Hari answers the open questions in section 11.
 
@@ -22,7 +22,7 @@ No parent item, no split approved earlier, no plan comment on the issue before t
 
 ## 2. Scope and pull requests
 
-Every file this plan changes is protected (`.github/CODEOWNERS` lines 5, 7 and the `Parchwell.Verifier*/` line), so Hari merges every pull request. No agent merges any of them.
+PR A and PR B touch protected paths (`.github/CODEOWNERS` line 7 `/.*/`, and `Parchwell.Verifier*/`). PR C touches only `docs/operations/`, which the ruleset excludes (`!/docs/operations/`); the issue body's constraint still sends it to Hari. No agent merges any of them.
 
 **PR A, `consumer-c5-sizing-pin`** (branch `claude/598-consumer-c5-sizing-pin`). Files:
 - `.github/workflows/verifier-c5-sizing.yml`: the `source_sha` default (line 10), the pinned source check (line 164) and the `matrix.include` rows (lines 24 to 137). Nothing else.
@@ -42,7 +42,7 @@ Every file this plan changes is protected (`.github/CODEOWNERS` lines 5, 7 and t
 
 **PR C, `consumer-c5-survivor-record`** (branch `claude/598-consumer-c5-survivor-record`). File: `docs/operations/verifier-mutation.md`, the "Issue 598 consumer targets" section only.
 
-Paths that must not change in any of these pull requests: every file under `src/`; every C# test file under `tests/`; `.github/workflows/verifier-c5-mutation.yml` (the coordinator); `tests/Parchwell.Verifier.Tests/Mutation/c5_campaign.py` (its raw hash is pinned as `CAMPAIGN_VALIDATOR_PIN` in `test_c5_runtime.py`); `scenarios/`, `results/`, every `expected.yaml`; `tests/Parchwell.Verifier.Tests/stryker-config.json`; every workflow trigger.
+Paths that must not change in any of these pull requests: every file under `src/`; every C# test file under `tests/`; `.github/workflows/verifier-c5-mutation.yml` (the coordinator); `tests/Parchwell.Verifier.Tests/Mutation/c5_campaign.py` (its raw hash is pinned as `CAMPAIGN_VALIDATOR_PIN` in `c5_runtime.py` line 341 and asserted in `test_c5_runtime.py`); `scenarios/`, `results/`, every `expected.yaml`; `tests/Parchwell.Verifier.Tests/stryker-config.json`; every workflow trigger.
 
 Order: PR A, its dispatch, PR A2 and its dispatch only if needed, then PR B, the acceptance pair, then PR C. Each pull request is reviewable and passes its required checks on its own: PR A and PR A2 change no file that `c5_runtime.py check` treats as a mutation input (the sizing workflow is not in `input_maps`, `c5_runtime.py` lines 494 to 539), and PR C changes documentation only.
 
@@ -65,7 +65,7 @@ The set is Hari's decision (Q1, section 11). The basis for each file, from a rea
 
 Checked and not proposed:
 - `Judge/JudgeHandler.cs`: about 15 of its 494 lines are consumer logic (lines 47 to 48, 258 to 268, 400 to 405, 426 to 427); the rest is producer and B10 judging. An estimated 600 to 800 mutants would add an estimated 12 or more jobs, mostly for non-consumer code.
-- `VerifyRun/Consumer/Offsets/ConsumerCommittedOffsetReader.cs`: I/O around librdkafka. Its public constructor (lines 25 to 33) is reached only through dependency injection (`Program.cs` line 198), which no C5 test resolves, and `OffsetAuthenticationTests` runs native librdkafka threads on the system clock (line 175).
+- `VerifyRun/Consumer/Offsets/ConsumerCommittedOffsetReader.cs`: I/O around librdkafka. Its public constructor (lines 25 to 33) is reached only through dependency injection (`Program.cs` line 198), which no C5 test resolves, and `OffsetAuthenticationTests` uses the system clock (line 175) around a real librdkafka handle (lines 136 to 137); that this makes its timing load-sensitive is an inference.
 - `VerifyRun/Consumer/IRepeatResultExtension.cs`, `VerifyRun/Consumer/Offsets/ConsumerOffsetRead.cs`, `Judge/PhaseCandidate.cs`: declarations only, no logic to mutate.
 - `Common/Consumer/ConsumerArtifactCodec.cs` and `ConsumerArtifactReader.cs` decide consumer record validity, but they are outside the folders the issue names. Section 10a lists them as deferred.
 
@@ -85,7 +85,7 @@ Checked and not proposed:
 
 ### 3.4 Additive-target bridge (`c5_runtime.py check`)
 
-A new pinned route in `c5_runtime.py`. Two constants pin it: `CONSUMER_TARGETS_PRIOR`, the full SHA of the `main` commit M that S is built on, and the three keys of 3.1. For each shard whose target is not one of the new targets, the bridge accepts the shard's existing proof only when all of these hold. Otherwise that shard fails as it does today, with `missing_measurement`:
+A new pinned route in `c5_runtime.py`. Two constants pin it: `CONSUMER_TARGETS_PRIOR`, the full SHA of the `main` commit M that S is built on, and the three keys of 3.1. The bridge is active only when the head's `TARGETS` contains all three keys. A head with some but not all of them gets today's routes unchanged. For each shard whose target is not one of the new targets, the bridge accepts the shard's existing proof only when all of these hold. A failure of conditions 1 to 7 adds `missing_measurement`. A failure of condition 8 adds `unaccounted_inputs`, through the existing assessment check (`provenance_errors`, `c5_runtime.py` lines 1777 to 1795):
 
 1. The shard's proof is valid under the routes `validate` applies with M as the head and the qualification JSON committed at M as the ledger. At M, `check --head M` returns `qualified` (measured, 3.4 evidence below).
 2. The shard's record under `targets`, and its `timing_evidence` entry, equal those at M after canonical JSON encoding, and so does the record's `source_sha256` and `evidence`.
@@ -124,15 +124,15 @@ R6. WHEN a new shard's sizing job times out, has no receipt, or yields an estima
 
 R7. WHEN every new shard has a complete hosted receipt, THEN the implementer records each receipt under the rules of the #494 timing-margin repair: artifact ZIP size and SHA-256, commit, tree, target, selector, complete native identity set and workers. It requires 0 < observed_seconds <= 2650, workers 1 or 2, `estimated_seconds` >= observed_seconds, and `estimated_seconds` <= 2150. `estimated_seconds` = `ceil(setup_seconds + main_work_seconds / parallelism + isolated_seconds)` (`c5_runtime.py` line 2438), and each basis states `observed_workers=N`.
 
-R8. WHEN PR B is opened, THEN its branch has S as an ancestor, and `c5_runtime.py check --base <PR base> --head <PR head>` returns `qualified` in the required `.NET verification` check. The new targets' records use hosted evidence of kind `hosted_complete` bound to S, and each new shard has a `measured` `timing_evidence` entry.
+R8. WHEN PR B is opened, THEN its branch has S as an ancestor, and its description asks Hari to merge it with a merge commit, so S stays an ancestor of `main` (the checker reads target bytes at each context's `source_commit`, `c5_runtime.py` line 847), and `c5_runtime.py check --base <PR base> --head <PR head>` returns `qualified` in the required `.NET verification` check. The new targets' records use hosted evidence of kind `hosted_complete` bound to S, and each new shard has a `measured` `timing_evidence` entry.
 
-R9. WHEN `check` validates a retained shard, THEN the bridge of 3.4 applies, and every failed condition yields `missing_measurement` for that shard. WHEN `check` runs on a head whose `TARGETS` lacks the 3.1 keys, THEN the bridge does not apply, and the result equals today's result for that head.
+R9. WHEN `check` validates a retained shard on a head whose `TARGETS` holds all three 3.1 keys, THEN the bridge of 3.4 applies. A failed condition 1 to 7 adds `missing_measurement`, and a failed condition 8 adds `unaccounted_inputs`. WHEN the head's `TARGETS` lacks any of the 3.1 keys, THEN the bridge does not apply, and the result equals today's result for that head.
 
 R10. WHEN Hari merges PR B, THEN the implementer runs one acceptance pair on the merge commit, under docs/operations/verifier-mutation.md "Runtime qualification diagnostics" steps 1 to 4, including its bounded recovery (at most four re-runs per run). It runs `c5_campaign.py terminal` on a full-history checkout. Acceptance: both runs succeed with every job; `measurement_complete` true and `incomplete_reasons` empty; `break_passed` true; terminal `status` `met` within 4,200 s; `campaign.json` lists 324 + N physical shards. WHEN the terminal check reports `missed`, or recovery is exhausted, THEN the implementer hands off to Hari with the evidence. It changes no limit and no threshold.
 
-R11. WHEN the acceptance pair passes, THEN PR C records, by script from that run's reports, each new target's killed, survived, no-coverage, timeout and compile-error counts and its score, and one row per mutant whose status is not Killed, giving id, line and column span, mutator and status. A non-Killed mutant on a line that section 3.1 names as producing a C03, C10 or C01 verdict field is listed in PR C's description as a finding for Hari. No test, threshold or verdict changes.
+R11. WHEN the acceptance pair passes, THEN PR C records, by script from that run's reports, each new target's killed, survived, no-coverage, timeout and compile-error counts and its score, and one row per mutant whose status is not Killed, giving id, line and column span, mutator and status. A non-Killed mutant on a line that section 3.1 names as producing a C03, C10 or C01 verdict field is listed in PR C's description as a finding for Hari. The rows cover every status in `c5_workflow.py` `STATUSES` (line 321) except `Killed` and `Ignored`; `Ignored` is counted, not listed. The verdict-field lines are: `ConsumerJudgement.cs` lines 24 to 105 and 123 to 191; `ConsumerPhaseEvidence.cs` lines 78 to 214 and 252 to 285; `ConsumerRepeatExtension.cs` lines 36 to 55. Line numbers are those at the acceptance commit; if a target's source changed after the base, PR C maps the ranges by member name. No test, threshold or verdict changes.
 
-R12. WHEN `main` changes a shared input after M and before PR B merges, THEN PR B assesses each change under the version 2 rules (docs/operations/verifier-mutation.md lines 109 to 133). WHEN such a change touches a 3.1 target's source, THEN that target's receipts are stale. The implementer stops and hands off.
+R12. WHEN `main` changes a shared input after M and before PR B merges, THEN PR B assesses each change under the version 2 rules (docs/operations/verifier-mutation.md lines 109 to 133). Cap: 20 changed paths. Exhaustion action: push -wip and hand off to the next session. WHEN such a change touches a 3.1 target's source, THEN that target's receipts are stale. The implementer stops and hands off.
 
 ## 5. Invariants and safety rules
 
@@ -140,6 +140,7 @@ R12. WHEN `main` changes a shared input after M and before PR B merges, THEN PR 
 - Every existing shard keeps its record, estimate, timing evidence and selection byte for byte (3.4 item 2, R3).
 - Mutation workflow triggers are unchanged. Every dispatch is on `main` (AGENTS.md hard safety rule 8). No workflow reaches Azure, and none gains a pull request trigger (rule 9).
 - The coordinator matrix is unchanged. The companion grows by exactly N rows.
+- PR B merges with a merge commit, so S and S2 stay ancestors of `main` (R8).
 - Survivors are recorded, not fixed by loosening (issue body; GOVERNANCE "Verdict integrity").
 - Numbers in pull requests and the runbook are measured or labelled estimates (AGENTS.md hard safety rule 11).
 
@@ -153,15 +154,20 @@ All tests are Python unit tests under `tests/Parchwell.Verifier.Tests/Mutation/`
 | 3.2 | same file, `EXPECTED_JOB_NAMES` and counts (lines 273, 3292, 3294) | committed tree | `324 + N` job names; `34` mutate paths; `EXPECTED_PRIMARY_CUTS` (line 64) gains exactly the new keys |
 | 3.2 | same file, `EXPECTED_COMPANION_TARGETS` (line 47) | committed tree | 17 paths: the 14 of the base plus the three of 3.1 |
 | R9 | new `test_consumer_targets_bridge_accepts_committed_layout` (test_c5_runtime.py) | the PR head | `check` returns `qualified` |
-| R9, 3.4 item 2 | new `test_consumer_bridge_rejects_changed_retained_record` | head JSON with one retained shard's `estimated_seconds` increased by 1 | `rejected`, reasons contain `missing_measurement` |
-| R9, 3.4 item 3 | new `test_consumer_bridge_rejects_reordered_targets` | head `TARGETS` with the 3.1 keys in reverse order | `rejected`, reasons contain `missing_measurement` |
-| R9, 3.4 item 5 | new `test_consumer_bridge_rejects_moved_coordinator_row` | one coordinator row moved to the companion, limits adjusted to 177 and 147 + N | `rejected`, reasons contain `missing_measurement` |
+| R9, 3.4 item 1 | new `test_consumer_bridge_rejects_invalid_prior_proof` | `CONSUMER_TARGETS_PRIOR` patched to a synthetic commit equal to M except that one retained shard's basis reads `observed_workers=1` while its `parallelism` is 2, with the head ledger edited the same way | `rejected`, reasons contain `missing_measurement` |
+| R9, 3.4 item 2 | new `test_consumer_bridge_rejects_changed_retained_record` | head JSON with one retained shard's `basis` text extended by ` Edited.`, keeping `observed_workers=` and every number | `rejected`, reasons contain `missing_measurement` |
+| R9, 3.4 item 3 | new `test_consumer_bridge_rejects_reordered_targets` | head `TARGETS`, `mutate` and companion rows with the 3.1 keys in reverse order, all consistent with each other | `rejected`, reasons contain `missing_measurement` |
+| R9, 3.4 item 4 | new `test_consumer_bridge_rejects_changed_config` | head `stryker-c5-config.json` with `coverage-analysis` `perTest`, `mutate` as 3.1 requires | `rejected`, reasons contain `missing_measurement` |
+| R9, 3.4 item 5 | new `test_consumer_bridge_rejects_moved_coordinator_row` | one coordinator row moved to the companion, limits 177 and 147 + N | `rejected`, reasons contain `missing_measurement` |
 | R9, 3.4 item 6 | new `test_consumer_bridge_rejects_wrong_companion_limit` | companion limit 147 + N, matrix unchanged | `rejected`, reasons contain `missing_measurement` |
+| R9, 3.4 item 7 | new `test_consumer_bridge_rejects_changed_validator` | one comment line appended to `c5_campaign.py` | `rejected`, reasons contain `missing_measurement` |
 | R9, 3.4 item 8 | new `test_consumer_bridge_rejects_missing_move_assessment` | one context without the `null` assessment for `ConsumerJudgement.cs` | `rejected`, reasons contain `unaccounted_inputs` |
-| R9 second clause | existing `test_new_target_has_no_default_pass` (line 2023) and `test_additive_target_preserves_committed_invocation` (line 436) | unchanged | unchanged expectations |
+| R9 second clause | new `test_consumer_bridge_inactive_without_all_keys` | head with only `consumer-judgement` added, its record and shards measured | `rejected`, reasons contain `missing_measurement` |
+| R9 second clause | new `test_consumer_bridge_inactive_at_prior` | head M | `qualified` |
+| R9 | existing `test_new_target_has_no_default_pass` (line 2023) and `test_additive_target_preserves_committed_invocation` (line 436) | unchanged | unchanged expectations |
 | R7 | new `test_consumer_new_shards_within_ceiling` | committed JSON | each new shard has `estimated_seconds` <= 2150 and a `measured` timing entry whose `source_commit` is S |
 
-Boundaries: R7's ceiling is tested at the committed values. The bridge is tested above (one changed value) and at (committed head) each condition it pins. An empty case does not arise, because the bridge applies only when the 3.1 keys are present (R9 second clause).
+Boundaries: R7's ceiling is tested at the committed values. Each bridge condition has one rejection test that changes only that condition's input, plus the accepting committed head. Two cases cannot be fully isolated, and the tests assert only the bridge's own reason. Condition 1 is the existing proof routes evaluated at M, so any input that makes M's proof invalid also breaks the same shard under today's routes; those routes keep their own tests. Condition 4's changed config is also a nonrenewable input, so other reasons may be added as well. The inactive cases are a head without the keys (the prior) and a head with some of them.
 
 Standing fixture rule. When an existing test's fixture is rejected by a new check, the implementer does exactly one of:
 - (a) changes the fixture so it passes the new checks, keeping every assertion and the boundary the test exercises;
@@ -198,13 +204,13 @@ External behaviour (plan rule 1): the plan relies on no Kafka, librdkafka, Confl
 
 Estimates (AGENTS.md hard safety rule 11, all dated 2026-11-26):
 - Mutants: `ConsumerJudgement.cs` 500 to 700, `ConsumerPhaseEvidence.cs` 350 to 500, `ConsumerRepeatExtension.cs` 40 to 60. Basis: a reader subagent's regex count of mutable operators, literals and statements; no Stryker run.
-- New shards N: 22 to 33, from those counts at 34.92 to 39.81 s per main mutant (median and 75th percentile over the 301 qualified shards), 183 s setup, a 2,150-second projection ceiling, one crossing shard per split target and 3 static-only shards for `ConsumerPhaseEvidence.cs`. Computed by script.
+- New shards N: 21 to 33, from those counts at 34.92 to 39.81 s per main mutant (median and 75th percentile over the 301 qualified shards), 183 s setup, a 2,150-second projection ceiling, one crossing shard per split target and 3 static-only shards for `ConsumerPhaseEvidence.cs`. Computed by script.
 - Added paired time: 13 to 66 s, if D1 holds and no new shard runs longer than the existing tail. Basis: companion downloads took 93 to 240 s for 146 shards ([decision 7145295306](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7145295306)), scaled to 20 to 40 more shards. The last clean pair's 3,046 s would become about 3,112 s, under 4,200 s. The paired time is bounded by the longest job (2,794 s in the last pair, `single-action-repeat-p18`) plus aggregation, and new shards projected at most 2,150 s do not extend it. If D1 fails, queueing adds time that this estimate does not cover.
 - Score: even with no new mutant killed, 9,774 of 12,715 + 1,300 is 69.7%, above break 60.
 
 ## 10. Plan-check questions (factory.md "Item lifecycle" step 1)
 
-(a) Work that scales with a runtime number: local cut-preparation runs (R1, cap 6 invocations, each at most 2,700 s); hosted sizing (R5 and R6, cap two dispatches and one PR A2); new shard count N (cap from Q2, stop at R2); acceptance recovery (R10, the runbook's at most four re-runs per run); survivor rows (R11, produced by script, no per-survivor work); PR B cold review (docs/agents/pull-requests.md rule 8 budget).
+(a) Work that scales with a runtime number: local cut-preparation runs (R1, cap 6 invocations, each at most 2,700 s); hosted sizing (R5 and R6, cap two dispatches and one PR A2); new shard count N (cap from Q2, stop at R2); acceptance recovery (R10, the runbook's at most four re-runs per run); survivor rows (R11, produced by script, no per-survivor work); shared-input assessments after M (R12, cap 20 paths); PR B cold review (docs/agents/pull-requests.md rule 8 budget).
 
 (b) Stricter than its sources: the 2,150-second estimate ceiling for new shards, against the 2,700-second budget and 2,650-second inner deadline. Why: #494's slow-host study chose 2,150.5 s for a 499.5 s margin (comment 7060563104), and a new shard above the current tail would extend the paired time. The bridge requires byte-identical retained records, stricter than the generic committed-tree route, because the measured evidence above shows that route does not cover an added target.
 
@@ -220,7 +226,7 @@ Estimates (AGENTS.md hard safety rule 11, all dated 2026-11-26):
 
 Q1. Target set. Recommended: the three files of 3.1. Alternatives: (i) only the two files the issue names, about 1 to 3 fewer jobs; (ii) also `Judge/JudgeHandler.cs`, an estimated 12 or more more jobs, mostly for producer and B10 code. Also: should the Common consumer codec and reader become a separate issue (10a)?
 
-Q2. Capacity. Both matrices are full today (178 + 146 = 324, `c5_runtime.py` line 327). Recommended: allow up to 40 added companion jobs, so the companion limit is 146 + N with N at most 40 and fixed by sizing (estimate 22 to 33). The coordinator stays at 178. The paired 4,200-second limit is unchanged.
+Q2. Capacity. Both matrices are full today (178 + 146 = 324, `c5_runtime.py` line 327). Recommended: allow up to 40 added companion jobs, so the companion limit is 146 + N with N at most 40 and fixed by sizing (estimate 21 to 33). The coordinator stays at 178. The paired 4,200-second limit is unchanged.
 
 Q3. Accept deployment assumption D1 by name: the pair can run 324 + N jobs at once without material queueing. That has been observed up to 324 jobs, and never above. If it fails, R10's terminal check reports the overrun, and the implementer hands off without changing the limit.
 
@@ -231,7 +237,18 @@ The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when i
 ## 13. Size estimate
 
 Estimates under AGENTS.md hard safety rule 11, dated 2026-11-26, from the base file sizes and the N estimate. Size is reported, not enforced.
-- PR A: 3 files, about 230 to 300 changed lines (38 rows of 3 lines out, 22 to 33 rows in, in two byte-identical files, plus about 10 runbook lines).
+- PR A: 3 files, about 370 to 450 changed lines (38 rows of 3 lines out and 21 to 33 rows in, in two byte-identical files, 364 to 436 lines by script, plus the two pin lines and about 10 runbook lines).
 - PR A2, if needed: 3 files, under 150 lines.
 - PR B: 8 files, about 1,500 to 2,000 changed lines, most of them qualification JSON records.
 - PR C: 1 file, about 50 to 300 lines, depending on the survivor count.
+
+## 14. Changes since revision 1
+
+Applies the [first plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/598#issuecomment-7185072986):
+- Finding 4: 3.4 and R9 now give `unaccounted_inputs` for condition 8 and `missing_measurement` for conditions 1 to 7. The test row matches.
+- Finding 5: the bridge is active only with all three keys (3.4, R9). New rejection tests cover conditions 1, 4 and 7, plus a partial-key head and the prior head. The condition 2 input now changes only `basis` text. The boundaries paragraph explains the two cases that cannot be fully isolated.
+- Finding 6: R8 and section 5 require PR B to merge with a merge commit.
+- P2-1, P2-2, P2-3, P2-4, P2-5 and P2-6: the protection sentence, the location of `CAMPAIGN_VALIDATOR_PIN`, the PR A size, N recomputed by script as 21 to 33, R11's line ranges and statuses, and the librdkafka note marked as inference.
+- The check's answer (a): R12 now has a cap of 20 paths.
+
+Findings 1 to 3 are open questions for Hari and stay in section 11.
