@@ -345,6 +345,8 @@ Fix. Each of the 27 reads now calls `BuildAsync` itself, through three static me
 
 Measured locally on 2026-11-27, Release, mutation-only build, 4-core container, idle, fresh process per run, two runs each. Whole suite, one at a time: 87.66 s and 87.97 s before, 89.01 s and 89.44 s after. `ConsumerPhaseJudgeTests` alone: 2.62 s and 2.81 s before, 10.03 s and 9.69 s after.
 
+Mutation check, partial. A local diagnostic ran 52 of the 165 mutants that were Killed only by this class in the reference campaign; 113 have no result (102 hit the time cap, 11 were refused by the tool). Of the 52, 51 Survived after the change and 1 Killed. The four expected `WorkloadRecorder` mutants all Survived. This shows only the Killed-to-Survived direction, and it is not mutation acceptance. The per-mutant list is in the [issue 601 measurement comment](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/601#issuecomment-7218388342).
+
 Limit. No check detects test-side static state that is built from target code. A new cache of that kind brings the fault back. The "Issue 340 static-field isolation" section covers only `static readonly` fields in target files.
 
 ## Issue 268 survivor dispositions
