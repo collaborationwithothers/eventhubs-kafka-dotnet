@@ -327,6 +327,26 @@ Estimate, 2026-11-03, not a measurement: about 127 s per isolated invocation, th
 
 Limits: only `static readonly` declarations are isolated, and a mutant marked `static` elsewhere fails aggregation. Mutable static state that Stryker does not mark is not detected; at this change the seven targets declare no static field other than `static readonly` and `const` fields (checked by search). The [issue 340 receipt](evidence/issue-340/receipt.md) records the pre-merge proof, which is diagnostic, not acceptance.
 
+## Issue 601 test-side cached state
+
+Some accepted kills rested on test inputs that were built once, under whichever mutant ran first in a test process, and then reused for every later mutant ([issue 601](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/601)).
+
+Mechanism. The MTP runner keeps one test host alive for many mutants ([MicrosoftTestingPlatformRunner.cs](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.TestRunner.MicrosoftTestPlatform/MicrosoftTestingPlatformRunner.cs#L773-L783)). The injected check reads the active mutant id on every `IsActive` call ([MutantControl.cs](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Core/Stryker.Core/InjectedHelpers/MutantControl.cs#L461-L483)). A test-side static that is filled by running verifier code therefore keeps the mutant that was active when it was filled. A faulted build is kept as well: a `Lazy<Task<...>>` holds the failed task, so every later reader in that process fails.
+
+Inventory, at `46a58ddd`. Three static caches in one class, all built by `BuildAsync` in `tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs`:
+
+- line 22, `BaseC0`, built as `("C03", "C0")`, read by 20 test methods;
+- line 23, `BaseC1`, built as `("C10", "C1")`, read by 7;
+- line 132, `BaseB04`, built as `("B04", "C0", addConsumer: false)`, read by 4.
+
+`BuildAsync` runs `HostEvidenceBuilder.Verify`, which constructs `VerifyRunHandler` and reaches `A01EvidenceRecorder`, `WorkloadRecorder`, `BatchingEvidenceRecorder`, `PublicationAcceptance`, `DuplicateBreakdown`, `VerifierResultCodec`, `OutcomeClassifier`, `DuplicateClassifier` and `ManifestReader` in `VerifyRun/Input/RestartManifestReader.cs`, which `VerifyRunHandler` calls at `src/Parchwell.Verifier/VerifyRun/VerifyRunHandler.cs` line 253. The search found no other test-side state built from target code in the mutation-included test files.
+
+Fix. Each of the 27 reads now calls `BuildAsync` itself, through three static members that cache nothing, so each test builds its inputs while its own mutant is active. No assertion, data row or expected value changed.
+
+Measured locally on 2026-11-27, Release, mutation-only build, 4-core container, idle, fresh process per run, two runs each. Whole suite, one at a time: 87.66 s and 87.97 s before, 89.01 s and 89.44 s after. `ConsumerPhaseJudgeTests` alone: 2.62 s and 2.81 s before, 10.03 s and 9.69 s after.
+
+Limit. No check detects test-side static state that is built from target code. A new cache of that kind brings the fault back. The "Issue 340 static-field isolation" section covers only `static readonly` fields in target files.
+
 ## Issue 268 survivor dispositions
 
 The first C5 run after the [issue 261 repair](#issue-261-excluded-source-instrumentation-repair), [run 41183628251](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/41183628251), left 149 surviving mutants in four targets. The run is incomplete and is not acceptance evidence. This section gives each survivor one disposition under the [issue 268 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/268#issuecomment-6544994859); raw Stryker statuses and scores are unchanged. Survivors of `VerifyRun/SingleAction/SingleActionConfigurationJudgement.cs` are unknown until a complete run exists and are not covered.
