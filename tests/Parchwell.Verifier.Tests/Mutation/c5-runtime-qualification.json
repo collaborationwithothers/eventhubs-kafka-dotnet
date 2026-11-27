@@ -299,7 +299,7 @@
     "tests/Parchwell.Verifier.Tests/Judge/B10FinalProjectionCodecTests.cs": "8952edd137efaf1aa186b986d57d5ffed5f0c15fd636ed40d437027779d67ca9",
     "tests/Parchwell.Verifier.Tests/Judge/B10JudgeChecksTests.cs": "2d3d34d268659aa4c036127dcdb855a93afdb31093613dc1d8a7617a6c7114e2",
     "tests/Parchwell.Verifier.Tests/Judge/B10SweepChecksTests.cs": "dc01315c1ab165c4ee0927481fe5dacb1506603c8c3e2b354326eff742349739",
-    "tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs": "700149eb85bc42e54ea7c71965db0504f5f13898aa3cdaf8f59257347a9336c2",
+    "tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs": "150334a37b4b49fee9cbac66bdc353bfbb5eee8e5e1b247d3ddce8c44a69681f",
     "tests/Parchwell.Verifier.Tests/Judge/JudgeHandlerTests.cs": "b008e9ae2993b2701413e6a363a9f247c81f5456b9cbb38435198af93ebff115",
     "tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs": "b0c4abb2fd21de8d3af442119709af238834b6de8aa172082673d7f8e33f1638",
     "tests/Parchwell.Verifier.Tests/Judge/PhaseJudgeTests.cs": "91e652585a67723c588b424b237449257345864f4898cfd64bc50c4fc0d73833",
@@ -8950,9 +8950,10 @@
           },
           "tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573.",
+              "Issue 601 builds the ConsumerPhaseJudgeTests inputs per test instead of in static Lazy caches. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-27: 87.66 s and 87.97 s before, 89.01 s and 89.44 s after. Timing risk accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/601#issuecomment-7213032814."
             ],
-            "current_sha256": "700149eb85bc42e54ea7c71965db0504f5f13898aa3cdaf8f59257347a9336c2"
+            "current_sha256": "150334a37b4b49fee9cbac66bdc353bfbb5eee8e5e1b247d3ddce8c44a69681f"
           },
           "tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs": {
             "basis": [
@@ -9561,9 +9562,10 @@
           },
           "tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573.",
+              "Issue 601 builds the ConsumerPhaseJudgeTests inputs per test instead of in static Lazy caches. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-27: 87.66 s and 87.97 s before, 89.01 s and 89.44 s after. Timing risk accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/601#issuecomment-7213032814."
             ],
-            "current_sha256": "700149eb85bc42e54ea7c71965db0504f5f13898aa3cdaf8f59257347a9336c2"
+            "current_sha256": "150334a37b4b49fee9cbac66bdc353bfbb5eee8e5e1b247d3ddce8c44a69681f"
           },
           "tests/Parchwell.Verifier.Tests/Judgement/B10FinalClassificationDuplicateTests.cs": {
             "basis": [
@@ -10153,9 +10155,10 @@
           },
           "tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573.",
+              "Issue 601 builds the ConsumerPhaseJudgeTests inputs per test instead of in static Lazy caches. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-27: 87.66 s and 87.97 s before, 89.01 s and 89.44 s after. Timing risk accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/601#issuecomment-7213032814."
             ],
-            "current_sha256": "700149eb85bc42e54ea7c71965db0504f5f13898aa3cdaf8f59257347a9336c2"
+            "current_sha256": "150334a37b4b49fee9cbac66bdc353bfbb5eee8e5e1b247d3ddce8c44a69681f"
           },
           "tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs": {
             "basis": [
@@ -10681,6 +10684,12 @@
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7076000200 accepts the timing uncertainty from the exact shared-input change in the pull request for issue #529."
             ],
             "current_sha256": "4148454c116657817051f198c709667864cfec4cc77700d541004423352affd8"
+          },
+          "tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs": {
+            "basis": [
+              "Issue 601 builds the ConsumerPhaseJudgeTests inputs per test instead of in static Lazy caches. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-27: 87.66 s and 87.97 s before, 89.01 s and 89.44 s after. Timing risk accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/601#issuecomment-7213032814."
+            ],
+            "current_sha256": "150334a37b4b49fee9cbac66bdc353bfbb5eee8e5e1b247d3ddce8c44a69681f"
           },
           "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": {
             "basis": [
@@ -11900,9 +11909,10 @@
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6969607168 The exact fixture correction is covered by the accepted timing risk. Original measured SHA-256 None; current SHA-256 8a41fb96ffef6b3c60e3b887b4af35475f03c3a1c7983e27ed612fb801ff3eb4. The retained estimates apply to unchanged owners only and can understate their runtime.",
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6992683745 accepts this exact timing-risk change for unchanged owners only. Prior approved candidate SHA-256 8a41fb96ffef6b3c60e3b887b4af35475f03c3a1c7983e27ed612fb801ff3eb4; combined candidate SHA-256 f35c243ff6765fbee3b2fe1bb0295e62c45ce52322f19eab0a8aa365c306fe6a. The original timing may understate runtime.",
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573.",
+              "Issue 601 builds the ConsumerPhaseJudgeTests inputs per test instead of in static Lazy caches. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-27: 87.66 s and 87.97 s before, 89.01 s and 89.44 s after. Timing risk accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/601#issuecomment-7213032814."
             ],
-            "current_sha256": "700149eb85bc42e54ea7c71965db0504f5f13898aa3cdaf8f59257347a9336c2"
+            "current_sha256": "150334a37b4b49fee9cbac66bdc353bfbb5eee8e5e1b247d3ddce8c44a69681f"
           },
           "tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs": {
             "basis": [
@@ -13378,9 +13388,10 @@
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6969607168 The exact fixture correction is covered by the accepted timing risk. Original measured SHA-256 None; current SHA-256 8a41fb96ffef6b3c60e3b887b4af35475f03c3a1c7983e27ed612fb801ff3eb4. The retained estimates apply to unchanged owners only and can understate their runtime.",
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6992683745 accepts this exact timing-risk change for unchanged owners only. Prior approved candidate SHA-256 8a41fb96ffef6b3c60e3b887b4af35475f03c3a1c7983e27ed612fb801ff3eb4; combined candidate SHA-256 f35c243ff6765fbee3b2fe1bb0295e62c45ce52322f19eab0a8aa365c306fe6a. The original timing may understate runtime.",
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573.",
+              "Issue 601 builds the ConsumerPhaseJudgeTests inputs per test instead of in static Lazy caches. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-27: 87.66 s and 87.97 s before, 89.01 s and 89.44 s after. Timing risk accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/601#issuecomment-7213032814."
             ],
-            "current_sha256": "700149eb85bc42e54ea7c71965db0504f5f13898aa3cdaf8f59257347a9336c2"
+            "current_sha256": "150334a37b4b49fee9cbac66bdc353bfbb5eee8e5e1b247d3ddce8c44a69681f"
           },
           "tests/Parchwell.Verifier.Tests/Judge/PhaseCandidateCodecTests.cs": {
             "basis": [
@@ -14022,6 +14033,12 @@
               "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
             ],
             "current_sha256": "a0eb99569dfaf7389399d6b293ad46743ab6780fb84d5e1d048b2ed04dcb9e21"
+          },
+          "tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs": {
+            "basis": [
+              "Issue 601 builds the ConsumerPhaseJudgeTests inputs per test instead of in static Lazy caches. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-27: 87.66 s and 87.97 s before, 89.01 s and 89.44 s after. Timing risk accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/601#issuecomment-7213032814."
+            ],
+            "current_sha256": "150334a37b4b49fee9cbac66bdc353bfbb5eee8e5e1b247d3ddce8c44a69681f"
           },
           "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": {
             "basis": [
