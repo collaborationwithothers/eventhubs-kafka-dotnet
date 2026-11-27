@@ -1,6 +1,6 @@
 # Fast suite: contract-grade plan
 
-Revision: r1. Base commit: `15b09147ed4e7c62ea08620b24c14cd049f07562` on `main` (the merge of the issue 601 fix, pull request #603).
+Revision: r2. Base commit: `15b09147ed4e7c62ea08620b24c14cd049f07562` on `main` (the merge of the issue 601 fix, pull request #603).
 
 Two pull requests make the verifier mutation campaign run a faster test suite. The first adds a script that proves, from a campaign's own reports, that no mutant is killed only by the slow tests. The second moves 12 slow test methods out of the mutation-only build, once that proof has passed on a post-601 campaign. The shard re-layout, the qualification-file shrink and the consumer targets of issue 598 cannot be pinned until a hosted run of the faster suite has been timed, so they are deferred (section 12) with their prerequisites.
 
@@ -47,7 +47,7 @@ Paths that must not change in either pull request: everything under `src/`; `tes
 
 Out of scope for both: any threshold or gate change; any change to the shard layout, the matrices, `CAMPAIGN_LIMITS` (178 and 146), the 4,200-second `BUDGET` or `budget_seconds`; any assertion, data row or expected value; any hosted dispatch by an implementing session.
 
-Why the moved methods go under `Component/`: the mutation-only `Compile Remove` already drops `Component/**/*.cs` (csproj lines 20 and 21), and `c5_runtime.py` pins that list byte for byte (`REMOVE`, line 348; checked at line 471; any other string raises "unsupported Compile inclusion", line 477). Changing the list would change `c5_runtime.py`, which historical proof trees re-read at pinned commits (lines 1063 to 1071). A subfolder under `Component/` needs none of that, and `EXCLUDED` (line 346) keeps those files out of the shared inputs. The cost is a misleading folder name; R10 requires a one-line comment in each moved file saying why it sits there.
+Why the moved methods go under `Component/`: the mutation-only `Compile Remove` already drops `Component/**/*.cs` (csproj lines 20 and 21), and `c5_runtime.py` pins that list byte for byte (`REMOVE`, line 348; checked at line 471; any other string raises "unsupported Compile inclusion", line 479). Changing the list would change `c5_runtime.py`, which historical proof trees re-read at pinned commits (lines 1063 to 1071). A subfolder under `Component/` needs none of that, and `EXCLUDED` (line 346) keeps those files out of the shared inputs. The cost is a misleading folder name; R10 requires a one-line comment in each moved file saying why it sits there.
 
 ## 3. External contracts
 
@@ -57,10 +57,10 @@ Why the moved methods go under `Component/`: the mutation-only `Compile Remove` 
 - **Output JSON**, written to `--output` with sorted keys and a trailing newline:
 
   ```
-  {"schema": 1, "status": "equivalent" | "not_equivalent", "reports": <int>, "killed": <int>, "timeouts": <int>, "excluded": <int>, "lost": [<lost entry>, ...]}
+  {"schema": 1, "status": "equivalent" | "not_equivalent", "reports": <int>, "killed": <int>, "excluded": <int>, "lost": [<lost entry>, ...], "timeouts": [<timeout entry>, ...]}
   ```
 
-  A lost entry is `{"file": <normalized path>, "mutant_ids": [<ids, sorted as strings>], "mutator": <mutatorName>, "replacement": <replacement>, "location": <location object>, "static": <bool>, "killed_by": [<test names, sorted>]}`. `lost` is sorted by `file`, then `location.start.line`, `location.start.column`, then `mutator`.
+  A lost entry is `{"file": <normalized path>, "mutant_ids": [<ids, sorted as strings>], "mutator": <mutatorName>, "replacement": <replacement>, "location": <location object>, "static": <bool>, "killed_by": [<test names, sorted>]}`. A timeout entry has the same fields without `killed_by`. `lost` and `timeouts` are each sorted by `file`, then `location.start.line`, `location.start.column`, then `mutator`.
 - **Failure names**, printed as `c5_equivalence: <name>: <detail>` on stderr with exit status 2 and no output file: `no_reports`, `invalid_report`, `invalid_excluded`, `killed_without_tests`, `unmapped_test_id`, `unmatched_excluded`.
 - **Exit status.** 0 for `equivalent`, 1 for `not_equivalent`, 2 for a failure name.
 - **Qualification basis text** (PR 2), section 5 R14.
@@ -110,7 +110,9 @@ R3. WHEN it reads a report THEN it maps each test id to its name through `testFi
 
 R4. WHEN it reads a file key THEN the normalized path is the text after the first `/repository/` segment. WHEN a key has no such segment THEN it fails with `invalid_report`. A mutant's identity is (normalized path, `mutatorName`, `replacement`, `location.start.line`, `location.start.column`, `location.end.line`, `location.end.column`, `static`), the #599 and #600 comparison key.
 
-R5. WHEN the same identity is Killed in more than one report (a cohort's top-level report copies its bootstrap isolated report, `c5_workflow.py` lines 887 to 889; crossing spans) THEN its killing tests are the union of the method keys over all its Killed rows. WHEN that union, minus the excluded method keys, is empty THEN the identity is lost. Exact string match only: an excluded key `A.B.Foo` does not match `A.B.FooBar`. Statuses other than Killed never make an identity lost. `killed` counts distinct Killed identities. `timeouts` counts distinct identities with status Timeout that are never Killed. `reports` counts files read. `excluded` counts list entries.
+R5. Each Killed row is judged on its own. WHEN any one Killed row of an identity has a `killedBy` whose method keys are all excluded keys THEN the identity is lost, whatever its other rows show. The same identity can have several Killed rows (a cohort's top-level report copies its bootstrap isolated report, `c5_workflow.py` line 892; reports of earlier run attempts), and the gate scores only one row per mutant (`reconcile`, lines 1462 to 1493), so no row may mask another. The lost entry's `mutant_ids` and `killed_by` come from the rows that make it lost. Exact string match only: an excluded key `A.B.Foo` does not match `A.B.FooBar`. `killed` counts distinct identities with at least one Killed row. `reports` counts files read. `excluded` counts list entries.
+
+R5a. WHEN an identity has a Timeout row and no Killed row THEN it is listed under `timeouts`. The gate counts a Timeout as a detection (`c5_workflow.py` line 1458), and a Timeout row has no `killedBy`, so the script cannot tell whether only excluded tests caused it. Removing tests can turn a Timeout into Survived ([#600 findings](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/600#issuecomment-7201011493), section 3, "Limits"). `timeouts` does not change `status`. Every listed Timeout identity is outside the proof, and PR 2 needs Hari's acceptance of them (Q5). No other status appears in the output.
 
 R6. WHEN an excluded method key matches no test name in any report read THEN the script fails with `unmatched_excluded`, naming the key. This catches a renamed or mistyped entry.
 
@@ -118,7 +120,7 @@ R7. WHEN no identity is lost THEN `status` is `equivalent` and the exit status i
 
 R8. WHEN PR 1 merges THEN `c5-fast-suite-excluded.json` holds exactly the 12 method keys of section 4, sorted, two-space indented, with a trailing newline.
 
-R9. WHEN PR 1 merges THEN docs/operations/verifier-mutation.md has a section `## Issue 602 fast-suite equivalence check`, placed directly after "Issue 601 test-side cached state". It states: what the script proves and what it cannot (R5; the proof holds only for the commit the campaign tested); the CLI, exit statuses and failure names of section 3; the download procedure of section 9, step A3; and the strongest counterargument of section 11, quoted in full. It changes no other section.
+R9. WHEN PR 1 merges THEN docs/operations/verifier-mutation.md has a section `## Issue 602 fast-suite equivalence check`, placed directly after "Issue 601 test-side cached state". It states: what the script proves and what it cannot (R5; the proof holds only for the commit the campaign tested; Timeout identities are outside it, R5a; it assumes, without a check, that a kept test's outcome does not depend on which other tests ran earlier in the same reused test process, the kind of dependence issue 601 found); the CLI, exit statuses and failure names of section 3; the download procedure of section 9, step A3; and the strongest counterargument of section 11, quoted in full. It changes no other section.
 
 ### PR 2 "Fast suite"
 
@@ -126,17 +128,17 @@ R10. WHEN PR 2 merges THEN each method listed in `c5-fast-suite-excluded.json` i
 
 R11. WHEN PR 2 merges THEN no other test method moves, and no test body, attribute, data row or assertion changes. The normal build compiles and runs every moved test, because the `Compile Remove` applies only when `ParchwellVerifierMutationOnly` is `true` (csproj line 20).
 
-R12. Proof gate. WHEN PR 2's pull request is opened THEN the equivalence script has run, under section 9 step B1, on the reports of a post-601 campaign whose commit has the same `src/Parchwell.Verifier/**` and `tests/Parchwell.Verifier.Tests/**` content as PR 2's base, apart from `tests/Parchwell.Verifier.Tests/Mutation/**`, and its output is recorded in the pull request. WHEN no such campaign exists THEN the session stops and hands off; it does not dispatch one (Q1).
+R12. Proof gate. WHEN PR 2's pull request is opened THEN the equivalence script has run, under section 9 step B1, on the reports of a post-601 campaign whose commit differs from PR 2's base only in paths under `docs/`, `items/` or `results/`, or in the three files PR 1 adds, and its output is recorded in the pull request. WHEN any other path differs (for example under `src/`, `tests/`, `scenarios/`, `.config/` or `.github/`, or a root build file) THEN that campaign does not count. WHEN no such campaign exists THEN the session stops and hands off; it does not dispatch one (Q1).
 
-R13. WHEN that run reports `not_equivalent` THEN every excluded method that appears in any lost identity's `killed_by` stays in the mutation suite: PR 2 removes it from `c5-fast-suite-excluded.json` and does not move it, and the script is run again on the same reports with the shortened list, which must then report `equivalent`. The pull request lists each kept method with the lost identities that kept it. WHEN the run fails with a failure name THEN the session stops and hands off with the message.
+R13. WHEN that run reports `not_equivalent` THEN every excluded method that appears in any lost identity's `killed_by` stays in the mutation suite: PR 2 removes it from `c5-fast-suite-excluded.json` and does not move it, and the script is run again on the same reports with the shortened list, which must then report `equivalent`. WHEN the list would become empty THEN the session stops and hands off. The pull request lists each kept method with the lost identities that kept it. WHEN the run fails with a failure name THEN the session stops and hands off with the message.
 
 R14. WHEN PR 2 is opened THEN `c5-runtime-qualification.json` has been renewed, as a separate commit after the test move, with `python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py renew --head <HEAD_SHA> --qualification tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json --basis "<BASIS>"`, where `<HEAD_SHA>` is the commit that holds the move, and `c5_runtime.py check --base <merge base> --head <HEAD>` does not report `rejected`. `<BASIS>` is exactly:
 
-  `Issue 602 moves <N> slow test methods out of the mutation-only build; no target, runner or workflow changed. Removing tests can only shorten each mutant's test run. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on <DATE>: <B1> s and <B2> s before, <A1> s and <A2> s after. Equivalence check on campaign <RUN_ID> at <SHA8>: equivalent.`
+  `Issue 602 moves <N> slow test methods out of the mutation-only build; no target, runner or workflow changed. Removing tests can only shorten each mutant's test run. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on <DATE>: <B1> s and <B2> s before, <A1> s and <A2> s after. Equivalence check on campaign <RUN_ID> at <SHA8>: equivalent; Timeout identities outside the proof accepted by <DECISION_URL>.`
 
-  The placeholders are filled from the measurements of section 9 step B2 and the B1 run, with `<N>` the number of methods moved. "Can only shorten" is an inference, not measured per shard: fewer tests run per mutant, and the Stryker initial run and process start are unchanged. The issue 601 renewal (commit `d4dfe39`, reader-reported) is the precedent for renewing changed test inputs with a basis. If the tool refuses the renewal, the session stops and hands off with its output.
+  The placeholders are filled from the measurements of section 9 step B2 and the B1 run, with `<N>` the number of methods moved and `<DECISION_URL>` the URL of Hari's answer to Q5. "Can only shorten" is an inference, not measured per shard: fewer tests run per mutant, and the Stryker initial run and process start are unchanged. The issue 601 renewal (commit `d4dfe39`, reader-reported) is the precedent for renewing changed test inputs with a basis. If the tool refuses the renewal, the session stops and hands off with its output.
 
-R15. WHEN PR 2 merges THEN the runbook section of R9 gains a subsection `### Fast suite record` that states: the moved methods, from the final list; the measurements of section 4 and of step B2; the equivalence result with the campaign run ids and commit; any method kept under R13; that the hosted campaign now runs the fast suite, so a later campaign's reports can no longer show what the excluded tests kill, and an equivalence check needs a full-suite campaign (D2); and that the shard layout is unchanged until D3.
+R15. WHEN PR 2 merges THEN the runbook section of R9 gains a subsection `### Fast suite record` that states: the moved methods, from the final list; the measurements of section 4 and of step B2; the equivalence result with the campaign run ids and commit; each Timeout identity outside the proof, with Hari's acceptance; any method kept under R13; that the hosted campaign now runs the fast suite, so a later campaign's reports can no longer show what the excluded tests kill, and an equivalence check needs a full-suite campaign (D2); and that the shard layout is unchanged until D3.
 
 ## 6. Invariants and safety rules
 
@@ -160,10 +162,12 @@ The file name matches `test_c5_*.py`, so `.NET verification` runs it (`.github/w
 | `test_killed_by_kept_and_excluded_is_equivalent` | R5, R7 | mutant `1` Killed by `[t1, t2]` | exit 0, `status` `equivalent`, `killed` 1, `lost` [] |
 | `test_killed_only_by_excluded_is_lost` | R5, R7 | mutant `1` Killed by `[t2, t3]` | exit 1, `not_equivalent`, one lost entry with `file` `src/Parchwell.Verifier/A.cs`, `mutant_ids` `["1"]`, `killed_by` `["N.C.Slow", "N.C.SlowCase"]` |
 | `test_prefix_name_is_not_excluded` | R5 | mutant Killed by `[t4]` | exit 0 |
-| `test_union_over_duplicate_reports` | R5 | the same identity, id `1` in report A Killed by `[t2]` and id `7` in report B Killed by `[t1]` | exit 0, `killed` 1 |
+| `test_duplicate_row_cannot_mask_a_lost_row` | R5 | the same identity, id `1` in report A Killed by `[t2]` and id `7` in report B Killed by `[t1]` | exit 1, one lost entry, `mutant_ids` `["1"]`, `killed_by` `["N.C.Slow"]`, `killed` 1 |
+| `test_duplicate_rows_both_kept` | R5 | the same identity in reports A and B, both Killed by `[t1, t2]` | exit 0, `killed` 1 |
 | `test_duplicate_reports_both_excluded` | R5, R7 | as above, both Killed by `[t2]` | exit 1, one lost entry, `mutant_ids` `["1", "7"]` |
 | `test_static_flag_separates_identities` | R4 | two mutants equal except `static` true and false, one Killed by `[t1]`, one by `[t2]` | exit 1, one lost entry with `static` true or false as given |
-| `test_other_statuses_are_not_lost` | R5 | mutants with Survived, Timeout, Ignored, CompileError and no `killedBy` | exit 0, `killed` 0, `timeouts` 1 |
+| `test_other_statuses_are_not_lost` | R5, R5a | mutants with Survived, Timeout, Ignored, CompileError and no `killedBy` | exit 0, `killed` 0, `lost` [], `timeouts` one entry, for the Timeout mutant |
+| `test_timeout_with_a_killed_row_is_not_listed` | R5a | the same identity Timeout in report A and Killed by `[t1]` in report B | exit 0, `timeouts` [] |
 | `test_zero_and_one_lost_boundary` | R7 | two mutants, Killed by `[t1]` and by `[t2]` | exit 1, exactly one lost entry |
 | `test_no_reports` | R1 | empty directory | exit 2, stderr starts `c5_equivalence: no_reports:` |
 | `test_invalid_report` | R1 | report without `testFiles`; mutant without `static` | exit 2, `invalid_report`, each case |
@@ -173,7 +177,7 @@ The file name matches `test_c5_*.py`, so `.NET verification` runs it (`.github/w
 | `test_unmapped_test_id` | R3 | Killed by `[t9]` | exit 2, `unmapped_test_id` |
 | `test_unmatched_excluded` | R6 | excluded list `["N.C.Slow", "N.C.Gone"]` | exit 2, `unmatched_excluded`, detail names `N.C.Gone` |
 | `test_output_is_sorted_and_stable` | section 3 | two lost identities in reverse line order | `lost` sorted by file and line; output bytes identical over two runs; trailing newline |
-| `test_excluded_list_is_committed_form` | R8 | the committed `c5-fast-suite-excluded.json` | parses under R2 rules, has exactly the 12 keys of section 4, ends with a newline |
+| `test_excluded_list_is_committed_form` | R8 | the committed `c5-fast-suite-excluded.json` | parses under R2 rules, has at least one key, every key is one of the 12 keys of section 4, ends with a newline |
 
 No failure path writes an output file; each failure test asserts that.
 
@@ -204,11 +208,11 @@ A4. `npm run check:docs`, warnings disposed under docs/agents/pull-requests.md r
 
 ### PR 2
 
-B1. Proof (R12, R13). The session confirms by `git diff --quiet <campaign commit> <PR 2 base> -- src/Parchwell.Verifier tests/Parchwell.Verifier.Tests ':!tests/Parchwell.Verifier.Tests/Mutation'`. It downloads the reports of the main and companion runs of the post-601 campaign that Hari dispatched (Q1) by the procedure of A3, and runs the script with the committed list. The PR records the command, both run ids, the commit, and the output file's content in full. Workload: every `c5-mutation-` artifact of those two runs: 178 in the reference main run (artifact listing by script, 2026-11-27) and, by the companion matrix size, 146 in its companion, 324 in all; each download retried up to 4 times; on exhaustion, push -wip and hand off to the next session, because the proof is a gate and a missing report could hide a lost kill.
+B1. Proof (R12, R13). The session lists `git diff --name-only <campaign commit> <PR 2 base>` and checks by script that every path is under `docs/`, `items/` or `results/`, or is one of the three files PR 1 adds. It downloads the reports of the main and companion runs of the post-601 campaign that Hari dispatched (Q1) by the procedure of A3, and runs the script with the committed list. The PR records the command, both run ids, the commit, the path check's result, and the output file's content in full, including each `timeouts` entry. Workload: every `c5-mutation-` artifact of those two runs: 178 in the reference main run (artifact listing by script, 2026-11-27) and, by the companion matrix size, 146 in its companion, 324 in all; each download retried up to 4 times; on exhaustion, push -wip and hand off to the next session, because the proof is a gate and a missing report could hide a lost kill.
 
 B2. Timing, both builds Release with `-p:ParchwellVerifierMutationOnly=true -p:RestoreLockedMode=true`, the command of section 4, two runs each, before (PR 2 base) and after (PR 2 head before the renewal commit). Both after runs pass. The PR records the four walls and the four summed test times.
 
-B3. Test-list comparison, by script over the B2 XML files: the after runs list exactly the before runs' cases minus every case whose method key is in the final `c5-fast-suite-excluded.json`, by fully qualified name with parameters, and nothing else. For the 12-method list that is 8443 minus 22, 8421 cases. The normal build (without the property) lists the same 8443 case names before and after. Each count is computed by script.
+B3. Test-list comparison, by script over the B2 XML files: the after runs list exactly the before runs' cases minus every case whose method key is in the final `c5-fast-suite-excluded.json`, by fully qualified name with parameters, and nothing else. For the 12-method list that is 8443 minus 22, 8421 cases. The normal build (without the property) lists the same case names before and after, compared as sets by script. Each count is computed by script.
 
 B4. `scripts/verify-dotnet.sh` as CI runs it for the Verifier project passes, including `mutation_only_build` and `mutation_only_test` (lines 471 to 496). A2 passes after the renewal commit. A1 and A4 pass.
 
@@ -218,7 +222,7 @@ B4. `scripts/verify-dotnet.sh` as CI runs it for the Verifier project passes, in
 - [#600 findings 7201011493](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/600#issuecomment-7201011493), sections 3 and 5 and the strongest counterargument.
 - [#599 decision 7193808224](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/599#issuecomment-7193808224) point 2.
 - Issue #601 body, constraints; docs/operations/verifier-mutation.md "Issue 601 test-side cached state" at the base commit.
-- At the base commit: `tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj` lines 20 and 21; `c5_runtime.py` lines 327, 344 to 348, 471, 477, 499 to 517, 1063 to 1071; `c5_workflow.py` lines 304, 309, 316, 327, 329 to 332, 887 to 889, 1035 to 1041, 1462, 1582, 1757 to 1774; `c5_campaign.py` line 18; `.github/workflows/dotnet-verification.yml` lines 139 to 152; `scripts/verify-dotnet.sh` lines 467 to 496; `Directory.Build.props` line 6. Lines marked reader-reported were read by reader subagents of this session and spot-checked by the planning session only where stated.
+- At the base commit: `tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj` lines 20 and 21; `c5_runtime.py` lines 327, 344 to 348, 471, 479, 499 to 517, 1063 to 1071; `c5_workflow.py` lines 304, 309, 316, 327, 329 to 332, 892, 1035 to 1041, 1458, 1462 to 1493, 1582, 1757 to 1774; `c5_campaign.py` line 18; `.github/workflows/dotnet-verification.yml` lines 139 to 152; `scripts/verify-dotnet.sh` lines 467 to 496; `Directory.Build.props` line 6. Lines marked reader-reported were read by reader subagents of this session and spot-checked by the planning session only where stated.
 - Stryker.NET at `6e77a345`, [MicrosoftTestingPlatformRunner.cs L1071-L1105](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.TestRunner.MicrosoftTestPlatform/MicrosoftTestingPlatformRunner.cs#L1071-L1105), read 2026-11-27.
 - Artifact `c5-mutation-45555996117-1-b10-sweep-judge-p1` (id 14997750805), read 2026-11-27.
 - The local timing runs of section 4, outside the repository.
@@ -228,6 +232,8 @@ B4. `scripts/verify-dotnet.sh` as CI runs it for the Verifier project passes, in
 The excluded tests include the full-scale capacity tests. A future mutant that only a full-scale test kills would be missed between equivalence checks. Today's zero is one commit's evidence. The equivalence check bounds that gap at the commits it runs on; it does not close it between them.
 
 What would reduce the gap, and its cost: a full-suite campaign at a set cadence (D2). Without one, a test or target change can create a slow-only kill that no check sees until the next full-suite campaign. The cadence is Hari's decision (Q3).
+
+The proof has two further limits. Timeout detections are outside it (R5a): the gate counts them, but nothing records which tests caused them. And it assumes, without a check, that a kept test's outcome does not depend on which tests ran before it in the same reused test process; issue 601 found that kind of dependence once.
 
 A second counterargument this plan adds: the 1 s cut is near the measured times of at least one method (section 4), so the list is a choice, not a property of the code. A different cut changes the list, and each list needs its own proof.
 
@@ -251,7 +257,7 @@ D4. **Issue 598 consumer targets** (issue design item 5). Evidence: #598 is paus
 
 (b) Stricter than the parent: there is no parent plan. Against the issue body: R12 makes the proof a gate before PR 2 is opened, where the issue says "before relying on it"; R13 fixes what happens to a test that the proof flags, as the issue says ("that test then returns to the mutation suite"); the list has 12 methods, not the issue's 14 (section 4, Q2).
 
-(c) Checks that depend on code, data or behaviour neither on `main` nor in the pull requests: B1 depends on a post-601 campaign that does not exist yet (D1, Q1); R3 and the section 3 field shapes depend on Stryker's report, checked against recorded output of one hosted artifact. Listed in section 8.
+(c) Checks that depend on code, data or behaviour neither on `main` nor in the pull requests: B1 depends on a post-601 campaign that does not exist yet (D1, Q1), and its Timeout identities need Q5; R3 and the section 3 field shapes depend on Stryker's report, checked against recorded output of one hosted artifact. Listed in section 8.
 
 ## 14. Size estimate
 
@@ -268,10 +274,12 @@ Q1. **Dispatch for the proof.** May the control session dispatch one paired C5 c
 
 Q2. **Test set.** Do you accept the 12 methods of section 4 in place of #600's 14? Recommendation: yes; #600's list is not in the repository, and this one was measured at the base commit on the runner the campaign uses (MTP-compatible xUnit v3 runner, not VSTest). Alternative: ask the #600 session's owner to recover its list, or set a different cut.
 
-Q3. **Equivalence-check cadence** (the issue reserves it to you). Options: (a) a full-suite campaign before each publication point, which roughly doubles that point's runner time while D3 is pending (estimate, from #600's 530743 s full campaign); (b) one whenever a pull request changes a target or a test file; (c) none after PR 2, accepting the gap of section 11. Each of (a) and (b) needs D2. Recommendation: (b), because the gap opens only when tests or targets change. Your answer sets D2's scope; PR 1 and PR 2 do not depend on it.
+Q3. **Equivalence-check cadence** (the issue reserves it to you). Options: (a) a full-suite campaign before each publication point, which adds a whole full-suite campaign to that point's fast-suite run (the accepted pre-601 full campaign took 530743 s of runner time, [#600 findings](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/600#issuecomment-7201011493) section 4); (b) one whenever a pull request changes a target or a test file; (c) none after PR 2, accepting the gap of section 11. Each of (a) and (b) needs D2. Recommendation: (b), because the gap opens only when tests or targets change. Your answer sets D2's scope; PR 1 and PR 2 do not depend on it.
 
 Q4. **Sizing diagnostic for D3.** May a session dispatch `verifier-c5-sizing.yml` on `main` after PR 2 merges, to time the fast suite per shard? Recommendation: yes; without it D3 cannot be planned. Each such dispatch and any layout outside 178 and 146 jobs still comes back to you.
 
+Q5. **Timeouts outside the proof** (R5a). Do you accept that each Timeout identity of the proof campaign is outside the equivalence proof, with PR 2 listing them by name and citing your acceptance in its qualification basis? The accepted pre-601 campaign had 1 Timeout (`Judge/PhaseJudge.cs`, `number--`; #600 findings section 3). Recommendation: yes; only those identities could turn Survived, and each would show in the next campaign's score. Alternative: treat a listed Timeout as a failed proof, which with today's 1 Timeout would block PR 2.
+
 ## 16. Stop rule
 
-The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it needs to change a contract of section 3, a requirement, the list other than under R13, or the scope of section 2; when the proof's campaign does not exist or does not meet R12; when the script fails with a failure name on real reports; when `renew` refuses; or when any required check fails for a reason it cannot fix inside the allowed files.
+The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when it needs to change a contract of section 3, a requirement, the list other than under R13, or the scope of section 2; when the proof's campaign does not exist or does not meet R12; when the proof lists a Timeout identity and Q5 is unanswered; when the script fails with a failure name on real reports; when `renew` refuses; or when any required check fails for a reason it cannot fix inside the allowed files.
