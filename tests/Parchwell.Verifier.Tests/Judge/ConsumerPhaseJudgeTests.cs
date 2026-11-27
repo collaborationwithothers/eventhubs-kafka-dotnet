@@ -19,8 +19,8 @@ namespace Parchwell.Verifier.Tests.Judge;
 public sealed class ConsumerPhaseJudgeTests
 {
     private const string Run = "synthetic-c5";
-    private static readonly Lazy<Task<Stores>> BaseC0 = new(() => BuildAsync("C03", "C0"));
-    private static readonly Lazy<Task<Stores>> BaseC1 = new(() => BuildAsync("C10", "C1"));
+    private static Task<Stores> BaseC0 => BuildAsync("C03", "C0");
+    private static Task<Stores> BaseC1 => BuildAsync("C10", "C1");
 
         public static TheoryData<string> BrokenBlocks => new()
     {
@@ -113,7 +113,7 @@ public sealed class ConsumerPhaseJudgeTests
     [Fact]
     public async Task Given_FiveCompleteConsumerRepeats_When_Judged_Then_PublishesEachProjectionAndPhaseTotals()
     {
-        Stores stores = (await BaseC0.Value).Copy();
+        Stores stores = (await BaseC0).Copy();
         (int exit, byte[] bytes) = await JudgeAsync(stores, "C03", "C0");
         using (JsonDocument candidate = JsonDocument.Parse(bytes))
         {
@@ -129,7 +129,7 @@ public sealed class ConsumerPhaseJudgeTests
     }
 
 
-    private static readonly Lazy<Task<Stores>> BaseB04 = new(() => BuildAsync("B04", "C0", addConsumer: false));
+    private static Task<Stores> BaseB04 => BuildAsync("B04", "C0", addConsumer: false);
 
     private static JsonNode Parse(byte[] bytes) => JsonNode.Parse(bytes)!;
     private static JsonNode RepeatOf(JsonNode candidate, int repeat) => candidate["repeats"]![repeat - 1]!;
@@ -149,7 +149,7 @@ public sealed class ConsumerPhaseJudgeTests
     [MemberData(nameof(BrokenBlocks))]
     public async Task Given_BrokenConsumerBlock_When_Judged_Then_FailsJ3AndPublishesNoProjection(string change)
     {
-        Stores stores = (await BaseC0.Value).Copy();
+        Stores stores = (await BaseC0).Copy();
         int exit = StatusChanges.Contains(change, StringComparer.Ordinal) ? 1 : 0;
         Apply(stores, "C0", 2, result =>
         {
@@ -176,7 +176,7 @@ public sealed class ConsumerPhaseJudgeTests
     [Fact]
     public async Task Given_ConsumerPropertyOnNonConsumerScenario_When_Judged_Then_FailsJ3()
     {
-        Stores stores = (await BaseB04.Value).Copy();
+        Stores stores = (await BaseB04).Copy();
         Apply(stores, "C0", 2, result => result["consumer"] = new JsonObject());
         (_, byte[] bytes) = await JudgeAsync(stores, "B04", "C0");
         JsonNode candidate = Parse(bytes);
@@ -191,7 +191,7 @@ public sealed class ConsumerPhaseJudgeTests
     [InlineData(0, "complete_valid", true)]
     public async Task Given_ReceiptExitAndStatuses_When_Judged_Then_J3FollowsTheConsumerExitRule(int exit, string consumerStatus, bool expected)
     {
-        Stores stores = Mutated((await BaseC0.Value), 2, block =>
+        Stores stores = Mutated((await BaseC0), 2, block =>
         {
             block["status"] = consumerStatus;
             if (consumerStatus == "incomplete") { block["reasons"] = new JsonArray("consumer_completion_deadline"); RemoveCounts(block); }
@@ -203,7 +203,7 @@ public sealed class ConsumerPhaseJudgeTests
     [Fact]
     public async Task Given_ConsumerIncompleteOnAcceptedRepeat_When_Judged_Then_KeepsProducerSideAndPublishesIncompletePhaseConsumer()
     {
-        Stores stores = Mutated((await BaseC0.Value), 3, block =>
+        Stores stores = Mutated((await BaseC0), 3, block =>
         {
             block["status"] = "incomplete"; block["reasons"] = new JsonArray("consumer_completion_deadline"); RemoveCounts(block);
         }, 1);
@@ -221,7 +221,7 @@ public sealed class ConsumerPhaseJudgeTests
     [Fact]
     public async Task Given_ConsumerInvalidOnAcceptedRepeat_When_Judged_Then_PhaseConsumerAndCandidateAreInvalid()
     {
-        Stores stores = Mutated((await BaseC0.Value), 2, block =>
+        Stores stores = Mutated((await BaseC0), 2, block =>
         {
             block["status"] = "invalid"; block["reasons"] = new JsonArray("consumer_record_invalid"); RemoveCounts(block);
         }, 1);
@@ -234,7 +234,7 @@ public sealed class ConsumerPhaseJudgeTests
 
     private static async Task<Stores> ProducerIncompleteRepeat4(string[] consumerReasons)
     {
-        Stores stores = (await BaseC0.Value).Copy();
+        Stores stores = (await BaseC0).Copy();
         Apply(stores, "C0", 4, result =>
         {
             result["status"] = "incomplete";
@@ -274,7 +274,7 @@ public sealed class ConsumerPhaseJudgeTests
     [Fact]
     public async Task Given_RepeatThatFailsJ2_When_Judged_Then_ItsProjectionIsNullAndThePhaseConsumerIsIncomplete()
     {
-        Stores stores = (await BaseC0.Value).Copy();
+        Stores stores = (await BaseC0).Copy();
         Assert.True(stores.Verifier.Remove(PhasePaths.StartLineCompletion(Run, "C0", 5)));
         (_, byte[] bytes) = await JudgeAsync(stores, "C03", "C0");
         JsonNode candidate = Parse(bytes);
@@ -287,7 +287,7 @@ public sealed class ConsumerPhaseJudgeTests
     [Fact]
     public async Task Given_CountsThatOverflowWhenSummed_When_Judged_Then_PhaseCountsAreUnavailable()
     {
-        Stores stores = (await BaseC0.Value).Copy();
+        Stores stores = (await BaseC0).Copy();
         foreach (int repeat in new[] { 1, 2 })
             stores = Mutated(stores, repeat, block => block["counts"]!["processed_once"] = long.MaxValue);
         (int exit, byte[] bytes) = await JudgeAsync(stores, "C03", "C0");
@@ -300,7 +300,7 @@ public sealed class ConsumerPhaseJudgeTests
     [Fact]
     public async Task Given_CountsThatSumToInt64Maximum_When_Judged_Then_PhaseCountsArePublished()
     {
-        Stores stores = Mutated((await BaseC0.Value), 1, block => block["counts"]!["processed_once"] = 9223372036854775767);
+        Stores stores = Mutated((await BaseC0), 1, block => block["counts"]!["processed_once"] = 9223372036854775767);
         (int exit, byte[] bytes) = await JudgeAsync(stores, "C03", "C0");
         JsonNode candidate = Parse(bytes);
         Assert.Equal(0, exit);
@@ -311,7 +311,7 @@ public sealed class ConsumerPhaseJudgeTests
     [Fact]
     public async Task Given_KilledConsumerRepeats_When_Judged_Then_EachRepeatProjectsItsOwnReassignmentAndThePhaseHasNone()
     {
-        Stores stores = (await BaseC1.Value).Copy();
+        Stores stores = (await BaseC1).Copy();
         JsonObject[] reassignments =
         [
             Reassignment(1234567, null), Reassignment(null, "different_nodes"), Reassignment(null, "no_reassignment"),
@@ -358,7 +358,7 @@ public sealed class ConsumerPhaseJudgeTests
     public async Task Given_ValidCommitCoverageOnACompleteC10KillBlock_CJ1_When_Judged_Then_J3PassesAndTheProjectionCarriesItUnchanged()
     {
         const string text = """{"qualifying_partitions":[0,1],"uncovered_partitions":[1]}""";
-        (_, byte[] bytes) = await JudgeAsync(KilledC10(await BaseC1.Value, text), "C10", "C1");
+        (_, byte[] bytes) = await JudgeAsync(KilledC10(await BaseC1, text), "C10", "C1");
         JsonNode second = RepeatOf(Parse(bytes), 2);
         Assert.True(second["checks"]!["j3_verifier_receipt"]!.GetValue<bool>());
         Assert.Equal(text, Text(second["consumer"]!["subject_commit_coverage"]));
@@ -370,7 +370,7 @@ public sealed class ConsumerPhaseJudgeTests
     [InlineData("""{"qualifying_partitions":[0,2147483647],"uncovered_partitions":[2147483647]}""")]
     public async Task Given_BoundaryCommitCoverage_CJ1_When_Judged_Then_J3PassesAndTheProjectionCarriesItUnchanged(string text)
     {
-        (_, byte[] bytes) = await JudgeAsync(KilledC10(await BaseC1.Value, text), "C10", "C1");
+        (_, byte[] bytes) = await JudgeAsync(KilledC10(await BaseC1, text), "C10", "C1");
         JsonNode second = RepeatOf(Parse(bytes), 2);
         Assert.True(second["checks"]!["j3_verifier_receipt"]!.GetValue<bool>());
         Assert.Equal(text, Text(second["consumer"]!["subject_commit_coverage"]));
@@ -379,7 +379,7 @@ public sealed class ConsumerPhaseJudgeTests
     [Fact]
     public async Task Given_CompleteC10KillBlockWithoutCommitCoverage_CJ2_When_Judged_Then_J3FailsForThatSlot()
     {
-        (_, byte[] bytes) = await JudgeAsync(KilledC10(await BaseC1.Value, null), "C10", "C1");
+        (_, byte[] bytes) = await JudgeAsync(KilledC10(await BaseC1, null), "C10", "C1");
         JsonNode second = RepeatOf(Parse(bytes), 2);
         Assert.False(second["checks"]!["j3_verifier_receipt"]!.GetValue<bool>());
         Assert.Null(second["consumer"]);
@@ -399,7 +399,7 @@ public sealed class ConsumerPhaseJudgeTests
     [InlineData("null")]
     public async Task Given_MalformedCommitCoverage_CJ3_When_Judged_Then_J3FailsForThatSlot(string coverage)
     {
-        (_, byte[] bytes) = await JudgeAsync(KilledC10(await BaseC1.Value, coverage), "C10", "C1");
+        (_, byte[] bytes) = await JudgeAsync(KilledC10(await BaseC1, coverage), "C10", "C1");
         JsonNode second = RepeatOf(Parse(bytes), 2);
         Assert.False(second["checks"]!["j3_verifier_receipt"]!.GetValue<bool>());
         Assert.Null(second["consumer"]);
@@ -416,13 +416,13 @@ public sealed class ConsumerPhaseJudgeTests
         string scenario = "C10", phase = "C1";
         if (shape == "C03_block")
         {
-            stores = Mutated(await BaseC0.Value, 2, block => { block["kill_count"] = 5; block["reassignment"] = Reassignment(5, null); block["subject_commit_coverage"] = JsonNode.Parse(coverage); });
+            stores = Mutated(await BaseC0, 2, block => { block["kill_count"] = 5; block["reassignment"] = Reassignment(5, null); block["subject_commit_coverage"] = JsonNode.Parse(coverage); });
             scenario = "C03"; phase = "C0";
         }
         else if (shape == "kill_count_null")
-            stores = Mutated(await BaseC1.Value, 2, block => block["subject_commit_coverage"] = JsonNode.Parse(coverage), phase: "C1");
+            stores = Mutated(await BaseC1, 2, block => block["subject_commit_coverage"] = JsonNode.Parse(coverage), phase: "C1");
         else
-            stores = Mutated(await BaseC1.Value, 2, block =>
+            stores = Mutated(await BaseC1, 2, block =>
             {
                 block["kill_count"] = 50;
                 block["status"] = "invalid"; block["reasons"] = new JsonArray("consumer_record_invalid"); block.Remove("counts");
@@ -442,7 +442,7 @@ public sealed class ConsumerPhaseJudgeTests
     public async Task Given_BoundaryConsumerBlock_When_Judged_Then_J3PassesAndTheBlockIsProjected(string change)
     {
         JsonObject expectedBlock = DefaultBlock(2);
-        Stores stores = Mutated((await BaseC0.Value), 2, block =>
+        Stores stores = Mutated((await BaseC0), 2, block =>
         {
             switch (change)
             {
@@ -467,7 +467,7 @@ public sealed class ConsumerPhaseJudgeTests
     [Fact]
     public async Task Given_MembershipOnABlockOfAnotherConsumerScenario_When_Judged_Then_FailsJ3()
     {
-        Stores stores = (await BaseC1.Value).Copy();
+        Stores stores = (await BaseC1).Copy();
         Apply(stores, "C1", 2, result => result["consumer"]!["membership"] = JsonNode.Parse(Membership));
         (int exit, byte[] bytes) = await JudgeAsync(stores, "C10", "C1");
         JsonNode second = RepeatOf(Parse(bytes), 2);
@@ -482,7 +482,7 @@ public sealed class ConsumerPhaseJudgeTests
     [InlineData(2, null, false)]
     public async Task Given_BoundaryMembershipValues_When_Judged_Then_J3PassesAndTheBlockIsProjected(int slowRows, int? takeover, bool during)
     {
-        Stores stores = Mutated(await BaseC0.Value, 2, block =>
+        Stores stores = Mutated(await BaseC0, 2, block =>
         {
             block["membership"]!["slow_processed_rows"] = slowRows;
             block["membership"]!["witness_takeover_microseconds"] = takeover;
@@ -498,7 +498,7 @@ public sealed class ConsumerPhaseJudgeTests
     [Fact]
     public async Task Given_FiveC03Repeats_When_Judged_Then_EachProjectionCarriesMembershipAfterCountsAndTheRootDoesNot()
     {
-        (int exit, byte[] bytes) = await JudgeAsync((await BaseC0.Value).Copy(), "C03", "C0");
+        (int exit, byte[] bytes) = await JudgeAsync((await BaseC0).Copy(), "C03", "C0");
         JsonNode candidate = Parse(bytes);
         Assert.Equal(0, exit);
         for (int repeat = 1; repeat <= 5; repeat++)
@@ -523,7 +523,7 @@ public sealed class ConsumerPhaseJudgeTests
     [Fact]
     public async Task Given_NonConsumerPhase_When_Judged_Then_CandidateCarriesNoConsumerProperty()
     {
-        Stores stores = (await BaseB04.Value).Copy();
+        Stores stores = (await BaseB04).Copy();
         (int exit, byte[] bytes) = await JudgeAsync(stores, "B04", "C0");
         JsonNode candidate = Parse(bytes);
         Assert.Equal(0, exit);
@@ -538,21 +538,21 @@ public sealed class ConsumerPhaseJudgeTests
     [Fact]
     public async Task Given_FiveAcceptedB04Repeats_When_JudgedWithAFixedClock_Then_CandidateBytesEqualTheBaseOutput()
     {
-        (_, byte[] bytes) = await JudgeAsync((await BaseB04.Value).Copy(), "B04", "C0", new FixedWallClock());
+        (_, byte[] bytes) = await JudgeAsync((await BaseB04).Copy(), "B04", "C0", new FixedWallClock());
         Assert.Equal(B04CandidateWithDuplicateBreakdown, Encoding.UTF8.GetString(bytes));
     }
 
     [Fact]
     public async Task Given_JudgedConsumerCandidate_When_Read_Then_TheCodecAccepts()
     {
-        (_, byte[] bytes) = await JudgeAsync((await BaseC0.Value).Copy(), "C03", "C0");
+        (_, byte[] bytes) = await JudgeAsync((await BaseC0).Copy(), "C03", "C0");
         using JsonDocument read = PhaseCandidateCodec.Read(bytes);
         Assert.Equal("C03", read.RootElement.GetProperty("scenario_id").GetString());
     }
 
     private static async Task<JsonObject> JudgedRoot()
     {
-        (_, byte[] bytes) = await JudgeAsync((await BaseC0.Value).Copy(), "C03", "C0");
+        (_, byte[] bytes) = await JudgeAsync((await BaseC0).Copy(), "C03", "C0");
         return Parse(bytes).AsObject();
     }
 
@@ -579,7 +579,7 @@ public sealed class ConsumerPhaseJudgeTests
     [InlineData("repeat-null")]
     public async Task Given_NonConsumerCandidateWithConsumerProperty_When_Read_Then_Rejects(string change)
     {
-        JsonObject root = Parse(await Judge(await BaseB04.Value, "B04")).AsObject();
+        JsonObject root = Parse(await Judge(await BaseB04, "B04")).AsObject();
         if (change == "root-object") root["consumer"] = new JsonObject();
         else root["repeats"]![0]!["consumer"] = null;
         Assert.Throws<FormatException>(() => PhaseCandidateCodec.Read(Encoding.UTF8.GetBytes(root.ToJsonString())));
