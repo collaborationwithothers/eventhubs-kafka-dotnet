@@ -1,8 +1,8 @@
 # Cached test state: contract-grade plan
 
-Revision: r2. Base commit: `46a58ddd43d365486d5448f1cf5de35b696e33c3` on `main`.
+Revision: r3. Base commit: `46a58ddd43d365486d5448f1cf5de35b696e33c3` on `main`.
 
-One pull request removes the only test-side state that survives from one mutant to the next in the verifier mutation campaign: three static caches in the consumer phase judge tests. It then measures, locally, which accepted kills that rested only on those tests still hold. Accepting the small timing risk this change adds to the runtime qualification is Hari's decision, asked under "Open questions for Hari".
+One pull request removes the only test-side state that survives from one mutant to the next in the verifier mutation campaign: three static caches in the consumer phase judge tests. It then measures, locally, which accepted kills that rested only on those tests still hold. Hari accepted the small timing risk this change adds to the runtime qualification ([decision 7213032814](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/601#issuecomment-7213032814)).
 
 ## 1. Goal and authority
 
@@ -12,7 +12,8 @@ Authority, in creation order:
 
 1. The body of issue #601 (scope items 1 to 5 and its constraints).
 2. [#601 decision 7211787887](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/601#issuecomment-7211787887), which adopts [#598 decision 7184653835](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/598#issuecomment-7184653835) as the pattern. Point 1: `ready-for-agent` approves the revision whose newest fresh check states "Blocking findings: none" and whose open questions read None, and the control session records that approval with revision and commit. Point 2: every open question goes to Hari before approval. Point 3: Claude Code implements on `claude-sonnet-5-5`; protected-path merges stay with Hari.
-3. The issue body cites [#599 decision 7193808224](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/599#issuecomment-7193808224) point 2 (batched acceptance runs) and [#600 findings 7201011493](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/600#issuecomment-7201011493) section 2 as context. They are read as evidence here; no decision on #601 links and adopts them beyond the issue body's constraint.
+3. [#601 decision 7213032814](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/601#issuecomment-7213032814), answering handoff 7212560777. Point 1 accepts the timing risk of renewing the runtime qualification, without a hosted timing diagnostic before merge. Point 2 directs this revision to use the two-concurrent-suites figures. Point 3 adopts the `--selection` correction of section 8 step 3 as `apply in implementation`. Point 4 authorizes this revision and one fresh check; a clean result approves it under decision 7211787887.
+Context, not authority: the issue body cites [#599 decision 7193808224](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/599#issuecomment-7193808224) point 2 (batched acceptance runs) and [#600 findings 7201011493](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/600#issuecomment-7201011493) section 2 as context. They are read as evidence here; no decision on #601 links and adopts them beyond the issue body's constraint.
 
 There is no item plan and no parent plan: this is a mutation-harness fix issue, and the issue body is the specification.
 
@@ -60,9 +61,9 @@ This pull request changes no wire format, failure name, stage name, configuratio
 
 - **Qualification file.** `c5-runtime-qualification.json` changes only by running `python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py renew --head <HEAD_SHA> --qualification tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json --basis "<BASIS>"`, where `<HEAD_SHA>` is the commit that holds the test change. `<BASIS>` is exactly:
 
-  `Issue 601 builds the ConsumerPhaseJudgeTests inputs per test instead of in static Lazy caches. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-27: 87.66 s and 87.97 s before, 89.01 s and 89.44 s after. Timing risk accepted by <DECISION_URL>.`
+  `Issue 601 builds the ConsumerPhaseJudgeTests inputs per test instead of in static Lazy caches. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-27: 87.66 s and 87.97 s before, 89.01 s and 89.44 s after. Timing risk accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/601#issuecomment-7213032814.`
 
-  `<DECISION_URL>` is the URL of Hari's decision that answers question Q1 in section 10. A revision of this plan that applies that answer replaces the placeholder with the URL. Until then, the plan is not approvable.
+  The URL is Hari's decision that answered the former question Q1 (section 10).
 - **Runbook text.** The new runbook section (R5) is operational documentation that later sessions read as the record of this fix.
 
 ## 5. Requirements
@@ -114,7 +115,16 @@ Effect on suite time, measured locally by the planning session on 2026-11-27 at 
 
 All 111 cases passed in each class run. The suite mean rose by 1.41 s, 1.61 percent (computed by script). The class runs in parallel with other classes, so the suite cost is much smaller than the class cost.
 
-Estimate, 2026-11-27, basis: the 1.61 percent local suite increase, applied to the longest hosted shard observation recorded in docs/operations/verifier-mutation.md (2,637.073 s on `phase-candidate-codec-p20`), assuming per-mutant time scales with suite wall and that a hosted runner behaves like this container, neither measured: about 2,679 s against the 2,700-second `budget_seconds`. The `check` command does not re-evaluate estimates after a renewal (docs/operations/verifier-mutation.md, version 2 `renew`: "Measured maps, timing evidence, estimates, targets and historical entries are not touched"), so the real effect appears only in the next hosted campaign. This is the risk question Q1 asks Hari to accept.
+The hosted campaign sets no Stryker concurrency (no `concurrency` key in `tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json`), so Stryker 5.0.0 defaults to half the processor count ([ConcurrencyInput.cs L18](https://github.com/stryker-mutator/stryker-net/blob/6e77a3451bac4793e9c839c3ff4055c1b30ca3af/src/Stryker.Configuration/Options/Inputs/ConcurrencyInput.cs#L18)) and test sessions run side by side. The planning session therefore also measured two suites at once, on 2026-11-27, with the same commit, build, prototype and container: two suite processes started together, 2 rounds per variant, alternating, each process fresh, no other load. All 8443 tests passed in every process.
+
+| Two concurrent suites, wall per process | Before (cached) | After (per test) |
+|---|---|---|
+| Round 1 | 114.48 s, 115.05 s | 110.70 s, 112.48 s |
+| Round 2 | 114.45 s, 113.68 s | 118.82 s, 118.24 s |
+
+Mean 114.42 s before, 115.06 s after: plus 0.64 s, 0.56 percent (computed by script). The after range, 110.70 s to 118.82 s, is wider than the difference, so this sample does not separate the effect from noise. The worst pairing, 118.82 s against the slowest cached 115.05 s, is plus 3.3 percent; that is an upper reading, not a measurement of the effect.
+
+Estimates, 2026-11-27, basis: these percentages applied to the longest recorded shard observation, 2,637.073 s on `phase-candidate-codec-p20` (hosted diagnostic run [45355469113](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/45355469113), docs/operations/verifier-mutation.md; not the accepted campaign), assuming per-mutant time scales with suite wall and that a hosted runner behaves like this container, neither measured: about 2,652 s at 0.56 percent, and about 2,724 s at the 3.3 percent upper reading, against the 2,700-second `budget_seconds`. From the jobs API, read by the r2 plan check on 2026-11-27: in the accepted runs 45555996117 and 45555978345, whole jobs, setup included, took up to 2,794 s, and the runs took 3,036 s and 2,800 s against the 4,200-second limit. Whole-job time is not the quantity `budget_seconds` bounds. The `check` command does not re-evaluate estimates after a renewal (docs/operations/verifier-mutation.md, version 2 `renew`: "Measured maps, timing evidence, estimates, targets and historical entries are not touched"), so a real overrun would show first in the next batched acceptance campaign (section 11, D1) and comes back to Hari. Hari accepted this risk in [decision 7213032814](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/601#issuecomment-7213032814) point 1.
 
 ## 8. Measurement M1 (issue scope item 3)
 
@@ -127,6 +137,7 @@ Steps:
 1. Download the `c5-mutation-` artifacts of both runs and reconcile them by script against the coordinator `summary.json`: 9773 Killed, 1 Timeout, 2941 Survived, 1854 CompileError, 601 Ignored, as #600 reproduced. A mismatch stops M1; record it in the R6 comment and continue the pull request.
 2. Select by script every mutant whose hosted status is Killed and whose `killedBy` list names only tests of `Parchwell.Verifier.Tests.Judge.ConsumerPhaseJudgeTests`. Record the count. #600 counted 165; a different count is recorded with both numbers, and M1 continues with the computed set.
 3. Group the selection by target. For each target, choose one untouched native report of that target from the reference artifacts as its inventory, and map each selected mutant to that report's ID by identity (mutator, replacement, location and static flag) before the call; numeric IDs from other shard reports are never used directly. Run one `c5_runtime.py local-sample` invocation on a clean checkout of the pull request commit that holds the test change, with `--target` set to the target, `--inventory` set to that report, `--inventory-source-commit e3c8eb9462a6ecae139a651c5eef39812be07801`, the mapped IDs as `--selection`, `--timeout 5400`, and `--output-dir` set to a new directory that does not exist yet, outside the repository and outside any Git worktree, one per invocation, under the session's scratch space. `local-sample` runs static mutants in fresh processes itself.
+   - Adopted correction, `apply in implementation` ([decision 7213032814](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/601#issuecomment-7213032814) point 3): in the paragraph above, read "the mapped IDs as `--selection`" as "a JSON file outside the repository that holds the mapped IDs as a nonempty list of unique strings, as `--selection`". The flag takes a path (`c5_runtime.py` line 3087, read at line 2789; list rules at lines 2630 to 2633).
    - If `local-sample` refuses the target because its committed bytes differ from the reference commit, record every selected mutant of that target as not measured.
    - If it refuses the selection for any other reason before running a mutant (for example `sample_plan` rejecting a span that cannot be expressed, or a static mutant sharing its span), run that target again once per selected mutant, sequentially, each with a one-ID selection and its own new output directory. A mutant whose one-ID invocation is also refused is recorded as not measured, with the refusal message.
    - If an invocation starts and fails or times out, record its unmeasured mutants with the reason and do not retry it.
@@ -175,12 +186,14 @@ Acceptance commands, from the repository root:
 
 ## 10. Open questions for Hari
 
-Q1. Accept the timing risk of the renewal. The change makes each mutant's test run slightly longer. Measured locally: suite wall 87.66 s and 87.97 s before, 89.01 s and 89.44 s after, plus 1.61 percent (section 7). The renewal keeps every shard estimate as measured; the check does not re-time them. Estimate, unmeasured on hosted runners: the longest recorded shard observation would move from 2,637 s to about 2,679 s, under the 2,700-second budget by about 21 s. The 4,200-second campaign limit is not changed by this pull request; whether the next campaign meets it is measured by that campaign. Recommendation: accept, because the fix removes false kills from the gate and its measured cost is small. Alternative: require a hosted timing diagnostic before merge, which needs a dispatch decision and delays the fix. The answer's URL becomes `<DECISION_URL>` in section 4.
+None.
 
-Deployment assumptions, none open beyond Q1:
+The former question Q1, whether to accept the timing risk of the renewal, is answered: accepted, without a hosted timing diagnostic before merge ([decision 7213032814](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/601#issuecomment-7213032814) point 1). The evidence is in section 7.
+
+Deployment assumptions:
 
 - The reference artifacts stay downloadable until M1 runs. Evidence: the runs' artifact listings on 2026-11-27, none expired, earliest expiry 2027-02-23 (taken over the REST API, idle, fresh request). No test covers it; if they expire, M1 records the gap and continues.
-- The local timing in section 7 was taken with a fresh test process per run, on an idle container. It is not hosted evidence; Q1 covers that gap.
+- Hosted mutation time under the change stays within the qualification's estimates. Evidence: the local timings of section 7, taken with a fresh test process per run on an idle container, one suite at a time and two suites at once; not hosted evidence. No test covers it. Hari accepted this risk by name in [decision 7213032814](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/601#issuecomment-7213032814) point 1; the next batched acceptance campaign (D1) measures it.
 
 ## 11. Deferred work
 
@@ -198,7 +211,7 @@ The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when i
 
 (b) Where the plan is stricter than its parent: there is no parent plan. Against the issue body, the plan fixes the method (per-test construction) and its shape instead of leaving it open, pins the renewal basis, and adds the four expected survivors of section 8. One difference rather than strictness: M1 runs each target's selected kills in one sparse batch rather than one isolated invocation per mutant; section 8 "Why batches are enough" gives the reason.
 
-(c) Tests or checks depending on code, data or behaviour neither on `main` nor in the pull request: the reference artifacts of runs 45555996117 and 45555978345 (checked by API, section 10); the Stryker and xUnit behaviours of section 7 (checked against source at the pinned commits); the #600 statuses of the four expected survivors (checked against #600 findings section 2, which reports them from isolated local runs; not re-run here).
+(c) Tests or checks depending on code, data or behaviour neither on `main` nor in the pull request: the reference artifacts of runs 45555996117 and 45555978345 (checked by API, section 10); the Stryker and xUnit behaviours of section 7 (checked against source at the pinned commits); the #600 statuses of the four expected survivors (checked against #600 findings section 2, which reports them from isolated local runs; not re-run here); hosted mutation time under the change (not measured; local evidence in section 7; listed as a deployment assumption in section 10, accepted by Hari in decision 7213032814 point 1).
 
 ## 14. Size estimate
 
