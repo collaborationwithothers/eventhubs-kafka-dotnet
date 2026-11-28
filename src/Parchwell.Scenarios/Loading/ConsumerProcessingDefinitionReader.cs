@@ -13,13 +13,15 @@ internal static class ConsumerProcessingDefinitionReader
     private const int SlowDurationMs = 90000;
     private const int C10KillCount = 110;
     private const int C01KillCount = 1;
+    private const int StopAfterStartLineMs = 60000;
 
     internal static ConsumerProcessingDefinition? Read(NodeValidation validation, InputNode? node, ScenarioDefinition definition, bool combined)
     {
-        // The items that declare a consumer experiment: C03 (slow message), C10 and C01 (kill count).
+        // The items that declare a consumer experiment: C03 (slow message), C10 and C01 (kill count), and C18 (stop).
         var isKillItem = definition.Id is "C10" or "C01";
+        var isStopItem = definition.Id == "C18";
         var modes = Modes(definition.Id);
-        var declares = isKillItem || modes.Count != 0;
+        var declares = isKillItem || isStopItem || modes.Count != 0;
         if (node is null)
         {
             if (declares)
@@ -55,12 +57,18 @@ internal static class ConsumerProcessingDefinitionReader
         }
         var slowMessages = ImmutableDictionary.CreateBuilder<string, ConsumerSlowMessageDeclaration>(StringComparer.Ordinal);
         var killCounts = ImmutableDictionary.CreateBuilder<string, int>(StringComparer.Ordinal);
+        var stops = ImmutableDictionary.CreateBuilder<string, ConsumerStopDeclaration>(StringComparer.Ordinal);
         foreach (var (id, entry) in configurationsMap.Fields)
         {
             var path = Root + ".configurations." + id;
             if (isKillItem)
             {
                 ReadKillEntry(validation, definition.Id, id, entry, path, killCounts);
+                continue;
+            }
+            if (isStopItem)
+            {
+                ReadStopEntry(validation, id, entry, path, stops);
                 continue;
             }
             if (entry is not MapNode entryMap || entryMap.Fields.Count != 1 || !entryMap.Fields.TryGetValue("slow_message", out var slowNode) ||
@@ -85,7 +93,10 @@ internal static class ConsumerProcessingDefinitionReader
             !definition.Roles.SequenceEqual([KafkaClientRole.LoadGenProducer, KafkaClientRole.EnrichmentConsumer, KafkaClientRole.VerifierConsumer]) ||
             !MeasuresAreFixed(definition) || !OverridesAreFixed(definition))
             validation.Error(node, Root, "consumer_processing_experiment", "Repeats, faults, gate, roles, measures and overrides must equal the fixed experiment.");
-        return new ConsumerProcessingDefinition(WindowMs, CompletionDeadlineMs, slowMessages.ToImmutable(), killCounts.ToImmutable());
+        return new ConsumerProcessingDefinition(WindowMs, CompletionDeadlineMs, slowMessages.ToImmutable(), killCounts.ToImmutable())
+        {
+            Stops = stops.ToImmutable()
+        };
     }
 
     private static bool MeasuresAreFixed(ScenarioDefinition definition)
@@ -130,6 +141,24 @@ internal static class ConsumerProcessingDefinitionReader
         if (killNode is not ScalarNode { IsPlain: true } scalar || scalar.Value != expected.ToString(System.Globalization.CultureInfo.InvariantCulture))
             validation.Error(killNode, path + ".kill_count", "consumer_processing_literal", $"The kill count must be {expected}.");
         killCounts[id] = expected;
+    }
+
+    // C18: an entry holds exactly stop, a mapping with exactly after_start_line_ms and shutdown_mode.
+    private static void ReadStopEntry(NodeValidation validation, string id, InputNode entry, string path, ImmutableDictionary<string, ConsumerStopDeclaration>.Builder stops)
+    {
+        if (entry is not MapNode entryMap || entryMap.Fields.Count != 1 || !entryMap.Fields.TryGetValue("stop", out var stopNode) ||
+            stopNode is not MapNode stopMap || stopMap.Fields.Count != 2 ||
+            !stopMap.Fields.TryGetValue("after_start_line_ms", out var afterNode) || !stopMap.Fields.TryGetValue("shutdown_mode", out var modeNode))
+        {
+            validation.Error(entry, path, "consumer_processing_shape", "Expected exactly one stop with the after_start_line_ms and shutdown_mode fields.");
+            return;
+        }
+        var expectedMode = id == "C0" ? "close" : "dispose";
+        if (afterNode is not ScalarNode { IsPlain: true, Value: "60000" })
+            validation.Error(afterNode, path + ".stop.after_start_line_ms", "consumer_processing_literal", "The stop must come 60000 milliseconds after the start line.");
+        if (modeNode is not ScalarNode { IsPlain: true, Value: var mode } || !StringComparer.Ordinal.Equals(mode, expectedMode))
+            validation.Error(modeNode, path + ".stop.shutdown_mode", "consumer_processing_literal", $"The shutdown mode must be {expectedMode}.");
+        stops[id] = new ConsumerStopDeclaration(StopAfterStartLineMs, expectedMode);
     }
 
     // The slow-message mode each configuration of an item that declares consumer_processing must use.

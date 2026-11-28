@@ -1,0 +1,154 @@
+schema_version: 1
+id: C18
+subject: >-
+  Confluent.Kafka v2.16.0 documents that Close commits offsets when auto
+  commit is enabled and tells the group coordinator the consumer is leaving,
+  and that Dispose without Close does neither. librdkafka v2.16.0 adds that
+  without close the consumer is removed only after session.timeout.ms
+  expires. Microsoft recommends session.timeout.ms 30000 for Event Hubs.
+
+assessment_rules:
+  counted_repeats: complete_valid only; H1 and H2 also require reassignment.microseconds not null
+  repeats_per_configuration: 5
+  replacements: 0
+  evidence: >-
+    The verifier consumer block of each repeat: status, counts, reassignment
+    and shutdown_margin (docs/operations/verifier-contract.md). Reassignment
+    runs from the subject's stop_observed row to the first assigned row,
+    from the witness, that holds the subject's partitions. It is null when
+    the members ran on different nodes. A repeat whose subject wrote no
+    stop receipt is incomplete (consumer_stop_receipt_missing) and is not
+    counted.
+  stop_point: >-
+    The workflow deletes the subject's pod 60000 ms after the start line,
+    with the chart's 30 s termination grace. The subject treats
+    ApplicationStopping as the stop request, finishes the message in progress,
+    appends a stop_observed row, then calls Close and Dispose (C0) or
+    Dispose only (C1), and writes a stop receipt (ADR-022 Amendment 1).
+    Both members run the baseline, including session.timeout.ms 30000,
+    heartbeat.interval.ms 3000, enable.auto.commit true,
+    auto.commit.interval.ms 5000 and enable.auto.offset.store false.
+  window_policy: >-
+    27000000 microseconds is session.timeout.ms minus heartbeat.interval.ms,
+    because the subject's last heartbeat can precede its stop by up to
+    3000 ms. The C1 upper bound adds 15000 ms for rebalance time, the same
+    policy value as C01, not a measurement.
+
+configurations:
+  C0:
+    H1_close_hands_over_before_session_timeout:
+      question: >-
+        With Close, does the witness hold the subject's partitions before
+        the session timeout could have removed the subject?
+      holds_when: >-
+        All 5 repeats complete_valid, and in each reassignment.microseconds is
+        not null and < 27000000.
+      contradicted_when: >-
+        All 5 repeats counted, and in at least one reassignment.microseconds is
+        >= 27000000.
+      otherwise: inconclusive
+    H3_close_commits_final_offsets:
+      question: >-
+        With Close, does the witness start after the subject's last processed
+        message, so that no message is processed twice?
+      holds_when: >-
+        All 5 repeats complete_valid, and in each counts.processed_again = 0.
+      contradicted_when: >-
+        All 5 repeats complete_valid, and in at least one
+        counts.processed_again >= 1.
+      otherwise: inconclusive
+  C1:
+    H2_dispose_waits_for_session_timeout:
+      question: >-
+        With Dispose only, does the witness hold the subject's partitions only
+        after the session timeout has removed the subject?
+      holds_when: >-
+        All 5 repeats complete_valid, and in each reassignment.microseconds is
+        not null, >= 27000000 and < 45000000.
+      contradicted_when: >-
+        All 5 repeats counted, and in at least one reassignment.microseconds is
+        >= 45000000.
+      otherwise: inconclusive
+    early_removal:
+      mode: finding
+      when: >-
+        In at least one counted repeat, reassignment.microseconds < 27000000.
+      text: >-
+        The witness held the subject's partitions sooner than session.timeout.ms
+        minus heartbeat.interval.ms after the stop, so the session timeout did
+        not decide the removal, although Dispose sends no leave request. One
+        possible cause is that Event Hubs removes a member when its connection
+        closes; that cause is not verified, and C01 did not show it. It is
+        reported on its own line and does not contradict H2.
+    H4_dispose_skips_final_commit:
+      question: >-
+        With Dispose only, are messages the subject processed after its last
+        automatic commit processed again by the witness?
+      holds_when: >-
+        All 5 repeats complete_valid, and the sum of counts.processed_again
+        over the 5 repeats >= 1.
+      contradicted_when: >-
+        All 5 repeats complete_valid, and in each counts.processed_again = 0.
+      otherwise: inconclusive
+  both:
+    committed_never_processed:
+      mode: finding
+      when: >-
+        In at least one counted repeat, counts.committed_never_processed >= 1.
+      text: >-
+        A message was marked done without being processed. With
+        auto.offset.reset latest, a subject partition that had no committed
+        offset when the subject stopped is reset to latest when the witness
+        takes it over, so messages that arrived in between are skipped, as in
+        C01's result. Under Close this needs a partition on which the subject
+        processed no message; under Dispose, one whose first processed message
+        came after the subject's last automatic commit (inference from the
+        baseline). It is reported on its own line, with the partitions
+        concerned, and does not change the verdict.
+    shutdown_margin:
+      mode: recorded_only
+      value: >-
+        Per repeat, shutdown_margin.receipt_microseconds (stop_observed row to
+        stop receipt written) and shutdown_margin.process_end_microseconds
+        (stop_observed row to the end of the subject's process, from the
+        workflow's watch of the deleted pod), each against the 30 s grace.
+    reassignment:
+      mode: recorded_only
+      value: reassignment.microseconds per repeat
+    consumer_errors:
+      mode: recorded_only
+      value: the number of consumer_error rows per member per repeat
+    partition_events:
+      mode: recorded_only
+      value: >-
+        Per repeat, the number of partition_event rows of each member by kind
+        (assigned, revoked, lost), after its first assigned row, and the
+        subject's successful commit entries after its stop_observed row.
+
+verdict:
+  confirmed_when: H1, H2, H3 and H4 each hold.
+  contradicted_when: any of H1, H2, H3 and H4 is contradicted.
+  no_verdict_when: neither of the above; the run is investigated, not published.
+  smoke_run: never published as a result; it gives no verdict.
+  separate_lines: the committed_never_processed finding, the shutdown margins, the reassignment values and the consumer-error counts are published on their own lines and do not change the verdict.
+  text_must_state:
+    - The stop point and window policy in assessment_rules.
+    - The workload is synthetic and its load lasts 150 s, the same as C01's.
+    - A grace period shorter than the close, a shell-form ENTRYPOINT,
+      producer flush on shutdown and shutdown commit with auto-commit off
+      are not tested (docs/blueprint.md section 12, C18 row).
+    - Each counted repeat's two shutdown margins against the 30 s grace.
+    - The C18 smoke measured an idle member only; the margins here are the
+      first measurement with a message in flight.
+    - Of K-28, only the revoked half is exercised. Under Close (C0) the
+      subject's revoked row and its commits during Close are recorded. Under
+      Dispose (C1) the client is destroyed without a consumer close, so no
+      revoked or lost callback is expected. No configuration loses its
+      partitions while still running, so the lost half is not tested.
+
+sources:
+  - https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IConsumer.cs
+  - https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Consumer.cs
+  - https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Impl/SafeKafkaHandle.cs
+  - https://github.com/confluentinc/librdkafka/blob/v2.16.0/INTRODUCTION.md
+  - https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations

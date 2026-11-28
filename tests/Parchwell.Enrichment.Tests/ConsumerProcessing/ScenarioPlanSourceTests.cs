@@ -40,6 +40,9 @@ public sealed class ScenarioPlanSourceTests
         Assert.Equal(360000, plan.WindowMs);
         Assert.Equal(new ConsumerSlowMessage(100, 90000, "inline"), plan.SlowMessage);
         Assert.Null(plan.KillCount);
+        Assert.False(plan.StopConfigured);
+        Assert.Null(plan.ShutdownMode);
+        Assert.False(plan.RecordsConsumerErrors);
         Assert.Equal([KeyValuePair.Create("max.poll.interval.ms", "60000")], plan.ConsumerSettings);
     }
 
@@ -55,6 +58,9 @@ public sealed class ScenarioPlanSourceTests
         Assert.Equal(360000, plan.WindowMs);
         Assert.Equal(mode is null ? null : new ConsumerSlowMessage(100, 90000, mode), plan.SlowMessage);
         Assert.Null(plan.KillCount);
+        Assert.False(plan.StopConfigured);
+        Assert.Null(plan.ShutdownMode);
+        Assert.False(plan.RecordsConsumerErrors);
         if (role == "subject") Assert.Equal([KeyValuePair.Create(PollSetting[0], "60000")], plan.ConsumerSettings);
         else Assert.Empty(plan.ConsumerSettings);
     }
@@ -154,6 +160,9 @@ public sealed class ScenarioPlanSourceTests
         });
         ConsumerProcessingPlan plan = host.Services.GetRequiredService<IConsumerProcessingPlanSource>().GetPlan("C03", "C0")!;
         Assert.Equal(new ConsumerSlowMessage(100, 90000, "inline"), plan.SlowMessage);
+        Assert.False(plan.StopConfigured);
+        Assert.Null(plan.ShutdownMode);
+        Assert.False(plan.RecordsConsumerErrors);
         Assert.Equal(200, plan.ProcessingDelayMs);
         Assert.Equal(360000, plan.WindowMs);
     }

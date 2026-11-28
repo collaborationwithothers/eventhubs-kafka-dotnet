@@ -58,13 +58,13 @@ public sealed class LoadGenHostOptions
     public bool? RequireRequestEvidence { get; set; }
 
     /// <summary>
-    /// Accepts a scenario, phase and configuration when <see cref="ScenarioPhases"/> does, or for C03, C10 or C01, whose consumer pair rule
+    /// Accepts a scenario, phase and configuration when <see cref="ScenarioPhases"/> does, or for C03, C10, C01 or C18, whose consumer pair rule
     /// is local to the load generator: phase C0 or C1 with the configuration of the same name. <see cref="ScenarioPhases"/>
     /// does not list them, because every verifier mode that reads it would then accept them.
     /// </summary>
     internal static bool IsAcceptedPair(string? scenarioId, string? phase, string? configurationId) =>
         ScenarioPhases.TryGetConfiguration(scenarioId, phase, out string? expectedConfiguration) && configurationId == expectedConfiguration ||
-        scenarioId is "C03" or "C10" or "C01" && phase is "C0" or "C1" && configurationId == phase;
+        scenarioId is "C03" or "C10" or "C01" or "C18" && phase is "C0" or "C1" && configurationId == phase;
 
     /// <summary>Validates all required inputs, identities, storage destinations, and finite time limits.</summary>
     public void Validate()

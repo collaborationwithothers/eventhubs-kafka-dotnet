@@ -1,5 +1,5 @@
 {{- /* Scenarios that run consumer member Jobs and the consumer verifier modes. */ -}}
-{{- define "parchwell.consumerScenarios" -}}C01 C03 C10{{- end -}}
+{{- define "parchwell.consumerScenarios" -}}C01 C03 C10 C18{{- end -}}
 {{- define "parchwell.isConsumerScenario" -}}
 {{- if has .Values.scenario_id (splitList " " (include "parchwell.consumerScenarios" .)) -}}true{{- end -}}
 {{- end -}}
@@ -10,7 +10,7 @@
 {{- $role := trimPrefix "consumer-" $r.mode -}}
 {{- $job := include "parchwell.jobName" . -}}
 {{- $account := index $r.service_accounts "enrichment-consumer" -}}
-{{- if not (include "parchwell.isConsumerScenario" .) }}{{ fail "consumer member modes require scenario C01, C03 or C10" }}{{ end -}}
+{{- if not (include "parchwell.isConsumerScenario" .) }}{{ fail "consumer member modes require scenario C01, C03, C10 or C18" }}{{ end -}}
 {{- if not (has .Values.configuration_id (list "C0" "C1")) }}{{ fail "consumer member modes require configuration C0 or C1" }}{{ end -}}
 {{- if ne $r.phase .Values.configuration_id }}{{ fail "phase must equal configuration for consumer members" }}{{ end -}}
 {{- if not $r.enrichment_image }}{{ fail "consumer members require enrichment_image" }}{{ end -}}
@@ -135,7 +135,7 @@ spec:
 {{- $r := .Values.runtime -}}
 {{- $job := include "parchwell.jobName" . -}}
 {{- $account := index $r.service_accounts "enrichment-consumer" -}}
-{{- if not (include "parchwell.isConsumerScenario" .) }}{{ fail "the consumer storage check requires scenario C01, C03 or C10" }}{{ end -}}
+{{- if not (include "parchwell.isConsumerScenario" .) }}{{ fail "the consumer storage check requires scenario C01, C03, C10 or C18" }}{{ end -}}
 {{- if not (has .Values.configuration_id (list "C0" "C1")) }}{{ fail "the consumer storage check requires configuration C0 or C1" }}{{ end -}}
 {{- if ne $r.phase .Values.configuration_id }}{{ fail "phase must equal configuration for the consumer storage check" }}{{ end -}}
 {{- if not $r.enrichment_image }}{{ fail "the consumer storage check requires enrichment_image" }}{{ end -}}

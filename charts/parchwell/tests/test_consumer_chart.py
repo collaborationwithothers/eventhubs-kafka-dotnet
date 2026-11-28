@@ -11,7 +11,7 @@ import yaml
 from test_chart import (CHART, ROOT, FIXTURE, DEFAULTS, run, with_case, expected_environment, jobname,
                         option_properties, worker_setting_errors)
 
-PAIRS = (('C03', 'C0'), ('C10', 'C1'), ('C01', 'C0'))
+PAIRS = (('C03', 'C0'), ('C10', 'C1'), ('C01', 'C0'), ('C18', 'C0'), ('C18', 'C1'))
 MEMBERS = ('subject', 'witness')
 ENRICHMENT_IMAGE = 'synthetic.azurecr.io/parchwell/enrichment@sha256:' + 'd' * 64
 OPTIONS_FILE = 'src/Parchwell.Enrichment/ConsumerProcessing/ConsumerProcessingOptions.cs'
@@ -274,6 +274,7 @@ def negatives():
         change(bad)
         return bad
     good = case('C03', 'C0', 'consumer-subject')
+    c18 = case('C18', 'C0', 'consumer-subject')
     witness = case('C10', 'C1', 'consumer-witness', 5)
     bad_cases = [
         mutate(good, lambda d: d.update(scenario_id='A01')),
@@ -292,6 +293,7 @@ def negatives():
         mutate(good, lambda d: d['runtime'].update(repeat=6)),
         mutate(good, lambda d: d['runtime'].update(loadgen_job_name='other-c0-r1-loadgen')),
         mutate(good, lambda d: d['runtime'].update(image_smoke=True)),
+        mutate(c18, lambda d: (d.update(configuration_id='C2'), d['runtime'].update(phase='C2'))),
     ]
     # Every mode of a consumer scenario needs the enrichment image and the three service accounts.
     for mode in ('start-line', 'loadgen', 'verify', 'judge'):
@@ -314,16 +316,33 @@ def render(directory, name, values):
     return run(['helm', 'template', 'synthetic', str(CHART), '--namespace', 'parchwell', '-f', str(fixture)])
 
 
+def assert_c18_equals_c01(directory, configuration, mode):
+    # R8: a C18 member Job is the C01 Job of the same configuration with the scenario identifiers replaced.
+    renders = {}
+    for item in ('C01', 'C18'):
+        rendered = render(directory, f'equal-{item}-{configuration}-{mode}', case(item, configuration, mode))
+        assert rendered.returncode == 0, rendered.stderr
+        renders[item] = rendered.stdout
+    assert renders['C01'].replace('C01', 'C18').replace('c01', 'c18') == renders['C18'], (configuration, mode)
+
+
+def negatives_c18_c2():
+    values = case('C18', 'C0', 'consumer-subject')
+    values.update(configuration_id='C2')
+    values['runtime'].update(phase='C2')
+    return values
+
+
 def main():
     schema = json.loads((CHART / 'values.schema.json').read_text())
     execution = schema['properties']['runtime']['properties']['bounds']['properties']['execution']['const']
     assert execution['consumer_job_seconds'] == 1800 == DEFAULTS['execution']['consumer_job_seconds']
-    assert {'C01', 'C03', 'C10'} <= set(schema['properties']['scenario_id']['enum'])
+    assert {'C01', 'C03', 'C10', 'C18'} <= set(schema['properties']['scenario_id']['enum'])
     worker_names = worker_option_check()
     assert worker_names == set(WORKER_NAMES), worker_names ^ set(WORKER_NAMES)
     members = list(member_cases())
     verifiers = list(verifier_cases())
-    assert len(members) == 12 and len(verifiers) == 8
+    assert len(members) == 20 and len(verifiers) == 12
     with tempfile.TemporaryDirectory(prefix='consumer-chart-') as name:
         directory = Path(name)
         for index, values in enumerate(members + verifiers):
@@ -344,6 +363,9 @@ def main():
             output.write_text(rendered.stdout)
             checked = run(['kubeconform', '-strict', '-summary', '-kubernetes-version', '1.35.0', str(output)])
             assert checked.returncode == 0, checked.stdout + checked.stderr
+        for configuration in ('C0', 'C1'):
+            for member in MEMBERS:
+                assert_c18_equals_c01(directory, configuration, f'consumer-{member}')
         for index, values in enumerate(storage_check_cases()):
             rendered = render(directory, f'storage-check-{index}', values)
             assert rendered.returncode == 0, (index, rendered.stderr)
@@ -357,6 +379,10 @@ def main():
             rendered = render(directory, f'negative-{index}', values)
             assert rendered.returncode != 0, index
             assert not jobs_of(rendered.stdout), index
+        # R8: C18 with configuration C2 fails on the schema, not on some other render error.
+        rejected = render(directory, 'c18-c2', negatives_c18_c2())
+        assert rejected.returncode != 0 and "values don't meet the specifications of the schema" in rejected.stderr, rejected.stderr
+        assert 'configuration_id must be one of the following' in rejected.stderr, rejected.stderr
     print(f'consumer chart acceptance passed: {len(members) + len(verifiers)} positive, {len(bad_cases)} negative, '
           f'{len(worker_names)} worker names checked against the options class')
 

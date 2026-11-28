@@ -1,0 +1,39 @@
+schema_version: 1
+id: C18
+baseline: Parchwell.Kafka
+roles:
+  - LoadGenProducer
+  - EnrichmentConsumer
+  - VerifierConsumer
+profile: profiles/c01-consumer.yaml
+
+configurations:
+  C0: {}
+  C1: {}
+
+fault:
+  live: {kind: none}
+  component: {kind: none}
+
+repeats: 5
+
+gate: {kind: none}
+
+measures:
+  - {id: ledger.delivery_error_code, role: LoadGenProducer}
+  - {id: client.fatal_error, role: LoadGenProducer}
+  - {id: verifier.ok, role: VerifierConsumer}
+  - {id: verifier.loss, role: VerifierConsumer}
+  - {id: verifier.phantom, role: VerifierConsumer}
+  - {id: verifier.reported_failure, role: VerifierConsumer}
+  - {id: verifier.duplicate, role: VerifierConsumer}
+  - {id: verifier.reorder, role: VerifierConsumer}
+
+consumer_processing:
+  window_ms: 360000
+  completion_deadline_ms: 30000
+  configurations:
+    C0:
+      stop: {after_start_line_ms: 60000, shutdown_mode: close}
+    C1:
+      stop: {after_start_line_ms: 60000, shutdown_mode: dispose}

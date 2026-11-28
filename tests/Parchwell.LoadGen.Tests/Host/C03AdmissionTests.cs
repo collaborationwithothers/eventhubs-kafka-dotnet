@@ -15,7 +15,7 @@ namespace Parchwell.LoadGen.Tests.Host;
 
 #pragma warning disable CA1707 // Repository test naming convention.
 
-// C03, C10 and C01 admission in the load generator: the pair rule is local to it (ScenarioPhases is unchanged), the committed files resolve, and the workloads spread their partitions as the plans assume.
+// C03, C10, C01 and C18 admission in the load generator: the pair rule is local to it (ScenarioPhases is unchanged), the committed files resolve, and the workloads spread their partitions as the plans assume.
 public sealed class C03AdmissionTests
 {
     private static LoadGenHostOptions HostOptions(string scenario, string phase, string configuration, string? jobName = null)
@@ -42,6 +42,8 @@ public sealed class C03AdmissionTests
     [InlineData("C10", "C1")]
     [InlineData("C01", "C0")]
     [InlineData("C01", "C1")]
+    [InlineData("C18", "C0")]
+    [InlineData("C18", "C1")]
     public void Given_a_consumer_scenario_with_matching_phase_and_configuration_When_validating_Then_options_and_run_context_accept_it(string scenario, string phase)
     {
         Assert.Null(Record.Exception(HostOptions(scenario, phase, phase).Validate));
@@ -55,6 +57,8 @@ public sealed class C03AdmissionTests
     [InlineData("C10", "C0", "C1")]
     [InlineData("C10", "C2", "C2")]
     [InlineData("C01", "probe", "C0")]
+    [InlineData("C18", "probe", "C0")]
+    [InlineData("C18", "C2", "C2")]
     public void Given_an_unaccepted_pair_When_validating_Then_each_check_keeps_its_failure_name(string scenario, string phase, string configuration)
     {
         Assert.Equal("phase_configuration_pair_invalid", Assert.Throws<InvalidOperationException>(HostOptions(scenario, phase, configuration).Validate).Message);
@@ -80,6 +84,8 @@ public sealed class C03AdmissionTests
     [InlineData("C10", "C1")]
     [InlineData("C01", "C0")]
     [InlineData("C01", "C1")]
+    [InlineData("C18", "C0")]
+    [InlineData("C18", "C1")]
     public async Task Given_the_LoadGen_host_registrations_When_loading_and_resolving_a_consumer_scenario_as_the_worker_does_Then_the_producer_settings_equal_the_baseline(string scenario, string configuration)
     {
         // The host is the real one: its scenario source, loader, resolver and role registrations are what a live C03 load generator uses.

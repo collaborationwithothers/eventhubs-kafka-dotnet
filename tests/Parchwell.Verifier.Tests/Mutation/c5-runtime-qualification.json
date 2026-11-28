@@ -99,11 +99,11 @@
     "src/Parchwell.Scenarios/Contracts/IScenarioSource.cs": "35fa8562d38f5fce099455619d3df22c361915ad0adba899f558abe484b75098",
     "src/Parchwell.Scenarios/Contracts/InputNodes.cs": "8ae64bb0353a415e7bf9fc679395b803dc5a8880c0ed584f987ef42898f7146c",
     "src/Parchwell.Scenarios/Contracts/MeasurementCatalog.cs": "2ff7f3595a5d97d6141c0c8201ca01c147c92688b8aabcf9b040a185d460a4d8",
-    "src/Parchwell.Scenarios/Contracts/ScenarioContracts.cs": "719da4f0a01bceb8dc46d8d19d69aea8e0679d82251db2bcc42cc769b2c59c08",
+    "src/Parchwell.Scenarios/Contracts/ScenarioContracts.cs": "03bf6a53f307a642c6833a4f91b5f22174cb8a6135a96651c8d310c7d94b3887",
     "src/Parchwell.Scenarios/Contracts/ScenarioLoadOptions.cs": "8fbd29e1439f2b7f01fe8cb82e43435bf71bce29dddc690f36050fa70680ab29",
     "src/Parchwell.Scenarios/Contracts/ScenarioPhases.cs": "60f7da34292fa587bb9ff8b8e44775b59cea04b7fdf33682955357a57aa82adf",
     "src/Parchwell.Scenarios/Contracts/ScenarioValidationException.cs": "9fef8c2801eb8891732bed8c325308588259c9b122e2f47f6b9e59da3b61d69b",
-    "src/Parchwell.Scenarios/Loading/ConsumerProcessingDefinitionReader.cs": "1810cafe68b848a81b77e1906a81052f0034c307d4cae7fd64f5d7cae8c5a589",
+    "src/Parchwell.Scenarios/Loading/ConsumerProcessingDefinitionReader.cs": "3666ab874f1adfc3a6888556f764eaa741d60f96a9922c1234a43b0014042db6",
     "src/Parchwell.Scenarios/Loading/DefinitionReader.cs": "1e8e2155891196a0bd05e720465236b5a8d6eb76c4bab454d9c082f2d795e50e",
     "src/Parchwell.Scenarios/Loading/IdleObservationDefinitionReader.cs": "f287a76f0c2bbc2bd752d789782a472a732bca3f3ba713dbf7a6cff9c88ef22f",
     "src/Parchwell.Scenarios/Loading/NodeValidation.cs": "15d18dcf5cb50a819af9b2d05abbfb288de44c31dac89c07779a4f00212ee4d4",
@@ -8879,15 +8879,17 @@
           },
           "src/Parchwell.Scenarios/Contracts/ScenarioContracts.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572.",
+              "Adds the optional Stops property and a C18 branch to the consumer-processing reader. The verifier's consumer plan source reads neither, and the loader's output for C03, C10 and C01 is unchanged (plan c18-scenario, R3), so the verifier's mutation runtime does not change."
             ],
-            "current_sha256": "719da4f0a01bceb8dc46d8d19d69aea8e0679d82251db2bcc42cc769b2c59c08"
+            "current_sha256": "03bf6a53f307a642c6833a4f91b5f22174cb8a6135a96651c8d310c7d94b3887"
           },
           "src/Parchwell.Scenarios/Loading/ConsumerProcessingDefinitionReader.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572.",
+              "Adds the optional Stops property and a C18 branch to the consumer-processing reader. The verifier's consumer plan source reads neither, and the loader's output for C03, C10 and C01 is unchanged (plan c18-scenario, R3), so the verifier's mutation runtime does not change."
             ],
-            "current_sha256": "1810cafe68b848a81b77e1906a81052f0034c307d4cae7fd64f5d7cae8c5a589"
+            "current_sha256": "3666ab874f1adfc3a6888556f764eaa741d60f96a9922c1234a43b0014042db6"
           },
           "src/Parchwell.Verifier/Common/Consumer/ScenarioConsumerVerificationPlanSource.cs": {
             "basis": [
@@ -9625,15 +9627,17 @@
           },
           "src/Parchwell.Scenarios/Contracts/ScenarioContracts.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572.",
+              "Adds the optional Stops property and a C18 branch to the consumer-processing reader. The verifier's consumer plan source reads neither, and the loader's output for C03, C10 and C01 is unchanged (plan c18-scenario, R3), so the verifier's mutation runtime does not change."
             ],
-            "current_sha256": "719da4f0a01bceb8dc46d8d19d69aea8e0679d82251db2bcc42cc769b2c59c08"
+            "current_sha256": "03bf6a53f307a642c6833a4f91b5f22174cb8a6135a96651c8d310c7d94b3887"
           },
           "src/Parchwell.Scenarios/Loading/ConsumerProcessingDefinitionReader.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572.",
+              "Adds the optional Stops property and a C18 branch to the consumer-processing reader. The verifier's consumer plan source reads neither, and the loader's output for C03, C10 and C01 is unchanged (plan c18-scenario, R3), so the verifier's mutation runtime does not change."
             ],
-            "current_sha256": "1810cafe68b848a81b77e1906a81052f0034c307d4cae7fd64f5d7cae8c5a589"
+            "current_sha256": "3666ab874f1adfc3a6888556f764eaa741d60f96a9922c1234a43b0014042db6"
           },
           "src/Parchwell.Verifier/Common/Consumer/ScenarioConsumerVerificationPlanSource.cs": {
             "basis": [
@@ -10333,15 +10337,17 @@
           },
           "src/Parchwell.Scenarios/Contracts/ScenarioContracts.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572.",
+              "Adds the optional Stops property and a C18 branch to the consumer-processing reader. The verifier's consumer plan source reads neither, and the loader's output for C03, C10 and C01 is unchanged (plan c18-scenario, R3), so the verifier's mutation runtime does not change."
             ],
-            "current_sha256": "719da4f0a01bceb8dc46d8d19d69aea8e0679d82251db2bcc42cc769b2c59c08"
+            "current_sha256": "03bf6a53f307a642c6833a4f91b5f22174cb8a6135a96651c8d310c7d94b3887"
           },
           "src/Parchwell.Scenarios/Loading/ConsumerProcessingDefinitionReader.cs": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572.",
+              "Adds the optional Stops property and a C18 branch to the consumer-processing reader. The verifier's consumer plan source reads neither, and the loader's output for C03, C10 and C01 is unchanged (plan c18-scenario, R3), so the verifier's mutation runtime does not change."
             ],
-            "current_sha256": "1810cafe68b848a81b77e1906a81052f0034c307d4cae7fd64f5d7cae8c5a589"
+            "current_sha256": "3666ab874f1adfc3a6888556f764eaa741d60f96a9922c1234a43b0014042db6"
           },
           "src/Parchwell.Verifier/Common/Consumer/ScenarioConsumerVerificationPlanSource.cs": {
             "basis": [
@@ -11051,6 +11057,18 @@
               "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
             ],
             "current_sha256": "3a6f1076e67cc361eee9e393ec25300416c8ed8325fa82992397d5fd7d5d4bfb"
+          },
+          "src/Parchwell.Scenarios/Contracts/ScenarioContracts.cs": {
+            "basis": [
+              "Adds the optional Stops property and a C18 branch to the consumer-processing reader. The verifier's consumer plan source reads neither, and the loader's output for C03, C10 and C01 is unchanged (plan c18-scenario, R3), so the verifier's mutation runtime does not change."
+            ],
+            "current_sha256": "03bf6a53f307a642c6833a4f91b5f22174cb8a6135a96651c8d310c7d94b3887"
+          },
+          "src/Parchwell.Scenarios/Loading/ConsumerProcessingDefinitionReader.cs": {
+            "basis": [
+              "Adds the optional Stops property and a C18 branch to the consumer-processing reader. The verifier's consumer plan source reads neither, and the loader's output for C03, C10 and C01 is unchanged (plan c18-scenario, R3), so the verifier's mutation runtime does not change."
+            ],
+            "current_sha256": "3666ab874f1adfc3a6888556f764eaa741d60f96a9922c1234a43b0014042db6"
           },
           "src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs": {
             "basis": [
@@ -11799,17 +11817,19 @@
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a source file changed or added for the C03 inputs of issue 508 (scenario schema, override entry, verifier plan source or resolver registration). No C5 target source changed.",
               "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572.",
+              "Adds the optional Stops property and a C18 branch to the consumer-processing reader. The verifier's consumer plan source reads neither, and the loader's output for C03, C10 and C01 is unchanged (plan c18-scenario, R3), so the verifier's mutation runtime does not change."
             ],
-            "current_sha256": "719da4f0a01bceb8dc46d8d19d69aea8e0679d82251db2bcc42cc769b2c59c08"
+            "current_sha256": "03bf6a53f307a642c6833a4f91b5f22174cb8a6135a96651c8d310c7d94b3887"
           },
           "src/Parchwell.Scenarios/Loading/ConsumerProcessingDefinitionReader.cs": {
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a source file changed or added for the C03 inputs of issue 508 (scenario schema, override entry, verifier plan source or resolver registration). No C5 target source changed.",
               "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572.",
+              "Adds the optional Stops property and a C18 branch to the consumer-processing reader. The verifier's consumer plan source reads neither, and the loader's output for C03, C10 and C01 is unchanged (plan c18-scenario, R3), so the verifier's mutation runtime does not change."
             ],
-            "current_sha256": "1810cafe68b848a81b77e1906a81052f0034c307d4cae7fd64f5d7cae8c5a589"
+            "current_sha256": "3666ab874f1adfc3a6888556f764eaa741d60f96a9922c1234a43b0014042db6"
           },
           "src/Parchwell.Scenarios/Loading/DefinitionReader.cs": {
             "basis": [
@@ -13295,17 +13315,19 @@
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a source file changed or added for the C03 inputs of issue 508 (scenario schema, override entry, verifier plan source or resolver registration). No C5 target source changed.",
               "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572.",
+              "Adds the optional Stops property and a C18 branch to the consumer-processing reader. The verifier's consumer plan source reads neither, and the loader's output for C03, C10 and C01 is unchanged (plan c18-scenario, R3), so the verifier's mutation runtime does not change."
             ],
-            "current_sha256": "719da4f0a01bceb8dc46d8d19d69aea8e0679d82251db2bcc42cc769b2c59c08"
+            "current_sha256": "03bf6a53f307a642c6833a4f91b5f22174cb8a6135a96651c8d310c7d94b3887"
           },
           "src/Parchwell.Scenarios/Loading/ConsumerProcessingDefinitionReader.cs": {
             "basis": [
               "Pull request c03-inputs of issue 508 (plan items/508/plan-c03-scenario.md revision 5) changes this shared input: a source file changed or added for the C03 inputs of issue 508 (scenario schema, override entry, verifier plan source or resolver registration). No C5 target source changed.",
               "Accepted by name as an authorized risk: Hari decision https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6969598217, point 1, which replaces the renew run for this pull request. This is not a measurement. The added or changed code and tests can raise the run time of the full mutant test population, and the old estimates may understate it. The mutation acceptance run on main after the merge remains required (point 2 of the decision).",
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572.",
+              "Adds the optional Stops property and a C18 branch to the consumer-processing reader. The verifier's consumer plan source reads neither, and the loader's output for C03, C10 and C01 is unchanged (plan c18-scenario, R3), so the verifier's mutation runtime does not change."
             ],
-            "current_sha256": "1810cafe68b848a81b77e1906a81052f0034c307d4cae7fd64f5d7cae8c5a589"
+            "current_sha256": "3666ab874f1adfc3a6888556f764eaa741d60f96a9922c1234a43b0014042db6"
           },
           "src/Parchwell.Scenarios/Loading/DefinitionReader.cs": {
             "basis": [
@@ -14733,6 +14755,18 @@
               "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
             ],
             "current_sha256": "3a6f1076e67cc361eee9e393ec25300416c8ed8325fa82992397d5fd7d5d4bfb"
+          },
+          "src/Parchwell.Scenarios/Contracts/ScenarioContracts.cs": {
+            "basis": [
+              "Adds the optional Stops property and a C18 branch to the consumer-processing reader. The verifier's consumer plan source reads neither, and the loader's output for C03, C10 and C01 is unchanged (plan c18-scenario, R3), so the verifier's mutation runtime does not change."
+            ],
+            "current_sha256": "03bf6a53f307a642c6833a4f91b5f22174cb8a6135a96651c8d310c7d94b3887"
+          },
+          "src/Parchwell.Scenarios/Loading/ConsumerProcessingDefinitionReader.cs": {
+            "basis": [
+              "Adds the optional Stops property and a C18 branch to the consumer-processing reader. The verifier's consumer plan source reads neither, and the loader's output for C03, C10 and C01 is unchanged (plan c18-scenario, R3), so the verifier's mutation runtime does not change."
+            ],
+            "current_sha256": "3666ab874f1adfc3a6888556f764eaa741d60f96a9922c1234a43b0014042db6"
           },
           "src/Parchwell.Verifier/VerifyRun/Window/ConsumedMetadataCapture.cs": {
             "basis": [
