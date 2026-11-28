@@ -160,6 +160,9 @@ public sealed class ScenarioPlanSourceTests
         });
         ConsumerProcessingPlan plan = host.Services.GetRequiredService<IConsumerProcessingPlanSource>().GetPlan("C03", "C0")!;
         Assert.Equal(new ConsumerSlowMessage(100, 90000, "inline"), plan.SlowMessage);
+        Assert.False(plan.StopConfigured);
+        Assert.Null(plan.ShutdownMode);
+        Assert.False(plan.RecordsConsumerErrors);
         Assert.Equal(200, plan.ProcessingDelayMs);
         Assert.Equal(360000, plan.WindowMs);
     }

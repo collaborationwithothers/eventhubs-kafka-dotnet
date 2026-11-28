@@ -14,7 +14,7 @@ public sealed class StopConsumerProcessingDefinitionTests
     private const string ProfileSlug = "c01-consumer";
 
     [Fact]
-    public async Task Loads_C18()
+    public async Task Given_CommittedC18Files_When_Loading_Then_ExposesTheStopsOfBothConfigurations()
     {
         var loaded = await Load("C18", Text("scenarios/C18/scenario.yaml"));
         var processing = loaded.Definition.ConsumerProcessing!;
@@ -44,6 +44,8 @@ public sealed class StopConsumerProcessingDefinitionTests
         { "C0 mode drain", "shutdown_mode: close}", "shutdown_mode: drain}", "consumer_processing_literal|consumer_processing.configurations.C0.stop.shutdown_mode" },
         { "C0 mode dispose", "shutdown_mode: close}", "shutdown_mode: dispose}", "consumer_processing_literal|consumer_processing.configurations.C0.stop.shutdown_mode" },
         { "C1 mode close", "shutdown_mode: dispose}", "shutdown_mode: close}", "consumer_processing_literal|consumer_processing.configurations.C1.stop.shutdown_mode" },
+        { "after quoted", "after_start_line_ms: 60000, shutdown_mode: close}", "after_start_line_ms: \"60000\", shutdown_mode: close}", "consumer_processing_literal|consumer_processing.configurations.C0.stop.after_start_line_ms" },
+        { "C0 mode quoted", "shutdown_mode: close}", "shutdown_mode: \"close\"}", "consumer_processing_literal|consumer_processing.configurations.C0.stop.shutdown_mode" },
         { "kill count beside stop", "C0:\n      stop: {after_start_line_ms: 60000, shutdown_mode: close}", "C0:\n      kill_count: 1\n      stop: {after_start_line_ms: 60000, shutdown_mode: close}", "consumer_processing_shape|consumer_processing.configurations.C0" },
         { "stop missing", "C0:\n      stop: {after_start_line_ms: 60000, shutdown_mode: close}", "C0: {}", "consumer_processing_shape|consumer_processing.configurations.C0" },
         { "extra stop field", "after_start_line_ms: 60000, shutdown_mode: close}", "after_start_line_ms: 60000, shutdown_mode: close, grace: 1}", "consumer_processing_shape|consumer_processing.configurations.C0" },
@@ -53,12 +55,13 @@ public sealed class StopConsumerProcessingDefinitionTests
 
     [Theory]
     [MemberData(nameof(RejectedDeclarations))]
-    public async Task Rejects(string name, string from, string to, string expected)
+    public async Task Given_ChangedDeclaration_When_Loading_Then_FailsWithOnlyTheDocumentedCodeAndPath(string name, string from, string to, string expected)
     {
         Assert.NotNull(name);
         var error = await Assert.ThrowsAsync<ScenarioValidationException>(async () => await Load("C18", Replace(Text("scenarios/C18/scenario.yaml"), from, to)));
         var parts = expected.Split('|');
-        Assert.Contains(error.Diagnostics, diagnostic => diagnostic.Code == parts[0] && diagnostic.FieldPath == parts[1]);
+        Assert.All(error.Diagnostics, diagnostic => Assert.Equal((parts[0], parts[1]), (diagnostic.Code, diagnostic.FieldPath)));
+        Assert.NotEmpty(error.Diagnostics);
     }
 
     [Fact]
@@ -67,12 +70,12 @@ public sealed class StopConsumerProcessingDefinitionTests
         var yaml = Text("scenarios/C18/scenario.yaml").Replace("shutdown_mode: close}", "shutdown_mode: X}", StringComparison.Ordinal)
             .Replace("shutdown_mode: dispose}", "shutdown_mode: close}", StringComparison.Ordinal).Replace("shutdown_mode: X}", "shutdown_mode: dispose}", StringComparison.Ordinal);
         var error = await Assert.ThrowsAsync<ScenarioValidationException>(async () => await Load("C18", yaml));
-        Assert.Contains(error.Diagnostics, d => d.Code == "consumer_processing_literal" && d.FieldPath == "consumer_processing.configurations.C0.stop.shutdown_mode");
-        Assert.Contains(error.Diagnostics, d => d.Code == "consumer_processing_literal" && d.FieldPath == "consumer_processing.configurations.C1.stop.shutdown_mode");
+        Assert.Equal(["consumer_processing_literal|consumer_processing.configurations.C0.stop.shutdown_mode", "consumer_processing_literal|consumer_processing.configurations.C1.stop.shutdown_mode"],
+            error.Diagnostics.Select(d => d.Code + "|" + d.FieldPath).Order(StringComparer.Ordinal));
     }
 
     [Fact]
-    public async Task Admission()
+    public async Task Given_C19Declaring_ConsumerProcessing_When_Loading_Then_FailsAsUnexpected()
     {
         var yaml = Replace(Text("scenarios/C18/scenario.yaml"), "id: C18", "id: C19");
         var error = await Assert.ThrowsAsync<ScenarioValidationException>(async () => await Load("C19", yaml));
@@ -80,7 +83,7 @@ public sealed class StopConsumerProcessingDefinitionTests
     }
 
     [Fact]
-    public void File_is_pinned()
+    public void Given_ApprovedExpectedOutcome_When_ReadingTheCommittedFile_Then_BytesEqualTheApprovedText()
     {
         // The hash is of the section 5.2 block of the approved c18-scenario plan (revision 5), LF endings and a final newline.
         var bytes = File.ReadAllBytes(Path.Combine(Root(), "scenarios", "C18", "expected.yaml"));

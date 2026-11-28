@@ -326,6 +326,13 @@ def assert_c18_equals_c01(directory, configuration, mode):
     assert renders['C01'].replace('C01', 'C18').replace('c01', 'c18') == renders['C18'], (configuration, mode)
 
 
+def negatives_c18_c2():
+    values = case('C18', 'C0', 'consumer-subject')
+    values.update(configuration_id='C2')
+    values['runtime'].update(phase='C2')
+    return values
+
+
 def main():
     schema = json.loads((CHART / 'values.schema.json').read_text())
     execution = schema['properties']['runtime']['properties']['bounds']['properties']['execution']['const']
@@ -372,6 +379,10 @@ def main():
             rendered = render(directory, f'negative-{index}', values)
             assert rendered.returncode != 0, index
             assert not jobs_of(rendered.stdout), index
+        # R8: C18 with configuration C2 fails on the schema, not on some other render error.
+        rejected = render(directory, 'c18-c2', negatives_c18_c2())
+        assert rejected.returncode != 0 and "values don't meet the specifications of the schema" in rejected.stderr, rejected.stderr
+        assert 'configuration_id must be one of the following' in rejected.stderr, rejected.stderr
     print(f'consumer chart acceptance passed: {len(members) + len(verifiers)} positive, {len(bad_cases)} negative, '
           f'{len(worker_names)} worker names checked against the options class')
 

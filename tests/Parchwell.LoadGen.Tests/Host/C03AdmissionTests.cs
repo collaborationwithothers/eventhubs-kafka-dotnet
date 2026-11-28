@@ -84,6 +84,8 @@ public sealed class C03AdmissionTests
     [InlineData("C10", "C1")]
     [InlineData("C01", "C0")]
     [InlineData("C01", "C1")]
+    [InlineData("C18", "C0")]
+    [InlineData("C18", "C1")]
     public async Task Given_the_LoadGen_host_registrations_When_loading_and_resolving_a_consumer_scenario_as_the_worker_does_Then_the_producer_settings_equal_the_baseline(string scenario, string configuration)
     {
         // The host is the real one: its scenario source, loader, resolver and role registrations are what a live C03 load generator uses.
