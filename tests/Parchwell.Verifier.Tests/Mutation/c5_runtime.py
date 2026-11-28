@@ -338,13 +338,33 @@ RUNNER_TIMING_PAIR = ('dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea14629a
 # a shard's elapsed time. input_maps records the one reviewed hash pinned below at CAMPAIGN_VALIDATOR_BASE,
 # its measured hash, while the executable runner is as reviewed and neither the companion workflow nor the
 # coordinator's jobs before its aggregate job mention the validator. Any other tree records the actual hash. Issue 494, plan items/494/plan-c5-failure-causes.md requirement 15.
+# Issue 602 adds the full-suite mode to the runner and both workflows. Default-mode execution is byte-identical
+# to the base commit (test_fast_shard_command_matches_base), and full-suite mode builds the same tests on the same
+# layout until Component/MutationExcluded holds a file, so the earlier timing evidence bounds both. These exact
+# (base, head) hash pairs, as input_maps records them, are the only accepted changes of the three files.
+SUITE_RUNNER_PAIR = ('5e123dc8552d72e9e424f292ebcc5b4b695ff39fed026470f2879d8b5a234552',
+                     '41969e2a3209480d5bdd4dbc2643750417843abd523d07adef323abaa0b9bbe8')
+SUITE_WORKFLOW_PAIR = ('cda07e2545340ade8d658ccfcce1ae65a472c97690c35186ab5f804712a46569',
+                       '3a6f1076e67cc361eee9e393ec25300416c8ed8325fa82992397d5fd7d5d4bfb')
+SUITE_COMPANION_PAIR = ('1fade2b54ce8b20ed963ba5ebc5ff8cd0e6315f67b402cb46b1bfe695ffbebfb',
+                        '65e79f770be5824a96e885d7fac5c7e5d3fc9ffc79c24a577935f100d3e9c2a1')
+EXACT_TIMING_PAIRS = {
+    'tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py': (PROJECTION_TIMING_PAIR,),
+    'tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py': (RUNNER_TIMING_PAIR, SUITE_RUNNER_PAIR),
+    '.github/workflows/verifier-c5-mutation.yml': (SUITE_WORKFLOW_PAIR,),
+    '.github/workflows/verifier-c5-mutation-companion.yml': (SUITE_COMPANION_PAIR,),
+}
 CAMPAIGN_VALIDATOR_PIN = '47ee18cd4ee3d5dd391bd3bdc6070f8a52da462b1ba48dc42c2387082a8cab84'
 CAMPAIGN_VALIDATOR_BASE = '5dd294fcb0b3bb9ff2de8a5df5ac71242e775066a91e444091d382cb3406b46f'
-RUNNER_EXECUTION_PIN = '5e123dc8552d72e9e424f292ebcc5b4b695ff39fed026470f2879d8b5a234552'
+RUNNER_EXECUTION_PIN = '41969e2a3209480d5bdd4dbc2643750417843abd523d07adef323abaa0b9bbe8'
 NON_RENEWABLE = {RUNNER, WORKFLOW, COMPANION_WORKFLOW, CAMPAIGN_VALIDATOR, PROJECTION,
                  'tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json', '.config/dotnet-tools.json'}
 EXCLUDED = ('Component/', 'Support/ComponentEvidenceBuilder.cs', 'Host/VerifyRunHandlerTests.cs',
             'Host/VerifierHostTests.cs', 'Host/B10AbruptRejectionTests.cs')
+# Issue 602: the one item group that adds Component/MutationExcluded back in full-suite mode.
+FULL_SUITE_INCLUDE = 'Component/MutationExcluded/**/*.cs'
+FULL_SUITE_CONDITION = "'$(ParchwellVerifierMutationOnly)' == 'true' and '$(ParchwellVerifierMutationFullSuite)' == 'true'"
+SHARED_MUTATION_EXCLUDED = 'Component/MutationExcluded/'
 REMOVE = 'Component/**/*.cs;Support/ComponentEvidenceBuilder.cs;Host/VerifyRunHandlerTests.cs;Host/VerifierHostTests.cs;Host/B10AbruptRejectionTests.cs'
 
 
@@ -473,6 +493,11 @@ def project_closure(ref, names):
                     if parent.attrib != {'Condition': "'$(ParchwellVerifierMutationOnly)' == 'true'"}:
                         raise ValueError('unsupported mutation exclusion condition')
                     continue
+                if (project == TEST_PROJECT and include == FULL_SUITE_INCLUDE and remove is None
+                        and set(element.attrib) == {'Include'}):
+                    if parents[element].attrib != {'Condition': FULL_SUITE_CONDITION}:
+                        raise ValueError('unsupported full-suite condition')
+                    continue
                 if project == TEST_PROJECT and include == '../fixtures/ProbeV2MockCluster.cs' and set(element.attrib) == {'Include', 'Link'}:
                     extra.add('tests/fixtures/ProbeV2MockCluster.cs')
                     continue
@@ -511,7 +536,8 @@ def input_maps(ref, declared_targets=None):
             if not p.startswith(root):
                 continue
             rel = p[len(root):]
-            if project == TEST_PROJECT and any(rel == x or (x.endswith('/') and rel.startswith(x)) for x in EXCLUDED):
+            if (project == TEST_PROJECT and not rel.startswith(SHARED_MUTATION_EXCLUDED)
+                    and any(rel == x or (x.endswith('/') and rel.startswith(x)) for x in EXCLUDED)):
                 continue
             if p.endswith(('.cs', '.csproj', '.props', '.targets', '.resx')):
                 selected.add(p)
@@ -1075,9 +1101,14 @@ def same_timing_layout(reference, current):
     """Match execution and target inputs while leaving renewable inputs to v2 assessments."""
     old_shared, old_targets = reference[2]
     new_shared, new_targets = current[2]
-    return (reference[:2] == current[:2] and reference[3:] == current[3:]
+    def same_or_pinned(path):
+        before, after = old_shared.get(path), new_shared.get(path)
+        return before == after or (before, after) in EXACT_TIMING_PAIRS.get(path, ())
+    runner_pinned = (old_shared.get(RUNNER), new_shared.get(RUNNER)) == SUITE_RUNNER_PAIR
+    return (reference[0] == current[0] and (reference[1] == current[1] or runner_pinned)
+            and reference[3:] == current[3:]
             and old_targets == new_targets
-            and all(old_shared.get(path) == new_shared.get(path) for path in NON_RENEWABLE))
+            and all(same_or_pinned(path) for path in NON_RENEWABLE))
 
 
 def selector_ast(data):
@@ -1801,8 +1832,7 @@ def provenance_errors(context, shared, targets, owner, shard=None, head=None, pr
                 if equivalent:
                     continue
             if (key == 'shared_inputs' and path in NON_RENEWABLE
-                    and not (path == PROJECTION and (measured.get(path), current.get(path)) == PROJECTION_TIMING_PAIR)
-                    and not (path == RUNNER and (measured.get(path), current.get(path)) == RUNNER_TIMING_PAIR)):
+                    and (measured.get(path), current.get(path)) not in EXACT_TIMING_PAIRS.get(path, ())):
                 errors.add('invalid_renewal')
             if key == 'target_sources' and path == owner:
                 errors.add('invalid_renewal')
@@ -2572,9 +2602,9 @@ def write_qualification(path, config, accept=None):
 
 def renew_v2(head, path, config, shared, changed, basis):
     """Write version 2 assessments for the changed shared inputs, only if the full-head check accepts them."""
-    exact_pairs = {PROJECTION: PROJECTION_TIMING_PAIR, RUNNER: RUNNER_TIMING_PAIR}
     old = config['shared_inputs']
-    blocked = sorted(p for p in set(changed) & NON_RENEWABLE if (old.get(p), shared.get(p)) != exact_pairs.get(p))
+    blocked = sorted(p for p in set(changed) & NON_RENEWABLE
+                     if (old.get(p), shared.get(p)) not in EXACT_TIMING_PAIRS.get(p, ()))
     if blocked:
         raise ValueError('not renewable: ' + ', '.join(blocked))
 
