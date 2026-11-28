@@ -52,6 +52,9 @@ internal sealed class BlobConsumerRecordStore(BlobServiceClient client, string p
     public Task CompleteAsync(byte[] json, CancellationToken cancellationToken) =>
         UploadAsync("completion.json", json, cancellationToken);
 
+    public Task WriteStopReceiptAsync(byte[] json, CancellationToken cancellationToken) =>
+        UploadAsync("stop-receipt.json", json, cancellationToken);
+
     private async Task UploadAsync(string name, byte[] json, CancellationToken cancellationToken)
     {
         if (json.Length > 65536) throw new InvalidDataException("consumer_record_too_large");

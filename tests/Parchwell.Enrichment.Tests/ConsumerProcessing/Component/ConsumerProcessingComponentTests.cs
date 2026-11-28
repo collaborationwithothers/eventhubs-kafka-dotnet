@@ -420,6 +420,8 @@ public sealed class ConsumerProcessingComponentTests
             Registration = json.ToArray();
             return Task.CompletedTask;
         }
+        public Task WriteStopReceiptAsync(byte[] json, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("stop_receipt_not_expected");
         public Task AppendAsync(byte[] jsonLine, CancellationToken cancellationToken)
         {
             lock (gate)

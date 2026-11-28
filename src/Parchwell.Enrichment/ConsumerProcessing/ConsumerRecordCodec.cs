@@ -9,18 +9,58 @@ internal static class ConsumerRecordCodec
 {
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
 
+    private const int MaximumReasonLength = 1024;
+
     public static byte[] Registration(ConsumerProcessingOptions options, ConsumerProcessingPlan plan,
-        ConsumerConfig configuration, DateTimeOffset registered) => Json(new
+        ConsumerConfig configuration, DateTimeOffset registered)
+    {
+        var effectiveSettings = new SortedDictionary<string, string>(configuration.ToDictionary(
+            pair => pair.Key, pair => pair.Value, StringComparer.Ordinal), StringComparer.Ordinal);
+        // OrderedDictionary documents that enumeration follows insertion order, which is the key order. shutdown_mode
+        // is absent unless a mode is set, so registrations of plans without a stop stay byte-identical.
+        var registration = new OrderedDictionary<string, object?>
         {
-            schema_version = 1, kind = "consumer_registration", run_id = options.RunId,
+            ["schema_version"] = 1, ["kind"] = "consumer_registration", ["run_id"] = options.RunId,
+            ["scenario_id"] = options.ScenarioId, ["configuration_id"] = plan.ConfigurationId, ["phase"] = options.Phase,
+            ["repeat_number"] = options.RepeatNumber, ["role"] = options.Role, ["instance_id"] = options.PodName,
+            ["job_name"] = options.JobName, ["pod_name"] = options.PodName, ["pod_uid"] = options.PodUid,
+            ["node_name"] = options.NodeName, ["source_commit"] = options.SourceCommit, ["group_id"] = options.GroupId
+        };
+        if (plan.ShutdownMode is not null) registration["shutdown_mode"] = plan.ShutdownMode;
+        registration["effective_settings"] = effectiveSettings;
+        registration["registered_utc"] = Time(registered);
+        return Json(registration);
+    }
+
+    public static byte[] StopReceipt(ConsumerProcessingOptions options, ConsumerProcessingPlan plan, long rows,
+        long messagesProcessed, DateTimeOffset stopObserved, DateTimeOffset shutdownStarted, DateTimeOffset shutdownEnded,
+        string shutdownOutcome, DateTimeOffset written) => Json(new
+        {
+            schema_version = 1, kind = "consumer_stop_receipt", run_id = options.RunId,
             scenario_id = options.ScenarioId, configuration_id = plan.ConfigurationId, phase = options.Phase,
             repeat_number = options.RepeatNumber, role = options.Role, instance_id = options.PodName,
-            job_name = options.JobName, pod_name = options.PodName, pod_uid = options.PodUid, node_name = options.NodeName,
-            source_commit = options.SourceCommit, group_id = options.GroupId,
-            effective_settings = new SortedDictionary<string, string>(configuration.ToDictionary(
-                pair => pair.Key, pair => pair.Value, StringComparer.Ordinal), StringComparer.Ordinal),
-            registered_utc = Time(registered)
+            job_name = options.JobName, pod_uid = options.PodUid, source_commit = options.SourceCommit,
+            rows, record_blobs = (rows + 39999) / 40000, messages_processed = messagesProcessed,
+            stop_observed_utc = Time(stopObserved), shutdown_mode = plan.ShutdownMode,
+            shutdown_started_utc = Time(shutdownStarted), shutdown_ended_utc = Time(shutdownEnded),
+            shutdown_outcome = shutdownOutcome, receipt_written_utc = Time(written)
         });
+
+    public static byte[] StopObserved(string instanceId, long rowSequence, DateTimeOffset time) => Line(new
+    {
+        schema_version = 1, kind = "stop_observed", instance_id = instanceId, row_sequence = rowSequence, event_utc = Time(time)
+    });
+
+    public static byte[] ConsumerError(string instanceId, long rowSequence, string source, Error error, DateTimeOffset time) => Line(new
+    {
+        schema_version = 1, kind = "consumer_error", instance_id = instanceId, row_sequence = rowSequence, source,
+        error_code = (int)error.Code, is_fatal = error.IsFatal, reason = CutReason(error.Reason), event_utc = Time(time)
+    });
+
+    // Keeps the row inside the line limit. A cut that falls inside a surrogate pair leaves a lone surrogate,
+    // which the JSON serializer writes as U+FFFD, so the row stays valid and the reason keeps 1024 UTF-16 units.
+    private static string CutReason(string? reason) =>
+        reason is null ? string.Empty : reason.Length <= MaximumReasonLength ? reason : reason[..MaximumReasonLength];
 
     public static byte[] Completion(ConsumerProcessingOptions options, ConsumerProcessingPlan plan,
         long rows, long messagesProcessed, DateTimeOffset closed) => Json(new
