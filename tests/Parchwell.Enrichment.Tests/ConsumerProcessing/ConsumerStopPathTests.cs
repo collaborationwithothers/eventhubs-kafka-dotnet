@@ -196,7 +196,7 @@ public sealed class ConsumerStopPathTests
     }
 
     [Fact]
-    public async Task Registration_records_shutdown_mode()
+    public async Task Given_dispose_mode_When_executed_Then_registration_records_it()
     {
         using ConsumerTestHarness harness = Harness("dispose");
         Assert.Equal(0, await harness.RunAsync());

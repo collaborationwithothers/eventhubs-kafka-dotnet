@@ -57,13 +57,10 @@ internal static class ConsumerRecordCodec
         error_code = (int)error.Code, is_fatal = error.IsFatal, reason = CutReason(error.Reason), event_utc = Time(time)
     });
 
-    // Keeps the row inside the line limit. A cut never splits a surrogate pair, which JSON cannot encode.
-    private static string CutReason(string? reason)
-    {
-        if (reason is null || reason.Length <= MaximumReasonLength) return reason ?? string.Empty;
-        int length = char.IsHighSurrogate(reason[MaximumReasonLength - 1]) ? MaximumReasonLength - 1 : MaximumReasonLength;
-        return reason[..length];
-    }
+    // Keeps the row inside the line limit. A cut that falls inside a surrogate pair leaves a lone surrogate,
+    // which the JSON serializer writes as U+FFFD, so the row stays valid and the reason keeps 1024 UTF-16 units.
+    private static string CutReason(string? reason) =>
+        reason is null ? string.Empty : reason.Length <= MaximumReasonLength ? reason : reason[..MaximumReasonLength];
 
     public static byte[] Completion(ConsumerProcessingOptions options, ConsumerProcessingPlan plan,
         long rows, long messagesProcessed, DateTimeOffset closed) => Json(new

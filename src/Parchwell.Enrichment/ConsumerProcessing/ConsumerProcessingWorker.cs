@@ -191,7 +191,8 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
             if (appendFailed) throw new InvalidOperationException("consumer_record_append_failed");
         }
 
-        // After a stop is configured every append and wait ignores the stop token, which is cancelled by then.
+        // With a stop configured, every append and processing wait ignores the stop token for the whole run, so the
+        // token cancelled by a stop cannot fail the work that finishes the message in progress or records the shutdown.
         CancellationToken WorkToken() => plan?.StopConfigured == true ? CancellationToken.None : cancellationToken;
 
         void Append(Func<byte[]> serialize)

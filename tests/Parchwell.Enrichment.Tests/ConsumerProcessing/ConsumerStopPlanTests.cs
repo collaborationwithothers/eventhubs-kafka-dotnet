@@ -43,7 +43,7 @@ public sealed class ConsumerStopPlanTests
     [Theory]
     [InlineData("close")]
     [InlineData("dispose")]
-    public async Task Accepts_a_valid_stop_plan(string mode)
+    public async Task Given_valid_stop_plan_When_executed_Then_member_registers_and_completes(string mode)
     {
         using var harness = new ConsumerTestHarness();
         harness.Plan = harness.Plan with { StopConfigured = true, ShutdownMode = mode };

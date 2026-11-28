@@ -43,12 +43,14 @@ public sealed class ConsumerRecordCodecStopTests
     }
 
     [Fact]
-    public void Reason_cut_does_not_split_a_surrogate_pair()
+    public void Given_cut_inside_surrogate_pair_When_serialized_Then_reason_keeps_1024_units_and_row_parses()
     {
-        // The pair occupies code units 1023 and 1024, so the cut keeps 1023 units and the row stays valid JSON text.
+        // The pair occupies code units 1023 and 1024, so the cut leaves a lone high surrogate. The serializer writes it as U+FFFD.
         string reason = new string('a', 1023) + "\U0001F600" + "tail";
         using JsonDocument document = JsonDocument.Parse(ErrorRow(reason));
-        Assert.Equal(new string('a', 1023), document.RootElement.GetProperty("reason").GetString());
+        string written = document.RootElement.GetProperty("reason").GetString()!;
+        Assert.Equal(1024, written.Length);
+        Assert.Equal(new string('a', 1023), written[..1023]);
     }
 
     [Fact]

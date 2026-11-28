@@ -37,7 +37,7 @@ public sealed class ConsumerErrorRowTests
     }
 
     [Fact]
-    public async Task Fatal_consume_error_row_append_failure_ends_with_append_failure()
+    public async Task Given_failing_error_row_append_When_fatal_consume_error_Then_append_failure_is_reported()
     {
         using var harness = new ConsumerTestHarness();
         harness.Plan = harness.Plan with { RecordsConsumerErrors = true };
@@ -60,7 +60,7 @@ public sealed class ConsumerErrorRowTests
     }
 
     [Fact]
-    public async Task Error_handler_append_failure_ends_the_member()
+    public async Task Given_failing_error_row_append_When_error_handler_called_Then_member_ends_with_append_failure()
     {
         using var harness = new ConsumerTestHarness();
         harness.Plan = harness.Plan with { RecordsConsumerErrors = true };
