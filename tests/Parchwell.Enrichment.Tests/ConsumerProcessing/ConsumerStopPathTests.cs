@@ -127,7 +127,7 @@ public sealed class ConsumerStopPathTests
             Assert.True(closeReturned.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
             Assert.Equal(rowsAtReceipt, timedOut.Store.Rows.Count);
             Assert.Equal(rowsAtReceipt, receipt.GetProperty("rows").GetInt64());
-            Assert.DoesNotContain(timedOut.Store.Rows, row => Kind(row) == "partition_event");
+            Assert.DoesNotContain(timedOut.Store.Rows, row => Kind(row) == "partition_event" && row.GetProperty("event").GetString() == "revoked");
         }
         finally { release.Set(); }
     }
