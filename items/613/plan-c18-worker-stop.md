@@ -1,6 +1,12 @@
-Revision: 2
+Revision: 3
 
-Changes since revision 1, applying the [revision 1 plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7237760956):
+Changes since revision 2, applying #613 [decision 7238011332](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7238011332), which carries `Confirmation: thumbs-up required`. `scripts/decision-log.py` reports Hari's thumbs-up at 2026-11-28T10:37:25Z, after the comment's last edit at 10:36:57Z.
+- Point 1: the C18 admission is in pull request 3, with the scenario file. Section 11 states `None`, and section 11a keeps the question and its answer. Sections 2 and 12 say so.
+- Point 2: option (a). `Program.cs` may move the consumer factory's handler-setting chain into one internal method, which a new test checks through a `ConsumerBuilder` subclass (section 2 item 6, 3.7, R16 and the test map).
+- Point 3: the revision 2 check's B3 (completion evidence in section 12, written to match point 1) and N1 (the R11 and R12 rows set the stop inputs).
+- The base moves to `89f646d9`. The only change since `9c98aa1b` is one line of `AGENTS.md`, and no file this plan changes or cites.
+
+Changes in revision 2 since revision 1, applying the [revision 1 plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7237760956):
 - B1: the deferral of the C18 admission to pull request 3 is now an open question for Hari (section 11, question 1), with the evidence; the rest of the plan is unchanged by it.
 - B2: every append on the stop path, including the in-progress message's processed row, passes `CancellationToken.None` (3.6 step 3), with a token check in the R5 test.
 - B3: after a `failed` or `timed_out` shutdown, `Dispose` is not called, the record closes before `shutdown_ended_utc`, and native monitoring completes with `false` (3.6 step 4, R7 test).
@@ -15,7 +21,7 @@ This plan changes the enrichment consumer worker so that a subject told to stop 
 
 Nothing changes for C01, C03 or C10: their records stay byte-identical. The new behaviour is reached only through plan inputs that no plan source sets in this pull request. Pull request 3 sets them from the C18 scenario file.
 
-Base commit: `main` at `9c98aa1be09ff76b6fc19fed71bc8cc2f3706259`. Every repository citation below is at that commit.
+Base commit: `main` at `89f646d9df0df86db25886ef6892bdc9b58549e5`. Revisions 1 and 2 were written against `9c98aa1be09ff76b6fc19fed71bc8cc2f3706259`. Between the two commits only one line of `AGENTS.md` changed, and no file this plan changes or cites changed. Every repository citation below holds at both.
 
 ## 1. Goal and authority
 
@@ -29,6 +35,7 @@ Authority, in creation order:
 - #613 decision 7236669224, which adopts the #597 decisions.
 - #613 [decision 7237226936](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7237226936) point 1. It approves the C18 split in the order of the c18-stop-smoke plan's section 12, and lets this pull request be planned, approved and implemented in parallel with the smoke. Its limit: "Pull request 2 changes no workflow, scenario, expected outcome or verifier file; if its plan needs one, it stops and comes back to Hari."
 - #597 decision 7237271679, adopted on #613 by 7237273680. It carries `Confirmation: thumbs-up required`, and its point 4 is that parallel route. `scripts/decision-log.py` reports Hari's thumbs-up on it at 2026-11-28T09:56:02Z, after its last edit at 09:29:20Z.
+- #613 [decision 7238011332](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7238011332), with `Confirmation: thumbs-up required` and Hari's thumbs-up at 2026-11-28T10:37:25Z. It moves the C18 admission to pull request 3, sets the wiring-test approach, and adopts the revision 2 check's B3 and N1.
 - docs/blueprint.md ADR-022 with "Amendment 1", ADR-017 and ADR-020.
 
 The c18-stop-smoke plan (`items/613/plan-c18-stop-smoke.md` on this branch) is a sibling. This plan neither depends on it nor changes it.
@@ -41,11 +48,11 @@ Files allowed to change:
 3. `src/Parchwell.Enrichment/ConsumerProcessing/ConsumerRecordCodec.cs`: the `stop_observed` and `consumer_error` rows, the stop receipt, and the registration field.
 4. `src/Parchwell.Enrichment/ConsumerProcessing/IConsumerRecordStore.cs` and `BlobConsumerRecordStore.cs`: one method that writes `stop-receipt.json`.
 5. `src/Parchwell.Enrichment/ConsumerProcessing/ConsumerProcessingHandlers.cs`: one optional error callback.
-6. `src/Parchwell.Enrichment/Program.cs`: inside the `ConsumerProcessingConsumerFactory` registration (lines 277 to 297), set the error handler when the callback is not null. Nothing else in the file.
+6. `src/Parchwell.Enrichment/Program.cs`: the `ConsumerProcessingConsumerFactory` registration (lines 277 to 297). Its handler-setting chain (lines 288 to 293: statistics, assigned, revoked, lost and offsets-committed handlers) moves into one internal method that takes the builder and the handlers and returns the builder ([decision 7238011332](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7238011332) point 2). That method sets the same handlers in the same way as on `main`, and also sets the error handler when the callback is not null. The factory calls it before `Build`. Nothing else in the file changes.
 7. `tests/Parchwell.Enrichment.Tests/ConsumerProcessing/`: the new test files of section 6; the test doubles in `ConsumerTestHarness.cs`, which gain the new store method in `RecordingRecordStore` with a record of each token's `CanBeCanceled`, a token the test can cancel passed by `RunAsync` (today `CancellationToken.None`, line 47), a way to invoke the error callback, and a way to make `Close` throw or block; and existing tests only under the fixture rule of section 6.
 
 Paths that must not change:
-- `src/Parchwell.Enrichment/ConsumerProcessing/ScenarioConsumerProcessingPlanSource.cs` and `ConsumerProcessingOptions.cs`, and `charts/`: this plan proposes that C18 is admitted in pull request 3, with its scenario file (section 11, question 1).
+- `src/Parchwell.Enrichment/ConsumerProcessing/ScenarioConsumerProcessingPlanSource.cs` and `ConsumerProcessingOptions.cs`, and `charts/`: C18 is admitted in pull request 3, with its scenario file ([decision 7238011332](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7238011332) point 1).
 - `src/Parchwell.Scenarios/`, `src/Parchwell.Verifier*/`, `src/Parchwell.LoadGen/`, `src/Parchwell.Kafka/`.
 - `scenarios/`, every `expected.yaml`, `.github/`, `docs/`, `infra/`, `results/`.
 - Every `*.csproj`, `Directory.*.props` and `*.sln*`. No new package or project.
@@ -134,7 +141,7 @@ Applies only when `StopConfigured` is true. That implies a subject with no kill 
 Applies only when `RecordsConsumerErrors` is true, to every role:
 - In `Poll` (lines 156 to 160), a `ConsumeException` first appends a `consumer_error` row with `source` `consume`. A non-fatal error then returns null, as today. A fatal one propagates, as today, and so ends the member through the existing path with its existing reason.
 - `ConsumerProcessingHandlers` gains an optional error callback. The worker sets it only when `RecordsConsumerErrors` is true, and it appends a `consumer_error` row with `source` `error_handler`. Confluent.Kafka ignores exceptions thrown by an error handler (S1), so an append failure inside it sets the existing `appendFailed` flag. The loop's existing `ThrowIfAppendFailed` then ends the member with `consumer_record_append_failed`.
-- `Program.cs` calls `SetErrorHandler` on the builder only when the callback is not null. With no error handler set, Confluent.Kafka invokes none (S1, `Consumer.cs` line 110), as on `main`.
+- The internal method of section 2 item 6 calls `SetErrorHandler` on the builder only when the callback is not null. With no error handler set, Confluent.Kafka invokes none (S1, `Consumer.cs` line 110), as on `main`.
 
 ## 4. Requirements
 
@@ -197,12 +204,13 @@ All tests are in `tests/Parchwell.Enrichment.Tests/ConsumerProcessing/`, using t
 | R8 | `ConsumerStopPathTests.Callbacks_during_close_are_recorded` | `Close` invokes the revoked handler with partitions 0 and 1, then the commit handler | `partition_event` `revoked` [0, 1] and a `commit` row after `stop_observed`; every `AppendAsync` after the stop receives `CancellationToken.None` |
 | R9 | `ConsumerStopPathTests.Stop_row_append_failure` | the store throws on the `stop_observed` append | exit 1; standard error starts `consumer_processing_failed reason=consumer_record_append_failed`; no receipt |
 | R10 | `ConsumerStopPathTests.Receipt_failure` | the store throws on the receipt | exit 1; standard error starts `consumer_processing_failed reason=consumer_stop_receipt_failed scenario_id=` |
-| R11 | `ConsumerStopPathTests.Stop_before_subscribe_uses_existing_path` | stop token cancelled before `Subscribe` | exit 1; standard error starts `consumer_processing_failed reason=consumer_fatal_error`; no `stop_observed` row; no `stop-receipt.json` |
-| R12 | `ConsumerStopPathTests.Window_end_before_stop_completes` | window 1000 ms; no stop | `completion.json` written; no `stop_observed`; no receipt; exit 0 |
+| R11 | `ConsumerStopPathTests.Stop_before_subscribe_uses_existing_path` | `StopConfigured` true, mode `close`; stop token cancelled before `Subscribe` | exit 1; standard error starts `consumer_processing_failed reason=consumer_fatal_error`; no `stop_observed` row; no `stop-receipt.json` |
+| R12 | `ConsumerStopPathTests.Window_end_before_stop_completes` | `StopConfigured` true, mode `close`; window 1000 ms; no stop | `completion.json` written; no `stop_observed`; no receipt; exit 0 |
 | R13 | `ConsumerErrorRowTests.Non_fatal_consume_error` | `Consume` throws `ConsumeException` with `ErrorCode.Local_Transport`, not fatal, then returns null | one row `source` `consume`, `error_code` -195, `is_fatal` false; member continues to its completion |
 | R14 | `ConsumerErrorRowTests.Fatal_consume_error` | fatal `ConsumeException` | one row with `is_fatal` true, then the member's existing failure reason `consumer_fatal_error` and exit 1 |
 | R15 | `ConsumerErrorRowTests.Error_handler_row` | the harness invokes the error callback with `ErrorCode.Local_AllBrokersDown` | one row `source` `error_handler`, `error_code` -187 |
 | R16 | `ConsumerErrorRowTests.Off_by_default` | `RecordsConsumerErrors` false, non-fatal `ConsumeException` | no `consumer_error` row; the handlers' error callback is null |
+| R15, R16 | `ConsumerErrorRowTests.Factory_sets_error_handler_only_when_callback_set` | a test subclass of `ConsumerBuilder<byte[], byte[]>` that exposes its `ErrorHandler` (`internal protected` in Confluent.Kafka v2.16.0, `ConsumerBuilder.cs` line 37) is passed to the internal method of section 2 item 6, first with handlers whose error callback is null, then with one set | `ErrorHandler` null; then not null. No reflection on a Confluent.Kafka private member |
 | R17 | `ConsumerRecordCodecStopTests.Reason_is_cut` | reason of 1025 `a` characters; then 1024 | `reason` length 1024; then 1024 |
 | 3.4, 3.5 | `ConsumerRecordCodecStopTests.Shapes` | fixed inputs | each JSON's keys, in order, equal 3.4 and 3.5 exactly |
 
@@ -251,6 +259,12 @@ Tools: `curl` of raw files from confluentinc/confluent-kafka-dotnet at tag `v2.1
 
 ## 11. Open questions for Hari
 
+None.
+
+## 11a. Questions answered by Hari
+
+Answered by [decision 7238011332](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7238011332): point 1, the admission moves to pull request 3; point 2, the wiring test is option (a), recorded in section 2 item 6 and the R15/R16 test row. The question as put, for the record:
+
 1. Move "the worker and chart admit C18" from pull request 2 to pull request 3? The approved split ([decision 7237226936](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7237226936) point 1, in the order of the c18-stop-smoke plan's section 12) puts it in pull request 2. That entry's text was this planning session's own wording. Recommendation: move it to pull request 3. Evidence:
    - The chart's consumer-scenario switch, `parchwell.isConsumerScenario` (`_consumer.tpl` lines 2 to 5), also routes the start-line, load generator, verifier and judge Jobs (`jobs.yaml` line 22) and the service accounts (`serviceaccounts.yaml` line 3). The schema's consumer branch (`values.schema.json` line 1221) admits the modes `start-line`, `loadgen`, `verify` and `judge` for every listed scenario. Admitting C18 there admits those modes too, whose load generator and verifier admission the split puts in pull requests 3 and 5.
    - The worker alone could accept `C18` in `ConsumerProcessingOptions.Validate` (line 27). But `ScenarioConsumerProcessingPlanSource.GetPlan` (line 24) would still return null for it until pull request 3 adds the scenario file, so a C18 member would fail `consumer_plan_invalid` at once. That change is reachable by no run.
@@ -259,8 +273,8 @@ Tools: `curl` of raw files from confluentinc/confluent-kafka-dotnet at tag `v2.1
 
 ## 12. Deferred work
 
-- Plan-source mapping. Mapping the C18 scenario's stop time, shutdown mode (default `close`) and consumer-error setting to these inputs, and admitting C18 in `ConsumerProcessingOptions.Validate` and the chart. The scenario mapping is pull request 3 under the approved split. Moving the admission there too is proposed under section 11, question 1, and is not decided by this plan. It is on the verdict path. The scenario mapping's deferral is required by decision 7237226936 point 1's limit, which keeps scenario files out of this pull request. Responsible: the `plan-pr` session for pull request 3, after the smoke's evidence (c18-stop-smoke plan, section 12). Gate it blocks: any C18 run.
-- Verifier acceptance of the new rows and receipt. This is pull request 5. It is deferred for the same reason (no verifier files here). Responsible: the `plan-pr` session for pull request 5, after the smoke's evidence (c18-stop-smoke plan, section 12). Gate it blocks: acceptance of any C18 record by the verifier, and so the C18 verdict.
+- Plan-source mapping. Mapping the C18 scenario's stop time, shutdown mode (default `close`) and consumer-error setting to these inputs, and admitting C18 in `ConsumerProcessingOptions.Validate` and the chart. Both are pull request 3: the scenario mapping under the approved split, and the admission under [decision 7238011332](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7238011332) point 1. It is on the verdict path. The deferral is required by decision 7237226936 point 1's limit, which keeps scenario files out of this pull request, and by [decision 7238011332](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7238011332) point 1. Responsible: the `plan-pr` session for pull request 3, after the smoke's evidence (c18-stop-smoke plan, section 12). Gate it blocks: any C18 run. Completion evidence: pull request 3 merged on `main`.
+- Verifier acceptance of the new rows and receipt. This is pull request 5. It is deferred for the same reason (no verifier files here). Responsible: the `plan-pr` session for pull request 5, after the smoke's evidence (c18-stop-smoke plan, section 12). Gate it blocks: acceptance of any C18 record by the verifier, and so the C18 verdict. Completion evidence: pull request 5 merged on `main`.
 
 ## 13. Stop rule
 
