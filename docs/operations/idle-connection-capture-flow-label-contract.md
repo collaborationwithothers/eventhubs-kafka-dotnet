@@ -31,7 +31,7 @@ A different supplied opening sequence is a different storage key; that fact gran
 
 ## Verification
 
-The [single authored receipt](evidence/issue-334/capture-flow-labels/receipt.md) records commands and measured outcomes. Fixtures are synthetic. Tests cover each equality field, stable labels, scalar extremes, independent instances, capacity and terminal failure. Compatibility cases feed the real decoder's normalized scalars to the table and the returned ordinal to the real encoder, asserting exact allowed JSON fields. They explicitly supply the opening sequence and do not prove a handshake or packet-to-generation mapping.
+The [single authored receipt](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/6be908bf1a46910d0ad80b574073364a1fae3e40/docs/operations/evidence/issue-334/capture-flow-labels/receipt.md) records commands and measured outcomes. Fixtures are synthetic. Tests cover each equality field, stable labels, scalar extremes, independent instances, capacity and terminal failure. Compatibility cases feed the real decoder's normalized scalars to the table and the returned ordinal to the real encoder, asserting exact allowed JSON fields. They explicitly supply the opening sequence and do not prove a handshake or packet-to-generation mapping.
 
 ## Remaining integration
 

@@ -169,7 +169,7 @@ The verifier owns these closed checks. Declaration/options/chart validators enfo
 
 [Runtime limits](probe-v2-runtime-limits.json) are the exact V2 finite table. A limit failure cannot authorize truncated evidence or an old callback/drop exception. Logs capped or unavailable have no debug-cause conclusion.
 
-The [statistics repair receipt](evidence/issue-240/statistics-repair-receipt.md) derives the revised report, capture and container-log budgets from pinned native measurements and the five-slot envelope. Capture retains the first rejection as `capture_limit` plus a bounded `capture_rejected:<limit>:observed=<integer>:allowed=<integer>` diagnostic when a size/count can be measured. Invalid statistics UTF-16 records `capture_rejected:StatisticsUtf8`. These diagnostics include no rejected content, credentials or private identity. Exhaustion still fails completion; later smaller reports cannot replace rejected first evidence.
+The [statistics repair receipt](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/6be908bf1a46910d0ad80b574073364a1fae3e40/docs/operations/evidence/issue-240/statistics-repair-receipt.md) derives the revised report, capture and container-log budgets from pinned native measurements and the five-slot envelope. Capture retains the first rejection as `capture_limit` plus a bounded `capture_rejected:<limit>:observed=<integer>:allowed=<integer>` diagnostic when a size/count can be measured. Invalid statistics UTF-16 records `capture_rejected:StatisticsUtf8`. These diagnostics include no rejected content, credentials or private identity. Exhaustion still fails completion; later smaller reports cannot replace rejected first evidence.
 
 ## Scientific assessment and permission evidence
 

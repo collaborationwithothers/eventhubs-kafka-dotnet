@@ -1,3 +1,0 @@
-Package Id          Version      Commands            Manifest                                                   
-----------------------------------------------------------------------------------------------------------------
-dotnet-stryker      5.0.0        dotnet-stryker      /workspace/eventhubs-kafka-dotnet/.config/dotnet-tools.json

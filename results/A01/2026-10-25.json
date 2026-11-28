@@ -40,7 +40,7 @@
       "four_target_byte_identity": true,
       "decision_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/187#issuecomment-6400987342",
       "identity_decision_url": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/187#issuecomment-6402343589",
-      "measurement_receipt": "../../docs/operations/evidence/issue-196/receipt.md"
+      "measurement_receipt": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/6be908bf1a46910d0ad80b574073364a1fae3e40/docs/operations/evidence/issue-196/receipt.md"
     },
     "mutation_evidence": {
       "run_id": 40233552992,

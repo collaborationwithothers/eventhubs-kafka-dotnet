@@ -8,7 +8,6 @@
     "Directory.Build.props": "da23174e8d1ba562fc1e5fe99518e2bc54473c4c48b7744b84da1232588b8cb1",
     "Directory.Packages.props": "9b61ecb44bf2297db16699cbac097f4576ba34d0ae624edff4d34f1d48caca05",
     "docs/operations/a01-runtime-limits.json": "246f5b871bbc1a07209998a2e162b2d1593de9146fb3cae5a613ac8709950437",
-    "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/packages.lock.json": "a29c6aa8cfb81874ff8bb78dc369d7416f28c9b8cc47e99592bfc019b20c41eb",
     "global.json": "ab4eed8da9aaee0671a10b49fe4ff1b27b3341b264f317ee88785607c0711e9a",
     "scenarios/A01/scenario.yaml": "00b54054031ec6f80e864616852e2a96ef817effeefa17556093bf11a900fcfc",
     "scenarios/A02/scenario.yaml": "739b96191574afff8edd89edbb9b09452185d636afa6add915888de8c3e70493",
@@ -8853,6 +8852,12 @@
             ],
             "current_sha256": "3a6f1076e67cc361eee9e393ec25300416c8ed8325fa82992397d5fd7d5d4bfb"
           },
+          "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/packages.lock.json": {
+            "basis": [
+              "At 7639d408, c5_runtime.py input_maps includes every packages.lock.json. The deleted lock belonged to the archived warning-control project outside project_closure, so its removal changes no dependency restored by the mutation suite. See https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/7639d40826b2222c7dcc39dc14ab8145a9cf784c/tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py#L470-L493 and https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/85#issuecomment-7240611871."
+            ],
+            "current_sha256": null
+          },
           "scenarios/C01/scenario.yaml": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
@@ -9599,6 +9604,12 @@
             ],
             "current_sha256": "3a6f1076e67cc361eee9e393ec25300416c8ed8325fa82992397d5fd7d5d4bfb"
           },
+          "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/packages.lock.json": {
+            "basis": [
+              "At 7639d408, c5_runtime.py input_maps includes every packages.lock.json. The deleted lock belonged to the archived warning-control project outside project_closure, so its removal changes no dependency restored by the mutation suite. See https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/7639d40826b2222c7dcc39dc14ab8145a9cf784c/tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py#L470-L493 and https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/85#issuecomment-7240611871."
+            ],
+            "current_sha256": null
+          },
           "scenarios/C01/scenario.yaml": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
@@ -10306,6 +10317,12 @@
               "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
             ],
             "current_sha256": "3a6f1076e67cc361eee9e393ec25300416c8ed8325fa82992397d5fd7d5d4bfb"
+          },
+          "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/packages.lock.json": {
+            "basis": [
+              "At 7639d408, c5_runtime.py input_maps includes every packages.lock.json. The deleted lock belonged to the archived warning-control project outside project_closure, so its removal changes no dependency restored by the mutation suite. See https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/7639d40826b2222c7dcc39dc14ab8145a9cf784c/tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py#L470-L493 and https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/85#issuecomment-7240611871."
+            ],
+            "current_sha256": null
           },
           "scenarios/C01/scenario.yaml": {
             "basis": [
@@ -11052,6 +11069,12 @@
             ],
             "current_sha256": "3a6f1076e67cc361eee9e393ec25300416c8ed8325fa82992397d5fd7d5d4bfb"
           },
+          "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/packages.lock.json": {
+            "basis": [
+              "At 7639d408, c5_runtime.py input_maps includes every packages.lock.json. The deleted lock belonged to the archived warning-control project outside project_closure, so its removal changes no dependency restored by the mutation suite. See https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/7639d40826b2222c7dcc39dc14ab8145a9cf784c/tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py#L470-L493 and https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/85#issuecomment-7240611871."
+            ],
+            "current_sha256": null
+          },
           "src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7076000200 accepts the timing uncertainty from the exact shared-input change in the pull request for issue #529."
@@ -11652,6 +11675,12 @@
               "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
             ],
             "current_sha256": "3a6f1076e67cc361eee9e393ec25300416c8ed8325fa82992397d5fd7d5d4bfb"
+          },
+          "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/packages.lock.json": {
+            "basis": [
+              "At 7639d408, c5_runtime.py input_maps includes every packages.lock.json. The deleted lock belonged to the archived warning-control project outside project_closure, so its removal changes no dependency restored by the mutation suite. See https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/7639d40826b2222c7dcc39dc14ab8145a9cf784c/tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py#L470-L493 and https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/85#issuecomment-7240611871."
+            ],
+            "current_sha256": null
           },
           "scenarios/C01/scenario.yaml": {
             "basis": [
@@ -13148,6 +13177,12 @@
               "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
             ],
             "current_sha256": "3a6f1076e67cc361eee9e393ec25300416c8ed8325fa82992397d5fd7d5d4bfb"
+          },
+          "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/packages.lock.json": {
+            "basis": [
+              "At 7639d408, c5_runtime.py input_maps includes every packages.lock.json. The deleted lock belonged to the archived warning-control project outside project_closure, so its removal changes no dependency restored by the mutation suite. See https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/7639d40826b2222c7dcc39dc14ab8145a9cf784c/tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py#L470-L493 and https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/85#issuecomment-7240611871."
+            ],
+            "current_sha256": null
           },
           "scenarios/C01/scenario.yaml": {
             "basis": [
@@ -14733,6 +14768,12 @@
               "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
             ],
             "current_sha256": "3a6f1076e67cc361eee9e393ec25300416c8ed8325fa82992397d5fd7d5d4bfb"
+          },
+          "docs/operations/evidence/issue-93/child-a/raw/suite-4/verification/warning-control/packages.lock.json": {
+            "basis": [
+              "At 7639d408, c5_runtime.py input_maps includes every packages.lock.json. The deleted lock belonged to the archived warning-control project outside project_closure, so its removal changes no dependency restored by the mutation suite. See https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/7639d40826b2222c7dcc39dc14ab8145a9cf784c/tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py#L470-L493 and https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/85#issuecomment-7240611871."
+            ],
+            "current_sha256": null
           },
           "src/Parchwell.Verifier/VerifyRun/Window/ConsumedMetadataCapture.cs": {
             "basis": [
