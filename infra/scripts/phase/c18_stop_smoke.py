@@ -1,8 +1,8 @@
 """The C18 stop smoke: delete an idle consumer member's pod three times and record what Kubernetes and today's worker do.
 
-It answers three questions for ADR-022 "Amendment 1": whether the TERM signal of a pod deletion reaches the worker
-process, whether the workflow can read the deleted pod's container end time, and whether the Job starts a replacement
-pod. It changes no worker, chart or scenario, judges nothing and publishes no result. The sequence, the bounds and the
+It answers two questions that ADR-022 "Amendment 1" leaves to a smoke, whether the TERM signal of a pod deletion
+reaches the worker process and whether the workflow can read the deleted pod's container end time, and a third that the
+plan adds: whether the Job starts a replacement pod. It changes no worker, chart or scenario, judges nothing and publishes no result. The sequence, the bounds and the
 evidence file are set by items/613/plan-c18-stop-smoke.md; docs/operations/c18-stop-smoke.md describes the evidence.
 The workflow alone creates and deletes every Job and pod (ADR-020).
 """
@@ -22,7 +22,7 @@ TRIALS = (1, 2, 3)
 MODE = "consumer-subject"
 CONTAINER = "enrichment-consumer"
 RECORD_CONTAINER = "consumer-record"
-# Policy values set by Hari (decision 7237226936, point 3), not measurements.
+# Policy values set by Hari (decision 7237226936, point 3), not measurements, except LIST_INTERVAL_SECONDS (plan 3.3 step 7).
 READINESS_CAP_SECONDS = 300
 READINESS_INTERVAL_SECONDS = 5
 DELAY_AFTER_READY_SECONDS = 30
@@ -171,6 +171,7 @@ class Watch:
         self.decoder = codecs.getincrementaldecoder("utf-8")(errors="strict")
         self.process = None
         self.thread = None
+        self.stopped = False
         try:
             self.process = subprocess.Popen(args, cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                             stderr=subprocess.DEVNULL, start_new_session=True)
@@ -227,7 +228,10 @@ class Watch:
             self.malformed = True
 
     def stop(self):
-        if self.process is not None:
+        if self.process is not None and not self.stopped:
+            self.stopped = True
+            if self.process.poll() not in (None, 0) and not self.events:
+                self.started = False  # the command exited non-zero before it printed an event, for example a Forbidden watch
             stop_group(self.process)
         if self.thread is not None:
             self.thread.join(timeout=5)
@@ -241,6 +245,7 @@ class LogStream:
         self.path = path
         self.started = False
         self.process = None
+        self.stopped = False
         try:
             descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
             with os.fdopen(descriptor, "wb") as stream:
@@ -251,7 +256,10 @@ class LogStream:
         self.started = True
 
     def stop(self):
-        if self.process is not None:
+        if self.process is not None and not self.stopped:
+            self.stopped = True
+            if self.process.poll() not in (None, 0) and self.path.stat().st_size == 0:
+                self.started = False  # the command exited non-zero before it wrote a line, for example a Forbidden logs call
             stop_group(self.process)
 
 
@@ -309,7 +317,7 @@ class Smoke:
                 trial = (self.not_attempted(number, job, "run_not_started") if trial is None
                          else self.closed(clean(trial, TRIAL_SHAPE), number, job))
                 trials.append(trial)
-            access = state.get("consumer_storage_access")
+            access = state.get("consumer_storage_access") if saved else None  # no saved trial: plan 3.4 says null
             document = {"dialect": "c18_stop_smoke", "schema_version": 1, "run_id": phase["run_id"],
                         "source_commit": phase["source_commit"], "scenario": "C03", "configuration": "C0",
                         "grace_seconds": GRACE_SECONDS, "bounds": BOUNDS,

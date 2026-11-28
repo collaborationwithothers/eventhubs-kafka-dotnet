@@ -439,8 +439,9 @@ class ExitTests(unittest.TestCase):
         self.assertEqual(0, c18.exit_status([good] * 3))
         self.assertEqual(0, c18.exit_status([good, good, self.trial(sigterm='not_reached')]))
         self.assertEqual(0, c18.exit_status([good, good, self.trial(sigterm='reached_but_killed_at_grace')]))
-        self.assertEqual(0, c18.exit_status([good] * 3))  # a replacement pod is a finding, not a failure: it is not an input of the status
+        self.assertEqual(0, c18.exit_status([good, good, {**good, 'replacement_pod': True}]))  # a replacement pod is a finding, not a failure
         self.assertEqual(1, c18.exit_status([good, good, self.trial(sigterm='undetermined')]))  # not_read gives undetermined
+        self.assertEqual(1, c18.exit_status([good, good, {**self.trial(sigterm='undetermined'), 'end_time': 'read'}]))  # T present, ended at the deadline
         self.assertEqual(1, c18.exit_status([good, good, self.trial('not_attempted', None)]))
 
 
@@ -501,6 +502,13 @@ class CollectTests(SmokeTestCase):
         self.assertNotIn('secret-text', (self.artifacts / 'c18-stop-smoke' / 'c18-stop-smoke.json').read_text())
         self.assertEqual([('not_attempted', 'run_not_started')] * 2, [(t['outcome'], t['reason']) for t in (second, third)])
 
+    def test_collect_with_a_storage_check_but_no_saved_trial_writes_null_access(self):
+        state = self.saved()
+        state['consumer_storage_access'] = {'outcome': 'ready', 'attempts': 1, 'elapsed_seconds': 0, 'last_failure': None, 'probe_delete_failed': False}
+        (self.artifacts / 'phase-status.json').write_text(json.dumps(state))
+        self.assertEqual(0, self.smoke.collect())
+        self.assertIsNone(self.document()['consumer_storage_access'])
+
     def test_collect_fails_only_when_it_cannot_write(self):
         (self.artifacts / 'c18-stop-smoke').write_text('a file where the directory belongs')
         with contextlib.redirect_stdout(io.StringIO()):
@@ -538,6 +546,26 @@ class StreamTests(unittest.TestCase):
     def test_an_incomplete_object_at_the_end_is_malformed(self):
         stream = self.watch('print(\'{"type": "ADDED", "object": {\')')
         self.assertEqual(([], True), (stream.events, stream.malformed))
+
+    def test_a_command_that_exits_one_at_start_has_not_started(self):
+        stream = self.watch('import sys; sys.exit(1)')
+        self.assertEqual(([], False), (stream.events, stream.started))
+        with tempfile.TemporaryDirectory() as temporary:
+            log = c18.LogStream([sys.executable, '-c', 'import sys; sys.exit(1)'], Path(temporary) / 'log', None)
+            log.process.wait(timeout=20)
+            log.stop()
+            log.stop()  # stopping twice keeps the answer
+            self.assertFalse(log.started)
+            ok = c18.LogStream([sys.executable, '-c', 'print("x")'], Path(temporary) / 'ok', None)
+            ok.process.wait(timeout=20)
+            ok.stop()
+            self.assertTrue(ok.started)
+
+    def test_a_watch_that_printed_events_before_it_exited_one_has_started(self):
+        stream = self.watch('import json, sys; print(json.dumps({"type": "ADDED", "object": {}})); sys.exit(1)')
+        self.assertEqual((1, True), (len(stream.events), stream.started))
+        stream.stop()
+        self.assertTrue(stream.started)
 
     def test_a_command_that_cannot_start(self):
         self.assertFalse(c18.Watch(['/nonexistent/kubectl-for-tests'], None).started)
