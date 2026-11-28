@@ -39,6 +39,11 @@ case "$1" in
     test)
         project=$3
         name=$(basename "${project%.csproj}")
+        if [[ "$*" == *ParchwellVerifierMutationFullSuite=true* ]]; then
+            printf 'FULL_SUITE_TEST %s\n' "$*" >> "$STUB_LOG"
+            if [[ -n "${STUB_FULL_SUITE_TEST_STATUS:-}" ]]; then echo "stub failure in full-suite tests"; fi
+            exit "${STUB_FULL_SUITE_TEST_STATUS:-0}"
+        fi
         if [[ "$*" == *ParchwellVerifierMutationOnly=true* ]]; then
             printf 'MUTATION_TEST %s\n' "$*" >> "$STUB_LOG"
             if [[ -n "${STUB_MUTATION_TEST_STATUS:-}" ]]; then echo "stub failure in mutation-only tests"; fi
@@ -62,6 +67,10 @@ case "$1" in
         ;;
     build)
         if [[ "$*" == *Parchwell.slnx* ]]; then exit "${STUB_BUILD_STATUS:-0}"; fi
+        if [[ "$*" == *ParchwellVerifierMutationFullSuite=true* ]]; then
+            printf 'FULL_SUITE_BUILD %s\n' "$*" >> "$STUB_LOG"
+            exit "${STUB_FULL_SUITE_STATUS:-0}"
+        fi
         if [[ "$*" == *ParchwellVerifierMutationOnly=true* ]]; then
             printf 'MUTATION %s\n' "$*" >> "$STUB_LOG"
             exit "${STUB_MUTATION_STATUS:-0}"
@@ -364,6 +373,26 @@ run_case mutation_test_fail STUB_MUTATION_TEST_STATUS=1 --
 check_summary "M9 failure" '.failed_stages == [{"label":"Mutation-only Verifier tests","exit_code":1}] and .outcome == "failed"'
 run_case mutation_build_fail_no_test STUB_MUTATION_STATUS=1 --
 [[ "$(grep -c '^MUTATION_TEST ' "$STUB_LOG")" -eq 0 ]] || fail "M10: a failed mutation-only build must not run its tests"
+
+# The full-suite configuration (issue 602) is built and tested after the mutation-only stages, in the same legs.
+run_case full_suite_all --
+[[ $status -eq 0 && "$(grep -c '^FULL_SUITE_BUILD ' "$STUB_LOG")" -eq 1 && "$(grep -c '^FULL_SUITE_TEST ' "$STUB_LOG")" -eq 1 ]] || fail "F1: a full run must build and test the full-suite configuration once each (status $status)"
+[[ "$(grep '^FULL_SUITE_BUILD ' "$STUB_LOG")" == *"tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj"*"-p:ParchwellVerifierMutationFullSuite=true"* \
+    && "$(grep '^FULL_SUITE_TEST ' "$STUB_LOG")" == *"--project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj"*"-p:ParchwellVerifierMutationOnly=true"*"-p:ParchwellVerifierMutationFullSuite=true"* ]] || fail "F1: the full-suite stages must use the Verifier test project and both properties"
+check_summary "F1 stages" '[.stages[].label] | (index("Full-suite mutation Verifier test build") != null and index("Full-suite mutation Verifier tests") != null)'
+run_case full_suite_rest -- --project Parchwell.Verifier.Tests --shard rest
+[[ "$(grep -c '^FULL_SUITE_BUILD ' "$STUB_LOG")" -eq 1 && "$(grep -c '^FULL_SUITE_TEST ' "$STUB_LOG")" -eq 1 ]] || fail "F2: the Verifier rest leg must build and test the full-suite configuration once each"
+run_case full_suite_build_fail STUB_FULL_SUITE_STATUS=1 --
+[[ $status -eq 1 && $tested -eq 6 && "$(grep -c '^FULL_SUITE_TEST ' "$STUB_LOG")" -eq 0 ]] || fail "F3: a failed full-suite build must fail the run after all tests and must not run its tests (status $status, ran $tested)"
+check_summary "F3 failure" '.failed_stages == [{"label":"Full-suite mutation Verifier test build","exit_code":1}] and .outcome == "failed"'
+run_case full_suite_test_fail STUB_FULL_SUITE_TEST_STATUS=1 --
+[[ $status -eq 1 && $tested -eq 6 ]] || fail "F3: failing full-suite tests must fail the run after all tests (status $status, ran $tested)"
+check_summary "F3 test failure" '.failed_stages == [{"label":"Full-suite mutation Verifier tests","exit_code":1}] and .outcome == "failed"'
+for skipped in "--project Parchwell.Verifier.Tests --shard b10-verify-a" "--project Parchwell.Verifier.Tests --shard b10-verify-b" "--project Parchwell.LoadGen.Tests --shard rest" "--project Parchwell.Kafka.Tests"; do
+    read -ra skipped_arguments <<<"$skipped"
+    run_case full_suite_skipped -- "${skipped_arguments[@]}"
+    [[ "$(grep -c '^FULL_SUITE_BUILD ' "$STUB_LOG")" -eq 0 && "$(grep -c '^FULL_SUITE_TEST ' "$STUB_LOG")" -eq 0 ]] || fail "F4: '$skipped' must not build or test the full-suite configuration"
+done
 
 run_case build_fail STUB_BUILD_STATUS=4 --
 [[ $status -eq 4 && $tested -eq 0 ]] || fail "a failed build must stop the run with its status (status $status, ran $tested)"
