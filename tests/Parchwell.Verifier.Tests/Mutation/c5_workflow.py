@@ -330,6 +330,21 @@ OVERRIDES = {
     "ParchwellVerifierMutationOnly": "true",
     "APPLICATIONINSIGHTS_STATSBEAT_DISABLED": "true",
 }
+# Full-suite mode also compiles Component/MutationExcluded (issue 602); fast mode is the default.
+SUITES = {
+    "fast": OVERRIDES,
+    "full": {**OVERRIDES, "ParchwellVerifierMutationFullSuite": "true"},
+}
+_ACTIVE_SUITE = ["fast"]
+
+
+def suite_overrides(suite: str) -> dict:
+    require(suite in SUITES, "unsupported suite")
+    return SUITES[suite]
+
+
+def active_overrides() -> dict:
+    return SUITES[_ACTIVE_SUITE[0]]
 RECEIPT_FIELDS = set("""shard target commit tree run_id run_attempt argv cwd
     environment_overrides started_at_utc finished_at_utc elapsed_seconds
     child_exit_code termination_reason command_completed source_sha256_before
@@ -736,7 +751,7 @@ def launch(argv: list[str], cwd: Path, log_path: Path, timeout: float) -> tuple[
     try:
         diagnostic(capture_resources, cwd, log_path.parent, "before", None)
         with log_path.open("xb") as log:
-            process = subprocess.Popen(argv, cwd=cwd, env={**os.environ, **OVERRIDES},
+            process = subprocess.Popen(argv, cwd=cwd, env={**os.environ, **active_overrides()},
                                        stdout=log, stderr=subprocess.STDOUT,
                                        start_new_session=True)
             try:
@@ -824,7 +839,19 @@ def report_failure(shard: str, receipt: dict, projection_valid: bool, log_path: 
 
 
 def run_shard(shard: str, output_dir: Path, *, repository: Path | None = None,
-              command_prefix: list[str] | None = None, timeout: float = 16200) -> int:
+              command_prefix: list[str] | None = None, timeout: float = 16200, suite: str = "fast") -> int:
+    require(suite in SUITES, "unsupported suite")
+    previous = _ACTIVE_SUITE[0]
+    _ACTIVE_SUITE[0] = suite
+    try:
+        return _run_shard(shard, output_dir, repository=repository, command_prefix=command_prefix,
+                          timeout=timeout)
+    finally:
+        _ACTIVE_SUITE[0] = previous
+
+
+def _run_shard(shard: str, output_dir: Path, *, repository: Path | None = None,
+               command_prefix: list[str] | None = None, timeout: float = 16200) -> int:
     repository = (repository or Path(__file__).resolve().parents[3]).resolve()
     output_dir = Path(output_dir).resolve()
     try:
@@ -932,7 +959,7 @@ def run_shard(shard: str, output_dir: Path, *, repository: Path | None = None,
             "shard": shard, "target": target, "commit": commit, "tree": tree,
             "run_id": os.environ.get("GITHUB_RUN_ID"),
             "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
-            "argv": argv, "cwd": str(cwd), "environment_overrides": OVERRIDES,
+            "argv": argv, "cwd": str(cwd), "environment_overrides": active_overrides(),
             "started_at_utc": started, "finished_at_utc": finished,
             "elapsed_seconds": elapsed, "child_exit_code": child_exit,
             "termination_reason": reason,
@@ -1507,7 +1534,8 @@ def retained_span(directory: Path, target: str) -> list[int] | None:
 
 
 def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: str,
-              output_dir: Path, campaign_manifest: Path | None = None) -> int:
+              output_dir: Path, campaign_manifest: Path | None = None, suite: str = "fast") -> int:
+    require(suite in SUITES, "unsupported suite")
     input_dir, output_dir = Path(input_dir), Path(output_dir)
     try:
         output_dir.mkdir(parents=True, exist_ok=False)
@@ -1579,7 +1607,7 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
             report = json.loads(report_bytes)
             require(isinstance(receipt, dict), "malformed receipt")
             require(set(receipt) == RECEIPT_FIELDS, "malformed receipt fields")
-            require(receipt["environment_overrides"] == OVERRIDES
+            require(receipt["environment_overrides"] == suite_overrides(suite)
                     and isinstance(receipt["argv"], list) and receipt["argv"]
                     and all(isinstance(arg, str) for arg in receipt["argv"])
                     and isinstance(receipt["cwd"], str), "malformed invocation receipt")
@@ -1761,7 +1789,7 @@ def aggregate(input_dir: Path, expected_commit: str, run_id: str, run_attempt: s
     passed = 100 * numerator >= 60 * denominator if complete else None
     summary = {
         "commit": expected_commit, "tree": reference_tree, "run_id": run_id,
-        "run_attempt": run_attempt, "measurement_complete": complete,
+        "run_attempt": run_attempt, "suite": suite, "measurement_complete": complete,
         "incomplete_reasons": reasons, "shards": shards, "targets": targets,
         "status_counts": counts,
         "numerator": numerator, "denominator": denominator,
@@ -1898,6 +1926,7 @@ def main() -> int:
     runner = commands.add_parser("run-shard")
     runner.add_argument("--shard", required=True, choices=SHARDS)
     runner.add_argument("--output-dir", required=True, type=Path)
+    runner.add_argument("--suite", choices=sorted(SUITES), default="fast")
     combiner = commands.add_parser("aggregate")
     combiner.add_argument("--input-dir", required=True, type=Path)
     combiner.add_argument("--expected-commit", required=True)
@@ -1905,6 +1934,7 @@ def main() -> int:
     combiner.add_argument("--run-attempt", required=True)
     combiner.add_argument("--output-dir", required=True, type=Path)
     combiner.add_argument("--campaign-manifest", type=Path)
+    combiner.add_argument("--suite", choices=sorted(SUITES), default="fast")
     checker = commands.add_parser("local-check")
     checker.add_argument("--target", required=True)
     checker.add_argument("--span", required=True)
@@ -1914,13 +1944,13 @@ def main() -> int:
     boundaries.add_argument("--target", required=True)
     args = parser.parse_args()
     if args.command == "run-shard":
-        return run_shard(args.shard, args.output_dir)
+        return run_shard(args.shard, args.output_dir, suite=args.suite)
     if args.command == "local-check":
         return local_check(args.target, args.span, args.output_dir, timeout=args.timeout)
     if args.command == "member-boundaries":
         return print_member_boundaries(args.target)
     return aggregate(args.input_dir, args.expected_commit, args.run_id,
-                     args.run_attempt, args.output_dir, args.campaign_manifest)
+                     args.run_attempt, args.output_dir, args.campaign_manifest, suite=args.suite)
 
 
 if __name__ == "__main__":
