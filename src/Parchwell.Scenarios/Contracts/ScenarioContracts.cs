@@ -152,12 +152,19 @@ public sealed record ProbeV2Configuration(string Action, KafkaClientRole Role, s
 public sealed record IdleObservationDefinition(string Action, KafkaClientRole Role, int IdleSeconds, int StatisticsIntervalMs, int MaxStatisticsReports);
 
 /// <summary>
-/// The validated consumer-processing declaration of C03, C10 or C01, with its fixed literals; owning checks are in
+/// The validated consumer-processing declaration of C03, C10, C01 or C18, with its fixed literals; owning checks are in
 /// scenario-contract.md, "Consumer processing declarations". <c>Configurations</c> holds C03's slow messages and is empty
-/// for C10 and C01; <c>KillCounts</c> holds the subject's kill count of each configuration of C10 and C01 and is empty for C03.
+/// for C10, C01 and C18; <c>KillCounts</c> holds the subject's kill count of each configuration of C10 and C01 and is empty
+/// for C03 and C18; <c>Stops</c> holds C18's stop of each configuration and is empty for C03, C10 and C01.
 /// </summary>
 public sealed record ConsumerProcessingDefinition(int WindowMs, int CompletionDeadlineMs, ImmutableDictionary<string, ConsumerSlowMessageDeclaration> Configurations,
-    ImmutableDictionary<string, int> KillCounts);
+    ImmutableDictionary<string, int> KillCounts)
+{
+    public ImmutableDictionary<string, ConsumerStopDeclaration> Stops { get; init; } = ImmutableDictionary<string, ConsumerStopDeclaration>.Empty;
+}
+
+/// <summary>C18's stop of a configuration: how long after the start line the workflow deletes the subject's pod, and how the subject shuts its consumer down (<c>close</c> or <c>dispose</c>).</summary>
+public sealed record ConsumerStopDeclaration(int AfterStartLineMs, string ShutdownMode);
 
 /// <summary>The one slow message of a configuration: its ordinal in the subject's processing order, how long it takes, and whether the subject keeps calling Consume (<c>pause</c>) or not (<c>inline</c>).</summary>
 public sealed record ConsumerSlowMessageDeclaration(int Ordinal, int DurationMs, string Mode);

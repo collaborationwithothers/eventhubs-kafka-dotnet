@@ -34,6 +34,9 @@ public sealed class ScenarioKillPlanSourceTests
         Assert.Equal(360000, plan.WindowMs);
         Assert.Null(plan.SlowMessage);
         Assert.Equal(killCount, plan.KillCount);
+        Assert.False(plan.StopConfigured);
+        Assert.Null(plan.ShutdownMode);
+        Assert.False(plan.RecordsConsumerErrors);
         Assert.Equal(key is null ? [] : [KeyValuePair.Create(key, value!)], plan.ConsumerSettings);
     }
 
@@ -50,6 +53,9 @@ public sealed class ScenarioKillPlanSourceTests
         Assert.Equal(360000, plan.WindowMs);
         Assert.Null(plan.SlowMessage);
         Assert.Null(plan.KillCount);
+        Assert.False(plan.StopConfigured);
+        Assert.Null(plan.ShutdownMode);
+        Assert.False(plan.RecordsConsumerErrors);
         Assert.Empty(plan.ConsumerSettings);
     }
 
@@ -89,6 +95,9 @@ public sealed class ScenarioKillPlanSourceTests
         Assert.Equal(phase, plan.ConfigurationId);
         Assert.Null(plan.SlowMessage);
         Assert.Equal(killCount, plan.KillCount);
+        Assert.False(plan.StopConfigured);
+        Assert.Null(plan.ShutdownMode);
+        Assert.False(plan.RecordsConsumerErrors);
         Assert.Equal(200, plan.ProcessingDelayMs);
         Assert.Equal(360000, plan.WindowMs);
         // The E1 plan of the subject: C10 C0 and C01 C0 replace nothing; C01 C1 replaces session.timeout.ms.

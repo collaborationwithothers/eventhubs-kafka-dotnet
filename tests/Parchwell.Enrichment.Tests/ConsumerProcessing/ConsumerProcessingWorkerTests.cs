@@ -59,6 +59,17 @@ public sealed class ConsumerProcessingWorkerTests
         Assert.Equal(0, harness.ConsumerFactories);
     }
 
+    [Theory]
+    [InlineData("C18", null)]
+    [InlineData("C19", "consumer_identity_invalid")]
+    public void Given_scenario_id_When_options_validated_Then_C18_is_admitted_and_C19_is_rejected(string scenario, string? failure)
+    {
+        ConsumerProcessingOptions options = ConsumerTestHarness.ValidOptions();
+        options.ScenarioId = scenario;
+        if (failure is null) options.Validate();
+        else Assert.Equal(failure, Assert.Throws<InvalidOperationException>(options.Validate).Message);
+    }
+
     [Fact]
     public async Task Given_U3_unsupported_setting_When_executed_Then_setting_failure_precedes_registration()
     {

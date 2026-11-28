@@ -24,7 +24,7 @@ internal sealed class ConsumerProcessingOptions
     public void Validate()
     {
         string expectedJob = $"{RunId}-{Phase.ToLowerInvariant()}-r{RepeatNumber.ToString(CultureInfo.InvariantCulture)}-consumer-{Role}";
-        if (!DnsLabel(RunId, 29) || ScenarioId is not ("C03" or "C10" or "C01") ||
+        if (!DnsLabel(RunId, 29) || ScenarioId is not ("C03" or "C10" or "C01" or "C18") ||
             Phase is not ("C0" or "C1") || RepeatNumber is < 1 or > 5 || Role is not ("subject" or "witness") ||
             !StringComparer.Ordinal.Equals(JobName, expectedJob) || !DnsLabel(PodName, 63) ||
             !PodName.StartsWith(JobName + "-", StringComparison.Ordinal) || !Guid.TryParseExact(PodUid, "D", out _) ||

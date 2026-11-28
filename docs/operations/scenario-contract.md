@@ -146,32 +146,34 @@ The action is a produce because librdkafka v2.16.0 builds a Produce request only
 
 ## Consumer processing declarations
 
-C03, C10 and C01 use the closed `consumer_processing` declaration, under the [#499 decisions](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894564479), the [#508 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6943430187) and the [#510 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7000962800). The experiment is two consumer members in one group, a subject and a witness. In C03 the subject has one slow message, and the declaration says how long it takes and whether the subject keeps calling `Consume` while it processes it. In C10 and C01 the subject kills itself when `Consume` returns its Nth message, and the declaration gives N.
+C03, C10, C01 and C18 use the closed `consumer_processing` declaration, under the [#499 decisions](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6894564479), the [#508 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/508#issuecomment-6943430187) and the [#510 plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/510#issuecomment-7000962800). The experiment is two consumer members in one group, a subject and a witness. In C03 the subject has one slow message, and the declaration says how long it takes and whether the subject keeps calling `Consume` while it processes it. In C10 and C01 the subject kills itself when `Consume` returns its Nth message, and the declaration gives N. In C18 the workflow deletes the subject's pod T after the start line; the declaration gives T and the shutdown mode.
 
-`consumer_processing` contains exactly `window_ms`, `completion_deadline_ms` and `configurations`. `configurations` has one entry per configuration of the scenario. For C03 each entry is a mapping with exactly `slow_message`, a mapping with exactly `ordinal`, `duration_ms` and `mode`. For C10 and C01 each entry is a mapping with exactly `kill_count`. The values are configuration literals, not measurements:
+`consumer_processing` contains exactly `window_ms`, `completion_deadline_ms` and `configurations`. `configurations` has one entry per configuration of the scenario. For C03 each entry is a mapping with exactly `slow_message`, a mapping with exactly `ordinal`, `duration_ms` and `mode`. For C10 and C01 each entry is a mapping with exactly `kill_count`. For C18 each entry is a mapping with exactly `stop`, a mapping with exactly `after_start_line_ms` and `shutdown_mode`. The values are configuration literals, not measurements:
 
 | Field | Value |
 |---|---|
-| `window_ms`, C03, C10 and C01 | `360000` |
-| `completion_deadline_ms`, C03, C10 and C01 | `30000` |
+| `window_ms`, C03, C10, C01 and C18 | `360000` |
+| `completion_deadline_ms`, C03, C10, C01 and C18 | `30000` |
 | `slow_message.ordinal`, both configurations | `100` |
 | `slow_message.duration_ms`, both configurations | `90000` |
 | `slow_message.mode`, C0 | `inline`: no `Consume` call during the slow message |
 | `slow_message.mode`, C1 | `pause`: all partitions paused, `Consume` still called |
 | `kill_count`, C10, both configurations | `110` |
 | `kill_count`, C01, both configurations | `1` |
+| `stop.after_start_line_ms`, C18, both configurations | `60000` |
+| `stop.shutdown_mode`, C18 | `close` for C0 and `dispose` for C1 |
 
 In a consumer scenario, the `EnrichmentConsumer` replacements of a configuration apply to the subject member only. The witness runs the `EnrichmentConsumer` baseline. C03 replaces `max.poll.interval.ms` with `60000` in both configurations. C10 replaces `enable.auto.offset.store` with `true` in C1. C01 replaces `session.timeout.ms` with `45000` in C1.
 
 The loader's checks are a closed list. Each failure is a diagnostic with the code and field path given:
 
-1. Admission: only C03, C10 and C01 may declare `consumer_processing` (`consumer_processing_unexpected`), and it must (`consumer_processing_required`). Both are at path `consumer_processing`.
+1. Admission: only C03, C10, C01 and C18 may declare `consumer_processing` (`consumer_processing_unexpected`), and it must (`consumer_processing_required`). Both are at path `consumer_processing`.
 2. Exclusivity: `consumer_processing` cannot appear with `single_action`, `probe_v2` or `idle_observation` (`consumer_processing_combined`).
 3. Shape: a mapping with exactly the three fields above (`consumer_processing_shape`).
 4. Window and deadline: the plain scalars `360000` and `30000` (`consumer_processing_literal`, paths `consumer_processing.window_ms` and `consumer_processing.completion_deadline_ms`).
 5. Configuration set: exactly the scenario's configuration keys (`consumer_processing_configurations`, path `consumer_processing.configurations`).
-6. Entry shape: for C03, each entry has exactly `slow_message` with exactly `ordinal`, `duration_ms` and `mode`; for C10 and C01, each entry has exactly `kill_count` (`consumer_processing_shape`, path `consumer_processing.configurations.<id>`).
-7. Literals: for C03, ordinal `100`, duration `90000`, and mode `inline` for C0 and `pause` for C1 (`consumer_processing_literal`, path `consumer_processing.configurations.<id>.slow_message.<field>`); for C10, `kill_count` the plain scalar `110`, and for C01 the plain scalar `1` (`consumer_processing_literal`, path `consumer_processing.configurations.<id>.kill_count`).
+6. Entry shape: for C03, each entry has exactly `slow_message` with exactly `ordinal`, `duration_ms` and `mode`; for C10 and C01, each entry has exactly `kill_count`; for C18, each entry has exactly `stop`, a mapping with exactly `after_start_line_ms` and `shutdown_mode` (`consumer_processing_shape`, path `consumer_processing.configurations.<id>`).
+7. Literals: for C03, ordinal `100`, duration `90000`, and mode `inline` for C0 and `pause` for C1 (`consumer_processing_literal`, path `consumer_processing.configurations.<id>.slow_message.<field>`); for C10, `kill_count` the plain scalar `110`, and for C01 the plain scalar `1` (`consumer_processing_literal`, path `consumer_processing.configurations.<id>.kill_count`); for C18, `after_start_line_ms` the plain scalar `60000` in both configurations, and `shutdown_mode` the plain scalar `close` for C0 and `dispose` for C1 (`consumer_processing_literal`, path `consumer_processing.configurations.<id>.stop.<field>`).
 8. Fixed experiment: five repeats; no fault; no gate; roles `LoadGenProducer`, `EnrichmentConsumer`, `VerifierConsumer` in that order; the eight measures of `scenarios/C03/scenario.yaml`; and each configuration's replacements exactly as this table gives (`consumer_processing_experiment`):
 
 | Item | C0 replacements | C1 replacements |
@@ -179,5 +181,6 @@ The loader's checks are a closed list. Each failure is a diagnostic with the cod
 | C03 | `EnrichmentConsumer` `max.poll.interval.ms: 60000` | `EnrichmentConsumer` `max.poll.interval.ms: 60000` |
 | C10 | none | `EnrichmentConsumer` `enable.auto.offset.store: true` |
 | C01 | none | `EnrichmentConsumer` `session.timeout.ms: 45000` |
+| C18 | none | none |
 
 A profile used by a scenario with `consumer_processing` must have a `consumer` mapping, otherwise loading fails with `consumer_profile_required` at the profile. A bad `consumer` mapping fails with `profile_consumer_shape` or `profile_consumer_range`.
