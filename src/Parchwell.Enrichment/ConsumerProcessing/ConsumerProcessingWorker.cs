@@ -26,6 +26,14 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
         long processed = 0;
         long ordinal = 0;
         ITimer? watchdog = null;
+        var stop = new StopObservation();
+        CancellationTokenRegistration stopRegistration = default;
+        bool stopArmed = false;
+        bool stopShutdown = false;
+        string shutdownOutcome = "ok";
+        DateTimeOffset shutdownStarted = default;
+        DateTimeOffset shutdownEnded = default;
+        var gate = new object();
         var held = new HashSet<TopicPartition>();
         var buffered = new Queue<(ConsumeResult<byte[], byte[]> Message, long Ordinal)>();
         try
@@ -50,9 +58,18 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
                 (_, partitions) => PartitionEvent("assigned", partitions),
                 (_, partitions) => PartitionEvent("revoked", partitions),
                 (_, partitions) => PartitionEvent("lost", partitions),
-                (_, committed) => Append(() => ConsumerRecordCodec.Commit(identity.PodName, rows, committed, clock.GetUtcNow())));
+                (_, committed) => Append(() => ConsumerRecordCodec.Commit(identity.PodName, rows, committed, clock.GetUtcNow())),
+                plan.RecordsConsumerErrors
+                    ? (_, error) => Append(() => ConsumerRecordCodec.ConsumerError(identity.PodName, rows, "error_handler", error, clock.GetUtcNow()))
+                    : null);
             consumer = consumerFactory(configuration, handlers);
             consumer.Subscribe("document-events");
+            // A stop counts only if it arrives after Subscribe has returned. An earlier one takes the existing failure path.
+            if (plan.StopConfigured && !cancellationToken.IsCancellationRequested)
+            {
+                stopArmed = true;
+                stopRegistration = cancellationToken.Register(() => stop.Observe(clock.GetUtcNow()));
+            }
             long windowStart = clock.GetTimestamp();
             watchdog = clock.CreateTimer(_ =>
             {
@@ -61,11 +78,21 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
             }, null, TimeSpan.FromMilliseconds(plan.WindowMs + 120000), Timeout.InfiniteTimeSpan);
             while (clock.GetElapsedTime(windowStart) < TimeSpan.FromMilliseconds(plan.WindowMs))
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                if (stopArmed)
+                {
+                    if (stop.Observed is not null) break;
+                }
+                else cancellationToken.ThrowIfCancellationRequested();
                 ConsumeResult<byte[], byte[]>? message = Poll();
                 ThrowIfAppendFailed();
                 if (message is null) continue;
                 await ProcessAsync(message, ++ordinal).ConfigureAwait(false);
+            }
+            if (stopArmed && stop.Observed is { } observed)
+            {
+                Append(() => ConsumerRecordCodec.StopObserved(identity.PodName, rows, observed));
+                ThrowIfAppendFailed();
+                stopShutdown = true;
             }
             failure = plan.KillCount is null ? null : "consumer_kill_count_not_reached";
         }
@@ -78,7 +105,34 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
         }
         finally
         {
-            if (consumer is not null && !killFailed)
+            if (consumer is not null && !killFailed && stopShutdown)
+            {
+                shutdownStarted = clock.GetUtcNow();
+                try
+                {
+                    if (plan!.ShutdownMode == "close")
+                    {
+                        await Task.Run(consumer.Close, CancellationToken.None)
+                            .WaitAsync(TimeSpan.FromSeconds(30), clock, CancellationToken.None).ConfigureAwait(false);
+                        ThrowIfAppendFailed();
+                        consumer.Dispose();
+                    }
+                    else consumer.Dispose();
+                }
+                catch (TimeoutException) { shutdownOutcome = "timed_out"; }
+                catch (Exception exception)
+                {
+                    cause ??= exception;
+                    shutdownOutcome = "failed";
+                }
+                // Close the record before the end time is taken, so a callback that a timed-out Close raises later
+                // appends nothing and the receipt counts every appended row.
+                lock (gate) recordOpen = false;
+                shutdownEnded = clock.GetUtcNow();
+                if (appendFailed) failure = "consumer_record_append_failed";
+                monitoring?.Complete(shutdownOutcome == "ok");
+            }
+            else if (consumer is not null && !killFailed)
             {
                 try
                 {
@@ -98,7 +152,21 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
         }
         try
         {
-            if (failure is null && !watchdogFired)
+            if (failure is null && !watchdogFired && stopShutdown)
+            {
+                try
+                {
+                    // Not a completion: the stop receipt replaces completion.json. The token cannot fail the upload.
+                    await store!.WriteStopReceiptAsync(ConsumerRecordCodec.StopReceipt(identity!, plan!, rows, processed,
+                        stop.Observed!.Value, shutdownStarted, shutdownEnded, shutdownOutcome, clock.GetUtcNow()), CancellationToken.None).ConfigureAwait(false);
+                }
+                catch (Exception exception)
+                {
+                    cause ??= exception;
+                    failure = "consumer_stop_receipt_failed";
+                }
+            }
+            else if (failure is null && !watchdogFired)
             {
                 try
                 {
@@ -111,7 +179,7 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
                 }
             }
         }
-        finally { watchdog?.Dispose(); }
+        finally { watchdog?.Dispose(); await stopRegistration.DisposeAsync().ConfigureAwait(false); }
         if (watchdogFired) return 124;
         if (failure is null) return 0;
         await (error ?? Console.Error).WriteLineAsync($"consumer_processing_failed reason={failure} scenario_id={Display(identity?.ScenarioId)} run_id={Display(identity?.RunId)} role={Display(identity?.Role)}{CauseSuffix(cause)}").ConfigureAwait(false);
@@ -123,18 +191,25 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
             if (appendFailed) throw new InvalidOperationException("consumer_record_append_failed");
         }
 
+        // After a stop is configured every append and wait ignores the stop token, which is cancelled by then.
+        CancellationToken WorkToken() => plan?.StopConfigured == true ? CancellationToken.None : cancellationToken;
+
         void Append(Func<byte[]> serialize)
         {
-            if (!recordOpen || appendFailed) return;
-            try
+            // The lock lets a stop shutdown close the record while a callback of a timed-out Close may still run.
+            lock (gate)
             {
-                store!.AppendAsync(serialize(), cancellationToken).GetAwaiter().GetResult();
-                rows++;
-            }
-            catch (Exception)
-            {
-                appendFailed = true;
-                throw;
+                if (!recordOpen || appendFailed) return;
+                try
+                {
+                    store!.AppendAsync(serialize(), WorkToken()).GetAwaiter().GetResult();
+                    rows++;
+                }
+                catch (Exception)
+                {
+                    appendFailed = true;
+                    throw;
+                }
             }
         }
 
@@ -156,7 +231,13 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
         ConsumeResult<byte[], byte[]>? Poll()
         {
             try { return consumer!.Consume(TimeSpan.FromMilliseconds(100)); }
-            catch (ConsumeException exception) when (!exception.Error.IsFatal && !appendFailed) { return null; }
+            catch (ConsumeException exception) when (!appendFailed && (plan!.RecordsConsumerErrors || !exception.Error.IsFatal))
+            {
+                if (plan!.RecordsConsumerErrors)
+                    Append(() => ConsumerRecordCodec.ConsumerError(identity!.PodName, rows, "consume", exception.Error, clock.GetUtcNow()));
+                if (exception.Error.IsFatal) throw;
+                return null;
+            }
         }
 
         void SelfKill(ConsumeResult<byte[], byte[]> message)
@@ -188,14 +269,14 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
                 long pauseStarted = clock.GetTimestamp();
                 while (clock.GetElapsedTime(pauseStarted) < TimeSpan.FromMilliseconds(duration))
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    WorkToken().ThrowIfCancellationRequested();
                     ConsumeResult<byte[], byte[]>? next = Poll();
                     ThrowIfAppendFailed();
                     if (next is not null) buffered.Enqueue((next, ++ordinal));
                 }
             }
             else if (duration > 0)
-                await Task.Delay(TimeSpan.FromMilliseconds(duration), clock, cancellationToken).ConfigureAwait(false);
+                await Task.Delay(TimeSpan.FromMilliseconds(duration), clock, WorkToken()).ConfigureAwait(false);
             DateTimeOffset ended = clock.GetUtcNow();
             Append(() => ConsumerRecordCodec.Processed(identity!.PodName, rows, message, slow, started, ended));
             ThrowIfAppendFailed();
@@ -211,6 +292,14 @@ internal sealed class ConsumerProcessingWorker(IOptions<ConsumerProcessingOption
                 if (held.Contains(item.Message.TopicPartition))
                     await ProcessAsync(item.Message, item.Ordinal).ConfigureAwait(false);
         }
+    }
+
+    // The stop request's time, read by the worker loop while the token's callback may write it from another thread.
+    private sealed class StopObservation
+    {
+        private long ticks;
+        internal void Observe(DateTimeOffset time) => Interlocked.CompareExchange(ref ticks, time.UtcTicks, 0);
+        internal DateTimeOffset? Observed => Volatile.Read(ref ticks) is var value and not 0 ? new DateTimeOffset(value, TimeSpan.Zero) : null;
     }
 
     private static string CauseSuffix(Exception? cause) => cause is null ? string.Empty : " cause=" + ExceptionSummary.Describe(cause);

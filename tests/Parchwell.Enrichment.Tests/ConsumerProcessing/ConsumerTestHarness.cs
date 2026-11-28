@@ -29,6 +29,8 @@ internal sealed class ConsumerTestHarness : IDisposable
     internal Func<int, (int ReturnValue, int Errno)>? Signal { get; set; }
     internal bool NoPlanSource { get; set; }
     internal Action? DuringTimerWait { get; set; }
+    // The token the worker receives as its stop request; a test cancels it to stop the worker.
+    internal CancellationTokenSource StopSource { get; } = new();
 
     internal ConsumerTestHarness()
     {
@@ -44,7 +46,7 @@ internal sealed class ConsumerTestHarness : IDisposable
             () => { StoreFactories++; return Store; },
             CreateConsumer,
             Clock, code => ExitCodes.Add(code), SendSignal, Error);
-        Task<int> execution = Task.Run(() => worker.ExecuteAsync(CancellationToken.None));
+        Task<int> execution = Task.Run(() => worker.ExecuteAsync(StopSource.Token));
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         while (!execution.IsCompleted)
         {
@@ -112,7 +114,8 @@ internal sealed class ConsumerTestHarness : IDisposable
         Recorded.Assignment.RemoveAll(partition => removed.Contains(partition));
         if (lost) Handlers.Lost(Consumer, removed); else Handlers.Revoked(Consumer, removed);
     }
-    public void Dispose() => Error.Dispose();
+    internal void RaiseError(Error error) => Handlers.ErrorReported!(Consumer, error);
+    public void Dispose() { StopSource.Dispose(); Error.Dispose(); }
     internal sealed class PlanSource(ConsumerProcessingPlan plan) : IConsumerProcessingPlanSource
     {
         public ConsumerProcessingPlan? GetPlan(string scenarioId, string configurationId) => plan;
@@ -123,6 +126,11 @@ internal sealed class RecordingRecordStore(List<string> calls) : IConsumerRecord
 {
     internal JsonElement? Registration { get; private set; }
     internal JsonElement? Completion { get; private set; }
+    internal JsonElement? StopReceipt { get; private set; }
+    internal bool FailStopReceipt { get; set; }
+    // Whether each token passed to AppendAsync could be cancelled, in call order.
+    internal List<bool> AppendTokensCanBeCanceled { get; } = [];
+    internal bool? StopReceiptTokenCanBeCanceled { get; private set; }
     internal List<JsonElement> Rows { get; } = [];
     internal Func<JsonElement, bool>? FailAppend { get; set; }
     internal bool FailRegistration { get; set; }
@@ -141,6 +149,7 @@ internal sealed class RecordingRecordStore(List<string> calls) : IConsumerRecord
     public Task AppendAsync(byte[] jsonLine, CancellationToken cancellationToken)
     {
         AppendAttempts++;
+        AppendTokensCanBeCanceled.Add(cancellationToken.CanBeCanceled);
         JsonElement row = Parse(jsonLine);
         string kind = row.GetProperty("kind").GetString()!;
         calls.Add("append:" + kind);
@@ -153,6 +162,14 @@ internal sealed class RecordingRecordStore(List<string> calls) : IConsumerRecord
         calls.Add("completion");
         if (FailCompletion) throw new InvalidOperationException("synthetic_completion_failure");
         Completion = Parse(json);
+        return Task.CompletedTask;
+    }
+    public Task WriteStopReceiptAsync(byte[] json, CancellationToken cancellationToken)
+    {
+        calls.Add("stop-receipt");
+        StopReceiptTokenCanBeCanceled = cancellationToken.CanBeCanceled;
+        if (FailStopReceipt) throw new InvalidOperationException("synthetic_stop_receipt_failure");
+        StopReceipt = Parse(json);
         return Task.CompletedTask;
     }
     private static JsonElement Parse(byte[] json) { using JsonDocument document = JsonDocument.Parse(json); return document.RootElement.Clone(); }

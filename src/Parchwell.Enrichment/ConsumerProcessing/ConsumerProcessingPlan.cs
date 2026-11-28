@@ -17,6 +17,11 @@ internal sealed record ConsumerProcessingPlan
     public int WindowMs { get; init; }
     public ConsumerSlowMessage? SlowMessage { get; init; }
     public int? KillCount { get; init; }
+    // The configuration names a stop time. The workflow owns the time; the worker only needs to know one is set.
+    public bool StopConfigured { get; init; }
+    // "close" or "dispose"; null when no stop time is configured.
+    public string? ShutdownMode { get; init; }
+    public bool RecordsConsumerErrors { get; init; }
     public IReadOnlyDictionary<string, string> ConsumerSettings { get; init; } = new Dictionary<string, string>(StringComparer.Ordinal);
 
     public void ApplyAndValidate(ConsumerProcessingOptions options, ConsumerConfig configuration)
@@ -25,7 +30,10 @@ internal sealed record ConsumerProcessingPlan
             WindowMs is < 1000 or > 3600000 || ConsumerSettings is null ||
             SlowMessage is { } slow && (options.Role != "subject" || slow.Ordinal is < 1 or > 1000000 ||
                 slow.DurationMs is < 1 or > 3600000 || slow.Mode is not ("inline" or "pause") || WindowMs <= slow.DurationMs) ||
-            KillCount is { } kill && (options.Role != "subject" || kill is < 1 or > 1000000 || SlowMessage is not null))
+            KillCount is { } kill && (options.Role != "subject" || kill is < 1 or > 1000000 || SlowMessage is not null) ||
+            StopConfigured && (options.Role != "subject" || KillCount is not null || SlowMessage is not null ||
+                ShutdownMode is not ("close" or "dispose")) ||
+            !StopConfigured && ShutdownMode is not null)
             throw new InvalidOperationException("consumer_plan_invalid");
         foreach ((string key, string value) in ConsumerSettings)
         {

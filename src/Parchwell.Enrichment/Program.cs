@@ -285,12 +285,9 @@ internal static class Program
                 new KafkaStatisticsIdentity(options.ScenarioId, options.RunId, KafkaClientRole.EnrichmentConsumer, options.PodName));
             try
             {
-            IConsumer<byte[], byte[]> result = authentication.CreateConsumerBuilder<byte[], byte[]>(consumerConfiguration, session)
-                .SetStatisticsHandler(NativeClientCapture.ConsumerHandler(lifetime))
-                .SetPartitionsAssignedHandler(handlers.Assigned)
-                .SetPartitionsRevokedHandler((consumer, partitions) => handlers.Revoked(consumer, partitions.Select(partition => partition.TopicPartition).ToList()))
-                .SetPartitionsLostHandler((consumer, partitions) => handlers.Lost(consumer, partitions.Select(partition => partition.TopicPartition).ToList()))
-                .SetOffsetsCommittedHandler(handlers.OffsetsCommitted).Build();
+            IConsumer<byte[], byte[]> result = ConsumerProcessingBuilderConfiguration.SetHandlers(
+                authentication.CreateConsumerBuilder<byte[], byte[]>(consumerConfiguration, session),
+                handlers, NativeClientCapture.ConsumerHandler(lifetime)).Build();
             lifetime.MarkBuilt();
             return result;
             }
