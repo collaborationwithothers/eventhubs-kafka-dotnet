@@ -16,9 +16,9 @@ internal static class ConsumerRecordCodec
     {
         var effectiveSettings = new SortedDictionary<string, string>(configuration.ToDictionary(
             pair => pair.Key, pair => pair.Value, StringComparer.Ordinal), StringComparer.Ordinal);
-        // Insertion order is the key order. shutdown_mode is absent unless a mode is set, so
-        // registrations of plans without a stop stay byte-identical.
-        var registration = new Dictionary<string, object?>
+        // OrderedDictionary documents that enumeration follows insertion order, which is the key order. shutdown_mode
+        // is absent unless a mode is set, so registrations of plans without a stop stay byte-identical.
+        var registration = new OrderedDictionary<string, object?>
         {
             ["schema_version"] = 1, ["kind"] = "consumer_registration", ["run_id"] = options.RunId,
             ["scenario_id"] = options.ScenarioId, ["configuration_id"] = plan.ConfigurationId, ["phase"] = options.Phase,
