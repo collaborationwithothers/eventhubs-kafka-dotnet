@@ -1,6 +1,6 @@
 # Attempt jobs page size: contract-grade plan for issue 604
 
-Revision: r2
+Revision: r3
 Base commit: `15b09147ed4e7c62ea08620b24c14cd049f07562` (`main`)
 Pull request: one, named "attempt jobs page size".
 
@@ -13,7 +13,9 @@ Goal: `c5_campaign.py` reads every job of a re-run attempt, so the aggregate job
 Authority, in creation order:
 
 1. The body of issue 604 (updated 2026-11-28T05:43:36Z). Its scope items 1 to 4 and its constraints are binding.
-2. [Decision 7234963381](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/604#issuecomment-7234963381) on issue 604 (2026-11-28T05:54:53Z), which links and adopts [standing decision 7234963031 on issue 499](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-7234963031). With `ready-for-agent` applied, a plan revision whose newest fresh check states `Blocking findings: none`, with open questions None, is approved; literal in-scope fixes may go to the next revision with one fresh check; Claude Code implements on `claude-sonnet-5-5`. This plan has one open question, so it is not approvable under that rule until Hari answers it.
+2. [Decision 7234963381](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/604#issuecomment-7234963381) on issue 604 (2026-11-28T05:54:53Z), which links and adopts [standing decision 7234963031 on issue 499](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-7234963031). With `ready-for-agent` applied, a plan revision whose newest fresh check states `Blocking findings: none`, with open questions None, is approved; literal in-scope fixes may go to the next revision with one fresh check; Claude Code implements on `claude-sonnet-5-5`. 3. [decision 7235089415](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/604#issuecomment-7235089415) on issue 604 (2026-11-28), recorded from Hari's words in the planning session, "accept D1, revise the plan": it accepts deployment assumption D1 by name.
+
+This revision has no open question.
 
 The issue is not a child issue and has no item plan; the issue body is the specification. `ready-for-agent` was applied at 2026-11-28T05:43:35Z by Hari's account.
 
@@ -118,9 +120,9 @@ The cases of the new test may be subtests of one method or separate methods; the
 
 ## Deployment assumptions
 
-None accepted yet. D1 is listed under "Open questions for Hari" until Hari accepts it by name.
+D1 was accepted by name by Hari in [decision 7235089415](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/604#issuecomment-7235089415). The implementer relies on it; deferred item 1 records it if it fails.
 
-- D1. GitHub's `List jobs for a workflow run attempt` endpoint serves `per_page=30` on every page for a re-run attempt of the C5 coordinator. No offline test can cover it. Evidence, taken by the issue 499 control session on 2026-11-27 to 28 with `gh api` (each call a fresh `gh` process; a fresh connection per call is inferred, not verified), against completed run 46039061248, which was idle, not under load: `attempts/2/jobs?per_page=30&page=N` returned pages 1 to 6, 179 jobs in total; `per_page=100` returned HTTP 502 five of five tries; `per_page=50&page=1` returned 50 jobs. The issue body records it; the cause is an inference, not verified, and GitHub's documentation lists only 200 and 404 for this endpoint. A 502 at 30 for a larger attempt or under load is not excluded.
+- D1 (accepted, [decision 7235089415](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/604#issuecomment-7235089415)). GitHub's `List jobs for a workflow run attempt` endpoint serves `per_page=30` on every page for a re-run attempt of the C5 coordinator. No offline test can cover it. Evidence, taken by the issue 499 control session on 2026-11-27 to 28 with `gh api` (each call a fresh `gh` process; a fresh connection per call is inferred, not verified), against completed run 46039061248, which was idle, not under load: `attempts/2/jobs?per_page=30&page=N` returned pages 1 to 6, 179 jobs in total; `per_page=100` returned HTTP 502 five of five tries; `per_page=50&page=1` returned 50 jobs. The issue body records it; the cause is an inference, not verified, and GitHub's documentation lists only 200 and 404 for this endpoint. A 502 at 30 for a larger attempt or under load is not excluded.
 
 ## Acceptance commands
 
@@ -140,7 +142,7 @@ None accepted yet. D1 is listed under "Open questions for Hari" until Hari accep
 
 - (a) Steps whose effort scales with a number unknown at planning time: none in the pull request. Deferred item 1 waits for an event and adds no dispatch.
 - (b) Where the plan is stricter than its authority: the issue asks for "a page size that the re-run attempt's jobs API serves"; the plan fixes 30, the only size observed to serve every page of the failing attempt (D1), and GitHub's documented default for the endpoint.
-- (c) Checks that depend on behaviour neither on `main` nor in the pull request: GitHub's response for a re-run attempt at `per_page=30`. It is D1, under "Open questions for Hari".
+- (c) Checks that depend on behaviour neither on `main` nor in the pull request: GitHub's response for a re-run attempt at `per_page=30`. It is D1, accepted by Hari in [decision 7235089415](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/604#issuecomment-7235089415).
 
 ## Size estimate
 
@@ -161,7 +163,7 @@ No Kafka, librdkafka, Confluent.Kafka or Azure Event Hubs behaviour is relied on
 
 ## Open questions for Hari
 
-1. Accept deployment assumption D1 by name: GitHub serves `per_page=30` on every page of a re-run C5 coordinator attempt. Evidence and how it was taken are under "Deployment assumptions". Recommendation: accept. The alternative is an `api` retry or a smaller size, neither in the issue's scope, and neither better evidenced.
+None. The one open question of r2, accepting D1, was answered by [decision 7235089415](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/604#issuecomment-7235089415).
 
 ## Stop rule
 
