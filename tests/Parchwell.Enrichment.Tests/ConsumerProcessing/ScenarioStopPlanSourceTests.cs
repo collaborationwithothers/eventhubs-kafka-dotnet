@@ -15,7 +15,7 @@ public sealed class ScenarioStopPlanSourceTests
     [InlineData("subject", "C1", "dispose")]
     [InlineData("witness", "C0", null)]
     [InlineData("witness", "C1", null)]
-    public void Given_C18_role_and_phase_When_asked_for_the_plan_Then_it_carries_the_stop_and_records_consumer_errors(string role, string phase, string? mode)
+    public void Given_C18_role_and_phase_When_asked_for_the_plan_Then_only_the_subject_carries_the_stop_and_both_record_consumer_errors(string role, string phase, string? mode)
     {
         ConsumerProcessingPlan plan = Source(ScenarioPlanSourceTests.Options("C18", phase, role)).GetPlan("C18", phase)!;
         Assert.Equal(phase, plan.ConfigurationId);
