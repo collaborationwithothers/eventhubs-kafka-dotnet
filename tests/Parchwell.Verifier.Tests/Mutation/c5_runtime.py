@@ -338,7 +338,7 @@ RUNNER_TIMING_PAIR = ('dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea14629a
 # a shard's elapsed time. input_maps records the one reviewed hash pinned below at CAMPAIGN_VALIDATOR_BASE,
 # its measured hash, while the executable runner is as reviewed and neither the companion workflow nor the
 # coordinator's jobs before its aggregate job mention the validator. Any other tree records the actual hash. Issue 494, plan items/494/plan-c5-failure-causes.md requirement 15.
-CAMPAIGN_VALIDATOR_PIN = '28aeac539670a3a55889021afd6da856dd3cf5b59a16c5b1640b4fdb738072b5'
+CAMPAIGN_VALIDATOR_PIN = '47ee18cd4ee3d5dd391bd3bdc6070f8a52da462b1ba48dc42c2387082a8cab84'
 CAMPAIGN_VALIDATOR_BASE = '5dd294fcb0b3bb9ff2de8a5df5ac71242e775066a91e444091d382cb3406b46f'
 RUNNER_EXECUTION_PIN = '5e123dc8552d72e9e424f292ebcc5b4b695ff39fed026470f2879d8b5a234552'
 NON_RENEWABLE = {RUNNER, WORKFLOW, COMPANION_WORKFLOW, CAMPAIGN_VALIDATOR, PROJECTION,
