@@ -2,13 +2,13 @@
 
 The C18 stop smoke deletes an idle consumer member's pod three times and records what Kubernetes and today's worker do. It is a diagnostic, not a scientific run: it writes nothing under `results/`, has no `expected.yaml`, and produces no archive, judge or candidate. Its evidence settles two runtime questions that [ADR-022 "Amendment 1"](../blueprint.md) leaves to a smoke before the C18 plan is approved, and a third that the approved plan adds.
 
-The questions are these. First, whether the TERM signal of a pod deletion reaches the `enrichment-consumer` worker, which is not process 1 because the pod shares its process namespace. Second, whether the workflow can read the deleted pod's container end time, and by which method. Third, which the plan adds because Amendment 1 makes a second subject registration an invalid repeat, whether the Job starts a replacement pod after the delete. The design is the approved [plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/18f21941329437cbd767559f559f1de02f7bbf2b/items/613/plan-c18-stop-smoke.md) for issue 613, revision 4.
+The questions are these. First, whether the TERM signal of a pod deletion reaches the `enrichment-consumer` worker, which is not process 1 because the pod shares its process namespace (chart `charts/parchwell/templates/_consumer.tpl` line 46; [Share Process Namespace](https://kubernetes.io/docs/tasks/configure-pod-container/share-process-namespace/): "The container process no longer has PID 1."). Second, whether the workflow can read the deleted pod's container end time, and by which method. Third, which the plan adds because Amendment 1 makes a second subject registration an invalid repeat, whether the Job starts a replacement pod after the delete. The design is the approved [plan](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/18f21941329437cbd767559f559f1de02f7bbf2b/items/613/plan-c18-stop-smoke.md) for issue 613, revision 4.
 
 ## Workflow
 
 [C18 stop smoke](../../.github/workflows/c18-stop-smoke.yml) has one trigger, `workflow_dispatch`, with one input, `confirm_stop_smoke`. A committed copy is at [workflows/c18-stop-smoke.yml.txt](workflows/c18-stop-smoke.yml.txt) and the two files are byte-identical. The `smoke` job applies and destroys the ephemeral environment in the shared `parchwell-ephemeral` concurrency group, and the `stop` job stops AKS, as the [B10 abrupt trial](b10-workflow.md) does. The sweeper counts a running smoke as an active dispatch.
 
-The smoke borrows the identity of scenario C03, configuration C0, because the worker and chart admit only C01, C03 and C10 today. Its run ID starts with `c18s`, so its records and group never touch a C03 result. Its telemetry in the persistent Application Insights still carries `scenario_id` C03, so a query must filter on the run ID. Hari accepted that risk by name in [decision 7237226936](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7237226936), point 4, confirmed in [decision 7237271679](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/597#issuecomment-7237271679).
+The smoke borrows the identity of scenario C03, configuration C0, because the worker and chart admit only C01, C03 and C10 today (`src/Parchwell.Enrichment/ConsumerProcessing/ConsumerProcessingOptions.cs` line 27; `_consumer.tpl` line 2). Its run ID starts with `c18s`, so its records and group never touch a C03 result. Its telemetry in the persistent Application Insights still carries `scenario_id` C03, so a query must filter on the run ID. Hari accepted that risk by name in [decision 7237226936](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7237226936), point 4, confirmed in [decision 7237271679](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/597#issuecomment-7237271679).
 
 Only a merged workflow on `main` may be dispatched, and one dispatch is authorized, by the control session of issue 613.
 
@@ -18,7 +18,7 @@ After the existing consumer storage write check, the run does three trials in se
 
 1. Apply the member Job, then poll its record every 5 s, for at most 300 s, until its registration exists and its last partition event is `assigned` with partitions 0 to 31.
 2. Read the one running pod. Start `kubectl logs -f` and a `kubectl get pod --watch --output-watch-events` in the background.
-3. Wait 30 s after readiness. Record the runner time, then delete the pod with `--wait=false` and no `--grace-period`, so the pod's own 30 s grace applies.
+3. Wait 30 s after readiness. Record the runner time, then delete the pod with `--wait=false` and no `--grace-period`, so the pod's own 30 s grace applies (`charts/parchwell/values.yaml` line 105, used at `_consumer.tpl` line 47).
 4. Poll the pod every second until NotFound or 120 s after the delete. Every 5 s, list the Job's pods.
 5. Stop the streams, list the pods once more, read the Job, then delete and confirm the Job. A failed delete or a remaining pod sets the safety stop and every later trial is `not_attempted` with reason `safety_stop`.
 
@@ -36,7 +36,7 @@ The artifact `c18-stop-smoke-<run id>-<attempt>` holds one strict JSON file, `c1
 Each observed trial gets three labels. They decide no validity and no verdict.
 
 - `sigterm` is the first of these that matches. `reached_worker`: the container end time is not earlier than the delete time cut to whole seconds and is earlier than the pod's deletion deadline, and the exit code is not 137. `reached_but_killed_at_grace`: exit code 137 and a worker failure line. `not_reached`: exit code 137 and no failure line. Otherwise `undetermined`. A missing deadline only stops `reached_worker`.
-- The label compares times from three clocks: the runner's (`delete.issued_at`), the node's (`finished_at`) and the API server's (`deletionTimestamp`). Their agreement is not measured by this smoke. A node clock behind the runner can turn a real early exit into `undetermined`; read the raw times beside the label.
+- The `sigterm` label compares times from three clocks: the runner's (`delete.issued_at`), the node's (`finished_at`) and the API server's (`deletionTimestamp`). Their agreement is not measured by this smoke. A node clock behind the runner can turn a real early exit into `undetermined`; read the raw times beside the label.
 - `end_time` is `read` when the container's `finishedAt` was read, and `end_time_source` says whether the watch, the poll or both read it.
 - `replacement_pod` is true when a pod other than the deleted one appears in `pods_seen`.
 
