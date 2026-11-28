@@ -1,12 +1,24 @@
 # Fewer Hari clicks: contract-grade plan (issue #618)
 
-Revision: R3.
+Revision: R4.
 
-This plan turns the four changes Hari chose on issue #618 into five pull requests. A small test, which reaches no Azure, comes first and shows whether a GitHub wait timer can space a scenario's configuration jobs. Then come, in order: approved plans become the gate for scenario runs, a merge queue replaces the manual merge wait, the control session decides engineering choices, and an agent may merge most protected paths under conditions. Each pull request updates the factory overview diagrams where a drawn gate changes. Hari's decisions settle almost every design point. Three questions remain for his `## Approval`: two rule exceptions to approve by name, a list of risks to accept by name, and whether to adopt stacked pull requests.
+This plan turns the four changes Hari chose on issue #618 into five pull requests. A small test, which reaches no Azure, comes first and shows whether a GitHub wait timer can space a scenario's configuration jobs. Then come, in order: approved plans become the gate for scenario runs, a merge queue replaces the manual merge wait, the control session decides engineering choices, and an agent may merge most protected paths under conditions. Each pull request updates the factory overview diagrams where a drawn gate changes. Hari's decisions settle almost every design point. Three questions remain for his `## Approval`: two rule exceptions to approve by name, a list of risks and deployment assumptions to accept by name, and whether to adopt stacked pull requests.
 
 Base commit: `main` at `7639d40826b2222c7dcc39dc14ab8145a9cf784c`.
 
-Changes since R2 (commit `30f0ba60e68ca7a150f7f7686d959d569aa297e1`). R3 applies [decision 7240549272](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/618#issuecomment-7240549272) and the findings of [plan check 7240235569](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/618#issuecomment-7240235569):
+Changes since R3 (commit `64e990f311386be23367270f0e97ef5b9c4abff2`). R4 applies [decision 7241742553](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/618#issuecomment-7241742553), answering [plan check 7240867481](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/618#issuecomment-7240867481), and nothing else:
+- text that holds whichever way the wait-timer test goes: R1.1, ADR-023, R1.6 and R1.8 (point 4, check finding 1);
+- the exemption from the control-session skill's condition 2 for a dispatch that condition 1 allows (point 5, finding 2, R1.5);
+- the d05 label `["control session", "starts it, main only"]` (point 7, finding 3);
+- the whole `/.github/workflows/` folder, `docs/engineering/` and the build files stay Hari-only, and the scripted Azure-workflow check is dropped (points 1 and 2, finding 4, C4.1, C4.2, R4.1 to R4.3, R4.7, 8.5);
+- `Lifecycle verification` becomes a required check, set by Hari (point 3, section 9);
+- every agent commit carries a Claude trailer (point 6, finding 5, R4.1);
+- `.agents/skills/repo-review/SKILL.md` step 2 joins pull request 5 (point 7, finding 6, R4.9);
+- the six P2 fixes P2-a to P2-f (point 8: 6.5, R2.2, R4.8, 7.5, R1.2, 5.6 and 6.6);
+- Hari's thumbs-up time on decision 7240549272 is 14:20:53Z (point 8);
+- DA10 (finding 7).
+
+Changes since R2 (commit `30f0ba60e68ca7a150f7f7686d959d569aa297e1`). R3 applied [decision 7240549272](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/618#issuecomment-7240549272) and the findings of [plan check 7240235569](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/618#issuecomment-7240235569):
 - new pull request `wait-timer-test` (decision point 1);
 - dispatches of plan-named runs by the control session (point 2, R1.1);
 - the REST merge route moves to `merge-async` with the recorded `sha`, because the old route "does not support ... merging with a merge queue" (point 3, R2.2);
@@ -34,7 +46,8 @@ Authority, in creation order (docs/agents/factory.md "Item lifecycle" step 3). E
 4. [Decision 7239788015](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/618#issuecomment-7239788015), confirmed: change 3 is option (b).
 5. `ready-for-agent` applied by `haripraghash` at 2026-11-28T13:14:25Z. No comment names a tool, so Claude Code implements.
 6. [Decision 7240502296](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/618#issuecomment-7240502296): withdrawn by the next decision and never confirmed; nothing here rests on it.
-7. [Decision 7240549272](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/618#issuecomment-7240549272), confirmed by Hari's thumbs-up at 2026-11-28T14:21:14Z: his answers to R2's questions, points 1 to 7.
+7. [Decision 7240549272](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/618#issuecomment-7240549272), confirmed by Hari's thumbs-up at 2026-11-28T14:20:53Z (reactions API): his answers to R2's questions, points 1 to 7.
+8. [Decision 7241742553](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/618#issuecomment-7241742553): his answers to R3's findings, points 1 to 8. It carries no confirmation line, because it adds or keeps gates and otherwise applies decision 7240549272; it authorizes R4 and one fresh check beyond the `plan-pr` check cap.
 
 The #597 standing decision is not adopted here ([control action 7239804179](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/618#issuecomment-7239804179); decision 7240549272), so this plan is approved only by Hari's `## Approval` naming its revision and commit. There is no parent item plan; the plan template's scientific fields do not apply.
 
@@ -60,7 +73,7 @@ Size estimates. These are estimates, not enforced. File counts were computed by 
 | 2 | 12 | about 170 |
 | 3 | 14 | about 130 |
 | 4 | 5 | about 140 |
-| 5 | 11 | about 190 |
+| 5 | 12 | about 190 |
 
 ## 3. Shared rules for all five pull requests
 
@@ -159,7 +172,7 @@ RT.6 Evidence: the control session posts one `## Control action` on #618 with th
 
 ### 4.5 Acceptance
 
-`python3 -m unittest discover -s infra/scripts/tests -p test_tools_offline.py -v` passes; `npm run check:docs`; the ASCII scan; hosted `.NET verification` on the final head.
+`python3 -m unittest discover -s infra/scripts/tests -p test_tools_offline.py -v` passes; `npm run check:docs`; the ASCII scan; hosted `.NET verification` on the final head; the hosted `Lifecycle verification` result on the final head, recorded in the pull request description.
 
 ## 5. Pull request 2: `dispatch-gate` (change 1)
 
@@ -179,9 +192,10 @@ Must not change: any file under `.github/`, `scripts/`, `infra/persistent/`, `in
 
 R1.1 WHEN the pull request merges THEN AGENTS.md hard safety rule 8 gains, after its sentence "An agent never dispatches a workflow against any ref but `main`.", exactly:
 
-> A workflow with a job that uses the `parchwell-scenarios` environment is dispatched only in two ways. The control session of an issue dispatches a run that an approved plan of that issue names, within the plan's cap on runs, and records each dispatch in a `## Control action` comment with the run link. Any other such run needs a `## Decision` or `## Approval` comment, recognized under docs/agents/factory.md "Item lifecycle" step 3, that names the workflow, its inputs and the number of runs. That covers a run no approved plan names, a run beyond a plan's cap, a re-run of any job, and a second attempt after a failed run; when the decision relaxes a cap, it carries `Confirmation: thumbs-up required`. The approved plan or that decision is the gate for the run. The environment admits only `main` and needs no required reviewer (docs/blueprint.md ADR-023). A workflow with such a job triggers only on `workflow_dispatch`.
+> A workflow with a job that uses the `parchwell-scenarios` environment is dispatched only in two ways. The control session of an issue dispatches a run that an approved plan of that issue names, within the plan's cap on runs, and records each dispatch in a `## Control action` comment with the run link. Any other such run needs a `## Decision` or `## Approval` comment, recognized under docs/agents/factory.md "Item lifecycle" step 3, that names the workflow, its inputs and the number of runs. That covers a run no approved plan names, a run beyond a plan's cap, a re-run of any job, and a second attempt after a failed run; when the decision relaxes a cap, it carries `Confirmation: thumbs-up required`. The approved plan or that decision is the gate for the run. The environment admits only `main`; a required reviewer, where Hari keeps one, approves in addition (docs/blueprint.md ADR-023). A workflow with such a job triggers only on `workflow_dispatch`.
 
 R1.2 WHEN the pull request merges THEN docs/agents/factory.md changes in exactly these places, besides its status line under S7:
+- "Item lifecycle" step 4: "The agent starts the scenario workflow." reads "The agent starts the scenario workflow as AGENTS.md hard safety rule 8 allows.";
 - the "Decisions taken" row `| Live Azure runs | ... |` reads `| Live Azure runs | Started on main through the repository's workflows, for runs an approved plan names or Hari decides (AGENTS.md hard safety rule 8; docs/blueprint.md ADR-023) |`;
 - in "Hard safety rule 8: basis and decision history", the sentence beginning "The Azure identity stays gated by the two GitHub environments" is replaced by: "The Azure identity stays gated by the two GitHub environments, `parchwell-scenarios` and `parchwell-sweeper`, each with a `main`-only deployment branch policy, so a branch workflow gets no Azure token. Since docs/blueprint.md ADR-023, an approved plan or Hari's decision is the gate for a scenario run (hard safety rule 8). That the branch policy refuses a job on another ref is GitHub's documented rule ("Only branches and tags that match your specified name patterns can deploy to the environment"; https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments, read 2026-11-28); the page does not state what the refused job sees, and no branch dispatch has tested it."
 
@@ -190,13 +204,14 @@ R1.3 WHEN the pull request merges THEN docs/blueprint.md, besides its header par
   - Context: "Each job that references `parchwell-scenarios` waited for Hari's approval, so a run he had already approved in a plan needed one approval per configuration job (issue #618 body, change 1)."
   - Options: "1. Keep required reviewers on every job. 2. One approval per dispatch and a wait timer (issue #609). 3. No required reviewer; the environment admits only `main`; the approved plan, or Hari's decision for any other run, is the gate."
   - Decision: "Option 3 ([decision 7239287704](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/618#issuecomment-7239287704) point 1; [decision 7240549272](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/618#issuecomment-7240549272) points 1 and 2). AGENTS.md hard safety rule 8 owns the dispatch rule. Contracts approved before this ADR that require the protected environment approval read it as that gate. Hari removes the required reviewers only when the wait-timer test (docs/operations/wait-timer-test.md) shows that a wait timer spaces dependent jobs, and then sets the timer; otherwise the reviewers stay until issue #609 delivers a gap mechanism."
-  - Consequences: "Nothing technical stops an agent session from dispatching a run that no approved plan names; the rule is text. A run spends money without a click at run time. The `main`-only branch policy keeps a branch copy of a workflow from deploying to the environment. At most one ephemeral environment exists (hard safety rule 5)."
+  - Consequences: "Nothing technical stops an agent session from dispatching a run that no approved plan names; the rule is text. Once the reviewers are removed, a run spends money without a click at run time; until then, Hari's reviewer approval stays a second gate. The `main`-only branch policy keeps a branch copy of a workflow from deploying to the environment. At most one ephemeral environment exists (hard safety rule 5)."
 - in section 8 "Re-validation", the bullet "Scheduled runs wait for Hari's approval on a protected GitHub environment before any apply, so a schedule never spends money unattended." reads "A workflow that uses `parchwell-scenarios` triggers only on `workflow_dispatch` (AGENTS.md hard safety rule 8), so a schedule never spends money unattended; a re-validation run is dispatched under an approved plan or a decision (ADR-023)."
 - in section 9 "Control plane", "Terraform apply runs through the protected scenario environment requiring Hari's approval." reads "Terraform apply runs through the main-only scenario environment, gated by an approved plan or Hari's decision (ADR-023)."
 
 R1.4 WHEN `check_workflows` in `infra/scripts/lifecycle/check-offline.sh` reads a workflow any of whose jobs has `environment: parchwell-scenarios`, and its triggers include any event other than `workflow_dispatch`, THEN it raises `ValueError` with exactly `<file name>: scenario environment job on a trigger other than workflow_dispatch`. The triggers are the keys when `on` is a mapping, the one value when `on` is a string, and the items when `on` is a list. A job's `environment` given as a mapping is read from its `name` key. The check runs for every `*.yml` file, after the existing `expected_triggers` comparison.
 
 R1.5 WHEN the pull request merges THEN `.agents/skills/control-session/SKILL.md` "Act or ask":
+- condition 2 reads exactly "It can be undone before merge, unless it is a dispatch that condition 1 allows.";
 - condition 1 reads exactly "The step only starts, stops or redirects a planning, plan-check, implementation or diagnosis session, dispatches a workflow on `main` that does not reach Azure, dispatches a run that AGENTS.md hard safety rule 8 lets the control session dispatch, or posts a status note.";
 - the paragraph that quotes the ask list gains, after "Waiving or changing a gate or cap is also on it.", exactly: "A run that an approved plan names, within its cap, was decided with that plan, so dispatching it is not on the ask list (AGENTS.md hard safety rule 8)."
 
@@ -204,20 +219,20 @@ R1.6 WHEN `generate-diagrams.py` runs THEN these calls produce exactly these str
 - d01 subtitle (line 91): `Sessions are started by hand. GitHub is the shared memory. Azure is reached only through workflows on main, for runs an approved plan names.`
 - d01 aria label (line 92): replace `behind GitHub environment gates.` with `on main, for runs an approved plan names.`
 - d01 Hari box (line 98): lines `["Approves item plans, verdicts", "and the runs a plan names"]`.
-- d01 box at line 138: title `Main-only environment`, lines `["admits only the", "main branch"]`, kind `github`.
+- d01 box at line 138: title `Main-only environment`, lines `["main only; reviewer", "until the timer test"]`, kind `github`.
 - d01 label at line 142: `main only`.
 - d01 label at line 148: `dispatches a plan-named run, main only`.
-- d02 steps 11 and 12 (lines 184 and 185): `step(y, "ctl", "az", "11. dispatch a run the approved plan names (main only); run, then destroy")` and `step(y, "ctl", "gh", "12. record the dispatch as a Control action")`.
+- d02 steps 11 and 12 (lines 184 and 185): `step(y, "ctl", "az", "11. dispatch a run the approved plan names (main only; reviewer until the timer test); run, then destroy")` and `step(y, "ctl", "gh", "12. record the dispatch as a Control action")`.
 - d02 aria label (line 158): replace `an agent dispatches the Azure run, Hari approves it,` with `the control session dispatches the Azure run the plan names,`.
 - d03 col1 card at line 207: `("Azure access gates", ["Both environments admit only main;", "Hari sets any reviewer or wait timer"])`.
 - d03 col3 card at line 220: `("Scenario runs", ["named by a plan Hari approved"])`.
 - d03 known gaps box (line 229): add a fourth line, `"Nothing technical stops an agent from dispatching a run no approved plan names; the rule is text."`.
-- d05 aria label (line 279): `Azure run flow: Hari approves a plan that names the run, the control session dispatches the workflow on main, the job applies and destroys the ephemeral layer, AKS stops when the dispatch ends, and the sweeper cleans up if a job dies.` The d05 subtitle (line 278) is unchanged.
-- d05 items 1 and 2 (lines 282 and 283): `("1. Plan", ["Hari approved a plan", "that names this run"], "human")` and `("2. Dispatch", ["control session starts", "the workflow, main only"], "claude")`; notes (line 290) `["names the run", "OIDC token", "", "success or failure", "last job"]`.
+- d05 aria label (line 279): `Azure run flow: Hari approves a plan that names the run, the control session dispatches the workflow on main, a reviewer approves where Hari keeps one, the job applies and destroys the ephemeral layer, AKS stops when the dispatch ends, and the sweeper cleans up if a job dies.` The d05 subtitle (line 278) is unchanged.
+- d05 items 1 and 2 (lines 282 and 283): `("1. Plan", ["Hari approved a plan", "that names this run"], "human")` and `("2. Dispatch", ["control session", "starts it, main only"], "claude")`; notes (line 290) `["names the run", "token, after any reviewer", "", "success or failure", "last job"]`.
 
 R1.7 WHEN the generator runs on the result THEN it prints `ok` as its last line and no line starting `WARN`, and a second run changes no file. This requirement applies to every pull request that changes the generator.
 
-R1.8 WHEN the pull request merges THEN the receipt's claims row whose first cell is "Scenario runs need Hari's approval in the `parchwell-scenarios` environment" reads `| A scenario run is dispatched only as an approved plan names it, or as Hari decides; the parchwell-scenarios environment admits only main | AGENTS.md hard safety rule 8; docs/blueprint.md ADR-023 | Confirmed as a rule; the environment settings are Hari's and agents cannot read them |`.
+R1.8 WHEN the pull request merges THEN the receipt's claims row whose first cell is "Scenario runs need Hari's approval in the `parchwell-scenarios` environment" reads `| A scenario run is dispatched only as an approved plan names it, or as Hari decides; the parchwell-scenarios environment admits only main and keeps its reviewer until the wait-timer test says otherwise | AGENTS.md hard safety rule 8; docs/blueprint.md ADR-023 | Confirmed as a rule; the environment settings are Hari's and agents cannot read them |`.
 
 ### 5.4 Invariants
 
@@ -247,7 +262,7 @@ Each synthetic case writes `synthetic.yml` into a temporary copy of `.github/wor
 | `python3 docs/operations/factory-overview/generate-diagrams.py` twice, then `git status --porcelain docs/operations/factory-overview` | R1.7 |
 | `npm ci --ignore-scripts && npm run check:docs` | warnings disposed under AGENTS.md "Before opening a pull request" rule 8 |
 | `LC_ALL=C grep -nP '[^\x00-\x7F]'` over every changed file | no output |
-| hosted `.NET verification` on the final head | success |
+| hosted `.NET verification` and `Lifecycle verification` on the final head | success; the `Lifecycle verification` result is recorded in the pull request description, because it runs this pull request's offline tests and is not required until Hari's section 9 step 2 |
 
 ## 6. Pull request 3: `merge-queue` (change 2)
 
@@ -286,7 +301,7 @@ R2.1 WHEN the pull request merges THEN AGENTS.md changes:
 
 R2.2 WHEN the pull request merges THEN the AGENTS.md "GitHub issues and pull requests" bullet that begins "Merge only through the REST merge route" reads exactly:
 
-> Merge only under GOVERNANCE "Merge rule", verified on the head `sha` you record; do not take that `sha` from a fresh read afterwards. Merge through the REST route `PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge-async` with that `sha` and `merge_action` `default`, which adds the pull request to the merge queue, and which GitHub cancels if the head moves ("SHA that pull request head must match to allow merge"; REST API endpoints for pull requests, read 2026-11-28). The older route `PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge` "does not support stacked pull requests or merging with a merge queue" (same page). A 202 answer is pending: read its result with `GET /repos/{owner}/{repo}/pulls/{pull_number}/merge-async/{uuid}`. An `enqueued` result is not a merge, so confirm the merge on the pull request afterwards. The queue merges with a merge commit, as Hari decided on 2026-11-17 ([decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6958521790)); a change of method is his decision. For a pull request that waits for Hari's approval, GOVERNANCE "Merge rule" sets the route. The merge-group commit that the queue builds is checked by the required checks, not by Codex; the reviewed commit is the pull request head. If the route is refused, do not merge by another route: the pull request waits for Hari.
+> Merge only under GOVERNANCE "Merge rule", verified on the head `sha` you record; do not take that `sha` from a fresh read afterwards. Merge through the REST route `PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge-async` with that `sha`, `merge_action` `default` and `merge_method` `merge`, which adds the pull request to the merge queue, and which GitHub cancels if the head moves ("SHA that pull request head must match to allow merge"; REST API endpoints for pull requests, read 2026-11-28). The older route `PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge` "does not support stacked pull requests or merging with a merge queue" (same page). A 202 answer is pending: read its result with `GET /repos/{owner}/{repo}/pulls/{pull_number}/merge-async/{uuid}`. An `enqueued` result is not a merge, so confirm the merge on the pull request afterwards. The queue merges with a merge commit, as Hari decided on 2026-11-17 ([decision](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-6958521790)); a change of method is his decision. For a pull request that waits for Hari's approval, GOVERNANCE "Merge rule" sets the route. The merge-group commit that the queue builds is checked by the required checks, not by Codex; the reviewed commit is the pull request head. If the route is refused, do not merge by another route: the pull request waits for Hari.
 
 R2.3 WHEN the pull request merges THEN docs/agents/factory.md, besides its status line under S7:
 - "Ruleset" table gains, after the row "Dismiss stale approvals on push", the rows `| Required status checks | .NET verification; branches must be up to date | Read from the ruleset on 2026-11-28 |` and `| Merge queue | Required; merge method merge commit; maximum group size 1 | Brings each pull request up to date and runs its checks before merging (issue #618, change 2). The checks run on the merge_group event |`;
@@ -324,6 +339,7 @@ I2.1 No rule tells an agent to bypass the queue. I2.2 The conditions of GOVERNAN
 |---|---|---|---|
 | R2.5 | existing `test_committed_scenario_items_map_passes_check_workflows` | committed workflows with C2.1 | no exception |
 | R2.5 | `test_dotnet_verification_without_merge_group_fails_check_workflows` | copy with `merge_group` removed from dotnet-verification.yml | `ValueError` matching `^dotnet-verification\.yml: unexpected workflow triggers$` |
+| note | the three synthetic cases below | job `{runs-on: ubuntu-24.04, steps: [{run: 'true'}]}` with no `environment`; the login case adds the step `{uses: azure/login@v2}` | as listed |
 | R2.4 | `test_merge_group_workflow_with_identity_fails_check_workflows` | `synthetic.yml`, `on: {merge_group: {types: [checks_requested]}}`, top-level `permissions: {id-token: write}` | `^synthetic\.yml: PR workflow requests Azure identity$` |
 | R2.4 | `test_merge_group_job_with_azure_login_fails_check_workflows` | same triggers, one job with a step `uses: azure/login@v2` | `^synthetic\.yml: PR job requests Azure identity$` |
 | R2.4 boundary | `test_merge_group_workflow_without_identity_passes_check_workflows` | same triggers, `permissions: {contents: read}`, no login step | no exception |
@@ -331,7 +347,7 @@ I2.1 No rule tells an agent to bypass the queue. I2.2 The conditions of GOVERNAN
 
 ### 6.6 Acceptance
 
-As 5.6, plus `python3 -m unittest discover -s infra/scripts/phase/tests -p test_workflow.py -v` (all pass). The hosted `.NET verification` run on the pull request shows that the workflow still runs on `pull_request`.
+As 5.6, including the `Lifecycle verification` record, plus `python3 -m unittest discover -s infra/scripts/phase/tests -p test_workflow.py -v` (all pass). The hosted `.NET verification` run on the pull request shows that the workflow still runs on `pull_request`.
 
 ## 7. Pull request 4: `control-choices` (change 4)
 
@@ -379,6 +395,7 @@ I3.1 The thumbs-up rule of docs/agents/factory.md "Item lifecycle" step 3 is unc
 | `test_unmarked_control_action_is_not_printed` | `## Control action\n\nStarted a session.` as the only comment | output contains the line `No decision or approval comments.` and no line starting `### 1.` |
 | `test_control_marker_must_be_its_own_line` | `## Control action\n\nSee: Engineering choice: decided by the control session` as the only comment | output contains the line `No decision or approval comments.` and no line starting `### 1.` |
 | `test_control_decision_from_other_login_is_not_printed` | the marked comment by `someone-else` as the only comment | output contains the line `No decision or approval comments.` and no line starting `### 1.` |
+| `test_indented_control_marker_is_a_control_decision` | bot comment `## Control action\n\n  Engineering choice: decided by the control session  \n\nAnswer.` as the only comment | entry heading `### 1. Control decision #<issue> comment <id>`, body verbatim |
 | `test_control_decision_orders_with_decisions` | a `## Decision` at 10:00:00Z and a marked control action at 09:00:00Z | control decision is entry 1, decision is entry 2 |
 | existing `test_recognizes_only_decision_and_approval_headings` | unchanged inputs | unchanged expectations (none of its five inputs starts `## Control action`; read on the base commit, lines 77 to 93) |
 
@@ -390,35 +407,35 @@ I3.1 The thumbs-up rule of docs/agents/factory.md "Item lifecycle" step 3 is unc
 
 ### 8.1 Scope
 
-Files allowed to change: `AGENTS.md`, `docs/agents/factory.md`, `docs/agents/pull-requests.md`, `docs/blueprint.md`, `.github/CODEOWNERS`, `.agents/skills/control-session/SKILL.md`, `docs/operations/factory-overview/generate-diagrams.py`, the SVG files it rewrites, `docs/operations/factory-overview/receipt.md`.
+Files allowed to change: `AGENTS.md`, `docs/agents/factory.md`, `docs/agents/pull-requests.md`, `docs/blueprint.md`, `.github/CODEOWNERS`, `.agents/skills/control-session/SKILL.md`, `.agents/skills/repo-review/SKILL.md`, `docs/operations/factory-overview/generate-diagrams.py`, the SVG files it rewrites, `docs/operations/factory-overview/receipt.md`.
 
 Must not change: workflows, `scripts/`, `results/`, any `expected.yaml`, `infra/`.
 
 ### 8.2 External contracts
 
-- C4.1 Ruleset `main-protection` required reviewers rule: team `repo-owners`, 1 approval, exactly these Hari-only patterns (decision 7240549272 point 5): `expected.yaml`, `/results/`, `/infra/persistent/`, `/infra/ephemeral/identity*.tf`, `/infra/ephemeral/network*.tf`, `/AGENTS.md`, `/CLAUDE.md`, `/docs/agents/`, `/.agents/`, `/.claude/`, `/.codex/`, and the six workflows that reach Azure on the base commit: `/.github/workflows/scenario.yml`, `/.github/workflows/sweeper.yml`, `/.github/workflows/cluster-smoke.yml`, `/.github/workflows/c18-stop-smoke.yml`, `/.github/workflows/b10-abrupt-trial.yml`, `/.github/workflows/archive-smoke.yml` (17 patterns; listed by script from the jobs that name `parchwell-scenarios` or `parchwell-sweeper`). If the ruleset screen refuses 17 patterns, Hari uses `/.github/workflows/` in place of the six, so every workflow stays his until a second team holds the rest. Hari sets this after merge (section 9).
-- C4.2 Terms: a "Hari-only path" is a path matched by those patterns; "protected path" keeps meaning every path in `.github/CODEOWNERS`. A workflow "reaches Azure" when, before or after the change, it has `id-token: write` at any level, a step that uses `azure/login`, or a job whose environment is `parchwell-scenarios` or `parchwell-sweeper`.
+- C4.1 Ruleset `main-protection` required reviewers rule: team `repo-owners`, 1 approval, exactly these 16 Hari-only patterns (decision 7240549272 point 5, as changed by decision 7241742553 points 1 and 2): `expected.yaml`, `/results/`, `/infra/persistent/`, `/infra/ephemeral/identity*.tf`, `/infra/ephemeral/network*.tf`, `/AGENTS.md`, `/CLAUDE.md`, `/docs/agents/`, `/docs/engineering/`, `/.agents/`, `/.claude/`, `/.codex/`, `/.github/workflows/`, `/Directory.*.props`, `*.csproj`, `*.sln*`. `/.github/workflows/` covers `dotnet-verification.yml`. If the ruleset screen refuses 16 patterns, Hari tells the issue, and the next session proposes a second team or merged patterns; nothing is merged by an agent until the list is set. Hari sets this after merge (section 9).
+- C4.2 Terms: a "Hari-only path" is a path matched by those patterns; "protected path" keeps meaning every path in `.github/CODEOWNERS`.
 - C4.3 The merge-rule wording in R4.1.
 
 ### 8.3 Requirements
 
 R4.1 WHEN the pull request merges THEN AGENTS.md GOVERNANCE "Merge rule" reads, in place of the bullet "no protected path is touched (...)":
 
-> - no Hari-only path is touched, no workflow that reaches Azure is added or changed, and the pull request is not labelled `verdict`. Hari-only paths are the patterns of the required reviewers rule in the `main-protection` ruleset, listed in docs/agents/factory.md "Ruleset"; that rule blocks the merge until Hari approves. A workflow reaches Azure when, before or after the change, it has `id-token: write` at any level, a step that uses `azure/login`, or a job whose environment is `parchwell-scenarios` or `parchwell-sweeper`; the agent checks this by script on the recorded head;
-> - when a path listed in `.github/CODEOWNERS` that is not a Hari-only path is touched: the plan the pull request implements was approved under docs/agents/factory.md "Item lifecycle" step 3; the control session of its issue posted a `## Control action` comment recording that the diff at the recorded head `sha` matches that plan's scope and literal text; Codex's security review completed on that head; and no commit carries a `Co-Authored-By: Codex` trailer;
+> - no Hari-only path is touched, and the pull request is not labelled `verdict`. Hari-only paths are the patterns of the required reviewers rule in the `main-protection` ruleset, listed in docs/agents/factory.md "Ruleset"; they include every workflow, and that rule blocks the merge until Hari approves;
+> - when a path listed in `.github/CODEOWNERS` that is not a Hari-only path is touched: the plan the pull request implements was approved under docs/agents/factory.md "Item lifecycle" step 3; the control session of its issue posted a `## Control action` comment recording that the diff at the recorded head `sha` matches that plan's scope and literal text; Codex's security review completed on that head; and every commit, other than merge commits and commits authored by Hari's account, carries a `Co-Authored-By: Claude` trailer, and none carries a `Co-Authored-By: Codex` trailer;
 
 The Codex bullets stay. "Anything else waits for Hari. Never ask for the gate to be relaxed." is unchanged. R2.9's sentence reads, in place of "on its pull request that touches a protected path": "on its pull request that touches a Hari-only path".
 
-R4.2 WHEN the pull request merges THEN AGENTS.md hard safety rule 8's first sentence reads "Agents change files under `.github/workflows/` only through a pull request merged under GOVERNANCE "Merge rule", which keeps every workflow that reaches Azure with Hari." Its sentence "An agent may add a workflow whose only trigger is `workflow_dispatch`; Hari merges it." reads "An agent may add a workflow whose only trigger is `workflow_dispatch`; it is merged under GOVERNANCE "Merge rule"." The rest of rule 8 is unchanged.
+R4.2 AGENTS.md hard safety rule 8 is unchanged: `/.github/workflows/` stays a Hari-only path, so "Agents change files under `.github/workflows/` only through a pull request that Hari merges" stays true (decision 7241742553 point 2).
 
 R4.3 WHEN the pull request merges THEN docs/agents/factory.md, besides its status line under S7:
 - "Modes of work": the rows "Verifier logic" and "Persistent infrastructure, identity, network, workflows, governance, ADRs" become three rows:
   - `| Verifier logic | Agent-merged under the protected-path conditions of AGENTS.md GOVERNANCE "Merge rule" | It is the oracle for every result; its judgement logic is also covered by mutation testing (docs/engineering/dotnet.md "Testing"). Hari chose to drop the human look ([decision 7239788015](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/618#issuecomment-7239788015)) |`
-  - `| Workflows that do not reach Azure, ADRs, scripts and other protected paths | Agent-merged under the same conditions | Same decision, as relaxed by [decision 7240549272](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/618#issuecomment-7240549272) point 5 |`
-  - `| Persistent infrastructure, identity, network, workflows that reach Azure, skills and agent definitions, governance (AGENTS.md, CLAUDE.md, docs/agents/) | Human-reviewed (Hari-only path) | Large blast radius and long-lived decisions; skills and agent definitions are the planner, the plan checker and the cold reviewer (same decision, point 5) |`
+  - `| ADRs, scripts and other protected paths | Agent-merged under the same conditions | Same decision, as relaxed by [decision 7240549272](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/618#issuecomment-7240549272) point 5 |`
+  - `| Persistent infrastructure, identity, network, workflows, build files, engineering standards, skills and agent definitions, governance (AGENTS.md, CLAUDE.md, docs/agents/) | Human-reviewed (Hari-only path) | Large blast radius and long-lived decisions. Skills and agent definitions are the planner, the plan checker and the cold reviewer; workflows, build files and docs/engineering/ hold the checks that gate an agent's own merge (decision 7240549272 point 5; [decision 7241742553](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/618#issuecomment-7241742553) points 1 and 2) |`
 - the paragraph below the table: "Protected paths are those in the ruleset and CODEOWNERS;" reads "Protected paths are those in CODEOWNERS, and Hari-only paths are the subset in the ruleset;";
 - "Escalation" layer 1, first sentence: "The `main-protection` ruleset's required reviewers rule lists every Hari-only path and requires one approval from the `repo-owners` team (Hari) when a pull request touches one.";
-- "Ruleset" row "Required reviewers": `| Required reviewers | Team repo-owners, 1 approval, the Hari-only patterns: expected.yaml, /results/, /infra/persistent/, /infra/ephemeral/identity*.tf, /infra/ephemeral/network*.tf, /AGENTS.md, /CLAUDE.md, /docs/agents/, /.agents/, /.claude/, /.codex/, and the six workflows that reach Azure (AGENTS.md GOVERNANCE "Merge rule") | The gate for Hari-only paths. GitHub states "You can specify up to 15 different teams" and states no limit on patterns ("Available rules for rulesets", read 2026-11-28); the limit of 15 patterns recorded here in October 2026 is not verified. Other protected paths stay in .github/CODEOWNERS for review requests |`;
+- "Ruleset" row "Required reviewers": `| Required reviewers | Team repo-owners, 1 approval, the Hari-only patterns: expected.yaml, /results/, /infra/persistent/, /infra/ephemeral/identity*.tf, /infra/ephemeral/network*.tf, /AGENTS.md, /CLAUDE.md, /docs/agents/, /docs/engineering/, /.agents/, /.claude/, /.codex/, /.github/workflows/, /Directory.*.props, *.csproj, *.sln* | The gate for Hari-only paths. GitHub states "You can specify up to 15 different teams" and states no limit on patterns ("Available rules for rulesets", read 2026-11-28); the limit of 15 patterns recorded here in October 2026 is not verified. Other protected paths stay in .github/CODEOWNERS for review requests |`;
 - "Sequence to start the factory" step 6: "Hari merges every pull request touching a protected path." reads "Hari merges every pull request touching a Hari-only path; agents merge other protected-path pull requests under GOVERNANCE "Merge rule"."
 
 R4.4 WHEN the pull request merges THEN, besides its header paragraph under S7, the docs/blueprint.md ADR-018 consequence "Codex-authored pull requests have no reviewer from another vendor. Protected paths and the verifier still need Hari's approval, so the oracle and the public claims are never exposed to same-vendor review alone." reads "Codex-authored pull requests have no reviewer from another vendor. Hari-only paths still need Hari's approval, and an agent merges another protected path only when Claude Code implemented the pull request ([decision 7240549272](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/618#issuecomment-7240549272) point 5), so the oracle and the public claims are never exposed to same-vendor review alone."
@@ -431,12 +448,12 @@ R4.6 WHEN the pull request merges THEN `.agents/skills/control-session/SKILL.md`
 
 R4.7 Diagrams:
 - d01 box at line 114: lines `["merge queue only;", "Hari-only paths: Hari"]`.
-- d03 col1 card at line 206: `("Ruleset on main", ["Merge queue; no direct or force pushes;", "Hari-only paths need his approval"])`; card at line 208: `("Workflow files", ["Azure workflows are Hari-only;", "branch copies get no Azure token"])`.
-- d03 col3 card at line 222: `("Hari-only paths (list: the ruleset)", ["expected outcomes, results, infra,", "governance, skills, Azure workflows"])`.
+- d03 col1 card at line 206: `("Ruleset on main", ["Merge queue; no direct or force pushes;", "Hari-only paths need his approval"])`; card at line 208: `("Workflow files", ["Hari-only paths; runs from outside", "contributors need Hari's approval"])`.
+- d03 col3 card at line 222: `("Hari-only paths (list: the ruleset)", ["expected outcomes, results, infra,", "governance, skills, workflows, builds"])`.
 - d03 known gaps box (line 229): height `116` in place of `100`, and a fifth line `"The verifier, scripts and the blueprint can merge with no human look; the merge conditions are text."`.
 - d06 check at line 331: `("Hari-only path touched?", ["ruleset requires Hari", "(built)"], "human", False)`; box at line 346: lines `["all but Hari-only paths,", "under the merge rule"]`.
 
-R4.8 Receipt: the claims rows whose first cells are "Agent merge is enabled for pull requests touching no protected path" and "`main` blocks deletions and force pushes; protected paths need `repo-owners` approval" read `| Agents merge pull requests that touch no Hari-only path, under the merge rule | AGENTS.md GOVERNANCE "Merge rule"; docs/agents/factory.md "Sequence to start the factory" step 6 | Confirmed as a rule |` and `| main blocks deletions and force pushes; Hari-only paths need repo-owners approval | docs/agents/factory.md "Ruleset" | Confirmed as a rule; the ruleset is set by Hari |`.
+R4.8 Receipt: the row whose first cell is "Protected paths include workflows, governance documents and ADRs, the verifier, scripts, results and project files; the full list is in CODEOWNERS" (line 90) reads `| Hari-only paths are expected outcomes, results, persistent infrastructure, identity and network files, governance, engineering standards, skills and agent definitions, workflows and build files; the list is in the ruleset | docs/agents/factory.md "Ruleset" row "Required reviewers"; AGENTS.md GOVERNANCE "Merge rule" | Confirmed as a rule; the ruleset is set by Hari |` (P2-c, with "the workflows that reach Azure" replaced as decision 7241742553 point 2 requires). The claims rows whose first cells are "Agent merge is enabled for pull requests touching no protected path" and "`main` blocks deletions and force pushes; protected paths need `repo-owners` approval" read `| Agents merge pull requests that touch no Hari-only path, under the merge rule | AGENTS.md GOVERNANCE "Merge rule"; docs/agents/factory.md "Sequence to start the factory" step 6 | Confirmed as a rule |` and `| main blocks deletions and force pushes; Hari-only paths need repo-owners approval | docs/agents/factory.md "Ruleset" | Confirmed as a rule; the ruleset is set by Hari |`.
 
 R4.9 WHEN the pull request merges THEN these sentences change, and no others outside R4.1 to R4.8:
 - AGENTS.md line 13: "AGENTS.md is a protected path, so each governance change reaches `main` only through Hari's merge." reads "AGENTS.md is a Hari-only path (GOVERNANCE "Merge rule"), so each governance change reaches `main` only through Hari's merge.";
@@ -447,6 +464,7 @@ R4.9 WHEN the pull request merges THEN these sentences change, and no others out
 - docs/agents/factory.md "Ruleset": "any other document under `docs/` comes to Hari." reads "any other document under `docs/` is a protected path, and `docs/agents/` is a Hari-only path.";
 - docs/agents/pull-requests.md line 5: "`/docs/` is a protected path (GOVERNANCE "Merge rule"; `.github/CODEOWNERS` mirrors the list), so a change to this file reaches `main` only through Hari's merge" reads "`/docs/agents/` is a Hari-only path (GOVERNANCE "Merge rule"), so a change to this file reaches `main` only through Hari's merge";
 - docs/blueprint.md line 487: "and `.github/CODEOWNERS` mirrors the list" reads "and `.github/CODEOWNERS` lists it too";
+- `.agents/skills/repo-review/SKILL.md` step 2: "Those files are protected paths (the ruleset's required reviewers rule, which `/.*/` in `.github/CODEOWNERS` mirrors; docs/agents/factory.md "Ruleset"), so such a change reaches `main` only through Hari's merge." reads "Those files are Hari-only paths (the ruleset's required reviewers rule lists `/.claude/` and `/.agents/`; docs/agents/factory.md "Ruleset"), so such a change reaches `main` only through Hari's merge.";
 - AGENTS.md "Skills": "They are not in `skills-lock.json` and change only through a pull request to Hari." is unchanged, because `.agents/` stays Hari-only.
 
 ### 8.4 Invariants
@@ -455,7 +473,7 @@ I4.1 Each of the four conditions of decision 7239788015 is in R4.1 or in the exi
 
 ### 8.5 Test map and acceptance
 
-No code changes. Before merge, a script compares the pattern list in R4.3's "Required reviewers" row with C4.1 and prints any difference; the pull request description records an empty difference. A second script lists every workflow on the head that reaches Azure under C4.2 and prints any not among the six patterns; it must print none. R1.7 applies. The comparison with the live ruleset is completion evidence after merge (section 10).
+No code changes. Before merge, a script compares the pattern list in R4.3's "Required reviewers" row with C4.1 and prints any difference; the pull request description records an empty difference. R1.7 applies. The comparison with the live ruleset is completion evidence after merge (section 10).
 
 ## 9. Deployment assumptions and settings
 
@@ -469,11 +487,12 @@ Each assumption below has no offline test. Hari's `## Approval` names the ones h
 - DA6 (pull request 3). `PUT .../merge-async` is reachable through the session proxy and behaves as documented. Evidence: the REST page, read verbatim on 2026-11-28; the call was not made. If the proxy refuses it, agent merges wait for Hari until a route is found.
 - DA7 (pull request 3). A merge queue is available for this repository. GitHub's merge-queue pages read on 2026-11-28 state no availability rule; only the issue body quotes one. Hari confirms it in the ruleset screen before pull request 3 merges (decision 7240549272 point 3).
 - DA8 (pull request 3). An approval is also dismissed when the merge base changes. GitHub: "because a related pull request is merged into the target branch ... the approving review is dismissed as stale" (Available rules for rulesets, read 2026-11-28). Hari accepted the extra approval (decision 7240549272 point 3); it is listed for completeness.
+- DA10 (pull request 3). `enable_pr_auto_merge` works for `haripraghash-bot` on a branch that requires a merge queue. Evidence: the tool metadata in R2.10 only; not called. A failure is safe: the pull request waits for Hari.
 - DA9 (pull request 1). Runner start-up for `ubuntu-24.04` is under 20 s, so RT.5's lower bound separates the outcomes. This is an assumption, not a measurement; a slower start shows as `inconclusive`, not as a wrong classification, while the gap stays under 50 s.
 
 Settings Hari changes (S6), in order:
 1. Before the `wait-timer-test` dispatch: create `parchwell-wait-timer-test` (CT.2).
-2. At any time, because it only narrows access: set the `parchwell-scenarios` branch policy to `main` only.
+2. At any time, because each only narrows access: set the `parchwell-scenarios` branch policy to `main` only, and add `Lifecycle verification` to the ruleset's required status checks (decision 7241742553 point 3). That job runs on every pull request: `.github/workflows/dotnet-verification.yml` triggers on `pull_request` with no paths or types filter (lines 3 and 4), the job has no `if:` condition (lines 165 to 168), and it runs `check-offline.sh` and the `infra/scripts/tests` suite (lines 207 to 215). After pull request 3 it also runs on `merge_group`, by the same reading. Its added time per pull request is not measured.
 3. After `dispatch-gate` merges and the test result is known: under RT.5, set a wait timer with his value and remove the reviewers, or leave the reviewers.
 4. After `merge-queue` merges and DA7 is confirmed: "Allow auto-merge", then the merge queue rule (C2.2).
 5. After `agent-protected-merge` merges: the required reviewers patterns (C4.1).
@@ -514,12 +533,12 @@ Recommendation (question Q3): do not add stacks to this split. Open a follow-up 
 - R2.1 and R2.4 bar `merge_group` on Azure workflows;
 - R2.11 orders the ready report after auto-merge is enabled;
 - R3.1 excludes the skill's ask list, plan amendments, contracts and test values, and bars every other session from posting an engineering choice;
-- C4.1 pins the six Azure workflows by name, and R4.1 adds a scripted check that no other workflow reaching Azure is changed;
+- R1.1 lets only the control session dispatch a plan-named run without a decision; decision 7240549272 point 2 names the control session but does not bar other sessions;
 - RT.5 sets the test's thresholds.
 
 Each one closes a gap that the decisions' own wording would leave open, as stated where it appears. Each is Hari's to approve with this plan.
 
-(c) Dependence on code or behaviour neither on `main` nor in a pull request: GitHub settings and behaviour, DA1 to DA9. No test depends on Azure.
+(c) Dependence on code or behaviour neither on `main` nor in a pull request: GitHub settings and behaviour, DA1 to DA10. No test depends on Azure.
 
 ## 13. Sources
 
@@ -533,15 +552,16 @@ Each one closes a gap that the decisions' own wording would leave open, as state
 ## 14. Open questions for Hari
 
 - Q1. Approve by name the two rule exceptions of pull request 3 (section 6.1): an agent changes `dotnet-verification.yml`'s triggers to add `merge_group`, and hard safety rule 9 gains `merge_group`. Recommendation: approve both. The queue cannot run its required check without the trigger ("The merge will fail as the required status check will not be reported"), and the rule 9 extension keeps a queued pull request's code away from Azure.
-- Q2. Accept by name these risks, each stated in plain words:
+- Q2. Accept by name these risks and deployment assumptions, each stated in plain words (DA8 is already accepted by decision 7240549272 point 3):
   1. Nothing technical stops an agent from dispatching a scenario run that no approved plan names; the rule is text (ADR-023, R1.1). This was R2's Q1.4.
   2. The branch policy's refusal of other branches is documented but untested (DA1), and agents cannot read the environment settings (DA2).
-  3. Auto-merge, the `merge-async` route and the CI run on queue commits are untested here (DA3, DA4, DA6). This was R2's Q2.3.
+  3. Auto-merge, the `merge-async` route and the CI run on queue commits are untested here (DA3, DA4, DA6, DA10). This was R2's Q2.3.
   4. The ruleset change's effect is untested until the first merges after it (DA5). This was R2's Q4.5.
   5. Every agent session posts as one account, so nothing technical shows that the control session posted the diff-match record that R4.1 requires; any session could post it. You accepted the same for engineering choices (decision 7240549272 point 4); this extends it to pull request 5's merges.
   6. The wait-timer test's thresholds and its runner start-up assumption (RT.5, DA9).
+  7. Merge queue availability is not stated by GitHub's pages; you confirm it in the ruleset screen before pull request 3 merges (DA7).
 
-  Recommendation: accept all six. Each failure in items 2 to 4 and 6 is safe: the pull request or the gap waits for you. Items 1 and 5 are text rules that the weekly spot-check (docs/agents/factory.md "Measuring the gate") is meant to watch.
+  Recommendation: accept all seven. Each failure in items 2 to 4, 6 and 7 is safe: the pull request or the gap waits for you. Items 1 and 5 are text rules that the weekly spot-check (docs/agents/factory.md "Measuring the gate") is meant to watch.
 - Q3. Stacked pull requests (section 11). Recommendation: do not add them to this split; open a follow-up issue after the merge queue has merged its first pull request.
 
 ## 15. Stop rule
