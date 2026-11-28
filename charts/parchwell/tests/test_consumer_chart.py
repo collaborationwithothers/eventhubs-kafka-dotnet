@@ -382,7 +382,8 @@ def main():
         # R8: C18 with configuration C2 fails on the schema, not on some other render error.
         rejected = render(directory, 'c18-c2', negatives_c18_c2())
         assert rejected.returncode != 0 and "values don't meet the specifications of the schema" in rejected.stderr, rejected.stderr
-        assert 'configuration_id must be one of the following' in rejected.stderr, rejected.stderr
+        # helm 3 and helm 4 word the individual violations differently; both name the field.
+        assert 'configuration_id' in rejected.stderr, rejected.stderr
     print(f'consumer chart acceptance passed: {len(members) + len(verifiers)} positive, {len(bad_cases)} negative, '
           f'{len(worker_names)} worker names checked against the options class')
 
