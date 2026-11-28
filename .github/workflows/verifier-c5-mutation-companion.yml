@@ -2,6 +2,15 @@ name: C5 verifier mutation companion
 
 on:
   workflow_dispatch:
+    inputs:
+      suite:
+        description: Test suite the campaign runs, fast or full
+        required: true
+        type: choice
+        options:
+          - fast
+          - full
+        default: fast
 
 permissions:
   contents: read
@@ -324,7 +333,8 @@ jobs:
       - name: Measure one C5 target
         env:
           C5_SHARD: ${{ matrix.shard }}
-        run: python3 tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py run-shard --shard "$C5_SHARD" --output-dir "$C5_OUTPUT"
+          C5_SUITE: ${{ inputs.suite }}
+        run: python3 tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py run-shard --shard "$C5_SHARD" --output-dir "$C5_OUTPUT" --suite "$C5_SUITE"
       - name: Retain shard evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
