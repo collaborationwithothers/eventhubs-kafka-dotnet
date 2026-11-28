@@ -222,7 +222,7 @@ class DecisionLogTests(unittest.TestCase):
         body = "## Decision\naccepts a risk\n\nConfirmation: thumbs-up required\n"
         meta = f"Created {CREATED}; updated {CREATED}; author haripraghash-bot; {URL}/issues/7#issuecomment-1\n"
         cases = {
-            "hari thumbs-up": ([{"content": "+1", "user": {"login": "HariPraghash"}}],
+            "hari thumbs-up": ([{"content": "+1", "user": {"login": "HariPraghash"}, "created_at": CREATED}],
                                "Confirmation: thumbs-up from haripraghash."),
             "no reactions": ([], "Confirmation: NOT confirmed; no thumbs-up from haripraghash. Do not act on this decision."),
             "wrong user or content": ([{"content": "+1", "user": {"login": "haripraghash-bot"}},
@@ -236,11 +236,29 @@ class DecisionLogTests(unittest.TestCase):
                 self.write_json("reactions/1.json", reactions)
                 self.assertIn(f"{meta}{line}\n\n{body}", self.offline("--issue", "7"))
 
-    def test_confirmation_posted_by_hari_needs_no_reaction(self):
+    def test_comment_posted_as_hari_still_needs_thumbs_up(self):
         body = "## Decision\nloosens a cap\nConfirmation: thumbs-up required"
         self.write_json("7.json", [comment(1, CREATED, body)])
+        self.write_json("reactions/1.json", [])
         out = self.offline("--issue", "7")
-        self.assertIn(f"author haripraghash; {URL}/issues/7#issuecomment-1\nConfirmation: posted by haripraghash.\n", out)
+        self.assertIn(f"author haripraghash; {URL}/issues/7#issuecomment-1\nConfirmation: NOT confirmed; "
+                      "no thumbs-up from haripraghash. Do not act on this decision.\n", out)
+
+    def test_thumbs_up_before_last_edit_does_not_confirm(self):
+        body = "## Decision\nConfirmation: thumbs-up required"
+        edited = comment(1, CREATED, body, login="haripraghash-bot")
+        edited["updated_at"] = "2026-11-01T00:00:10Z"
+        self.write_json("7.json", [edited])
+        for created, line in (
+            ("2026-11-01T00:00:09Z", "Confirmation: NOT confirmed; the thumbs-up from haripraghash predates the "
+                                     "comment's last edit. Do not act on this decision."),
+            ("2026-11-01T00:00:10Z", "Confirmation: thumbs-up from haripraghash."),
+            (None, "Confirmation: NOT confirmed; the thumbs-up from haripraghash predates the "
+                   "comment's last edit. Do not act on this decision."),
+        ):
+            with self.subTest(created=created):
+                self.write_json("reactions/1.json", [{"content": "+1", "user": {"login": "haripraghash"}, "created_at": created}])
+                self.assertIn(f"{line}\n", self.offline("--issue", "7"))
 
     def test_marker_must_be_its_own_line(self):
         body = "## Decision\nno Confirmation: thumbs-up required here"
@@ -269,7 +287,7 @@ class DecisionLogTests(unittest.TestCase):
         self.write_json("routes.json", {
             PAGE + "1": [comment(1, CREATED, "## Decision\nConfirmation: thumbs-up required", login="haripraghash-bot")],
             reactions + "1": [{"content": "heart", "user": {"login": "x"}}] * 100,
-            reactions + "2": [{"content": "+1", "user": {"login": "haripraghash"}}],
+            reactions + "2": [{"content": "+1", "user": {"login": "haripraghash"}, "created_at": CREATED}],
         })
         code, out, err = self.run_cli("--issue", "7")
         self.assertEqual([["gh", "api", PAGE + "1"], ["gh", "api", reactions + "1"], ["gh", "api", reactions + "2"]],

@@ -118,17 +118,24 @@ def confirmation(comment, offline):
     """Return the confirmation line for a comment, and whether it could be read."""
     if not comment.needs_confirmation():
         return None, True
-    if comment.author.lower() == HARI_ACCOUNT:
-        return f"Confirmation: posted by {HARI_ACCOUNT}.", True
     try:
         reactions = read_reactions(comment.id, offline)
     except READ_ERRORS:
         return "Confirmation: not available; reactions could not be read.", False
+    stale = False
     for reaction in reactions:
         user = reaction.get("user")
         login = user.get("login") if isinstance(user, dict) else None
-        if reaction.get("content") == "+1" and isinstance(login, str) and login.lower() == HARI_ACCOUNT:
+        if reaction.get("content") != "+1" or not isinstance(login, str) or login.lower() != HARI_ACCOUNT:
+            continue
+        created = reaction.get("created_at")
+        # GitHub timestamps are UTC ISO 8601 with a Z suffix, so they compare as strings.
+        if isinstance(created, str) and created >= comment.updated_at:
             return f"Confirmation: thumbs-up from {HARI_ACCOUNT}.", True
+        stale = True
+    if stale:
+        return (f"Confirmation: NOT confirmed; the thumbs-up from {HARI_ACCOUNT} predates the comment's last edit. "
+                "Do not act on this decision."), True
     return f"Confirmation: NOT confirmed; no thumbs-up from {HARI_ACCOUNT}. Do not act on this decision.", True
 
 
