@@ -1,6 +1,6 @@
 # Attempt jobs page size: contract-grade plan for issue 604
 
-Revision: r1
+Revision: r2
 Base commit: `15b09147ed4e7c62ea08620b24c14cd049f07562` (`main`)
 Pull request: one, named "attempt jobs page size".
 
@@ -41,9 +41,9 @@ Found by `grep -rn per_page` over `tests/Parchwell.Verifier.Tests/Mutation/`, `s
 |---|---|---|---|
 | `c5_campaign.py:216` | `actions/runs/{run_id}/attempts/{attempt}/jobs?per_page=100&page={page}` | Yes: the coordinator's and companion's current attempt (line 324) and each origin attempt (line 253) | Change to 30 |
 | `c5_companion_artifacts.py:166` | `/repos/{repository}/actions/runs/{run_id}/artifacts?per_page=100&page={page}` | No: it lists a run's artifacts, not an attempt's jobs | Unchanged |
-| `scripts/decision-log.py:72`, `scripts/cleanup-wip-branches.py:26` | issue comments, branch rules | No; not C5 scripts | Unchanged |
+| `scripts/decision-log.py:72`, `scripts/cleanup-wip-branches.py:26`, `scripts/tests/test_decision_log.py:15` | issue comments, branch rules | No; not C5 scripts | Unchanged |
 
-No workflow file under `.github/workflows/` contains `per_page`. The other `api` calls in `c5_campaign.py` (lines 283, 287, 295, 312) read a single run or attempt document and take no page size.
+No workflow file under `.github/workflows/` contains `per_page`. The other `api` calls in `c5_campaign.py` (lines 283, 287, 295, 312, 336, 443, 447) read a single run or attempt document and take no page size.
 
 Evidence for leaving the artifacts call unchanged: in the failing aggregate job 140684256258 (attempt 2 of run 46039061248), the step running `c5_companion_artifacts.py` logged `Verified 146 companion evidence archives.` against companion run 46039038805, attempt 1. Whether that call works for a companion run that was itself re-run is not observed; see "Deferred work".
 
@@ -106,6 +106,7 @@ All tests run from the repository root, as CI does: `python3 -m unittest discove
 | 3 (boundary: exact multiple) | same test, second case | two pages of 30, `total_count` 60 | 60 jobs; exactly 2 calls; no `page=3` request |
 | 3 (boundary: empty) | same test, third case | one page `{'total_count': 0, 'jobs': []}` | returns `{'total_count': 0, 'jobs': []}`; exactly 1 call, suffix ends `per_page=30&page=1` |
 | 4 (boundary: one short) | same test, fourth case | first page of 29 jobs, `total_count` 179 | `ValueError` matching `missing job pages`; exactly 1 call |
+| 4 (boundary: one over) | same test, eighth case | first page of 31 jobs, `total_count` 179 | `ValueError` matching `missing job pages`; exactly 1 call |
 | 4 | `test_job_pagination` (fixture under rule (a)) | as in "Known case" | 31 jobs, `page=2`; then `missing job pages` |
 | 6 | same new test, fifth case | page 1: 30 jobs, `total_count` 179; page 2: 30 jobs, `total_count` 180 | `ValueError` matching `job count changed while paging` |
 | 7 | same new test, sixth case | one page of 30 jobs, `total_count` 29 | `ValueError` matching `extra job pages` |
@@ -119,7 +120,7 @@ The cases of the new test may be subtests of one method or separate methods; the
 
 None accepted yet. D1 is listed under "Open questions for Hari" until Hari accepts it by name.
 
-- D1. GitHub's `List jobs for a workflow run attempt` endpoint serves `per_page=30` on every page for a re-run attempt of the C5 coordinator. No offline test can cover it. Evidence, taken by the issue 499 control session on 2026-11-27 to 28 with `gh api` (each call a fresh process and so a fresh connection), against completed run 46039061248, which was idle, not under load: `attempts/2/jobs?per_page=30&page=N` returned pages 1 to 6, 179 jobs in total; `per_page=100` returned HTTP 502 five of five tries; `per_page=50&page=1` returned 50 jobs. The issue body records it; the cause is an inference, not verified, and GitHub's documentation lists only 200 and 404 for this endpoint. A 502 at 30 for a larger attempt or under load is not excluded.
+- D1. GitHub's `List jobs for a workflow run attempt` endpoint serves `per_page=30` on every page for a re-run attempt of the C5 coordinator. No offline test can cover it. Evidence, taken by the issue 499 control session on 2026-11-27 to 28 with `gh api` (each call a fresh `gh` process; a fresh connection per call is inferred, not verified), against completed run 46039061248, which was idle, not under load: `attempts/2/jobs?per_page=30&page=N` returned pages 1 to 6, 179 jobs in total; `per_page=100` returned HTTP 502 five of five tries; `per_page=50&page=1` returned 50 jobs. The issue body records it; the cause is an inference, not verified, and GitHub's documentation lists only 200 and 404 for this endpoint. A 502 at 30 for a larger attempt or under load is not excluded.
 
 ## Acceptance commands
 
@@ -152,6 +153,9 @@ Estimate, 2026-11-28, basis: the dry run's diff of 9 inserted and 6 deleted line
 - GitHub REST documentation, "Using pagination in the REST API", https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api, section "Changing the number of items per page", read 2026-11-28.
 - Job log of aggregate job 140684256258, read 2026-11-28 with the GitHub MCP `get_job_logs` tool: `gh: Server Error (HTTP 502)` in the `c5_campaign.py prepare` step; `Verified 146 companion evidence archives.`.
 - Base commit files: `c5_campaign.py:206-227`, `:253`, `:324`; `c5_runtime.py:329-343`, `:494-547`, `:2464-2500`; `test_c5_campaign.py:113-120`; `test_c5_runtime.py` `CampaignValidatorRecoveryTests`; `.github/workflows/dotnet-verification.yml:139-152`; `c5_companion_artifacts.py:166`.
+
+- Issue 494's plan, `items/494/plan-c5-failure-causes.md` requirement 15, read at commit `6b5ab139067965965bcba9a899b6f3de575e2454` on branch `claude/494-plan`, the revision R7 that [approval 7146178756](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7146178756) on issue 494 approves; the file is not on `main` at the base commit.
+- Plan check of r1: [comment 7235055978](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/604#issuecomment-7235055978).
 
 No Kafka, librdkafka, Confluent.Kafka or Azure Event Hubs behaviour is relied on.
 
