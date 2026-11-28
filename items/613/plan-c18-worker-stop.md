@@ -1,4 +1,13 @@
-Revision: 1
+Revision: 2
+
+Changes since revision 1, applying the [revision 1 plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7237760956):
+- B1: the deferral of the C18 admission to pull request 3 is now an open question for Hari (section 11, question 1), with the evidence; the rest of the plan is unchanged by it.
+- B2: every append on the stop path, including the in-progress message's processed row, passes `CancellationToken.None` (3.6 step 3), with a token check in the R5 test.
+- B3: after a `failed` or `timed_out` shutdown, `Dispose` is not called, the record closes before `shutdown_ended_utc`, and native monitoring completes with `false` (3.6 step 4, R7 test).
+- B4: section 12's verifier item gains its responsible session and gate.
+- N1 to N3 (the check's `apply in implementation` P2s) are written in with their exact text: the R2 slow-message case at window 120000, the new test `Message_returned_during_stop_is_processed`, and R11's literal expectation.
+- N4 notes: the R4 clock is advanced from the test clock's base; section 2 item 7 names the harness changes; section 7 names the SIGTERM-to-`Main` assumption.
+- The ADR-022 amendment is cited as lines 800 to 840.
 
 # c18-worker-stop: the enrichment worker's stop path for C18
 
@@ -10,7 +19,7 @@ Base commit: `main` at `9c98aa1be09ff76b6fc19fed71bc8cc2f3706259`. Every reposit
 
 ## 1. Goal and authority
 
-Goal. Implement, in `src/Parchwell.Enrichment/` only, the worker half of ADR-022 "Amendment 1: C18, C06 and C04" (docs/blueprint.md lines 800 to 845):
+Goal. Implement, in `src/Parchwell.Enrichment/` only, the worker half of ADR-022 "Amendment 1: C18, C06 and C04" (docs/blueprint.md lines 800 to 840):
 - the "Stop" bullet: stop-observed row, the two shutdown modes, and the stop receipt;
 - the "Consumer errors" bullet: one consumer-error row per `ConsumeException` and per error-handler call;
 - the shutdown-mode half of "Configuration fidelity": the registration marker records the shutdown mode.
@@ -33,12 +42,12 @@ Files allowed to change:
 4. `src/Parchwell.Enrichment/ConsumerProcessing/IConsumerRecordStore.cs` and `BlobConsumerRecordStore.cs`: one method that writes `stop-receipt.json`.
 5. `src/Parchwell.Enrichment/ConsumerProcessing/ConsumerProcessingHandlers.cs`: one optional error callback.
 6. `src/Parchwell.Enrichment/Program.cs`: inside the `ConsumerProcessingConsumerFactory` registration (lines 277 to 297), set the error handler when the callback is not null. Nothing else in the file.
-7. `tests/Parchwell.Enrichment.Tests/ConsumerProcessing/`: the new test files of section 6, the test doubles in `ConsumerTestHarness.cs` (`RecordingRecordStore` gains the new store method), and existing tests only under the fixture rule of section 6.
+7. `tests/Parchwell.Enrichment.Tests/ConsumerProcessing/`: the new test files of section 6; the test doubles in `ConsumerTestHarness.cs`, which gain the new store method in `RecordingRecordStore` with a record of each token's `CanBeCanceled`, a token the test can cancel passed by `RunAsync` (today `CancellationToken.None`, line 47), a way to invoke the error callback, and a way to make `Close` throw or block; and existing tests only under the fixture rule of section 6.
 
 Paths that must not change:
-- `src/Parchwell.Enrichment/ConsumerProcessing/ScenarioConsumerProcessingPlanSource.cs` and `ConsumerProcessingOptions.cs`: C18 is admitted in pull request 3, with its scenario file.
+- `src/Parchwell.Enrichment/ConsumerProcessing/ScenarioConsumerProcessingPlanSource.cs` and `ConsumerProcessingOptions.cs`, and `charts/`: this plan proposes that C18 is admitted in pull request 3, with its scenario file (section 11, question 1).
 - `src/Parchwell.Scenarios/`, `src/Parchwell.Verifier*/`, `src/Parchwell.LoadGen/`, `src/Parchwell.Kafka/`.
-- `scenarios/`, every `expected.yaml`, `charts/`, `.github/`, `docs/`, `infra/`, `results/`.
+- `scenarios/`, every `expected.yaml`, `.github/`, `docs/`, `infra/`, `results/`.
 - Every `*.csproj`, `Directory.*.props` and `*.sln*`. No new package or project.
 
 ## 3. External contracts
@@ -106,13 +115,13 @@ The blob `<prefix>stop-receipt.json`, where `<prefix>` is the member's existing 
 
 Applies only when `StopConfigured` is true. That implies a subject with no kill count and no slow message (V1, V2).
 1. Stop request. The stop request is the cancellation token the worker already receives, `ApplicationStopping` (`Program.cs` lines 202 to 203). It counts only after `Subscribe` has returned. A stop before that takes the existing failure path, unchanged.
-2. Finish the message in progress. A message whose processing has started completes its full `ProcessingDelayMs`: the delay is not cancelled by the stop token. Its processed row is appended, and its offset is stored when `enable.auto.offset.store` is false, as today (lines 198 to 207). Then the loop ends and `Consume` is not called again.
-3. Stop-observed row. Append `stop_observed` (3.4). From here on, every append and the receipt upload pass `CancellationToken.None`. That way the already-cancelled stop token cannot fail them.
+2. Finish the message in progress. A message whose processing has started completes its full `ProcessingDelayMs`: the delay is not cancelled by the stop token. Its processed row is appended, and its offset is stored when `enable.auto.offset.store` is false, as today (lines 198 to 207). Then the loop ends and `Consume` is not called again. The stop token is checked only before each `Consume` call, so a message returned by the call during which the stop fired is processed as the message in progress.
+3. Stop-observed row. Append `stop_observed` (3.4). When `StopConfigured` is true, every append, including the processed row of step 2 and the callback rows of step 4, and the receipt upload pass `CancellationToken.None`. That way the already-cancelled stop token cannot fail them.
 4. Shutdown. Record `shutdown_started_utc`, then:
    - mode `close`: call `Close` under the existing 30 s bound (line 86), then `Dispose`;
    - mode `dispose`: call `Dispose` only, unbounded as `Dispose` is today.
 
-   Then record `shutdown_ended_utc`. `shutdown_outcome` is `timed_out` when the 30 s bound expires, `failed` when the call throws, and `ok` otherwise. Partition-event and commit callbacks raised by the call are appended as rows, as today.
+   Then record `shutdown_ended_utc`. `shutdown_outcome` is `timed_out` when the 30 s bound expires, `failed` when the call throws, and `ok` otherwise. Partition-event and commit callbacks raised by the call are appended as rows, as today. When `shutdown_outcome` is `failed` or `timed_out`, `Dispose` is not called, as on `main` (lines 85 to 88). In every outcome the record closes before `shutdown_ended_utc` is taken: no later callback appends a row, so the receipt's `rows` counts every appended row. Native monitoring is completed with `true` when `shutdown_outcome` is `ok` and with `false` otherwise, where line 95 completes it today.
 5. Receipt. If no append failed, write the stop receipt (3.5) and return exit code 0. Write no completion receipt and no standard error line.
 6. Failures, which are not an `ok` stop:
    - an append failure at any point after the stop request ends the member exactly as today, with reason `consumer_record_append_failed`, exit 1 and no receipt;
@@ -139,9 +148,9 @@ R4. WHEN `StopConfigured` is true and the stop token fires after `Subscribe` whi
 
 R5. WHEN the stop token fires while a message is being processed, THEN that message's delay runs in full and its processed row precedes `stop_observed`. No later message is consumed.
 
-R6. WHEN the mode is `close`, THEN `Close` and then `Dispose` are called. WHEN it is `dispose`, THEN `Dispose` is called and `Close` is not.
+R6. WHEN the mode is `close` and `Close` returns, THEN `Close` and then `Dispose` are called. WHEN it is `dispose`, THEN `Dispose` is called and `Close` is not.
 
-R7. WHEN `Close` throws, THEN `shutdown_outcome` is `failed`. WHEN `Close` exceeds 30 s, THEN it is `timed_out`. In both cases the receipt is still written and the exit code is 0.
+R7. WHEN `Close` throws, THEN `shutdown_outcome` is `failed`. WHEN `Close` exceeds 30 s, THEN it is `timed_out`. In both cases `Dispose` is not called, no row is appended after the record closes, the receipt is still written and the exit code is 0.
 
 R8. WHEN revoke or commit callbacks run during `Close` after the stop, THEN their rows are appended, even though the stop token is cancelled.
 
@@ -178,16 +187,17 @@ All tests are in `tests/Parchwell.Enrichment.Tests/ConsumerProcessing/`, using t
 | Requirement | Test | Inputs | Literal expectation |
 |---|---|---|---|
 | R1 | existing `ConsumerProcessingWorkerTests`, `ConsumerSelfKillTests`, `ConsumerRecordCodecTests`, unchanged | as on `main` | pass with no edit |
-| R2 | `ConsumerStopPlanTests.Rejects_invalid_stop_inputs` | V1: witness with `StopConfigured`; V2: with kill count 1; V2: with slow message (100, 90000, `inline`); V3: mode `drain`; V3: mode null; V4: mode `close` without `StopConfigured` | each throws, and the worker returns 1 with `reason=consumer_plan_invalid` and no `RegisterAsync` call |
+| R2 | `ConsumerStopPlanTests.Rejects_invalid_stop_inputs` | V1: witness with `StopConfigured`; V2: with kill count 1; V2: with slow message (100, 90000, `inline`) and `WindowMs` 120000, `StopConfigured` true, mode `close`; V3: mode `drain`; V3: mode null; V4: mode `close` without `StopConfigured` | each throws, and the worker returns 1 with `reason=consumer_plan_invalid` and no `RegisterAsync` call |
 | R3 | `ConsumerRecordCodecStopTests.Registration_carries_shutdown_mode` | mode `dispose`; then mode null | the key set equals the `main` key set plus `shutdown_mode`, value `dispose`; then equals the `main` key set exactly |
-| R4 | `ConsumerStopPathTests.Stop_while_polling_closes_and_writes_receipt` | mode `close`; no messages; stop token cancelled at clock 2026-11-28T10:00:05.0000000Z | rows end with `stop_observed`, `event_utc` `2026-11-28T10:00:05.0000000Z`; `Close` then `Dispose`; a `stop-receipt.json` with `shutdown_mode` `close` and `shutdown_outcome` `ok`; no `CompleteAsync`; exit 0; empty standard error |
-| R5 | `ConsumerStopPathTests.Message_in_progress_finishes` | `ProcessingDelayMs` 200; one message; stop at 50 ms into its delay; a second message available | the processed row has `processing_ended_utc` 200 ms after `processing_started_utc` and precedes `stop_observed`; the second message is never returned by `Consume` (call count after stop is 0) |
+| R4 | `ConsumerStopPathTests.Stop_while_polling_closes_and_writes_receipt` | mode `close`; no messages; `ConsumerTestClock` advanced from its base `2026-11-15T00:00:00Z` (`ConsumerTestClock.cs` line 13) to 2026-11-28T10:00:05.0000000Z, and the stop token cancelled there | rows end with `stop_observed`, `event_utc` `2026-11-28T10:00:05.0000000Z`; `Close` then `Dispose`; a `stop-receipt.json` with `shutdown_mode` `close` and `shutdown_outcome` `ok`; no `CompleteAsync`; exit 0; empty standard error |
+| R5 | `ConsumerStopPathTests.Message_in_progress_finishes` | `ProcessingDelayMs` 200; one message; stop at 50 ms into its delay; a second message available | the processed row has `processing_ended_utc` 200 ms after `processing_started_utc` and precedes `stop_observed`; the second message is never returned by `Consume` (call count after stop is 0); `RecordingRecordStore` records `CanBeCanceled` of each token it receives, and it is false for the processed row's `AppendAsync` |
+| R5 | `ConsumerStopPathTests.Message_returned_during_stop_is_processed` | mode `close`; the stop token is cancelled inside the `Consume` call that returns offset 7 | a `processed` row for offset 7 before `stop_observed`; no `Consume` call after that one; exit 0 |
 | R6 | `ConsumerStopPathTests.Dispose_mode_skips_close` | mode `dispose` | `Dispose` called once, `Close` never; receipt `shutdown_mode` `dispose` |
-| R7 | `ConsumerStopPathTests.Close_failure_and_timeout_are_recorded` | `Close` throws `KafkaException`; then `Close` blocks past 30 s on the test clock | `shutdown_outcome` `failed`; then `timed_out`; receipt written; exit 0 |
+| R7 | `ConsumerStopPathTests.Close_failure_and_timeout_are_recorded` | `Close` throws `KafkaException`; then `Close` blocks past 30 s on the test clock | `shutdown_outcome` `failed`; then `timed_out`; receipt written; exit 0; in both cases `Dispose` is not called; for `timed_out`, a revoke that the blocked `Close` raises after the 30 s bound appends no row, and the receipt's `rows` equals the number of rows the store holds |
 | R8 | `ConsumerStopPathTests.Callbacks_during_close_are_recorded` | `Close` invokes the revoked handler with partitions 0 and 1, then the commit handler | `partition_event` `revoked` [0, 1] and a `commit` row after `stop_observed`; every `AppendAsync` after the stop receives `CancellationToken.None` |
 | R9 | `ConsumerStopPathTests.Stop_row_append_failure` | the store throws on the `stop_observed` append | exit 1; standard error starts `consumer_processing_failed reason=consumer_record_append_failed`; no receipt |
 | R10 | `ConsumerStopPathTests.Receipt_failure` | the store throws on the receipt | exit 1; standard error starts `consumer_processing_failed reason=consumer_stop_receipt_failed scenario_id=` |
-| R11 | `ConsumerStopPathTests.Stop_before_subscribe_uses_existing_path` | stop token cancelled before `Subscribe` | no `stop_observed` row; outcome equal to the same input with `StopConfigured` false |
+| R11 | `ConsumerStopPathTests.Stop_before_subscribe_uses_existing_path` | stop token cancelled before `Subscribe` | exit 1; standard error starts `consumer_processing_failed reason=consumer_fatal_error`; no `stop_observed` row; no `stop-receipt.json` |
 | R12 | `ConsumerStopPathTests.Window_end_before_stop_completes` | window 1000 ms; no stop | `completion.json` written; no `stop_observed`; no receipt; exit 0 |
 | R13 | `ConsumerErrorRowTests.Non_fatal_consume_error` | `Consume` throws `ConsumeException` with `ErrorCode.Local_Transport`, not fatal, then returns null | one row `source` `consume`, `error_code` -195, `is_fatal` false; member continues to its completion |
 | R14 | `ConsumerErrorRowTests.Fatal_consume_error` | fatal `ConsumeException` | one row with `is_fatal` true, then the member's existing failure reason `consumer_fatal_error` and exit 1 |
@@ -206,7 +216,7 @@ The rule never permits removing a case, loosening an assertion or changing a che
 
 ## 7. Deployment assumptions
 
-None. This pull request has no live effect: no plan source sets the new inputs, so C01, C03 and C10 runs are unchanged (R1), and C18 cannot run until pull requests 3 and 4. The live questions belong to the c18-stop-smoke plan (whether SIGTERM reaches the worker; the pod end time) and to pull request 3 (the scenario values).
+One runtime assumption is named, not tested here: after SIGTERM the process keeps running until `Main` returns, because `ConsoleLifetime` handles the signal and "the POSIX signal handler returns with `Cancel = true`" (S4). No test in this plan covers it in the container. The c18-stop-smoke plan observes it live, and #597 decision 7237271679 point 4, confirmed by Hari's thumbs-up, accepts by name the risk of reworking this pull request if SIGTERM does not reach the worker. Otherwise this pull request has no live effect: no plan source sets the new inputs, so C01, C03 and C10 runs are unchanged (R1), and C18 cannot run until pull requests 3 and 4. The live questions belong to the c18-stop-smoke plan (whether SIGTERM reaches the worker; the pod end time) and to pull request 3 (the scenario values).
 
 Inference, recorded for pull request 3: the OAuth session is created with the stop token (`Program.cs` lines 281 to 283). A token refresh that falls during the shutdown call would therefore be cancelled. Microsoft states a default access-token lifetime of 60 to 90 minutes, which "varies depending on the client application" (S3). The member Job lasts at most 1800 s (`charts/parchwell/values.yaml` line 106). If a refresh were cancelled, `Close` would end `failed` or `timed_out`, and R7 records that.
 
@@ -235,18 +245,22 @@ Tools: `curl` of raw files from confluentinc/confluent-kafka-dotnet at tag `v2.1
 
 (a) Effort that scales with a number unknown at planning time: none. The tests use fixed inputs, and the worker adds no loop. Its one wait, the 30 s `Close` bound, already exists.
 
-(b) Stricter than the parent: V2 also excludes a slow message with a stop time, which Amendment 1 does not mention. Reason: the "finish the message in progress" rule is defined only for an inline delay; a paused slow message would mix two endings. C18 needs neither. The 1024-unit cut of `reason` (R17) is also added, to keep a row inside the existing line limit.
+(b) Stricter than the parent. Five points. A stop counts only after `Subscribe` returns (3.6 step 1), because before that the worker has no consumer to shut down. `consumer_error` rows carry a `source` field, so the two origins Amendment 1 names stay distinguishable. A `failed` or `timed_out` shutdown still writes the receipt and exits 0 (R7), because the receipt is the evidence of what happened, and Amendment 1 lists the shutdown outcome as a receipt field. V2 also excludes a slow message with a stop time, which Amendment 1 does not mention. Reason: the "finish the message in progress" rule is defined only for an inline delay; a paused slow message would mix two endings. C18 needs neither. The 1024-unit cut of `reason` (R17) is also added, to keep a row inside the existing line limit.
 
 (c) Tests that depend on code, data or behaviour neither on `main` nor in this pull request: none. The `ErrorCode` values are read from the enum (S2).
 
 ## 11. Open questions for Hari
 
-None.
+1. Move "the worker and chart admit C18" from pull request 2 to pull request 3? The approved split ([decision 7237226936](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7237226936) point 1, in the order of the c18-stop-smoke plan's section 12) puts it in pull request 2. That entry's text was this planning session's own wording. Recommendation: move it to pull request 3. Evidence:
+   - The chart's consumer-scenario switch, `parchwell.isConsumerScenario` (`_consumer.tpl` lines 2 to 5), also routes the start-line, load generator, verifier and judge Jobs (`jobs.yaml` line 22) and the service accounts (`serviceaccounts.yaml` line 3). The schema's consumer branch (`values.schema.json` line 1221) admits the modes `start-line`, `loadgen`, `verify` and `judge` for every listed scenario. Admitting C18 there admits those modes too, whose load generator and verifier admission the split puts in pull requests 3 and 5.
+   - The worker alone could accept `C18` in `ConsumerProcessingOptions.Validate` (line 27). But `ScenarioConsumerProcessingPlanSource.GetPlan` (line 24) would still return null for it until pull request 3 adds the scenario file, so a C18 member would fail `consumer_plan_invalid` at once. That change is reachable by no run.
+
+   Alternative: keep the admission here, adding the options, chart and schema changes, with tests, in a revision of this plan. Either way the stop path above is unchanged.
 
 ## 12. Deferred work
 
-- Plan-source mapping. Mapping the C18 scenario's stop time, shutdown mode (default `close`) and consumer-error setting to these inputs, and admitting C18 in `ConsumerProcessingOptions.Validate` and `_consumer.tpl`. This is pull request 3, with the scenario file and its `expected.yaml`. It is on the verdict path, and deferral is required by decision 7237226936 point 1's limit, which keeps scenario files out of this pull request. Responsible: the `plan-pr` session for pull request 3, after the smoke's evidence (c18-stop-smoke plan, section 12). Gate it blocks: any C18 run.
-- Verifier acceptance of the new rows and receipt. This is pull request 5. It is deferred for the same reason (no verifier files here).
+- Plan-source mapping. Mapping the C18 scenario's stop time, shutdown mode (default `close`) and consumer-error setting to these inputs, and admitting C18 in `ConsumerProcessingOptions.Validate` and the chart. The scenario mapping is pull request 3 under the approved split. Moving the admission there too is proposed under section 11, question 1, and is not decided by this plan. It is on the verdict path. The scenario mapping's deferral is required by decision 7237226936 point 1's limit, which keeps scenario files out of this pull request. Responsible: the `plan-pr` session for pull request 3, after the smoke's evidence (c18-stop-smoke plan, section 12). Gate it blocks: any C18 run.
+- Verifier acceptance of the new rows and receipt. This is pull request 5. It is deferred for the same reason (no verifier files here). Responsible: the `plan-pr` session for pull request 5, after the smoke's evidence (c18-stop-smoke plan, section 12). Gate it blocks: acceptance of any C18 record by the verifier, and so the C18 verdict.
 
 ## 13. Stop rule
 
