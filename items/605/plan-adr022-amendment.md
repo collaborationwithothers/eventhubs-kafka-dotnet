@@ -2,15 +2,19 @@
 
 Issue: [#605](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/605), child of [#597](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/597), split entry 1. Pull request name: `adr022-amendment`. This is the contract-grade plan for that one pull request under docs/agents/factory.md "Item lifecycle" step 3.
 
-Revision 2. Base: `main` at 15b09147ed4e7c62ea08620b24c14cd049f07562. Line numbers below are on that commit.
+Revision 3. Base: `main` at bc377bd7591183045678dc928df4bf990e52407d. Line numbers below are on that commit. Revisions 1 and 2 were written against 15b09147ed4e7c62ea08620b24c14cd049f07562; the only files that differ between the two commits are three mutation-test scripts under `tests/Parchwell.Verifier.Tests/Mutation/`, so every line number and citation below holds on both.
 
-Changes since revision 1, from the [revision 1 plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/605#issuecomment-7235835025), by finding:
+Changes since revision 2, applying [#605 decision 7236060793](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/605#issuecomment-7236060793), by its point:
 
-- 1 (open questions): unchanged in kind; they remain for Hari. Section 11 now has fourteen.
-- 2 (design points not asked): the C04 value `session.timeout.ms` 6000 is removed from the 3.7 context, so it stays with the C04 plan. Section 11 adds question 11 (rebalance count), 12 (shutdown-mode invalidation) and 13 (the end conditions for a stop time and for neither stop nor kill).
-- 3 (two-member rules): 3.7 adds a "Members" bullet that extends "Group", "Stop and observation boundary" and "Commit agreement" to every registered member; the stop-observed row gets an instance ID and row sequence number; the invalid-run list adds the shutdown-mode condition. Section 11 adds question 14 (Members).
-- 4 (S54 overstated): the 3.7 context now says the kubelet "typically" has the runtime send TERM, or the image's STOPSIGNAL.
-- Observations: the 3.7 context no longer calls a dropped consume error an ending; 3.5 states "once per repeat" for C03, C10 and C01 and "once per subject instance" for C04; section 1 records the #605 `updated_at` as read at the revision 2 refresh.
+- Point 1: the fourteen open questions are answered as recommended; section 11 now states `None`, and section 11a keeps the questions and their answers as a record.
+- Point 2: the sixth 3.7 consequence is replaced with the text the decision request gave for option (a). The "Stop" bullet already has the subject finish the message in progress.
+- Point 3: 3.7 "Shutdown margin" records two times, one from the subject's own record and one from pod evidence; the stop receipt gains its write time; 3.7 adds the consequence on reading a deleted pod's end time, and section 1 lists it as a downstream prerequisite. The literal text for the addition is pinned in 3.7 for the plan check.
+- Point 4: the overlap invalid-run sub-bullet now rests on the workflow's confirmation.
+- Point 5: 3.6 now appends to the end of the decision line; the 3.7 context says "suggests considering"; the 3.7 context adds the `Dispose` sentence, and S52 adds `Consumer.cs` and `SafeKafkaHandle.cs`.
+- Point 6: section 1 records that the reason in decision 7235680921 point 5 is corrected, and its condition stands.
+- Base moved to `bc377bd7591183045678dc928df4bf990e52407d`; section 1 lists decision 7236060793 and records #597 decision 7236013792, which this child has not adopted and which changes nothing here.
+
+Revision 2's changes from the [revision 1 plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/605#issuecomment-7235835025) remain in the text. The [revision 2 plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/605#issuecomment-7235927753) findings 1 to 7 are applied through decision 7236060793; its finding 8 (the auto-commit-on half of K-56) needs no change here, as that check says.
 
 The size estimate in section 13 is recomputed by script.
 
@@ -28,12 +32,17 @@ Authorities, in creation order (factory.md "Item lifecycle" step 3, child issues
 4. #597 [decision 7235586661](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/597#issuecomment-7235586661): the revision request that produced proposal revision 2. It decides no design.
 5. #597 [decision 7235680921](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/597#issuecomment-7235680921): points 1 to 6 (batch and order; narrowing; SIGTERM by workflow pod delete with no ADR-020 exception; C04 restarts as sequential subject Jobs started by the workflow, with no ADR-017 change and back-off not tested; no third C18 configuration, with the condition that the C18 plan measures the time from the observed SIGTERM to process exit against the 30 s grace for each repeat; no early `group.instance.id` check). It states "Not decided here: any ADR or blueprint text".
 6. #605 [decision 7235685248](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/605#issuecomment-7235685248): links and adopts authorities 3 to 5 for this child.
+7. #605 [decision 7236060793](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/605#issuecomment-7236060793) (posted 2026-11-28T07:37:38Z): Hari's answers to the revision 2 decision request, "yes to all recommendations with your addition": the fourteen questions as recommended; option (a) for the message in progress; the deleted-pod consequence plus the shutdown margin from the subject's own record; the overlap condition on the workflow's confirmation; the three wording fixes; and the correction of decision 7235680921 point 5's reason, whose condition stands. It is not an approval; approval follows authority 3 and Hari's label.
+
+Also read, not adopted on this child: #597 [decision 7236013792](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/597#issuecomment-7236013792) approves the proposal's split and keeps two configurations per consumer scenario. A parent decision changes this child's plan only when a decision on the child adopts it (factory.md "Item lifecycle" step 3). It agrees with this plan and changes no text in it.
+
+Account note: decisions 7236060793 and 7236013792 are posted by the `haripraghash-bot` login. `scripts/decision-log.py` prints only comments by `haripraghash` (factory.md "Decision log"), so its log omits both. This plan recognizes them under factory.md "Item lifecycle" step 3, which recognizes a decision by its heading and by its recording Hari's decision, not by account; earlier decisions on #597 were recorded the same way by the control session.
 
 Evidence, not authority: [proposal revision 2](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/597#issuecomment-7235228182) and its [decision request](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/597#issuecomment-7235252268). Decision 7235680921 adopts the six answers that the decision request lists, each as it recommends, and the narrowing table of the proposal (point 2). It does not adopt the rest of the proposal.
 
 There is no parent plan: #597 holds a proposal. No item state file is written (factory.md "Decision log", last paragraph).
 
-Downstream prerequisites (factory.md "Outcome responsibility"). None blocks this pull request. Each is recorded in the amendment's consequences and belongs to a later split entry: whether SIGTERM reaches the worker under `shareProcessNamespace: true` (settled by a live smoke before the C18 plan is approved, proposal "Prerequisites" table, under decision 7235680921 point 3); whether Event Hubs honours `group.instance.id`, and the stop-to-join time that sizes C06's `session.timeout.ms` (C06's first smoke, decision 7235680921 point 6). This pull request cannot settle either: it changes prose and runs nothing.
+Downstream prerequisites (factory.md "Outcome responsibility"). None blocks this pull request. Each is recorded in the amendment's consequences and belongs to a later split entry, approved by #597 decision 7236013792: whether SIGTERM reaches the worker under `shareProcessNamespace: true` (settled by a live smoke before the C18 plan is approved, proposal "Prerequisites" table, under decision 7235680921 point 3); whether Event Hubs honours `group.instance.id`, and the stop-to-join time that sizes C06's `session.timeout.ms` (C06's first smoke, decision 7235680921 point 6). Whether the workflow can read the deleted subject pod's container end time before the pod is removed (the C18 smoke, before the C18 plan is approved, decision 7236060793 point 3). This pull request cannot settle any of them: it changes prose and runs nothing.
 
 ## 2. Scope
 
@@ -113,28 +122,30 @@ Under ADR-022, the subject consumer of a C03, C10, C01 or C04 repeat whose confi
 
 ### 3.6 ADR-022 decision line (line 750)
 
-Replace:
+Replace, at the end of line 750:
 
 ```
-**Decision.** Option 5, for repeats of C03, C10 and C01 only, under the
+[6895700580](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/504#issuecomment-6895700580) on #504.
 ```
 
 with:
 
 ```
-**Decision.** Option 5, for repeats of C03, C10 and C01, and of C18, C06 and C04 as "Amendment 1: C18, C06 and C04" below sets, under the
+[6895700580](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/504#issuecomment-6895700580) on #504; and for repeats of C18, C06 and C04 as "Amendment 1: C18, C06 and C04" below sets.
 ```
+
+The opening `**Decision.** Option 5, for repeats of C03, C10 and C01 only, under the` stays unchanged.
 
 ### 3.7 ADR-022 amendment 1 (insert after line 796)
 
 Line 796 is the last ADR-022 consequence, `- The worker, verifier, chart, workflow and identity changes land in the #499 children. ...`. Insert after it one empty line, then this block, so that the existing empty line 797 and the `---` of line 798 follow it unchanged:
 
 ```markdown
-**Amendment 1: C18, C06 and C04.** Under [#597 decision 7235680921](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/597#issuecomment-7235680921), adopted on #605 by [decision 7235685248](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/605#issuecomment-7235685248). For repeats of C18, C06 and C04 the decision above applies with the changes below; where they differ, these bullets win for those items. C03, C10 and C01 are unchanged.
+**Amendment 1: C18, C06 and C04.** Under [#597 decision 7235680921](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/597#issuecomment-7235680921), adopted on #605 by [decision 7235685248](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/605#issuecomment-7235685248), and [#605 decision 7236060793](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/605#issuecomment-7236060793). For repeats of C18, C06 and C04 the decision above applies with the changes below; where they differ, these bullets win for those items. C03, C10 and C01 are unchanged.
 
 *Context.* C18 asks whether a consumer whose pod Kubernetes deletes closes, commits and leaves the group within its termination grace, with `Close` against `Dispose` only. C06 asks whether a successor with the same `group.instance.id` rejoins within `session.timeout.ms` without a rebalance, with dynamic against static membership. C04 asks whether each restart of a crashing subject causes a rebalance, and whether a group rebalances constantly with no error (S2). The decision above rejects two of their endings: a stopped subject ends without its completion receipt, and a successor makes more than two registered members. It also records no row for a non-fatal consume error, so "no error" has no evidence.
 
-On pod deletion the kubelet typically has the container runtime send TERM, or the image's STOPSIGNAL where the runtime respects it, to the main process in each container, and KILL to any remaining processes once the grace period expires; the default grace is 30 seconds (Fact: S54). On .NET 6 and later, `ConsoleLifetime` handles SIGTERM and raises `ApplicationStopping` (Fact: S55). `Close` commits offsets if auto commit is enabled and alerts the group coordinator that the consumer is exiting; without `Close` or `Unsubscribe` the group rebalances after `session.timeout.ms` (Fact: S52). Without a close, final offsets are not committed and the consumer does not actively leave the group (Fact: S53). Static members can leave and rejoin within `session.timeout.ms` without a rebalance, and send no leave group request on close (Fact: S6, S53). Microsoft advises a unique `group.instance.id` per consumer instance to reduce rebalances from transient disconnections, and gives `session.timeout.ms` a constraint of 6000 to 300000 (Fact: S1). Consumers that constantly rebalance get "no exception or error" (Fact: S2). No Microsoft source read states that Event Hubs honours `group.instance.id`.
+On pod deletion the kubelet typically has the container runtime send TERM, or the image's STOPSIGNAL where the runtime respects it, to the main process in each container, and KILL to any remaining processes once the grace period expires; the default grace is 30 seconds (Fact: S54). On .NET 6 and later, `ConsoleLifetime` handles SIGTERM and raises `ApplicationStopping` (Fact: S55). `Close` commits offsets if auto commit is enabled and alerts the group coordinator that the consumer is exiting; without `Close` or `Unsubscribe` the group rebalances after `session.timeout.ms` (Fact: S52). `Dispose` without `Close` does not commit offsets or alert the group coordinator (Fact: S52). Without a close, final offsets are not committed and the consumer does not actively leave the group (Fact: S53). Static members can leave and rejoin within `session.timeout.ms` without a rebalance, and send no leave group request on close (Fact: S6, S53). Microsoft suggests considering a unique `group.instance.id` per consumer instance to reduce rebalances from transient disconnections, and gives `session.timeout.ms` a constraint of 6000 to 300000 (Fact: S1). Consumers that constantly rebalance get "no exception or error" (Fact: S2). No Microsoft source read states that Event Hubs honours `group.instance.id`.
 
 *Options considered.*
 1. The subject sends SIGTERM to itself at a fixed message. It skips the kubelet and the grace period, and needs a third ADR-020 exception.
@@ -142,8 +153,8 @@ On pod deletion the kubelet typically has the container runtime send TERM, or th
 3. The workflow deletes the subject's pod at a fixed time after the start line, and starts later subject instances as new Jobs in sequence. A stopped subject ends with a stop receipt, and every member records its consume errors.
 
 *Decision.* Option 3.
-- Stop. A configuration names a stop time or a kill count, not both. In a configuration whose scenario names a stop time T, the workflow deletes the first subject instance's pod T seconds after the start line, once per repeat, with the pod's termination grace from the chart. The subject treats `ApplicationStopping` as the stop request. It finishes the message in progress, consumes no further message and appends a stop-observed row with its instance ID, row sequence number and the time. It then ends its consumer by the configuration's shutdown mode: `close` calls `Close` and then `Dispose`; `dispose` calls `Dispose` only. With no shutdown mode named, the mode is `close`. It finishes recording callbacks from that call and writes a stop receipt as its last action. The stop receipt holds the stop-observed time, the shutdown mode, the start and end times of the shutdown call, and its outcome.
-- Shutdown margin. For each repeat with a stop time, the time from the subject's stop-observed row to the end of its process is recorded against the pod's termination grace. The end of the process comes from the workflow's pod evidence (ADR-020). It is recorded only: it decides no validity and no verdict.
+- Stop. A configuration names a stop time or a kill count, not both. In a configuration whose scenario names a stop time T, the workflow deletes the first subject instance's pod T seconds after the start line, once per repeat, with the pod's termination grace from the chart. The subject treats `ApplicationStopping` as the stop request. It finishes the message in progress, consumes no further message and appends a stop-observed row with its instance ID, row sequence number and the time. It then ends its consumer by the configuration's shutdown mode: `close` calls `Close` and then `Dispose`; `dispose` calls `Dispose` only. With no shutdown mode named, the mode is `close`. It finishes recording callbacks from that call and writes a stop receipt as its last action. The stop receipt holds the stop-observed time, the shutdown mode, the start and end times of the shutdown call, its outcome, and the time the receipt is written.
+- Shutdown margin. For each repeat with a stop time, two times are recorded against the pod's termination grace. The first runs from the subject's stop-observed row to the time its stop receipt is written, from the subject's own record; it exists whenever the stop receipt is written. The second runs from the stop-observed row to the end of the subject's process, from the workflow's pod evidence (ADR-020), and includes host cleanup after the receipt. Both are recorded only: they decide no validity and no verdict.
 - Missing stop receipt. A subject instance with a stop time configured that ends after its stop-observed row without its stop receipt makes the repeat incomplete with reason `consumer_stop_receipt_missing`, not loss. Its rows remain diagnostics.
 - Subject instances. A configuration whose scenario names a number of subject instances S greater than 1 runs them in sequence. The workflow starts each later instance as a new Job only after it has confirmed that the previous instance's process has terminated (ADR-020). Each instance is a member with its own pod name, instance ID, registration marker and record, and runs the subject's configuration. Its window is measured from its own start. Only the first instance and the witness take part in "Start order".
 - Members. In these repeats, "two consumer members" and "both members' node names" in "Group", "both consumer processes" in "Stop and observation boundary" and "either member" in "Commit agreement" mean every registered member: the witness and each subject instance.
@@ -155,7 +166,7 @@ On pod deletion the kubelet typically has the container runtime send TERM, or th
 - Configuration fidelity. Every subject instance's effective settings, including `group.instance.id` when the configuration names it, must match the selected configuration and the baseline. The witness's must match the baseline, and its own `group.instance.id` when the configuration names one. The registration marker also records the shutdown mode.
 - Invalid run. These conditions replace the decision's member-count and end-condition bullets for these items; its other conditions stay:
   - other than one witness and S subject instances registered, with S equal to 1 when the scenario names none;
-  - a subject instance's registration marker is earlier than the previous subject instance's last row;
+  - the workflow did not confirm that the previous subject instance's process had terminated before it started the next one;
   - with a kill count configured, a subject instance ended other than at its kill-intent row;
   - with a stop time configured, the first subject instance wrote a kill-intent row or a completion receipt, or ended without a stop-observed row; or a later subject instance ended without its completion receipt;
   - with neither configured, a subject instance wrote a kill-intent row or ended without its completion receipt;
@@ -167,7 +178,8 @@ On pod deletion the kubelet typically has the container runtime send TERM, or th
 - Whether SIGTERM reaches the worker under the chart's shared process namespace is not verified; the Kubernetes page names both "the main process" and "process 1" in each container (S54). A live smoke settles it before the C18 plan is approved.
 - Whether Event Hubs honours `group.instance.id` is not verified. C06's first smoke settles it before the C06 plan is approved. If it does not, C06 publishes that as its finding.
 - The time from a subject's stop to its successor's join is not measured. The C06 plan sizes `session.timeout.ms` from that smoke, inside 6000 to 300000 (S1).
-- The consumer worker checks for cancellation only between messages, so a message in progress delays the close (inference from the worker's loop). The shutdown margin shows how much of the grace remains. A grace shorter than the close is not tested as its own configuration.
+- On the base the processing delay ends on `ApplicationStopping`; under "Stop" the subject instead finishes the message in progress, so a message in progress delays the close by up to the processing delay (inference). The shutdown margin shows how much of the grace remains. A grace shorter than the close is not tested as its own configuration.
+- Whether the workflow can read the deleted subject pod's container end time before the pod is removed is not verified. The C18 smoke settles it before the C18 plan is approved.
 - Sequential subject Jobs do not exercise the kubelet's restart back-off. C04 states it as not tested.
 - The worker, verifier, chart, workflow and scenario changes land in the #597 children. This amendment records the design before them; it does not claim they work.
 ```
@@ -219,7 +231,7 @@ with:
 Line 1423 is the S51 row, the last line of the file. Insert after it these four lines, and end the file with one newline:
 
 ```
-| S52 | Confluent.Kafka v2.16.0: [IConsumer.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IConsumer.cs#L669-L689), `Close` XML documentation; [ConsumerBuilder.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/ConsumerBuilder.cs#L195-L208), `SetErrorHandler` XML documentation | tag v2.16.0, read 2026-11-28 |
+| S52 | Confluent.Kafka v2.16.0: [IConsumer.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IConsumer.cs#L669-L689), `Close` XML documentation; [ConsumerBuilder.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/ConsumerBuilder.cs#L195-L208), `SetErrorHandler` XML documentation; [Consumer.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Consumer.cs#L615-L618), `Dispose` XML documentation; [SafeKafkaHandle.cs](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Impl/SafeKafkaHandle.cs#L189-L191), consumer handles destroyed with `RD_KAFKA_DESTROY_F_NO_CONSUMER_CLOSE` | tag v2.16.0, read 2026-11-28 |
 | S53 | librdkafka v2.16.0 [INTRODUCTION.md](https://github.com/confluentinc/librdkafka/blob/v2.16.0/INTRODUCTION.md), sections "Termination" (subsection "High-level KafkaConsumer", effects of not closing) and "Static consumer groups" | tag v2.16.0, read 2026-11-28 |
 | S54 | Kubernetes documentation: [Termination of Pods](https://kubernetes.io/docs/concepts/workloads/pods/pod-termination/), kubernetes/website at commit 38552b318453cbf9e282f36262a6f163bb7a8017, `content/en/docs/concepts/workloads/pods/pod-termination.md` lines 22 to 30, 84 and 94 | read 2026-11-28 |
 | S55 | [.NET Generic Host](https://learn.microsoft.com/en-us/dotnet/core/extensions/generic-host#host-shutdown), "Host shutdown" | read 2026-11-28 |
@@ -229,7 +241,7 @@ Line 1423 is the S51 row, the last line of the file. Insert after it these four 
 
 1. WHEN the pull request merges THEN docs/blueprint.md contains the 3.7 block exactly once, after ADR-022's last consequence and before the `---` that precedes section 5.
 2. WHEN a later C18, C06 or C04 child cites the stop, the shutdown margin, the stop receipt, subject instances, static membership, consumer-error rows, the rebalance count, takeover timing, fidelity or invalid-run conditions THEN amendment 1's text (3.7) is the source.
-3. WHEN ADR-022's decision line is read THEN it names C18, C06 and C04 and points to amendment 1 (3.6).
+3. WHEN ADR-022's decision line is read THEN it keeps its C03, C10 and C01 authority unchanged and, after it, names C18, C06 and C04 and points to amendment 1 (3.6).
 4. WHEN ADR-019's closed list, check 1 or its fidelity consequence is read for C18, C06 or C04 THEN each covers them as it covers C03, C10 and C01 (3.2 to 3.4).
 5. WHEN ADR-020's process rules are read THEN the ADR-022 self-kill covers C04 once per subject instance, and no new signal exception exists (3.5).
 6. WHEN section 12's fold table is read THEN the C04, C06 and C18 rows keep their original text and add which folds are tested and which are not, as decision 7235680921 lists them (3.8 to 3.10).
@@ -252,7 +264,7 @@ The change is prose; there is no code. Each requirement maps to a scripted text 
 | Requirement | Check | Input | Literal expected value |
 |---|---|---|---|
 | 1, 2 | A1 | `docs/blueprint.md` | the 3.7 block occurs exactly once; its first line comes after the line starting `- The worker, verifier, chart, workflow and identity changes land in the #499 children.` and before the line `## 5. Failure modes` |
-| 3 | A2 | `docs/blueprint.md` | the 3.6 new text occurs once; the 3.6 old text occurs zero times |
+| 3 | A2 | `docs/blueprint.md` | the 3.6 new text occurs once, at the end of the line that starts `**Decision.** Option 5, for repeats of C03, C10 and C01 only, under the`; the 3.6 old text occurs zero times |
 | 4 | A3 | `docs/blueprint.md` | the 3.2, 3.3 and 3.4 new texts each occur once; their old texts occur zero times |
 | 5 | A4 | `docs/blueprint.md` | the 3.5 new sentence occurs once, on the line that contains `The sole production process-launch exception is ADR-021's B10 parent process.`; the old sentence occurs zero times |
 | 6 | A5 | `docs/blueprint.md` | the new rows of 3.8, 3.9 and 3.10 each occur once; the old rows occur zero times |
@@ -282,7 +294,7 @@ Run on the pull request branch before the cold review.
 
 External behaviour (plan-pr "Plan rules" rule 1). Tools: raw GitHub fetches at the pinned tag or commit for 1 to 4, and the Microsoft Learn documentation search tool for 5 to 7, all on 2026-11-28.
 
-1. Confluent.Kafka v2.16.0 [IConsumer.cs lines 669 to 689](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IConsumer.cs#L669-L689): `Close` "Commits offsets (if auto commit is enabled), alerts the group coordinator that the consumer is exiting the group"; "If you do not call `Close` or `Unsubscribe`, the group will rebalance after a timeout specified by the group's `session.timeout.ms`". [ConsumerBuilder.cs lines 195 to 208](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/ConsumerBuilder.cs#L195-L208): `SetErrorHandler` is called "on error events", "Non-fatal errors should be interpreted as informational", and "Executes as a side-effect of the Consume method". Becomes S52.
+1. Confluent.Kafka v2.16.0 [IConsumer.cs lines 669 to 689](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IConsumer.cs#L669-L689): `Close` "Commits offsets (if auto commit is enabled), alerts the group coordinator that the consumer is exiting the group"; "If you do not call `Close` or `Unsubscribe`, the group will rebalance after a timeout specified by the group's `session.timeout.ms`". [ConsumerBuilder.cs lines 195 to 208](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/ConsumerBuilder.cs#L195-L208): `SetErrorHandler` is called "on error events", "Non-fatal errors should be interpreted as informational", and "Executes as a side-effect of the Consume method". [Consumer.cs lines 615 to 618](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Consumer.cs#L615-L618): `Dispose` "Releases all resources used by this Consumer without committing offsets and without alerting the group coordinator that the consumer is exiting the group". [SafeKafkaHandle.cs lines 189 to 191](https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/Impl/SafeKafkaHandle.cs#L189-L191): consumer handles are destroyed with `RD_KAFKA_DESTROY_F_NO_CONSUMER_CLOSE`. Both read at tag v2.16.0 on 2026-11-28 in this session. Becomes S52.
 2. librdkafka v2.16.0 [INTRODUCTION.md](https://github.com/confluentinc/librdkafka/blob/v2.16.0/INTRODUCTION.md), "Termination", "High-level KafkaConsumer" (lines 992 to 994): without close, "Final offsets are not committed and the consumer will not actively leave the group, it will be kicked out of the group after the `session.timeout.ms` expires". "Static consumer groups" (lines 1676 to 1696): static members "can leave and rejoin a group within the `session.timeout.ms` without triggering a rebalance"; "Consumers with `group.instance.id` set will not send a leave group request on close". Becomes S53.
 3. librdkafka v2.16.0 [CONFIGURATION.md line 129](https://github.com/confluentinc/librdkafka/blob/v2.16.0/CONFIGURATION.md?plain=1#L129) (blueprint S6): `group.instance.id`, "Static group members are able to leave and rejoin a group within the configured `session.timeout.ms` without prompting a group rebalance". Already S6.
 4. Kubernetes [Termination of Pods](https://kubernetes.io/docs/concepts/workloads/pods/pod-termination/), kubernetes/website at 38552b318453cbf9e282f36262a6f163bb7a8017, `pod-termination.md`: lines 22 to 24 "first sending a TERM (aka. SIGTERM) signal, with a grace period timeout, to the main process in each container"; lines 29 to 30 "Once the grace period has expired, the KILL signal is sent to any remaining processes"; line 84 "The default `terminationGracePeriodSeconds` setting is 30 seconds"; line 94 "send a TERM signal to process 1 inside each container". Becomes S54.
@@ -290,10 +302,10 @@ External behaviour (plan-pr "Plan rules" rule 1). Tools: raw GitHub fetches at t
 6. [Apache Kafka client configurations for Azure Event Hubs](https://learn.microsoft.com/azure/event-hubs/apache-kafka-configurations) (blueprint S1): librdkafka consumer table, `session.timeout.ms` constraint 6000 to 300000 (the page writes the range with an en dash; the ADR writes "6000 to 300000"); "Troubleshooting common issues", "Consider setting unique `group.instance.id` per consumer instance to reduce rebalances from transient disconnections". Already S1.
 7. [Apache Kafka troubleshooting guide for Event Hubs](https://learn.microsoft.com/azure/event-hubs/apache-kafka-troubleshooting-guide), "No records received" (blueprint S2): consumers "constantly rebalance. There's no exception or error when it happens". Already S2.
 
-Repository, at 15b09147ed4e7c62ea08620b24c14cd049f07562:
+Repository, at bc377bd7591183045678dc928df4bf990e52407d (the same text as at 15b09147ed4e7c62ea08620b24c14cd049f07562):
 
 8. `docs/blueprint.md`: line 14 (ADR-022 approval record); ADR-019 lines 605, 607, 619; ADR-020 line 641; ADR-022 lines 737 to 796; section 12 fold rows 1272, 1273, 1278; sources 1365 to 1423.
-9. `src/Parchwell.Enrichment/ConsumerProcessing/ConsumerProcessingWorker.cs` lines 62 to 69 (cancellation checked once per loop iteration, before `Poll`), 72 to 77 (any other exception becomes `consumer_fatal_error`), 156 to 160 (non-fatal `ConsumeException` returns null with no row). The basis of the amendment's context and its worker-loop inference.
+9. `src/Parchwell.Enrichment/ConsumerProcessing/ConsumerProcessingWorker.cs` lines 62 to 69 (cancellation checked before each `Poll`), 72 to 77 (any other exception becomes `consumer_fatal_error`), 156 to 160 (non-fatal `ConsumeException` returns null with no row), 191 (the pause loop checks the token) and 198 (the processing delay ends on the token). `src/Parchwell.Enrichment/Program.cs` lines 202 and 203 (the token is `ApplicationStopping`) and 216 and 217 (10 s host cleanup). The basis of the amendment's context and its sixth consequence.
 10. `charts/parchwell/templates/_consumer.tpl` lines 46 and 47: `shareProcessNamespace: true` and the termination grace from `bounds.execution`.
 11. `.github/CODEOWNERS` line 5.
 
@@ -301,7 +313,7 @@ Repository, at 15b09147ed4e7c62ea08620b24c14cd049f07562:
 
 (a) Steps whose effort scales with a number unknown at planning time: none. The pull request changes eleven places in one file.
 
-(b) Where the plan is stricter than, or goes beyond, its authority. Decision 7235680921 says "Not decided here: any ADR or blueprint text", and the issue body says the plan decides no protocol sequence, failure name, invalid-run condition or verdict rule. So every point below is a proposal, carried in the literal text as the recommended answer and asked in section 11:
+(b) Where the plan is stricter than, or goes beyond, its authority. Since revision 3, decision 7236060793 adopts every point below as recommended (point 1), with the changes of its points 2 to 5. Before it, decision 7235680921 said "Not decided here: any ADR or blueprint text", and the issue body says the plan decides no protocol sequence, failure name, invalid-run condition or verdict rule. So every point below is a proposal, carried in the literal text as the recommended answer and asked in section 11:
 - The placement as an "Amendment 1" block inside ADR-022 rather than edits to its bullets (question 1).
 - The stop protocol: stop-observed row, the two shutdown modes and their default, the receipt's content, and "a stop time or a kill count, not both" (question 2).
 - The incomplete reason `consumer_stop_receipt_missing` (question 3).
@@ -316,10 +328,17 @@ Repository, at 15b09147ed4e7c62ea08620b24c14cd049f07562:
 - A shutdown-mode mismatch as an invalid-run condition (question 12).
 - The end conditions for a configured stop time and for a configuration with neither stop nor kill (question 13).
 - The "Members" bullet that extends three two-member bullets to every registered member (question 14).
+- The stop receipt's write time and the margin from the subject's own record: the literal text is this plan's, for decision 7236060793 point 3's addition, which asks the planning session to pin it and the fresh check to cover it.
 
 (c) Tests or checks that depend on code, data or behaviour neither on `main` nor in this pull request: none. Every check in section 6 reads only the base and head text of docs/blueprint.md. The amendment describes behaviour that later children implement and test.
 
 ## 11. Open questions for Hari
+
+None. The fourteen questions of revision 2 are answered by [decision 7236060793](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/605#issuecomment-7236060793) point 1, each as recommended, and the revision 2 check's findings 2 to 4 by its points 2 to 4.
+
+## 11a. Answered questions (record)
+
+The questions as revision 2 asked them. Each recommended answer was adopted by decision 7236060793 point 1. Question 2's literal text is as revision 2 pinned it, with the receipt's write time added under point 3; question 5's overlap condition is replaced under point 4.
 
 Each question names the recommended answer, which the literal text in section 3 already carries, and the alternative. An answer other than the recommendation changes the named literal, and the revision gets a fresh check.
 
@@ -344,4 +363,4 @@ The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when i
 
 ## 13. Size estimate
 
-Estimate, 2026-11-28, from applying the section 3 literals of this revision to the base by script and counting the diff: 55 added lines and 8 removed lines in `docs/blueprint.md` (8 of the added lines replace the 8 removed ones). One file. Size is reported, not enforced.
+Estimate, 2026-11-28, from applying the section 3 literals of this revision to the base by script and counting the diff: 56 added lines and 8 removed lines in `docs/blueprint.md` (8 of the added lines replace the 8 removed ones). One file. Size is reported, not enforced.
