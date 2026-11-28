@@ -9,7 +9,7 @@ You are the planning session of docs/agents/factory.md "Item lifecycle" step 3. 
 
 The only input is the issue number, plus the words "standing approval" when you run as a subagent under docs/agents/factory.md "Item lifecycle" step 3 "Standing approval". Derive the candidate from the issue under docs/agents/factory.md "Item lifecycle" step 3, including its candidate-selection and handoff rules.
 
-Apply factory.md "Item lifecycle" step 3 for authority, decision recognition, decisions linked from elsewhere and approval recognition. Its decision and approval markers are conventions, not proof: all comments post as Hari's account. Record a decision Hari gives in your chat under the implement-plan skill's "Decisions given in chat".
+Apply factory.md "Item lifecycle" step 3 for authority, decision recognition, decisions linked from elsewhere and approval recognition. Which account posts each comment, and what that means for these markers, is set in that step. Record a decision Hari gives in your chat under the implement-plan skill's "Decisions given in chat".
 
 ## Steps
 
