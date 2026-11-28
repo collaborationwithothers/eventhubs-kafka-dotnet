@@ -26,7 +26,7 @@ Codex's review model is set in Codex's own settings, not in this repository.
 
 ## Identity
 
-In GitHub Actions, Claude acts through the factory's GitHub App, using a token minted per run with `actions/create-github-app-token`. Branch names start with `claude/` and include the issue number.
+In hosted interactive sessions, Claude acts as `haripraghash-bot` (AGENTS.md "Implementer and reviewer"), through the claude.ai GitHub connector signed in to that account; a test session confirmed the login, push, pull request and comment authorship on 2026-11-28 ([#270 test record](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/270#issuecomment-7235738178)). In GitHub Actions, Claude acts through the factory's GitHub App, using a token minted per run with `actions/create-github-app-token`. Branch names start with `claude/` and include the issue number.
 
 ## Before opening a pull request
 
