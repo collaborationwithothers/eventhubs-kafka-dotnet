@@ -120,7 +120,7 @@
         "Ignored": 35
       },
       "requirement_decision": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/201#issuecomment-6409664176",
-      "measurement_receipt": "../../docs/operations/evidence/issue-215/receipt.md"
+      "measurement_receipt": "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/7639d40826b2222c7dcc39dc14ab8145a9cf784c/docs/operations/evidence/issue-215/receipt.md"
     }
   },
   "candidate_projections": {

@@ -1,9 +1,0 @@
-{
-  "schema_version": 1,
-  "synthetic": true,
-  "azure_calls": 0,
-  "assertions": {},
-  "result": "failed",
-  "terminal_stage": "images",
-  "exit_code": 1
-}
