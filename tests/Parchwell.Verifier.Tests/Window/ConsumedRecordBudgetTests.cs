@@ -8,7 +8,7 @@ namespace Parchwell.Verifier.Tests.Window;
 
 #pragma warning disable CA1707
 
-public sealed class ConsumedRecordBudgetTests
+public sealed partial class ConsumedRecordBudgetTests
 {
     [Theory]
     [InlineData(0, 1)]
@@ -111,25 +111,6 @@ public sealed class ConsumedRecordBudgetTests
             Assert.Equal("Consumed-window accounting overflowed Int64.", exception.Message);
         }
         else Assert.Equal(long.MaxValue - 1 + amount, ConsumedRecordBudget.Add(long.MaxValue - 1, amount));
-    }
-
-    [Fact]
-    public void Given_DeployedPhaseRecordLimit_When_AccountingEmptyRecords_Then_EqualityPassesAndNextRecordCannotAdvanceCounters()
-    {
-        (long recordLimit,long byteLimit)=PhaseCapacityLimits();
-        Assert.Equal(9300000,recordLimit);
-        Assert.Equal(429496729600,byteLimit);
-        var budget=new ConsumedRecordBudget(recordLimit,byteLimit);
-        ConsumeResult<byte[],byte[]> record=Record();
-
-        for(long index=0;index<recordLimit;index++)budget.Account(record);
-
-        Assert.Equal(recordLimit,budget.Records);
-        Assert.Equal(0,budget.Bytes);
-        InputLimitExceededException exception=Assert.Throws<InputLimitExceededException>(()=>budget.Account(record));
-        Assert.Equal("The consumed window exceeds its configured record or byte limit.",exception.Message);
-        Assert.Equal(recordLimit,budget.Records);
-        Assert.Equal(0,budget.Bytes);
     }
 
     [Fact]
