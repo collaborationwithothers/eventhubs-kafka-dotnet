@@ -2941,6 +2941,21 @@ class RunnerTests(unittest.TestCase):
         self.assertIsNone(reason)
         self.assertEqual("true", log.read_text().strip())
 
+    def test_full_suite_reaches_the_child_environment(self):
+        """The property that selects the full suite is in the Stryker child's environment, and only for `full`."""
+        command = [sys.executable, "-c", 'import os; print(os.environ.get("ParchwellVerifierMutationFullSuite", "unset"))']
+        for suite, expected in (("fast", "unset"), ("full", "true")):
+            with self.subTest(suite=suite), patch.dict(os.environ, {"ParchwellVerifierMutationFullSuite": "inherited"}):
+                os.environ.pop("ParchwellVerifierMutationFullSuite")
+                log = self.root / f"suite-{suite}.log"
+                workflow._ACTIVE_SUITE[0] = suite
+                try:
+                    child_exit, reason = workflow.launch(command, self.root, log, 5)
+                finally:
+                    workflow._ACTIVE_SUITE[0] = "fast"
+                self.assertEqual((0, None), (child_exit, reason))
+                self.assertEqual(expected, log.read_text().strip())
+
     def test_full_suite_receipt_matches_fast(self):
         fast_result, fast, fast_output = self.invoke("0", output=self.root / "fast", suite="fast")
         full_result, full, full_output = self.invoke("0", output=self.root / "full", suite="full")

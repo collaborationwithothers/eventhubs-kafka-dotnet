@@ -41,12 +41,12 @@ class ExecutionWorkflowTests(unittest.TestCase):
                 self.assertNotEqual(fingerprint, profile_module.execution_workflow(other))
 
     def test_timing_fingerprint_retains_the_exact_paced_companion_step_only(self):
-        workflow = (ROOT / profile_module.WORKFLOW).read_bytes()
+        # Issue 602 adds the `suite` input and its pass-through. They change the execution hash on purpose (pinned
+        # pair, R19a), so the comparison with the earlier workflow starts from the text without exactly them.
+        workflow = without_suite_input((ROOT / profile_module.WORKFLOW).read_bytes())
         previous = profile_module.blob('717c5a75e3f0a56ad5378a0e7551caa832ed63d8', profile_module.WORKFLOW)
         fingerprint = profile_module.execution_workflow(previous)
-        # Issue 602 adds the `suite` input and its pass-through. They change the execution hash on purpose (pinned
-        # pair, R19a), so the comparison with the earlier workflow removes exactly them.
-        self.assertEqual(fingerprint, profile_module.execution_workflow(without_suite_input(workflow)))
+        self.assertEqual(fingerprint, profile_module.execution_workflow(workflow))
         for old, changed in (
                 (b'c5_companion_artifacts.py', b'c5_other_artifacts.py'),
                 (b'--manifest "$C5_CAMPAIGN"', b'--manifest "$OTHER_MANIFEST"'),
@@ -2483,7 +2483,7 @@ class CampaignValidatorRecoveryTests(unittest.TestCase):
             qualification = Path(directory) / 'qualification.json'
             qualification.write_bytes(runtime.blob(self.BASE, self.QUALIFICATION))
             # The checker runs the runner file it compares with the head's. Issue 602 changed the runner after this
-            # base, so the checker here is the base's runner, whose execution hash the reviewed-validator check still accepts (R19a).
+            # base, so the checker here is the base's runner, whose execution hash the reviewed-validator check still accepts (an implementer choice of issue 602, see the pull request notes).
             runner = Path(directory) / 'c5_workflow.py'
             runner.write_bytes(runtime.blob(self.BASE, runtime.RUNNER))
             with mock.patch.object(runtime.workflow, '__file__', str(runner)):
