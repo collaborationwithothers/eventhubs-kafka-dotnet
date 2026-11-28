@@ -348,6 +348,11 @@ SUITE_WORKFLOW_PAIR = ('cda07e2545340ade8d658ccfcce1ae65a472c97690c35186ab5f8047
                        '3a6f1076e67cc361eee9e393ec25300416c8ed8325fa82992397d5fd7d5d4bfb')
 SUITE_COMPANION_PAIR = ('1fade2b54ce8b20ed963ba5ebc5ff8cd0e6315f67b402cb46b1bfe695ffbebfb',
                         '65e79f770be5824a96e885d7fac5c7e5d3fc9ffc79c24a577935f100d3e9c2a1')
+SUITE_PAIRS = {
+    RUNNER: (SUITE_RUNNER_PAIR,),
+    WORKFLOW: (SUITE_WORKFLOW_PAIR,),
+    COMPANION_WORKFLOW: (SUITE_COMPANION_PAIR,),
+}
 EXACT_TIMING_PAIRS = {
     'tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py': (PROJECTION_TIMING_PAIR,),
     'tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py': (RUNNER_TIMING_PAIR, SUITE_RUNNER_PAIR),
@@ -494,9 +499,8 @@ def project_closure(ref, names):
                         raise ValueError('unsupported mutation exclusion condition')
                     continue
                 if (project == TEST_PROJECT and include == FULL_SUITE_INCLUDE and remove is None
-                        and set(element.attrib) == {'Include'}):
-                    if parents[element].attrib != {'Condition': FULL_SUITE_CONDITION}:
-                        raise ValueError('unsupported full-suite condition')
+                        and set(element.attrib) == {'Include'}
+                        and parents[element].attrib == {'Condition': FULL_SUITE_CONDITION}):
                     continue
                 if project == TEST_PROJECT and include == '../fixtures/ProbeV2MockCluster.cs' and set(element.attrib) == {'Include', 'Link'}:
                     extra.add('tests/fixtures/ProbeV2MockCluster.cs')
@@ -1105,7 +1109,7 @@ def same_timing_layout(reference, current):
     new_shared, new_targets = current[2]
     def same_or_pinned(path):
         before, after = old_shared.get(path), new_shared.get(path)
-        return before == after or (before, after) in EXACT_TIMING_PAIRS.get(path, ())
+        return before == after or (before, after) in SUITE_PAIRS.get(path, ())
     runner_pinned = (old_shared.get(RUNNER), new_shared.get(RUNNER)) == SUITE_RUNNER_PAIR
     return (reference[0] == current[0] and (reference[1] == current[1] or runner_pinned)
             and reference[3:] == current[3:]

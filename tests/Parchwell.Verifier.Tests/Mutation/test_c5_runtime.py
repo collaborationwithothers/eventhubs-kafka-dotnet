@@ -2329,7 +2329,7 @@ class FullSuiteQualificationTests(unittest.TestCase):
                  'extra attribute': (b'<Compile Include="Component/MutationExcluded/**/*.cs" />',
                                      b'<Compile Include="Component/MutationExcluded/**/*.cs" Link="x" />')}
         for label, (old, new) in cases.items():
-            with self.subTest(label), self.assertRaises(ValueError):
+            with self.subTest(label), self.assertRaisesRegex(ValueError, 'unsupported Compile inclusion'):
                 self.assertIn(old, runtime.blob('HEAD', runtime.TEST_PROJECT))
                 self.closure_with(lambda data: data.replace(old, new, 1))
 
@@ -2361,18 +2361,30 @@ class FullSuiteQualificationTests(unittest.TestCase):
         config = json.loads(runtime.blob(self.BASE, self.QUALIFICATION))
         pairs = dict(zip(self.PIN_PATHS, (runtime.SUITE_RUNNER_PAIR, runtime.SUITE_WORKFLOW_PAIR,
                                           runtime.SUITE_COMPANION_PAIR)))
+        measured = {path: pair[0] for path, pair in pairs.items()}
+
+        def layout(shared, code):
+            return ({}, code, (shared, {}), 'config', 'layout')
+
         for path in self.PIN_PATHS:
             old, new = pairs[path]
             self.assertEqual(old, config['shared_inputs'][path])
             for label, current in (('pinned', new), ('one byte off', new[:-1] + ('0' if new[-1] != '0' else '1'))):
-                shared = {**config['shared_inputs'], path: current}
+                shared = {**measured, path: current}
+                accepted = label == 'pinned'
+                context = {'shared_inputs': measured, 'target_sources': {},
+                           'assessments': {'shared_inputs': {path: {'current_sha256': current, 'basis': ['b']}},
+                                           'target_sources': {}}}
                 with self.subTest(path=path, label=label):
-                    if label == 'pinned':
-                        self.assertIn((old, current), runtime.EXACT_TIMING_PAIRS[path])
-                        continue
-                    with self.assertRaisesRegex(ValueError, 'not renewable'):
-                        runtime.renew_v2('HEAD', '/nonexistent', config, shared, {path}, 'basis')
-                    self.assertNotIn((old, current), runtime.EXACT_TIMING_PAIRS[path])
+                    errors = runtime.provenance_errors(context, shared, {}, 'owner')
+                    self.assertEqual(not accepted, 'invalid_renewal' in errors)
+                    code = 'changed' if path == runtime.RUNNER else 'same'
+                    self.assertEqual(accepted, runtime.same_timing_layout(layout(measured, 'same'),
+                                                                          layout(shared, code)))
+                    if not accepted:
+                        with self.assertRaisesRegex(ValueError, 'not renewable'):
+                            runtime.renew_v2('HEAD', '/nonexistent', config, {**config['shared_inputs'], path: current},
+                                             {path}, 'basis')
 
     def test_pinned_pair_keeps_margin_layout(self):
         head = runtime.git('rev-parse', 'HEAD').decode().strip()

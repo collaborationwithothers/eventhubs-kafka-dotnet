@@ -2664,6 +2664,41 @@ def real_source(shard):
     return (Path(__file__).resolve().parents[3] / "src/Parchwell.Verifier" / workflow.SHARDS[shard]).read_bytes()
 
 
+def capture_commands(module, shard, **options):
+    """Every Stryker invocation `run-shard` would start for the shard, with the generated configuration.
+
+    The checkout, projection and snapshot steps are replaced by stand-ins, so only the command construction runs.
+    """
+    root = Path(__file__).resolve().parents[3]
+    calls = []
+
+    def fake_launch(argv, cwd, log_path, timeout):
+        calls.append((list(argv), cwd, json.loads(Path(argv[argv.index("--config-file") + 1]).read_text())))
+        return 1, None
+
+    def fake_prepare(repository, staging_root, target, retained):
+        path = staging_root / (projection.VERIFIER + target)
+        path.parent.mkdir(parents=True)
+        path.write_bytes((root / "src/Parchwell.Verifier" / target).read_bytes())
+        retained.mkdir()
+        return {}
+
+    environment = {"GITHUB_SHA": COMMIT, "GITHUB_REF": "refs/heads/main",
+                   "GITHUB_RUN_ID": RUN_ID, "GITHUB_RUN_ATTEMPT": ATTEMPT}
+    with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, environment), \
+            patch.object(module, "launch", fake_launch), patch.object(module, "identity", lambda _: (COMMIT, TREE, True)), \
+            patch.object(module, "snapshot", lambda _: {}), patch.object(projection, "prepare", fake_prepare), \
+            patch.object(projection, "finish", lambda _root, _manifest, path: Path(path).write_text("{}")), patch.object(projection, "validate", lambda *args: None):
+        output = Path(directory) / "output"
+        with contextlib.redirect_stdout(io.StringIO()):
+            module.run_shard(shard, output, repository=root, **options)
+        normalized = []
+        for argv, cwd, config in calls:
+            text = json.dumps([argv, str(cwd)]).replace(str(output), "OUTPUT")
+            normalized.append((re.sub(r"/c5-source-[^/\"]+/", "/c5-source-X/", text), config))
+        return normalized
+
+
 def load_base_runner():
     """The runner as it was at the base commit of issue 602, loaded as a module of its own."""
     import importlib.util
@@ -2743,7 +2778,19 @@ class FullSuiteModeTests(unittest.TestCase):
                     module.launch(["dotnet", "stryker"], Path("."), Path(tempfile.mkdtemp()) / "log", 5)
         self.assertEqual(2, popen.call_count)
         self.assertEqual(popen.call_args_list[0].kwargs["env"], popen.call_args_list[1].kwargs["env"])
+        for shard in workflow.SHARDS:
+            with self.subTest(command=shard):
+                expected = capture_commands(base, shard)
+                self.assertTrue(expected)
+                self.assertEqual(expected, capture_commands(workflow, shard))
+                self.assertEqual(expected, capture_commands(workflow, shard, suite="fast"))
 
+    def test_full_shard_plan_matches_fast(self):
+        for shard in workflow.SHARDS:
+            with self.subTest(shard=shard):
+                fast = capture_commands(workflow, shard, suite="fast")
+                self.assertTrue(fast)
+                self.assertEqual(fast, capture_commands(workflow, shard, suite="full"))
 
 
 class FullSuiteAggregationTests(unittest.TestCase):
@@ -2797,13 +2844,52 @@ class FullSuiteAggregationTests(unittest.TestCase):
                          {key: value for key, value in full_summary.items() if key != "suite"})
 
     def test_pair_with_mixed_suites_fails(self):
-        """A main run of one suite and a companion run of the other cannot aggregate."""
-        companion_only = {shard for shard in workflow.SHARDS if shard in {"phase"}}
-        pair = self.fixture("pair", FULL_OVERRIDES, shards=set(workflow.SHARDS) - companion_only)
-        result, summary = self.aggregate(pair, "full")
-        self.assertEqual(1, result)
-        self.assertIs(summary["measurement_complete"], False)
-        self.assertTrue(any("phase" in reason for reason in summary["incomplete_reasons"]))
+        """A main run of one suite and a companion run of the other cannot aggregate, through the companion route."""
+        import c5_campaign
+        companion_id, companion_attempt, companion_shard, repository = "67890", "1", "phase", "owner/repo"
+        layout = {
+            "coordinator": {name: path for name, path in workflow.SHARDS.items() if name != companion_shard},
+            "companion": {companion_shard: workflow.SHARDS[companion_shard]},
+        }
+        runs = {
+            role: {"id": int(run_id), "attempt": int(attempt), "path": c5_campaign.PATHS[role],
+                   "created_at": "2026-10-25T17:59:00Z"}
+            for role, run_id, attempt in (("coordinator", RUN_ID, ATTEMPT),
+                                          ("companion", companion_id, companion_attempt))
+        }
+        manifest = {
+            "schema": 1, "repository": repository, "commit": COMMIT, "runs": runs, "incomplete_reasons": [],
+            "shards": {name: {"target": path, "run_id": str(runs[role]["id"]), "run_attempt": str(runs[role]["attempt"])}
+                       for role, entries in layout.items() for name, path in entries.items()},
+        }
+        cases = {"both full": (FULL_OVERRIDES, FULL_OVERRIDES, True),
+                 "companion fast": (FULL_OVERRIDES, FAST_OVERRIDES, False),
+                 "coordinator fast": (FAST_OVERRIDES, FULL_OVERRIDES, False)}
+        for label, (main, companion, complete) in cases.items():
+            with self.subTest(label), tempfile.TemporaryDirectory(dir=self.directory) as temporary:
+                directory = Path(temporary)
+                fixture = AggregateFixture(directory)
+                artifact = fixture.input / f"c5-mutation-{companion_id}-{companion_attempt}-{companion_shard}"
+                fixture.paths[companion_shard] = fixture.paths[companion_shard].rename(artifact)
+                for shard in workflow.SHARDS:
+                    fixture.receipts[shard]["environment_overrides"] = dict(
+                        companion if shard == companion_shard else main)
+                fixture.receipts[companion_shard].update(run_id=companion_id, run_attempt=companion_attempt)
+                for shard in workflow.SHARDS:
+                    fixture.save(shard)
+                manifest_path = directory / "campaign.json"
+                write_json(manifest_path, manifest)
+                with (patch.object(c5_campaign, "matrices", return_value=layout),
+                      patch.object(workflow, "git", side_effect=[COMMIT.encode(), TREE.encode()]),
+                      patch.dict(os.environ, {"GITHUB_REPOSITORY": repository})):
+                    result = workflow.aggregate(fixture.input, COMMIT, RUN_ID, ATTEMPT, fixture.output,
+                                                manifest_path, suite="full")
+                summary = json.loads((fixture.output / "summary.json").read_bytes())
+                self.assertEqual(not complete, result == 1)
+                self.assertIs(summary["measurement_complete"], complete)
+                if not complete:
+                    self.assertTrue(any("malformed invocation receipt" in reason or "phase" in reason
+                                        for reason in summary["incomplete_reasons"]), summary["incomplete_reasons"])
 
 
 class RunnerTests(unittest.TestCase):
@@ -2855,7 +2941,7 @@ class RunnerTests(unittest.TestCase):
         self.assertIsNone(reason)
         self.assertEqual("true", log.read_text().strip())
 
-    def test_full_shard_plan_matches_fast(self):
+    def test_full_suite_receipt_matches_fast(self):
         fast_result, fast, fast_output = self.invoke("0", output=self.root / "fast", suite="fast")
         full_result, full, full_output = self.invoke("0", output=self.root / "full", suite="full")
         self.assertEqual((0, 0), (fast_result, full_result))

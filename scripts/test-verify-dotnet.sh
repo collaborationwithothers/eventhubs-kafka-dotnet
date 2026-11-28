@@ -377,7 +377,7 @@ run_case mutation_build_fail_no_test STUB_MUTATION_STATUS=1 --
 # The full-suite configuration (issue 602) is built and tested after the mutation-only stages, in the same legs.
 run_case full_suite_all --
 [[ $status -eq 0 && "$(grep -c '^FULL_SUITE_BUILD ' "$STUB_LOG")" -eq 1 && "$(grep -c '^FULL_SUITE_TEST ' "$STUB_LOG")" -eq 1 ]] || fail "F1: a full run must build and test the full-suite configuration once each (status $status)"
-[[ "$(grep '^FULL_SUITE_BUILD ' "$STUB_LOG")" == *"tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj"*"-p:ParchwellVerifierMutationFullSuite=true"* \
+[[ "$(grep '^FULL_SUITE_BUILD ' "$STUB_LOG")" == *"tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj"*"-p:ParchwellVerifierMutationOnly=true"*"-p:ParchwellVerifierMutationFullSuite=true"* \
     && "$(grep '^FULL_SUITE_TEST ' "$STUB_LOG")" == *"--project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj"*"-p:ParchwellVerifierMutationOnly=true"*"-p:ParchwellVerifierMutationFullSuite=true"* ]] || fail "F1: the full-suite stages must use the Verifier test project and both properties"
 check_summary "F1 stages" '[.stages[].label] | (index("Full-suite mutation Verifier test build") != null and index("Full-suite mutation Verifier tests") != null)'
 run_case full_suite_rest -- --project Parchwell.Verifier.Tests --shard rest
