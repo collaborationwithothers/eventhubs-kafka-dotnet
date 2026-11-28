@@ -1,27 +1,21 @@
-Revision: 2
+Revision: 3
 
-Changes since revision 1, applying the [revision 1 plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7242072745):
-- Finding 1:
-  - a new section 5a, "Invariants and safety rules";
-  - pull request 5's requirements are numbered V1 to V14, in WHEN/THEN form, with failure paths, each mapped to a test in 6.5;
-  - pull request 4 gains R11 to R14: the `phase.py` value pass-through, the precedence of `consumer_stop_unconfirmed`, S4 failing before the delete, and a safety stop during the delete.
-- Finding 2: the three live assumptions without an offline test become open question 7, for acceptance by name. The Job's `Failed` condition now cites the Kubernetes Job page.
-- Finding 3: the streamed log and the last watched pod object are written beside `pod-stop.json`. The archive reads them for a C18 subject whose pod is gone, and records no collection gaps for it (3.2 item 6, 3.3, R8, R15).
-- Finding 4: `shutdown_outcome` is projected in `shutdown_margin`, and its treatment is open question 8.
-- Finding 5:
-  - a C18 subject registration with no `shutdown_mode` key is `consumer_configuration_mismatch`;
-  - the witness rule is listed as stricter than Amendment 1 in 9(b) and question 4;
-  - the block keeps one incomplete reason, with a pinned precedence and a test.
-- Findings 6 and 7: the check's literal text, the budget of 5097 s and the mutation campaign's fields.
-- Notes: N1 and N2 are written in as the check gives them; N3's sentence is added to question 2; N5's section number is fixed; N6's witness value is given.
+Changes since revision 2, applying [decision 7242272268](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7242272268), with Hari's thumbs-up, and nothing else. The decision authorizes this one revision and one fresh check beyond the `plan-pr` check cap, with `main` at its current head as base.
+- Decision point 0: a C18 repeat whose subject has no `processed` row before its `stop_observed` row is incomplete, with the new reason `consumer_stop_before_processing` (5.3, 5.5, V15, 6.5). Neither the plan nor the verifier had such a guard: `ConsumerJudgement.cs` line 49 at `6be908bf` checks the processed count only when a kill count is set, and lines 41 to 47 check processed rows only for the window and the join.
+- Decision point 1 (revision 2 check finding 1): the end is confirmed only after an issued delete that exited 0 and a `terminated` state received after `issued_at` (3.2 item 5, R5, R6, R13, 6.4).
+- Decision point 2 (check finding 2): the streamed log takes the archive's name, `<pod>.containers.enrichment-consumer.log`. The archive suppresses four gaps, including `job collection failed`, under a pinned condition. The member record's `collect_gap` is expected (3.2 item 6, 3.3, R15, 6.4).
+- Decision point 3 (check note N1): the window-overrun risk is accepted by name (section 7).
+- Decision points 4 to 11: the eight open questions of section 10 are approved as stated. Section 10 now records them as decided.
+- Decision "Route" (handoff section C): check finding 3's four test rows and finding 4's trigger sentence are written in with the check's literal text; check note N2's reading is written into the `Counts` row.
+- Base: `main` at `6be908bf`. Pull request 619 changed, of the files this plan cites, only `docs/operations/verifier-mutation.md` and `c5-runtime-qualification.json`. Every other cited file is identical to `7639d408`, compared by `git diff`. The cited line 89 of `verifier-mutation.md` at `6be908bf` holds the version 2 rule that `renew` "refuses a changed target source".
 
 # c18-workflow-verifier: run C18 in the scenario workflow, and judge it
 
 This plan covers an ordered set of two pull requests, entries 4 and 5 of the approved C18 split. Pull request 4, `c18-workflow`, admits C18 in the scenario workflow. In each repeat it deletes the subject's pod 60 s after the start line, records the pod's end from a watch, and archives the evidence. Pull request 5, `c18-verifier`, makes the verifier read the new records and judge them under ADR-022 "Amendment 1". It emits the fields that the approved C18 expected outcome pins.
 
-C18 can run only after both merge. Every workflow change, policy value and verdict-relevant check below is a proposal; each is listed under "Open questions for Hari" with a recommendation.
+C18 can run only after both merge. Every workflow change, policy value and verdict-relevant check below was approved in [decision 7242272268](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7242272268) (section 10).
 
-Base commit: `main` at `7639d40826b2222c7dcc39dc14ab8145a9cf784c`. Every repository citation is at that commit.
+Base commit: `main` at `6be908bf1a46910d0ad80b574073364a1fae3e40`. Every repository citation is at that commit.
 
 ## 1. Goal and authority
 
@@ -30,6 +24,7 @@ Authority, in creation order:
 - #613 decision 7236669224, which adopts the four #597 decisions;
 - #597 decision 7237271679, adopted by #613 decision 7237273680, with Hari's thumbs-up;
 - #613 decisions 7237177975, 7237226936, 7238011332, [7239828212](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7239828212) and [7240022152](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7240022152), each confirmed by Hari's thumbs-up where it carries the confirmation line;
+- [decision 7242272268](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7242272268), which answers revision 2 of this plan, confirmed by Hari's thumbs-up (2026-11-28T16:29:21Z, reported by `scripts/decision-log.py` run from `main`);
 - the approvals 7237680139 (c18-stop-smoke), 7238130366 (c18-worker-stop) and [7241864958](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7241864958) (c18-scenario, revision 5 at `7ae55dc7`);
 - docs/blueprint.md ADR-020 and ADR-022 with "Amendment 1" (lines 800 to 840).
 
@@ -91,7 +86,7 @@ Paths that must not change in pull request 4: `src/`, `charts/`, `scenarios/`, `
 - the `allowed` step's case `B04|B10|C03|C10|C01|C18)` (line 568);
 - the full-C3 uploads (lines 711, 721, 738), as `inputs.scenario == 'C18' && 'c18-C1'`.
 
-C18 therefore takes the route of C01: job `probe` runs C0, job `full-C0` is skipped, and job `full-C3` runs C1. Its artifacts are `c18-C0-...` and `c18-C1-...`. No trigger changes; the workflow keeps `workflow_dispatch` and `schedule` only (AGENTS.md hard safety rule 8).
+C18 therefore takes the route of C01: job `probe` runs C0, job `full-C0` is skipped, and job `full-C3` runs C1. Its artifacts are `c18-C0-...` and `c18-C1-...`. No trigger changes; the workflow keeps its one trigger, `workflow_dispatch` (`scenario.yml` line 4; AGENTS.md hard safety rule 8).
 
 ### 3.2 The stop step in a C18 repeat
 
@@ -100,7 +95,7 @@ C18 therefore takes the route of C01: job `probe` runs C0, job `full-C0` is skip
 2. It starts the pod watch (`kubectl get pod <pod> -n parchwell --watch --output-watch-events -o json --request-timeout=0`) and the log stream (`kubectl logs -f -n parchwell <pod> -c enrichment-consumer --limit-bytes=1048576 --request-timeout=0`) through `pod_watch.py`, before S4.
 3. When S4 returns, it records `start_line_returned_at`, the runner UTC with milliseconds. A thread waits until `start_line_returned_at + 60 s`, records `issued_at`, and runs `kubectl delete pod <pod> -n parchwell --wait=false --request-timeout=30s`, with no `--grace-period`, while S5 runs. S6 does not start until that thread has ended.
 4. S6 waits for the subject Job as today. The member record's `outcome` follows the existing rule: `failed` for a Job condition `Failed=True`. A deleted subject's Job reaches that condition: with no pod failure policy, "the Job controller counts a terminating Pod as an immediate failure, even if that Pod later terminates with `phase: "Succeeded"`" (Kubernetes Job page, kubernetes/website `38552b318453cbf9e282f36262a6f163bb7a8017`, `job.md` lines 499 to 501), and the chart sets `backoffLimit: 0`. The smoke saw `Failed` with `BackoffLimitExceeded` in 3 of 3 trials. Then the watch and the log stream are stopped.
-5. Process-end confirmation (Amendment 1, "Stop and observation boundary"): the subject's process counts as ended when the watch delivered a `terminated` state for container `enrichment-consumer` of the recorded pod uid. If not, S8 is `not_attempted` with the new reason `consumer_stop_unconfirmed`, and the step exits 1.
+5. Process-end confirmation (Amendment 1, "Stop and observation boundary"): the subject's process counts as ended only when all three hold: the delete was issued (`issued_at` not null); `delete_exit_code` is 0; and the watch delivered a `terminated` state for container `enrichment-consumer` of the recorded pod uid, received after `issued_at` (`terminated_received_at` later than `issued_at`). Otherwise S8 is `not_attempted` with the new reason `consumer_stop_unconfirmed`, and the step exits 1. A subject that ends by itself, at its window end or before the delete, is therefore never confirmed (decision 7242272268 point 1).
 6. The stop evidence is written to `<artifact directory>/<subject job>/pod-stop.json`, strict JSON, keys sorted, with exactly these keys:
    - `schema_version` 1 and `dialect` `c18_pod_stop`;
    - `pod`, `pod_uid` and `node`;
@@ -114,7 +109,7 @@ C18 therefore takes the route of C01: job `probe` runs C0, job `full-C0` is skip
 
    Times are RFC 3339 UTC. `finished_at` keeps Kubernetes' one-second precision.
    Two more files go beside it, in the layout `collect-job` uses (`lifecycle.sh` lines 298 and 333):
-   - the log stream as `<artifact directory>/<subject job>/<pod>.stream.enrichment-consumer.log`, capped at 1048576 bytes by `--limit-bytes`;
+   - the log stream as `<artifact directory>/<subject job>/<pod>.containers.enrichment-consumer.log`, the leaf `<pod>.<kind>.<container>.log` that the archive reads for a declared container (`archive.py` lines 1777 to 1780), capped at 1048576 bytes by `--limit-bytes`;
    - the last pod object the watch delivered before its `DELETED` event, as `<artifact directory>/<subject job>/pods.stop.json`, in the form `{"items": [<pod object>]}` that `pods.json` has.
 
    Both are written whatever the outcome, and are absent only when the watch or stream never started.
@@ -125,7 +120,9 @@ For C01, C03 and C10, nothing in this step runs, and every record is byte-identi
 ### 3.3 Archive
 
 - C18 is admitted with prefix `c18` and phases C0 and C1, as C01 is.
-- For a C18 subject whose `pods.json` has no item, the archive reads `pods.stop.json` instead, through the same `project_pods` path (archive.py lines 1740 to 1748), and binds it to `pod-stop.json`'s `pod_uid`. When the subject's `collection-status.json` has `no_pods` as its only gap, it records none of the gaps `job collection incomplete`, `pod identities or declarations unavailable` or `missing job pod` (archive.py lines 1736 to 1737, 1747 to 1748, 1782 to 1784 and 1981). The streamed log is archived as that pod's log. `consumer_member` is then called for it as for any member (archive.py lines 2028 to 2029). Without this, a deleted subject's records would not be archived, because its pod is gone before S6's collection.
+- For a C18 subject whose `pods.json` has no item, the archive reads `pods.stop.json` instead, through the same `project_pods` path (archive.py lines 1740 to 1748), and binds it to `pod-stop.json`'s `pod_uid`.
+- Gap condition: when the subject's `collection-status.json` has `no_pods` as its only gap, and `pods.stop.json` is valid (it passes the `read_job_pods` checks and its one pod's uid equals `pod-stop.json`'s `pod_uid`), the archive records none of these four gaps for the subject: `job collection failed`, `job collection incomplete`, `pod identities or declarations unavailable` and `missing job pod` (archive.py lines 1694 to 1696, 1736 to 1737, 1747 to 1748, 1782 to 1784 and 1981). The member record's `collect_gap`, which `finish_member` sets because `collect-job` exits 1 after the pod is gone (`consumer_repeat.py` lines 259 to 261; `lifecycle.sh` lines 313 to 314 and 355 to 356), is expected and stays in the record. If either condition fails, the existing gaps are recorded.
+- The streamed log is the source file `<subject job>/<pod>.containers.enrichment-consumer.log` and is archived under the object name `<subject job>/<pod>.containers.enrichment-consumer.log`, through the existing `collector.runner` call (archive.py line 1780). - `consumer_member` is then called for it as for any member (archive.py lines 2028 to 2029). Without this, a deleted subject's records would not be archived, because its pod is gone before S6's collection.
 - `pod-stop.json` is archived through `collector.runner` with the new kind `consumer_pod_stop`. Its keys are validated as closed against 3.2 item 6.
 - A C18 subject that ends through the stop path writes its native-monitoring index (the worker completes monitoring in its shutdown). The archive does not need an expected absence for it. If the index is missing, the existing gap is recorded.
 
@@ -142,17 +139,17 @@ For C01, C03 and C10, nothing in this step runs, and every record is byte-identi
 - R2. WHEN `phase.py` runs `run-repeats` for C18, THEN it routes to `consumer_repeats().run()` with the enrichment image, as for C01.
 - R3. WHEN a C18 repeat reaches readiness, THEN the pod read, watch and log stream happen before S4, and the delete is issued 60 s after S4 returns, while S5 runs.
 - R4. WHEN the pod read finds other than one `Running` pod, THEN the start line, load generator and verifier are `not_attempted` with reason `consumer_stop_pod_unavailable`, and both members are stopped and confirmed.
-- R5. WHEN the watch delivers no `terminated` state for the recorded uid by the end of S6, THEN S8 is `not_attempted` with reason `consumer_stop_unconfirmed`, and the step exits 1.
-- R6. WHEN the delete command exits non-zero, THEN `delete_exit_code` records it, and the repeat continues to S6. R5 then decides S8.
+- R5. WHEN, by the end of S6, the delete was not issued, or exited other than 0, or the watch delivered no `terminated` state for the recorded uid received after `issued_at`, THEN S8 is `not_attempted` with reason `consumer_stop_unconfirmed`, and the step exits 1.
+- R6. WHEN the delete command exits non-zero, THEN `delete_exit_code` records it, the repeat continues to S6, and S8 is `not_attempted` with reason `consumer_stop_unconfirmed` (R5), even if the watch later delivers a `terminated` state.
 - R7. WHEN the repeat ends, THEN `pod-stop.json` exists with exactly the keys of 3.2 item 6.
 - R8. WHEN the archive collects a C18 subject with an empty `pods.json` and a `pod-stop.json`, THEN `consumer_member` runs for it with the uid from `pod-stop.json`, and no "missing job pod" gap is recorded.
 - R9. WHEN C01, C03 or C10 runs, THEN its records, archive and commands are unchanged.
 - R10. WHEN `c18_stop_smoke.py` runs, THEN its behaviour and its tests are unchanged.
 - R11. WHEN pull request 4 is merged and pull request 5 is not, THEN `phase.py` passes no new value to any Job. The pass-through is V13 of pull request 5.
 - R12. WHEN a member's wait gives `unknown` and the end is also unconfirmed, THEN S8's reason is `consumer_wait_exhausted`, the existing reason, which takes precedence over `consumer_stop_unconfirmed`.
-- R13. WHEN S4 ends other than `complete`, THEN no delete is issued, `issued_at` and `delete_exit_code` are null, and R5 then makes S8 `not_attempted` with `consumer_stop_unconfirmed`.
+- R13. WHEN S4 ends other than `complete`, THEN no delete is issued, `issued_at` and `delete_exit_code` are null, and S8 is `not_attempted` with `consumer_stop_unconfirmed` (R5), even when the subject later ends by itself and the watch delivers that `terminated` state.
 - R14. WHEN a safety stop is set while the delete thread waits or runs, THEN the delete is still issued, because deleting the subject only stops it. Every later record follows the existing safety-stop rule.
-- R15. WHEN the watch and the log stream ran, THEN `pods.stop.json` and the streamed log exist beside `pod-stop.json` (3.2 item 6), and the archive records no collection gap for the subject (3.3).
+- R15. WHEN the watch and the log stream ran, THEN `pods.stop.json` and `<pod>.containers.enrichment-consumer.log` exist beside `pod-stop.json` (3.2 item 6). WHEN the gap condition of 3.3 holds, THEN the archive records none of its four gaps for the subject, and archives the log under `<subject job>/<pod>.containers.enrichment-consumer.log`. WHEN it does not hold, THEN the existing gaps are recorded.
 
 ## 5. Pull request 5, `c18-verifier`: scope and contracts
 
@@ -190,6 +187,7 @@ These follow Amendment 1's "Invalid run" bullets for S equal to 1, and replace t
 - The subject wrote more than one `stop_observed` row, or a `processed` row after its `stop_observed` row: `consumer_stop_invalid`. These are additions to Amendment 1's list; see question 4.
 - The subject has a `stop_observed` row and no `stop-receipt.json`: incomplete, `consumer_stop_receipt_missing`. Invalid reasons take precedence (ADR-022, "Completion"). The block keeps one incomplete reason (`ConsumerJudgement.cs` lines 79 to 80). `consumer_stop_receipt_missing` is set before the offset read, so a later `consumer_commit_evidence_unavailable`, `consumer_completion_deadline` or `consumer_commit_frontier_short` replaces it, as those replace each other today (lines 64 to 73).
 - The witness ended without `completion.json`: `consumer_stop_invalid`, as today.
+- The subject has a `stop_observed` row and no `processed` row with a lower `row_sequence`: incomplete, `consumer_stop_before_processing` ([decision 7242272268](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7242272268) point 0). The delete can land on an idle subject when the load generator starts slowly, and such a repeat cannot show a repeated message. It is set after the offset read, so it replaces any other incomplete reason of this list; invalid reasons still take precedence. `scenarios/C18/expected.yaml` does not change: it counts only `complete_valid` repeats.
 
 ### 5.4 The C18 block
 
@@ -205,7 +203,7 @@ For a C18 block with `status` `complete_valid`, these keys follow `counts`, in t
 ### 5.5 The judge
 
 - J3 (`ConsumerPhaseEvidence.cs`):
-  - `ReasonNames` (lines 29 to 36) gains `consumer_stop_receipt_missing`.
+  - `ReasonNames` (lines 29 to 36) gains `consumer_stop_receipt_missing` and `consumer_stop_before_processing`.
   - `ProjectedNames` (line 38) gains `shutdown_margin`, `consumer_errors`, `partition_events` and `subject_commit_entries_after_stop`, after `reassignment`.
   - A C18 `complete_valid` block must carry all five keys of 5.4. Any other scenario's block must carry none of the four new ones.
 - J10 is unchanged. No phase total of the new keys is published, as for `reassignment`.
@@ -233,6 +231,7 @@ For a C18 block with `status` `complete_valid`, these keys follow `counts`, in t
 - V12. WHEN C01, C03 or C10 is judged, THEN the block, reasons and projection equal those on `main`.
 - V13. WHEN `phase.py` renders the C18 verify Job, THEN it passes `pod-stop.json`'s `terminated.finished_at` and `pod_uid` as `consumer_subject_process_end_utc` and `consumer_subject_pod_uid`. It renders that Job only after R5 has confirmed the end, so a missing or invalid file or a null `finished_at` never reaches the chart.
 - V14. WHEN the chart renders verify for C18 with both values, THEN the two `Verifier__` variables are set; for any other scenario, or without them, the render fails.
+- V15. WHEN the C18 subject has a `stop_observed` row and no `processed` row before it, and nothing makes the repeat invalid, THEN `status` is `incomplete` and `reasons` is `["consumer_stop_before_processing"]`, also when the frontier is short. WHEN it has one `processed` row before `stop_observed`, THEN this reason is not given.
 
 ### 5a. Invariants and safety rules (both pull requests)
 
@@ -285,17 +284,17 @@ At most 30 changed assertions per pull request under 6.1 and 6.2 together. The l
 | R2 | `test_phase.py`, a new case | `run-repeats` for C18 C0 with stub commands | `consumer_repeats().run()` is called, and the images built are `loadgen`, `verifier` and `enrichment` |
 | R3 | `test_consumer_repeat.py::C18StopTests.test_order_and_delay` | fake clock; S4 returns at t = 100.000 s | the pod read, watch and log commands precede S4; delete argv `["kubectl", "delete", "pod", <pod>, "-n", "parchwell", "--wait=false", "--request-timeout=30s"]` at t = 160.000 s, while S5's stub is still running; S6 after the delete thread |
 | R4 | `C18StopTests.test_pod_unavailable` | the pod read returns 0 items; then 2 items; then 1 `Pending` item | in each case the start line, load generator and verifier are `not_attempted` with reason `consumer_stop_pod_unavailable`, and both Jobs are deleted and confirmed |
-| R5 | `C18StopTests.test_unconfirmed_end` | the watch stub prints events with no `terminated` state | verify is `not_attempted` with reason `consumer_stop_unconfirmed`; exit 1 |
-| R6 | `C18StopTests.test_delete_failure` | the delete stub exits 1 | `delete_exit_code` 1; S6 runs; then R5 decides S8 |
+| R5 | `test_consumer_repeat.py::C18StopTests.test_unconfirmed_end` | the watch stub prints events with no `terminated` state; then a watch stub whose `terminated` event is received at t = 150.000 s, before `issued_at` t = 160.000 s | in each case verify is `not_attempted` with reason `consumer_stop_unconfirmed`; exit 1 |
+| R6 | `C18StopTests.test_delete_failure` | the delete stub exits 1; the watch stub then delivers a `terminated` state at t = 170.000 s | `delete_exit_code` 1; S6 runs; verify `not_attempted`, reason `consumer_stop_unconfirmed`; exit 1 |
 | R7 | `C18StopTests.test_evidence_keys` | a full stubbed repeat, with the watch event `terminated.finishedAt` `2026-11-28T10:00:02Z`, exit code 1 | `pod-stop.json` keys equal 3.2 item 6 exactly; `terminated.finished_at` is `2026-11-28T10:00:02Z` |
 | R8 | `test_archive_consumer.py`, a new case | a C18 subject with `pods.json` `{"items": []}` and a `pod-stop.json` | `consumer_member` is called with that uid; no `missing job pod` gap |
 | R9 | the existing consumer repeat and archive tests | C01, C03 and C10 | unchanged, except 6.2 |
 | R10 | the existing `test_c18_stop_smoke.py` and `test_c18_stop_smoke_workflow.py` | as on `main` | pass unchanged |
 | R11 | `test_phase.py`, existing values tests | C01, C03, C10 and C18 values | no `consumer_subject_*` key in any rendered values |
 | R12 | `C18StopTests.test_wait_exhausted_wins` | the subject wait returns 124 and the watch shows no end | verify `not_attempted`, reason `consumer_wait_exhausted` |
-| R13 | `C18StopTests.test_start_line_failed` | S4 stub exits 1 | no delete call; `issued_at` and `delete_exit_code` null; verify `not_attempted`, reason `consumer_stop_unconfirmed` |
+| R13 | `C18StopTests.test_start_line_failed` | S4 stub exits 1; the watch stub then delivers a `terminated` state with exit code 0 | no delete call; `issued_at` and `delete_exit_code` null; verify `not_attempted`, reason `consumer_stop_unconfirmed` |
 | R14 | `C18StopTests.test_safety_stop_during_delete` | a safety stop is set while the delete thread waits | the delete argv is still run once; S6 onward follow the safety-stop rule |
-| R15 | `test_archive_consumer.py`, new case | a C18 subject with `pods.json` `{"items": []}`, `collection-status.json` whose only gap is `no_pods`, a `pods.stop.json` with one pod and the streamed log | the pod projection comes from `pods.stop.json`; the log is archived; none of the three gaps of 3.3 is recorded |
+| R15 | `test_archive_consumer.py`, new case | a C18 subject with member record `collect` 1 and `collect_gap` true, `pods.json` `{"items": []}`, `collection-status.json` whose only gap is `no_pods`, a `pods.stop.json` with one pod whose uid equals `pod-stop.json`'s `pod_uid`, and the source file `<job>/<pod>.containers.enrichment-consumer.log`; then the same with a `pods.stop.json` uid that differs | first: the pod projection comes from `pods.stop.json`, the object `<job>/<pod>.containers.enrichment-consumer.log` is archived, and none of `job collection failed`, `job collection incomplete`, `pod identities or declarations unavailable` or `missing job pod` is recorded; second: the existing gaps are recorded |
 
 ### 6.5 Pull request 5 tests
 
@@ -304,27 +303,34 @@ At most 30 changed assertions per pull request under 6.1 and 6.2 together. The l
 | 5.2 | `ConsumerStopRecordTests.Codec` | each new row, the registration with `shutdown_mode`, and the receipt, as the enrichment codec writes them; then each with one extra key, then one missing key | the first parse; each variant gives `consumer_record_invalid`, or `consumer_registration_invalid` for the registration |
 | 5.2 | `ConsumerStopRecordTests.Mode_mismatch` | a C0 subject registered with `dispose`; a witness with `shutdown_mode` | `consumer_configuration_mismatch` in each case |
 | 5.2 | `ConsumerStopRecordTests.Receipt_disagrees` | receipt `rows` one less than the record; receipt `stop_observed_utc` 1 tick off | `consumer_record_invalid` in each case |
+| V2 | `ConsumerStopRecordTests.Codec_values` | a `consumer_error` row with `source` `poll`; a stop receipt with `shutdown_outcome` `cancelled`; a row with `kind` `stop_seen` and the `stop_observed` keys | `consumer_record_invalid` in each case |
+| V4 | `ConsumerStopRecordTests.Receipt_counts_disagree` | receipt `record_blobs` one more than the record's blob count; receipt `messages_processed` one less than the record's `processed` rows | `consumer_record_invalid` in each case |
 | V6 | `ConsumerStopJudgementTests.Incomplete_precedence` | no receipt, and the frontier short on partition 3 | `reasons` `["consumer_commit_frontier_short"]`, `status` `incomplete` |
 | V3 | `ConsumerStopRecordTests.Mode_missing` | a C18 subject registration with no `shutdown_mode` | `consumer_configuration_mismatch` |
 | V13 | `test_phase.py`, new case | C18 verify values with `pod-stop.json` `terminated.finished_at` `2026-11-28T10:00:02Z` and `pod_uid` `00000000-0000-0000-0000-000000000018` | `consumer_subject_process_end_utc` `2026-11-28T10:00:02Z` and `consumer_subject_pod_uid` that uid |
 | 5.3 | `ConsumerStopJudgementTests.Endings` | subject: with `kill_intent`; with `completion.json`; with no `stop_observed`; with two `stop_observed`; with a `processed` row after `stop_observed`; with `stop_observed` and no receipt; witness with no completion | `consumer_stop_invalid` five times; `incomplete` with `consumer_stop_receipt_missing`; `consumer_stop_invalid` |
 | 5.4 | `ConsumerStopJudgementTests.Reassignment` | subject holds partitions 0 to 15 at `stop_observed` 10:00:00.0000000Z and then writes `revoked` [0..15] at 10:00:01.0000000Z; witness `assigned` [0..31] at 10:00:04.5000000Z; same node | `reassignment.microseconds` 4500000; with the members on different nodes: null, `different_nodes` |
+| V8 | `ConsumerStopJudgementTests.Reassignment_none` | as `Reassignment`, same node, with no witness `assigned` row after `stop_observed` | `reassignment.microseconds` null, `reassignment.unavailable_reason` `no_reassignment` |
 | 5.4 | `ConsumerStopJudgementTests.Margins` | `stop_observed` 10:00:00.2500000Z; receipt written 10:00:01.0000000Z; process end option `2026-11-28T10:00:01Z` with the matching uid; then a different uid | `shutdown_outcome` `ok`, `receipt_microseconds` 750000, `process_end_microseconds` 750000; then `process_end_microseconds` null |
-| 5.4 | `ConsumerStopJudgementTests.Counts` | subject: 2 `consumer_error` rows; `assigned`, `revoked` after its first `assigned`; 3 successful commit entries after `stop_observed`, one with partition error 1; witness: 0 errors, 1 `assigned` after its first | `consumer_errors` {subject 2, witness 0}; `partition_events.subject` {assigned 1, revoked 1, lost 0} (the second `assigned` counts, the first does not); `partition_events.witness` {assigned 1, revoked 0, lost 0}; `subject_commit_entries_after_stop` 2 |
+| 5.4 | `ConsumerStopJudgementTests.Counts` | subject: 2 `consumer_error` rows; `assigned`, `revoked` after its first `assigned`; three commit entries after `stop_observed` with topic `document-events`, offset at least 0 and no overall error, one of which has partition error code 1; witness: 0 errors, 1 `assigned` after its first | `consumer_errors` {subject 2, witness 0}; `partition_events.subject` {assigned 1, revoked 1, lost 0} (the second `assigned` counts, the first does not); `partition_events.witness` {assigned 1, revoked 0, lost 0}; `subject_commit_entries_after_stop` 2 |
+| V15 | `ConsumerStopJudgementTests.Stop_before_processing` | subject: `assigned` [0..15], then `stop_observed`, then a receipt, with no `processed` row; then the same with the frontier short on partition 3; then the same with one joined `processed` row before `stop_observed` and a full frontier | first two: `status` `incomplete`, `reasons` `["consumer_stop_before_processing"]`; third: `status` `complete_valid`, `reasons` `[]` |
 | 5.4 | `ConsumerStopJudgementTests.Key_order` | a `complete_valid` C18 block | its keys, in order: the nine fixed keys, then `counts`, `reassignment`, `shutdown_margin`, `consumer_errors`, `partition_events`, `subject_commit_entries_after_stop` |
-| 5.5 | `ConsumerPhaseJudgeTests`, new cases | a C18 block missing `shutdown_margin`; a C01 block with `consumer_errors` | J3 fails each slot |
+| 5.5 | `ConsumerPhaseJudgeTests`, new cases | a C18 block missing `shutdown_margin`; a C01 block with `consumer_errors`; a C18 `incomplete` block with reason `consumer_stop_before_processing` | J3 fails the first two slots; the third is accepted as an incomplete slot |
 | 5.6 | `HostOptionsTests`, new cases | the two options in `consumer-verify` C18; missing; in `consumer-verify` C01; in `start-line` C18 | valid; then rejected three times |
 | chart | `charts/parchwell/tests/test_consumer_chart.py`, new case | C18 verify with both values; C01 verify with them | the two env vars are rendered; the C01 render fails |
+| V14 | `charts/parchwell/tests/test_consumer_chart.py`, new case | C18 verify without `consumer_subject_process_end_utc` and `consumer_subject_pod_uid` | the render fails |
 | R9 kept | the existing consumer verifier tests | C01, C03 and C10 | pass, except 6.2 |
 
 ## 7. Deployment assumptions
 
-Each says how its evidence was taken. Bullets 1 to 3 have no offline test and are open question 7, for acceptance by name. Bullet 4 is accepted. Bullet 5 is open question 5.
+Each says how its evidence was taken. Bullets 1 to 3 have no offline test and are accepted by name in [decision 7242272268](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7242272268) point 10. Bullet 4 is accepted. Bullet 5 is accepted in the same decision, point 8. Bullet 6 is accepted by name in point 3.
 - The watch delivers the subject container's `terminated` state before the pod is removed. Smoke run 46142138991: fresh watch, idle member, 3 of 3 trials. Under load this is not measured. R5 makes a failure visible as `consumer_stop_unconfirmed`, so the repeat is not counted.
 - A deleted subject's Job reaches `Failed=True` and starts no replacement pod. The same smoke, 3 of 3 trials.
 - The scenario workflow's identity may delete, watch and stream logs for pods in `parchwell`. The smoke ran in the same environment, `parchwell-scenarios`, and did all three. That the two workflows use one identity is inference from the shared environment name. It is not read from the role assignment, which is outside this repository.
 - A hung `Close`, `Dispose` or receipt write is killed by the 30 s grace and leaves the repeat uncounted. Accepted by name in decision 7239828212 point 3 and decision 7240022152 point 1.
-- The runner's clock and the cluster's clock are close enough that `process_end_microseconds`, computed from the node's `finishedAt` against the worker's `stop_observed` time, means something. Not measured. The value is recorded only, and question 5 asks Hari to accept that.
+- The runner's clock and the cluster's clock are close enough that `process_end_microseconds`, computed from the node's `finishedAt` against the worker's `stop_observed` time, means something. Not measured. The value is recorded only.
+
+- Readiness, the start line and the 60 s together can pass the subject's 360 s window, which is measured from the worker's start. The subject then completes before the delete, and the repeat is lost as `consumer_stop_unconfirmed` (3.2 item 5), never judged wrong. Readiness took about 20 s in the smoke run (4 polls); its cap is 300 s (`consumer_repeat.py` line 21). Typical durations under load are not measured. Accepted by name in decision 7242272268 point 3.
 
 ## 8. Acceptance commands
 
@@ -353,6 +359,7 @@ Pull request 5:
 - two invalid conditions beyond Amendment 1's list, more than one `stop_observed` row and a `processed` row after it (5.3; question 4);
 - the end-time binding to the registered pod uid (5.4);
 - `shutdown_mode` on the witness counted as `consumer_configuration_mismatch` (5.2; question 4);
+- `consumer_stop_before_processing` (5.3), decision 7242272268 point 0;
 - `consumer_stop_pod_unavailable` and `consumer_stop_unconfirmed` (3.2), which make a repeat that cannot meet Amendment 1's boundary visible instead of judged.
 
 (c) Tests that depend on code, data or behaviour neither on `main` nor in the pull request:
@@ -361,7 +368,10 @@ Pull request 5:
 
 Both gates are in section 1. The live behaviours are in section 7.
 
-## 10. Open questions for Hari
+## 10. Decided questions
+
+Open questions: None. Hari approved each of the eight questions below, with its recommendation, in [decision 7242272268](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7242272268) points 4 to 11. They are kept as asked, for the record.
+
 
 1. Approve the workflow change of 3.1 and 3.2: C18 admitted on C01's route, and the stop step inside each C18 repeat. It is a protected-path change to `scenario.yml`. Recommendation: approve. It changes no trigger and no step of any other scenario.
 2. The anchor of "60000 ms after the start line". Recommendation: the runner's UTC when the start-line step returns, plus 60 s, with both times recorded in `pod-stop.json`. The start-line note's own time is written by the verifier pod's clock, which the runner cannot schedule against without a clock comparison. The runner time lags the start line by the start-line Job's wait poll (up to 5 s) and its collection (up to 210 s); the lag is not measured and is recorded as the difference of the two times in `pod-stop.json`.
