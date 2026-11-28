@@ -113,7 +113,7 @@ def mutant_row(mutant, file, names, path):
         killed_by = mutant.get('killedBy')
         if not isinstance(killed_by, list) or not killed_by:
             raise Failure('killed_without_tests', f'{path}: mutant {mutant["id"]} is Killed with no killedBy')
-        missing = [str(test) for test in killed_by if test not in names]
+        missing = [str(test) for test in killed_by if not isinstance(test, str) or test not in names]
         if missing:
             raise Failure('unmapped_test_id', f'{path}: mutant {mutant["id"]} names unknown test ids {missing}')
         killers = frozenset(method_key(names[test]) for test in killed_by)
@@ -251,6 +251,10 @@ def main(argv=None):
         result, status = (prove if args.command == 'prove' else compare)(args)
     except Failure as failure:
         print(f'c5_equivalence: {failure.name}: {failure.detail}', file=sys.stderr)
+        try:
+            Path(args.output).unlink(missing_ok=True)
+        except OSError:
+            pass
         return 2
     try:
         Path(args.output).write_text(json.dumps(result, sort_keys=True) + '\n', encoding='utf-8')

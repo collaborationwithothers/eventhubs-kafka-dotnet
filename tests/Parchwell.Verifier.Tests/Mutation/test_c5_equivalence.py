@@ -205,6 +205,43 @@ class ProveTests(Base):
                 self.assertIn('mutation-report.json', err)
                 self.assertIsNone(out)
 
+    def test_choice_five_shapes_are_invalid_report(self):
+        def broken(change):
+            document = report([mutant('1', 'Survived')])
+            change(document)
+            return document
+        mutants = lambda d: d['files'][FILE_A]['mutants'][0]
+        cases = {
+            'testFiles entry without tests': lambda d: d['testFiles'].update({'/t/T.cs': {}}),
+            'test without string id': lambda d: d['testFiles']['/t/T.cs']['tests'].append({'id': 5, 'name': 'N.C.X'}),
+            'test without name': lambda d: d['testFiles']['/t/T.cs']['tests'].append({'id': 't9'}),
+            'one id with two names': lambda d: d['testFiles']['/t/T.cs']['tests'].append({'id': 't1', 'name': 'N.C.Other'}),
+            'file without mutants': lambda d: d['files'][FILE_A].pop('mutants'),
+            'mutant not an object': lambda d: d['files'][FILE_A]['mutants'].append(7),
+            'location not an object': lambda d: mutants(d).update(location=[]),
+            'start without column': lambda d: mutants(d)['location']['start'].pop('column'),
+            'end line not an integer': lambda d: mutants(d)['location']['end'].update(line='1'),
+            'replacement not a string': lambda d: mutants(d).update(replacement=None),
+            'static not a bool': lambda d: mutants(d).update(static=1),
+            'mutatorName not a string': lambda d: mutants(d).update(mutatorName=3),
+            'status not a string': lambda d: mutants(d).update(status=3),
+            'key ending in repository segment': lambda d: d['files'].update({'/tmp/x/repository/': d['files'].pop(FILE_A)}),
+        }
+        for label, change in cases.items():
+            with self.subTest(label):
+                for old in (self.root / 'reports').rglob('*.json'):
+                    old.unlink()
+                self.output.unlink(missing_ok=True)
+                self.assert_failure(self.prove(broken(change)), 'invalid_report')
+
+    def test_non_string_killed_by_is_unmapped(self):
+        self.assert_failure(self.prove(report([mutant('1', 'Killed', [['t1']])])), 'unmapped_test_id')
+
+    def test_failure_removes_a_stale_output(self):
+        self.output.write_text('stale')
+        self.assert_failure(self.prove(), 'no_reports')
+        self.assertFalse(self.output.exists())
+
     def test_file_key_without_repository_segment(self):
         self.assert_failure(self.prove(report([mutant('1', 'Killed', ['t1'])], file='/tmp/x/src/A.cs')), 'invalid_report')
 
@@ -297,6 +334,30 @@ class CompareTests(Base):
         other = report([mutant('2', 'Survived', line=7)])
         status, _, _ = self.compare([report([mutant('1', 'Survived')])], [other])
         self.assertEqual(0, status)
+
+    def test_compare_killed_or_timeout_wins_over_survived(self):
+        before = [report([mutant('1', 'Killed', ['t1']), mutant('2', 'Killed', ['t1'], line=2)])]
+        after = [report([mutant('1', 'Killed', ['t1']), mutant('2', 'Timeout', line=2)]),
+                 report([mutant('1', 'Survived'), mutant('2', 'NoCoverage', line=2)])]
+        status, _, out = self.compare(before, after)
+        self.assertEqual(0, status)
+        self.assertEqual([], out['regressions'])
+
+    def test_compare_survived_wins_over_unscored(self):
+        for other in ('Ignored', 'CompileError', 'RuntimeError'):
+            with self.subTest(other):
+                self.output.unlink(missing_ok=True)
+                after = [report([mutant('1', 'Survived'), mutant('1', other)])]
+                status, _, out = self.compare([report([mutant('1', 'Killed', ['t1'])])], after)
+                self.assertEqual(1, status)
+                self.assertEqual(sorted(['Survived', other]), out['regressions'][0]['after_statuses'])
+
+    def test_compare_ignores_an_unmatched_excluded_key(self):
+        excluded = self.write('gone.json', ['N.C.Gone', 'N.C.Slow'])
+        valid = report([mutant('1', 'Killed', ['t1'])])
+        status, _, out = self.compare([valid], [valid], excluded=excluded)
+        self.assertEqual(0, status)
+        self.assertEqual('no_regressions', out['status'])
 
     def test_compare_no_reports(self):
         valid = report([mutant('1', 'Killed', ['t1'])])
