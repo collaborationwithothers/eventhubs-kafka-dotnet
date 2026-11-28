@@ -2,7 +2,17 @@
 
 Issue: [#605](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/605), child of [#597](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/597), split entry 1. Pull request name: `adr022-amendment`. This is the contract-grade plan for that one pull request under docs/agents/factory.md "Item lifecycle" step 3.
 
-Revision 1. Base: `main` at 15b09147ed4e7c62ea08620b24c14cd049f07562. Line numbers below are on that commit.
+Revision 2. Base: `main` at 15b09147ed4e7c62ea08620b24c14cd049f07562. Line numbers below are on that commit.
+
+Changes since revision 1, from the [revision 1 plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/605#issuecomment-7235835025), by finding:
+
+- 1 (open questions): unchanged in kind; they remain for Hari. Section 11 now has fourteen.
+- 2 (design points not asked): the C04 value `session.timeout.ms` 6000 is removed from the 3.7 context, so it stays with the C04 plan. Section 11 adds question 11 (rebalance count), 12 (shutdown-mode invalidation) and 13 (the end conditions for a stop time and for neither stop nor kill).
+- 3 (two-member rules): 3.7 adds a "Members" bullet that extends "Group", "Stop and observation boundary" and "Commit agreement" to every registered member; the stop-observed row gets an instance ID and row sequence number; the invalid-run list adds the shutdown-mode condition. Section 11 adds question 14 (Members).
+- 4 (S54 overstated): the 3.7 context now says the kubelet "typically" has the runtime send TERM, or the image's STOPSIGNAL.
+- Observations: the 3.7 context no longer calls a dropped consume error an ending; 3.5 states "once per repeat" for C03, C10 and C01 and "once per subject instance" for C04; section 1 records the #605 `updated_at` as read at the revision 2 refresh.
+
+The size estimate in section 13 is recomputed by script.
 
 This pull request amends ADR-022 in docs/blueprint.md so the consumer oracle covers C18 (graceful shutdown on SIGTERM), C06 (static membership across one stop and one rejoin of Job members) and C04 (constant rebalancing, and a crash-looping consumer). It also records in section 12 which folds of those items are tested and which are not. It changes only prose, and its wording is pinned literally below. Every design point in that wording that Hari's decisions do not settle is listed in section 11 with a recommendation; the literal text carries the recommended answer, and the plan is not approvable until Hari answers.
 
@@ -12,7 +22,7 @@ Goal: record the design of the stop, successor and consumer-error endings that C
 
 Authorities, in creation order (factory.md "Item lifecycle" step 3, child issues):
 
-1. #605 body (created 2026-11-28, `updated_at` 2026-11-28T07:03:17Z): `Parent items: #597`, `Split entry: 1`, `Predecessor PRs: none`. It states that the ADR text, every protocol sequence, failure name, invalid-run condition and verdict rule are Hari's to decide, and that the plan decides none.
+1. #605 body (created 2026-11-28; the issue's `updated_at` moves with each comment, and the body text was read again at the revision 2 refresh): `Parent items: #597`, `Split entry: 1`, `Predecessor PRs: none`. It states that the ADR text, every protocol sequence, failure name, invalid-run condition and verdict rule are Hari's to decide, and that the plan decides none.
 2. #597 body: a request for a proposal; authorizes no branch, code, label, dispatch, expected outcome or verdict.
 3. #597 [decision 7235176688](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/597#issuecomment-7235176688), adopting [#499 decision 7234963031](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-7234963031): plan approval by label on a fresh check with `Blocking findings: none` and open questions `None`; literal in-scope fixes; what still goes to Hari; Claude Code implements, planning on `claude-opus-5-5`, implementation on `claude-sonnet-5-5`.
 4. #597 [decision 7235586661](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/597#issuecomment-7235586661): the revision request that produced proposal revision 2. It decides no design.
@@ -98,7 +108,7 @@ Under ADR-022, the subject consumer of a C03, C10 or C01 repeat whose configurat
 with:
 
 ```
-Under ADR-022, the subject consumer of a C03, C10, C01 or C04 repeat whose configuration names a kill count may also send SIGKILL only to its own process, once per subject instance, and starts no process.
+Under ADR-022, the subject consumer of a C03, C10, C01 or C04 repeat whose configuration names a kill count may also send SIGKILL only to its own process, once per repeat, or in C04 once per subject instance under ADR-022's amendment 1, and starts no process.
 ```
 
 ### 3.6 ADR-022 decision line (line 750)
@@ -122,9 +132,9 @@ Line 796 is the last ADR-022 consequence, `- The worker, verifier, chart, workfl
 ```markdown
 **Amendment 1: C18, C06 and C04.** Under [#597 decision 7235680921](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/597#issuecomment-7235680921), adopted on #605 by [decision 7235685248](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/605#issuecomment-7235685248). For repeats of C18, C06 and C04 the decision above applies with the changes below; where they differ, these bullets win for those items. C03, C10 and C01 are unchanged.
 
-*Context.* C18 asks whether a consumer whose pod Kubernetes deletes closes, commits and leaves the group within its termination grace, with `Close` against `Dispose` only. C06 asks whether a successor with the same `group.instance.id` rejoins within `session.timeout.ms` without a rebalance, with dynamic against static membership. C04 asks whether each restart of a crashing subject causes a rebalance, and whether a group at `session.timeout.ms` 6000 rebalances constantly with no error. The decision above rejects each of their endings: a stopped subject ends without its completion receipt, a successor makes more than two registered members, and a non-fatal consume error leaves no row, so "no error" has no evidence.
+*Context.* C18 asks whether a consumer whose pod Kubernetes deletes closes, commits and leaves the group within its termination grace, with `Close` against `Dispose` only. C06 asks whether a successor with the same `group.instance.id` rejoins within `session.timeout.ms` without a rebalance, with dynamic against static membership. C04 asks whether each restart of a crashing subject causes a rebalance, and whether a group rebalances constantly with no error (S2). The decision above rejects two of their endings: a stopped subject ends without its completion receipt, and a successor makes more than two registered members. It also records no row for a non-fatal consume error, so "no error" has no evidence.
 
-On pod deletion the kubelet sends TERM to the main process in each container, then KILL to any remaining processes once the grace period expires; the default grace is 30 seconds (Fact: S54). On .NET 6 and later, `ConsoleLifetime` handles SIGTERM and raises `ApplicationStopping` (Fact: S55). `Close` commits offsets if auto commit is enabled and alerts the group coordinator that the consumer is exiting; without `Close` or `Unsubscribe` the group rebalances after `session.timeout.ms` (Fact: S52). Without a close, final offsets are not committed and the consumer does not actively leave the group (Fact: S53). Static members can leave and rejoin within `session.timeout.ms` without a rebalance, and send no leave group request on close (Fact: S6, S53). Microsoft advises a unique `group.instance.id` per consumer instance to reduce rebalances from transient disconnections, and gives `session.timeout.ms` a constraint of 6000 to 300000 (Fact: S1). Consumers that constantly rebalance get "no exception or error" (Fact: S2). No Microsoft source read states that Event Hubs honours `group.instance.id`.
+On pod deletion the kubelet typically has the container runtime send TERM, or the image's STOPSIGNAL where the runtime respects it, to the main process in each container, and KILL to any remaining processes once the grace period expires; the default grace is 30 seconds (Fact: S54). On .NET 6 and later, `ConsoleLifetime` handles SIGTERM and raises `ApplicationStopping` (Fact: S55). `Close` commits offsets if auto commit is enabled and alerts the group coordinator that the consumer is exiting; without `Close` or `Unsubscribe` the group rebalances after `session.timeout.ms` (Fact: S52). Without a close, final offsets are not committed and the consumer does not actively leave the group (Fact: S53). Static members can leave and rejoin within `session.timeout.ms` without a rebalance, and send no leave group request on close (Fact: S6, S53). Microsoft advises a unique `group.instance.id` per consumer instance to reduce rebalances from transient disconnections, and gives `session.timeout.ms` a constraint of 6000 to 300000 (Fact: S1). Consumers that constantly rebalance get "no exception or error" (Fact: S2). No Microsoft source read states that Event Hubs honours `group.instance.id`.
 
 *Options considered.*
 1. The subject sends SIGTERM to itself at a fixed message. It skips the kubelet and the grace period, and needs a third ADR-020 exception.
@@ -132,23 +142,25 @@ On pod deletion the kubelet sends TERM to the main process in each container, th
 3. The workflow deletes the subject's pod at a fixed time after the start line, and starts later subject instances as new Jobs in sequence. A stopped subject ends with a stop receipt, and every member records its consume errors.
 
 *Decision.* Option 3.
-- Stop. A configuration names a stop time or a kill count, not both. In a configuration whose scenario names a stop time T, the workflow deletes the first subject instance's pod T seconds after the start line, once per repeat, with the pod's termination grace from the chart. The subject treats `ApplicationStopping` as the stop request. It finishes the message in progress, consumes no further message and appends a stop-observed row with the time. It then ends its consumer by the configuration's shutdown mode: `close` calls `Close` and then `Dispose`; `dispose` calls `Dispose` only. With no shutdown mode named, the mode is `close`. It finishes recording callbacks from that call and writes a stop receipt as its last action. The stop receipt holds the stop-observed time, the shutdown mode, the start and end times of the shutdown call, and its outcome.
+- Stop. A configuration names a stop time or a kill count, not both. In a configuration whose scenario names a stop time T, the workflow deletes the first subject instance's pod T seconds after the start line, once per repeat, with the pod's termination grace from the chart. The subject treats `ApplicationStopping` as the stop request. It finishes the message in progress, consumes no further message and appends a stop-observed row with its instance ID, row sequence number and the time. It then ends its consumer by the configuration's shutdown mode: `close` calls `Close` and then `Dispose`; `dispose` calls `Dispose` only. With no shutdown mode named, the mode is `close`. It finishes recording callbacks from that call and writes a stop receipt as its last action. The stop receipt holds the stop-observed time, the shutdown mode, the start and end times of the shutdown call, and its outcome.
 - Shutdown margin. For each repeat with a stop time, the time from the subject's stop-observed row to the end of its process is recorded against the pod's termination grace. The end of the process comes from the workflow's pod evidence (ADR-020). It is recorded only: it decides no validity and no verdict.
 - Missing stop receipt. A subject instance with a stop time configured that ends after its stop-observed row without its stop receipt makes the repeat incomplete with reason `consumer_stop_receipt_missing`, not loss. Its rows remain diagnostics.
 - Subject instances. A configuration whose scenario names a number of subject instances S greater than 1 runs them in sequence. The workflow starts each later instance as a new Job only after it has confirmed that the previous instance's process has terminated (ADR-020). Each instance is a member with its own pod name, instance ID, registration marker and record, and runs the subject's configuration. Its window is measured from its own start. Only the first instance and the witness take part in "Start order".
+- Members. In these repeats, "two consumer members" and "both members' node names" in "Group", "both consumer processes" in "Stop and observation boundary" and "either member" in "Commit agreement" mean every registered member: the witness and each subject instance.
 - Static membership. In a configuration whose scenario names `group.instance.id` values, every subject instance uses the subject's value and the witness uses its own, different value. In every other configuration no member sets `group.instance.id`.
 - Crash in sequence. In C04 the configuration's kill count applies to each subject instance: each instance sends SIGKILL to itself when `Consume` returns its Nth message, as "Self-termination" above sets, once per subject instance.
 - Consumer errors. Each member also writes a consumer-error row, with its instance ID and row sequence number, for every `ConsumeException` that `Consume` raises and every call of its error handler (S52). The row holds the error code, whether the error is fatal, the reason and the time. A non-fatal error does not end the member. A member record with no consumer-error row is the evidence of "no error".
 - Rebalance count. The verifier counts each member's partition-event rows per repeat, by kind. Each item plan's decision rules say how a count is judged.
 - Takeover timing. For C18 and C06, reassignment time runs from the subject's stop-observed row to the first assigned row, from the witness or a later subject instance, for the subject's partitions. When the members ran on different nodes, that repeat's timing is unavailable, as under "C01 timing".
-- Configuration fidelity. Every subject instance's effective settings, including `group.instance.id` when the configuration names it, must match the selected configuration and the baseline. The witness's must match the baseline, and its own `group.instance.id` when the configuration names one. The registration marker also records the shutdown mode; a mode other than the configuration's invalidates the run.
+- Configuration fidelity. Every subject instance's effective settings, including `group.instance.id` when the configuration names it, must match the selected configuration and the baseline. The witness's must match the baseline, and its own `group.instance.id` when the configuration names one. The registration marker also records the shutdown mode.
 - Invalid run. These conditions replace the decision's member-count and end-condition bullets for these items; its other conditions stay:
   - other than one witness and S subject instances registered, with S equal to 1 when the scenario names none;
   - a subject instance's registration marker is earlier than the previous subject instance's last row;
   - with a kill count configured, a subject instance ended other than at its kill-intent row;
   - with a stop time configured, the first subject instance wrote a kill-intent row or a completion receipt, or ended without a stop-observed row; or a later subject instance ended without its completion receipt;
   - with neither configured, a subject instance wrote a kill-intent row or ended without its completion receipt;
-  - the witness ended without its completion receipt.
+  - the witness ended without its completion receipt;
+  - a subject instance's registration marker records a shutdown mode other than the configuration's.
 
 *Consequences.*
 - C06's result covers one stop and one rejoin of Job members, not a rolling deploy. That a successor Job looks the same to the broker as a rolled pod is inference: both are a new client process that joins with the same `group.id` and, when static, the same `group.instance.id`.
@@ -300,7 +312,10 @@ Repository, at 15b09147ed4e7c62ea08620b24c14cd049f07562:
 - Consumer-error rows: their content, that non-fatal errors do not end a member, and their scope of C18, C06 and C04 only (question 8).
 - Takeover timing for C18 and C06 from the stop-observed row (question 9).
 - The fold rows state what is tested and not tested without reasons; the reasons are in the proposal's narrowing table and go into each item's write-up (question 10).
-- The rebalance count is a count only; its judgement is left to each item plan. This decides nothing beyond the proposal's C04 row.
+- The rebalance count as a verifier count in the ADR (question 11).
+- A shutdown-mode mismatch as an invalid-run condition (question 12).
+- The end conditions for a configured stop time and for a configuration with neither stop nor kill (question 13).
+- The "Members" bullet that extends three two-member bullets to every registered member (question 14).
 
 (c) Tests or checks that depend on code, data or behaviour neither on `main` nor in this pull request: none. Every check in section 6 reads only the base and head text of docs/blueprint.md. The amendment describes behaviour that later children implement and test.
 
@@ -318,6 +333,10 @@ Each question names the recommended answer, which the literal text in section 3 
 8. Consumer-error rows. Recommended: every member of C18, C06 and C04 writes a row for each `ConsumeException` from `Consume` and each error-handler call, with code, fatal flag, reason and time; a non-fatal error does not end the member; no row means "no error". C03, C10 and C01 are unchanged. Alternative: apply the rows to all six items, which changes the text the published results rest on.
 9. Takeover timing. Recommended: for C18 and C06, from the subject's stop-observed row to the first assigned row of the witness or a later subject instance for the subject's partitions, unavailable when the members ran on different nodes. Alternative: no takeover timing in the ADR, left to each item plan.
 10. Fold rows. Recommended: the C04, C06 and C18 rows keep their text and add what is tested and what is not, citing decision 7235680921, without the reasons (3.8 to 3.10). Alternative: add each reason from the proposal's narrowing table to the rows, making them longer.
+11. Rebalance count. Recommended: the ADR states that the verifier counts each member's partition-event rows per repeat, by kind, and leaves its judgement to each item plan. The proposal puts the count in C04's entry. Alternative: leave the count out of the ADR and let the C04 plan add it under ADR-019's closed list.
+12. Shutdown mode mismatch. Recommended: a subject instance whose registration marker records a shutdown mode other than the configuration's invalidates the run, as a settings mismatch does. Alternative: no such condition; the mode is then unchecked evidence.
+13. End conditions. Recommended: with a stop time, the first subject instance must end at its stop path (no kill-intent row, no completion receipt, a stop-observed row present), and a later instance must end with its completion receipt; with neither a stop time nor a kill count, a subject instance must write no kill-intent row and must end with its completion receipt, as the base text says for C03, C10 and C01. Alternative: accept a completion receipt from a stopped subject whose pod deletion came after its window ended, which would let a repeat pass without the stop it tests.
+14. Members. Recommended: a "Members" bullet makes "Group", "Stop and observation boundary" and "Commit agreement" read every registered member, so the workflow waits for every subject instance before the offset read, and R[p] takes commit entries from every instance. Alternative: amend each of the three bullets in place, which edits text the published C03, C10 and C01 results rest on.
 
 ## 12. Stop rule
 
@@ -325,4 +344,4 @@ The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" when i
 
 ## 13. Size estimate
 
-Estimate, 2026-11-28, from applying the section 3 literals of this revision to the base by script and counting the diff: 53 added lines and 8 removed lines in `docs/blueprint.md` (8 of the added lines replace the 8 removed ones). One file. Size is reported, not enforced.
+Estimate, 2026-11-28, from applying the section 3 literals of this revision to the base by script and counting the diff: 55 added lines and 8 removed lines in `docs/blueprint.md` (8 of the added lines replace the 8 removed ones). One file. Size is reported, not enforced.
