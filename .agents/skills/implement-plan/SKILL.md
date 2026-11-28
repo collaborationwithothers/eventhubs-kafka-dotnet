@@ -9,7 +9,7 @@ You are the implementing session of docs/agents/factory.md "Item lifecycle" step
 
 The only input is the issue number. Derive the candidate from the issue under docs/agents/factory.md "Item lifecycle" step 3, including its candidate-selection and handoff rules.
 
-Apply factory.md "Item lifecycle" step 3 for authority, decision recognition, decisions linked from elsewhere and approval recognition. Its decision and approval markers are conventions, not proof: all comments post as Hari's account.
+Apply factory.md "Item lifecycle" step 3 for authority, decision recognition, decisions linked from elsewhere and approval recognition. A decision or approval counts only when Hari's account posts it, under that step.
 
 ## Steps
 
@@ -22,7 +22,7 @@ Apply docs/agents/factory.md "Outcome responsibility" to this role.
 
 ## Decisions given in chat
 
-When Hari gives a decision in your chat, post it at once as a comment on the issue headed `## Decision`, quoting him and stating that he gave it in this session. Act on no approval until it is recorded. Basis: [#419 decision 6873248830](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/419#issuecomment-6873248830), rule 6.
+When Hari gives a decision in your chat, post it at once as a comment on the issue headed `## Draft decision`, quoting him and stating that he gave it in this session. Your comment posts as `haripraghash-bot`, so it is not a decision under docs/agents/factory.md "Item lifecycle" step 3. Give Hari its link in chat and ask him to post an `## Approval` that links it, or to post the decision himself. Act on no decision or approval until his comment exists. Basis: [#419 decision 6873248830](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/419#issuecomment-6873248830), rule 6, as amended by [#270 decision 7235442482](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/270#issuecomment-7235442482), point 2.
 
 ## Timeline record
 
