@@ -44,7 +44,9 @@ class ExecutionWorkflowTests(unittest.TestCase):
         workflow = (ROOT / profile_module.WORKFLOW).read_bytes()
         previous = profile_module.blob('717c5a75e3f0a56ad5378a0e7551caa832ed63d8', profile_module.WORKFLOW)
         fingerprint = profile_module.execution_workflow(previous)
-        self.assertEqual(fingerprint, profile_module.execution_workflow(workflow))
+        # Issue 602 adds the `suite` input and its pass-through. They change the execution hash on purpose (pinned
+        # pair, R19a), so the comparison with the earlier workflow removes exactly them.
+        self.assertEqual(fingerprint, profile_module.execution_workflow(without_suite_input(workflow)))
         for old, changed in (
                 (b'c5_companion_artifacts.py', b'c5_other_artifacts.py'),
                 (b'--manifest "$C5_CAMPAIGN"', b'--manifest "$OTHER_MANIFEST"'),
@@ -53,6 +55,17 @@ class ExecutionWorkflowTests(unittest.TestCase):
             with self.subTest(old=old):
                 self.assertIn(old, workflow)
                 self.assertNotEqual(fingerprint, profile_module.execution_workflow(workflow.replace(old, changed, 1)))
+
+
+def without_suite_input(workflow):
+    """The workflow bytes as they were before issue 602 added the `suite` input and its pass-through."""
+    text = workflow.decode()
+    for added in ('      suite:\n        description: Test suite the campaign runs, fast or full\n'
+                  '        required: true\n        type: choice\n        options:\n          - fast\n'
+                  '          - full\n        default: fast\n',
+                  '          C5_SUITE: ${{ inputs.suite }}\n', ' --suite "$C5_SUITE"'):
+        text = text.replace(added, '')
+    return text.encode()
 
 
 class RequiredCheckIntegrationTests(unittest.TestCase):
@@ -2283,6 +2296,98 @@ class DependencyEndToEndTests(unittest.TestCase):
                         runtime.input_maps('HEAD')
 
 
+class FullSuiteQualificationTests(unittest.TestCase):
+    """Issue 602 PR 2: the full-suite item group, its shared inputs and the pinned exact hash pairs."""
+    BASE = 'e4009260ac5d7cc22bebf96f08f03e7c63ef89a5'
+    QUALIFICATION = 'tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json'
+    GROUP = ('  <ItemGroup Condition="\'$(ParchwellVerifierMutationOnly)\' == \'true\' and '
+             '\'$(ParchwellVerifierMutationFullSuite)\' == \'true\'">\n'
+             '    <Compile Include="Component/MutationExcluded/**/*.cs" />\n  </ItemGroup>\n')
+    PIN_PATHS = (runtime.RUNNER, runtime.WORKFLOW, runtime.COMPANION_WORKFLOW)
+
+    def closure_with(self, edit):
+        names = runtime.files('HEAD')
+        original = runtime.blob
+
+        def changed(ref, path):
+            data = original(ref, path)
+            return edit(data) if path == runtime.TEST_PROJECT else data
+
+        with mock.patch.object(runtime, 'blob', side_effect=changed):
+            return runtime.project_closure('HEAD', names)
+
+    def test_full_suite_item_group_is_accepted(self):
+        self.assertIn(self.GROUP.encode(), runtime.blob('HEAD', runtime.TEST_PROJECT))
+        self.closure_with(lambda data: data)
+        without = lambda data: data.replace(self.GROUP.encode(), b'')
+        self.closure_with(without)
+
+    def test_other_compile_include_is_rejected(self):
+        cases = {'wider include': (b'Include="Component/MutationExcluded/**/*.cs"', b'Include="Component/**/*.cs"'),
+                 'other condition': (b"and '$(ParchwellVerifierMutationFullSuite)' == 'true'",
+                                     b"and '$(ParchwellVerifierMutationFullSuite)' == 'false'"),
+                 'extra attribute': (b'<Compile Include="Component/MutationExcluded/**/*.cs" />',
+                                     b'<Compile Include="Component/MutationExcluded/**/*.cs" Link="x" />')}
+        for label, (old, new) in cases.items():
+            with self.subTest(label), self.assertRaises(ValueError):
+                self.assertIn(old, runtime.blob('HEAD', runtime.TEST_PROJECT))
+                self.closure_with(lambda data: data.replace(old, new, 1))
+
+    def test_mutation_excluded_files_are_shared_inputs(self):
+        folder = 'tests/Parchwell.Verifier.Tests/Component/'
+        extra = {folder + 'MutationExcluded/X.cs': b'// x\n', folder + 'Y.cs': b'// y\n'}
+        names = runtime.files('HEAD') | set(extra)
+        original = runtime.blob
+        with mock.patch.object(runtime, 'files', return_value=names), \
+                mock.patch.object(runtime, 'blob', side_effect=lambda ref, path: extra.get(path) or original(ref, path)):
+            shared, _ = runtime.input_maps('HEAD')
+        self.assertIn(folder + 'MutationExcluded/X.cs', shared)
+        self.assertNotIn(folder + 'Y.cs', shared)
+
+    def test_pinned_full_suite_pairs_are_accepted(self):
+        head = runtime.git('rev-parse', 'HEAD').decode().strip()
+        shared, _ = runtime.input_maps(head)
+        for path, pair in zip(self.PIN_PATHS, (runtime.SUITE_RUNNER_PAIR, runtime.SUITE_WORKFLOW_PAIR,
+                                               runtime.SUITE_COMPANION_PAIR)):
+            self.assertEqual(pair[1], shared[path], path)
+        with tempfile.TemporaryDirectory() as directory:
+            qualification = Path(directory) / 'qualification.json'
+            qualification.write_bytes(runtime.blob(self.BASE, self.QUALIFICATION))
+            runtime.renew(head, str(qualification), 'Synthetic basis for the pinned pair test.')
+            result = runtime.check(self.BASE, head, str(qualification))
+        self.assertNotEqual('rejected', result['status'], result)
+
+    def test_unpinned_runner_change_is_rejected(self):
+        config = json.loads(runtime.blob(self.BASE, self.QUALIFICATION))
+        pairs = dict(zip(self.PIN_PATHS, (runtime.SUITE_RUNNER_PAIR, runtime.SUITE_WORKFLOW_PAIR,
+                                          runtime.SUITE_COMPANION_PAIR)))
+        for path in self.PIN_PATHS:
+            old, new = pairs[path]
+            self.assertEqual(old, config['shared_inputs'][path])
+            for label, current in (('pinned', new), ('one byte off', new[:-1] + ('0' if new[-1] != '0' else '1'))):
+                shared = {**config['shared_inputs'], path: current}
+                with self.subTest(path=path, label=label):
+                    if label == 'pinned':
+                        self.assertIn((old, current), runtime.EXACT_TIMING_PAIRS[path])
+                        continue
+                    with self.assertRaisesRegex(ValueError, 'not renewable'):
+                        runtime.renew_v2('HEAD', '/nonexistent', config, shared, {path}, 'basis')
+                    self.assertNotIn((old, current), runtime.EXACT_TIMING_PAIRS[path])
+
+    def test_pinned_pair_keeps_margin_layout(self):
+        head = runtime.git('rev-parse', 'HEAD').decode().strip()
+        runtime.timing_margin_changes.cache_clear()
+        self.addCleanup(runtime.timing_margin_changes.cache_clear)
+        changed = runtime.timing_margin_changes(head)
+        self.assertEqual(runtime.timing_margin_changes(self.BASE), changed)
+        self.assertTrue(changed)
+
+    def test_legacy_runner_pair_is_unchanged(self):
+        self.assertEqual(('dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea14629a0af4625',
+                          'c147bb8000ef1273609052660e80b20c8da8bf33a77a0df65a94d32a5f7a1c40'),
+                         runtime.RUNNER_TIMING_PAIR)
+
+
 class CampaignValidatorRecoveryTests(unittest.TestCase):
     """The one reviewed c5_campaign.py is recorded at its measured hash; anything else is compared as it is."""
     VALIDATOR = b'# synthetic reviewed validator\n'
@@ -2365,7 +2470,12 @@ class CampaignValidatorRecoveryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             qualification = Path(directory) / 'qualification.json'
             qualification.write_bytes(runtime.blob(self.BASE, self.QUALIFICATION))
-            return runtime.check(self.BASE if base else None, head, qualification)
+            # The checker runs the runner file it compares with the head's. Issue 602 changed the runner after this
+            # base, so the checker here is the base's runner, whose execution hash the reviewed-validator check still accepts (R19a).
+            runner = Path(directory) / 'c5_workflow.py'
+            runner.write_bytes(runtime.blob(self.BASE, runtime.RUNNER))
+            with mock.patch.object(runtime.workflow, '__file__', str(runner)):
+                return runtime.check(self.BASE if base else None, head, qualification)
 
     def test_check_outcomes_for_the_reviewed_validator(self):
         """A head that differs from the base only by the reviewed validator needs no new measurement."""

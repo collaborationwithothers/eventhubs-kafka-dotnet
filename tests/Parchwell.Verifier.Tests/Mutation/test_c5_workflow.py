@@ -2655,6 +2655,157 @@ class DiagnosticCollectorTests(unittest.TestCase):
         self.assertEqual([9000, 99], value['process_selection']['unobserved_seed_pids'])
 
 
+FAST_OVERRIDES = {"ParchwellVerifierMutationOnly": "true", "APPLICATIONINSIGHTS_STATSBEAT_DISABLED": "true"}
+FULL_OVERRIDES = {**FAST_OVERRIDES, "ParchwellVerifierMutationFullSuite": "true"}
+SUITE_BASE_COMMIT = "15b09147ed4e7c62ea08620b24c14cd049f07562"
+
+
+def real_source(shard):
+    return (Path(__file__).resolve().parents[3] / "src/Parchwell.Verifier" / workflow.SHARDS[shard]).read_bytes()
+
+
+def load_base_runner():
+    """The runner as it was at the base commit of issue 602, loaded as a module of its own."""
+    import importlib.util
+    root = Path(__file__).resolve().parents[3]
+    data = subprocess.check_output(
+        ["git", "show", f"{SUITE_BASE_COMMIT}:tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py"], cwd=root)
+    directory = tempfile.TemporaryDirectory()
+    path = Path(directory.name) / "c5_workflow_base.py"
+    path.write_bytes(data)
+    spec = importlib.util.spec_from_file_location("c5_workflow_base", path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["c5_workflow_base"] = module
+    spec.loader.exec_module(module)
+    return module, directory
+
+
+class FullSuiteModeTests(unittest.TestCase):
+    """Issue 602 PR 2: the `suite` choice of the runner and the aggregate."""
+
+    def test_fast_suite_overrides_are_unchanged(self):
+        self.assertEqual(FAST_OVERRIDES, workflow.suite_overrides("fast"))
+        self.assertEqual(FAST_OVERRIDES, workflow.OVERRIDES)
+        calls = []
+        with patch.object(workflow, "run_shard", side_effect=lambda *a, **k: calls.append(k) or 0), \
+                patch.object(sys, "argv", ["c5_workflow.py", "run-shard", "--shard", "phase-p1", "--output-dir", "x"]):
+            self.assertEqual(0, workflow.main())
+        with patch.object(workflow, "run_shard", side_effect=lambda *a, **k: calls.append(k) or 0), \
+                patch.object(sys, "argv", ["c5_workflow.py", "run-shard", "--shard", "phase-p1", "--output-dir", "x",
+                                           "--suite", "fast"]):
+            self.assertEqual(0, workflow.main())
+        self.assertEqual([{"suite": "fast"}, {"suite": "fast"}], calls)
+
+    def test_full_suite_overrides(self):
+        overrides = workflow.suite_overrides("full")
+        self.assertEqual(FULL_OVERRIDES, overrides)
+        self.assertEqual(3, len(overrides))
+        self.assertEqual(FAST_OVERRIDES, workflow.OVERRIDES)
+
+    def test_unknown_suite_is_rejected(self):
+        for suite in ("Full", ""):
+            for command in (["run-shard", "--shard", "phase-p1", "--output-dir", "x"],
+                            ["aggregate", "--input-dir", "i", "--expected-commit", COMMIT, "--run-id", RUN_ID,
+                             "--run-attempt", ATTEMPT, "--output-dir", "o"]):
+                with self.subTest(suite=suite, command=command[0]), \
+                        patch.object(workflow, "run_shard") as run, patch.object(workflow, "aggregate") as combine, \
+                        patch.object(sys, "argv", ["c5_workflow.py", *command, "--suite", suite]), \
+                        contextlib.redirect_stderr(io.StringIO()):
+                    with self.assertRaises(SystemExit) as raised:
+                        workflow.main()
+                    self.assertNotEqual(0, raised.exception.code)
+                    run.assert_not_called()
+                    combine.assert_not_called()
+        for function, arguments in ((workflow.run_shard, ("phase", Path("unused"))),
+                                    (workflow.aggregate, (Path("i"), COMMIT, RUN_ID, ATTEMPT, Path("unused")))):
+            with self.subTest(function=function.__name__), self.assertRaises(ValueError):
+                function(*arguments, suite="Full")
+
+    def test_fast_shard_command_matches_base(self):
+        base, directory = load_base_runner()
+        self.addCleanup(directory.cleanup)
+        self.addCleanup(sys.modules.pop, "c5_workflow_base", None)
+        self.assertEqual(base.OVERRIDES, workflow.suite_overrides("fast"))
+        self.assertEqual(base.SHARDS, workflow.SHARDS)
+        self.assertEqual(base.BASE_CONFIG, workflow.BASE_CONFIG)
+        for shard in workflow.SHARDS:
+            with self.subTest(shard=shard):
+                source = real_source(shard)
+                self.assertEqual(base.shard_config(shard, source), workflow.shard_config(shard, source))
+                self.assertEqual(base.shard_static_regions(shard, source), workflow.shard_static_regions(shard, source))
+        for target in sorted(set(workflow.SHARDS.values())):
+            item = {"mutant_id": "1", "span": [0, 1], "exclusions": [[2, 3]]}
+            with self.subTest(target=target):
+                self.assertEqual(base.isolated_config(target, item), workflow.isolated_config(target, item))
+        with patch.object(subprocess, "Popen", side_effect=RuntimeError("stop")) as popen:
+            for module in (base, workflow):
+                with self.assertRaises(RuntimeError):
+                    module.launch(["dotnet", "stryker"], Path("."), Path(tempfile.mkdtemp()) / "log", 5)
+        self.assertEqual(2, popen.call_count)
+        self.assertEqual(popen.call_args_list[0].kwargs["env"], popen.call_args_list[1].kwargs["env"])
+
+
+
+class FullSuiteAggregationTests(unittest.TestCase):
+    def setUp(self):
+        legacy_layout(self)
+        self.temp = tempfile.TemporaryDirectory()
+        self.directory = Path(self.temp.name)
+        self.addCleanup(self.temp.cleanup)
+
+    def fixture(self, name, overrides, shards=None):
+        folder = self.directory / name
+        folder.mkdir()
+        fixture = AggregateFixture(folder)
+        for shard in workflow.SHARDS:
+            fixture.receipts[shard]["environment_overrides"] = dict(
+                overrides if shards is None or shard in shards else FAST_OVERRIDES)
+            fixture.save(shard)
+        return fixture
+
+    def aggregate(self, fixture, suite):
+        result = workflow.aggregate(fixture.input, COMMIT, RUN_ID, ATTEMPT, fixture.output, suite=suite)
+        return result, json.loads((fixture.output / "summary.json").read_text())
+
+    def test_aggregate_rejects_mixed_suites(self):
+        fast = self.fixture("fast", FAST_OVERRIDES)
+        result, summary = self.aggregate(fast, "full")
+        self.assertEqual(1, result)
+        self.assertIs(summary["measurement_complete"], False)
+        full = self.fixture("full", FULL_OVERRIDES)
+        result, summary = self.aggregate(full, "fast")
+        self.assertEqual(1, result)
+        self.assertIs(summary["measurement_complete"], False)
+        mixed = self.fixture("mixed", FULL_OVERRIDES, shards={"phase"})
+        result, summary = self.aggregate(mixed, "full")
+        self.assertEqual(1, result)
+        self.assertIs(summary["measurement_complete"], False)
+
+    def test_summary_records_suite(self):
+        fast = self.fixture("fast", FAST_OVERRIDES)
+        full = self.fixture("full", FULL_OVERRIDES)
+        default = self.fixture("default", FAST_OVERRIDES)
+        fast_result, fast_summary = self.aggregate(fast, "fast")
+        full_result, full_summary = self.aggregate(full, "full")
+        self.assertEqual(0, workflow.aggregate(default.input, COMMIT, RUN_ID, ATTEMPT, default.output))
+        default_summary = json.loads((default.output / "summary.json").read_text())
+        self.assertEqual((0, 0), (fast_result, full_result))
+        self.assertEqual(("fast", "full", "fast"),
+                         (fast_summary["suite"], full_summary["suite"], default_summary["suite"]))
+        self.assertEqual(fast_summary, default_summary)
+        self.assertEqual({key: value for key, value in fast_summary.items() if key != "suite"},
+                         {key: value for key, value in full_summary.items() if key != "suite"})
+
+    def test_pair_with_mixed_suites_fails(self):
+        """A main run of one suite and a companion run of the other cannot aggregate."""
+        companion_only = {shard for shard in workflow.SHARDS if shard in {"phase"}}
+        pair = self.fixture("pair", FULL_OVERRIDES, shards=set(workflow.SHARDS) - companion_only)
+        result, summary = self.aggregate(pair, "full")
+        self.assertEqual(1, result)
+        self.assertIs(summary["measurement_complete"], False)
+        self.assertTrue(any("phase" in reason for reason in summary["incomplete_reasons"]))
+
+
 class RunnerTests(unittest.TestCase):
     def setUp(self):
         legacy_layout(self)
@@ -2703,6 +2854,23 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(0, child_exit)
         self.assertIsNone(reason)
         self.assertEqual("true", log.read_text().strip())
+
+    def test_full_shard_plan_matches_fast(self):
+        fast_result, fast, fast_output = self.invoke("0", output=self.root / "fast", suite="fast")
+        full_result, full, full_output = self.invoke("0", output=self.root / "full", suite="full")
+        self.assertEqual((0, 0), (fast_result, full_result))
+
+        def comparable(receipt, output):
+            text = json.dumps({key: value for key, value in receipt.items() if key in
+                               {"shard", "target", "argv", "cwd", "isolated", "isolation_error", "static_regions"}})
+            return text.replace(str(output), "OUTPUT")
+
+        cwd_root = re.compile(r"/c5-source-[^/]+/")
+        self.assertEqual(cwd_root.sub("/c5-source-X/", comparable(fast, fast_output)),
+                         cwd_root.sub("/c5-source-X/", comparable(full, full_output)))
+        self.assertEqual((fast_output / "shard-config.json").read_bytes(), (full_output / "shard-config.json").read_bytes())
+        self.assertEqual(FAST_OVERRIDES, fast["environment_overrides"])
+        self.assertEqual(FULL_OVERRIDES, full["environment_overrides"])
 
     def test_singleton_configs_preserve_all_other_values(self):
         for shard, (_, _, count) in workflow.PARTS.items():

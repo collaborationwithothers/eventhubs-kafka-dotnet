@@ -566,7 +566,9 @@ def input_maps(ref, declared_targets=None):
 
 def campaign_validator_is_reviewed(ref, result):
     """True when the tree holds the one reviewed validator and nothing that runs it inside a shard job."""
-    if result.get(CAMPAIGN_VALIDATOR) != CAMPAIGN_VALIDATOR_PIN or result.get(RUNNER) != RUNNER_EXECUTION_PIN:
+    # The runner before issue 602 stays reviewed, so trees that predate the full-suite mode keep their recorded hash.
+    if (result.get(CAMPAIGN_VALIDATOR) != CAMPAIGN_VALIDATOR_PIN
+            or result.get(RUNNER) not in (RUNNER_EXECUTION_PIN, SUITE_RUNNER_PAIR[0])):
         return False
     companion = blob(ref, COMPANION_WORKFLOW).decode('utf-8')
     coordinator = blob(ref, WORKFLOW).decode('utf-8').partition('\n  aggregate:\n')[0]
