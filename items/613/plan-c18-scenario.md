@@ -1,4 +1,15 @@
-Revision: 1
+Revision: 2
+
+Changes since revision 1, applying the [revision 1 plan check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7239440378):
+- B1: section 2 adds the mutation qualification file, limited to the renewal of the two shared inputs, with its basis text. Section 9 adds the qualification check, and section 12 adds mutation acceptance on `main` as a post-merge gate. Dispatching that run is open question 4.
+- B2: the `committed_never_processed` text now names the latest-reset mechanism on a partition with no committed offset at the stop. This is the check's option (b); the stop time is unchanged.
+- B3: partition-event counts are recorded by kind, member and repeat, and `text_must_state` says which half of K-28 is exercised.
+- B4 context: H2 now follows C01's pattern. A takeover before 27000000 microseconds is the finding `early_removal`, not a contradiction. Open question 1 says so.
+- N1: R1's pinned hash is a literal, recomputed for the revised block.
+- N2: two more scenario-contract.md places name C18.
+- N3: the section is cited as lines 147 to 183.
+- N4: 7.2 lists `test_consumer_chart.py` line 326 and gives a cap with its exhaustion action.
+- Pull request 617 merged at `7639d40826b2222c7dcc39dc14ab8145a9cf784c`, whose tree equals `cc732a70`. The base moves there, and the implementation gate is met.
 
 # c18-scenario: the C18 scenario, its expected outcome and its admission
 
@@ -6,7 +17,7 @@ This plan adds the C18 scenario file and its expected outcome. It also teaches t
 
 The expected outcome, every decision rule and every policy value below are proposals. Each is listed under "Open questions for Hari" with a recommendation. This plan decides none of them.
 
-Base commit: `main` at `fd55d88adaa00342deb91a956e5691c1101ef647`. Every repository citation is at that commit, except those marked "PR 617", which are at commit `cc732a7079f88aa2d09b4d63e3ad35a87dfd5c40` of pull request 617 (open).
+Base commit: `main` at `7639d40826b2222c7dcc39dc14ab8145a9cf784c`, the merge of pull request 617. Revision 1 was written against `fd55d88adaa00342deb91a956e5691c1101ef647`. Between the two, only pull request 617's files under `src/Parchwell.Enrichment/` and its tests changed, and none of them is a file this plan changes. Citations marked "PR 617" hold at both `cc732a70` and `7639d408`.
 
 ## 1. Goal and authority
 
@@ -31,7 +42,7 @@ What the C18 row tests, as the merged amendment and fold row state it:
 
 Evidence used: the C18 smoke, run [46142138991](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/actions/runs/46142138991), whose evidence is #613 comment 7239231113. I read the artifact `c18-stop-smoke-46142138991-1` (`c18-stop-smoke.json`) myself on 2026-11-28. In 3 of 3 trials the container ended with exit code 1, about 1 to 2 s after the delete. The watch read the end time in 3 of 3 trials and the 1 s poll in 1 of 3. No replacement pod was started. The member was idle.
 
-Gate on implementation: this pull request uses the plan inputs `StopConfigured`, `ShutdownMode` and `RecordsConsumerErrors`. Pull request 617 adds them (PR 617, `ConsumerProcessingPlan.cs` lines 19 to 24). Implementation starts only after pull request 617 has merged on `main`. If those inputs differ there from this plan's text, the implementer stops (section 13).
+Gate on implementation: this pull request uses the plan inputs `StopConfigured`, `ShutdownMode` and `RecordsConsumerErrors`. Pull request 617 adds them (PR 617, `ConsumerProcessingPlan.cs` lines 19 to 24). Pull request 617 merged on 2026-11-28 at 12:34:45Z (`7639d408`), so this gate is met. If those inputs differ on `main` from this plan's text, the implementer stops (section 13).
 
 ## 2. Scope
 
@@ -44,10 +55,11 @@ Files allowed to change:
 6. `src/Parchwell.LoadGen/Run/Input/LoadGenHostOptions.cs`: line 67 and its summary comment (3.4).
 7. `charts/parchwell/templates/_consumer.tpl` lines 2, 13 and 138, and `charts/parchwell/values.schema.json` lines 30, 1188 and 1221 (3.5).
 8. Tests under `tests/Parchwell.Scenarios.Tests/`, `tests/Parchwell.Enrichment.Tests/`, `tests/Parchwell.LoadGen.Tests/`, `tests/Parchwell.ArchitectureTests/DeploymentContracts/ChartContractTests.cs` and `charts/parchwell/tests/`, per section 7. Their project files (protected) may change only to add `Content` or `EmbeddedResource` items for `scenarios/C18/scenario.yaml`, in the form their existing C01 items use.
-9. `docs/operations/scenario-contract.md`, section "Consumer processing declarations" (lines 147 to 175), and `docs/operations/chart-contract.md` lines 11, 155 and 167 (3.6).
+9. `docs/operations/scenario-contract.md`, section "Consumer processing declarations" (lines 147 to 183), and `docs/operations/chart-contract.md` lines 11, 155 and 167 (3.6).
+10. `tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json` (protected). It may change only by the shared-input assessments that `python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py renew --head HEAD_SHA --qualification tests/Parchwell.Verifier.Tests/Mutation/c5-runtime-qualification.json --basis TEXT` writes for `src/Parchwell.Scenarios/Contracts/ScenarioContracts.cs` and `src/Parchwell.Scenarios/Loading/ConsumerProcessingDefinitionReader.cs` (docs/operations/verifier-mutation.md, version 2 renewal). `TEXT` is exactly: "Adds the optional Stops property and a C18 branch to the consumer-processing reader. The verifier's consumer plan source reads neither, and the loader's output for C03, C10 and C01 is unchanged (plan c18-scenario, R3), so the verifier's mutation runtime does not change." The basis is a judgement, so it is part of open question 4.
 
 Paths that must not change:
-- `src/Parchwell.Verifier*/` and `tests/Parchwell.Verifier.Tests/`. The verifier image does not package C18, and its plan sources still accept only C01, C03 and C10. Pull request 5 changes that.
+- `src/Parchwell.Verifier*/` and `tests/Parchwell.Verifier.Tests/`, except the file of item 10. The verifier image does not package C18, and its plan sources still accept only C01, C03 and C10. Pull request 5 changes that.
 - `src/Parchwell.Kafka/`: C18 replaces no Kafka setting.
 - `src/Parchwell.Scenarios/Contracts/ScenarioPhases.cs`.
 - `src/Parchwell.Enrichment/ConsumerProcessing/ConsumerProcessingWorker.cs`, `ConsumerProcessingPlan.cs`, `ConsumerRecordCodec.cs` and `Program.cs`.
@@ -146,7 +158,8 @@ public sealed record ConsumerStopDeclaration(int AfterStartLineMs, string Shutdo
 
 - scenario-contract.md "Consumer processing declarations":
   - the first paragraph names C18 and its experiment ("the workflow deletes the subject's pod T after the start line; the declaration gives T and the shutdown mode");
-  - the field table gains `stop.after_start_line_ms`, C18, both configurations, `60000`, and `stop.shutdown_mode`, `close` for C0 and `dispose` for C1;
+  - the second paragraph gains, after "For C10 and C01 each entry is a mapping with exactly `kill_count`.": "For C18 each entry is a mapping with exactly `stop`, a mapping with exactly `after_start_line_ms` and `shutdown_mode`.";
+  - the field table's `window_ms` and `completion_deadline_ms` rows name "C03, C10, C01 and C18", and it gains `stop.after_start_line_ms`, C18, both configurations, `60000`, and `stop.shutdown_mode`, `close` for C0 and `dispose` for C1;
   - checks 1, 6 and 7 read as in 3.2;
   - the replacements table gains the row C18, none, none.
 - chart-contract.md lines 11, 155 and 167 name C18 beside C01, C03 and C10.
@@ -177,6 +190,7 @@ R9. WHEN the Enrichment and LoadGen images are published, THEN each contains `sc
 
 - Confluent.Kafka v2.16.0 `IConsumer.cs` lines 670 to 685: `Close` commits offsets if auto commit is enabled and alerts the coordinator that the consumer is leaving. `Consumer.cs` lines 615 to 625: `Dispose` releases resources without committing offsets or alerting the coordinator (S1).
 - librdkafka v2.16.0 `INTRODUCTION.md` lines 980 and 992 to 994: close leaves the group and commits final offsets. Without it, "Final offsets are not committed and the consumer will not actively leave the group, it will be kicked out of the group after the `session.timeout.ms` expires" (S2).
+- Confluent.Kafka v2.16.0 `src/Confluent.Kafka/Impl/SafeKafkaHandle.cs` line 191: a consumer handle is destroyed with `RD_KAFKA_DESTROY_F_NO_CONSUMER_CLOSE`, so `Dispose` alone runs no consumer close and raises no revoke callback (inference from the flag's name and S2).
 - C01's published result (`results/C01/2026-11-23.md`, run 45124695288): a killed member that sent no leave request was replaced 31.8 to 38.6 s after the kill at `session.timeout.ms` 30000. A closed connection alone did not cause early removal there.
 
 ### 5.2 Exact content of `scenarios/C18/expected.yaml`
@@ -251,8 +265,19 @@ configurations:
         not null, >= 27000000 and < 45000000.
       contradicted_when: >-
         All 5 repeats counted, and in at least one reassignment.microseconds is
-        < 27000000 or >= 45000000.
+        >= 45000000.
       otherwise: inconclusive
+    early_removal:
+      mode: finding
+      when: >-
+        In at least one counted repeat, reassignment.microseconds < 27000000.
+      text: >-
+        The witness held the subject's partitions sooner than session.timeout.ms
+        minus heartbeat.interval.ms after the stop, so the session timeout did
+        not decide the removal, although Dispose sends no leave request. One
+        possible cause is that Event Hubs removes a member when its connection
+        closes; that cause is not verified, and C01 did not show it. It is
+        reported on its own line and does not contradict H2.
     H4_dispose_skips_final_commit:
       question: >-
         With Dispose only, are messages the subject processed after its last
@@ -270,8 +295,14 @@ configurations:
         In at least one counted repeat, counts.committed_never_processed >= 1.
       text: >-
         A message was marked done without being processed. With
-        enable.auto.offset.store false this is not expected in either mode;
-        the cause is not verified. It is reported on its own line.
+        auto.offset.reset latest, a subject partition that had no committed
+        offset when the subject stopped is reset to latest when the witness
+        takes it over, so messages that arrived in between are skipped, as in
+        C01's result. Under Close this needs a partition on which the subject
+        processed no message; under Dispose, one whose first processed message
+        came after the subject's last automatic commit (inference from the
+        baseline). It is reported on its own line, with the partitions
+        concerned, and does not change the verdict.
     shutdown_margin:
       mode: recorded_only
       value: >-
@@ -285,6 +316,12 @@ configurations:
     consumer_errors:
       mode: recorded_only
       value: the number of consumer_error rows per member per repeat
+    partition_events:
+      mode: recorded_only
+      value: >-
+        Per repeat, the number of partition_event rows of each member by kind
+        (assigned, revoked, lost), after its first assigned row, and the
+        subject's successful commit entries after its stop_observed row.
 
 verdict:
   confirmed_when: H1, H2, H3 and H4 each hold.
@@ -301,6 +338,11 @@ verdict:
     - Each counted repeat's two shutdown margins against the 30 s grace.
     - The C18 smoke measured an idle member only; the margins here are the
       first measurement with a message in flight.
+    - Of K-28, only the revoked half is exercised. Under Close (C0) the
+      subject's revoked row and its commits during Close are recorded. Under
+      Dispose (C1) the client is destroyed without a consumer close, so no
+      revoked or lost callback is expected. No configuration loses its
+      partitions while still running, so the lost half is not tested.
 
 sources:
   - https://github.com/confluentinc/confluent-kafka-dotnet/blob/v2.16.0/src/Confluent.Kafka/IConsumer.cs
@@ -308,7 +350,7 @@ sources:
   - https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations
 ```
 
-The field names `reassignment.microseconds`, `counts.processed_again` and `counts.committed_never_processed` exist today (verifier-contract.md line 128). `shutdown_margin.receipt_microseconds`, `shutdown_margin.process_end_microseconds`, the consumer-error count and `consumer_stop_receipt_missing` do not exist yet. Pull request 5 adds them under exactly these names; this file pins them.
+The field names `reassignment.microseconds`, `counts.processed_again` and `counts.committed_never_processed` exist today (verifier-contract.md line 128). `shutdown_margin.receipt_microseconds`, `shutdown_margin.process_end_microseconds`, the consumer-error count, the partition-event counts and `consumer_stop_receipt_missing` do not exist yet. Pull request 5 adds them under exactly these names; this file pins them.
 
 ## 6. Invariants and safety rules
 
@@ -333,6 +375,8 @@ The rule never permits removing a case, loosening an assertion or changing a che
 Each assertion here pins a list that this plan extends. The implementer changes it exactly as stated and lists it in the implementation notes:
 - `ChartContractTests.cs` lines 18 to 39: the root `scenario_id` enum gains a final `value => Assert.Equal("C18", value.GetString())`.
 - Any test in `tests/Parchwell.Scenarios.Tests/` or `charts/parchwell/tests/` that asserts the exact admitted set C03, C10 and C01, or the chart's failure message text, gains C18, and the message text of 3.5. The implementer finds them by searching for `consumer_processing_unexpected` and for `require scenario C01, C03 or C10`.
+- `charts/parchwell/tests/test_consumer_chart.py` line 326, `len(members) == 12 and len(verifiers) == 8`: the counts become what adding C18's two configurations to `PAIRS` (line 14) gives. The implementer computes them from the cases, states them in the implementation notes, and changes no other assertion of that test.
+- Cap: at most 10 assertions changed under this section and 7.1 together. Exhaustion action: push -wip and hand off to the next session (AGENTS.md "Before opening a pull request" rule 11).
 
 ### 7.3 Tests
 
@@ -342,7 +386,7 @@ Each assertion here pins a list that this plan extends. The implementer changes 
 | R2 | `StopConsumerProcessingDefinitionTests.Rejects` (one case per row) | the C18 file with: `after_start_line_ms: 59999`; `shutdown_mode: drain` in C0; C0 and C1 modes swapped; a `kill_count: 1` field added beside `stop`; `stop` missing; a C1 override `EnrichmentConsumer: {session.timeout.ms: 45000}` | `consumer_processing_literal` at `consumer_processing.configurations.C0.stop.after_start_line_ms`; `consumer_processing_literal` at `.C0.stop.shutdown_mode`; `consumer_processing_literal` at both mode paths; `consumer_processing_shape` at `.C0`; `consumer_processing_shape` at `.C0`; `consumer_processing_experiment` at `consumer_processing` |
 | R2 | `StopConsumerProcessingDefinitionTests.Admission` | a C19 file that declares `consumer_processing` | `consumer_processing_unexpected` |
 | R3 | existing `ConsumerProcessingDefinitionTests` and `KillConsumerProcessingDefinitionTests` | as on `main` | pass unchanged, except 7.2 |
-| R1 | `StopConsumerProcessingDefinitionTests.File_is_pinned` | SHA-256 of the committed file | equals the hash the implementer records, as `KillConsumerProcessingDefinitionTests.cs` line 149 does for C10 and C01 |
+| R1 | `StopConsumerProcessingDefinitionTests.File_is_pinned` | SHA-256 of the committed `scenarios/C18/expected.yaml` | `9d8a17655965059b97d9d7b9490d9f13790ccdddcf6707b76aa3c23436dbc57f`, the SHA-256 of the section 5.2 block (the lines between its fences, LF endings, a final newline), checked as `KillConsumerProcessingDefinitionTests.cs` lines 147 to 158 check C10 and C01 |
 | R4 | `ScenarioStopPlanSourceTests.C18_plans` | (`subject`, C0), (`subject`, C1), (`witness`, C0), (`witness`, C1) | subject C0: `StopConfigured` true, `ShutdownMode` `close`, `RecordsConsumerErrors` true, `KillCount` null, `SlowMessage` null, `ConsumerSettings` empty, `ProcessingDelayMs` 200, `WindowMs` 360000; subject C1: the same with `dispose`; witness: `StopConfigured` false, `ShutdownMode` null, `RecordsConsumerErrors` true, the rest as the subject |
 | R5 | existing `ScenarioPlanSourceTests` and `ScenarioKillPlanSourceTests`, plus one new assertion per existing case that `RecordsConsumerErrors` is false and `StopConfigured` false | as on `main` | as on `main` |
 | R6 | `ConsumerProcessingOptions` validation test, new cases | `ScenarioId` `C18` with a valid job name; `C19` | passes; `consumer_identity_invalid` |
@@ -365,13 +409,14 @@ The shutdown time with a message in progress is not measured. The expected outco
 2. `dotnet test` over the solution -> all pass.
 3. `bash infra/scripts/lifecycle/check-offline.sh` -> exit 0, including the chart render and kubeconform checks.
 4. `dotnet publish` of Enrichment, LoadGen and Verifier, listing `scenarios/` in each output -> C18 in the first two only.
-5. `sha256sum scenarios/C18/expected.yaml` -> equals the hash of section 5.2's block, saved without the fence, with a final newline. The implementer records the hash in the pull request.
+5. `sha256sum scenarios/C18/expected.yaml` -> `9d8a17655965059b97d9d7b9490d9f13790ccdddcf6707b76aa3c23436dbc57f`.
 6. `git diff --name-only origin/main...HEAD` -> only files of section 2.
 7. An ASCII scan of the changed files -> no character outside ASCII.
+8. `python3 tests/Parchwell.Verifier.Tests/Mutation/c5_runtime.py check --base <merge base> --head HEAD` -> accepted, with the renewal of section 2 item 10.
 
 ## 10. Plan-check answers
 
-(a) Effort that scales with a number unknown at planning time: none. The inputs are fixed files and fixed test cases.
+(a) Effort that scales with a number unknown at planning time: the existing assertions that the new checks force to change (7.1 and 7.2). Cap: 10, with exhaustion action push -wip and hand off to the next session. Everything else is fixed files and fixed test cases.
 
 (b) Stricter than the parent: the amendment lets a scenario omit the shutdown mode (default `close`). This plan requires C18 to name it in both configurations, so the file states what each configuration tests. It also proposes H3 and H4, which turn K-05's commit half into decision rules. The fold row names K-05 and K-28 as tested but gives no rule.
 
@@ -381,13 +426,16 @@ The shutdown time with a message in progress is not measured. The expected outco
 
 ## 11. Open questions for Hari
 
-1. Approve the expected outcome of section 5.2 as written, including H1 to H4, the verdict rule and the evidence field names. Recommendation: approve. H1 and H2 test the takeover half of K-05, with C01's windows so the two results compare. H3 and H4 test the commit half. H4's rule needs only one reprocessed message across five repeats, because a stop that lands just after an automatic commit can leave nothing to reprocess (inference from the 5000 ms commit interval).
+1. Approve the expected outcome of section 5.2 as written, including H1 to H4, the findings, the verdict rule and the evidence field names. Recommendation: approve. H1 and H2 test the takeover half of K-05, with C01's windows so the two results compare. As in C01, H2 treats a takeover before 27000000 microseconds as the finding `early_removal`, not a contradiction. Of K-28 only the revoked half is exercised, and the text says so; the fold row's "commit on revoke versus lost" is thereby narrowed to its revoked half. H3 and H4 test the commit half. H4's rule needs only one reprocessed message across five repeats, because a stop that lands just after an automatic commit can leave nothing to reprocess (inference from the 5000 ms commit interval).
 2. Policy values. Recommendation: approve all of them.
    - Stop time `after_start_line_ms` 60000. It lands mid-load: 90 s of the 150 s load remain, enough for C1's expected 30 to 45 s takeover.
    - Window 360000 and completion deadline 30000, as C01's.
    - Reuse of C01's profile: 4 messages per second for 150 s, processing delay 200 ms.
    - The C0 threshold of 27000000 microseconds, and the C1 window from 27000000 to 45000000, whose 15000 ms allowance is C01's policy value.
 3. A hung shutdown live. Recommendation: accept this risk by name, so the confirmation rule applies. The pod's grace is 30 s (`values.yaml` line 105). The worker's `Close` bound is also 30 s, but starts only after the stop is observed (c18-worker-stop plan, 3.6 step 4). So a `Close` that hangs is killed before its bound expires. So is an append that hangs inside a `Close` callback, which is Codex's P2 on pull request 617 (review comment 4726939688). Either way the subject writes no receipt, and the repeat is incomplete (`consumer_stop_receipt_missing`) rather than `timed_out`. The expected outcome counts such a repeat as not counted, so it can make a hypothesis inconclusive but never wrong. The smoke's idle closes ended about 1 to 2 s after the delete. The alternatives are a longer grace for C18, which is a chart contract change, or a shorter `Close` bound, which amends the approved worker plan. Neither is recommended.
+4. Mutation acceptance. This pull request changes two shared mutation inputs (`src/Parchwell.Scenarios/`). Two things follow:
+   - The qualification renewal's basis text, section 2 item 10, is a judgement. Recommendation: approve it as written.
+   - docs/agents/factory.md "Evidence pack" needs a passing `verifier-c5-mutation.yml` run on `main` that includes this merge. Dispatching it is your decision. Recommendation: one dispatch after merge, by the control session, before the C18 evidence pack.
 
 ## 12. Deferred work
 
@@ -398,7 +446,8 @@ The shutdown time with a message in progress is not measured. The expected outco
   - Keep the 30 s grace (question 3).
 
   Responsible: the `plan-pr` session for pull request 4. Gate it blocks: any C18 dispatch. Completion evidence: pull request 4 merged on `main`.
-- Pull request 5, the verifier. On the verdict path; deferred by the split order. It must emit the fields section 5.2 pins: `reassignment` from `stop_observed`, `shutdown_margin` with its two fields, the consumer-error count and `consumer_stop_receipt_missing`. It also needs mutation acceptance on `main` under docs/agents/factory.md "Evidence pack". Responsible: the `plan-pr` session for pull request 5. Gate it blocks: any C18 verdict. Completion evidence: pull request 5 merged on `main`.
+- Mutation acceptance for this pull request: a passing `verifier-c5-mutation.yml` run on `main` whose measured commit includes this merge (docs/agents/factory.md "Evidence pack"). On the verdict path; it cannot run before merge. Responsible: the control session, under Hari's dispatch decision (question 4). Cap: one dispatch; on failure, the control session posts the run and hands off to Hari. Gate it blocks: the C18 evidence pack. Completion evidence: the passing run linked on #613.
+- Pull request 5, the verifier. On the verdict path; deferred by the split order. It must emit the fields section 5.2 pins: `reassignment` from `stop_observed`, `shutdown_margin` with its two fields, the consumer-error count, the partition-event counts and `consumer_stop_receipt_missing`. It also needs mutation acceptance on `main` under docs/agents/factory.md "Evidence pack". Responsible: the `plan-pr` session for pull request 5. Gate it blocks: any C18 verdict. Completion evidence: pull request 5 merged on `main`.
 
 ## 13. Stop rule
 
