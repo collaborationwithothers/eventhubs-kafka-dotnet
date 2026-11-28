@@ -1,11 +1,16 @@
-Revision: 4
+Revision: 5
 
-Changes since revision 3, exactly as #613 [decision 7240022152](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7240022152) authorizes. That decision carries `Confirmation: thumbs-up required`, and `scripts/decision-log.py` reports Hari's thumbs-up at 2026-11-28T14:20:14Z, after the comment's post at 13:33:38Z.
+Changes since revision 4, exactly as [control action 7241739295](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7241739295) authorizes under point 2 of the standing decision:
+- The [revision 4 check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7240710683)'s finding 2: section 15 gains the check's literal lines S3 and S4.
+- The `{D}` placeholder in section 3.6 is replaced by the link to [decision 7239828212](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7239828212).
+- The thumbs-up time for decision 7239828212, in the revision 3 change list, becomes 15:46:30Z. The earlier reaction, at 13:18:16Z, was later removed, and Hari added it again at 15:46:30Z.
+
+Changes in revision 4 since revision 3, exactly as #613 [decision 7240022152](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7240022152) authorizes. That decision carries `Confirmation: thumbs-up required`, and `scripts/decision-log.py` reports Hari's thumbs-up at 2026-11-28T14:20:14Z, after the comment's post at 13:33:38Z.
 - The [revision 3 check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7239987270)'s finding 1: section 8 names the hung-`Close` risk, with a link to [decision 7239828212](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7239828212) point 3. Its finding 2's risk, the unbounded `Dispose` and stop-receipt write, goes in the same bullet, with a link to decision 7240022152 point 1.
 - Note N1: the punctuation fix in the `docs/blueprint.md` line 1322 replacement (3.6), with Hari's words unchanged.
 - The two stale statements: 10(c)'s first bullet and the stop rule's second bullet, now that pull request 617 has merged.
 
-Changes in revision 3 since revision 2, applying #613 [decision 7239828212](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7239828212), which carries `Confirmation: thumbs-up required`. `scripts/decision-log.py` reports Hari's thumbs-up at 2026-11-28T13:18:16Z, after the comment's post at 13:17:14Z.
+Changes in revision 3 since revision 2, applying #613 [decision 7239828212](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7239828212), which carries `Confirmation: thumbs-up required`. `scripts/decision-log.py` reports Hari's thumbs-up at 2026-11-28T15:46:30Z, after the comment's post at 13:17:14Z.
 - Points 1 to 4: section 11 states `None`, and section 11a records the answers. The expected outcome, the policy values, the accepted hung-shutdown risk and the mutation basis are approved as written.
 - Point 4: section 12's mutation entry becomes one campaign after pull request 5 merges: one dispatch of `verifier-c5-mutation-companion.yml`, then one of `verifier-c5-mutation.yml`, with the allowed failed-job re-runs. It gates the C18 evidence pack.
 - Point 5: `docs/blueprint.md` line 1322 joins the scope with the replacement text (3.6).
@@ -180,7 +185,7 @@ Comments that would become false are replaced exactly:
   - the replacements table gains the row C18, none, none.
 - chart-contract.md lines 11, 155 and 167 name C18 beside C01, C03 and C10.
 - c18-stop-smoke.md line 11: replace "because the worker and chart admit only C01, C03 and C10 today (`src/Parchwell.Enrichment/ConsumerProcessing/ConsumerProcessingOptions.cs` line 27; `_consumer.tpl` line 2)" with "because the worker and chart admitted only C01, C03 and C10 when it ran (`src/Parchwell.Enrichment/ConsumerProcessing/ConsumerProcessingOptions.cs` line 27 and `_consumer.tpl` line 2 at `fd55d88adaa00342deb91a956e5691c1101ef647`)".
-- docs/blueprint.md line 1322 ({D} point 5): replace "and commit on revoke versus lost (K-28) are tested" with "and commit on revoke (the revoked half of K-28) are tested; losing partitions while running (the lost half of K-28) is not tested, because neither configuration loses its partitions while running". In the same line, replace ", and each repeat records the time from the observed SIGTERM" with ". Each repeat records the time from the observed SIGTERM". Nothing else in the file changes.
+- docs/blueprint.md line 1322 ([decision 7239828212](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7239828212) point 5): replace "and commit on revoke versus lost (K-28) are tested" with "and commit on revoke (the revoked half of K-28) are tested; losing partitions while running (the lost half of K-28) is not tested, because neither configuration loses its partitions while running". In the same line, replace ", and each repeat records the time from the observed SIGTERM" with ". Each repeat records the time from the observed SIGTERM". Nothing else in the file changes.
 
 ## 4. Requirements
 
@@ -498,5 +503,7 @@ Estimate, dated 2026-11-28, from #510's comparable pull request (two scenarios, 
 Tools: `curl` of raw files at pinned tags, the GitHub REST API for the smoke artifact and pull request 617, and repository files at the base commit. All read 2026-11-28.
 - S1. Confluent.Kafka v2.16.0: `src/Confluent.Kafka/IConsumer.cs` lines 670 to 685; `src/Confluent.Kafka/Consumer.cs` lines 615 to 625.
 - S2. librdkafka v2.16.0 `INTRODUCTION.md` lines 978 to 994 ("High-level KafkaConsumer" termination).
+- S3. Confluent.Kafka v2.16.0 `src/Confluent.Kafka/Impl/SafeKafkaHandle.cs` line 191 (`RD_KAFKA_DESTROY_F_NO_CONSUMER_CLOSE`), by `curl` of the raw file at the tag.
+- S4. Microsoft Learn, "Apache Kafka client configurations for Azure Event Hubs" (https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-configurations, ms.date 2025-12-17), librdkafka "Consumer only" table: `session.timeout.ms` recommended 30000; `heartbeat.interval.ms` 3000, keep default. Read by the plan check by WebFetch on 2026-11-28.
 - `results/C01/2026-11-23.md` (C01 takeover times).
 - The C18 smoke artifact `c18-stop-smoke-46142138991-1`, read by the GitHub artifacts API.
