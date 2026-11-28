@@ -1,3 +1,5 @@
+// This file sits under Component/ only so the default mutation-only build drops it (the csproj removes Component/**/*.cs).
+// The tests still run in the normal build and in the full-suite mutation build. Why: docs/operations/verifier-mutation.md, section "Issue 602 fast-suite equivalence check".
 using System.Diagnostics;
 using System.Net;
 using System.Text;

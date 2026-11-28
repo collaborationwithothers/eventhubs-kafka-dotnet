@@ -233,9 +233,17 @@
     "tests/Parchwell.Verifier.Tests/A01/A01C3EvidenceRecorderTests.cs": "cf850b729c3889a7d6e1ddfde08d3ffd2411126973df581f04690d4ecd0d7e15",
     "tests/Parchwell.Verifier.Tests/A01/A01EvidenceRecorderTests.cs": "87f2be41c3a1b95ad17fb1cbe375d4fc18e4fda8597da07d3a22e9a6a9f60e04",
     "tests/Parchwell.Verifier.Tests/A01/WorkloadRecorderTests.cs": "e4555eeba7bee230f47f4e1ddb97338d81bf9fee640db453a082db3fac198e43",
-    "tests/Parchwell.Verifier.Tests/Authentication/VerifierKafkaTokenProviderRetryTests.cs": "a0e7bb8f7bab5f2f8324a7dbe266bdd5a28bacfabb3e6233c32fbf93f996a4c3",
     "tests/Parchwell.Verifier.Tests/B04/B04EvidenceRecorderTests.cs": "a2cca43cd9a7b5a7affde0597fdfa4f3e85e4d8a2a876d132492f47174d3f741",
-    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerArtifactTests.cs": "28cf665ef89eb08ac3f3e06cac26893e330a5077a26112d8a1e640f8bcf0665d",
+    "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/B10SweepHandlerTests.cs": "fbfb2cb1b669dcf0e5c65aeb2f26ec4dbb8221ca983058555b1f2333ae965d57",
+    "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumedMetadataCaptureTests.cs": "927ef2bf865ff0d1aa37eb6d5f683605e91625529a7bcccdae7bcd20d0481cfd",
+    "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumedRecordBudgetTests.cs": "e73e15bc016dba119acfd117ad833426ac4126f1bac7bfa59a62d9ccf650e37c",
+    "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumerArtifactTests.cs": "e72280e0a153957e5a0f3da3b232d6ad7fc08a5f89081946af05569301017899",
+    "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumerRecordNameTests.cs": "3599d7853e1803c06106f6b0c29ebcf16811687c330f94aa0600d80332d5df4b",
+    "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ProbeGateHostTests.cs": "0f233781b360938a2f3612fb89172aa4dce6e14e08b2a7ef30fcb84b8d405f8a",
+    "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ProbeV2StatisticsBudgetTests.cs": "3fb6a511c0bc5aef8b16c41d960b8def757e242facb891d81181e0308c985579",
+    "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/VerifierKafkaTokenProviderRetryTests.cs": "de1964b4ce15aadbaa5c9cc1a206e147ca5ffebc5117b89c6a5a9e9d762b339d",
+    "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/VerifyInputCapacityTests.cs": "3d18f76238ce406b8e4c46c9b949ef1dfec4a8da574927d914d14ced0de5e128",
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerArtifactTests.cs": "1e1045872418afce46975bccf9c34fa900cc0d382eeed85db2bd76f72a5bad03",
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerExtensionTests.cs": "c2aecccb15fc0132729bc6ad118dbba1bf55e7120603faac254fd4aff2de79fb",
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerHeldSetBoundaryTests.cs": "14cf1137a57b7133348d8b70deab5bb94ef2d9fc6bcc3fa032c97f2d073cd27a",
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerIoBoundaryTests.cs": "f6398f1657e628057c9d27182cb4575158299e67d99110ffe036fa261c518e3f",
@@ -243,7 +251,7 @@
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": "1e1d549b0d772e57aa0c3eea342ae40ec12b0ac3c50239c076ca5c4ea27b008b",
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerMembershipTests.cs": "e8c6f1db046d51fd238fcbd14090e81cb57b6432bc2dae440978315c16ce7c3e",
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerNumericBoundaryTests.cs": "e2947d57cea08d8cf59a1c3274869673dbbf2506436e45e8f858ab16dca9132e",
-    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRecordNameTests.cs": "1cbfadee609abe30add6ced5b5c27a989f6fc157da6f09055457edab3124dbcd",
+    "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRecordNameTests.cs": "c02b668bd4458d252fe0e35188548d397fc6519cee56bd0db1f6f2a95b20ebbc",
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRegistrationPathTests.cs": "475284527c17705e17ee53f53c698a625bbfcb68199fe13d8d40f9ce469d7fb7",
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotBoundaryTests.cs": "0ce940f1d58a7069cfa48b2cf251b4c3f3bd4ebd912c282a5d23e7cbd6c06a43",
     "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotFrontierTests.cs": "4148454c116657817051f198c709667864cfec4cc77700d541004423352affd8",
@@ -269,7 +277,7 @@
     "tests/Parchwell.Verifier.Tests/Host/B10RepeatVerifyTests.cs": "f4f613f02a059203ac4f98bc9c7fd4ce7460788e82a59243cb95c72c2354aa27",
     "tests/Parchwell.Verifier.Tests/Host/B10ScientificThreeJobLegacyReaderTests.cs": "e5febabc6ff4cff4409b45b7d1eea4140537a8a50ece2513997c6ac5a037b4f8",
     "tests/Parchwell.Verifier.Tests/Host/B10ScientificThreeJobOptionsTests.cs": "c5902b41f4aa867e92a438330321b4378500a21c72aee768e43a4b89516cf87d",
-    "tests/Parchwell.Verifier.Tests/Host/B10SweepHandlerTests.cs": "a22aac994165638c1825ddff184051fdf25919211e2dac0a058beb9374028e15",
+    "tests/Parchwell.Verifier.Tests/Host/B10SweepHandlerTests.cs": "724575142b83d593d2dab2c2f449f3d828e638eac0fe49d23ebca1dc2ae4d3fa",
     "tests/Parchwell.Verifier.Tests/Host/B10SweepLineHandlerTests.cs": "e13fd5d23258c7e2a8cde6c4ce832f1755e0fd9fe59056a0dd911943b0796bea",
     "tests/Parchwell.Verifier.Tests/Host/B10SweepLineOptionsTests.cs": "68552e06ce74768e517d6c83f84d7b4310205f3f3007cb53c10b6595753d920d",
     "tests/Parchwell.Verifier.Tests/Host/B10SweepOptionsTests.cs": "881823cf46b1e7517a367b66022faddf127133458960e4f20f0920d810921211",
@@ -284,7 +292,7 @@
     "tests/Parchwell.Verifier.Tests/Host/TelemetryWiringTests.cs": "ecfc325e82f9b8c787a158eede69ebb44188082d2ddcd29e3d7465568d474262",
     "tests/Parchwell.Verifier.Tests/Host/VerifierCompletionTests.cs": "9efb7c7121808be4879fc18556869aa1733bb5ff1ba2c930b26aa540ca1b009c",
     "tests/Parchwell.Verifier.Tests/Host/VerifierKafkaTokenProviderHostTests.cs": "9a301d3232e73ce0b1a634607a12fbee18b5da43b060909717e91147b0cfc061",
-    "tests/Parchwell.Verifier.Tests/Host/VerifyInputCapacityTests.cs": "1a4cfa11b8b6d7f1dcd7dbe494bc683c818dec4e23d94595fff3483823095d97",
+    "tests/Parchwell.Verifier.Tests/Host/VerifyInputCapacityTests.cs": "8a35dbfba4dff82d1a955c1633e5095cb8f9546f443a805114eb78270b7abbf0",
     "tests/Parchwell.Verifier.Tests/Host/VerifyRunDiagnosticTests.cs": "3d98c0a523717ff8fc4f544e6e405a870ad4a9646025f03eff7e2eb04081734e",
     "tests/Parchwell.Verifier.Tests/IdleObservation/IdleFixture.cs": "94b64bce8181ab4ed28be480db2f4facb217a4142dbe2b03ffece99ef217cdd8",
     "tests/Parchwell.Verifier.Tests/IdleObservation/IdleObservationJudgeHandlerTests.cs": "07546cd59da494d2684c67d8eb19a7fb64fd1f2250f8e87f7f32824ba2d149d6",
@@ -330,7 +338,7 @@
     "tests/Parchwell.Verifier.Tests/Phase/B10SweepEvidenceTests.cs": "cbb3b90fce2f3abb7cc90cbc72ad3dcf4f1eaf438b9b41ca352cfb35fbebb5c4",
     "tests/Parchwell.Verifier.Tests/Phase/PhaseWireCodecTests.cs": "2665e7f8b45a71ce7feb376eab80671f6386d0706033d20b6b4b603dcce7b2c5",
     "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateEvaluatorTests.cs": "d4c79c03d019ccf4c66105c19c8fd612ae991ea731682635c9c9638bcae91d11",
-    "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs": "a8c65916866ed4e5aec13753be1df94ff296d3ede9151df67131b5991bf06087",
+    "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs": "bde3b5f20bb8547ec3141ed99c4a26b00d3b9016f679356c22c1b40926f3d825",
     "tests/Parchwell.Verifier.Tests/Results/B10OneJobC0CodecTests.cs": "116ab54d5187bb2032d59ff4aa761d3aa5cce19121b81d0208f90f754b540072",
     "tests/Parchwell.Verifier.Tests/Results/B10ProducerObservationsCodecTests.cs": "08656a6c728f871d717b66a4c95f66b711a124ac13e318b61ce77b981d3f6a88",
     "tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs": "118397b15974d96dd16098088ef775b11cd9d734050d8e6653028b82fdb6d7d1",
@@ -351,7 +359,7 @@
     "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2OptionsTests.cs": "a99fd638b5cf4e702f883d69ddc8f012f039627bb8ad93e6055148149d7ccce9",
     "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2ScientificAssessmentTests.cs": "160312786e9d02dc94aef6a18f8a139e97610b33c5b2b9f800bf9e75e7a07441",
     "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2SmokeControlTests.cs": "a1a996a613a89654f1a9cc06e0f428cf09477bfa5fb601f0951155a8fef6dd9c",
-    "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2StatisticsBudgetTests.cs": "cd6e70b18d7a322a28b5efff61f89caa17167df13f1f05f5849b4d3ada96d074",
+    "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2StatisticsBudgetTests.cs": "482c19c6964277855646a628d6af6971d0a34bc760309fb303ca61120ba03880",
     "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionConfigurationJudgementTests.cs": "188a85e867716b20d510c8f975cebf59788ed24081b70f6146daebbaf124242b",
     "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionFixture.cs": "582489eda6d7141aa704809aa87d6b15f32f5fb8848a54d64e1e2b5161a78819",
     "tests/Parchwell.Verifier.Tests/SingleAction/SingleActionHandlerTests.cs": "d5e22d6e01afe5d84980198371f2190302d15028b73b9adbf628dfcf3060b68f",
@@ -374,8 +382,8 @@
     "tests/Parchwell.Verifier.Tests/Window/B10RunWindowTests.cs": "bcead6b4e5318a2b1b0a28e8aa01d3a94f5cdb9d2068c1da728a0bd6d7df029a",
     "tests/Parchwell.Verifier.Tests/Window/B10ScientificThreeJobStartLineCodecTests.cs": "91543ad9a424770553838dc4e9ffb91dc68f680ba281e38a4392255473d8e0d2",
     "tests/Parchwell.Verifier.Tests/Window/B10TrialStartLineCodecTests.cs": "b326978264d5bb953fdfb3f4db32871de86cc98ba7c14d5a04b1fa5d2defec06",
-    "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": "095df4bbd52e102e6fb11f24e4ad0c8c25932c370446c605562219468d446a91",
-    "tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs": "b7ea0fe4e83e3da2dc34790fb637cfa04d10fc1dd77cdc9b4dc03719b3ca2d4e",
+    "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": "84e8a350092ee589e12d2aeaaca92d0d6142f6e90c1e337f2788ce9e160066ef",
+    "tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs": "600db278ba8e15da477fae5c440e1643a6cadd7206ab17e339ba485d6f5a0147",
     "tests/Parchwell.Verifier.Tests/Window/MessageIdentityReaderTests.cs": "aa7bef8c9e41ac307fc9724e33381d4c33ccc6b7bcae8560429c0202a7d51710",
     "tests/Parchwell.Verifier.Tests/Window/RunWindowTests.cs": "c571be0a01efd0f523a727774ba5a6e517719dfb0d6c42c620cdb2be5a97d508",
     "tests/Parchwell.Verifier.Tests/Window/TokenPumpTests.cs": "44b672baffc7ee86dd2eefd45d515d3489301fe1e2dd659bf80555a9b5080b2f",
@@ -8923,11 +8931,83 @@
             ],
             "current_sha256": "a0eb99569dfaf7389399d6b293ad46743ab6780fb84d5e1d048b2ed04dcb9e21"
           },
+          "tests/Parchwell.Verifier.Tests/Authentication/VerifierKafkaTokenProviderRetryTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": null
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/B10SweepHandlerTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "fbfb2cb1b669dcf0e5c65aeb2f26ec4dbb8221ca983058555b1f2333ae965d57"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumedMetadataCaptureTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "927ef2bf865ff0d1aa37eb6d5f683605e91625529a7bcccdae7bcd20d0481cfd"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumedRecordBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "e73e15bc016dba119acfd117ad833426ac4126f1bac7bfa59a62d9ccf650e37c"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumerArtifactTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "e72280e0a153957e5a0f3da3b232d6ad7fc08a5f89081946af05569301017899"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumerRecordNameTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3599d7853e1803c06106f6b0c29ebcf16811687c330f94aa0600d80332d5df4b"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ProbeGateHostTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "0f233781b360938a2f3612fb89172aa4dce6e14e08b2a7ef30fcb84b8d405f8a"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ProbeV2StatisticsBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3fb6a511c0bc5aef8b16c41d960b8def757e242facb891d81181e0308c985579"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/VerifierKafkaTokenProviderRetryTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "de1964b4ce15aadbaa5c9cc1a206e147ca5ffebc5117b89c6a5a9e9d762b339d"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/VerifyInputCapacityTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3d18f76238ce406b8e4c46c9b949ef1dfec4a8da574927d914d14ced0de5e128"
+          },
+          "tests/Parchwell.Verifier.Tests/Consumer/ConsumerArtifactTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "1e1045872418afce46975bccf9c34fa900cc0d382eeed85db2bd76f72a5bad03"
+          },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
             ],
             "current_sha256": "1e1d549b0d772e57aa0c3eea342ae40ec12b0ac3c50239c076ca5c4ea27b008b"
+          },
+          "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRecordNameTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "c02b668bd4458d252fe0e35188548d397fc6519cee56bd0db1f6f2a95b20ebbc"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotFrontierTests.cs": {
             "basis": [
@@ -8952,6 +9032,18 @@
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
             ],
             "current_sha256": "9fa59549b29a2d4f520cec886580b5771e349f2570829f7f1e3eef6c9d9d069e"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/B10SweepHandlerTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "724575142b83d593d2dab2c2f449f3d828e638eac0fe49d23ebca1dc2ae4d3fa"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/VerifyInputCapacityTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "8a35dbfba4dff82d1a955c1633e5095cb8f9546f443a805114eb78270b7abbf0"
           },
           "tests/Parchwell.Verifier.Tests/Judge/B10FinalJudgeTests.cs": {
             "basis": [
@@ -9005,6 +9097,12 @@
             ],
             "current_sha256": "4bc73b322d2255f81efb78ba54ac7583920182043faa19b66c38e809d2652e15"
           },
+          "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "bde3b5f20bb8547ec3141ed99c4a26b00d3b9016f679356c22c1b40926f3d825"
+          },
           "tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs changes from c766e795d3d456822c23cdb3aa822ffac77fb150c02c2291a6e27cbddf96c629 to 118397b15974d96dd16098088ef775b11cd9d734050d8e6653028b82fdb6d7d1. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
@@ -9017,6 +9115,12 @@
             ],
             "current_sha256": "2206b3a4b381e3a5c2656c080bf21c180fa9a86410bfe893009b9e5b8440392b"
           },
+          "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2StatisticsBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "482c19c6964277855646a628d6af6971d0a34bc760309fb303ca61120ba03880"
+          },
           "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
@@ -9025,9 +9129,16 @@
           },
           "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": {
             "basis": [
-              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured.",
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
             ],
-            "current_sha256": "095df4bbd52e102e6fb11f24e4ad0c8c25932c370446c605562219468d446a91"
+            "current_sha256": "84e8a350092ee589e12d2aeaaca92d0d6142f6e90c1e337f2788ce9e160066ef"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "600db278ba8e15da477fae5c440e1643a6cadd7206ab17e339ba485d6f5a0147"
           },
           "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": {
             "basis": [
@@ -9572,11 +9683,83 @@
             ],
             "current_sha256": "a0eb99569dfaf7389399d6b293ad46743ab6780fb84d5e1d048b2ed04dcb9e21"
           },
+          "tests/Parchwell.Verifier.Tests/Authentication/VerifierKafkaTokenProviderRetryTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": null
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/B10SweepHandlerTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "fbfb2cb1b669dcf0e5c65aeb2f26ec4dbb8221ca983058555b1f2333ae965d57"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumedMetadataCaptureTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "927ef2bf865ff0d1aa37eb6d5f683605e91625529a7bcccdae7bcd20d0481cfd"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumedRecordBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "e73e15bc016dba119acfd117ad833426ac4126f1bac7bfa59a62d9ccf650e37c"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumerArtifactTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "e72280e0a153957e5a0f3da3b232d6ad7fc08a5f89081946af05569301017899"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumerRecordNameTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3599d7853e1803c06106f6b0c29ebcf16811687c330f94aa0600d80332d5df4b"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ProbeGateHostTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "0f233781b360938a2f3612fb89172aa4dce6e14e08b2a7ef30fcb84b8d405f8a"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ProbeV2StatisticsBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3fb6a511c0bc5aef8b16c41d960b8def757e242facb891d81181e0308c985579"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/VerifierKafkaTokenProviderRetryTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "de1964b4ce15aadbaa5c9cc1a206e147ca5ffebc5117b89c6a5a9e9d762b339d"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/VerifyInputCapacityTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3d18f76238ce406b8e4c46c9b949ef1dfec4a8da574927d914d14ced0de5e128"
+          },
+          "tests/Parchwell.Verifier.Tests/Consumer/ConsumerArtifactTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "1e1045872418afce46975bccf9c34fa900cc0d382eeed85db2bd76f72a5bad03"
+          },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
             ],
             "current_sha256": "1e1d549b0d772e57aa0c3eea342ae40ec12b0ac3c50239c076ca5c4ea27b008b"
+          },
+          "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRecordNameTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "c02b668bd4458d252fe0e35188548d397fc6519cee56bd0db1f6f2a95b20ebbc"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotFrontierTests.cs": {
             "basis": [
@@ -9601,6 +9784,18 @@
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
             ],
             "current_sha256": "9fa59549b29a2d4f520cec886580b5771e349f2570829f7f1e3eef6c9d9d069e"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/B10SweepHandlerTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "724575142b83d593d2dab2c2f449f3d828e638eac0fe49d23ebca1dc2ae4d3fa"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/VerifyInputCapacityTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "8a35dbfba4dff82d1a955c1633e5095cb8f9546f443a805114eb78270b7abbf0"
           },
           "tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs": {
             "basis": [
@@ -9634,6 +9829,18 @@
             ],
             "current_sha256": "4bc73b322d2255f81efb78ba54ac7583920182043faa19b66c38e809d2652e15"
           },
+          "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "bde3b5f20bb8547ec3141ed99c4a26b00d3b9016f679356c22c1b40926f3d825"
+          },
+          "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2StatisticsBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "482c19c6964277855646a628d6af6971d0a34bc760309fb303ca61120ba03880"
+          },
           "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
@@ -9642,9 +9849,16 @@
           },
           "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": {
             "basis": [
-              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured.",
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
             ],
-            "current_sha256": "095df4bbd52e102e6fb11f24e4ad0c8c25932c370446c605562219468d446a91"
+            "current_sha256": "84e8a350092ee589e12d2aeaaca92d0d6142f6e90c1e337f2788ce9e160066ef"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "600db278ba8e15da477fae5c440e1643a6cadd7206ab17e339ba485d6f5a0147"
           },
           "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": {
             "basis": [
@@ -10183,11 +10397,83 @@
             ],
             "current_sha256": "a0eb99569dfaf7389399d6b293ad46743ab6780fb84d5e1d048b2ed04dcb9e21"
           },
+          "tests/Parchwell.Verifier.Tests/Authentication/VerifierKafkaTokenProviderRetryTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": null
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/B10SweepHandlerTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "fbfb2cb1b669dcf0e5c65aeb2f26ec4dbb8221ca983058555b1f2333ae965d57"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumedMetadataCaptureTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "927ef2bf865ff0d1aa37eb6d5f683605e91625529a7bcccdae7bcd20d0481cfd"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumedRecordBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "e73e15bc016dba119acfd117ad833426ac4126f1bac7bfa59a62d9ccf650e37c"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumerArtifactTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "e72280e0a153957e5a0f3da3b232d6ad7fc08a5f89081946af05569301017899"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumerRecordNameTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3599d7853e1803c06106f6b0c29ebcf16811687c330f94aa0600d80332d5df4b"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ProbeGateHostTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "0f233781b360938a2f3612fb89172aa4dce6e14e08b2a7ef30fcb84b8d405f8a"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ProbeV2StatisticsBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3fb6a511c0bc5aef8b16c41d960b8def757e242facb891d81181e0308c985579"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/VerifierKafkaTokenProviderRetryTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "de1964b4ce15aadbaa5c9cc1a206e147ca5ffebc5117b89c6a5a9e9d762b339d"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/VerifyInputCapacityTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3d18f76238ce406b8e4c46c9b949ef1dfec4a8da574927d914d14ced0de5e128"
+          },
+          "tests/Parchwell.Verifier.Tests/Consumer/ConsumerArtifactTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "1e1045872418afce46975bccf9c34fa900cc0d382eeed85db2bd76f72a5bad03"
+          },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerJudgementTests.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7061521822 accepts the timing uncertainty of this exact shared C10 coverage change from PR #573."
             ],
             "current_sha256": "1e1d549b0d772e57aa0c3eea342ae40ec12b0ac3c50239c076ca5c4ea27b008b"
+          },
+          "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRecordNameTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "c02b668bd4458d252fe0e35188548d397fc6519cee56bd0db1f6f2a95b20ebbc"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotFrontierTests.cs": {
             "basis": [
@@ -10212,6 +10498,18 @@
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
             ],
             "current_sha256": "9fa59549b29a2d4f520cec886580b5771e349f2570829f7f1e3eef6c9d9d069e"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/B10SweepHandlerTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "724575142b83d593d2dab2c2f449f3d828e638eac0fe49d23ebca1dc2ae4d3fa"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/VerifyInputCapacityTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "8a35dbfba4dff82d1a955c1633e5095cb8f9546f443a805114eb78270b7abbf0"
           },
           "tests/Parchwell.Verifier.Tests/Judge/B10FinalJudgeTests.cs": {
             "basis": [
@@ -10264,6 +10562,12 @@
             ],
             "current_sha256": "4bc73b322d2255f81efb78ba54ac7583920182043faa19b66c38e809d2652e15"
           },
+          "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "bde3b5f20bb8547ec3141ed99c4a26b00d3b9016f679356c22c1b40926f3d825"
+          },
           "tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs changes from c766e795d3d456822c23cdb3aa822ffac77fb150c02c2291a6e27cbddf96c629 to 118397b15974d96dd16098088ef775b11cd9d734050d8e6653028b82fdb6d7d1. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
@@ -10276,6 +10580,12 @@
             ],
             "current_sha256": "2206b3a4b381e3a5c2656c080bf21c180fa9a86410bfe893009b9e5b8440392b"
           },
+          "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2StatisticsBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "482c19c6964277855646a628d6af6971d0a34bc760309fb303ca61120ba03880"
+          },
           "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
@@ -10284,9 +10594,16 @@
           },
           "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": {
             "basis": [
-              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured.",
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
             ],
-            "current_sha256": "095df4bbd52e102e6fb11f24e4ad0c8c25932c370446c605562219468d446a91"
+            "current_sha256": "84e8a350092ee589e12d2aeaaca92d0d6142f6e90c1e337f2788ce9e160066ef"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "600db278ba8e15da477fae5c440e1643a6cadd7206ab17e339ba485d6f5a0147"
           },
           "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": {
             "basis": [
@@ -10776,11 +11093,95 @@
             ],
             "current_sha256": "a0eb99569dfaf7389399d6b293ad46743ab6780fb84d5e1d048b2ed04dcb9e21"
           },
+          "tests/Parchwell.Verifier.Tests/Authentication/VerifierKafkaTokenProviderRetryTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": null
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/B10SweepHandlerTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "fbfb2cb1b669dcf0e5c65aeb2f26ec4dbb8221ca983058555b1f2333ae965d57"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumedMetadataCaptureTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "927ef2bf865ff0d1aa37eb6d5f683605e91625529a7bcccdae7bcd20d0481cfd"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumedRecordBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "e73e15bc016dba119acfd117ad833426ac4126f1bac7bfa59a62d9ccf650e37c"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumerArtifactTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "e72280e0a153957e5a0f3da3b232d6ad7fc08a5f89081946af05569301017899"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumerRecordNameTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3599d7853e1803c06106f6b0c29ebcf16811687c330f94aa0600d80332d5df4b"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ProbeGateHostTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "0f233781b360938a2f3612fb89172aa4dce6e14e08b2a7ef30fcb84b8d405f8a"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ProbeV2StatisticsBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3fb6a511c0bc5aef8b16c41d960b8def757e242facb891d81181e0308c985579"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/VerifierKafkaTokenProviderRetryTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "de1964b4ce15aadbaa5c9cc1a206e147ca5ffebc5117b89c6a5a9e9d762b339d"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/VerifyInputCapacityTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3d18f76238ce406b8e4c46c9b949ef1dfec4a8da574927d914d14ced0de5e128"
+          },
+          "tests/Parchwell.Verifier.Tests/Consumer/ConsumerArtifactTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "1e1045872418afce46975bccf9c34fa900cc0d382eeed85db2bd76f72a5bad03"
+          },
+          "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRecordNameTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "c02b668bd4458d252fe0e35188548d397fc6519cee56bd0db1f6f2a95b20ebbc"
+          },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerSnapshotFrontierTests.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7076000200 accepts the timing uncertainty from the exact shared-input change in the pull request for issue #529."
             ],
             "current_sha256": "4148454c116657817051f198c709667864cfec4cc77700d541004423352affd8"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/B10SweepHandlerTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "724575142b83d593d2dab2c2f449f3d828e638eac0fe49d23ebca1dc2ae4d3fa"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/VerifyInputCapacityTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "8a35dbfba4dff82d1a955c1633e5095cb8f9546f443a805114eb78270b7abbf0"
           },
           "tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs": {
             "basis": [
@@ -10800,11 +11201,30 @@
             ],
             "current_sha256": "4bc73b322d2255f81efb78ba54ac7583920182043faa19b66c38e809d2652e15"
           },
+          "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "bde3b5f20bb8547ec3141ed99c4a26b00d3b9016f679356c22c1b40926f3d825"
+          },
+          "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2StatisticsBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "482c19c6964277855646a628d6af6971d0a34bc760309fb303ca61120ba03880"
+          },
           "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": {
             "basis": [
-              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured.",
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
             ],
-            "current_sha256": "095df4bbd52e102e6fb11f24e4ad0c8c25932c370446c605562219468d446a91"
+            "current_sha256": "84e8a350092ee589e12d2aeaaca92d0d6142f6e90c1e337f2788ce9e160066ef"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "600db278ba8e15da477fae5c440e1643a6cadd7206ab17e339ba485d6f5a0147"
           },
           "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": {
             "basis": [
@@ -11739,14 +12159,75 @@
             ],
             "current_sha256": "1378e0c4323a993d167d1fd3d3c30b65539d46bcdf8e1fd352622da80c9e7e8a"
           },
+          "tests/Parchwell.Verifier.Tests/Authentication/VerifierKafkaTokenProviderRetryTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": null
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/B10SweepHandlerTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "fbfb2cb1b669dcf0e5c65aeb2f26ec4dbb8221ca983058555b1f2333ae965d57"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumedMetadataCaptureTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "927ef2bf865ff0d1aa37eb6d5f683605e91625529a7bcccdae7bcd20d0481cfd"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumedRecordBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "e73e15bc016dba119acfd117ad833426ac4126f1bac7bfa59a62d9ccf650e37c"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumerArtifactTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "e72280e0a153957e5a0f3da3b232d6ad7fc08a5f89081946af05569301017899"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumerRecordNameTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3599d7853e1803c06106f6b0c29ebcf16811687c330f94aa0600d80332d5df4b"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ProbeGateHostTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "0f233781b360938a2f3612fb89172aa4dce6e14e08b2a7ef30fcb84b8d405f8a"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ProbeV2StatisticsBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3fb6a511c0bc5aef8b16c41d960b8def757e242facb891d81181e0308c985579"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/VerifierKafkaTokenProviderRetryTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "de1964b4ce15aadbaa5c9cc1a206e147ca5ffebc5117b89c6a5a9e9d762b339d"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/VerifyInputCapacityTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3d18f76238ce406b8e4c46c9b949ef1dfec4a8da574927d914d14ced0de5e128"
+          },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerArtifactTests.cs": {
             "basis": [
               "Consumer-verifier main merge e8da5826deba9b42bbf5224c835ad728768544ef: upstream base SHA-256 None; upstream current SHA-256 28cf665ef89eb08ac3f3e06cac26893e330a5077a26112d8a1e640f8bcf0665d; archive pre-merge SHA-256 None; integrated 6a4625a32fc60f6fcc7b0147f2c50bff9ecef955 SHA-256 28cf665ef89eb08ac3f3e06cac26893e330a5077a26112d8a1e640f8bcf0665d. Values null indicate absent inputs.",
               "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes.",
               "No C5 target source changed. Cold-review corrections preserve malformed-record diagnostics and add boundary tests to each mutant full test population. Shared-input runtime risk remains accepted pending post-merge mutation acceptance; consumer evidence publication remains blocked until that run passes.",
-              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted."
+              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted.",
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
             ],
-            "current_sha256": "28cf665ef89eb08ac3f3e06cac26893e330a5077a26112d8a1e640f8bcf0665d"
+            "current_sha256": "1e1045872418afce46975bccf9c34fa900cc0d382eeed85db2bd76f72a5bad03"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerExtensionTests.cs": {
             "basis": [
@@ -11810,9 +12291,10 @@
             "basis": [
               "Consumer-verifier main merge e8da5826deba9b42bbf5224c835ad728768544ef: upstream base SHA-256 None; upstream current SHA-256 1cbfadee609abe30add6ced5b5c27a989f6fc157da6f09055457edab3124dbcd; archive pre-merge SHA-256 None; integrated 6a4625a32fc60f6fcc7b0147f2c50bff9ecef955 SHA-256 1cbfadee609abe30add6ced5b5c27a989f6fc157da6f09055457edab3124dbcd. Values null indicate absent inputs.",
               "No C5 target source changed. Cold-review corrections preserve malformed-record diagnostics and add boundary tests to each mutant full test population. Shared-input runtime risk remains accepted pending post-merge mutation acceptance; consumer evidence publication remains blocked until that run passes.",
-              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted."
+              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted.",
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
             ],
-            "current_sha256": "1cbfadee609abe30add6ced5b5c27a989f6fc157da6f09055457edab3124dbcd"
+            "current_sha256": "c02b668bd4458d252fe0e35188548d397fc6519cee56bd0db1f6f2a95b20ebbc"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRegistrationPathTests.cs": {
             "basis": [
@@ -11954,6 +12436,12 @@
             ],
             "current_sha256": "f5186aacb65df2dadc86eec4c514f1b1a533880733df39e5c3b19ff7fd46a321"
           },
+          "tests/Parchwell.Verifier.Tests/Host/B10SweepHandlerTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "724575142b83d593d2dab2c2f449f3d828e638eac0fe49d23ebca1dc2ae4d3fa"
+          },
           "tests/Parchwell.Verifier.Tests/Host/B10SweepLineHandlerTests.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943480585 accepts retaining the existing timing estimates for the exact 26 telemetry shared-source hashes in proposal https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943169468 and both original timing contexts. Added telemetry work may increase mutation runtime and the existing estimates may understate it; this is accepted timing risk, not timing neutrality or a new measurement. Original measured maps, evidence and estimates remain; full main-only C5 mutation acceptance is required.",
@@ -11994,6 +12482,12 @@
               "Source: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/e47e2847142e3054a872edcb2532b2a8a089bdfc/tests/Parchwell.Verifier.Tests/Host/VerifierCompletionTests.cs ; measured SHA-256 09fbab7f9fd35d873bbabf10aabe4651aea1083dc623a3fe0db033bc0ed38a4e; main SHA-256 09fbab7f9fd35d873bbabf10aabe4651aea1083dc623a3fe0db033bc0ed38a4e; current SHA-256 9efb7c7121808be4879fc18556869aa1733bb5ff1ba2c930b26aa540ca1b009c."
             ],
             "current_sha256": "9efb7c7121808be4879fc18556869aa1733bb5ff1ba2c930b26aa540ca1b009c"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/VerifyInputCapacityTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "8a35dbfba4dff82d1a955c1633e5095cb8f9546f443a805114eb78270b7abbf0"
           },
           "tests/Parchwell.Verifier.Tests/Judge/B04BaseCandidate.cs": {
             "basis": [
@@ -12130,6 +12624,12 @@
             ],
             "current_sha256": "f8bf4d6a7772032ad474c27cc5fee03bb38c2917e38a286c2c0e88f217c320ab"
           },
+          "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "bde3b5f20bb8547ec3141ed99c4a26b00d3b9016f679356c22c1b40926f3d825"
+          },
           "tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 None; current SHA-256 c766e795d3d456822c23cdb3aa822ffac77fb150c02c2291a6e27cbddf96c629. The retained estimates apply to unchanged owners only and can understate their runtime.",
@@ -12143,6 +12643,12 @@
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs changes from dd20e3a7e48a84c0cf6a2d93e4d96fe5147a9edf4cf48b0c5b1acd5bd3be212c to 2206b3a4b381e3a5c2656c080bf21c180fa9a86410bfe893009b9e5b8440392b. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
             ],
             "current_sha256": "2206b3a4b381e3a5c2656c080bf21c180fa9a86410bfe893009b9e5b8440392b"
+          },
+          "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2StatisticsBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "482c19c6964277855646a628d6af6971d0a34bc760309fb303ca61120ba03880"
           },
           "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": {
             "basis": [
@@ -12168,9 +12674,16 @@
           },
           "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": {
             "basis": [
-              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured.",
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
             ],
-            "current_sha256": "095df4bbd52e102e6fb11f24e4ad0c8c25932c370446c605562219468d446a91"
+            "current_sha256": "84e8a350092ee589e12d2aeaaca92d0d6142f6e90c1e337f2788ce9e160066ef"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "600db278ba8e15da477fae5c440e1643a6cadd7206ab17e339ba485d6f5a0147"
           },
           "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": {
             "basis": [
@@ -13184,14 +13697,75 @@
             ],
             "current_sha256": "1378e0c4323a993d167d1fd3d3c30b65539d46bcdf8e1fd352622da80c9e7e8a"
           },
+          "tests/Parchwell.Verifier.Tests/Authentication/VerifierKafkaTokenProviderRetryTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": null
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/B10SweepHandlerTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "fbfb2cb1b669dcf0e5c65aeb2f26ec4dbb8221ca983058555b1f2333ae965d57"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumedMetadataCaptureTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "927ef2bf865ff0d1aa37eb6d5f683605e91625529a7bcccdae7bcd20d0481cfd"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumedRecordBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "e73e15bc016dba119acfd117ad833426ac4126f1bac7bfa59a62d9ccf650e37c"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumerArtifactTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "e72280e0a153957e5a0f3da3b232d6ad7fc08a5f89081946af05569301017899"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumerRecordNameTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3599d7853e1803c06106f6b0c29ebcf16811687c330f94aa0600d80332d5df4b"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ProbeGateHostTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "0f233781b360938a2f3612fb89172aa4dce6e14e08b2a7ef30fcb84b8d405f8a"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ProbeV2StatisticsBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3fb6a511c0bc5aef8b16c41d960b8def757e242facb891d81181e0308c985579"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/VerifierKafkaTokenProviderRetryTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "de1964b4ce15aadbaa5c9cc1a206e147ca5ffebc5117b89c6a5a9e9d762b339d"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/VerifyInputCapacityTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3d18f76238ce406b8e4c46c9b949ef1dfec4a8da574927d914d14ced0de5e128"
+          },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerArtifactTests.cs": {
             "basis": [
               "Consumer-verifier main merge e8da5826deba9b42bbf5224c835ad728768544ef: upstream base SHA-256 None; upstream current SHA-256 28cf665ef89eb08ac3f3e06cac26893e330a5077a26112d8a1e640f8bcf0665d; archive pre-merge SHA-256 None; integrated 6a4625a32fc60f6fcc7b0147f2c50bff9ecef955 SHA-256 28cf665ef89eb08ac3f3e06cac26893e330a5077a26112d8a1e640f8bcf0665d. Values null indicate absent inputs.",
               "No C5 target source changed. Added verifier unit tests increase runtime in every mutant full test population, and the explicit token installer updates a shared dependency. Input renewal accepts this risk pending the required post-merge mutation acceptance run; no consumer evidence pack may publish before it passes.",
               "No C5 target source changed. Cold-review corrections preserve malformed-record diagnostics and add boundary tests to each mutant full test population. Shared-input runtime risk remains accepted pending post-merge mutation acceptance; consumer evidence publication remains blocked until that run passes.",
-              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted."
+              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted.",
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
             ],
-            "current_sha256": "28cf665ef89eb08ac3f3e06cac26893e330a5077a26112d8a1e640f8bcf0665d"
+            "current_sha256": "1e1045872418afce46975bccf9c34fa900cc0d382eeed85db2bd76f72a5bad03"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerExtensionTests.cs": {
             "basis": [
@@ -13255,9 +13829,10 @@
             "basis": [
               "Consumer-verifier main merge e8da5826deba9b42bbf5224c835ad728768544ef: upstream base SHA-256 None; upstream current SHA-256 1cbfadee609abe30add6ced5b5c27a989f6fc157da6f09055457edab3124dbcd; archive pre-merge SHA-256 None; integrated 6a4625a32fc60f6fcc7b0147f2c50bff9ecef955 SHA-256 1cbfadee609abe30add6ced5b5c27a989f6fc157da6f09055457edab3124dbcd. Values null indicate absent inputs.",
               "No C5 target source changed. Cold-review corrections preserve malformed-record diagnostics and add boundary tests to each mutant full test population. Shared-input runtime risk remains accepted pending post-merge mutation acceptance; consumer evidence publication remains blocked until that run passes.",
-              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted."
+              "Approved consumer-verifier plan revision 5 acceptance command 5: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/blob/a4c5ea1bec8630359a31d9b096416b2204f85dc7/items/506/plan-consumer-verifier.md ; approval: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6901013311 ; authentication amendment: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/506#issuecomment-6907709590 ; upstream renewal and evidence: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/pull/526 . The additional full-population runtime risk is accepted pending the required post-merge main acceptance run; no consumer evidence pack may publish before it passes. No timing measurement or neutrality is asserted.",
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
             ],
-            "current_sha256": "1cbfadee609abe30add6ced5b5c27a989f6fc157da6f09055457edab3124dbcd"
+            "current_sha256": "c02b668bd4458d252fe0e35188548d397fc6519cee56bd0db1f6f2a95b20ebbc"
           },
           "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRegistrationPathTests.cs": {
             "basis": [
@@ -13422,9 +13997,10 @@
             "basis": [
               "Change-specific assessment: Adds capture validation and a new capture test, fixture handling and bounded row-limit settings. Existing large-record test still reads records; bounds on capture storage do not prove a timing bound.",
               "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
-              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance.",
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
             ],
-            "current_sha256": "a22aac994165638c1825ddff184051fdf25919211e2dac0a058beb9374028e15"
+            "current_sha256": "724575142b83d593d2dab2c2f449f3d828e638eac0fe49d23ebca1dc2ae4d3fa"
           },
           "tests/Parchwell.Verifier.Tests/Host/B10SweepLineHandlerTests.cs": {
             "basis": [
@@ -13485,9 +14061,10 @@
             "basis": [
               "Change-specific assessment: Explicitly enables capture with one-byte row/chunk/total settings and checks a `row_limit` gap. This limits retained bytes but still runs capture observation on records; the final local profile is not a historical mutant timing comparison.",
               "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
-              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance."
+              "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance.",
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
             ],
-            "current_sha256": "1a4cfa11b8b6d7f1dcd7dbe494bc683c818dec4e23d94595fff3483823095d97"
+            "current_sha256": "8a35dbfba4dff82d1a955c1633e5095cb8f9546f443a805114eb78270b7abbf0"
           },
           "tests/Parchwell.Verifier.Tests/Judge/B04BaseCandidate.cs": {
             "basis": [
@@ -13624,6 +14201,12 @@
             ],
             "current_sha256": "f8bf4d6a7772032ad474c27cc5fee03bb38c2917e38a286c2c0e88f217c320ab"
           },
+          "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "bde3b5f20bb8547ec3141ed99c4a26b00d3b9016f679356c22c1b40926f3d825"
+          },
           "tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637 The exact checkpoint input is covered by the accepted timing risk. Original measured SHA-256 None; current SHA-256 c766e795d3d456822c23cdb3aa822ffac77fb150c02c2291a6e27cbddf96c629. The retained estimates apply to unchanged owners only and can understate their runtime.",
@@ -13637,6 +14220,12 @@
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7023139739 accepts retained runtime uncertainty after the exact review corrections. tests/Parchwell.Verifier.Tests/Results/VerifierResultCodecTests.cs changes from dd20e3a7e48a84c0cf6a2d93e4d96fe5147a9edf4cf48b0c5b1acd5bd3be212c to 2206b3a4b381e3a5c2656c080bf21c180fa9a86410bfe893009b9e5b8440392b. The original measurement and this owner\u2019s target and selector are preserved; the revised verifier/test workload can take longer."
             ],
             "current_sha256": "2206b3a4b381e3a5c2656c080bf21c180fa9a86410bfe893009b9e5b8440392b"
+          },
+          "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2StatisticsBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "482c19c6964277855646a628d6af6971d0a34bc760309fb303ca61120ba03880"
           },
           "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": {
             "basis": [
@@ -13670,9 +14259,16 @@
               "Change-specific assessment: New tests exercise serialization, bounds, gaps and failures; 18 cases in final profile total 0.359 seconds of xUnit duration in that one unmutated run. Mutant-dependent cost is unmeasured.",
               "Hari explicitly accepted this exact input difference and its risk of making the retained historical estimates too low: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6908188901; exact scope and measured/current hashes: https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6902818914. This is accepted timing uncertainty, not evidence of timing neutrality or a new runtime measurement.",
               "Preserve the original unchanged-owner source, evidence, shard selection, estimate, provisional status and measured-input binding. This assessment does not renew either changed target itself, extend nonrenewable inputs or exceptions, or replace mutation acceptance.",
-              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured.",
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
             ],
-            "current_sha256": "095df4bbd52e102e6fb11f24e4ad0c8c25932c370446c605562219468d446a91"
+            "current_sha256": "84e8a350092ee589e12d2aeaaca92d0d6142f6e90c1e337f2788ce9e160066ef"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "600db278ba8e15da477fae5c440e1643a6cadd7206ab17e339ba485d6f5a0147"
           },
           "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": {
             "basis": [
@@ -14191,6 +14787,90 @@
             ],
             "current_sha256": "a0eb99569dfaf7389399d6b293ad46743ab6780fb84d5e1d048b2ed04dcb9e21"
           },
+          "tests/Parchwell.Verifier.Tests/Authentication/VerifierKafkaTokenProviderRetryTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": null
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/B10SweepHandlerTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "fbfb2cb1b669dcf0e5c65aeb2f26ec4dbb8221ca983058555b1f2333ae965d57"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumedMetadataCaptureTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "927ef2bf865ff0d1aa37eb6d5f683605e91625529a7bcccdae7bcd20d0481cfd"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumedRecordBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "e73e15bc016dba119acfd117ad833426ac4126f1bac7bfa59a62d9ccf650e37c"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumerArtifactTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "e72280e0a153957e5a0f3da3b232d6ad7fc08a5f89081946af05569301017899"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ConsumerRecordNameTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3599d7853e1803c06106f6b0c29ebcf16811687c330f94aa0600d80332d5df4b"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ProbeGateHostTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "0f233781b360938a2f3612fb89172aa4dce6e14e08b2a7ef30fcb84b8d405f8a"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/ProbeV2StatisticsBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3fb6a511c0bc5aef8b16c41d960b8def757e242facb891d81181e0308c985579"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/VerifierKafkaTokenProviderRetryTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "de1964b4ce15aadbaa5c9cc1a206e147ca5ffebc5117b89c6a5a9e9d762b339d"
+          },
+          "tests/Parchwell.Verifier.Tests/Component/MutationExcluded/VerifyInputCapacityTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "3d18f76238ce406b8e4c46c9b949ef1dfec4a8da574927d914d14ced0de5e128"
+          },
+          "tests/Parchwell.Verifier.Tests/Consumer/ConsumerArtifactTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "1e1045872418afce46975bccf9c34fa900cc0d382eeed85db2bd76f72a5bad03"
+          },
+          "tests/Parchwell.Verifier.Tests/Consumer/ConsumerRecordNameTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "c02b668bd4458d252fe0e35188548d397fc6519cee56bd0db1f6f2a95b20ebbc"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/B10SweepHandlerTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "724575142b83d593d2dab2c2f449f3d828e638eac0fe49d23ebca1dc2ae4d3fa"
+          },
+          "tests/Parchwell.Verifier.Tests/Host/VerifyInputCapacityTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "8a35dbfba4dff82d1a955c1633e5095cb8f9546f443a805114eb78270b7abbf0"
+          },
           "tests/Parchwell.Verifier.Tests/Judge/ConsumerPhaseJudgeTests.cs": {
             "basis": [
               "Issue 601 builds the ConsumerPhaseJudgeTests inputs per test instead of in static Lazy caches. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-27: 87.66 s and 87.97 s before, 89.01 s and 89.44 s after. Timing risk accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/601#issuecomment-7213032814."
@@ -14209,11 +14889,30 @@
             ],
             "current_sha256": "4bc73b322d2255f81efb78ba54ac7583920182043faa19b66c38e809d2652e15"
           },
+          "tests/Parchwell.Verifier.Tests/ProbeGate/ProbeGateHostTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "bde3b5f20bb8547ec3141ed99c4a26b00d3b9016f679356c22c1b40926f3d825"
+          },
+          "tests/Parchwell.Verifier.Tests/SingleAction/ProbeV2StatisticsBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "482c19c6964277855646a628d6af6971d0a34bc760309fb303ca61120ba03880"
+          },
           "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": {
             "basis": [
-              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
+              "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured.",
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
             ],
-            "current_sha256": "095df4bbd52e102e6fb11f24e4ad0c8c25932c370446c605562219468d446a91"
+            "current_sha256": "84e8a350092ee589e12d2aeaaca92d0d6142f6e90c1e337f2788ce9e160066ef"
+          },
+          "tests/Parchwell.Verifier.Tests/Window/ConsumedRecordBudgetTests.cs": {
+            "basis": [
+              "Issue 602 moves 12 slow test methods out of the default mutation-only build into Component/MutationExcluded, which only the full-suite mode compiles; no target, runner or workflow changed. In the fast suite, removing tests can only shorten each mutant's test run; the full suite builds the same tests as before the move. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-28: 75.82 s and 76.22 s before, 30.50 s and 33.50 s after. Equivalence check on campaign 46149027300 at 7639d408: equivalent; Timeout identities outside the proof accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7224014847."
+            ],
+            "current_sha256": "600db278ba8e15da477fae5c440e1643a6cadd7206ab17e339ba485d6f5a0147"
           },
           "tests/Parchwell.Verifier.Tests/Window/WindowConsumerTests.cs": {
             "basis": [

@@ -9,7 +9,7 @@ using Xunit;
 namespace Parchwell.Verifier.Tests.Window;
 
 #pragma warning disable CA1707
-public sealed class ConsumedMetadataCaptureTests
+public sealed partial class ConsumedMetadataCaptureTests
 {
     private static RunWindow Window() => new([], new Dictionary<int, long> { [0] = 2 }, [new(0, 0, 2)], [], true);
 
@@ -99,35 +99,6 @@ public sealed class ConsumedMetadataCaptureTests
         overflow.Observe(new ConsumeResult<byte[], byte[]>()); overflow.Finish(false);
         using var overflowDoc = JsonDocument.Parse(overflowStore.Objects.Single(p => p.Key.EndsWith("capture.json", StringComparison.Ordinal)).Value);
         Assert.Equal("byte_limit", overflowDoc.RootElement.GetProperty("gaps")[0].GetProperty("code").GetString());
-    }
-
-    [Fact]
-    public void ConsumedMetadata_JsonEscapingAndDescriptorCountAreBounded()
-    {
-        var options = VerifierHostTestOptions.ValidOptions("verify"); options.ConsumedMetadata!.MaxRowBytes = 1024;
-        var store = new Store(); var capture = ConsumedMetadataCapture.TryStart(options, store, Window(), 0, "ordinary", 1)!;
-        capture.Observe(new ConsumeResult<byte[], byte[]> { Topic = "document-events", Partition = new Partition(0), Offset = new Offset(0),
-            Message = new Message<byte[], byte[]> { Key = [], Value = [], Headers = new Headers { { new string('"', 1024), [] } } } });
-        capture.Finish(true);
-        using var failed = JsonDocument.Parse(store.Objects.Single(p => p.Key.EndsWith("capture.json", StringComparison.Ordinal)).Value);
-        Assert.Equal("row_limit", failed.RootElement.GetProperty("gaps")[0].GetProperty("code").GetString());
-
-        options = VerifierHostTestOptions.ValidOptions("verify");
-        var sampleStore = new Store(); var record = new ConsumeResult<byte[], byte[]> { Topic = "document-events", Partition = new Partition(0), Offset = new Offset(0),
-            Message = new Message<byte[], byte[]> { Key = [], Value = [] } };
-        var sample = ConsumedMetadataCapture.TryStart(options, sampleStore, Window(), 0, "ordinary", 1)!;
-        sample.Observe(record); sample.Finish(true);
-        long size = sampleStore.Objects.Single(p => p.Key.EndsWith(".jsonl", StringComparison.Ordinal)).Value.LongLength;
-        // Ordinals through 1021 add up to three bytes relative to ordinal zero.
-        options.ConsumedMetadata!.MaxRowBytes = size + 3; options.ConsumedMetadata.MaxChunkBytes = size + 3;
-        options.ConsumedMetadata.MaxBytes = (size + 3) * 1022;
-        var boundedStore = new Store(); var bounded = ConsumedMetadataCapture.TryStart(options, boundedStore, Window(), 0, "ordinary", 1)!;
-        for (int i = 0; i < 1022; i++) bounded.Observe(record);
-        bounded.Finish(true);
-        using var manifest = JsonDocument.Parse(boundedStore.Objects.Single(p => p.Key.EndsWith("capture.json", StringComparison.Ordinal)).Value);
-        Assert.Equal(1021, manifest.RootElement.GetProperty("chunks").GetArrayLength());
-        Assert.Equal(1021, manifest.RootElement.GetProperty("first_missing_ordinal").GetInt64());
-        Assert.Equal("byte_limit", manifest.RootElement.GetProperty("gaps")[0].GetProperty("code").GetString());
     }
 
     [Fact]
