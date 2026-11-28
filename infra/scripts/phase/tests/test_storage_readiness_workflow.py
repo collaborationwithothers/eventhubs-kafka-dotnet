@@ -33,6 +33,7 @@ class StorageReadinessWorkflowTests(unittest.TestCase):
         self.assertEqual({
             ('archive-smoke.yml', 'smoke'): None,
             ('b10-abrupt-trial.yml', 'trial'): None,
+            ('c18-stop-smoke.yml', 'smoke'): None,
             ('cluster-smoke.yml', 'smoke'): 'no wait',
             ('scenario.yml', 'batch'): None,
             ('scenario.yml', 'full-C0'): None,

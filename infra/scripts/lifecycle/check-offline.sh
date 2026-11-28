@@ -51,7 +51,7 @@ def load_yaml(text):
 
 def check_queue(document, filename):
     expected = {'group': 'parchwell-ephemeral', 'queue': 'max', 'cancel-in-progress': 'false'}
-    required = filename in ('cluster-smoke.yml', 'sweeper.yml', 'b10-abrupt-trial.yml', 'archive-smoke.yml')
+    required = filename in ('cluster-smoke.yml', 'sweeper.yml', 'b10-abrupt-trial.yml', 'archive-smoke.yml', 'c18-stop-smoke.yml')
     allowed = required or filename == 'scenario.yml' and isinstance(document.get('concurrency'), dict) and 'queue' in document['concurrency']
     if allowed and document.get('concurrency') != expected:
         raise ValueError(f'{filename}: concurrency must be exactly {expected}')
@@ -160,10 +160,11 @@ run cmp .github/workflows/sweeper.yml docs/operations/workflows/sweeper.yml.txt
 run cmp .github/workflows/scenario.yml docs/operations/workflows/scenario.yml.txt
 run cmp .github/workflows/b10-abrupt-trial.yml docs/operations/workflows/b10-abrupt-trial.yml.txt
 run cmp .github/workflows/archive-smoke.yml docs/operations/workflows/archive-smoke.yml.txt
-run actionlint -ignore '^unexpected key "queue" for "concurrency" section\. expected one of "cancel-in-progress", "group"$' .github/workflows/cluster-smoke.yml .github/workflows/sweeper.yml .github/workflows/b10-abrupt-trial.yml .github/workflows/archive-smoke.yml
+run cmp .github/workflows/c18-stop-smoke.yml docs/operations/workflows/c18-stop-smoke.yml.txt
+run actionlint -ignore '^unexpected key "queue" for "concurrency" section\. expected one of "cancel-in-progress", "group"$' .github/workflows/cluster-smoke.yml .github/workflows/sweeper.yml .github/workflows/b10-abrupt-trial.yml .github/workflows/archive-smoke.yml .github/workflows/c18-stop-smoke.yml
 for workflow in .github/workflows/*.yml; do
   case "$workflow" in
-    .github/workflows/cluster-smoke.yml|.github/workflows/sweeper.yml|.github/workflows/b10-abrupt-trial.yml|.github/workflows/archive-smoke.yml) continue ;;
+    .github/workflows/cluster-smoke.yml|.github/workflows/sweeper.yml|.github/workflows/b10-abrupt-trial.yml|.github/workflows/archive-smoke.yml|.github/workflows/c18-stop-smoke.yml) continue ;;
   esac
   if [ "$workflow" = .github/workflows/scenario.yml ] && "$python" -c 'import sys,yaml; sys.exit("queue" not in yaml.load(open(sys.argv[1]), Loader=yaml.BaseLoader).get("concurrency", {}))' "$workflow"; then
     run actionlint -ignore '^unexpected key "queue" for "concurrency" section\. expected one of "cancel-in-progress", "group"$' "$workflow"
