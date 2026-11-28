@@ -1,6 +1,11 @@
-Revision: 3
+Revision: 4
 
-Changes since revision 2, applying #613 [decision 7239828212](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7239828212), which carries `Confirmation: thumbs-up required`. `scripts/decision-log.py` reports Hari's thumbs-up at 2026-11-28T13:18:16Z, after the comment's post at 13:17:14Z.
+Changes since revision 3, exactly as #613 [decision 7240022152](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7240022152) authorizes. That decision carries `Confirmation: thumbs-up required`, and `scripts/decision-log.py` reports Hari's thumbs-up at 2026-11-28T14:20:14Z, after the comment's post at 13:33:38Z.
+- The [revision 3 check](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7239987270)'s finding 1: section 8 names the hung-`Close` risk, with a link to [decision 7239828212](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7239828212) point 3. Its finding 2's risk, the unbounded `Dispose` and stop-receipt write, goes in the same bullet, with a link to decision 7240022152 point 1.
+- Note N1: the punctuation fix in the `docs/blueprint.md` line 1322 replacement (3.6), with Hari's words unchanged.
+- The two stale statements: 10(c)'s first bullet and the stop rule's second bullet, now that pull request 617 has merged.
+
+Changes in revision 3 since revision 2, applying #613 [decision 7239828212](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7239828212), which carries `Confirmation: thumbs-up required`. `scripts/decision-log.py` reports Hari's thumbs-up at 2026-11-28T13:18:16Z, after the comment's post at 13:17:14Z.
 - Points 1 to 4: section 11 states `None`, and section 11a records the answers. The expected outcome, the policy values, the accepted hung-shutdown risk and the mutation basis are approved as written.
 - Point 4: section 12's mutation entry becomes one campaign after pull request 5 merges: one dispatch of `verifier-c5-mutation-companion.yml`, then one of `verifier-c5-mutation.yml`, with the allowed failed-job re-runs. It gates the C18 evidence pack.
 - Point 5: `docs/blueprint.md` line 1322 joins the scope with the replacement text (3.6).
@@ -175,7 +180,7 @@ Comments that would become false are replaced exactly:
   - the replacements table gains the row C18, none, none.
 - chart-contract.md lines 11, 155 and 167 name C18 beside C01, C03 and C10.
 - c18-stop-smoke.md line 11: replace "because the worker and chart admit only C01, C03 and C10 today (`src/Parchwell.Enrichment/ConsumerProcessing/ConsumerProcessingOptions.cs` line 27; `_consumer.tpl` line 2)" with "because the worker and chart admitted only C01, C03 and C10 when it ran (`src/Parchwell.Enrichment/ConsumerProcessing/ConsumerProcessingOptions.cs` line 27 and `_consumer.tpl` line 2 at `fd55d88adaa00342deb91a956e5691c1101ef647`)".
-- docs/blueprint.md line 1322 ({D} point 5): replace "and commit on revoke versus lost (K-28) are tested" with "and commit on revoke (the revoked half of K-28) are tested; losing partitions while running (the lost half of K-28) is not tested, because neither configuration loses its partitions while running". Nothing else in the file changes.
+- docs/blueprint.md line 1322 ({D} point 5): replace "and commit on revoke versus lost (K-28) are tested" with "and commit on revoke (the revoked half of K-28) are tested; losing partitions while running (the lost half of K-28) is not tested, because neither configuration loses its partitions while running". In the same line, replace ", and each repeat records the time from the observed SIGTERM" with ". Each repeat records the time from the observed SIGTERM". Nothing else in the file changes.
 
 ## 4. Requirements
 
@@ -411,10 +416,11 @@ Each assertion here pins a list that this plan extends. The implementer changes 
 
 ## 8. Deployment assumptions
 
-None for this pull request: no run of C18 is possible until pull requests 4 and 5. The live facts the expected outcome relies on come from the C18 smoke and from C01's result (section 5.1). Each is stated with how its evidence was taken:
+No run of C18 is possible until pull requests 4 and 5. One assumption about the deployed runtime has no test; Hari accepted it by name (last bullet). The live facts the expected outcome relies on come from the C18 smoke and from C01's result (section 5.1). Each is stated with how its evidence was taken:
 - SIGTERM reaches the worker: smoke run 46142138991, fresh connection, idle member, 3 trials.
 - No replacement pod: the same run.
 - Removal after the session timeout when no leave request is sent: C01 run 45124695288, fresh connection, under C01's load of 4 messages per second.
+- A hung `Close`, or a hung append inside a `Close` callback, is killed by the pod's 30 s grace (`charts/parchwell/values.yaml` line 105) before the worker's 30 s `Close` bound (`ConsumerProcessingWorker.cs` line 116) expires, because the bound starts only after the stop is observed. Likewise, `Dispose`, which has no time limit (`ConsumerProcessingWorker.cs` lines 113 to 120), or the stop-receipt write after it (lines 159 to 166) can still be running when the grace ends. In each case the subject writes no stop receipt, and the repeat is incomplete (`consumer_stop_receipt_missing`) and not counted. No live evidence; inference from the code. Accepted by name in [decision 7239828212](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7239828212) point 3 (`Close` and its callbacks) and [decision 7240022152](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/613#issuecomment-7240022152) point 1 (`Dispose` and the receipt write).
 
 The shutdown time with a message in progress is not measured. The expected outcome records it (`shutdown_margin`); it decides nothing.
 
@@ -436,7 +442,7 @@ The shutdown time with a message in progress is not measured. The expected outco
 (b) Stricter than the parent: the amendment lets a scenario omit the shutdown mode (default `close`). This plan requires C18 to name it in both configurations, so the file states what each configuration tests. It also proposes H3 and H4, which turn K-05's commit half into decision rules. The fold row names K-05 and K-28 as tested but gives no rule.
 
 (c) Tests that depend on code, data or behaviour neither on `main` nor in this pull request:
-- R4's plan inputs exist only in pull request 617 (PR 617, `ConsumerProcessingPlan.cs` lines 19 to 24). Checked against that source at `cc732a70`. Implementation waits for its merge (section 1).
+- R4's plan inputs came from pull request 617, which merged at `7639d408`. They are on `main` at `ConsumerProcessingPlan.cs` lines 20 to 24.
 - The expected outcome's new evidence fields come from pull request 5. No test in this pull request reads them.
 
 ## 11. Open questions for Hari
@@ -480,7 +486,7 @@ The questions as put, for the record:
 
 The implementer stops and hands off under AGENTS.md GOVERNANCE "Handoffs" in any of these cases:
 - it needs to change a contract in section 3, a requirement in section 4, the scope in section 2, or one byte of section 5.2;
-- pull request 617 has not merged;
+- the plan inputs of pull request 617 are not on `main` as 3.3 states;
 - the plan inputs on `main` differ from 3.3.
 
 ## 14. Size estimate
