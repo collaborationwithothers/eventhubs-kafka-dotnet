@@ -1790,6 +1790,13 @@ def main(argv):
         if len(argv) == 2 and argv[0] == "resolve":
             print(json.dumps(sorted({answer[4][0] for answer in socket.getaddrinfo(argv[1], 443, type=socket.SOCK_STREAM)})))
             return 0
+        smoke = {"prepare-c18-stop-smoke": "prepare", "run-c18-stop-smoke": "run", "collect-c18-stop-smoke": "collect"}
+        if len(argv) == 1 and argv[0] in smoke:
+            source = Path(__file__).with_name("c18_stop_smoke.py")
+            spec = importlib.util.spec_from_file_location("parchwell_c18_stop_smoke", source)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return getattr(module.Smoke(Phase(), Failure), smoke[argv[0]])()
         if not argv or argv[0] not in commands or len(argv) != commands[argv[0]][0] + 1:
             raise Failure("unsupported command or argument count")
         return getattr(Phase(), commands[argv[0]][1])(*argv[1:])

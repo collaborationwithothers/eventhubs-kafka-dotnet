@@ -493,6 +493,30 @@ mutation_only_test() {
         ${tier_args[@]+"${tier_args[@]}"} || { cat "$results/test.log" >&2; return 1; }
 }
 
+# Builds and tests the full-suite configuration of the C5 mutation run (issue 602): the mutation-only build plus
+# the files under Component/MutationExcluded, which the daily full-suite campaign compiles
+# (ParchwellVerifierMutationFullSuite in the Verifier test project). Without these stages a moved test that fails
+# or stops compiling only in that configuration would make every daily campaign incomplete unseen. Same
+# directories, filter and failure handling as the two mutation-only stages above.
+full_suite_build() {
+    local artifacts="$verification_results/full-suite-build"
+    run_logged "Full-suite mutation Verifier test build" "$verification_results/full-suite-build.log" dotnet build \
+        tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release \
+        --artifacts-path "$artifacts" -p:RestoreLockedMode=true -p:ParchwellVerifierMutationOnly=true \
+        -p:ParchwellVerifierMutationFullSuite=true \
+        ${build_cpu_args[@]+"${build_cpu_args[@]}"} || return $?
+}
+
+full_suite_test() {
+    local results="$verification_results/full-suite-tests"
+    mkdir -p "$results" || return $?
+    run_logged "Full-suite mutation Verifier tests" "$results/test.log" dotnet test \
+        --project tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj --configuration Release \
+        -p:RestoreLockedMode=true -p:ParchwellVerifierMutationOnly=true -p:ParchwellVerifierMutationFullSuite=true \
+        --minimum-expected-tests 1 --results-directory "$results" -- \
+        ${tier_args[@]+"${tier_args[@]}"} || { cat "$results/test.log" >&2; return 1; }
+}
+
 # True when no --project option was given or the named project was given.
 is_selected() {
     local name=$1 candidate
@@ -598,6 +622,11 @@ if is_selected Parchwell.Verifier.Tests && [[ -z "$shard" || "$shard" == rest ]]
         mutation_only_test || record_failure "Mutation-only Verifier tests" $?
     else
         record_failure "Mutation-only Verifier test build" $?
+    fi
+    if full_suite_build; then
+        full_suite_test || record_failure "Full-suite mutation Verifier tests" $?
+    else
+        record_failure "Full-suite mutation Verifier test build" $?
     fi
 fi
 

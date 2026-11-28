@@ -3,8 +3,8 @@
   "schema_version": 2,
   "shared_inputs": {
     ".config/dotnet-tools.json": "50249a8f3a7134b08b4409c485dfe67afb17910e5a2329bf65810c3338231244",
-    ".github/workflows/verifier-c5-mutation-companion.yml": "1fade2b54ce8b20ed963ba5ebc5ff8cd0e6315f67b402cb46b1bfe695ffbebfb",
-    ".github/workflows/verifier-c5-mutation.yml": "cda07e2545340ade8d658ccfcce1ae65a472c97690c35186ab5f804712a46569",
+    ".github/workflows/verifier-c5-mutation-companion.yml": "65e79f770be5824a96e885d7fac5c7e5d3fc9ffc79c24a577935f100d3e9c2a1",
+    ".github/workflows/verifier-c5-mutation.yml": "3a6f1076e67cc361eee9e393ec25300416c8ed8325fa82992397d5fd7d5d4bfb",
     "Directory.Build.props": "da23174e8d1ba562fc1e5fe99518e2bc54473c4c48b7744b84da1232588b8cb1",
     "Directory.Packages.props": "9b61ecb44bf2297db16699cbac097f4576ba34d0ae624edff4d34f1d48caca05",
     "docs/operations/a01-runtime-limits.json": "246f5b871bbc1a07209998a2e162b2d1593de9146fb3cae5a613ac8709950437",
@@ -320,10 +320,10 @@
     "tests/Parchwell.Verifier.Tests/LedgerBatch/BatchingEvidenceRecorderTests.cs": "6294256abac200355df5fe228a5fd7578d3fffdcd251f31031228366ea27a244",
     "tests/Parchwell.Verifier.Tests/Mutation/c5_campaign.py": "5dd294fcb0b3bb9ff2de8a5df5ac71242e775066a91e444091d382cb3406b46f",
     "tests/Parchwell.Verifier.Tests/Mutation/c5_projection.py": "3771b676b8d5856eb34705dcaa3e9c34ffd8184dd514179a1bf85ee7535fb16f",
-    "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": "5e123dc8552d72e9e424f292ebcc5b4b695ff39fed026470f2879d8b5a234552",
+    "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": "41969e2a3209480d5bdd4dbc2643750417843abd523d07adef323abaa0b9bbe8",
     "tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json": "9b67e2dfcad56280254a430497c34e340754646ad4f2f0525391f303550c83d6",
     "tests/Parchwell.Verifier.Tests/NativeMonitoring/VerifierNativeMonitoringTests.cs": "4d907495debffed9b44a282f817286b63bf0a8882330f3453717a11679e30221",
-    "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj": "a3d7fe4824fb1f4c11d5bdca6438d04c92eec1c3614e9db02df27f232468721a",
+    "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj": "4bc73b322d2255f81efb78ba54ac7583920182043faa19b66c38e809d2652e15",
     "tests/Parchwell.Verifier.Tests/Phase/B10IntakeWireTests.cs": "7c4e96508b3d2ad28ca613e8bb33570b41d50082a95855cb7e57fc240743a315",
     "tests/Parchwell.Verifier.Tests/Phase/B10RegistrationTests.cs": "9027fe0c884e57baf8f46b88427af682621deebf71f34ecc76b34d0f762e6553",
     "tests/Parchwell.Verifier.Tests/Phase/B10ScientificThreeJobReceiptCodecTests.cs": "d5126ebcb07ccde23365fd8a701cec5567eeeba54b0e5d5aea5500f00bfbcb87",
@@ -8833,6 +8833,18 @@
     "0f2fecad3235abb8d79def15e12cfbf2dbeff530e9d511bb84beea382dafef8c": {
       "assessments": {
         "shared_inputs": {
+          ".github/workflows/verifier-c5-mutation-companion.yml": {
+            "basis": [
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
+            ],
+            "current_sha256": "65e79f770be5824a96e885d7fac5c7e5d3fc9ffc79c24a577935f100d3e9c2a1"
+          },
+          ".github/workflows/verifier-c5-mutation.yml": {
+            "basis": [
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
+            ],
+            "current_sha256": "3a6f1076e67cc361eee9e393ec25300416c8ed8325fa82992397d5fd7d5d4bfb"
+          },
           "scenarios/C01/scenario.yaml": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
@@ -8977,9 +8989,16 @@
           "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7007989967 permits reuse only when committed inputs and the effective physical selection match. The runner transition adds one source-bound static cohort for the previously timed-out p4 owner. The retained owner keeps its prior invocation; the original measured maps and timing record remain pinned.",
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7030994225 records the scoped inventory verification. The runner change updates only the pinned B10 final projection codec source and full native inventory hashes. Other selections and executable code match the prior committed proof. Fresh timing is required for all 19 selections of that codec."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7030994225 records the scoped inventory verification. The runner change updates only the pinned B10 final projection codec source and full native inventory hashes. Other selections and executable code match the prior committed proof. Fresh timing is required for all 19 selections of that codec.",
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
             ],
-            "current_sha256": "5e123dc8552d72e9e424f292ebcc5b4b695ff39fed026470f2879d8b5a234552"
+            "current_sha256": "41969e2a3209480d5bdd4dbc2643750417843abd523d07adef323abaa0b9bbe8"
+          },
+          "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj": {
+            "basis": [
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
+            ],
+            "current_sha256": "4bc73b322d2255f81efb78ba54ac7583920182043faa19b66c38e809d2652e15"
           },
           "tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs": {
             "basis": [
@@ -9457,6 +9476,18 @@
     "18bf0e22414c4a61b63af73f9ff625083f46ff4240a299e6947e04d5d2cfb145": {
       "assessments": {
         "shared_inputs": {
+          ".github/workflows/verifier-c5-mutation-companion.yml": {
+            "basis": [
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
+            ],
+            "current_sha256": "65e79f770be5824a96e885d7fac5c7e5d3fc9ffc79c24a577935f100d3e9c2a1"
+          },
+          ".github/workflows/verifier-c5-mutation.yml": {
+            "basis": [
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
+            ],
+            "current_sha256": "3a6f1076e67cc361eee9e393ec25300416c8ed8325fa82992397d5fd7d5d4bfb"
+          },
           "scenarios/C01/scenario.yaml": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
@@ -9579,6 +9610,18 @@
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 expands the campaign capacity. The committed validator delta only reads the campaign layout capacities from c5_runtime. The original receipt used the same local-shard selection and task; the paired run will exercise the expanded layout."
             ],
             "current_sha256": "5dd294fcb0b3bb9ff2de8a5df5ac71242e775066a91e444091d382cb3406b46f"
+          },
+          "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": {
+            "basis": [
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
+            ],
+            "current_sha256": "41969e2a3209480d5bdd4dbc2643750417843abd523d07adef323abaa0b9bbe8"
+          },
+          "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj": {
+            "basis": [
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
+            ],
+            "current_sha256": "4bc73b322d2255f81efb78ba54ac7583920182043faa19b66c38e809d2652e15"
           },
           "tests/Parchwell.Verifier.Tests/Support/HostEvidenceBuilder.cs": {
             "basis": [
@@ -10038,6 +10081,18 @@
     "294be65b90de5b1758e808b9390237a6d4143b4954914c1b7865e8dd4a10aaf4": {
       "assessments": {
         "shared_inputs": {
+          ".github/workflows/verifier-c5-mutation-companion.yml": {
+            "basis": [
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
+            ],
+            "current_sha256": "65e79f770be5824a96e885d7fac5c7e5d3fc9ffc79c24a577935f100d3e9c2a1"
+          },
+          ".github/workflows/verifier-c5-mutation.yml": {
+            "basis": [
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
+            ],
+            "current_sha256": "3a6f1076e67cc361eee9e393ec25300416c8ed8325fa82992397d5fd7d5d4bfb"
+          },
           "scenarios/C01/scenario.yaml": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7060787313 accepts the timing uncertainty from the exact shared-input change in PR #572."
@@ -10181,9 +10236,16 @@
           },
           "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7030994225 records the scoped inventory verification. The runner change updates only the pinned B10 final projection codec source and full native inventory hashes. Other selections and executable code match the prior committed proof. Fresh timing is required for all 19 selections of that codec."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7030994225 records the scoped inventory verification. The runner change updates only the pinned B10 final projection codec source and full native inventory hashes. Other selections and executable code match the prior committed proof. Fresh timing is required for all 19 selections of that codec.",
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
             ],
-            "current_sha256": "5e123dc8552d72e9e424f292ebcc5b4b695ff39fed026470f2879d8b5a234552"
+            "current_sha256": "41969e2a3209480d5bdd4dbc2643750417843abd523d07adef323abaa0b9bbe8"
+          },
+          "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj": {
+            "basis": [
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
+            ],
+            "current_sha256": "4bc73b322d2255f81efb78ba54ac7583920182043faa19b66c38e809d2652e15"
           },
           "tests/Parchwell.Verifier.Tests/Results/DuplicateBreakdownTests.cs": {
             "basis": [
@@ -10661,6 +10723,18 @@
     "ca93c502a1ead5f76beffc7f0740858ea67fc1a9b6b1db4acf109eb8a3faa997": {
       "assessments": {
         "shared_inputs": {
+          ".github/workflows/verifier-c5-mutation-companion.yml": {
+            "basis": [
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
+            ],
+            "current_sha256": "65e79f770be5824a96e885d7fac5c7e5d3fc9ffc79c24a577935f100d3e9c2a1"
+          },
+          ".github/workflows/verifier-c5-mutation.yml": {
+            "basis": [
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
+            ],
+            "current_sha256": "3a6f1076e67cc361eee9e393ec25300416c8ed8325fa82992397d5fd7d5d4bfb"
+          },
           "src/Parchwell.Verifier/VerifyRun/Consumer/Judgement/ConsumerJudgement.cs": {
             "basis": [
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/529#issuecomment-7076000200 accepts the timing uncertainty from the exact shared-input change in the pull request for issue #529."
@@ -10690,6 +10764,18 @@
               "Issue 601 builds the ConsumerPhaseJudgeTests inputs per test instead of in static Lazy caches. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-27: 87.66 s and 87.97 s before, 89.01 s and 89.44 s after. Timing risk accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/601#issuecomment-7213032814."
             ],
             "current_sha256": "150334a37b4b49fee9cbac66bdc353bfbb5eee8e5e1b247d3ddce8c44a69681f"
+          },
+          "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": {
+            "basis": [
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
+            ],
+            "current_sha256": "41969e2a3209480d5bdd4dbc2643750417843abd523d07adef323abaa0b9bbe8"
+          },
+          "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj": {
+            "basis": [
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
+            ],
+            "current_sha256": "4bc73b322d2255f81efb78ba54ac7583920182043faa19b66c38e809d2652e15"
           },
           "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": {
             "basis": [
@@ -11135,15 +11221,17 @@
         "shared_inputs": {
           ".github/workflows/verifier-c5-mutation-companion.yml": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7001549347 permits an exact committed-tree comparison for unchanged companion shards. Observed None; last combined candidate None; paired execution 1fade2b54ce8b20ed963ba5ebc5ff8cd0e6315f67b402cb46b1bfe695ffbebfb. The acceptance worker template, build and test inputs and the selected owner invocation are identical under the pinned transition. Earlier accepted input timing risks continue to apply."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7001549347 permits an exact committed-tree comparison for unchanged companion shards. Observed None; last combined candidate None; paired execution 1fade2b54ce8b20ed963ba5ebc5ff8cd0e6315f67b402cb46b1bfe695ffbebfb. The acceptance worker template, build and test inputs and the selected owner invocation are identical under the pinned transition. Earlier accepted input timing risks continue to apply.",
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
             ],
-            "current_sha256": "1fade2b54ce8b20ed963ba5ebc5ff8cd0e6315f67b402cb46b1bfe695ffbebfb"
+            "current_sha256": "65e79f770be5824a96e885d7fac5c7e5d3fc9ffc79c24a577935f100d3e9c2a1"
           },
           ".github/workflows/verifier-c5-mutation.yml": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7001549347 permits an exact committed-tree comparison for unchanged companion shards. Observed 50e10f7edfeb8128d3bdb2c54c3de25dde473c5dca9ae33a53a925f4209acd8f; last combined candidate 50e10f7edfeb8128d3bdb2c54c3de25dde473c5dca9ae33a53a925f4209acd8f; paired execution cda07e2545340ade8d658ccfcce1ae65a472c97690c35186ab5f804712a46569. The acceptance worker template, build and test inputs and the selected owner invocation are identical under the pinned transition. Earlier accepted input timing risks continue to apply."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7001549347 permits an exact committed-tree comparison for unchanged companion shards. Observed 50e10f7edfeb8128d3bdb2c54c3de25dde473c5dca9ae33a53a925f4209acd8f; last combined candidate 50e10f7edfeb8128d3bdb2c54c3de25dde473c5dca9ae33a53a925f4209acd8f; paired execution cda07e2545340ade8d658ccfcce1ae65a472c97690c35186ab5f804712a46569. The acceptance worker template, build and test inputs and the selected owner invocation are identical under the pinned transition. Earlier accepted input timing risks continue to apply.",
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
             ],
-            "current_sha256": "cda07e2545340ade8d658ccfcce1ae65a472c97690c35186ab5f804712a46569"
+            "current_sha256": "3a6f1076e67cc361eee9e393ec25300416c8ed8325fa82992397d5fd7d5d4bfb"
           },
           "scenarios/C01/scenario.yaml": {
             "basis": [
@@ -11982,9 +12070,10 @@
               "Configuration equivalence uses the committed trees and exact unchanged physical selectors under https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637. Measured SHA-256 dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea14629a0af4625; current SHA-256 d4b1fb55e3e7dce9294d3914dc0c77f5b2cddc46c25132043eb9383025f1ee50.",
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7001549347 permits an exact committed-tree comparison for unchanged companion shards. Observed dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea14629a0af4625; last combined candidate d4b1fb55e3e7dce9294d3914dc0c77f5b2cddc46c25132043eb9383025f1ee50; paired execution 66e6263885576b8b6c1078b935247b859dc00791d214a21c2fd1d989ab7a5933. The acceptance worker template, build and test inputs and the selected owner invocation are identical under the pinned transition. Earlier accepted input timing risks continue to apply.",
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7007989967 permits reuse only when committed inputs and the effective physical selection match. The runner transition adds one source-bound static cohort for the previously timed-out p4 owner. The retained owner keeps its prior invocation; the original measured maps and timing record remain pinned.",
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7030994225 records the scoped inventory verification. The runner change updates only the pinned B10 final projection codec source and full native inventory hashes. Other selections and executable code match the prior committed proof. Fresh timing is required for all 19 selections of that codec."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7030994225 records the scoped inventory verification. The runner change updates only the pinned B10 final projection codec source and full native inventory hashes. Other selections and executable code match the prior committed proof. Fresh timing is required for all 19 selections of that codec.",
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
             ],
-            "current_sha256": "5e123dc8552d72e9e424f292ebcc5b4b695ff39fed026470f2879d8b5a234552"
+            "current_sha256": "41969e2a3209480d5bdd4dbc2643750417843abd523d07adef323abaa0b9bbe8"
           },
           "tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json": {
             "basis": [
@@ -11999,6 +12088,12 @@
               "Hari explicitly accepted the same retained-estimate runtime uncertainty for the exact corrected verifier-test SHA-256 4d907495debffed9b44a282f817286b63bf0a8882330f3453717a11679e30221 in https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6947446988, adopting https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943603607. Source correction 1e159253a92bd53cb8efe8d9466297ddaf9c48aa passes the xUnit test cancellation token instead of the default token; preserve preceding assessment history. No timing-neutrality or new measurement is claimed. Original measured maps, estimates, evidence, provisional status, exact tool exceptions and mandatory later full main-only mutation acceptance remain unchanged."
             ],
             "current_sha256": "4d907495debffed9b44a282f817286b63bf0a8882330f3453717a11679e30221"
+          },
+          "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj": {
+            "basis": [
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
+            ],
+            "current_sha256": "4bc73b322d2255f81efb78ba54ac7583920182043faa19b66c38e809d2652e15"
           },
           "tests/Parchwell.Verifier.Tests/Phase/B10SweepEvidenceCodecDuplicateTests.cs": {
             "basis": [
@@ -12529,15 +12624,17 @@
         "shared_inputs": {
           ".github/workflows/verifier-c5-mutation-companion.yml": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7001549347 permits an exact committed-tree comparison for unchanged companion shards. Observed None; last combined candidate None; paired execution 1fade2b54ce8b20ed963ba5ebc5ff8cd0e6315f67b402cb46b1bfe695ffbebfb. The acceptance worker template, build and test inputs and the selected owner invocation are identical under the pinned transition. Earlier accepted input timing risks continue to apply."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7001549347 permits an exact committed-tree comparison for unchanged companion shards. Observed None; last combined candidate None; paired execution 1fade2b54ce8b20ed963ba5ebc5ff8cd0e6315f67b402cb46b1bfe695ffbebfb. The acceptance worker template, build and test inputs and the selected owner invocation are identical under the pinned transition. Earlier accepted input timing risks continue to apply.",
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
             ],
-            "current_sha256": "1fade2b54ce8b20ed963ba5ebc5ff8cd0e6315f67b402cb46b1bfe695ffbebfb"
+            "current_sha256": "65e79f770be5824a96e885d7fac5c7e5d3fc9ffc79c24a577935f100d3e9c2a1"
           },
           ".github/workflows/verifier-c5-mutation.yml": {
             "basis": [
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7001549347 permits an exact committed-tree comparison for unchanged companion shards. Observed 50e10f7edfeb8128d3bdb2c54c3de25dde473c5dca9ae33a53a925f4209acd8f; last combined candidate 50e10f7edfeb8128d3bdb2c54c3de25dde473c5dca9ae33a53a925f4209acd8f; paired execution cda07e2545340ade8d658ccfcce1ae65a472c97690c35186ab5f804712a46569. The acceptance worker template, build and test inputs and the selected owner invocation are identical under the pinned transition. Earlier accepted input timing risks continue to apply."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7001549347 permits an exact committed-tree comparison for unchanged companion shards. Observed 50e10f7edfeb8128d3bdb2c54c3de25dde473c5dca9ae33a53a925f4209acd8f; last combined candidate 50e10f7edfeb8128d3bdb2c54c3de25dde473c5dca9ae33a53a925f4209acd8f; paired execution cda07e2545340ade8d658ccfcce1ae65a472c97690c35186ab5f804712a46569. The acceptance worker template, build and test inputs and the selected owner invocation are identical under the pinned transition. Earlier accepted input timing risks continue to apply.",
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
             ],
-            "current_sha256": "cda07e2545340ade8d658ccfcce1ae65a472c97690c35186ab5f804712a46569"
+            "current_sha256": "3a6f1076e67cc361eee9e393ec25300416c8ed8325fa82992397d5fd7d5d4bfb"
           },
           "scenarios/C01/scenario.yaml": {
             "basis": [
@@ -13461,9 +13558,10 @@
               "Configuration equivalence uses the committed trees and exact unchanged physical selectors under https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6958454637. Measured SHA-256 dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea14629a0af4625; current SHA-256 d4b1fb55e3e7dce9294d3914dc0c77f5b2cddc46c25132043eb9383025f1ee50.",
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7001549347 permits an exact committed-tree comparison for unchanged companion shards. Observed dcf4ac956fe262a3178d0673071811fef63bf1a357ae42df7ea14629a0af4625; last combined candidate d4b1fb55e3e7dce9294d3914dc0c77f5b2cddc46c25132043eb9383025f1ee50; paired execution 66e6263885576b8b6c1078b935247b859dc00791d214a21c2fd1d989ab7a5933. The acceptance worker template, build and test inputs and the selected owner invocation are identical under the pinned transition. Earlier accepted input timing risks continue to apply.",
               "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7007989967 permits reuse only when committed inputs and the effective physical selection match. The runner transition adds one source-bound static cohort for the previously timed-out p4 owner. The retained owner keeps its prior invocation; the original measured maps and timing record remain pinned.",
-              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7030994225 records the scoped inventory verification. The runner change updates only the pinned B10 final projection codec source and full native inventory hashes. Other selections and executable code match the prior committed proof. Fresh timing is required for all 19 selections of that codec."
+              "https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-7030994225 records the scoped inventory verification. The runner change updates only the pinned B10 final projection codec source and full native inventory hashes. Other selections and executable code match the prior committed proof. Fresh timing is required for all 19 selections of that codec.",
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
             ],
-            "current_sha256": "5e123dc8552d72e9e424f292ebcc5b4b695ff39fed026470f2879d8b5a234552"
+            "current_sha256": "41969e2a3209480d5bdd4dbc2643750417843abd523d07adef323abaa0b9bbe8"
           },
           "tests/Parchwell.Verifier.Tests/Mutation/stryker-c5-config.json": {
             "basis": [
@@ -13478,6 +13576,12 @@
               "Hari explicitly accepted the same retained-estimate runtime uncertainty for the exact corrected verifier-test SHA-256 4d907495debffed9b44a282f817286b63bf0a8882330f3453717a11679e30221 in https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6947446988, adopting https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/494#issuecomment-6943603607. Source correction 1e159253a92bd53cb8efe8d9466297ddaf9c48aa passes the xUnit test cancellation token instead of the default token; preserve preceding assessment history. No timing-neutrality or new measurement is claimed. Original measured maps, estimates, evidence, provisional status, exact tool exceptions and mandatory later full main-only mutation acceptance remain unchanged."
             ],
             "current_sha256": "4d907495debffed9b44a282f817286b63bf0a8882330f3453717a11679e30221"
+          },
+          "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj": {
+            "basis": [
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
+            ],
+            "current_sha256": "4bc73b322d2255f81efb78ba54ac7583920182043faa19b66c38e809d2652e15"
           },
           "tests/Parchwell.Verifier.Tests/Phase/B10SweepEvidenceCodecDuplicateTests.cs": {
             "basis": [
@@ -14022,6 +14126,18 @@
     "e8a7302bc493ffc7248efcd4b1ada8cfa663ca535e39ac1e89e5c4a2d7e39ca6": {
       "assessments": {
         "shared_inputs": {
+          ".github/workflows/verifier-c5-mutation-companion.yml": {
+            "basis": [
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
+            ],
+            "current_sha256": "65e79f770be5824a96e885d7fac5c7e5d3fc9ffc79c24a577935f100d3e9c2a1"
+          },
+          ".github/workflows/verifier-c5-mutation.yml": {
+            "basis": [
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
+            ],
+            "current_sha256": "3a6f1076e67cc361eee9e393ec25300416c8ed8325fa82992397d5fd7d5d4bfb"
+          },
           "src/Parchwell.Verifier/VerifyRun/Window/ConsumedMetadataCapture.cs": {
             "basis": [
               "Issue 494 decisions 7142132171 point 2 and 7144582364 accept the re-qualification cost of the C5 failure-cause repair (plan items/494/plan-c5-failure-causes.md). The change makes the consumed-metadata capture's Blob deadlines use the caller's clock, adds capture deadline tests; it adds no mutation target or selector. Its effect on mutation runtime is not measured."
@@ -14039,6 +14155,18 @@
               "Issue 601 builds the ConsumerPhaseJudgeTests inputs per test instead of in static Lazy caches. Local mutation-only suite wall, 4-core container, idle, fresh process per run, 2 runs each on 2026-11-27: 87.66 s and 87.97 s before, 89.01 s and 89.44 s after. Timing risk accepted by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/601#issuecomment-7213032814."
             ],
             "current_sha256": "150334a37b4b49fee9cbac66bdc353bfbb5eee8e5e1b247d3ddce8c44a69681f"
+          },
+          "tests/Parchwell.Verifier.Tests/Mutation/c5_workflow.py": {
+            "basis": [
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
+            ],
+            "current_sha256": "41969e2a3209480d5bdd4dbc2643750417843abd523d07adef323abaa0b9bbe8"
+          },
+          "tests/Parchwell.Verifier.Tests/Parchwell.Verifier.Tests.csproj": {
+            "basis": [
+              "Issue 602 adds a full-suite mode to the C5 runner and both mutation workflows, accepted through pinned exact hash pairs by https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/602#issuecomment-7234844190 point 1. Default-mode shard execution is byte-identical to the base commit for every shard (test_fast_shard_command_matches_base). Full-suite mode builds the base commit's test set on the base layout while Component/MutationExcluded holds no file. The test csproj gains one item group whose condition is false in default mode."
+            ],
+            "current_sha256": "4bc73b322d2255f81efb78ba54ac7583920182043faa19b66c38e809d2652e15"
           },
           "tests/Parchwell.Verifier.Tests/Window/ConsumedMetadataCaptureTests.cs": {
             "basis": [
