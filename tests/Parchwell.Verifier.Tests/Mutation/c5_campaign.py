@@ -213,7 +213,7 @@ def jobs(repository, run_id, attempt):
     total = None
     page = 1
     while True:
-        document = api(repository, f'actions/runs/{run_id}/attempts/{attempt}/jobs?per_page=100&page={page}')
+        document = api(repository, f'actions/runs/{run_id}/attempts/{attempt}/jobs?per_page=30&page={page}')
         require(isinstance(document, dict) and type(document.get('total_count')) is int
                 and isinstance(document.get('jobs'), list), 'malformed jobs response')
         require(total is None or total == document['total_count'], 'job count changed while paging')
@@ -223,7 +223,7 @@ def jobs(repository, run_id, attempt):
         require(len(rows) <= total, 'extra job pages')
         if len(rows) == total:
             return {'total_count': total, 'jobs': rows}
-        require(len(batch) == 100, 'missing job pages')
+        require(len(batch) == 30, 'missing job pages')
         page += 1
 
 

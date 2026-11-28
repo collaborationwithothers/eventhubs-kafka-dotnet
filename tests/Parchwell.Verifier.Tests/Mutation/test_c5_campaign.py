@@ -111,13 +111,52 @@ class CampaignTests(unittest.TestCase):
                     campaign.validate_jobs(bad, run['id'], 1, self.commit, self.layout[role], role == 'coordinator')
 
     def test_job_pagination(self):
-        pages = [{'total_count': 101, 'jobs': list(range(100))}, {'total_count': 101, 'jobs': [100]}]
+        pages = [{'total_count': 31, 'jobs': list(range(30))}, {'total_count': 31, 'jobs': [30]}]
         with patch.object(campaign, 'api', side_effect=pages) as api:
-            self.assertEqual(101, len(campaign.jobs(self.repo, 1, 1)['jobs']))
+            self.assertEqual(31, len(campaign.jobs(self.repo, 1, 1)['jobs']))
             self.assertIn('page=2', api.call_args.args[1])
-        with patch.object(campaign, 'api', return_value={'total_count': 101, 'jobs': [1]}):
+        with patch.object(campaign, 'api', return_value={'total_count': 31, 'jobs': [1]}):
             with self.assertRaisesRegex(ValueError, 'missing job pages'):
                 campaign.jobs(self.repo, 1, 1)
+
+    def test_job_page_size_and_paging(self):
+        def page(first, count, total):
+            return {'total_count': total, 'jobs': list(range(first, first + count))}
+
+        def suffix(run_id, attempt, number):
+            return f'actions/runs/{run_id}/attempts/{attempt}/jobs?per_page=30&page={number}'
+
+        pages = [page(30 * k, 30, 179) for k in range(5)] + [page(150, 29, 179)]
+        with self.subTest(case='six pages'), patch.object(campaign, 'api', side_effect=pages) as api:
+            result = campaign.jobs(self.repo, 7, 2)
+            self.assertEqual(179, result['total_count'])
+            self.assertEqual(list(range(179)), result['jobs'])
+            self.assertEqual([call.args for call in api.call_args_list],
+                             [(self.repo, suffix(7, 2, k)) for k in range(1, 7)])
+        with self.subTest(case='exact multiple'), patch.object(
+                campaign, 'api', side_effect=[page(0, 30, 60), page(30, 30, 60)]) as api:
+            self.assertEqual(list(range(60)), campaign.jobs(self.repo, 7, 2)['jobs'])
+            self.assertEqual([call.args for call in api.call_args_list],
+                             [(self.repo, suffix(7, 2, 1)), (self.repo, suffix(7, 2, 2))])
+        with self.subTest(case='empty'), patch.object(campaign, 'api', side_effect=[page(0, 0, 0)]) as api:
+            self.assertEqual({'total_count': 0, 'jobs': []}, campaign.jobs(self.repo, 7, 2))
+            self.assertEqual([(self.repo, suffix(7, 2, 1))], [call.args for call in api.call_args_list])
+        for count in (29, 31):
+            with self.subTest(case=f'first page of {count}'), patch.object(
+                    campaign, 'api', side_effect=[page(0, count, 179)]) as api:
+                with self.assertRaisesRegex(ValueError, 'missing job pages'):
+                    campaign.jobs(self.repo, 7, 2)
+                self.assertEqual(1, api.call_count)
+        with self.subTest(case='count changed'), patch.object(
+                campaign, 'api', side_effect=[page(0, 30, 179), page(30, 30, 180)]):
+            with self.assertRaisesRegex(ValueError, 'job count changed while paging'):
+                campaign.jobs(self.repo, 7, 2)
+        with self.subTest(case='extra rows'), patch.object(campaign, 'api', side_effect=[page(0, 30, 29)]):
+            with self.assertRaisesRegex(ValueError, 'extra job pages'):
+                campaign.jobs(self.repo, 7, 2)
+        with self.subTest(case='malformed'), patch.object(campaign, 'api', side_effect=[{'jobs': []}]):
+            with self.assertRaisesRegex(ValueError, 'malformed jobs response'):
+                campaign.jobs(self.repo, 7, 2)
 
     def test_prepare_retains_late_and_incomplete_evidence(self):
         def api(_repo, suffix):
