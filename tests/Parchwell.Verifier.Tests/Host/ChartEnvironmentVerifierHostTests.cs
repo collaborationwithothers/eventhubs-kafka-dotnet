@@ -32,7 +32,8 @@ public sealed class ChartEnvironmentVerifierHostTests(ITestOutputHelper output)
         fixture.ConfigureRepeat(1,"C0");
         if(mismatch)fixture.SetCapturedClientId("other-client-c5");
         using var environment=new ChartEnvironmentScope(ChartVerifyEnvironment());
-        var requestGuard=new OfflineRequestGuard();
+        var requestGuard=new OfflineRequestGuard(ownedFlowOnly:true);
+        requestGuard.MarkCurrentFlowAsOwned();
         try
         {
         requestGuard.RecordPhase("host_starting");
@@ -166,6 +167,119 @@ public sealed class ChartEnvironmentVerifierHostTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task GivenRequestsFromForeignAndOwnedFlows_WhenOwnedFlowGuardLives_ThenRecordsOnlyTheOwnedRequest()
+    {
+        int port=ClosedLoopbackPort();
+        using var observing=new OfflineRequestGuard();
+        using var signal=new ManualResetEventSlim();
+        var foreign=new Thread(()=>
+        {
+            signal.Wait(TimeSpan.FromSeconds(5));
+            SendRefusedRequestAsync("localhost",port,"/foreign-thread").GetAwaiter().GetResult();
+        });
+        foreign.Start();
+        using var owned=new OfflineRequestGuard(ownedFlowOnly:true);
+        owned.MarkCurrentFlowAsOwned();
+        signal.Set();
+        Assert.True(foreign.Join(TimeSpan.FromSeconds(5)));
+        Assert.True(observing.UnexpectedRequest);
+        Assert.Contains(observing.Snapshot().Requests,request=>request.Payload.Contains("pathAndQuery=/foreign-thread",StringComparison.Ordinal));
+        Assert.False(owned.UnexpectedRequest);
+        Assert.Null(owned.LastRequest);
+        Assert.Empty(owned.Snapshot().Requests);
+
+        await SendRefusedRequestAsync("localhost",port,"/owned-direct");
+        Assert.True(owned.UnexpectedRequest);
+        Assert.Contains("host=localhost;",owned.LastRequest,StringComparison.Ordinal);
+        Assert.Contains("pathAndQuery=/owned-direct",owned.LastRequest,StringComparison.Ordinal);
+        RequestDiagnostic request=Assert.Single(owned.Snapshot().Requests);
+        Assert.Contains("pathAndQuery=/owned-direct",request.Payload,StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("task")]
+    [InlineData("thread")]
+    public async Task GivenRequestFromWorkStartedInOwnedFlow_WhenOwnedFlowGuardLives_ThenRecordsIt(string start)
+    {
+        int port=ClosedLoopbackPort();
+        using var owned=new OfflineRequestGuard(ownedFlowOnly:true);
+        owned.MarkCurrentFlowAsOwned();
+        string path="/owned-"+start;
+        if(start=="task")
+            await Task.Run(()=>SendRefusedRequestAsync("localhost",port,path),TestContext.Current.CancellationToken);
+        else
+        {
+            var thread=new Thread(()=>SendRefusedRequestAsync("localhost",port,path).GetAwaiter().GetResult());
+            thread.Start();
+            Assert.True(thread.Join(TimeSpan.FromSeconds(5)));
+        }
+        Assert.True(owned.UnexpectedRequest);
+        Assert.Contains("host=localhost;",owned.LastRequest,StringComparison.Ordinal);
+        Assert.Contains("pathAndQuery="+path,owned.LastRequest,StringComparison.Ordinal);
+        RequestDiagnostic request=Assert.Single(owned.Snapshot().Requests);
+        Assert.Contains("pathAndQuery="+path,request.Payload,StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GivenRequestFromFlowMarkedByAnotherOwnedFlowGuard_WhenOwnedFlowGuardLives_ThenOnlyTheMarkingGuardRecordsIt()
+    {
+        int port=ClosedLoopbackPort();
+        using var first=new OfflineRequestGuard(ownedFlowOnly:true);
+        using var second=new OfflineRequestGuard(ownedFlowOnly:true);
+        second.MarkCurrentFlowAsOwned();
+        await SendRefusedRequestAsync("localhost",port,"/second-guard");
+        Assert.False(first.UnexpectedRequest);
+        Assert.Null(first.LastRequest);
+        Assert.Empty(first.Snapshot().Requests);
+        Assert.True(second.UnexpectedRequest);
+        Assert.Contains("host=localhost;",second.LastRequest,StringComparison.Ordinal);
+        Assert.Contains("pathAndQuery=/second-guard",second.LastRequest,StringComparison.Ordinal);
+        RequestDiagnostic request=Assert.Single(second.Snapshot().Requests);
+        Assert.Contains("pathAndQuery=/second-guard",request.Payload,StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GivenLoopbackRequestFromOwnedFlow_WhenOwnedFlowGuardLives_ThenRecordsItWithoutUnexpectedRequest()
+    {
+        int port=ClosedLoopbackPort();
+        using var owned=new OfflineRequestGuard(ownedFlowOnly:true);
+        owned.MarkCurrentFlowAsOwned();
+        await SendRefusedRequestAsync("127.0.0.1",port,"/owned-loopback");
+        Assert.False(owned.UnexpectedRequest);
+        Assert.Contains("host=127.0.0.1;",owned.LastRequest,StringComparison.Ordinal);
+        Assert.Contains("pathAndQuery=/owned-loopback",owned.LastRequest,StringComparison.Ordinal);
+        RequestDiagnostic request=Assert.Single(owned.Snapshot().Requests);
+        Assert.Contains("pathAndQuery=/owned-loopback",request.Payload,StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GivenDirectRecordRequest_WhenOwnedFlowGuardIsNotMarked_ThenRecordsIt()
+    {
+        using var owned=new OfflineRequestGuard(ownedFlowOnly:true);
+        owned.RecordRequest("SyntheticRequestStart",1,Guid.Empty,Guid.Empty,["host"],["dc.services.visualstudio.com"],null);
+        Assert.Equal("host=dc.services.visualstudio.com",owned.LastRequest);
+        Assert.True(owned.UnexpectedRequest);
+        Assert.Equal("host=dc.services.visualstudio.com",Assert.Single(owned.Snapshot().Requests).Payload);
+    }
+
+    // A port that no one listens on, so a request to it is refused at once instead of waiting.
+    private static int ClosedLoopbackPort()
+    {
+        var listener=new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback,0);
+        listener.Start();
+        try{return((System.Net.IPEndPoint)listener.LocalEndpoint).Port;}
+        finally{listener.Stop();}
+    }
+
+    // "localhost" is a host other than 127.0.0.1, as a leaked telemetry request would be.
+    private static async Task SendRefusedRequestAsync(string host,int port,string path)
+    {
+        using var client=new HttpClient{Timeout=TimeSpan.FromMilliseconds(300)};
+        try{await client.GetAsync(new Uri($"http://{host}:{port}{path}"),TestContext.Current.CancellationToken);}
+        catch(Exception e)when(e is HttpRequestException or TaskCanceledException){}
+    }
+
+    [Fact]
     public void GivenCurrentActivity_WhenRecorded_ThenRetainsCorrelationWithoutChangingAcceptance()
     {
         using var guard=new OfflineRequestGuard(syntheticOnly:true);
@@ -282,11 +396,15 @@ public sealed class ChartEnvironmentVerifierHostTests(ITestOutputHelper output)
         {Receipt=bytes;return fixture.CreateAsync(name,bytes,token);}
     }
 
-    // The flag lives in a base class so that its field initializer runs before EventListener's
-    // constructor, which already calls OnEventSourceCreated for existing event sources.
-    private abstract class SuppressibleListener(bool ignoreProcessEvents):EventListener
+    // The flags live in a base class so that their field initializers run before EventListener's
+    // constructor, which already calls OnEventSourceCreated for existing event sources, and so
+    // before another thread can reach OnEventWritten.
+    private abstract class SuppressibleListener(bool ignoreProcessEvents,bool ownedFlowOnly):EventListener
     {
         protected readonly bool IgnoreProcessEvents=ignoreProcessEvents;
+        // Non-null only in owned-flow mode; its value is true in a flow that the guard marked.
+        protected readonly AsyncLocal<bool>? OwnedFlow=ownedFlowOnly&&!ignoreProcessEvents?new AsyncLocal<bool>():null;
+        protected readonly bool OwnedFlowOnly=ownedFlowOnly&&!ignoreProcessEvents;
         protected override void OnEventSourceCreated(EventSource eventSource)
         {
             if(!IgnoreProcessEvents&&eventSource.Name=="System.Net.Http")EnableEvents(eventSource,EventLevel.Informational);
@@ -311,13 +429,26 @@ public sealed class ChartEnvironmentVerifierHostTests(ITestOutputHelper output)
         internal string? LastRequest{get;private set;}
         internal bool UnexpectedRequest=>Volatile.Read(ref unexpectedRequest)!=0;
 
-        // The listener sees System.Net.Http events from the whole process. A synthetic-only guard
-        // never enables the source, so it cannot record real requests that other tests' hosts make
-        // on background threads (telemetry exporters); the synthetic assertions cannot race with them.
-        internal OfflineRequestGuard(bool syntheticOnly=false):base(syntheticOnly)=>RecordPhase("guard_created");
+        // The listener sees System.Net.Http events from the whole process, and a default guard
+        // records all of them. A synthetic-only guard never enables the source, so it cannot record
+        // real requests that other tests' hosts make on background threads (telemetry exporters); the
+        // synthetic assertions cannot race with them. An owned-flow guard enables the source but
+        // records a request only when its callback runs in an execution flow that this guard marked
+        // with MarkCurrentFlowAsOwned; work forked from that flow by Task.Run or Thread.Start carries
+        // the mark. Limit: a request from a flow that does not carry the mark is not counted, for
+        // example work started with ExecutionContext.SuppressFlow or Thread.UnsafeStart.
+        // If both options are set, syntheticOnly wins.
+        internal OfflineRequestGuard(bool syntheticOnly=false,bool ownedFlowOnly=false):base(syntheticOnly,ownedFlowOnly)=>RecordPhase("guard_created");
+
+        internal void MarkCurrentFlowAsOwned()
+        {
+            if(OwnedFlow is null)throw new InvalidOperationException("Only an owned-flow guard marks flows.");
+            OwnedFlow.Value=true;
+        }
 
         protected override void OnEventWritten(EventWrittenEventArgs eventData)
         {
+            if(OwnedFlowOnly&&OwnedFlow?.Value!=true)return;
             if(!IgnoreProcessEvents&&eventData.EventSource.Name=="System.Net.Http"&&eventData.EventId==1)
                 RecordRequest(eventData.EventName,eventData.EventId,eventData.ActivityId,eventData.RelatedActivityId,
                     eventData.PayloadNames,eventData.Payload,Activity.Current);
