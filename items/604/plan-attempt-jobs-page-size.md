@@ -1,6 +1,6 @@
 # Attempt jobs page size: contract-grade plan for issue 604
 
-Revision: r3
+Revision: r4
 Base commit: `15b09147ed4e7c62ea08620b24c14cd049f07562` (`main`)
 Pull request: one, named "attempt jobs page size".
 
@@ -15,6 +15,7 @@ Authority, in creation order:
 1. The body of issue 604 (updated 2026-11-28T05:43:36Z). Its scope items 1 to 4 and its constraints are binding.
 2. [Decision 7234963381](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/604#issuecomment-7234963381) on issue 604 (2026-11-28T05:54:53Z), which links and adopts [standing decision 7234963031 on issue 499](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/499#issuecomment-7234963031). With `ready-for-agent` applied, a plan revision whose newest fresh check states `Blocking findings: none`, with open questions None, is approved; literal in-scope fixes may go to the next revision with one fresh check; Claude Code implements on `claude-sonnet-5-5`.
 3. [Decision 7235089415](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/604#issuecomment-7235089415) on issue 604 (2026-11-28), recorded from Hari's words in the planning session, "accept D1, revise the plan": it accepts deployment assumption D1 by name.
+4. [Decision 7235092548](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/604#issuecomment-7235092548) on issue 604 (2026-11-28T06:07:11Z), from the issue 499 control session: Hari's "accept" answers [handoff 7235074394](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/604#issuecomment-7235074394), accepts D1 by name, and authorizes a revision recording it plus one fresh check, whose clean result approves it under the standing decision.
 
 This revision has no open question.
 
