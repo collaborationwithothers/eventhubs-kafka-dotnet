@@ -46,6 +46,7 @@ class DecisionLogTests(unittest.TestCase):
         self.addCleanup(fixtures.cleanup)
         self.root = Path(fixtures.name)
         (self.root / "linked").mkdir()
+        (self.root / "reactions").mkdir()
         (self.root / "calls.jsonl").touch()
         self.write_json("routes.json", {})
         gh = self.root / "gh"
@@ -209,6 +210,72 @@ class DecisionLogTests(unittest.TestCase):
         ], lines[-3:])
         self.assertNotIn("secret handoff text", out)
 
+
+    def test_machine_account_comments_are_authority_comments(self):
+        self.write_json("7.json", [comment(1, CREATED, "## Decision\nrecorded from chat", login="haripraghash-bot")])
+        out = self.offline("--issue", "7")
+        self.assertIn("### 1. Decision #7 comment 1", out)
+        self.assertIn(f"author haripraghash-bot; {URL}/issues/7#issuecomment-1\n\n## Decision\nrecorded from chat", out)
+        self.assertNotIn("Confirmation:", out)
+
+    def test_confirmation_needs_haris_thumbs_up(self):
+        body = "## Decision\naccepts a risk\n\nConfirmation: thumbs-up required\n"
+        meta = f"Created {CREATED}; updated {CREATED}; author haripraghash-bot; {URL}/issues/7#issuecomment-1\n"
+        cases = {
+            "hari thumbs-up": ([{"content": "+1", "user": {"login": "HariPraghash"}}],
+                               "Confirmation: thumbs-up from haripraghash."),
+            "no reactions": ([], "Confirmation: NOT confirmed; no thumbs-up from haripraghash. Do not act on this decision."),
+            "wrong user or content": ([{"content": "+1", "user": {"login": "haripraghash-bot"}},
+                                       {"content": "heart", "user": {"login": "haripraghash"}},
+                                       {"content": "+1"}],
+                                      "Confirmation: NOT confirmed; no thumbs-up from haripraghash. Do not act on this decision."),
+        }
+        for name, (reactions, line) in cases.items():
+            with self.subTest(name):
+                self.write_json("7.json", [comment(1, CREATED, body, login="haripraghash-bot")])
+                self.write_json("reactions/1.json", reactions)
+                self.assertIn(f"{meta}{line}\n\n{body}", self.offline("--issue", "7"))
+
+    def test_confirmation_posted_by_hari_needs_no_reaction(self):
+        body = "## Decision\nloosens a cap\nConfirmation: thumbs-up required"
+        self.write_json("7.json", [comment(1, CREATED, body)])
+        out = self.offline("--issue", "7")
+        self.assertIn(f"author haripraghash; {URL}/issues/7#issuecomment-1\nConfirmation: posted by haripraghash.\n", out)
+
+    def test_marker_must_be_its_own_line(self):
+        body = "## Decision\nno Confirmation: thumbs-up required here"
+        self.write_json("7.json", [comment(1, CREATED, body, login="haripraghash-bot")])
+        self.assertNotIn("\nConfirmation:", self.offline("--issue", "7"))
+
+    def test_unreadable_reactions_exit_3(self):
+        body = "## Decision\nConfirmation: thumbs-up required"
+        self.write_json("7.json", [comment(1, CREATED, body, login="haripraghash-bot")])
+        out = self.offline("--issue", "7", status=3, stderr="decision-log: 1 confirmation(s) not available\n")
+        self.assertIn("Confirmation: not available; reactions could not be read.\n", out)
+        self.assertIn(body, out)
+
+    def test_linked_draft_shows_confirmation(self):
+        link = f"{URL}/issues/499#issuecomment-31"
+        self.write_json("7.json", [comment(1, CREATED, f"## Approval\nadopts {link}")])
+        self.write_json("linked/31.json", comment(31, CREATED, "## Decision\nConfirmation: thumbs-up required", 499,
+                                                  login="haripraghash-bot"))
+        self.write_json("reactions/31.json", [])
+        out = self.offline("--issue", "7")
+        self.assertIn(f"author haripraghash-bot; {link}\nConfirmation: NOT confirmed; no thumbs-up from haripraghash. "
+                      "Do not act on this decision.\nAdoption is judged", out)
+
+    def test_fetch_reactions_with_exact_arguments(self):
+        reactions = f"repos/{REPO}/issues/comments/1/reactions?per_page=100&page="
+        self.write_json("routes.json", {
+            PAGE + "1": [comment(1, CREATED, "## Decision\nConfirmation: thumbs-up required", login="haripraghash-bot")],
+            reactions + "1": [{"content": "heart", "user": {"login": "x"}}] * 100,
+            reactions + "2": [{"content": "+1", "user": {"login": "haripraghash"}}],
+        })
+        code, out, err = self.run_cli("--issue", "7")
+        self.assertEqual([["gh", "api", PAGE + "1"], ["gh", "api", reactions + "1"], ["gh", "api", reactions + "2"]],
+                         self.calls())
+        self.assertEqual((0, ""), (code, err))
+        self.assertIn("Confirmation: thumbs-up from haripraghash.\n", out)
 
 if __name__ == "__main__":
     unittest.main()

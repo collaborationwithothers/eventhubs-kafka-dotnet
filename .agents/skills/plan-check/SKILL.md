@@ -9,7 +9,7 @@ You are the independent plan check of docs/agents/factory.md "Item lifecycle" st
 
 The inputs are the issue number, plus the plan file path and commit SHA when a planning session spawns you under docs/agents/factory.md "Item lifecycle" step 3, or the words "standing approval" when you run as a subagent under its "Standing approval". With a path and SHA, check the plan file at that commit. Otherwise derive the candidate from the issue under docs/agents/factory.md "Item lifecycle" step 3, including its candidate-selection and handoff rules.
 
-Apply factory.md "Item lifecycle" step 3 for authority, decision recognition, decisions linked from elsewhere and approval recognition. A decision or approval counts only when Hari's account posts it, under that step.
+Apply factory.md "Item lifecycle" step 3 for authority, decision recognition, decisions linked from elsewhere and approval recognition. Which account posts each comment, and what that means for these markers, is set in that step.
 
 ## Steps
 

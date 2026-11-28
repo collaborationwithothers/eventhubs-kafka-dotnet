@@ -9,7 +9,7 @@ You are the implementing session of docs/agents/factory.md "Item lifecycle" step
 
 The only input is the issue number. Derive the candidate from the issue under docs/agents/factory.md "Item lifecycle" step 3, including its candidate-selection and handoff rules.
 
-Apply factory.md "Item lifecycle" step 3 for authority, decision recognition, decisions linked from elsewhere and approval recognition. A decision or approval counts only when Hari's account posts it, under that step.
+Apply factory.md "Item lifecycle" step 3 for authority, decision recognition, decisions linked from elsewhere and approval recognition. Which account posts each comment, and what that means for these markers, is set in that step.
 
 ## Steps
 
@@ -22,7 +22,7 @@ Apply docs/agents/factory.md "Outcome responsibility" to this role.
 
 ## Decisions given in chat
 
-When Hari gives a decision in your chat, post it at once as a comment on the issue headed `## Draft decision`, quoting him and stating that he gave it in this session. Your comment posts as `haripraghash-bot`, so it is not a decision under docs/agents/factory.md "Item lifecycle" step 3. Give Hari its link in chat and ask him to post an `## Approval` that links it, or to post the decision himself. Act on no decision or approval until his comment exists. Basis: [#419 decision 6873248830](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/419#issuecomment-6873248830), rule 6, as amended by [#270 decision 7235442482](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/270#issuecomment-7235442482), point 2.
+When Hari gives a decision in your chat, post it at once as a comment on the issue headed `## Decision`, quoting him, stating that he gave it in this session, and listing each point you record. Then show Hari in chat, point by point and with the comment's link, exactly what you recorded, and act on it only after that. When docs/agents/factory.md "Item lifecycle" step 3 requires his thumbs-up for the decision, put its confirmation line in the comment, ask him in chat for the reaction, and act on the decision only once `scripts/decision-log.py` reports it. Act on no approval until it is recorded. Basis: [#419 decision 6873248830](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/419#issuecomment-6873248830), rule 6, as amended by [#270 decision 7236098244](https://github.com/collaborationwithothers/eventhubs-kafka-dotnet/issues/270#issuecomment-7236098244).
 
 ## Timeline record
 

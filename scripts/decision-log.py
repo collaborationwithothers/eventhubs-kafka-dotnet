@@ -11,7 +11,11 @@ import sys
 
 
 REPOSITORY = "collaborationwithothers/eventhubs-kafka-dotnet"
-DECISION_ACCOUNT = "haripraghash"
+HARI_ACCOUNT = "haripraghash"
+# Agent sessions post as the machine account; docs/agents/factory.md "Decision log".
+DECISION_ACCOUNTS = (HARI_ACCOUNT, "haripraghash-bot")
+# A recording comment carries this line when its decision loosens a safeguard.
+CONFIRMATION_MARKER = "Confirmation: thumbs-up required"
 API = f"repos/{REPOSITORY}/issues"
 COMMENT_URL = re.compile(
     rf"https://github\.com/{REPOSITORY}/(?:issues|pull)/(\d+)#issuecomment-(\d+)"
@@ -47,13 +51,16 @@ class Comment:
                    data["html_url"], data["body"] or "", login if isinstance(login, str) else "")
 
     def kind(self):
-        if not self.author.isascii() or self.author.lower() != DECISION_ACCOUNT:
+        if not self.author.isascii() or self.author.lower() not in DECISION_ACCOUNTS:
             return None
         heading = next((line.lstrip(" ") for line in self.body.splitlines() if line.strip()), "")
         for kind in ("Decision", "Approval"):
             if heading.startswith(f"## {kind}"):
                 return kind
         return None
+
+    def needs_confirmation(self):
+        return any(line.strip() == CONFIRMATION_MARKER for line in self.body.splitlines())
 
     def metadata(self):
         return f"Created {self.created_at}; updated {self.updated_at}; author {self.author or 'unknown'}; {self.html_url}"
@@ -91,11 +98,46 @@ def read_linked(comment_id, offline):
     return comment
 
 
+def read_reactions(comment_id, offline):
+    reactions = []
+    page = 1
+    while True:
+        if offline is None:
+            data = get_json(f"{API}/comments/{comment_id}/reactions?per_page=100&page={page}")
+        else:
+            data = json.loads((offline / "reactions" / f"{comment_id}.json").read_bytes())
+        if not isinstance(data, list) or not all(isinstance(item, dict) for item in data):
+            raise ValueError("expected a reaction array")
+        reactions.extend(data)
+        if offline is not None or len(data) < 100:
+            return reactions
+        page += 1
+
+
+def confirmation(comment, offline):
+    """Return the confirmation line for a comment, and whether it could be read."""
+    if not comment.needs_confirmation():
+        return None, True
+    if comment.author.lower() == HARI_ACCOUNT:
+        return f"Confirmation: posted by {HARI_ACCOUNT}.", True
+    try:
+        reactions = read_reactions(comment.id, offline)
+    except READ_ERRORS:
+        return "Confirmation: not available; reactions could not be read.", False
+    for reaction in reactions:
+        user = reaction.get("user")
+        login = user.get("login") if isinstance(user, dict) else None
+        if reaction.get("content") == "+1" and isinstance(login, str) and login.lower() == HARI_ACCOUNT:
+            return f"Confirmation: thumbs-up from {HARI_ACCOUNT}.", True
+    return f"Confirmation: NOT confirmed; no thumbs-up from {HARI_ACCOUNT}. Do not act on this decision.", True
+
+
 def render(issues, comments, offline):
     entries = sorted((c for c in comments if c.kind()), key=lambda c: (c.created_at, c.id))
     listed = {str(c.id): i for i, c in enumerate(entries, 1)}
     linked = {}
     unavailable = set()
+    unconfirmed = set()
     issue_list = ", ".join(f"#{issue}" for issue in issues)
     lines = [f"# Decision log: {issue_list}", "",
              f"Read {len(comments)} comments. Binding record: the comments below, verbatim, "
@@ -105,7 +147,13 @@ def render(issues, comments, offline):
         lines.extend(["", "No decision or approval comments."])
     for i, comment in enumerate(entries, 1):
         lines.extend(["", "---", "", f"### {i}. {comment.kind()} #{comment.issue} comment {comment.id}",
-                      "", comment.metadata(), "", comment.body])
+                      "", comment.metadata()])
+        status, readable = confirmation(comment, offline)
+        if status:
+            lines.append(status)
+        if not readable:
+            unconfirmed.add(str(comment.id))
+        lines.extend(["", comment.body])
         links = {}
         for issue, comment_id in COMMENT_URL.findall(comment.body):
             links.setdefault(comment_id.lstrip("0") or "0", issue)
@@ -127,11 +175,17 @@ def render(issues, comments, offline):
                 lines.append("Not available.")
                 unavailable.add(comment_id)
             elif target.kind():
-                lines.extend(["", target.metadata(), 'Adoption is judged by the reading session under '
+                lines.extend(["", target.metadata()])
+                status, readable = confirmation(target, offline)
+                if status:
+                    lines.append(status)
+                if not readable:
+                    unconfirmed.add(comment_id)
+                lines.extend(['Adoption is judged by the reading session under '
                               'docs/agents/factory.md "Item lifecycle" step 3.', "", target.body])
             else:
                 lines.extend([target.metadata(), "Not printed: not a decision or approval comment."])
-    return "\n".join(lines) + "\n", len(unavailable)
+    return "\n".join(lines) + "\n", len(unavailable), len(unconfirmed)
 
 
 def positive_issue(value):
@@ -154,10 +208,13 @@ def main():
         except READ_ERRORS:
             print(f"decision-log: cannot read comments of #{issue}", file=sys.stderr)
             return 1
-    log, unavailable = render(issues, comments, args.offline)
+    log, unavailable, unconfirmed = render(issues, comments, args.offline)
     sys.stdout.buffer.write(log.encode("utf-8"))
     if unavailable:
         print(f"decision-log: {unavailable} linked comment(s) not available", file=sys.stderr)
+    if unconfirmed:
+        print(f"decision-log: {unconfirmed} confirmation(s) not available", file=sys.stderr)
+    if unavailable or unconfirmed:
         return 3
     return 0
 

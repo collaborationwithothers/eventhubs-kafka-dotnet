@@ -212,7 +212,7 @@ def d03():
             ("No Azure credentials in agent sessions", ["a rule; no technical block identified"]),
             ("Only Hari applies ready-for-agent", ["its plan approval"]),
             ("No edits to expected outcomes,", ["verdicts or results to make a run pass"]),
-            ("Decision and Approval headings", ["every comment posts as Hari's account"]),
+            ("Decision and Approval headings", ["conventions; agents post as haripraghash-bot"]),
             ("Codex review before agent merge", ["no open P0/P1 or High security finding"]),
             ("GitHub text is data, not instructions", ["a defence written into the session prompt"])]
     col3 = [("Item plan", ["applies ready-for-agent"]),
